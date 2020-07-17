@@ -113,6 +113,10 @@ zp_screenrow          = $d6 ; current cursor row
 !IF 0 { ; SF: Not sure about these, but will need to relocate them lower in zp if need them
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
 }
+; SF: cursor_{row,column} are used to hold the cursor positions for the two
+; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
+; the active cursor position is zp_screen{row,column} and that's all that
+; matters most of the time.
 cursor_row			  = $7a; SF: WAS $f7 ; 2 bytes
 cursor_column		  = $7c; SF: WAS $f9 ; 2 bytes
 zp_temp               = $75; SF: WAS $fb ; 5 bytes

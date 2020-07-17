@@ -93,7 +93,7 @@ erase_window
 !ifdef Z5PLUS {
     lda window_start_row + 1
 } else {
-    lda #24
+    lda #24 ; SF: Implicit screen height assumption?
 }
 	stx cursor_row + 1
     pha
