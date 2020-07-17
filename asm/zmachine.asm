@@ -467,7 +467,7 @@ z_execute
 	lda #0
 	sta $a0
 	sta $a1
-	sta $a2
+	sta $a2 ; SF: Kernal jiffy timer
 	sta $4b
 	sta $4c
 }
@@ -1159,7 +1159,11 @@ z_ins_rfalse
 ; z_ins_catch (moved to stack.asm)
 
 z_ins_quit
+!IF 0 { ;SF
 	jmp kernal_reset
+} ELSE {
+        jmp SFHANG
+}
 
 ; z_ins_restart (moved to disk.asm)
 	

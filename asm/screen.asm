@@ -1,5 +1,6 @@
 ; screen update routines
 
+!IF 0 { ; SF
 init_screen_colours_invisible
 	lda zcolours + BGCOL
 	bpl + ; Always branch
@@ -31,6 +32,11 @@ init_screen_colours
 }
     lda #147 ; clear screen
     jmp s_printchar
+} ELSE {
+init_screen_colours_invisible
+init_screen_colours
+    rts
+}
 
 !ifdef Z4PLUS {
 z_ins_erase_window
@@ -40,6 +46,7 @@ z_ins_erase_window
 }
 	
 erase_window
+!IF 0 { ; SF
     ; x = 0: clear lower window
     ;     1: clear upper window
     ;    -1: clear screen and unsplit
@@ -107,6 +114,10 @@ erase_window
     sta zp_screenrow
 .return	
     rts
+} ELSE {
+.return	
+    rts ; SFTDO!
+}
 
 !ifdef Z4PLUS {
 z_ins_erase_line
@@ -313,7 +324,7 @@ z_ins_set_text_style
     lda z_operand_value_low_arr
     bne .t0
     ; roman
-    lda #146 ; reverse off
+    lda #146 ; reverse off ; SFTODO!
     jmp s_printchar
 .t0 cmp #1
     bne .do_nothing
@@ -391,6 +402,7 @@ show_more_prompt
 	; wait for ENTER
 .printchar_pressanykey
 !ifndef BENCHMARK {
+!IF 0 { ; SF
 --	ldx s_colour
 	iny
 	tya
@@ -402,6 +414,12 @@ show_more_prompt
 ---	lda $a2
 -	cmp $a2
 	beq -
+} ELSE {
+--
++
+---
+-
+}
 	jsr getchar_and_maybe_toggle_darkmode
 	cmp #0
 	bne +
@@ -645,10 +663,12 @@ draw_status_line
     jsr set_cursor
     lda #18 ; reverse on
     jsr s_printchar
+    !IF 0 { ; SF
 	ldx darkmode
 	ldy statuslinecol,x 
 	lda zcolours,y
 	jsr s_set_text_colour
+    }
     ;
     ; Room name
     ; 
@@ -751,10 +771,12 @@ draw_status_line
 	ldx #<.ampm_str
 	jsr printstring_raw
 .statusline_done
+!IF 0 { ; SF
 	ldx darkmode
 	ldy fgcol,x 
 	lda zcolours,y
 	jsr s_set_text_colour
+}
     lda #146 ; reverse off
     jsr s_printchar
 	pla

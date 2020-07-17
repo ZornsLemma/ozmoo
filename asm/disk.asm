@@ -293,14 +293,26 @@ read_track_sector
     lda #cname_len
     ldx #<.cname
     ldy #>.cname
+!IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+}
 
     lda #$02      ; file number 2
     ldx .device
 	tay      ; secondary address 2
+!IF 0 { ; SF
     jsr kernal_setlfs ; call SETLFS
 
     jsr kernal_open     ; call OPEN
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
+
     bcs .error    ; if carry set, the file could not be opened
 
     ; open the command channel
@@ -308,20 +320,38 @@ read_track_sector
     lda #uname_len
     ldx #<.uname
     ldy #>.uname
+!IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     lda #$0F      ; file number 15
     ldx .device
     tay      ; secondary address 15
+!IF 0 { ; SF
     jsr kernal_setlfs ; call SETLFS
 
     jsr kernal_open ; call OPEN (open command channel and send U1 command)
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     bcs .error    ; if carry set, the file could not be opened
 
     ; check drive error channel here to test for
     ; FILE NOT FOUND error etc.
 
     ldx #$02      ; filenumber 2
+!IF 0 { ; SF
     jsr kernal_chkin ; call CHKIN (file 2 now used as input)
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
 
     lda readblocks_mempos
     sta zp_mempos
@@ -329,7 +359,13 @@ read_track_sector
     sta zp_mempos + 1
 
     ldy #$00
+!IF 0 { ; SF
 -   jsr kernal_readchar ; call CHRIN (get a byte from file)
+} ELSE {
+-    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     sta (zp_mempos),Y   ; write byte to memory
     iny
     bne -         ; next byte, end when 256 bytes are read
@@ -360,6 +396,7 @@ uname_len = * - .uname
 } ; End of !ifdef VMEM
 
 close_io
+!IF 0 { ; SF
     lda #$0F      ; filenumber 15
     jsr kernal_close ; call CLOSE
 
@@ -367,6 +404,11 @@ close_io
     jsr kernal_close ; call CLOSE
 
     jmp kernal_clrchn ; call CLRCHN
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
 
 !zone disk_messages {
 prepare_for_disk_msgs
@@ -424,7 +466,13 @@ print_insert_disk_msg
 	ldx #<insert_msg_3
 	jsr printstring_raw
 	;jsr kernal_readchar ; this shows the standard kernal prompt (not good)
+!IF 0 { ; SF
 -	jsr kernal_getchar
+} ELSE {
+-    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     beq -
 	; lda .print_row
 	; clc
@@ -578,7 +626,13 @@ z_ins_save
 	jsr turn_on_cursor
     lda #0
     sta .inputlen
+!IF 0 { ; SF
 -   jsr kernal_getchar
+} ELSE {
+-    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     cmp #$14 ; delete
     bne +
     ldx .inputlen
@@ -655,6 +709,7 @@ list_save_files
     lda #1
     ldx #<.dirname
     ldy #>.dirname
+!IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
 
     lda #2      ; file number 2
@@ -673,11 +728,18 @@ list_save_files
 -	jsr kernal_readchar
 	dey
 	bne -
+} ELSE {
+-
++    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
 
 .read_next_line	
 	lda #0
 	sta zp_temp + 1
 	; Read row pointer
+!IF 0 { ; SF
 	jsr kernal_readchar
 	sta zp_temp
 	jsr kernal_readchar
@@ -729,6 +791,11 @@ list_save_files
 	lda #13
 	jsr printchar_raw
 	bne .read_next_line
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
 	
 .end_of_dir
 	jsr close_io
@@ -835,7 +902,11 @@ list_save_files
 .dont_print_insert_save_disk	
 	ldx #0
 	ldy #5
+!IF 0 { ; SF
 -	jsr kernal_delay_1ms
+} ELSE {
+-
+}
 	dex
 	bne -
 	dey
@@ -992,6 +1063,7 @@ save_game
     lda #5
     ldx #<.erase_cmd
     ldy #>.erase_cmd
+!IF 0 { ; SF
     jsr kernal_setnam
     lda #$0f      ; file number 15
     ldx disk_info + 4 ; Device# for save disk
@@ -1001,6 +1073,11 @@ save_game
     bcs .restore_failed  ; if carry set, the file could not be opened
     lda #$0f      ; filenumber 15
     jsr kernal_close
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
 	
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
@@ -1023,6 +1100,7 @@ do_restore
     lda #3
     ldx #<.restore_filename
     ldy #>.restore_filename
+!IF 0 { ; SF
     jsr kernal_setnam
     lda #1      ; file number
     ldx disk_info + 4 ; Device# for save disk
@@ -1033,6 +1111,11 @@ do_restore
     php ; store c flag so error can be checked by calling routine
     lda #1 
     jsr kernal_close
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     plp ; restore c flag
     rts
 
@@ -1042,6 +1125,7 @@ do_save
     adc #2 ; add 2 bytes for prefix
     ldx #<.filename
     ldy #>.filename
+!IF 0 { ; SF
     jsr kernal_setnam
     lda #1      ; file# 1
     ldx disk_info + 4 ; Device# for save disk
@@ -1058,9 +1142,20 @@ do_save
     tay
     lda #$c1      ; start address located in $C1/$C2
     jsr kernal_save
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     php ; store c flag so error can be checked by calling routine
     lda #1 
+!IF 0 { ; SF
     jsr kernal_close
+} ELSE {
+    LDA #'X'
+    JSR $FFEE
+    JMP SFHANG
+}
     plp ; restore c flag
     rts
 .last_disk	!byte 0
@@ -1086,4 +1181,5 @@ do_save
 }
 
 
-	
+SFHANG
+    JMP SFHANG

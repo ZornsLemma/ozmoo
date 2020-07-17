@@ -37,9 +37,11 @@ inc_z_pc_page
 	bcc get_page_at_z_pc_did_pha
 } else {
 ; No vmem
+!IF 0 { ; SF
 	lda z_pc + 1
 	cmp #(first_banked_memory_page - (>story_start))
 	bcs get_page_at_z_pc_did_pha
+}
 }
 ; safe
 	pla

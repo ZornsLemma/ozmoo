@@ -456,9 +456,11 @@ deletable_init_start
 } else {
 	lda #23
 }
+!IF 0 { ; SF
     sta reg_screen_char_mode
 	lda #$80
 	sta charset_switchable
+}
 
 	jmp init_screen_colours ; _invisible
 

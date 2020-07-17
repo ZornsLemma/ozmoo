@@ -14,7 +14,7 @@ else
 	# Paths on Linux
     $X64 = "/usr/bin/x64 -autostart-delay-random"
     $C1541 = "/usr/bin/c1541"
-    $EXOMIZER = "exomizer/src/exomizer"
+    $EXOMIZER = "exomizer"
     $ACME = "acme"
 end
 
@@ -77,6 +77,7 @@ $TEMPDIR = File.join(__dir__, 'temp')
 Dir.mkdir($TEMPDIR) unless Dir.exist?($TEMPDIR)
 
 $labels_file = File.join($TEMPDIR, 'acme_labels.txt')
+$report_file = File.join($TEMPDIR, 'acme_report.txt')
 $ozmoo_file = File.join($TEMPDIR, 'ozmoo')
 $zip_file = File.join($TEMPDIR, 'ozmoo_zip')
 $good_zip_file = File.join($TEMPDIR, 'ozmoo_zip_good')
@@ -576,7 +577,7 @@ end
 
 def build_interpreter()
 	necessarysettings =  " --setpc #{$start_address} -DCACHE_PAGES=#{$CACHE_PAGES} -DSTACK_PAGES=#{$stack_pages} -D#{$ztype}=1 -DCONF_TRK=#{$CONFIG_TRACK}"
-	necessarysettings +=  " --cpu 6510 --format cbm"
+	necessarysettings +=  " --cpu 6502 --format plain"
 	optionalsettings = ""
 	optionalsettings += " -DSPLASHWAIT=#{$splash_wait}" if $splash_wait
 	
@@ -623,7 +624,7 @@ def build_interpreter()
     compressionflags = ''
 
     cmd = "#{$ACME}#{necessarysettings}#{optionalsettings}#{fontflag}#{colourflags}#{generalflags}" +
-		"#{debugflags}#{compressionflags} -l \"#{$labels_file}\" --outfile \"#{$ozmoo_file}\" ozmoo.asm"
+		"#{debugflags}#{compressionflags} -l \"#{$labels_file}\" -r \"#{$report_file}\" --outfile \"#{$ozmoo_file}\" ozmoo.asm"
 	puts cmd
 	Dir.chdir $SRCDIR
     ret = system(cmd)
@@ -725,7 +726,8 @@ end
 def add_boot_file(finaldiskname, diskimage_filename)
 	ret = FileUtils.cp("#{diskimage_filename}", "#{finaldiskname}")
 	puts "#{$C1541} -attach \"#{finaldiskname}\" -write \"#{$good_zip_file}\" story"
-	system("#{$C1541} -attach \"#{finaldiskname}\" -write \"#{$good_zip_file}\" story")
+	#SF:system("#{$C1541} -attach \"#{finaldiskname}\" -write \"#{$good_zip_file}\" story")
+	system "/bin/true" # SF!
 end
 
 def play(filename)
@@ -1149,7 +1151,7 @@ optimize = false
 extended_tracks = false
 preload_max_vmem_blocks = 2**16 / $VMEM_BLOCKSIZE
 limit_preload_vmem_blocks = false
-$start_address = 0x0801
+$start_address = 0x0801 # SF: We could do 0x0800 but at moment we're hacking anyway so no point faffing
 $program_end_address = 0x10000
 $colour_replacements = []
 $default_colours = []

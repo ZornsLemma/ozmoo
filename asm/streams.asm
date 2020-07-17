@@ -607,6 +607,7 @@ z_ins_output_stream
 
 translate_zscii_to_petscii
 	; Return PETSCII code *OR* set carry if this ZSCII character is unsupported
+!IF 0 { ; SF
 	sty .streams_tmp + 1
 	ldy #character_translation_table_out_end - character_translation_table_out - 2
 -	cmp character_translation_table_out,y
@@ -652,5 +653,13 @@ translate_zscii_to_petscii
 	ldy .streams_tmp + 1
 	clc
 	rts
+} ELSE {
+    ; SF: Hack. This probably mostly works but a) we could delete a lot of
+    ; translation code if we don't need any translations b) it's just possible
+    ; the interpreter checks for PETSCII values returned by this function and we
+    ; would need to modify those to expect ASCII/ZSCII/AcornSCII.
+    clc
+    rts
+}
 
 }

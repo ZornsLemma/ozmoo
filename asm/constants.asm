@@ -1,8 +1,13 @@
 ; --- ZERO PAGE --
+; SF: Because we're initially targetting a second processor only, we can use
+; 0-$EE. I therefore haven't tried to compact this and remove the (apparent)
+; gaps in zero page yet.
 ; BASIC not much used, so many positions free to use
 ; memory bank control
+!IF 0 { # SF: C64 only constants
 zero_datadirection    = $00
 zero_processorports   = $01
+}
 ; available zero page variables (pseudo registers)
 z_opcode              = $02
 mempointer            = $03 ; 2 bytes
@@ -105,18 +110,21 @@ zp_cursorswitch       = $cc
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
 zp_screencolumn       = $d3 ; current cursor column
 zp_screenrow          = $d6 ; current cursor row
+!IF 0 { ; SF: Not sure about these, but will need to relocate them lower in zp if need them
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
-cursor_row			  = $f7 ; 2 bytes
-cursor_column		  = $f9 ; 2 bytes
-zp_temp               = $fb ; 5 bytes
+}
+cursor_row			  = $7a; SF: WAS $f7 ; 2 bytes
+cursor_column		  = $7c; SF: WAS $f9 ; 2 bytes
+zp_temp               = $75; SF: WAS $fb ; 5 bytes
 
-print_buffer		  = $100 ; 41 bytes
+print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 
-memory_buffer         =	$02a7
+memory_buffer         =	$02a7 ; SF: This may well need relocating
 memory_buffer_length  = 89
 
-first_banked_memory_page = $d0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
+first_banked_memory_page = $ff ; SF: Was $d0, probably need tweaking for a non-2P port but for now can probably get away with this ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
 
+!IF 0 { ; SF: C64-only constants
 charset_switchable 	  = $291
 
 datasette_buffer_start= $0334 ; Actually starts at 33c, but the eight bytes before that are unused
@@ -152,6 +160,7 @@ kernal_save           = $ffd8 ; save file
 kernal_readtime       = $ffde ; get time of day in a/x/y
 kernal_getchar        = $ffe4 ; get a character
 kernal_plot           = $fff0 ; set (c=1)/get (c=0) cursor: x=row, y=column
+}
 
 
 ; story file header constants
@@ -183,4 +192,8 @@ header_standard_revision_number = $32
 header_alphabet_table = $34
 header_header_extension_table = $36
 
-
+; SF: Acorn constants
+osrdch = $ffe0
+oswrch = $ffee
+vdu_home = 30
+vdu_goto_xy = 31

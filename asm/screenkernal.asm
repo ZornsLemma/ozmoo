@@ -21,7 +21,14 @@
 
 !zone screenkernal {
 
+; SF: Conversion to use Acorn OS routines is really quick-and-dirty, e.g. in
+; reality we might want to get rid of zp_screen{column,row} and just position
+; the OS cursor when we set them etc. But I want to keep things simple for now
+; and avoid assuming anything about how the cursor moves etc. Assuming what I
+; have here works, it will probably be needlessly inefficient.
+
 s_init
+!IF 0 { ; SF
     ; init cursor
     lda #$ff
     sta s_current_screenpos_row ; force recalculation first time
@@ -34,6 +41,10 @@ s_init
 	dex
 	bpl -
     rts
+} ELSE {
+    lda #vdu_home
+    jsr oswrch
+}
 
 s_plot
     ; y=column (0-39)
@@ -52,16 +63,34 @@ s_plot
 	jmp .update_screenpos
 
 s_set_text_colour
+!IF 0 { ; SF
 	sta s_colour
+}
 	rts
 
 s_delete_cursor
+!IF 0 { ; SF
 	lda #$20 ; blank space
 	ldy zp_screencolumn
 	sta (zp_screenline),y
+} ELSE {
+        jsr s_cursor_to_screenrowcolumn
+        lda #$20 ; blank space
+        jsr oswrch ; SF: ignore issue of scrolling at bottom right for now...
+}
 	rts
+!IF 1 { ; SF
+s_cursor_to_screenrowcolumn
+        lda #vdu_goto_xy
+        jsr oswrch
+        lda zp_screencolumn
+        jsr oswrch
+        lda zp_screenline
+        jmp oswrch
+}
 
 s_printchar
+!IF 0 { ; SF
     ; replacement for CHROUT ($ffd2)
     ; input: A = byte to write (PETASCII)
     ; output: -
@@ -242,6 +271,32 @@ s_printchar
     jsr .s_scroll
     jsr .update_screenpos
     jmp .printchar_end
+} ELSE {
+        ; SF: Obviously super crude, no handling of windows etc.
+        cmp #' '
+        bcs +
+        lda #'.'
++       
+        ; SF: Not even trying to keep zp_screencolumn and zp_screenrow accurate,
+        ; I just want to get things basically working before trying a proper
+        ; implementation.
+        pha
+        lda zp_screencolumn
+        cmp #40
+        bne +
+        lda zp_screenrow
+        cmp #25
+        bne ++
+        inc zp_screenrow
+++      lda #0
+        sta zp_screencolumn
+        lda #255
++       clc
+        adc #1
+        sta zp_screencolumn
+        pla
+        jmp oswrch
+}
 
 s_erase_window
     lda #0
@@ -257,6 +312,7 @@ s_erase_window
     rts
 
 .update_screenpos
+!IF 0 { ; SF
     ; set screenpos (current line) using row
     ldx zp_screenrow
     cpx s_current_screenpos_row
@@ -284,9 +340,11 @@ s_erase_window
     sta zp_screenline +1
     adc #$d4 ; add colour start ($d800)
     sta zp_colourline + 1
+}
 +   rts
 
 .s_scroll
+!IF 0 { ; SF 
     lda zp_screenrow
     cmp #25
     bpl +
@@ -351,8 +409,17 @@ s_erase_line_from_cursor
 	jsr .update_screenpos
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
+} ELSE {
+s_erase_line
+        ; SFTODO!
+        rts
+s_erase_line_from_cursor
+        ; SFTODO!
+        rts
+}
 
 
+!IF 0 { ; SF
 ; colours		!byte 144,5,28,159,156,30,31,158,129,149,150,151,152,153,154,155
 zcolours	!byte $ff,$ff ; current/default colour
 			!byte COL2,COL3,COL4,COL5  ; black, red, green, yellow
@@ -367,8 +434,10 @@ statuslinecol !byte STATCOL, STATCOLDM
 cursorcol !byte CURSORCOL, CURSORCOLDM
 current_cursor_colour !byte CURSORCOL
 cursor_character !byte CURSORCHAR
+}
 
 toggle_darkmode
+!IF 0 { ; SF
 !ifdef Z5PLUS {
 	; We will need the old fg colour later, to check which characters have the default colour
 	ldx darkmode ; previous darkmode value (0 or 1)
@@ -451,10 +520,14 @@ toggle_darkmode
 	bne .compare
 	jsr update_cursor
 	rts 
+} ELSE {
+        rts
+}
 
 
 !ifdef Z5PLUS {
 z_ins_set_colour
+!IF 0 { ; SF
     ; set_colour foreground background [window]
     ; (window is not used in Ozmoo)
 	jsr printchar_flush
@@ -493,6 +566,9 @@ z_ins_set_colour
     jsr s_set_text_colour ; change foreground colour
 .current_foreground
     rts
+} ELSE {
+    rts
+}
 }
 
 !ifdef TESTSCREEN {

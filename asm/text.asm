@@ -28,7 +28,7 @@ benchmark_read_char
 	jsr print_byte_as_hex
 	lda $a1
 	jsr print_byte_as_hex
-	lda $a2
+	lda $a2 ; SF: Kernal jiffy timer, need to use something else if/when port this bit
 	jsr print_byte_as_hex
 	jsr space
 	jsr printchar_flush
@@ -388,6 +388,7 @@ convert_zchar_to_char
 +++	rts
 
 translate_petscii_to_zscii
+!IF 0 { ; SF
 	ldx #character_translation_table_in_end - character_translation_table_in - 1
 -	cmp character_translation_table_in,x
 	bcc .no_match
@@ -422,6 +423,11 @@ translate_petscii_to_zscii
 	dex
 	lda character_translation_table_in,x
 	rts
+} ELSE {
+        ; SF: Probably mostly OK, but we may need some translation. Also prob
+        ; lots of code/data we can delete
+	rts
+}
 
 	
 convert_char_to_zchar
@@ -899,7 +905,13 @@ init_read_text_timer
     sta .read_text_time_jiffy
 update_read_text_timer
     ; prepare time for next routine call (current time + time_jiffy)
+!IF 0 { ; SF
     jsr kernal_readtime  ; read current time (in jiffys)
+} ELSE {
+    LDA #'Y'
+    JSR $FFEE
+    JMP SFHANG
+}
     clc
     adc .read_text_time_jiffy + 2
     sta .read_text_jiffy + 2
@@ -913,6 +925,7 @@ update_read_text_timer
 }
 
 getchar_and_maybe_toggle_darkmode
+!IF 0 { ; SF
 	jsr kernal_getchar
  	cmp #133
 	bne +
@@ -920,6 +933,9 @@ getchar_and_maybe_toggle_darkmode
 	ldx #40 ; Side effect to help when called from MORE prompt
 	lda #0
 +	rts
+} ELSE {
+        jmp osrdch
+}
 
 read_char
 	; return: 0,1: return value of routine (false, true)
@@ -965,7 +981,13 @@ read_char
     lda .read_text_time
 	ora .read_text_time + 1
     beq .no_timer
+!IF 0 { ; SF
     jsr kernal_readtime   ; read start time (in jiffys) in a,x,y (low to high)
+} ELSE {
+    LDA #'Y'
+    JSR $FFEE
+    JMP SFHANG
+}
 	cmp .read_text_jiffy + 2
 	txa
 	sbc .read_text_jiffy + 1
@@ -1043,11 +1065,16 @@ update_cursor
 	ldy object_temp
     rts
 +   ; cursor
+!IF 0 { ; SF
 	lda cursor_character
 	sta (zp_screenline),y
 	lda current_cursor_colour
 	sta (zp_colourline),y
 	ldy object_temp
+} ELSE {
+        ; SFTODO
+	ldy object_temp
+}
     rts
 
 read_text

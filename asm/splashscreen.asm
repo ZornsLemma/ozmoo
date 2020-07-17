@@ -16,6 +16,7 @@ splash_line_y
 	cpy #5
 	bne splash_line_y
 
+!IF 0 { ; SF: $A2 is kernal jiffy clock
 	lda $a2
 	clc
 	adc #<(SPLASHWAIT*60)
@@ -23,8 +24,11 @@ splash_line_y
 	lda $a1
 	adc #>(SPLASHWAIT*60)
 	sta z_temp + 1
+}
 	
+!IF 0 { ; SF
 -	jsr kernal_getchar
+
 	bne +
 	lda z_temp + 2
 	cmp $a2
@@ -35,6 +39,11 @@ splash_line_y
 +	
 	lda #147
 	jmp s_printchar
+} ELSE {
+-       ; jsr osrdch SF: For the moment the splashscreen is a single line of
+        ; text so no need to pause, will need a proper splashscreen eventually
+        rts
+}
 
 !source "splashlines.asm"
 

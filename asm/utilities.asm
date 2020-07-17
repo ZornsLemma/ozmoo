@@ -12,34 +12,44 @@
 
 ; zero_processorports: ...<d000><e000><a000> on/off
 !macro set_memory_all_ram {
+!IF 0 { ; SF
     ; Don't forget to disable interrupts first!
     pha
     lda #%00110000 
     sta zero_processorports
     pla
 }
+}
 !macro set_memory_all_ram_unsafe {
+!IF 0 { ; SF
     ; Don't forget to disable interrupts first!
     lda #%00110000 
     sta zero_processorports
+}
 }
 
 !macro set_memory_no_basic {
+!IF 0 { ; SF
     pha
     lda #%00110110
     sta zero_processorports
     pla
 }
+}
 !macro set_memory_no_basic_unsafe {
+!IF 0 { ; SF
     lda #%00110110
     sta zero_processorports
 }
+}
 
 !macro set_memory_normal {
+!IF 0 { ; SF
     pha
     lda #%00110111
     sta zero_processorports
     pla
+}
 }
 
 ; to be expanded to disable NMI IRQs later if needed
@@ -163,8 +173,13 @@ fatalerror
     lda #$0d
     jsr streams_print_output
     jsr printchar_flush
+!IF 0 { ; SF
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
+} ELSE {
+hang
+    jmp hang
+}
 .fatal_error_string !pet "fatal error: ",0
 } else {
     pha
