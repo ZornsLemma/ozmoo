@@ -332,21 +332,30 @@ z_init
 }
 	
 	; Modify header to tell game about terp capabilities
+        ; SF: I've hacked this as per
+        ; http://inform-fiction.org/zmachine/standards/z1point0/sect08.html
+        ; to clear bit 0 of flags 1 to say we don't support colours. It's
+        ; possible (depending on exactly what this involves) we could support
+        ; colours in mode 7, but for now let's keep things simple. (For Z5PLUS
+        ; screen.asm will correctly set colours 2 and 9 as default background and
+        ; foreground colour.) TODO: Am I misreading the spec? The original code
+        ; only forced bit 0 on for Z5PLUS, but I am now forcing it off for all
+        ; versions.
 !ifdef Z3 {
 	lda story_start + header_flags_1
-	and #(255 - 16 - 64) ; Statusline IS available, variable-pitch font is not default
+	and #(255 - 16 - 64 - 1) ; Statusline IS available, variable-pitch font is not default
 	ora #32 ; Split screen available
 	sta story_start + header_flags_1
 } else {
 !ifdef Z4 {
 	lda story_start + header_flags_1
-	and #(255 - 4 - 8) ; bold font, italic font not available
+	and #(255 - 4 - 8 - 1) ; bold font, italic font not available
 	ora #(16 + 128) ; Fixed-space style, timed input available
 	sta story_start + header_flags_1
 } else { ; Z5PLUS
 	lda story_start + header_flags_1
-	and #(255 - 4 - 8) ; bold font, italic font not available
-	ora #(1 + 16 + 128) ; Colours, Fixed-space style, timed input available
+	and #(255 - 4 - 8 - 1) ; bold font, italic font not available
+	ora #(16 + 128) ; SF: No Colours, Fixed-space style, timed input available
 	sta story_start + header_flags_1
 	lda story_start + header_flags_2 + 1
 	and #(255 - 8 - 16 - 32 - 128) ; pictures, undo, mouse, sound effect not available
