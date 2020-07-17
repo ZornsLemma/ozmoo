@@ -362,6 +362,11 @@ z_init
 	sta story_start + header_flags_2 + 1
 }
 }
+; SF: We might want to support 40 and or 80 column width eventually (shadow screen),
+; simililary we might want to vary the height, for now just stick with these values.
+; SF: Should we change the interpreter_number and interpreter_version? OTOH *if*
+; any games check these (maybe old ones will), given we are using this C64-oriented
+; interpreter it's probably a good idea to avoid problems by leaving this alone.
 !ifdef Z4PLUS {
 	lda #8
 	sta story_start + header_interpreter_number ; Interpreter number (8 = C64)
