@@ -344,9 +344,9 @@ s_erase_window
 +   rts
 
 .s_scroll
-!IF 0 { ; SF 
+!IFNDEF ACORN { ; SF 
     lda zp_screenrow
-    cmp #25
+    cmp #25 ; SFTODO: Implicit screen height assumption?
     bpl +
     rts
 +   ldx window_start_row + 1 ; how many top lines to protect
@@ -410,12 +410,23 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 } ELSE {
+    lda #SFTODONOW
+    SFTODOMAYBEFALLTHRU
 s_erase_line
-        ; SFTODO!
-        rts
+	; registers: a,x,y
+	lda #0
+	sta zp_screencolumn
 s_erase_line_from_cursor
-        ; SFTODO!
-        rts
+    ; SFTODO: Maybe turn cursor off? Or maybe we'll have it off by default and
+    ; only turn it on when we expect user input?
+    jsr s_cursor_to_screenrowcolumn
+    lda #' '
+    ldy zp_screencolumn
+-   jsr oswrch
+    iny
+    cpy story_start + header_screen_width_chars
+    bcc -
++   jmp s_cursor_to_screenrowcolumn
 }
 
 

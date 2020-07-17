@@ -199,5 +199,8 @@ header_header_extension_table = $36
 ; SF: Acorn constants
 osrdch = $ffe0
 oswrch = $ffee
+osbyte = $fff4
+vdu_cls = 12
 vdu_home = 30
 vdu_goto_xy = 31
+osbyte_read_key = $81

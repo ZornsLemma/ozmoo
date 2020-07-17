@@ -1,6 +1,6 @@
 ; screen update routines
 
-!IF 0 { ; SF
+!IFNDEF ACORN { ; SF
 init_screen_colours_invisible
 	lda zcolours + BGCOL
 	bpl + ; Always branch
@@ -33,8 +33,10 @@ init_screen_colours
     lda #147 ; clear screen
     jmp s_printchar
 } ELSE {
-init_screen_colours_invisible
 init_screen_colours
+    ; SFTODO: If this remains a no-op, just attach this label to a shared rts
+    ; to avoid wasting a byte on this one. *Maybe* this needs to clear the
+    ; screen, but I doubt there's anything to do otherwise here.
     rts
 }
 
@@ -46,7 +48,6 @@ z_ins_erase_window
 }
 	
 erase_window
-!IF 0 { ; SF
     ; x = 0: clear lower window
     ;     1: clear upper window
     ;    -1: clear screen and unsplit
@@ -80,7 +81,7 @@ erase_window
 -   jsr s_erase_line
     inc zp_screenrow
     lda zp_screenrow
-    cmp #25
+    cmp #25 ; SFTODO: Implicit screen height assumption?
     bne -
 	jsr clear_num_rows
     ; set cursor to top left (or, if Z4, bottom left)
@@ -114,10 +115,6 @@ erase_window
     sta zp_screenrow
 .return	
     rts
-} ELSE {
-.return	
-    rts ; SFTDO!
-}
 
 !ifdef Z4PLUS {
 z_ins_erase_line
@@ -175,7 +172,7 @@ z_ins_print_table
 	ldy .pt_width
 -	jsr read_next_byte
 	ldx .current_col
-	cpx #40
+	cpx #40 ; SFTODO: Implicit screen width assumption?
 	bcs +
 	jsr streams_print_output
 +	inc .current_col
@@ -242,6 +239,8 @@ start_buffering
 	sty last_break_char_buffer_pos
 	rts
 
+; SFTODO: Some constants here which probably need tweaking for varying Acorn
+; screen dimensions
 !ifdef Z3 {
 .max_lines = 24
 } else {
@@ -324,12 +323,20 @@ z_ins_set_text_style
     lda z_operand_value_low_arr
     bne .t0
     ; roman
-    lda #146 ; reverse off ; SFTODO!
+!IFNDEF ACORN {
+    lda #146 ; reverse off
     jmp s_printchar
+} ELSE {
+    jmp normal_video
+}
 .t0 cmp #1
     bne .do_nothing
+!IFNDEF ACORN {
     lda #18 ; reverse on
     jmp s_printchar
+} ELSE {
+    jmp inverse_video
+}
 
 z_ins_get_cursor
     ; get_cursor array
@@ -395,6 +402,7 @@ increase_num_rows
 show_more_prompt
 	; time to show [More]
 	jsr clear_num_rows
+!IFNDEF ACORN {
 	lda $07e7 
 	sta .more_text_char
 	lda #128 + $2a ; screen code for reversed "*"
@@ -402,7 +410,6 @@ show_more_prompt
 	; wait for ENTER
 .printchar_pressanykey
 !ifndef BENCHMARK {
-!IF 0 { ; SF
 --	ldx s_colour
 	iny
 	tya
@@ -414,12 +421,6 @@ show_more_prompt
 ---	lda $a2
 -	cmp $a2
 	beq -
-} ELSE {
---
-+
----
--
-}
 	jsr getchar_and_maybe_toggle_darkmode
 	cmp #0
 	bne +
@@ -430,6 +431,22 @@ show_more_prompt
 }
 	lda .more_text_char
 	sta $07e7
+} ELSE {
+    ; Wait until SHIFT is pressed; this mimics the OS paged mode behaviour.
+    ; SFTODO: We *don't* print a "more" character; should we? The OS paged mode
+    ; doesn't. I don't know exactly what (if anything) is guaranteed about free
+    ; space at the end of the last line of the screen, but note that AFAIK we
+    ; can't portably print in the very bottom right character position without
+    ; causing the screen to scroll.
+    ; SFTODO: Will eventually want to disable this if BENCHMARK is defined as
+    ; in Commodore code above.
+-   lda #osbyte_read_key
+    ldx #$ff
+    ldy #$ff
+    jsr osbyte
+    tya
+    beq -
+}
 .increase_num_rows_done
     rts
 
@@ -488,7 +505,7 @@ printchar_buffered
     jmp .printchar_done
 .check_break_char
     ldy buffer_index
-	cpy #40
+	cpy #40 ; SFTODO: Implicit screen width assumption?
 	bcs .add_char ; Don't register break chars on last position of buffer.
     cmp #$20 ; Space
     beq .break_char
@@ -502,11 +519,11 @@ printchar_buffered
     sta print_buffer,y
 	iny
     sty buffer_index
-    cpy #41
+    cpy #41 ; SFTODO: Implicit screen width assumption?
     bne .printchar_done
     ; print the line until last space
 	; First calculate max# of characters on line
-	ldx #40
+	ldx #40 ; SFTODO: Implicit screen width assumption?
 	lda window_start_row
 	sec
 	sbc window_start_row + 1
@@ -573,7 +590,7 @@ printchar_buffered
     ; more on the same line
     jsr increase_num_rows
 	lda last_break_char_buffer_pos
-	cmp #40
+	cmp #40 ; SFTODO: Implicit screen width assumption?
 	bcs +
     lda #$0d
     jsr s_printchar
@@ -592,9 +609,15 @@ printchar_buffered
 first_buffered_column !byte 0
 
 clear_screen_raw
+!IFNDEF ACORN {
 	lda #147
 	jsr s_printchar
 	rts
+} ELSE {
+    ; SFTODO: I'm not 100% sure this will be needed in a fully tidied up port.
+    lda #vdu_cls
+    jmp oswrch
+}
 
 printchar_raw
 	php
@@ -661,14 +684,16 @@ draw_status_line
     ldx #0
     ldy #0
     jsr set_cursor
+!IFNDEF ACORN {
     lda #18 ; reverse on
     jsr s_printchar
-    !IF 0 { ; SF
 	ldx darkmode
 	ldy statuslinecol,x 
 	lda zcolours,y
 	jsr s_set_text_colour
-    }
+} ELSE {
+    jsr inverse_video
+}
     ;
     ; Room name
     ; 
@@ -680,7 +705,7 @@ draw_status_line
     ; fill the rest of the line with spaces
     ;
 -   lda zp_screencolumn
-	cmp #40
+	cmp #40 ; SFTODO: Implicit screen width assumption?
 	bcs +
     lda #$20
     jsr s_printchar
@@ -701,7 +726,7 @@ draw_status_line
 	lda z_operand_value_high_arr + 1
 	pha
     ldx #0
-    ldy #25
+    ldy #25 ; SFTODO: Implicit screen width assumption?
     jsr set_cursor
     ldy #0
 -   lda .score_str,y
@@ -733,7 +758,7 @@ draw_status_line
 .timegame
     ; time game
     ldx #0
-    ldy #25
+    ldy #25 ; SFTODO: Implicit screen width assumption?
     jsr set_cursor
 	lda #>.time_str
 	ldx #<.time_str
@@ -771,14 +796,16 @@ draw_status_line
 	ldx #<.ampm_str
 	jsr printstring_raw
 .statusline_done
-!IF 0 { ; SF
+!IFNDEF ACORN {
 	ldx darkmode
 	ldy fgcol,x 
 	lda zcolours,y
 	jsr s_set_text_colour
-}
     lda #146 ; reverse off
     jsr s_printchar
+} ELSE {
+    jsr normal_video
+}
 	pla
 	sta current_window
     jmp restore_cursor
@@ -803,8 +830,14 @@ draw_status_line
 	ora #$30
 	jmp s_printchar
 
+!IFNDEF ACORN {
 .score_str !pet "Score: ",0
 .time_str !pet "Time: ",0
 .ampm_str !pet " AM",0
+} ELSE {
+.score_str !text "Score: ",0
+.time_str !text "Time: ",0
+.ampm_str !text " AM",0
+}
 }
 
