@@ -433,9 +433,11 @@ s_erase_line_from_cursor
     ldx story_start + header_screen_height_lines
     dex
     stx zp_screenrow ; leave the ozmoo cursor on the last line
+    txa
     jsr oswrch
     ldx story_start + header_screen_width_chars
     dex
+    txa
     jsr oswrch
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
