@@ -533,6 +533,8 @@ printchar_buffered
 	sbc #2
 	cmp num_rows
 	bcs +
+    ; SFTODO: THIS MAX 39 CHARS ON LAST LINE MIGHT BE USEFUL INFO TO ME WHEN
+    ; DECIDING IF/HOW I CAN PRINT A "MORE" SYMBOL
 	dex ; Max 39 chars on last line on screen.
 +	stx max_chars_on_line
 	; Check if we have a "perfect space" - a space after 40 characters
