@@ -290,8 +290,26 @@ stack_start
 deletable_screen_init_1
 	; start text output from bottom of the screen
 	
-    lda #147 ; clear screen SFTODO
+!IFNDEF ACORN {
+    lda #147 ; clear screen
     jsr s_printchar
+} ELSE {
+    ; SFTODO: Should we change screen mode here? For the moment it's more
+    ; convenient to leave this alone.
+    lda #vdu_cls
+    jsr oswrch
+    ; SFTODO: We should query these from the OS, but since there's lots of hardcoded
+    ; 40x25 assumptions at the moment we just go with that for consistency. We
+    ; need to set these up early so erase_window works correctly.
+    ldx #40
+    stx screen_width
+    dex
+    stx screen_width_minus_1
+    ldx #25
+    stx screen_height
+    dex
+    stx screen_height_minus_1
+}
 	ldy #0
 	sty current_window
 	sty window_start_row + 3
@@ -310,8 +328,15 @@ deletable_screen_init_1
 deletable_screen_init_2
 	; start text output from bottom of the screen
 	
+!IFNDEF ACORN {
     lda #147 ; clear screen SFTODO
     jsr s_printchar
+} ELSE {
+    ; SFTODO: Should we change screen mode here? For the moment it's more
+    ; convenient to leave this alone.
+    lda #vdu_cls
+    jsr oswrch
+}
 	ldy #1
 	sty is_buffered_window
 	ldx #$ff
@@ -376,16 +401,6 @@ z_init
 	sta story_start + header_flags_2 + 1
 }
 }
-; SFTODO: We should query these from the OS, but since there's lots of hardcoded
-; 40x25 assumptions at the moment we just go with that for consistency.
-    ldx #40
-    stx screen_width
-    dex
-    stx screen_width_minus_1
-    ldx #25
-    stx screen_height
-    dex
-    stx screen_height_minus_1
 ; SF: We might want to support 40 and or 80 column width eventually (shadow screen),
 ; simililary we might want to vary the height, for now just stick with these values.
 ; SF: Should we change the interpreter_number and interpreter_version? OTOH *if*
