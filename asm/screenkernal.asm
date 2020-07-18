@@ -153,7 +153,7 @@ s_printchar
     sta (zp_colourline),y
 } ELSE {
     ; SFTODO: THIS IS NOT WORKING, THIS BIT MAY BE OK BUT TO BE SAFE/RELIABLE DO
-    ; WE NEED TO SET OS CURSOR TO CURRENT CURSOR POSITION FIRST?
+    ; WE NEED TO SET OS CURSOR TO CURRENT CURSOR POSITION FIRST? - MOSTLY WORKING BUT IF YOU *JUST* WRAP OVER ONTO A NEW LINE AND DON'T HAVE A NORMAL CHAR OUTPUT THE SCREEN IS CORRUPT ON BACKSPACING
     jsr oswrch
     dec zp_screencolumn ; move back
     bpl ++
@@ -304,6 +304,7 @@ s_printchar
     beq .printchar_end
     lda #vdu_reset_text_window
     jsr oswrch
+    jsr s_cursor_to_screenrowcolumn
 }
 .printchar_end
     ldx s_stored_x
