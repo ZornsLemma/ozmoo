@@ -469,26 +469,31 @@ s_erase_line_from_cursor
     ; the code.
     lda #vdu_reset_text_window
     jmp oswrch
+
 s_erase_line
 	; registers: a,x,y
 	lda #0
 	sta zp_screencolumn
 s_erase_line_from_cursor
-    ; SFTODO: Maybe turn cursor off? Or maybe we'll have it off by default and
-    ; only turn it on when we expect user input?
-    ; SFTODO: Temporarily ignoring the question of screen scrolling if we
-    ; output at bottom right of screen. It may be best - and perhaps fastest -
-    ; to do this erase by defining a text window and clearing it, then we will
-    ; avoid the auto-scrolling issue.
-    ; SFTODO: This may not need to move the OS text cursor at the end, not sure
-    jsr s_cursor_to_screenrowcolumn
-    lda #' '
-    ldy zp_screencolumn
--   jsr oswrch
-    iny
-    cpy screen_width
-    bcc -
-+   jmp s_cursor_to_screenrowcolumn
+    ; Define a text window covering the region to clear
+    ; SFTODO: It may be possible to factor out the sequence of OSWRCH calls for
+    ; the text window definition.
+    lda #vdu_define_text_window
+    jsr oswrch
+    lda zp_screencolumn
+    jsr oswrch
+    lda zp_screenrow
+    pha
+    jsr oswrch
+    lda screen_width_minus_1
+    jsr oswrch
+    pla
+    jsr oswrch
+    ; Clear it and reset the text window
+    lda #vdu_cls
+    jsr oswrch
+    lda #vdu_reset_text_window
+    jmp oswrch
 
     ; s_pre_scroll preserves X and Y
 .s_pre_scroll
