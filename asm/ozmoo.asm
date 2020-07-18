@@ -362,6 +362,16 @@ z_init
 	sta story_start + header_flags_2 + 1
 }
 }
+; SFTODO: We should query these from the OS, but since there's lots of hardcoded
+; 40x25 assumptions at the moment we just go with that for consistency.
+    ldx #40
+    stx screen_width
+    dex
+    stx screen_width_minus_1
+    ldx #25
+    stx screen_height
+    dex
+    stx screen_height_minus_1
 ; SF: We might want to support 40 and or 80 column width eventually (shadow screen),
 ; simililary we might want to vary the height, for now just stick with these values.
 ; SF: Should we change the interpreter_number and interpreter_version? OTOH *if*

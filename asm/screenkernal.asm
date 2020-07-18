@@ -430,14 +430,10 @@ s_erase_line_from_cursor
     lda #0
     sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
     jsr oswrch
-    ldx story_start + header_screen_height_lines
-    dex
-    stx zp_screenrow ; leave the ozmoo cursor on the last line
-    txa
+    lda screen_height_minus_1
+    sta zp_screenrow ; leave the ozmoo cursor on the last line
     jsr oswrch
-    ldx story_start + header_screen_width_chars
-    dex
-    txa
+    lda screen_width_minus_1
     jsr oswrch
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
@@ -446,8 +442,8 @@ s_erase_line_from_cursor
     jsr oswrch
     lda #0
     jsr oswrch
-    lda story_start + header_screen_height_lines
-    clc ; subtract an extra 1
+    lda screen_height_minus_1
+    sec
     sbc window_start_row + 1
     jsr oswrch
     ; Move the cursor down one line to force a scroll
@@ -475,7 +471,7 @@ s_erase_line_from_cursor
     ldy zp_screencolumn
 -   jsr oswrch
     iny
-    cpy story_start + header_screen_width_chars
+    cpy screen_width
     bcc -
 +   jmp s_cursor_to_screenrowcolumn
 }

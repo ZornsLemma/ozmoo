@@ -113,7 +113,7 @@ zp_cursorswitch       = $cc
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
 }
 zp_screencolumn       = $d3 ; current cursor column
-zp_screenrow          = $d6 ; current cursor row
+zp_screenrow          = $04d6 ; current cursor row SFTODO HACKED INTO NOT ZP FOR DEBUGGER, REVERT LATER
 !IFNDEF ACORN {
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
 }
@@ -202,7 +202,7 @@ header_standard_revision_number = $32
 header_alphabet_table = $34
 header_header_extension_table = $36
 
-; SF: Acorn constants
+; Acorn OS constants
 osrdch = $ffe0
 oswrch = $ffee
 osbyte = $fff4
@@ -214,3 +214,15 @@ vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
 osbyte_read_key = $81
+
+; Acorn memory allocations
+
+; story_start + header_screen_{width,height}* are only valid for certain
+; Z-machine versions. We don't want to be querying the OS for these values all
+; the time, so we keep them here.
+; SFTODO: IF we don't get value from both "full" and -1 versions, get rid of the
+; low-value ones.
+screen_width = $400
+screen_height = $401
+screen_width_minus_1 = $402
+screen_height_minus_1 = $403
