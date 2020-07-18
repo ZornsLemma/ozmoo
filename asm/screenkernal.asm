@@ -240,6 +240,7 @@ s_printchar
 } ELSE {
     ; SFTODO: I suspect "often" the OS text cursor will already be in the right
     ; place, but let's play it safe for now.
+    ; SFTODO: We should probably take s_reverse into account here
     pha
     jsr s_cursor_to_screenrowcolumn
     pla
@@ -424,13 +425,14 @@ s_erase_line_from_cursor
     ; screen and by not defining a text window we will get a much faster
     ; hardware scroll. But let's get it working before we try to optimise it...
     ; Define a text window covering the region to scroll
-    rts ; SFTODO TEMP HACK
     lda #vdu_define_text_window
     jsr oswrch
     lda #0
+    sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
     jsr oswrch
     ldx story_start + header_screen_height_lines
     dex
+    stx zp_screenrow ; leave the ozmoo cursor on the last line
     jsr oswrch
     ldx story_start + header_screen_width_chars
     dex
@@ -450,7 +452,7 @@ s_erase_line_from_cursor
     lda #vdu_down
     jsr oswrch
     ; Remove the text window
-    ; SFTODO: Do we need to put the text cursor back somewhere? For now we will
+    ; SFTODO: Do we need to put the OS text cursor back somewhere? For now we will
     ; almost certainly get away with not doing this, but it may be optimal to
     ; do it to allow us to make assumptions about its positioning elsewhere in
     ; the code.
