@@ -16,19 +16,13 @@
 ; s_scrollstart is set to the number of top lines to keep when scrolling
 ;
 ; Uncomment TESTSCREEN and call testscreen for a demo.
+; SFTODO: TESCTSCREEN is not currently supported for Acorn, probably should be
 
 ;TESTSCREEN = 1
 
 !zone screenkernal {
 
-; SF: Conversion to use Acorn OS routines is really quick-and-dirty, e.g. in
-; reality we might want to get rid of zp_screen{column,row} and just position
-; the OS cursor when we set them etc. But I want to keep things simple for now
-; and avoid assuming anything about how the cursor moves etc. Assuming what I
-; have here works, it will probably be needlessly inefficient.
-
-s_init
-!IF 0 { ; SF
+!IFNDEF ACORN {
     ; init cursor
     lda #$ff
     sta s_current_screenpos_row ; force recalculation first time
@@ -41,9 +35,6 @@ s_init
 	dex
 	bpl -
     rts
-} ELSE {
-    lda #vdu_home
-    jsr oswrch
 }
 
 s_plot
@@ -55,44 +46,48 @@ s_plot
     ldy zp_screencolumn
     rts
 .set_cursor_pos
-+	cpx #25
++	cpx #25 ; SFTODO: Implicit screen height assumption?
 	bcc +
-	ldx #24
+	ldx #24 ; SFTODO: Implicit screen height assumption?
 +	stx zp_screenrow
 	sty zp_screencolumn
+!IFNDEF ACORN {
 	jmp .update_screenpos
-
-s_set_text_colour
-!IF 0 { ; SF
-	sta s_colour
+} ELSE {
+    rts
 }
+
+!IFNDEF ACORN {
+s_set_text_colour
+	sta s_colour
 	rts
+}
 
 s_delete_cursor
-!IF 0 { ; SF
+!IFNDEF ACORN {
 	lda #$20 ; blank space
 	ldy zp_screencolumn
 	sta (zp_screenline),y
-} ELSE {
-        jsr s_cursor_to_screenrowcolumn
-        lda #$20 ; blank space
-        jsr oswrch ; SF: ignore issue of scrolling at bottom right for now...
-}
 	rts
-!IF 1 { ; SF
+} ELSE {
+    jsr s_cursor_to_screenrowcolumn
+    lda #$20 ; blank space
+    jmp oswrch ; SFTODO: ignore issue of scrolling at bottom right for now...
+}
+
+!IFDEF ACORN {
 s_cursor_to_screenrowcolumn
-        lda #vdu_goto_xy
-        jsr oswrch
-        lda zp_screencolumn
-        jsr oswrch
-        lda zp_screenline
-        jmp oswrch
+    lda #vdu_goto_xy
+    jsr oswrch
+    lda zp_screencolumn
+    jsr oswrch
+    lda zp_screenline
+    jmp oswrch
 }
 
 s_printchar
-!IF 0 { ; SF
     ; replacement for CHROUT ($ffd2)
-    ; input: A = byte to write (PETASCII)
+    ; input: A = byte to write (PETASCII) [SF: ASCII not PETASCII on Acorn]
     ; output: -
     ; used registers: -
     stx s_stored_x
@@ -109,15 +104,28 @@ s_printchar
 	cmp #$0d
     bne +
 	; newline
+!IFNDEF ACORN {
 	; but first, check if the current character is the cursor so that we may delete it
 	lda cursor_character
 	ldy zp_screencolumn
 	cmp (zp_screenline),y
 	bne +++
 	jsr s_delete_cursor
+}
 +++	jmp .perform_newline
 +   
+    ; SFTODO: Not too sure what to do here; let's see. 20 is PETSCII character
+    ; for DEL. I can't see any obvious *code* which calls this with DEL, but
+    ; a) maybe the running game can output a code (perhaps 127) which would
+    ; normally get transformed into 20 (but won't on Acorn port as we don't
+    ; translate to PETSCII) b) maybe we can get here with a "DEL" character when
+    ; handling command line input. Need to come back to this, for now I'll guess
+    ; changing 20 to 127 is right.
+!IFNDEF ACORN {
     cmp #20
+} ELSE {
+    cmp #127
+}
     bne +
     ; delete
     jsr s_delete_cursor
@@ -129,15 +137,23 @@ s_printchar
 	cmp window_start_row + 1,y
 	bcc ++
 	dec zp_screenrow
-	lda #39
+	lda #39 ; SFTODO: Implicit screen width assumption?
 	sta zp_screencolumn
-++  jsr .update_screenpos
+++  
+!IFNDEF ACORN {
+    jsr .update_screenpos
     lda #$20
     ldy zp_screencolumn
     sta (zp_screenline),y
     lda s_colour
     sta (zp_colourline),y
+} ELSE {
+    jsr s_delete_cursor
+}
     jmp .printchar_end
+    ; SFTODO: I don't believe any of the following codes or their Acorn
+    ; equivalents will come through this routine on the Acorn port.
+!IFNDEF ACORN {
 +   cmp #$93 
     bne +
     ; clr (clear screen)
@@ -158,6 +174,7 @@ s_printchar
     ldx #0
     stx s_reverse
     beq .printchar_end ; Always jump
+}
 ; +
 	; ; check if colour code
 	; ldx #15
@@ -177,10 +194,11 @@ s_printchar
 	inc zp_screencolumn
 	jmp .printchar_end
 +	; Skip if column > 39
-	cpx #40
+	cpx #40 ; SFTODO: Implicit screen width assumption
 	bcs .printchar_end
 	; Reset ignore next linebreak setting
 	ldx current_window
+    LDA #SFTODONOW ; SFTODO: I am going to need to enable some disabled code populating s_ignore_next_linebreak
 	ldy s_ignore_next_linebreak,x
 	bpl +
 	inc s_ignore_next_linebreak,x
@@ -192,6 +210,7 @@ s_printchar
 	pla ; Doesn't affect C
 	bcs .outside_current_window
 .resume_printing_normal_char	
+!IFNDEF ACORN {
    ; convert from pet ascii to screen code
 	cmp #$40
 	bcc ++    ; no change if numbers or special chars
@@ -217,20 +236,31 @@ s_printchar
     sta (zp_screenline),y
     lda s_colour
     sta (zp_colourline),y
+} ELSE {
+    ; SFTODO: I suspect "often" the OS text cursor will already be in the right
+    ; place, but let's play it safe for now.
+    pha
+    jsr s_cursor_to_screenrowcolumn
+    pla
+    jsr oswrch
+    ldy zp_screencolumn
+}
     iny
     sty zp_screencolumn
 	ldx current_window
 	bne .printchar_end ; For upper window and statusline (in z3), don't advance to next line.
-    cpy #40
+    cpy #40 ; SFTODO: Implicit screen width assumption?
     bcc .printchar_end
 	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
     lda #0
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
-	cmp #25
+	cmp #25 ; SFTODO: Implicit screen height assumption?
 	bcs +
+!IFNDEF ACORN {
 	jsr .update_screenpos
+}
 	jmp .printchar_end
 +	jsr .s_scroll
 .printchar_end
@@ -269,35 +299,12 @@ s_printchar
     sta zp_screencolumn
     inc zp_screenrow
     jsr .s_scroll
+!IFNDEF ACORN {
     jsr .update_screenpos
-    jmp .printchar_end
-} ELSE {
-        ; SF: Obviously super crude, no handling of windows etc.
-        cmp #' '
-        bcs +
-        lda #'.'
-+       
-        ; SF: Not even trying to keep zp_screencolumn and zp_screenrow accurate,
-        ; I just want to get things basically working before trying a proper
-        ; implementation.
-        pha
-        lda zp_screencolumn
-        cmp #40
-        bne +
-        lda zp_screenrow
-        cmp #25
-        bne ++
-        inc zp_screenrow
-++      lda #0
-        sta zp_screencolumn
-        lda #255
-+       clc
-        adc #1
-        sta zp_screencolumn
-        pla
-        jmp oswrch
 }
+    jmp .printchar_end
 
+!IFNDEF ACORN {
 s_erase_window
     lda #0
     sta zp_screenrow
@@ -310,9 +317,10 @@ s_erase_window
     sta zp_screenrow
     sta zp_screencolumn
     rts
+}
 
+!IFNDEF ACORN {
 .update_screenpos
-!IF 0 { ; SF
     ; set screenpos (current line) using row
     ldx zp_screenrow
     cpx s_current_screenpos_row
@@ -340,11 +348,11 @@ s_erase_window
     sta zp_screenline +1
     adc #$d4 ; add colour start ($d800)
     sta zp_colourline + 1
-}
 +   rts
+}
 
 .s_scroll
-!IFNDEF ACORN { ; SF 
+!IFNDEF ACORN {
     lda zp_screenrow
     cmp #25 ; SFTODO: Implicit screen height assumption?
     bpl +
@@ -410,7 +418,7 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 } ELSE {
-    lda #SFTODONOW
+    LDA #SFTODONOW
     SFTODOMAYBEFALLTHRU
 s_erase_line
 	; registers: a,x,y
@@ -430,7 +438,7 @@ s_erase_line_from_cursor
 }
 
 
-!IF 0 { ; SF
+!IFNDEF ACORN {
 ; colours		!byte 144,5,28,159,156,30,31,158,129,149,150,151,152,153,154,155
 zcolours	!byte $ff,$ff ; current/default colour
 			!byte COL2,COL3,COL4,COL5  ; black, red, green, yellow
@@ -447,8 +455,8 @@ current_cursor_colour !byte CURSORCOL
 cursor_character !byte CURSORCHAR
 }
 
+!IFNDEF ACORN {
 toggle_darkmode
-!IF 0 { ; SF
 !ifdef Z5PLUS {
 	; We will need the old fg colour later, to check which characters have the default colour
 	ldx darkmode ; previous darkmode value (0 or 1)
@@ -531,14 +539,12 @@ toggle_darkmode
 	bne .compare
 	jsr update_cursor
 	rts 
-} ELSE {
-        rts
 }
 
 
 !ifdef Z5PLUS {
 z_ins_set_colour
-!IF 0 { ; SF
+!IFNDEF ACORN {
     ; set_colour foreground background [window]
     ; (window is not used in Ozmoo)
 	jsr printchar_flush
@@ -578,6 +584,7 @@ z_ins_set_colour
 .current_foreground
     rts
 } ELSE {
+    ; SFTODO: Is this OK? Probably, but be good to test...
     rts
 }
 }
