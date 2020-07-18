@@ -869,4 +869,19 @@ inverse_video
     pla
     jmp oswrch
 
+;
+cursor_control
+; Parameters: X=0 for off, 1 for on
+    lda #23
+    jsr oswrch
+    lda #1
+    jsr oswrch
+    txa
+    jsr oswrch
+    ldx #7
+    lda #0
+-   jsr oswrch
+    dex
+    bne -
+    rts
 }

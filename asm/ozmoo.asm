@@ -246,6 +246,8 @@ game_id		!byte 0,0,0,0
 } ELSE {
     ; SFTODO: We may eventually need to re-enable ESCAPE and the cursor and
     ; stuff like that here.
+    ldx #1
+    jsr cursor_control
     ; Re-enter the current language.
     ; SFTODO: Does this work? Do we ever get here?
     lda #osbyte_read_language
@@ -518,6 +520,15 @@ deletable_init_start
     sta reg_screen_char_mode
 	lda #$80
 	sta charset_switchable
+} ELSE {
+    ; We keep the hardware cursor off most of the time; this way the user can't
+    ; see it flitting round the screen doing various updates. (The C64 doesn't
+    ; have this issue, as it uses direct screen writes and in fact its cursor
+    ; is a software creation.) We position it appropriately and turn it on only
+    ; when we're expecting user input. (As far as I can see the Z-machine has
+    ; no way for the running program to turn the cursor on and off.)
+    ldx #0
+    jsr cursor_control
 }
 
 	jmp init_screen_colours ; _invisible

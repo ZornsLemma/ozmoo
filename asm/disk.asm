@@ -623,7 +623,9 @@ z_ins_save
     ; return: x = number of characters read
     ;         .inputstring: null terminated string read (max 20 characters)
     ; modifies a,x,y
+!ifndef ACORN {
 	jsr turn_on_cursor
+}
     lda #0
     sta .inputlen
 !IF 0 { ; SF
@@ -638,11 +640,15 @@ z_ins_save
     ldx .inputlen
     beq -
     dec .inputlen
+!ifndef ACORN {
 	pha
 	jsr turn_off_cursor
 	pla
+}
     jsr s_printchar
+!ifndef ACORN {
 	jsr turn_on_cursor
+}
     jmp -
 +   cmp #$0d ; enter
     beq .input_done
@@ -663,12 +669,16 @@ z_ins_save
     sta .inputstring,x
     inc .inputlen
     jsr s_printchar
+!ifndef ACORN {
 	jsr update_cursor
+}
     jmp -
 .input_done
+!ifndef ACORN {
 	pha
 	jsr turn_off_cursor
 	pla
+}
 	jsr s_printchar ; return
     ldx .inputlen
     lda #0

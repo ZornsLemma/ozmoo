@@ -57,11 +57,17 @@ z_ins_read_char
     ; ldy z_operand_value_low_arr
     ; optional time routine arguments
 	jsr printchar_flush
+!IFNDEF ACORN {
     jsr turn_on_cursor
     ldy #0
 	tya
     sty .read_text_time
     sty .read_text_time + 1
+} ELSE {
+    ; SFTODO: Not just here - I haven't done anything about timer support yet,
+    ; need to go over all the relevant code.
+    LDA #SFTODO
+}
     ldy z_operand_count
     cpy #3
     bne .read_char_loop
@@ -73,8 +79,10 @@ z_ins_read_char
     sty .read_text_routine
     ldy z_operand_value_low_arr + 2
     sty .read_text_routine + 1
+!ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {
     jsr init_cursor_timer
+}
 }
     jsr init_read_text_timer
 .read_char_loop
@@ -82,7 +90,9 @@ z_ins_read_char
     cmp #0
     beq .read_char_loop ; timer routine returned false
 	pha
+!ifndef ACORN {
     jsr turn_off_cursor
+}
 	; lda current_window
 	; bne .no_need_to_start_buffering
 	; lda is_buffered_window
@@ -240,6 +250,7 @@ z_ins_read
 	ldx z_operand_value_low_arr
     jsr read_text
 !ifdef TRACE_READTEXT {
+    ; SFTODO: Need to port this to Acorn?
     jsr print_following_string
     !pet "read_text ",0
     ldx z_operand_value_low_arr
@@ -370,6 +381,7 @@ z_ins_print_unicode
 	jmp streams_print_output
 }
 	
+; SFTODO: Does this need changing?
 convert_zchar_to_char
     ; input: a=zchar
     ; output: a=char
@@ -388,7 +400,7 @@ convert_zchar_to_char
 +++	rts
 
 translate_petscii_to_zscii
-!IF 0 { ; SF
+!IFNDEF ACORN {
 	ldx #character_translation_table_in_end - character_translation_table_in - 1
 -	cmp character_translation_table_in,x
 	bcc .no_match
@@ -424,12 +436,13 @@ translate_petscii_to_zscii
 	lda character_translation_table_in,x
 	rts
 } ELSE {
-        ; SF: Probably mostly OK, but we may need some translation. Also prob
-        ; lots of code/data we can delete
+    ; SFTODO: Probably mostly OK, but we may need some translation. Also prob
+    ; lots of code/data we can delete.
 	rts
 }
 
 	
+; SFTODO: Do we need this?
 convert_char_to_zchar
     ; input: a=char
     ; output: store zchars in z_temp,x. Increase x. Exit if x >= ZCHARS_PER_ENTRY
@@ -857,6 +870,7 @@ find_word_in_dictionary
 +	bcs .no_entry_found ; Always branch
 } ; End of !ifdef Z5PLUS
 
+!ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {
 init_cursor_timer
     lda #0
@@ -879,6 +893,7 @@ update_cursor_timer
     adc .cursor_time_jiffy
     sta .cursor_jiffy
     rts
+}
 }
 
 !ifdef Z4PLUS {
@@ -905,7 +920,7 @@ init_read_text_timer
     sta .read_text_time_jiffy
 update_read_text_timer
     ; prepare time for next routine call (current time + time_jiffy)
-!IF 0 { ; SF
+!IFNDEF ACORN { ; SFTODO
     jsr kernal_readtime  ; read current time (in jiffys)
 } ELSE {
     LDA #'Y'
@@ -925,7 +940,7 @@ update_read_text_timer
 }
 
 getchar_and_maybe_toggle_darkmode
-!IF 0 { ; SF
+!IFNDEF ACORN {
 	jsr kernal_getchar
  	cmp #133
 	bne +
@@ -934,7 +949,9 @@ getchar_and_maybe_toggle_darkmode
 	lda #0
 +	rts
 } ELSE {
-        jmp osrdch
+    ; SFTODO: We probably need to do something (if only *FX229,1 on startup)
+    ; about the Escape key.
+    jmp osrdch
 }
 
 read_char
@@ -951,6 +968,7 @@ read_char
 +
 }
 
+!ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {
     ; check if time for to update the blinking cursor
     ; http://www.6502.org/tutorials/compare_beyond.html#2.2
@@ -974,6 +992,7 @@ read_char
     jsr turn_off_cursor
 .no_cursor_blink
 }
+}
 	
 !ifdef Z4PLUS {
     ; check if time for routine call
@@ -996,7 +1015,9 @@ read_char
 	bcc .no_timer
 .call_routine	
     ; current time >= .read_text_jiffy. Time to call routine
+!ifndef ACORN {
     jsr turn_off_cursor
+}
 
 	lda .read_text_routine
 	sta z_operand_value_high_arr
@@ -1014,6 +1035,7 @@ read_char
 	; sta is_buffered_window
 	jsr printchar_flush
 
+!ifndef ACORN {
 	jsr turn_on_cursor
 !ifdef USE_BLINKING_CURSOR {
 	lda s_cursormode
@@ -1021,6 +1043,7 @@ read_char
 	beq .no_cursor_blink2
     jsr turn_off_cursor
 .no_cursor_blink2
+}
 }
 	; Interrupt routine has been executed, with value in word
 	; z_interrupt_return_value
@@ -1040,6 +1063,7 @@ read_char
 	sta .petscii_char_read
 	jmp translate_petscii_to_zscii
 
+!ifndef ACORN {
 s_cursorswitch !byte 0
 !ifdef USE_BLINKING_CURSOR {
 s_cursormode !byte 0
@@ -1054,7 +1078,6 @@ turn_off_cursor
     sta s_cursorswitch
 
 update_cursor
-!IFNDEF ACORN {
 	sty object_temp
     ldy zp_screencolumn
     lda s_cursorswitch
@@ -1073,14 +1096,13 @@ update_cursor
 	ldy object_temp
     rts
 } ELSE {
-    ; SFTODO: Need to implement this. Not hard but I want to see if I have some
-    ; minor complication caused by keeping cursor off to make screen updates
-    ; "neater" (not an issue on C64 as they're done via direct memory writes).
-    ; What I probably want to do is store the argument here in a variable, leave
-    ; the cursor off almost all the time and when we are accepting user input
-    ; turn the cursor on (if that variable says so) and turn the cursor off when
-    ; we're finished accepting user input.
-    rts
+    ; We don't use turn_{on,off}_cursor as routine names for Acorn hardware
+    ; cursor control because it gets confusing. The software cursor and its
+    ; blinking support on the C64 mean these two routines are called repeatedly
+    ; during input, whereas we simply want to turn the hardware cursor on when
+    ; we start input and off when we've finished. I think it's clearer to use
+    ; distinct names on the two platforms. SFTODO: MAYBE RECONSIDER THIS LATER,
+    ; THINGS MAY BE CLEARER ONCE I HAVE CODE WORKING RIGHT
 }
 
 read_text
@@ -1097,8 +1119,10 @@ read_text
 	jsr printchar_flush
     ; clear [More] counter
     jsr clear_num_rows
+!ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {
     jsr init_cursor_timer
+}
 }
 !ifdef Z4PLUS {
     ; check timer usage
@@ -1125,8 +1149,10 @@ read_text
 	tya
 }
     sta .read_text_column
+!ifndef ACORN {
     ; turn on blinking cursor
     jsr turn_on_cursor
+}
 .readkey
     jsr get_cursor ; x=row, y=column
     stx .read_text_cursor
@@ -1140,7 +1166,9 @@ read_text
     cpy .read_text_cursor + 1
     beq .readkey
     ; text changed, redraw input line
+!ifndef ACORN {
 	jsr turn_off_cursor
+}
     jsr clear_num_rows
 !ifdef Z5PLUS {
 	; lda #$0d ; Enter
@@ -1191,7 +1219,9 @@ read_text
     jmp .p0
 .p1
 }
+!IFNDEF ACORN {
     jsr turn_on_cursor
+}
     jmp .readkey
 +   cmp #1
     bne +
@@ -1212,10 +1242,14 @@ read_text
     cpy #2
     bcc .readkey
 	dec .read_text_column
+!ifndef ACORN {
 	jsr turn_off_cursor
+}
 	lda .petscii_char_read
     jsr s_printchar ; print the delete char
+!IFNDEF ACORN {
 	jsr turn_on_cursor
+}
 !ifdef Z5PLUS {
     ldy #1
     lda (string_array),y ; number of characters in the array
@@ -1256,7 +1290,9 @@ read_text
 }
 	lda .petscii_char_read
     jsr s_printchar
+!ifndef ACORN {
     jsr update_cursor
+}
     pla
     ; convert to lower case
 	cmp #$41
@@ -1276,8 +1312,10 @@ read_text
     jmp .readkey
 .read_text_done
     pha ; return value
+!ifndef ACORN {
     ; turn off blinking cursor
     jsr turn_off_cursor
+}
 !ifndef Z5PLUS {
 	; Store terminating 0, in case characters were deleted at the end.
     ldy .read_text_column ; compare with size of keybuffer
@@ -1303,9 +1341,11 @@ read_text
 .read_text_jiffy !byte 0,0,0  ; current time
 .read_text_routine !byte 0,0 ; called with .read_text_time intervals
 }
+!ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {
 .cursor_jiffy !byte 0,0,0  ; next cursor update time
 .cursor_time_jiffy !byte 0,0,0 ; time between cursor updates
+}
 }
 
 tokenise_text
