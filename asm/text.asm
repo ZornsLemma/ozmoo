@@ -956,7 +956,14 @@ getchar_and_maybe_toggle_darkmode
 } ELSE {
     ; SFTODO: We probably need to do something (if only *FX229,1 on startup)
     ; about the Escape key.
-    jmp osrdch
+    lda #osbyte_read_key
+    ldx #0
+    ldy #0
+    jsr osbyte
+    bcc +
+    ldx #0
++   txa
+    rts
 }
 
 read_char

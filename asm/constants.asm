@@ -203,7 +203,6 @@ header_alphabet_table = $34
 header_header_extension_table = $36
 
 ; Acorn OS constants
-osrdch = $ffe0
 oswrch = $ffee
 osbyte = $fff4
 vdu_down = 10
