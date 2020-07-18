@@ -64,16 +64,12 @@ s_set_text_colour
 	rts
 }
 
-s_delete_cursor
 !IFNDEF ACORN {
+s_delete_cursor
 	lda #$20 ; blank space
 	ldy zp_screencolumn
 	sta (zp_screenline),y
 	rts
-} ELSE {
-    jsr s_cursor_to_screenrowcolumn
-    lda #$20 ; blank space
-    jmp oswrch ; SFTODO: ignore issue of scrolling at bottom right for now...
 }
 
 !IFDEF ACORN {
