@@ -228,6 +228,10 @@ game_id		!byte 0,0,0,0
 	jsr stack_init
 
 	jsr deletable_screen_init_2
+    ; SFTODO: We seem to do three screen clears on startup - one each in
+    ; deletable_screen_init_[12] and one here. I may be wrong. It doesn't really
+    ; matter, but without diverging too much from upstream it might be nice to
+    ; fix this eventually.
 	ldx #$ff
 	jsr erase_window
 
