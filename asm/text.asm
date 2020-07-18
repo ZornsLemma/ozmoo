@@ -1183,6 +1183,7 @@ read_text
     ; text changed, redraw input line
 !ifndef ACORN {
 	jsr turn_off_cursor
+    ; SFTODO WE SHOULD PROB TURN OFF FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL
 }
     jsr clear_num_rows
 !ifdef Z5PLUS {
@@ -1235,6 +1236,7 @@ read_text
 .p1
 }
 !IFNDEF ACORN {
+    ; SFTODO WE SHOULD PROB TURN ON FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL
     jsr turn_on_cursor
 }
     jmp .readkey
