@@ -237,16 +237,6 @@ s_printchar
     sta (zp_screenline),y
     lda s_colour
     sta (zp_colourline),y
-} ELSE {
-    ; SFTODO: I suspect "often" the OS text cursor will already be in the right
-    ; place, but let's play it safe for now.
-    ; SFTODO: We should probably take s_reverse into account here
-    pha
-    jsr s_cursor_to_screenrowcolumn
-    pla
-    jsr oswrch ; SFTODO THIS IS THE "MAIN" CHAR PRINT OSWRCH
-    ldy zp_screencolumn
-}
     iny
     sty zp_screencolumn
 	ldx current_window
@@ -260,11 +250,45 @@ s_printchar
 	lda zp_screenrow
 	cmp #25 ; SFTODO: Implicit screen height assumption?
 	bcs +
-!IFNDEF ACORN {
 	jsr .update_screenpos
-}
 	jmp .printchar_end
 +	jsr .s_scroll
+} ELSE {
+    ; OSWRCH may cause the screen to scroll if we're at the bottom right
+    ; character. We therefore don't use .s_scroll to *do* the scroll, we just
+    ; define a text window to tell the OS what to scroll.
+
+    ; SFTODO: I suspect "often" the OS text cursor will already be in the right
+    ; place, but let's play it safe for now.
+    ; SFTODO: We should probably take s_reverse into account here
+    pha
+    jsr s_cursor_to_screenrowcolumn
+    ldy zp_screencolumn
+    iny
+    sty zp_screencolumn
+	ldx current_window
+	bne .printchar_nowrap ; For upper window and statusline (in z3), don't advance to next line.
+    cpy #40 ; SFTODO: Implicit screen width assumption?
+    bcc .printchar_nowrap
+	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
+    lda #0
+    tax
+    sta zp_screencolumn
+    inc zp_screenrow
+	lda zp_screenrow
+	cmp #25 ; SFTODO: Implicit screen height assumption?
+	bcc +
+    inx
+    jsr .s_pre_scroll ; SFTODO MUST LEAVE CURSOR AT BOTTOM RIGHT - TEXT WIN DEF WILL MOVE IT TO TOP LEFT
++
+.printchar_nowrap
+    pla
+    jsr oswrch ; SFTODO THIS IS THE "MAIN" CHAR PRINT OSWRCH
+    txa
+    beq .printchar_end
+    lda #vdu_reset_text_window
+    jsr oswrch
+}
 .printchar_end
     ldx s_stored_x
     ldy s_stored_y
@@ -297,7 +321,7 @@ s_printchar
 	bpl +
 	inc s_ignore_next_linebreak,x
 	jmp .printchar_end
-+	lda #0
++   lda #0
     sta zp_screencolumn
     inc zp_screenrow
     jsr .s_scroll
@@ -421,31 +445,7 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 } ELSE {
-    ; SFTODO: I think if window_start_row+1 is 0 we are scrolling the whole
-    ; screen and by not defining a text window we will get a much faster
-    ; hardware scroll. But let's get it working before we try to optimise it...
-    ; Define a text window covering the region to scroll
-    lda #vdu_define_text_window
-    jsr oswrch
-    lda #0
-    sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
-    jsr oswrch
-    lda screen_height_minus_1
-    sta zp_screenrow ; leave the ozmoo cursor on the last line
-    jsr oswrch
-    lda screen_width_minus_1
-    jsr oswrch
-    lda window_start_row + 1 ; how many top lines to protect
-    jsr oswrch
-    ; Move the cursor to the bottom line of the text window
-    lda #vdu_goto_xy
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    lda screen_height_minus_1
-    sec
-    sbc window_start_row + 1
-    jsr oswrch
+    jsr .s_pre_scroll
     ; Move the cursor down one line to force a scroll
     lda #vdu_down
     jsr oswrch
@@ -476,6 +476,34 @@ s_erase_line_from_cursor
     cpy screen_width
     bcc -
 +   jmp s_cursor_to_screenrowcolumn
+
+    ; s_pre_scroll preserves X and Y
+.s_pre_scroll
+    ; SFTODO: I think if window_start_row+1 is 0 we are scrolling the whole
+    ; screen and by not defining a text window we will get a much faster
+    ; hardware scroll. But let's get it working before we try to optimise it...
+    ; Define a text window covering the region to scroll
+    lda #vdu_define_text_window
+    jsr oswrch
+    lda #0
+    sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
+    jsr oswrch
+    lda screen_height_minus_1
+    sta zp_screenrow ; leave the ozmoo cursor on the last line
+    jsr oswrch
+    lda screen_width_minus_1
+    jsr oswrch
+    lda window_start_row + 1 ; how many top lines to protect
+    jsr oswrch
+    ; Move the cursor to the bottom right of the text window
+    lda #vdu_goto_xy
+    jsr oswrch
+    lda screen_width_minus_1
+    jsr oswrch
+    lda screen_height_minus_1
+    sec
+    sbc window_start_row + 1
+    jmp oswrch
 }
 
 

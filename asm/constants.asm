@@ -214,6 +214,8 @@ vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
 osbyte_read_key = $81
+osbyte_enter_language = $8e
+osbyte_read_language = $fc
 
 ; Acorn memory allocations
 
