@@ -1054,6 +1054,7 @@ turn_off_cursor
     sta s_cursorswitch
 
 update_cursor
+!IFNDEF ACORN {
 	sty object_temp
     ldy zp_screencolumn
     lda s_cursorswitch
@@ -1065,17 +1066,22 @@ update_cursor
 	ldy object_temp
     rts
 +   ; cursor
-!IF 0 { ; SF
 	lda cursor_character
 	sta (zp_screenline),y
 	lda current_cursor_colour
 	sta (zp_colourline),y
 	ldy object_temp
-} ELSE {
-        ; SFTODO
-	ldy object_temp
-}
     rts
+} ELSE {
+    ; SFTODO: Need to implement this. Not hard but I want to see if I have some
+    ; minor complication caused by keeping cursor off to make screen updates
+    ; "neater" (not an issue on C64 as they're done via direct memory writes).
+    ; What I probably want to do is store the argument here in a variable, leave
+    ; the cursor off almost all the time and when we are accepting user input
+    ; turn the cursor on (if that variable says so) and turn the cursor off when
+    ; we're finished accepting user input.
+    rts
+}
 
 read_text
     ; read line from keyboard into an array (address: a/x)

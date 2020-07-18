@@ -95,11 +95,13 @@ is_buffered_window	  = $ab;  !byte 1
 
 ; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
 s_ignore_next_linebreak = $b0 ; 3 bytes
-s_reverse 			  = $b3 ; !byte 0
+s_reverse 			  = $b3 ; !byte 0 ; SFTODO: Not used on Acorn but easier to keep memory allocated, probably
 
 s_stored_x			  = $b4 ; !byte 0
 s_stored_y			  = $b5 ; !byte 0
+!IFNDEF ACORN {
 s_current_screenpos_row = $b6 ; !byte $ff
+}
 
 max_chars_on_line	  = $bd; !byte 0
 buffer_index		  = $be ; !byte 0
@@ -107,10 +109,12 @@ last_break_char_buffer_pos = $bf ; !byte 0
 
 
 zp_cursorswitch       = $cc
+!IFNDEF ACORN {
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
+}
 zp_screencolumn       = $d3 ; current cursor column
 zp_screenrow          = $d6 ; current cursor row
-!IF 0 { ; SF: Not sure about these, but will need to relocate them lower in zp if need them
+!IFNDEF ACORN {
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
 }
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
@@ -202,6 +206,7 @@ oswrch = $ffee
 osbyte = $fff4
 vdu_down = 10
 vdu_cls = 12
+vdu_set_text_colour = 17
 vdu_reset_text_window = 26
 vdu_define_text_window = 28
 vdu_home = 30

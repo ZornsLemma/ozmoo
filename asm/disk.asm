@@ -699,10 +699,12 @@ list_save_files
 -	sta .occupied_slots - 1,x
 	dex
 	bne -
+!IFNDEF ACORN { ; SFTODO HACK
 	; Remember address of row where first entry is printed
 	lda zp_screenline
 	sta .base_screen_pos
 	lda zp_screenline + 1
+}
 	sta .base_screen_pos + 1
 
     ; open the channel file

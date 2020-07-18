@@ -22,10 +22,12 @@
 
 !zone screenkernal {
 
-!IFNDEF ACORN {
+s_init
     ; init cursor
+!IFNDEF ACORN {
     lda #$ff
     sta s_current_screenpos_row ; force recalculation first time
+}
     lda #0
     sta zp_screencolumn
     sta zp_screenrow
@@ -35,7 +37,6 @@
 	dex
 	bpl -
     rts
-}
 
 s_plot
     ; y=column (0-39)
@@ -81,7 +82,7 @@ s_cursor_to_screenrowcolumn
     jsr oswrch
     lda zp_screencolumn
     jsr oswrch
-    lda zp_screenline
+    lda zp_screenrow
     jmp oswrch
 }
 
@@ -198,7 +199,6 @@ s_printchar
 	bcs .printchar_end
 	; Reset ignore next linebreak setting
 	ldx current_window
-    LDA #SFTODONOW ; SFTODO: I am going to need to enable some disabled code populating s_ignore_next_linebreak
 	ldy s_ignore_next_linebreak,x
 	bpl +
 	inc s_ignore_next_linebreak,x

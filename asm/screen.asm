@@ -34,10 +34,8 @@ init_screen_colours
     jmp s_printchar
 } ELSE {
 init_screen_colours
-    ; SFTODO: If this remains a no-op, just attach this label to a shared rts
-    ; to avoid wasting a byte on this one. *Maybe* this needs to clear the
-    ; screen, but I doubt there's anything to do otherwise here.
-    rts
+    ; SFTODO: *Maybe* this needs to clear the screen?
+    jmp s_init
 }
 
 !ifdef Z4PLUS {
@@ -337,6 +335,31 @@ z_ins_set_text_style
 } ELSE {
     jmp inverse_video
 }
+
+!IFDEF ACORN {
+.set_tcol
+    pha
+    lda #vdu_tcol
+    jsr oswrch
+    pla
+    jmp oswrch
+
+; SFTODO: This assumes non-mode 7. We can probably support inverse video at least
+; for the status line in mode 7, although we'd lose a few characters to control
+; codes.
+normal_video
+    lda #7
+    jsr set_tcol
+    lda #128
+    jmp set_tcol
+
+inverse_video
+    lda #0
+    jsr set_tcol
+    lda #135
+    jmp set_tcol
+}
+
 
 z_ins_get_cursor
     ; get_cursor array
