@@ -336,30 +336,6 @@ z_ins_set_text_style
     jmp inverse_video
 }
 
-!IFDEF ACORN {
-.set_tcol
-    pha
-    lda #vdu_tcol
-    jsr oswrch
-    pla
-    jmp oswrch
-
-; SFTODO: This assumes non-mode 7. We can probably support inverse video at least
-; for the status line in mode 7, although we'd lose a few characters to control
-; codes.
-normal_video
-    lda #7
-    jsr set_tcol
-    lda #128
-    jmp set_tcol
-
-inverse_video
-    lda #0
-    jsr set_tcol
-    lda #135
-    jmp set_tcol
-}
-
 
 z_ins_get_cursor
     ; get_cursor array
@@ -864,3 +840,27 @@ draw_status_line
 }
 }
 
+!IFDEF ACORN {
+; SFTODO: This assumes non-mode 7. We can probably support inverse video at least
+; for the status line in mode 7, although we'd lose a few characters to control
+; codes.
+normal_video
+    lda #7
+    jsr .set_tcol
+    lda #128
+    jmp .set_tcol
+
+inverse_video
+    lda #0
+    jsr .set_tcol
+    lda #135
+    ; jmp .set_tcol - just fall through
+
+.set_tcol
+    pha
+    lda #vdu_set_text_colour
+    jsr oswrch
+    pla
+    jmp oswrch
+
+}
