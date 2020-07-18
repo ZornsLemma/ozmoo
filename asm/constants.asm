@@ -127,7 +127,9 @@ zp_temp               = $75; SF: WAS $fb ; 5 bytes
 
 print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 
-memory_buffer         =	$02a7 ; SF: This may well need relocating
+!IFNDEF ACORN {
+memory_buffer         =	$02a7
+}
 memory_buffer_length  = 89
 
 first_banked_memory_page = $ff ; SF: Was $d0, probably need tweaking for a non-2P port but for now can probably get away with this ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
