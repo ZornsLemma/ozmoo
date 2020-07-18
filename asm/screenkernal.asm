@@ -463,6 +463,9 @@ s_erase_line
 s_erase_line_from_cursor
     ; SFTODO: Maybe turn cursor off? Or maybe we'll have it off by default and
     ; only turn it on when we expect user input?
+    ; SFTODO: Temporarily ignoring the question of screen scrolling if we
+    ; output at bottom right of screen
+    ; SFTODO: This may not need to move the OS text cursor at the end, not sure
     jsr s_cursor_to_screenrowcolumn
     lda #' '
     ldy zp_screencolumn
