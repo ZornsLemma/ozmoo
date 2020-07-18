@@ -244,6 +244,10 @@ game_id		!byte 0,0,0,0
 	jsr $ff5b ; more init
     jmp ($a000)
 } ELSE {
+    ; SFTODO: We may eventually need to re-enable ESCAPE and the cursor and
+    ; stuff like that here.
+    ; Re-enter the current language.
+    ; SFTODO: Does this work? Do we ever get here?
     lda #osbyte_read_language
     ldx #0
     ldy #$ff
