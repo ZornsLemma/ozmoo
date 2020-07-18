@@ -449,7 +449,9 @@ show_more_prompt
 .increase_num_rows_done
     rts
 
+!IFNDEF ACORN {
 .more_text_char !byte 0
+}
 
 printchar_flush
     ; flush the printchar buffer

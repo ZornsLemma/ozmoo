@@ -152,10 +152,11 @@ s_printchar
     jsr s_delete_cursor
 }
     jmp .printchar_end
++
     ; SFTODO: I don't believe any of the following codes or their Acorn
     ; equivalents will come through this routine on the Acorn port.
 !IFNDEF ACORN {
-+   cmp #$93 
+    cmp #$93 
     bne +
     ; clr (clear screen)
     lda #0
@@ -423,6 +424,7 @@ s_erase_line_from_cursor
     ; screen and by not defining a text window we will get a much faster
     ; hardware scroll. But let's get it working before we try to optimise it...
     ; Define a text window covering the region to scroll
+    rts ; SFTODO TEMP HACK
     lda #vdu_define_text_window
     jsr oswrch
     lda #0
@@ -489,6 +491,8 @@ current_cursor_colour !byte CURSORCOL
 cursor_character !byte CURSORCHAR
 }
 
+; SFTODO: Eventually it might be nice if (e.g.) f0 cycled through the available
+; background colours and f1 did the same for the foreground.
 !IFNDEF ACORN {
 toggle_darkmode
 !ifdef Z5PLUS {

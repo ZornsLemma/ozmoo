@@ -4,7 +4,7 @@
 ; gaps in zero page yet.
 ; BASIC not much used, so many positions free to use
 ; memory bank control
-!IF 0 { # SF: C64 only constants
+!IFNDEF ACORN {
 zero_datadirection    = $00
 zero_processorports   = $01
 }
@@ -132,7 +132,7 @@ memory_buffer_length  = 89
 
 first_banked_memory_page = $ff ; SF: Was $d0, probably need tweaking for a non-2P port but for now can probably get away with this ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
 
-!IF 0 { ; SF: C64-only constants
+!IFNDEF ACORN {
 charset_switchable 	  = $291
 
 datasette_buffer_start= $0334 ; Actually starts at 33c, but the eight bytes before that are unused
