@@ -72,6 +72,10 @@ erase_window
     lda #0
 	beq .clear_from_a ; Always branch
 }
+    ; SFTODO: This could be rewritten to clear the whole area in one go using
+    ; a text window, but since it would introduce a divergence from upstream
+    ; with potential for bugs I'd want a fairly big performance improvement in
+    ; a real game to make it worthwhile.
 .window_0
     lda window_start_row + 1
 .clear_from_a
@@ -97,6 +101,10 @@ erase_window
 	stx cursor_row + 1
     pha
     jmp .end_erase
+    ; SFTODO: This could be rewritten to clear the whole area in one go using
+    ; a text window, but since it would introduce a divergence from upstream
+    ; with potential for bugs I'd want a fairly big performance improvement in
+    ; a real game to make it worthwhile.
 .window_1
 	lda window_start_row + 1
 	cmp window_start_row + 2
