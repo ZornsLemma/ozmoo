@@ -437,6 +437,8 @@ show_more_prompt
     ; space at the end of the last line of the screen, but note that AFAIK we
     ; can't portably print in the very bottom right character position without
     ; causing the screen to scroll.
+    ; SFTODO: I think the OS paged mode might do some futzing with the keyboard
+    ; LEDs to indicate "waiting for SHIFT". If so, we should emulate that here.
     ; SFTODO: Will eventually want to disable this if BENCHMARK is defined as
     ; in Commodore code above.
 -   lda #osbyte_read_key

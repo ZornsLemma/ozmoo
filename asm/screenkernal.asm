@@ -244,7 +244,7 @@ s_printchar
     pha
     jsr s_cursor_to_screenrowcolumn
     pla
-    jsr oswrch
+    jsr oswrch ; SFTODO THIS IS THE "MAIN" CHAR PRINT OSWRCH
     ldy zp_screencolumn
 }
     iny
