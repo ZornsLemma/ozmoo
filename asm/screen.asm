@@ -872,7 +872,10 @@ inverse_video
 ;
 cursor_control
 ; Parameters: X=0 for off, 1 for on
-    lda #23
+    txa
+    beq +
+    jsr s_cursor_to_screenrowcolumn
++   lda #23
     jsr oswrch
     lda #1
     jsr oswrch

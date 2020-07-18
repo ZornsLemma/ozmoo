@@ -64,6 +64,8 @@ z_ins_read_char
     sty .read_text_time
     sty .read_text_time + 1
 } ELSE {
+    ldx #1
+    jsr cursor_control
     ; SFTODO: Not just here - I haven't done anything about timer support yet,
     ; need to go over all the relevant code.
     LDA #SFTODO
@@ -92,6 +94,9 @@ z_ins_read_char
 	pha
 !ifndef ACORN {
     jsr turn_off_cursor
+} ELSE {
+    ldx #0
+    jsr cursor_control
 }
 	; lda current_window
 	; bne .no_need_to_start_buffering
@@ -1152,6 +1157,9 @@ read_text
 !ifndef ACORN {
     ; turn on blinking cursor
     jsr turn_on_cursor
+} else {
+    ldx #1
+    jsr cursor_control
 }
 .readkey
     jsr get_cursor ; x=row, y=column
@@ -1294,7 +1302,7 @@ read_text
     jsr update_cursor
 }
     pla
-    ; convert to lower case
+    ; convert to lower case SFTODO?! WHAT CHAR SET IS THIS WORKING ON?
 	cmp #$41
 	bcc .dont_invert_case
 	cmp #$5b
@@ -1315,6 +1323,9 @@ read_text
 !ifndef ACORN {
     ; turn off blinking cursor
     jsr turn_off_cursor
+} else {
+    ldx #0
+    jsr cursor_control
 }
 !ifndef Z5PLUS {
 	; Store terminating 0, in case characters were deleted at the end.
