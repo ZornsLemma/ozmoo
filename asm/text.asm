@@ -1252,7 +1252,12 @@ read_text
     bne +
 ;    lda #13 ; return 13
     jmp .read_text_done
-+   cmp #8
++
+!ifndef ACORN {
+    cmp #8
+} ELSE {
+    cmp #del
+}
     bne +
     ; allow delete if anything in the buffer
     ldy .read_text_column
@@ -1263,7 +1268,7 @@ read_text
 	jsr turn_off_cursor
 }
 	lda .petscii_char_read
-    jsr s_printchar ; print the delete char
+    jsr s_printchar ; print the delete char SFTODO: WILL THIS WORK!?
 !IFNDEF ACORN {
 	jsr turn_on_cursor
 }
@@ -1279,6 +1284,8 @@ read_text
     cmp #32
     bcs ++
 	jmp .readkey
+    ; SFTODO: I SUSPECT THE VALID KEYCODES (AND/OR TRANSLATIONS FROM ACORN TO
+    ; ZSCII) MAY NEED TWEAKING
 ++	cmp #128
     bcc .char_is_ok
 	cmp #155
@@ -1287,6 +1294,8 @@ read_text
 +	cmp #252
 	bcc .char_is_ok
 	jmp .readkey
+    ; SFTODO: ARBITRARY POINT FOR THIS COMMENT - IF YOU USE THE ACORN CURSOR
+    ; COPY FEATURE, IT "NEVER ENDS" - NEED TO TRIGGER THIS SOMEHOW
 	
     ; print the allowed char and store in the array
 .char_is_ok
@@ -1305,6 +1314,9 @@ read_text
 !ifdef Z5PLUS {
     iny
 }
+    ; SFTODO: WE MAY NEED SOME TRANSLATION OR ADDITIONAL SPECIAL CASES IN
+    ; s_printchar IF "WEIRD" CHARS ARE ALLOWED IN THE INPUT (EG FUNCTION KEYS)
+    ; WHICH WON'T JUST WORK NICELY IF PRINTED VIA OSWRCH
 	lda .petscii_char_read
     jsr s_printchar
 !ifndef ACORN {

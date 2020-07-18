@@ -97,7 +97,11 @@ s_printchar
 	; Fastlane for the most common characters
 	cmp #$20
 	bcc +
+!ifndef ACORN {
 	cmp #$80
+} else {
+    cmp #$7f
+}
 	bcc .normal_char
 	cmp #$a0
 	bcs .normal_char
@@ -129,6 +133,7 @@ s_printchar
 }
     bne +
     ; delete
+!IFNDEF ACORN {
     jsr s_delete_cursor
     dec zp_screencolumn ; move back
     bpl ++
@@ -140,16 +145,27 @@ s_printchar
 	dec zp_screenrow
 	lda #39 ; SFTODO: Implicit screen width assumption?
 	sta zp_screencolumn
-++  
-!IFNDEF ACORN {
-    jsr .update_screenpos
+++  jsr .update_screenpos
     lda #$20
     ldy zp_screencolumn
     sta (zp_screenline),y
     lda s_colour
     sta (zp_colourline),y
 } ELSE {
-    jsr s_delete_cursor
+    ; SFTODO: THIS IS NOT WORKING, THIS BIT MAY BE OK BUT TO BE SAFE/RELIABLE DO
+    ; WE NEED TO SET OS CURSOR TO CURRENT CURSOR POSITION FIRST?
+    jsr oswrch
+    dec zp_screencolumn ; move back
+    bpl ++
+	inc zp_screencolumn ; Go back to 0 if < 0
+	lda zp_screenrow
+	ldy current_window
+	cmp window_start_row + 1,y
+	bcc ++
+	dec zp_screenrow
+	lda #39 ; SFTODO: Implicit screen width assumption?
+	sta zp_screencolumn
+++
 }
     jmp .printchar_end
 +

@@ -112,7 +112,7 @@ zp_cursorswitch       = $cc
 !IFNDEF ACORN {
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
 }
-zp_screencolumn       = $d3 ; current cursor column
+zp_screencolumn       = $04d3 ; current cursor column SFTODO AS SCREENROW
 zp_screenrow          = $04d6 ; current cursor row SFTODO HACKED INTO NOT ZP FOR DEBUGGER, REVERT LATER
 !IFNDEF ACORN {
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
@@ -215,6 +215,7 @@ vdu_goto_xy = 31
 osbyte_read_key = $81
 osbyte_enter_language = $8e
 osbyte_read_language = $fc
+del = 127
 
 ; Acorn memory allocations
 
