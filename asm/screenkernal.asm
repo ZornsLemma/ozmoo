@@ -352,12 +352,13 @@ s_erase_window
 }
 
 .s_scroll
-!IFNDEF ACORN {
     lda zp_screenrow
     cmp #25 ; SFTODO: Implicit screen height assumption?
     bpl +
     rts
-+   ldx window_start_row + 1 ; how many top lines to protect
++
+!IFNDEF ACORN {
+    ldx window_start_row + 1 ; how many top lines to protect
     stx zp_screenrow
 -   jsr .update_screenpos
     lda zp_screenline
@@ -418,8 +419,41 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 } ELSE {
-    LDA #SFTODONOW
-    SFTODOMAYBEFALLTHRU
+    ; SFTODO: I think if window_start_row+1 is 0 we are scrolling the whole
+    ; screen and by not defining a text window we will get a much faster
+    ; hardware scroll. But let's get it working before we try to optimise it...
+    ; Define a text window covering the region to scroll
+    lda #vdu_define_text_window
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    ldx story_start + header_screen_height_lines
+    dex
+    jsr oswrch
+    ldx story_start + header_screen_width_chars
+    dex
+    jsr oswrch
+    lda window_start_row + 1 ; how many top lines to protect
+    jsr oswrch
+    ; Move the cursor to the bottom line of the text window
+    lda #vdu_goto_xy
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    lda story_start + header_screen_height_lines
+    clc ; subtract an extra 1
+    sbc window_start_row + 1
+    jsr oswrch
+    ; Move the cursor down one line to force a scroll
+    lda #vdu_down
+    jsr oswrch
+    ; Remove the text window
+    ; SFTODO: Do we need to put the text cursor back somewhere? For now we will
+    ; almost certainly get away with not doing this, but it may be optimal to
+    ; do it to allow us to make assumptions about its positioning elsewhere in
+    ; the code.
+    lda #vdu_reset_text_window
+    jmp oswrch
 s_erase_line
 	; registers: a,x,y
 	lda #0
