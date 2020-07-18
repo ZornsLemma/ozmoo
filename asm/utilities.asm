@@ -539,6 +539,7 @@ print_bad_zscii_code
 
 .print_bad_code_buffered	!byte 0	; 0 = s_printchar, $80 = printchar_buffered, $ff = streams_print_output
 .hex_num
+    ; SFTODO: Use of !pet here suggests need for porting, if only conditionally using !text here
 	!pet "0123456789abcdef"
 } ; ifdef DBUG
 
