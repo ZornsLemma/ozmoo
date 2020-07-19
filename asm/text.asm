@@ -1012,7 +1012,7 @@ read_char
     lda .read_text_time
 	ora .read_text_time + 1
     beq .no_timer
-!IF 0 { ; SF
+!IFNDEF ACORN { ; SF
     jsr kernal_readtime   ; read start time (in jiffys) in a,x,y (low to high)
 } ELSE {
     LDA #'Y'
@@ -1268,7 +1268,7 @@ read_text
 	jsr turn_off_cursor
 }
 	lda .petscii_char_read
-    jsr s_printchar ; print the delete char SFTODO: WILL THIS WORK!?
+    jsr s_printchar ; print the delete char
 !IFNDEF ACORN {
 	jsr turn_on_cursor
 }
@@ -1294,8 +1294,6 @@ read_text
 +	cmp #252
 	bcc .char_is_ok
 	jmp .readkey
-    ; SFTODO: ARBITRARY POINT FOR THIS COMMENT - IF YOU USE THE ACORN CURSOR
-    ; COPY FEATURE, IT "NEVER ENDS" - NEED TO TRIGGER THIS SOMEHOW
 	
     ; print the allowed char and store in the array
 .char_is_ok

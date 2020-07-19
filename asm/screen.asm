@@ -880,7 +880,14 @@ inverse_video
 ;
 cursor_control
 ; Parameters: X=0 for off, 1 for on
+!IF 0 { ; SFTODO TEMP
     txa
+    clc
+    adc #65
+    jsr oswrch
+}
+    txa
+    pha
     beq +
     jsr s_cursor_to_screenrowcolumn
 +   lda #23
@@ -894,5 +901,15 @@ cursor_control
 -   jsr oswrch
     dex
     bne -
-    rts
+    pla
+    bne +
+    ; We allow the use of the standard Acorn cursor editing. Judging from the
+    ; OS 1.20 disassembly, this only gets disabled when a carriage return is
+    ; output via OSWRCH, which we don't normally do. We therefore do it here
+    ; solely to turn off cursor editing; the move in the OS text cursor
+    ; position is harmless. SFTODO: Is it? I need to rationalise assumptions
+    ; about this once everything settles down. It is probably fine but check.
+    lda #$0d
+    jmp oswrch
++   rts
 }
