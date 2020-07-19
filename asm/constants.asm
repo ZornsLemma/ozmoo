@@ -214,8 +214,10 @@ vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
 osword_read_clock = 1
+osbyte_set_cursor_editing = $04
 osbyte_read_key = $81
 osbyte_enter_language = $8e
+osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
 del = 127
 

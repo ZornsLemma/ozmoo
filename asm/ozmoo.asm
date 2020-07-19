@@ -248,12 +248,21 @@ game_id		!byte 0,0,0,0
 	jsr $ff5b ; more init
     jmp ($a000)
 } else {
-    ; SFTODO: We may eventually need to re-enable ESCAPE and the cursor and
-    ; stuff like that here.
     ldx #1
     jsr cursor_control
+    lda #osbyte_rw_escape_key
+    ldx #0
+    ldy #0
+    jsr osbyte
+!ifdef ACORN_CURSOR_PASS_THROUGH {
+    lda #osbyte_set_cursor_editing
+    ldx #0
+    ldy #0
+    jsr osbyte
+}
     ; Re-enter the current language.
-    ; SFTODO: Does this work? Do we ever get here?
+    ; SFTODO: Does this work? Do we ever get here? Should we just do OSCLI
+    ; "BASIC"? We know BASIC is available because we are using it in our loader.
     lda #osbyte_read_language
     ldx #0
     ldy #$ff
@@ -525,6 +534,20 @@ deletable_init_start
 	lda #$80
 	sta charset_switchable
 } else {
+    lda #osbyte_rw_escape_key
+    ldx #1
+    ldy #0
+    jsr osbyte
+
+!ifdef ACORN_CURSOR_PASS_THROUGH {
+    ; SFTODO: ACORN_CURSOR_PASS_THROUGH is completely untested; I need to find
+    ; a game which uses cursor keys.
+    lda #osbyte_set_cursor_editing
+    ldx #1
+    ldy #0
+    jsr osbyte
+}
+
     ; We keep the hardware cursor off most of the time; this way the user can't
     ; see it flitting round the screen doing various updates. (The C64 doesn't
     ; have this issue, as it uses direct screen writes and in fact its cursor

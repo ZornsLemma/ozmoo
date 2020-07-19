@@ -391,7 +391,7 @@ character_translation_table_out_end
 character_translation_table_in
 ; (zscii code, petscii code).
 ; NOTE: Must be sorted on PETSCII value, descending!
-; SFTODO: THIS PROBABLY NEEDS ACORN-ISING
+!ifndef ACORN {
 	!byte $7c, $dd ; Pipe = pipe-like graphic character
 	!byte $5c, $bf ; Backslash => (somewhat) backslash-like graphic character
 	!byte $5f, $af ; Underscore = underscore-like graphic character
@@ -402,6 +402,18 @@ character_translation_table_in
 	!byte $84, $1d ; Cursor right
 	!byte $08, $14 ; Backspace
 	!byte $82, $11 ; Cursor down
+} else {
+    ; SFTODO: Should be be converting delete from 127 to 8 here??
+    ; SFTODO: These cursor translations haven't been tested, the game would need
+    ; to do *FX4,1 to enable them.
+!ifdef ACORN_CURSOR_PASS_THROUGH {
+    !byte $81, $8b ; Cursor up
+    !byte $82, $8a ; Cursor down
+    !byte $84, $89 ; Cursor right
+    !byte $83, $88 ; Cursor left
+}
+    !byte $db, $60 ; £
+}
 character_translation_table_in_end
 
 character_translation_table_out

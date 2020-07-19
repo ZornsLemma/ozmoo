@@ -404,7 +404,6 @@ convert_zchar_to_char
 
 ; SFTODO: UP TO HERE
 translate_petscii_to_zscii
-!ifndef ACORN {
 	ldx #character_translation_table_in_end - character_translation_table_in - 1
 -	cmp character_translation_table_in,x
 	bcc .no_match
@@ -419,6 +418,7 @@ translate_petscii_to_zscii
 	; bcs .no_shadow
 	; eor #$a0
 ; .no_shadow
+!ifndef ACORN {
 	cmp #$41
 	bcc .case_conversion_done
 	cmp #$5b
@@ -434,16 +434,12 @@ translate_petscii_to_zscii
 	; Upper case. $c1 -> $41
 	and #$7f
 .case_conversion_done
+}
 	rts
 .translation_match
 	dex
 	lda character_translation_table_in,x
 	rts
-} else {
-    ; SFTODO: Probably mostly OK, but we may need some translation. Also prob
-    ; lots of code/data we can delete.
-	rts
-}
 
 	
 ; SFTODO: Do we need this?
@@ -952,8 +948,6 @@ getchar_and_maybe_toggle_darkmode
 	lda #0
 +	rts
 } else {
-    ; SFTODO: We probably need to do something (if only *FX229,1 on startup)
-    ; about the Escape key.
     lda #osbyte_read_key
     ldx #0
     ldy #0
