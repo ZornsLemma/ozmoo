@@ -416,6 +416,7 @@ character_translation_table_in
 }
 character_translation_table_in_end
 
+; SFTODONOW: This needs to be Acorn-ised and used
 character_translation_table_out
 ; (zscii code, petscii code).
 ; NOTE: Must be sorted on ZSCII value, descending!
@@ -620,7 +621,7 @@ z_ins_output_stream
 
 translate_zscii_to_petscii
 	; Return PETSCII code *OR* set carry if this ZSCII character is unsupported
-!IF 0 { ; SF
+!ifndef ACORN { ; SFTODONOW
 	sty .streams_tmp + 1
 	ldy #character_translation_table_out_end - character_translation_table_out - 2
 -	cmp character_translation_table_out,y
@@ -667,7 +668,7 @@ translate_zscii_to_petscii
 	clc
 	rts
 } else {
-    ; SF: Hack. This probably mostly works but a) we could delete a lot of
+    ; SFTODO: Hack. This probably mostly works but a) we could delete a lot of
     ; translation code if we don't need any translations b) it's just possible
     ; the interpreter checks for PETSCII values returned by this function and we
     ; would need to modify those to expect ASCII/ZSCII/AcornSCII.

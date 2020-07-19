@@ -9,6 +9,8 @@
 ; - set_memory_all_ram
 ; - set_memory_no_basic
 ; various debug functions
+; SFTODO: Deal with all the !IF 0 stuff in here - at very least it needs to
+; be !ifndef ACORn
 
 ; zero_processorports: ...<d000><e000><a000> on/off
 !macro set_memory_all_ram {
@@ -103,6 +105,9 @@ ERROR_WRITE_ABOVE_DYNMEM = 13
 ERROR_READ_ABOVE_STATMEM = 14
 ERROR_TOO_MANY_TERMINATORS = 15
 
+; SFTODO: General point - there's lots of !pet stuff in debug-only code which
+; I haven't ported yet. If ACME allows it, maybe define a !native macro which
+; wraps !pet or !text depending on whether ACORN is defined or not.
 !ifdef DEBUG {
 .error_unsupported_stream !pet "unsupported stream#",0
 .error_config !pet "broken config",0
@@ -173,7 +178,7 @@ fatalerror
     lda #$0d
     jsr streams_print_output
     jsr printchar_flush
-!IF 0 { ; SF
+!ifndef ACORN { ; SFTODO
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
 } else {

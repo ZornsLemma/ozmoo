@@ -1100,7 +1100,7 @@ calc_address_in_byte_array
 	rts
 }
 
-!zone rnd {
+!zone rnd { ; SFTODO!
 z_rnd_init_random
 	; in: Nothing
 	lda $dc04
@@ -1976,6 +1976,7 @@ z_ins_random
 	
 ; z_ins_output_stream jumps directly to streams_output_stream.
 
+; SFTODO!
 z_ins_sound_effect
 	lda #$08
 	ldx z_operand_value_low_arr

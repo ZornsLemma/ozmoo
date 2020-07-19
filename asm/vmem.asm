@@ -740,8 +740,8 @@ read_byte_at_z_address
     rts
 }
 
-; SF: Hack, let's just allocate a fake datasette buffer here
+; SFTODO: Hack, let's just allocate a fake datasette buffer here
 datasette_buffer_start
     !FILL $3fb-$334
 datasette_buffer_end
-    !FILL 1 ; SF: Probably not needed but not bothered checking if _end is inclusive or exclusive yet
+    !FILL 1 ; SFTODO: Probably not needed but not bothered checking if _end is inclusive or exclusive yet
