@@ -391,6 +391,7 @@ character_translation_table_out_end
 character_translation_table_in
 ; (zscii code, petscii code).
 ; NOTE: Must be sorted on PETSCII value, descending!
+; SFTODO: THIS PROBABLY NEEDS ACORN-ISING
 	!byte $7c, $dd ; Pipe = pipe-like graphic character
 	!byte $5c, $bf ; Backslash => (somewhat) backslash-like graphic character
 	!byte $5f, $af ; Underscore = underscore-like graphic character
