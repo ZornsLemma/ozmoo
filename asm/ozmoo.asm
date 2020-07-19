@@ -287,6 +287,9 @@ vmem_cache_start
 
 end_of_routines_in_vmem_cache
 
+; SFTODO: This cache may also be a candidate for language workspace at $400,
+; though if it can benefit from being more than 4 pages it may not be the best
+; use of it.
 	!fill cache_pages * 256 - (* - vmem_cache_start),0 ; Typically 4 pages
 
 !ifdef VMEM {
@@ -300,6 +303,8 @@ vmem_cache_count = vmem_cache_size / 256
 }
 !align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
 
+; SFTODO: It *may* be possible to use the language workspace at $400-$800 for
+; the stack, if it's not larger (it's configurable at assembly time).
 stack_start
 
 deletable_screen_init_1
@@ -386,15 +391,15 @@ z_init
 }
 	
 	; Modify header to tell game about terp capabilities
-        ; SF: I've hacked this as per
-        ; http://inform-fiction.org/zmachine/standards/z1point0/sect08.html
-        ; to clear bit 0 of flags 1 to say we don't support colours. It's
-        ; possible (depending on exactly what this involves) we could support
-        ; colours in mode 7, but for now let's keep things simple. (For Z5PLUS
-        ; screen.asm will correctly set colours 2 and 9 as default background and
-        ; foreground colour.) TODO: Am I misreading the spec? The original code
-        ; only forced bit 0 on for Z5PLUS, but I am now forcing it off for all
-        ; versions.
+    ; SF: I've hacked this as per
+    ; http://inform-fiction.org/zmachine/standards/z1point0/sect08.html
+    ; to clear bit 0 of flags 1 to say we don't support colours. It's
+    ; possible (depending on exactly what this involves) we could support
+    ; colours in mode 7, but for now let's keep things simple. (For Z5PLUS
+    ; screen.asm will correctly set colours 2 and 9 as default background and
+    ; foreground colour.) SFTODO: Am I misreading the spec? The original code
+    ; only forced bit 0 on for Z5PLUS, but I am now forcing it off for all
+    ; versions.
 !ifdef Z3 {
 	lda story_start + header_flags_1
 	and #(255 - 16 - 64 - 1) ; Statusline IS available, variable-pitch font is not default
@@ -416,9 +421,9 @@ z_init
 	sta story_start + header_flags_2 + 1
 }
 }
-; SF: We might want to support 40 and or 80 column width eventually (shadow screen),
-; simililary we might want to vary the height, for now just stick with these values.
-; SF: Should we change the interpreter_number and interpreter_version? OTOH *if*
+; SFTODO: We might want to support 40 and or 80 column width eventually (shadow screen),
+; simililarly we might want to vary the height, for now just stick with these values.
+; SFTODO: Should we change the interpreter_number and interpreter_version? OTOH *if*
 ; any games check these (maybe old ones will), given we are using this C64-oriented
 ; interpreter it's probably a good idea to avoid problems by leaving this alone.
 !ifdef Z4PLUS {
