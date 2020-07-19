@@ -383,8 +383,6 @@ z_ins_print_unicode
 	jmp streams_print_output
 }
 	
-; SFTODO: Does this need changing? No. It's converting Z-characters to ZSCII
-; for output, it works fine. Delete this SFTODO later.
 convert_zchar_to_char
     ; input: a=zchar
     ; output: a=char
@@ -402,7 +400,6 @@ convert_zchar_to_char
     lda (alphabet_table),y
 +++	rts
 
-; SFTODO: UP TO HERE
 translate_petscii_to_zscii
 	ldx #character_translation_table_in_end - character_translation_table_in - 1
 -	cmp character_translation_table_in,x
@@ -442,7 +439,6 @@ translate_petscii_to_zscii
 	rts
 
 	
-; SFTODO: Do we need this?
 convert_char_to_zchar
     ; input: a=char
     ; output: store zchars in z_temp,x. Increase x. Exit if x >= ZCHARS_PER_ENTRY
@@ -909,7 +905,6 @@ init_read_text_timer
     sta multiplier
     lda #0
     sta multiplicand + 1
-    ;SFTODONOW
 !ifndef ACORN {
     lda #6
 } else {
