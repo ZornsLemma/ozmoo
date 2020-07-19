@@ -404,8 +404,6 @@ character_translation_table_in
 	!byte $82, $11 ; Cursor down
 } else {
     ; SFTODO: Should be be converting delete from 127 to 8 here??
-    ; SFTODO: These cursor translations haven't been tested, the game would need
-    ; to do *FX4,1 to enable them.
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     !byte $81, $8b ; Cursor up
     !byte $82, $8a ; Cursor down
@@ -416,10 +414,10 @@ character_translation_table_in
 }
 character_translation_table_in_end
 
-; SFTODONOW: This needs to be Acorn-ised and used
 character_translation_table_out
 ; (zscii code, petscii code).
 ; NOTE: Must be sorted on ZSCII value, descending!
+!ifndef ACORN {
 	!byte $db, $5c ; £
 	!byte $7e, $2d ; ~ => -
 	!byte $7d, $29 ; } => )
@@ -428,6 +426,9 @@ character_translation_table_out
 	!byte $60, $27 ; Grave accent => quote
 	!byte $5f, $af ; Underscore = underscore-like graphic character
 	!byte $5c, $bf ; Backslash => (somewhat) backslash-like graphic character
+} else {
+    !byte $db, $60 ; £
+}
 character_translation_table_out_end
 
 } ; End of non-French section
@@ -621,7 +622,6 @@ z_ins_output_stream
 
 translate_zscii_to_petscii
 	; Return PETSCII code *OR* set carry if this ZSCII character is unsupported
-!ifndef ACORN { ; SFTODONOW
 	sty .streams_tmp + 1
 	ldy #character_translation_table_out_end - character_translation_table_out - 2
 -	cmp character_translation_table_out,y
@@ -643,6 +643,7 @@ translate_zscii_to_petscii
 	sec
 	rts
 .is_legal
+!ifndef ACORN {
 ; .case_conversion
 	cmp #$41
 	bcc .case_conversion_done
@@ -658,6 +659,7 @@ translate_zscii_to_petscii
 	bcs .case_conversion_done
 	; Lower case. $61 -> $41
 	and #$df
+}
 .case_conversion_done
 	clc
 	rts
@@ -667,13 +669,5 @@ translate_zscii_to_petscii
 	ldy .streams_tmp + 1
 	clc
 	rts
-} else {
-    ; SFTODO: Hack. This probably mostly works but a) we could delete a lot of
-    ; translation code if we don't need any translations b) it's just possible
-    ; the interpreter checks for PETSCII values returned by this function and we
-    ; would need to modify those to expect ASCII/ZSCII/AcornSCII.
-    clc
-    rts
-}
 
 }
