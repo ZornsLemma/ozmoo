@@ -533,6 +533,8 @@ deletable_init_start
     ; no way for the running program to turn the cursor on and off.)
     ldx #0
     jsr cursor_control
+
+    jsr init_readtime
 }
 
 	jmp init_screen_colours ; _invisible

@@ -204,6 +204,7 @@ header_header_extension_table = $36
 
 ; Acorn OS constants
 oswrch = $ffee
+osword = $fff1
 osbyte = $fff4
 vdu_down = 10
 vdu_cls = 12
@@ -212,6 +213,7 @@ vdu_reset_text_window = 26
 vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
+osword_read_clock = 1
 osbyte_read_key = $81
 osbyte_enter_language = $8e
 osbyte_read_language = $fc

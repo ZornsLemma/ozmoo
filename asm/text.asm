@@ -59,17 +59,14 @@ z_ins_read_char
 	jsr printchar_flush
 !IFNDEF ACORN {
     jsr turn_on_cursor
+} ELSE {
+    ldx #1
+    jsr cursor_control
+}
     ldy #0
 	tya
     sty .read_text_time
     sty .read_text_time + 1
-} ELSE {
-    ldx #1
-    jsr cursor_control
-    ; SFTODO: Not just here - I haven't done anything about timer support yet,
-    ; need to go over all the relevant code.
-    LDA #SFTODO
-}
     ldy z_operand_count
     cpy #3
     bne .read_char_loop
@@ -914,7 +911,12 @@ init_read_text_timer
     sta multiplier
     lda #0
     sta multiplicand + 1
+    ;SFTODONOW
+!ifndef ACORN {
     lda #6
+} else {
+    lda #5 ; our kernal_gettime uses 1/50 second jiffys
+}
     sta multiplicand ; t*6 to get jiffies
     jsr mult16
     lda product
@@ -925,13 +927,7 @@ init_read_text_timer
     sta .read_text_time_jiffy
 update_read_text_timer
     ; prepare time for next routine call (current time + time_jiffy)
-!IFNDEF ACORN { ; SFTODO
     jsr kernal_readtime  ; read current time (in jiffys)
-} ELSE {
-    LDA #'Y'
-    JSR $FFEE
-    JMP SFHANG
-}
     clc
     adc .read_text_time_jiffy + 2
     sta .read_text_jiffy + 2
@@ -1012,13 +1008,7 @@ read_char
     lda .read_text_time
 	ora .read_text_time + 1
     beq .no_timer
-!IFNDEF ACORN { ; SF
     jsr kernal_readtime   ; read start time (in jiffys) in a,x,y (low to high)
-} ELSE {
-    LDA #'Y'
-    JSR $FFEE
-    JMP SFHANG
-}
 	cmp .read_text_jiffy + 2
 	txa
 	sbc .read_text_jiffy + 1

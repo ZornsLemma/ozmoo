@@ -678,4 +678,54 @@ divide16
 	bne .divloop
 	rts
 }
+
+!ifdef ACORN {
+!zone {
+    ; The Acorn OS time counter is a 5 byte value, whereas (ignoring the
+    ; difference in resolution) the Commodore one is 3 bytes. Because the Acorn
+    ; OS time counter may have an arbitrarily large value (perhaps some kind of
+    ; soft RTC solution) when we start up and we don't want to zero it, we read
+    ; the initial value and subtract that from any subsequent reads.
+init_readtime
+    lda #osword_read_clock
+    ldx #<.initial_clock
+    ldy #>.initial_clock
+    jmp osword
+
+kernal_readtime
+    lda #osword_read_clock
+    ldx #<.current_clock
+    ldy #>.current_clock
+    jsr osword
+    ldx #(256-5)
+    sec
+-   lda .current_clock-(256-5),x
+    sbc .initial_clock-(256-5),x
+    sta .current_clock-(256-5),x
+    inx
+    bne -
+    ; The Acorn clock is in centiseconds; a PAL C64 would use fiftieths of a
+    ; second, so halve the value before we return it.
+    ldx #4
+    clc
+-   ror .current_clock,x
+    dex
+    bpl -
+    ; All the above means we're at no more or less risk than a C64 of having the
+    ; time roll over during a game. It would take >3.8 days for this to happen.
+    lda .current_clock+2
+    ldx .current_clock+1
+    ldy .current_clock+0
+    rts
+
+.initial_clock
+    !fill 5
+
+; SFTODO: It might be possible to use some temporary scratch space for this, but
+; to avoid possible clashes with other users we just have this space for now.
+.current_clock
+    !fill 5
+}
+}
+
 ; screen update routines
