@@ -909,6 +909,9 @@ cursor_control
     ; solely to turn off cursor editing; the move in the OS text cursor
     ; position is harmless. SFTODO: Is it? I need to rationalise assumptions
     ; about this once everything settles down. It is probably fine but check.
+    ; SFTODO: We could not compile this in if ACORN_CURSOR_PASS_THROUGH is
+    ; defined, as cursor editing is implicitly disabled then. However, until I
+    ; sit down and think through the cursor movement rules I won't do this.
     lda #$0d
     jmp oswrch
 +   rts
