@@ -915,7 +915,7 @@ init_read_text_timer
 !ifndef ACORN {
     lda #6
 } else {
-    lda #5 ; our kernal_gettime uses 1/50 second jiffys
+    lda #5 ; our kernal_readtime uses 1/50 second jiffys
 }
     sta multiplicand ; t*6 to get jiffies
     jsr mult16
@@ -1719,6 +1719,7 @@ print_addr
     beq +
     jmp .print_chars_loop
 +   rts
+; SFTODO: http://inform-fiction.org/zmachine/standards/z1point0/sect03.html says (eg) that "delete" is input as code 8. I think I'm probably OK to use 127 internally (in the same way the C64 version works with PETSCII internally), but something will probably need to be mapping that to 8 if the Z-machine program running is reading the keyboard. I haven't really looked into how this works, just wanted to make a note so I don't forget.
 
 ; .escape_char !byte 0
 ; .escape_char_counter !byte 0
