@@ -295,7 +295,7 @@ read_track_sector
     ldy #>.cname
 !IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
 }
@@ -307,7 +307,7 @@ read_track_sector
     jsr kernal_setlfs ; call SETLFS
 
     jsr kernal_open     ; call OPEN
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -322,7 +322,7 @@ read_track_sector
     ldy #>.uname
 !IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -334,7 +334,7 @@ read_track_sector
     jsr kernal_setlfs ; call SETLFS
 
     jsr kernal_open ; call OPEN (open command channel and send U1 command)
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -347,7 +347,7 @@ read_track_sector
     ldx #$02      ; filenumber 2
 !IF 0 { ; SF
     jsr kernal_chkin ; call CHKIN (file 2 now used as input)
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -361,7 +361,7 @@ read_track_sector
     ldy #$00
 !IF 0 { ; SF
 -   jsr kernal_readchar ; call CHRIN (get a byte from file)
-} ELSE {
+} else {
 -    LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -404,7 +404,7 @@ close_io
     jsr kernal_close ; call CLOSE
 
     jmp kernal_clrchn ; call CLRCHN
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -468,7 +468,7 @@ print_insert_disk_msg
 	;jsr kernal_readchar ; this shows the standard kernal prompt (not good)
 !IF 0 { ; SF
 -	jsr kernal_getchar
-} ELSE {
+} else {
 -    LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -630,7 +630,7 @@ z_ins_save
     sta .inputlen
 !IF 0 { ; SF
 -   jsr kernal_getchar
-} ELSE {
+} else {
 -    LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -709,7 +709,7 @@ list_save_files
 -	sta .occupied_slots - 1,x
 	dex
 	bne -
-!IFNDEF ACORN { ; SFTODO HACK
+!ifndef ACORN { ; SFTODO HACK
 	; Remember address of row where first entry is printed
 	lda zp_screenline
 	sta .base_screen_pos
@@ -740,7 +740,7 @@ list_save_files
 -	jsr kernal_readchar
 	dey
 	bne -
-} ELSE {
+} else {
 -
 +    LDA #'X'
     JSR $FFEE
@@ -803,7 +803,7 @@ list_save_files
 	lda #13
 	jsr printchar_raw
 	bne .read_next_line
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -916,7 +916,7 @@ list_save_files
 	ldy #5
 !IF 0 { ; SF
 -	jsr kernal_delay_1ms
-} ELSE {
+} else {
 -
 }
 	dex
@@ -1085,7 +1085,7 @@ save_game
     bcs .restore_failed  ; if carry set, the file could not be opened
     lda #$0f      ; filenumber 15
     jsr kernal_close
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -1123,7 +1123,7 @@ do_restore
     php ; store c flag so error can be checked by calling routine
     lda #1 
     jsr kernal_close
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -1154,7 +1154,7 @@ do_save
     tay
     lda #$c1      ; start address located in $C1/$C2
     jsr kernal_save
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
@@ -1163,7 +1163,7 @@ do_save
     lda #1 
 !IF 0 { ; SF
     jsr kernal_close
-} ELSE {
+} else {
     LDA #'X'
     JSR $FFEE
     JMP SFHANG

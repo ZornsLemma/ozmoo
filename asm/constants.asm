@@ -4,7 +4,7 @@
 ; gaps in zero page yet.
 ; BASIC not much used, so many positions free to use
 ; memory bank control
-!IFNDEF ACORN {
+!ifndef ACORN {
 zero_datadirection    = $00
 zero_processorports   = $01
 }
@@ -99,7 +99,7 @@ s_reverse 			  = $b3 ; !byte 0 ; SFTODO: Not used on Acorn but easier to keep me
 
 s_stored_x			  = $b4 ; !byte 0
 s_stored_y			  = $b5 ; !byte 0
-!IFNDEF ACORN {
+!ifndef ACORN {
 s_current_screenpos_row = $b6 ; !byte $ff
 }
 
@@ -109,12 +109,12 @@ last_break_char_buffer_pos = $bf ; !byte 0
 
 
 zp_cursorswitch       = $cc
-!IFNDEF ACORN {
+!ifndef ACORN {
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
 }
 zp_screencolumn       = $04d3 ; current cursor column SFTODO AS SCREENROW
 zp_screenrow          = $04d6 ; current cursor row SFTODO HACKED INTO NOT ZP FOR DEBUGGER, REVERT LATER
-!IFNDEF ACORN {
+!ifndef ACORN {
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
 }
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
@@ -127,14 +127,14 @@ zp_temp               = $75; SF: WAS $fb ; 5 bytes
 
 print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 memory_buffer         =	$02a7
 }
 memory_buffer_length  = 89
 
 first_banked_memory_page = $ff ; SF: Was $d0, probably need tweaking for a non-2P port but for now can probably get away with this ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 charset_switchable 	  = $291
 
 datasette_buffer_start= $0334 ; Actually starts at 33c, but the eight bytes before that are unused

@@ -1,6 +1,6 @@
 ; screen update routines
 
-!IFNDEF ACORN { ; SF
+!ifndef ACORN { ; SF
 init_screen_colours_invisible
 	lda zcolours + BGCOL
 	bpl + ; Always branch
@@ -32,7 +32,7 @@ init_screen_colours
 }
     lda #147 ; clear screen
     jmp s_printchar
-} ELSE {
+} else {
 init_screen_colours
     ; SFTODO: *Maybe* this needs to clear the screen?
     jmp s_init
@@ -329,18 +329,18 @@ z_ins_set_text_style
     lda z_operand_value_low_arr
     bne .t0
     ; roman
-!IFNDEF ACORN {
+!ifndef ACORN {
     lda #146 ; reverse off
     jmp s_printchar
-} ELSE {
+} else {
     jmp normal_video
 }
 .t0 cmp #1
     bne .do_nothing
-!IFNDEF ACORN {
+!ifndef ACORN {
     lda #18 ; reverse on
     jmp s_printchar
-} ELSE {
+} else {
     jmp inverse_video
 }
 
@@ -409,7 +409,7 @@ increase_num_rows
 show_more_prompt
 	; time to show [More]
 	jsr clear_num_rows
-!IFNDEF ACORN {
+!ifndef ACORN {
 	lda $07e7 
 	sta .more_text_char
 	lda #128 + $2a ; screen code for reversed "*"
@@ -438,7 +438,7 @@ show_more_prompt
 }
 	lda .more_text_char
 	sta $07e7
-} ELSE {
+} else {
     ; Wait until SHIFT is pressed; this mimics the OS paged mode behaviour.
     ; SFTODO: We *don't* print a "more" character; should we? The OS paged mode
     ; doesn't. I don't know exactly what (if anything) is guaranteed about free
@@ -459,7 +459,7 @@ show_more_prompt
 .increase_num_rows_done
     rts
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 .more_text_char !byte 0
 }
 
@@ -622,11 +622,11 @@ printchar_buffered
 first_buffered_column !byte 0
 
 clear_screen_raw
-!IFNDEF ACORN {
+!ifndef ACORN {
 	lda #147
 	jsr s_printchar
 	rts
-} ELSE {
+} else {
     ; SFTODO: I'm not 100% sure this will be needed in a fully tidied up port.
     lda #vdu_cls
     jmp oswrch
@@ -697,14 +697,14 @@ draw_status_line
     ldx #0
     ldy #0
     jsr set_cursor
-!IFNDEF ACORN {
+!ifndef ACORN {
     lda #18 ; reverse on
     jsr s_printchar
 	ldx darkmode
 	ldy statuslinecol,x 
 	lda zcolours,y
 	jsr s_set_text_colour
-} ELSE {
+} else {
     jsr inverse_video
 }
     ;
@@ -809,14 +809,14 @@ draw_status_line
 	ldx #<.ampm_str
 	jsr printstring_raw
 .statusline_done
-!IFNDEF ACORN {
+!ifndef ACORN {
 	ldx darkmode
 	ldy fgcol,x 
 	lda zcolours,y
 	jsr s_set_text_colour
     lda #146 ; reverse off
     jsr s_printchar
-} ELSE {
+} else {
     jsr normal_video
 }
 	pla
@@ -843,18 +843,18 @@ draw_status_line
 	ora #$30
 	jmp s_printchar
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 .score_str !pet "Score: ",0
 .time_str !pet "Time: ",0
 .ampm_str !pet " AM",0
-} ELSE {
+} else {
 .score_str !text "Score: ",0
 .time_str !text "Time: ",0
 .ampm_str !text " AM",0
 }
 }
 
-!IFDEF ACORN {
+!ifdef ACORN {
 ; SFTODO: This assumes non-mode 7. We can probably support inverse video at least
 ; for the status line in mode 7, although we'd lose a few characters to control
 ; codes.

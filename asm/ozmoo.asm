@@ -238,7 +238,7 @@ game_id		!byte 0,0,0,0
 	jsr z_init
 	jsr z_execute
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 	; Back to normal memory banks
 	+set_memory_normal
 
@@ -247,7 +247,7 @@ game_id		!byte 0,0,0,0
 	jsr $fd15 ; set I/O vectors
 	jsr $ff5b ; more init
     jmp ($a000)
-} ELSE {
+} else {
     ; SFTODO: We may eventually need to re-enable ESCAPE and the cursor and
     ; stuff like that here.
     ldx #1
@@ -296,10 +296,10 @@ stack_start
 deletable_screen_init_1
 	; start text output from bottom of the screen
 	
-!IFNDEF ACORN {
+!ifndef ACORN {
     lda #147 ; clear screen
     jsr s_printchar
-} ELSE {
+} else {
     ; SFTODO: Should we change screen mode here? For the moment it's more
     ; convenient to leave this alone.
     lda #vdu_cls
@@ -334,10 +334,10 @@ deletable_screen_init_1
 deletable_screen_init_2
 	; start text output from bottom of the screen
 	
-!IFNDEF ACORN {
+!ifndef ACORN {
     lda #147 ; clear screen SFTODO
     jsr s_printchar
-} ELSE {
+} else {
     ; SFTODO: Should we change screen mode here? For the moment it's more
     ; convenient to leave this alone.
     lda #vdu_cls
@@ -481,7 +481,7 @@ z_init
 	adc #1
 	sta z_high_global_vars_ptr + 1 
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 	; Init sound
 	lda #0
 	ldx #$18
@@ -507,7 +507,7 @@ z_init
 } else {
 	jmp z_rnd_init_random
 }
-} ELSE {
+} else {
     ; SFTODO: Need to address rnd stuff at least
     rts
 }
@@ -515,7 +515,7 @@ z_init
 
 !zone deletable_init {
 deletable_init_start
-!IFNDEF ACORN {
+!ifndef ACORN {
 !ifdef CUSTOM_FONT {
     lda #18
 } else {
@@ -524,7 +524,7 @@ deletable_init_start
     sta reg_screen_char_mode
 	lda #$80
 	sta charset_switchable
-} ELSE {
+} else {
     ; We keep the hardware cursor off most of the time; this way the user can't
     ; see it flitting round the screen doing various updates. (The C64 doesn't
     ; have this issue, as it uses direct screen writes and in fact its cursor
@@ -542,7 +542,7 @@ deletable_init_start
 
 deletable_init
 	cld
-!IFNDEF ACORN { ; SFTODO!?
+!ifndef ACORN { ; SFTODO!?
     ; ; check if PAL or NTSC (needed for read_line timer)
 ; w0  lda $d012
 ; w1  cmp $d012
@@ -565,7 +565,7 @@ deletable_init
 	sty boot_device ; Boot device# stored
 }
 !ifdef VMEM {
-!IFNDEF ACORN { ; SFTODO!?
+!ifndef ACORN { ; SFTODO!?
 	lda #<config_load_address
 	sta readblocks_mempos
 	lda #>config_load_address
@@ -598,7 +598,7 @@ deletable_init
 ;	jsr init_screen_colours
 }
 } else { ; End of !ifdef VMEM
-!IFNDEF ACORN { ; SFTODO!?
+!ifndef ACORN { ; SFTODO!?
 	sty disk_info + 4
 }
 	ldx #$30 ; First unavailable slot
@@ -626,7 +626,7 @@ deletable_init
 	stx first_unavailable_save_slot_charcode
 	txa
 	and #$0f
-!IFNDEF ACORN { ; SFTODO!?
+!ifndef ACORN { ; SFTODO!?
 	sta disk_info + 1 ; # of save slots
 }
 }
@@ -635,7 +635,7 @@ deletable_init
 	; ldx #0
 	; jsr set_cursor
 	
-!IFNDEF ACORN {
+!ifndef ACORN {
 	; Default banks during execution: Like standard except Basic ROM is replaced by RAM.
 	+set_memory_no_basic
 }

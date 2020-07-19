@@ -1161,7 +1161,7 @@ z_ins_rfalse
 z_ins_quit
 !IF 0 { ;SF
 	jmp kernal_reset
-} ELSE {
+} else {
         jmp SFHANG
 }
 
@@ -2299,7 +2299,7 @@ z_ins_save_restore_undo
 ; SFTODO: As far as I can see only a handful of bytes are used here, so we don't
 ; need to allocate all this space, but let's match the C64 for now until things
 ; are mostly working.
-!IFDEF ACORN {
+!ifdef ACORN {
 memory_buffer
     !fill memory_buffer_length
 }

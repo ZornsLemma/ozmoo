@@ -24,7 +24,7 @@
 
 s_init
     ; init cursor
-!IFNDEF ACORN {
+!ifndef ACORN {
     lda #$ff
     sta s_current_screenpos_row ; force recalculation first time
 }
@@ -52,19 +52,19 @@ s_plot
 	ldx #24 ; SFTODO: Implicit screen height assumption?
 +	stx zp_screenrow
 	sty zp_screencolumn
-!IFNDEF ACORN {
+!ifndef ACORN {
 	jmp .update_screenpos
-} ELSE {
+} else {
     rts
 }
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 s_set_text_colour
 	sta s_colour
 	rts
 }
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 s_delete_cursor
 	lda #$20 ; blank space
 	ldy zp_screencolumn
@@ -72,7 +72,7 @@ s_delete_cursor
 	rts
 }
 
-!IFDEF ACORN {
+!ifdef ACORN {
 s_cursor_to_screenrowcolumn
     lda #vdu_goto_xy
     jsr oswrch
@@ -105,7 +105,7 @@ s_printchar
 	cmp #$0d
     bne +
 	; newline
-!IFNDEF ACORN {
+!ifndef ACORN {
 	; but first, check if the current character is the cursor so that we may delete it
 	lda cursor_character
 	ldy zp_screencolumn
@@ -122,14 +122,14 @@ s_printchar
     ; translate to PETSCII) b) maybe we can get here with a "DEL" character when
     ; handling command line input. Need to come back to this, for now I'll guess
     ; changing 20 to 127 is right.
-!IFNDEF ACORN {
+!ifndef ACORN {
     cmp #20
-} ELSE {
+} else {
     cmp #127
 }
     bne +
     ; delete
-!IFNDEF ACORN {
+!ifndef ACORN {
     jsr s_delete_cursor
     dec zp_screencolumn ; move back
     bpl ++
@@ -147,7 +147,7 @@ s_printchar
     sta (zp_screenline),y
     lda s_colour
     sta (zp_colourline),y
-} ELSE {
+} else {
     ; SFTODO: THIS IS NOT WORKING, THIS BIT MAY BE OK BUT TO BE SAFE/RELIABLE DO
     ; WE NEED TO SET OS CURSOR TO CURRENT CURSOR POSITION FIRST? - MOSTLY WORKING BUT IF YOU *JUST* WRAP OVER ONTO A NEW LINE AND DON'T HAVE A NORMAL CHAR OUTPUT THE SCREEN IS CORRUPT ON BACKSPACING
     jsr oswrch
@@ -167,7 +167,7 @@ s_printchar
 +
     ; SFTODO: I don't believe any of the following codes or their Acorn
     ; equivalents will come through this routine on the Acorn port.
-!IFNDEF ACORN {
+!ifndef ACORN {
     cmp #$93 
     bne +
     ; clr (clear screen)
@@ -223,7 +223,7 @@ s_printchar
 	pla ; Doesn't affect C
 	bcs .outside_current_window
 .resume_printing_normal_char	
-!IFNDEF ACORN {
+!ifndef ACORN {
    ; convert from pet ascii to screen code
 	cmp #$40
 	bcc ++    ; no change if numbers or special chars
@@ -265,7 +265,7 @@ s_printchar
 	jsr .update_screenpos
 	jmp .printchar_end
 +	jsr .s_scroll
-} ELSE {
+} else {
     ; OSWRCH may cause the screen to scroll if we're at the bottom right
     ; character. We therefore don't use .s_scroll to *do* the scroll, we just
     ; define a text window to tell the OS what to scroll.
@@ -338,12 +338,12 @@ s_printchar
     sta zp_screencolumn
     inc zp_screenrow
     jsr .s_scroll
-!IFNDEF ACORN {
+!ifndef ACORN {
     jsr .update_screenpos
 }
     jmp .printchar_end
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 s_erase_window
     lda #0
     sta zp_screenrow
@@ -358,7 +358,7 @@ s_erase_window
     rts
 }
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 .update_screenpos
     ; set screenpos (current line) using row
     ldx zp_screenrow
@@ -396,7 +396,7 @@ s_erase_window
     bpl +
     rts
 +
-!IFNDEF ACORN {
+!ifndef ACORN {
     ldx window_start_row + 1 ; how many top lines to protect
     stx zp_screenrow
 -   jsr .update_screenpos
@@ -457,7 +457,7 @@ s_erase_line_from_cursor
 	jsr .update_screenpos
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
-} ELSE {
+} else {
     jsr .s_pre_scroll
     ; Move the cursor down one line to force a scroll
     lda #vdu_down
@@ -525,7 +525,7 @@ s_erase_line_from_cursor
 }
 
 
-!IFNDEF ACORN {
+!ifndef ACORN {
 ; colours		!byte 144,5,28,159,156,30,31,158,129,149,150,151,152,153,154,155
 zcolours	!byte $ff,$ff ; current/default colour
 			!byte COL2,COL3,COL4,COL5  ; black, red, green, yellow
@@ -544,7 +544,7 @@ cursor_character !byte CURSORCHAR
 
 ; SFTODO: Eventually it might be nice if (e.g.) f0 cycled through the available
 ; background colours and f1 did the same for the foreground.
-!IFNDEF ACORN {
+!ifndef ACORN {
 toggle_darkmode
 !ifdef Z5PLUS {
 	; We will need the old fg colour later, to check which characters have the default colour
@@ -633,7 +633,7 @@ toggle_darkmode
 
 !ifdef Z5PLUS {
 z_ins_set_colour
-!IFNDEF ACORN {
+!ifndef ACORN {
     ; set_colour foreground background [window]
     ; (window is not used in Ozmoo)
 	jsr printchar_flush
@@ -672,7 +672,7 @@ z_ins_set_colour
     jsr s_set_text_colour ; change foreground colour
 .current_foreground
     rts
-} ELSE {
+} else {
     ; SFTODO: Is this OK? Probably, but be good to test...
     rts
 }

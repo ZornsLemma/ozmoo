@@ -653,7 +653,7 @@ translate_zscii_to_petscii
 	ldy .streams_tmp + 1
 	clc
 	rts
-} ELSE {
+} else {
     ; SF: Hack. This probably mostly works but a) we could delete a lot of
     ; translation code if we don't need any translations b) it's just possible
     ; the interpreter checks for PETSCII values returned by this function and we

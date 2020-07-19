@@ -176,7 +176,7 @@ fatalerror
 !IF 0 { ; SF
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
-} ELSE {
+} else {
 hang
     jmp hang
 }

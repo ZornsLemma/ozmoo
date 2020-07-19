@@ -57,9 +57,9 @@ z_ins_read_char
     ; ldy z_operand_value_low_arr
     ; optional time routine arguments
 	jsr printchar_flush
-!IFNDEF ACORN {
+!ifndef ACORN {
     jsr turn_on_cursor
-} ELSE {
+} else {
     ldx #1
     jsr cursor_control
 }
@@ -91,7 +91,7 @@ z_ins_read_char
 	pha
 !ifndef ACORN {
     jsr turn_off_cursor
-} ELSE {
+} else {
     ldx #0
     jsr cursor_control
 }
@@ -402,7 +402,7 @@ convert_zchar_to_char
 +++	rts
 
 translate_petscii_to_zscii
-!IFNDEF ACORN {
+!ifndef ACORN {
 	ldx #character_translation_table_in_end - character_translation_table_in - 1
 -	cmp character_translation_table_in,x
 	bcc .no_match
@@ -437,7 +437,7 @@ translate_petscii_to_zscii
 	dex
 	lda character_translation_table_in,x
 	rts
-} ELSE {
+} else {
     ; SFTODO: Probably mostly OK, but we may need some translation. Also prob
     ; lots of code/data we can delete.
 	rts
@@ -941,7 +941,7 @@ update_read_text_timer
 }
 
 getchar_and_maybe_toggle_darkmode
-!IFNDEF ACORN {
+!ifndef ACORN {
 	jsr kernal_getchar
  	cmp #133
 	bne +
@@ -949,7 +949,7 @@ getchar_and_maybe_toggle_darkmode
 	ldx #40 ; Side effect to help when called from MORE prompt
 	lda #0
 +	rts
-} ELSE {
+} else {
     ; SFTODO: We probably need to do something (if only *FX229,1 on startup)
     ; about the Escape key.
     lda #osbyte_read_key
@@ -1097,7 +1097,7 @@ update_cursor
 	sta (zp_colourline),y
 	ldy object_temp
     rts
-} ELSE {
+} else {
     ; We don't use turn_{on,off}_cursor as routine names for Acorn hardware
     ; cursor control because it gets confusing. The software cursor and its
     ; blinking support on the C64 mean these two routines are called repeatedly
@@ -1225,7 +1225,7 @@ read_text
     jmp .p0
 .p1
 }
-!IFNDEF ACORN {
+!ifndef ACORN {
     ; SFTODO WE SHOULD PROB TURN ON FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL
     jsr turn_on_cursor
 }
@@ -1245,7 +1245,7 @@ read_text
 +
 !ifndef ACORN {
     cmp #8
-} ELSE {
+} else {
     cmp #del
 }
     bne +
@@ -1259,7 +1259,7 @@ read_text
 }
 	lda .petscii_char_read
     jsr s_printchar ; print the delete char
-!IFNDEF ACORN {
+!ifndef ACORN {
 	jsr turn_on_cursor
 }
 !ifdef Z5PLUS {

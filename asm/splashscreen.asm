@@ -39,7 +39,7 @@ splash_line_y
 +	
 	lda #147
 	jmp s_printchar
-} ELSE {
+} else {
 -       ; jsr osrdch SF: For the moment the splashscreen is a single line of
         ; text so no need to pause, will need a proper splashscreen eventually
         rts
