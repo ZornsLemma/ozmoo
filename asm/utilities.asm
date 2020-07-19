@@ -713,9 +713,9 @@ kernal_readtime
     bpl -
     ; All the above means we're at no more or less risk than a C64 of having the
     ; time roll over during a game. It would take >3.8 days for this to happen.
-    lda .current_clock+2
+    ldy .current_clock+2
     ldx .current_clock+1
-    ldy .current_clock+0
+    lda .current_clock+0
     rts
 
 .initial_clock
