@@ -4,7 +4,7 @@ boot_device !byte 0
 ask_for_save_device !byte $ff
 
 !ifndef VMEM {
-!ifndef ACORN { ; SFTODO: We probably don't need this, at least not for initial VMEM implementation with no slick features
+!ifndef ACORN { ; SFTODO: We probably don't need this, at least not for initial implementation with no slick features
 disk_info
 	!byte 0, 0, 1  ; Interleave, save slots, # of disks
 	!byte 8, 8, 0, 0, 0, 130, 131, 0 
