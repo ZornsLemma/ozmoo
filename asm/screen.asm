@@ -72,10 +72,10 @@ erase_window
     lda #0
 	beq .clear_from_a ; Always branch
 }
-    ; SFTODO: This could be rewritten to clear the whole area in one go using
-    ; a text window, but since it would introduce a divergence from upstream
-    ; with potential for bugs I'd want a fairly big performance improvement in
-    ; a real game to make it worthwhile.
+    ; SF: ENHANCEMENT: This could be rewritten to clear the whole area in one go
+    ; using a text window, but since it would introduce a divergence from
+    ; upstream with potential for bugs I'd want a decent performance improvement
+    ; in a real game to make it worthwhile.
 .window_0
     lda window_start_row + 1
 .clear_from_a
@@ -96,15 +96,12 @@ erase_window
 !ifdef Z5PLUS {
     lda window_start_row + 1
 } else {
-    lda #24 ; SF: Implicit screen height assumption?
+    lda #24 ; SFTODO: Implicit screen height assumption?
 }
 	stx cursor_row + 1
     pha
     jmp .end_erase
-    ; SFTODO: This could be rewritten to clear the whole area in one go using
-    ; a text window, but since it would introduce a divergence from upstream
-    ; with potential for bugs I'd want a fairly big performance improvement in
-    ; a real game to make it worthwhile.
+    ; SF: ENHANCEMENT: As above.
 .window_1
 	lda window_start_row + 1
 	cmp window_start_row + 2
