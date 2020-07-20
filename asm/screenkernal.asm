@@ -42,7 +42,11 @@ s_init
     sta zp_screencolumn
     sta zp_screenrow
 	; Set to 0: s_ignore_next_linebreak, s_reverse
+!ifndef ACORN {
     ldx #3
+} else {
+    ldx #2 ; there's no s_reverse byte on Acorn
+}
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -
