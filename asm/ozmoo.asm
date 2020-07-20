@@ -13,6 +13,7 @@
 }
 
 !ifdef ALLRAM {
+; SFTODO: This is probably fine, but are any Acorn-specific tweaks necessary or useful here?
 !ifdef CACHE_PAGES {
 	cache_pages = CACHE_PAGES ; Note, this is not final. One page may be added. vmem_cache_count will hold final # of pages.
 } else {
@@ -178,6 +179,7 @@ program_start
 ; filelength !byte 0, 0, 0
 ; fileblocks !byte 0, 0
 ; c64_model !byte 0 ; 1=NTSC/6567R56A, 2=NTSC/6567R8, 3=PAL/6569
+; SFTODO: I suspect we may not need this
 !ifdef VMEM {
 game_id		!byte 0,0,0,0
 }
@@ -370,6 +372,8 @@ z_init
 !zone z_init {
 
 !ifdef DEBUG {
+; SFTODO: For the record, not going to port *any* of the PREOPT stuff yet, but
+; will probably want to do so later.
 !ifdef PREOPT {
 	jsr print_following_string
 	!pet "*** vmem optimization mode ***",13,13,0
@@ -597,7 +601,7 @@ deletable_init
 	sty boot_device ; Boot device# stored
 }
 !ifdef VMEM {
-!ifndef ACORN { ; SFTODO!?
+!ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
 	lda #<config_load_address
 	sta readblocks_mempos
 	lda #>config_load_address
@@ -721,7 +725,9 @@ deletable_init
 
 	jsr prepare_static_high_memory
 
+!ifndef ACORN { ; SFTODO!?
 	jsr insert_disks_at_boot
+}
 
 	lda use_reu
 	bne .dont_preload
@@ -765,6 +771,7 @@ deletable_init
 }
 
 !ifdef VMEM {
+!ifndef ACORN { ; SFTODO: We may want some of this later, but for now I think not
 !zone disk_config {
 auto_disk_config
 ; Limit # of save slots to no more than 10
@@ -992,6 +999,13 @@ reu_start
     !pet 13,"Use REU? (Y/N) ",0
 
 }
+} else {
+reu_start
+	lda #0
+	sta use_reu
+    rts
+}
+
 prepare_static_high_memory
     lda #$ff
     sta zp_pc_h
@@ -1131,5 +1145,6 @@ vmem_start
 }
 }
 !ifndef config_load_address {
+    !error SFTODO
 	config_load_address = $0400
 }
