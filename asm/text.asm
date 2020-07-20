@@ -1258,9 +1258,18 @@ read_text
 }
     jmp .readkey ; don't store in the array
 +   ; disallow cursor keys etc
-    ; SFTODO: I suspect this will need tweaking to allow ZSCII 27 (escape)
-    ; through, but let's wait until a test case turns up before diverging from
-    ; upstream in this respect.
+    ; SF: Note that this is part of read_text, used only by z_ins_read, and
+    ; therefore we are reading a line of text here. The following code will
+    ; filter out superficially interesting things like Escape and function keys,
+    ; but as we're just reading a line of text that's probably OK. This is
+    ; upstream code anyway and we're in the ZSCII world here, so this is
+    ; presumably well tested. (ozmoo doesn't appear to support custom
+    ; terminating characters in Z5, so some of the more exotic possibilities are
+    ; probably not relevant in practice.) Although I doubt there's the memory to
+    ; do it properly, this would probably also mean we could implement history
+    ; recall/editing using the cursor keys here without preventing the
+    ; possibility of a game using the cursor keys for its own purposes, as the
+    ; game would probably read them using z_ins_read_char.
     cmp #32
     bcs ++
 	jmp .readkey
