@@ -313,6 +313,10 @@ read_track_sector
     LDA #'X'
     JSR $FFEE
     JMP SFHANG
+conv2dec
+    LDA #'Q'
+    JSR $FFEE
+    JMP SFHANG
 }
 
     bcs .error    ; if carry set, the file could not be opened

@@ -600,6 +600,7 @@ printstring
 }
 
 !ifdef VMEM {
+!ifndef ACORN {
 ; SFTODO: MAY NOT NEED THIS ON ACORN!?
 conv2dec
     ; convert a to decimal in x,a
@@ -613,6 +614,7 @@ conv2dec
     jmp -
 +   adc #$30
     rts
+}
 }
 
 mult16
