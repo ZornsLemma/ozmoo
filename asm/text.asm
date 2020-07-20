@@ -1234,11 +1234,7 @@ read_text
 ;    lda #13 ; return 13
     jmp .read_text_done
 +
-!ifndef ACORN {
-    cmp #8
-} else {
-    cmp #del
-}
+    cmp #8 ; ZSCII delete
     bne +
     ; allow delete if anything in the buffer
     ldy .read_text_column
@@ -1262,11 +1258,12 @@ read_text
 }
     jmp .readkey ; don't store in the array
 +   ; disallow cursor keys etc
+    ; SFTODO: I suspect this will need tweaking to allow ZSCII 27 (escape)
+    ; through, but let's wait until a test case turns up before diverging from
+    ; upstream in this respect.
     cmp #32
     bcs ++
 	jmp .readkey
-    ; SFTODO: I SUSPECT THE VALID KEYCODES (AND/OR TRANSLATIONS FROM ACORN TO
-    ; ZSCII) MAY NEED TWEAKING
 ++	cmp #128
     bcc .char_is_ok
 	cmp #155

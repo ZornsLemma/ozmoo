@@ -403,13 +403,13 @@ character_translation_table_in
 	!byte $08, $14 ; Backspace
 	!byte $82, $11 ; Cursor down
 } else {
-    ; SFTODO: Should be be converting delete from 127 to 8 here??
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     !byte $81, $8b ; Cursor up
     !byte $82, $8a ; Cursor down
     !byte $84, $89 ; Cursor right
     !byte $83, $88 ; Cursor left
 }
+    !byte $08, $7f ; Backspace
     !byte $db, $60 ; £
 }
 character_translation_table_in_end
