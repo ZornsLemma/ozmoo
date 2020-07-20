@@ -190,8 +190,8 @@ s_printchar
 }
     jmp .printchar_end
 +
-    ; SFTODO: I don't believe any of the following codes or their Acorn
-    ; equivalents will come through this routine on the Acorn port.
+    ; SF: Reverse video isn't handled by sending control codes through
+    ; s_printchar on the Acorn.
 !ifndef ACORN {
     cmp #$93 
     bne +
