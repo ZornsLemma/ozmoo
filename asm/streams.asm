@@ -403,6 +403,12 @@ character_translation_table_in
 	!byte $08, $14 ; Backspace
 	!byte $82, $11 ; Cursor down
 } else {
+    ; SF: ENHANCEMENT: The Z-machine allows function keys as input to a game, so
+    ; there may be some value in supporting that. However, for games which don't
+    ; use them, it's nice to allow the user to use the standard *KEY
+    ; functionality, so we shouldn't force special case handling of function
+    ; keys. Something to look into if a game which uses function keys ever comes
+    ; along.
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     !byte $81, $8b ; Cursor up
     !byte $82, $8a ; Cursor down

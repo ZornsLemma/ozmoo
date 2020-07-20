@@ -28,7 +28,7 @@ benchmark_read_char
 	jsr print_byte_as_hex
 	lda $a1
 	jsr print_byte_as_hex
-	lda $a2 ; SF: Kernal jiffy timer, need to use something else if/when port this bit
+	lda $a2 ; SFTODO: Kernal jiffy timer, need to use something else if/when port this bit
 	jsr print_byte_as_hex
 	jsr space
 	jsr printchar_flush
@@ -1719,8 +1719,6 @@ print_addr
     beq +
     jmp .print_chars_loop
 +   rts
-; SFTODO: http://inform-fiction.org/zmachine/standards/z1point0/sect03.html says (eg) that "delete" is input as code 8. I think I'm probably OK to use 127 internally (in the same way the C64 version works with PETSCII internally), but something will probably need to be mapping that to 8 if the Z-machine program running is reading the keyboard. I haven't really looked into how this works, just wanted to make a note so I don't forget.
-; SFTODO: http://inform-fiction.org/zmachine/standards/z1point0/sect03.html says cursor keys and function keys can be "input". This may mean I need to make it configurable at build time whether the cursor keys are available for cursor editing or generate input to the Z-machine.
 
 ; .escape_char !byte 0
 ; .escape_char_counter !byte 0
