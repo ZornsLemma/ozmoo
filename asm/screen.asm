@@ -857,7 +857,9 @@ draw_status_line
 !ifdef ACORN {
 ; SFTODO: This assumes non-mode 7. We can probably support inverse video at least
 ; for the status line in mode 7, although we'd lose a few characters to control
-; codes.
+; codes. (Lurkio on stardot suggests just using cyan-on-black for the status
+; bar in mode 7; that would only burn one space on a control code instead of
+; three and seems a good idea.)
 normal_video
     lda #7
     jsr .set_tcol
@@ -880,12 +882,6 @@ inverse_video
 ;
 cursor_control
 ; Parameters: X=0 for off, 1 for on
-!IF 0 { ; SFTODO TEMP
-    txa
-    clc
-    adc #65
-    jsr oswrch
-}
     txa
     pha
     beq +

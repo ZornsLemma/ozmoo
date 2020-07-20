@@ -148,7 +148,7 @@ s_printchar
     lda s_colour
     sta (zp_colourline),y
 } else {
-    ; SFTODO: THIS IS NOT WORKING, THIS BIT MAY BE OK BUT TO BE SAFE/RELIABLE DO
+    ; SFTODO: THIS IS NOT WORKING (OK, IT DOES NOW WORK, BUT THE GIST OF THIS COMMENT IS STILL VALID), THIS BIT MAY BE OK BUT TO BE SAFE/RELIABLE DO
     ; WE NEED TO SET OS CURSOR TO CURRENT CURSOR POSITION FIRST? - MOSTLY WORKING BUT IF YOU *JUST* WRAP OVER ONTO A NEW LINE AND DON'T HAVE A NORMAL CHAR OUTPUT THE SCREEN IS CORRUPT ON BACKSPACING
     jsr oswrch
     dec zp_screencolumn ; move back
@@ -291,6 +291,11 @@ s_printchar
 	cmp #25 ; SFTODO: Implicit screen height assumption?
 	bcc +
     inx
+    ; SFTODO: I don't know if the VM allows it, and it *might* look ugly, but
+    ; note that if we did a *hardware* scroll of the entire screen and then
+    ; just redrew the "fixed" status line/window 1 at the top of the screen
+    ; afterwards, that might be a net performance win (particularly in high
+    ; resolution modes). Worth thinking about anyway.
     jsr .s_pre_scroll ; SFTODO MUST LEAVE CURSOR AT BOTTOM RIGHT - TEXT WIN DEF WILL MOVE IT TO TOP LEFT
 +
 .printchar_nowrap
@@ -500,6 +505,8 @@ s_erase_line_from_cursor
     ; SFTODO: I think if window_start_row+1 is 0 we are scrolling the whole
     ; screen and by not defining a text window we will get a much faster
     ; hardware scroll. But let's get it working before we try to optimise it...
+    ; (I suspect it's rare to actually not have a status bar/window 1 on
+    ; screen.)
     ; Define a text window covering the region to scroll
     lda #vdu_define_text_window
     jsr oswrch
