@@ -916,14 +916,14 @@ cursor_control
     bne -
     pla
     bne +
+!ifndef ACORN_CURSOR_PASS_THROUGH {
     ; We allow the use of the standard Acorn cursor editing. Judging from the
     ; OS 1.20 disassembly, this only gets disabled when a carriage return is
     ; output via OSWRCH, which we don't normally do. We therefore do it here
     ; solely to turn off cursor editing.
-    ; SFTODO: We could not compile this in if ACORN_CURSOR_PASS_THROUGH is
-    ; defined, as cursor editing is implicitly disabled then.
     lda #$0d
     sta s_cursors_inconsistent
     jmp oswrch
+}
 +   rts
 }
