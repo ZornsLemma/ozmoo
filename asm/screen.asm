@@ -114,6 +114,10 @@ erase_window
 	cmp window_start_row + 1
     bne -
 .end_erase
+!ifdef ACORN {
+    lda #1
+    sta s_cursors_inconsistent
+}
     pla
     sta zp_screenrow
 .return	
@@ -876,7 +880,7 @@ normal_video
     lda #128
     jmp .set_tcol
 
-inverse_video
+inverse_video ; SFTODO: Should call this reverse_video for consistency
     lda #0
     jsr .set_tcol
     lda #135
@@ -891,6 +895,9 @@ inverse_video
 
 ;
 cursor_control
+; Turn the OS cursor on or off. When it's turned on it's forced into the
+; location corresponding to zp_screen{column,row}, which is where it "should"
+; have been all along.
 ; Parameters: X=0 for off, 1 for on
     txa
     pha
@@ -912,13 +919,11 @@ cursor_control
     ; We allow the use of the standard Acorn cursor editing. Judging from the
     ; OS 1.20 disassembly, this only gets disabled when a carriage return is
     ; output via OSWRCH, which we don't normally do. We therefore do it here
-    ; solely to turn off cursor editing; the move in the OS text cursor
-    ; position is harmless. SFTODO: Is it? I need to rationalise assumptions
-    ; about this once everything settles down. It is probably fine but check.
+    ; solely to turn off cursor editing.
     ; SFTODO: We could not compile this in if ACORN_CURSOR_PASS_THROUGH is
-    ; defined, as cursor editing is implicitly disabled then. However, until I
-    ; sit down and think through the cursor movement rules I won't do this.
+    ; defined, as cursor editing is implicitly disabled then.
     lda #$0d
+    sta s_cursors_inconsistent
     jmp oswrch
 +   rts
 }

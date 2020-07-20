@@ -98,12 +98,14 @@ is_buffered_window	  = $ab;  !byte 1
 
 ; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
 s_ignore_next_linebreak = $b0 ; 3 bytes
-s_reverse 			  = $b3 ; !byte 0 ; SFTODO: Not used on Acorn but easier to keep memory allocated, probably
+s_reverse 			  = $b3 ; !byte 0 ; SFTODO: Not used on Acorn but easier to keep memory allocated, probably - SHOULD IT BE USED?
 
 s_stored_x			  = $b4 ; !byte 0
 s_stored_y			  = $b5 ; !byte 0
 !ifndef ACORN {
 s_current_screenpos_row = $b6 ; !byte $ff
+} else {
+s_cursors_inconsistent = $b6 ; !byte 0
 }
 
 max_chars_on_line	  = $bd; !byte 0

@@ -20,13 +20,23 @@
 
 ;TESTSCREEN = 1
 
+; SF: s_printchar should be used for virtually all text output. This way it can
+; update zp_screen{column,row} to match what it has sent to OSWRCH and they will
+; agree with the OS text cursor position. If zp_screen{column,row} are modified
+; without moving the OS text cursor or vice versa, setting
+; s_cursors_inconsistent to a non-0 value will cause the OS cursor to be moved
+; the next time it matters (when we try to print something via OSWRCH, or when
+; the OS cursor becomes visible to the user).
+
 !zone screenkernal {
 
 s_init
     ; init cursor
-!ifndef ACORN {
     lda #$ff
+!ifndef ACORN {
     sta s_current_screenpos_row ; force recalculation first time
+} else {
+    sta s_cursors_inconsistent
 }
     lda #0
     sta zp_screencolumn
@@ -55,6 +65,9 @@ s_plot
 !ifndef ACORN {
 	jmp .update_screenpos
 } else {
+    lda #1
+    sta s_cursors_inconsistent
+.return
     rts
 }
 
@@ -74,6 +87,10 @@ s_delete_cursor
 
 !ifdef ACORN {
 s_cursor_to_screenrowcolumn
+    lda s_cursors_inconsistent
+    beq .return
+    lda #0
+    sta s_cursors_inconsistent
     lda #vdu_goto_xy
     jsr oswrch
     lda zp_screencolumn
@@ -143,8 +160,8 @@ s_printchar
     lda s_colour
     sta (zp_colourline),y
 } else {
-    ; SFTODO: THIS IS NOT WORKING (OK, IT DOES NOW WORK, BUT THE GIST OF THIS COMMENT IS STILL VALID), THIS BIT MAY BE OK BUT TO BE SAFE/RELIABLE DO
-    ; WE NEED TO SET OS CURSOR TO CURRENT CURSOR POSITION FIRST? - MOSTLY WORKING BUT IF YOU *JUST* WRAP OVER ONTO A NEW LINE AND DON'T HAVE A NORMAL CHAR OUTPUT THE SCREEN IS CORRUPT ON BACKSPACING
+    jsr s_cursor_to_screenrowcolumn
+    lda #127
     jsr oswrch
     dec zp_screencolumn ; move back
     bpl ++
@@ -262,11 +279,9 @@ s_printchar
 +	jsr .s_scroll
 } else {
     ; OSWRCH may cause the screen to scroll if we're at the bottom right
-    ; character. We therefore don't use .s_scroll to *do* the scroll, we just
+    ; character. We therefore don't use .s_scroll to do the scroll, we just
     ; define a text window to tell the OS what to scroll.
 
-    ; SFTODO: I suspect "often" the OS text cursor will already be in the right
-    ; place, but let's play it safe for now.
     ; SFTODO: We should probably take s_reverse into account here
     pha
     jsr s_cursor_to_screenrowcolumn
@@ -279,28 +294,28 @@ s_printchar
     bcc .printchar_nowrap
 	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
     lda #0
-    tax
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
 	cmp #25 ; SFTODO: Implicit screen height assumption?
 	bcc +
-    inx
     ; SF: ENHANCEMENT: I don't know if the VM allows it (do we have enough
     ; information to reliably do the redraw without the game's cooperation?),
     ; and it *might* look ugly, but we might gain a performance boost
     ; (particularly in high resolution modes) by doing a hardware scroll of the
     ; entire screen then redrawing the status line/window 1 afterwards.
-    jsr .s_pre_scroll ; SFTODO MUST LEAVE CURSOR AT BOTTOM RIGHT - TEXT WIN DEF WILL MOVE IT TO TOP LEFT
+    jsr .s_pre_scroll
+    pla
+    jsr oswrch
+    lda #vdu_reset_text_window
+    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
+    pha
 +
 .printchar_nowrap
     pla
-    jsr oswrch ; SFTODO THIS IS THE "MAIN" CHAR PRINT OSWRCH
-    txa
-    beq .printchar_end
-    lda #vdu_reset_text_window
+    ; This OSWRCH call is the one which actually prints most of the text on the
+    ; screen.
     jsr oswrch
-    jsr s_cursor_to_screenrowcolumn
 }
 .printchar_end
     ldx s_stored_x
@@ -463,11 +478,8 @@ s_erase_line_from_cursor
     lda #vdu_down
     jsr oswrch
     ; Remove the text window
-    ; SFTODO: Do we need to put the OS text cursor back somewhere? For now we will
-    ; almost certainly get away with not doing this, but it may be optimal to
-    ; do it to allow us to make assumptions about its positioning elsewhere in
-    ; the code.
     lda #vdu_reset_text_window
+    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
 s_erase_line
@@ -489,15 +501,17 @@ s_erase_line_from_cursor
     jsr oswrch
     pla
     jsr oswrch
-    ; Clear it and reset the text window
+    ; Clear it and reset the text window.
     lda #vdu_cls
     jsr oswrch
     lda #vdu_reset_text_window
+    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
     ; s_pre_scroll preserves X and Y
 .s_pre_scroll
-    ; Define a text window covering the region to scroll
+    ; Define a text window covering the region to scroll, leaving the OS text
+    ; cursor at the bottom right of the text window.
     ; SF: ENHANCEMENT: If window_start_row+1 is 0 we are scrolling the whole
     ; screen, so defining the text window has no visible effect and will slow
     ; things down by preventing the OS doing a hardware scroll. It wouldn't be
