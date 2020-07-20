@@ -342,7 +342,7 @@ z_ins_set_text_style
     lda #18 ; reverse on
     jmp s_printchar
 } else {
-    jmp inverse_video
+    jmp reverse_video
 }
 
 
@@ -719,7 +719,7 @@ draw_status_line
 	lda zcolours,y
 	jsr s_set_text_colour
 } else {
-    jsr inverse_video
+    jsr reverse_video 
 }
     ;
     ; Room name
@@ -869,7 +869,7 @@ draw_status_line
 }
 
 !ifdef ACORN {
-; SFTODO: This assumes non-mode 7. We can probably support inverse video at least
+; SFTODO: This assumes non-mode 7. We can probably support reverse video at least
 ; for the status line in mode 7, although we'd lose a few characters to control
 ; codes. (Lurkio on stardot suggests just using cyan-on-black for the status
 ; bar in mode 7; that would only burn one space on a control code instead of
@@ -880,7 +880,7 @@ normal_video
     lda #128
     jmp .set_tcol
 
-inverse_video ; SFTODO: Should call this reverse_video for consistency
+reverse_video
     lda #0
     jsr .set_tcol
     lda #135
