@@ -286,7 +286,6 @@ s_printchar
     ; character. We therefore don't use .s_scroll to do the scroll, we just
     ; define a text window to tell the OS what to scroll.
 
-    ; SFTODO: We should probably take s_reverse into account here
     pha
     jsr s_cursor_to_screenrowcolumn
     ldy zp_screencolumn
