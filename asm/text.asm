@@ -1308,7 +1308,10 @@ read_text
     jsr update_cursor
 }
     pla
-    ; convert to lower case SFTODO?! WHAT CHAR SET IS THIS WORKING ON?
+    ; convert to lower case
+    ; SF: We are working with ZSCII here, so this is nothing to do with PETSCII
+    ; and we therefore do this on the Acorn too. I assume this helps keep some
+    ; games happier, and no game requires case-sensitive input.
 	cmp #$41
 	bcc .dont_invert_case
 	cmp #$5b
