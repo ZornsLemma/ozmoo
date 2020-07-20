@@ -286,11 +286,11 @@ s_printchar
 	cmp #25 ; SFTODO: Implicit screen height assumption?
 	bcc +
     inx
-    ; SFTODO: I don't know if the VM allows it, and it *might* look ugly, but
-    ; note that if we did a *hardware* scroll of the entire screen and then
-    ; just redrew the "fixed" status line/window 1 at the top of the screen
-    ; afterwards, that might be a net performance win (particularly in high
-    ; resolution modes). Worth thinking about anyway.
+    ; SF: ENHANCEMENT: I don't know if the VM allows it (do we have enough
+    ; information to reliably do the redraw without the game's cooperation?),
+    ; and it *might* look ugly, but we might gain a performance boost
+    ; (particularly in high resolution modes) by doing a hardware scroll of the
+    ; entire screen then redrawing the status line/window 1 afterwards.
     jsr .s_pre_scroll ; SFTODO MUST LEAVE CURSOR AT BOTTOM RIGHT - TEXT WIN DEF WILL MOVE IT TO TOP LEFT
 +
 .printchar_nowrap
@@ -497,12 +497,14 @@ s_erase_line_from_cursor
 
     ; s_pre_scroll preserves X and Y
 .s_pre_scroll
-    ; SFTODO: I think if window_start_row+1 is 0 we are scrolling the whole
-    ; screen and by not defining a text window we will get a much faster
-    ; hardware scroll. But let's get it working before we try to optimise it...
-    ; (I suspect it's rare to actually not have a status bar/window 1 on
-    ; screen.)
     ; Define a text window covering the region to scroll
+    ; SF: ENHANCEMENT: If window_start_row+1 is 0 we are scrolling the whole
+    ; screen, so defining the text window has no visible effect and will slow
+    ; things down by preventing the OS doing a hardware scroll. It wouldn't be
+    ; hard to avoid defining the text window in this case, but in reality I
+    ; suspect there's nearly always a status bar or similar on the screen and
+    ; this case won't occur. If a game where this would be useful turns up I
+    ; can consider it.
     lda #vdu_define_text_window
     jsr oswrch
     lda #0
@@ -545,7 +547,9 @@ cursor_character !byte CURSORCHAR
 }
 
 ; SFTODO: Eventually it might be nice if (e.g.) f0 cycled through the available
-; background colours and f1 did the same for the foreground.
+; background colours and f1 did the same for the foreground. (Perhaps SHIFT+f0/1
+; instead to leave the unshifted ones available for *KEY and/or games which try
+; to use function keys.)
 !ifndef ACORN {
 toggle_darkmode
 !ifdef Z5PLUS {
