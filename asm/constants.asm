@@ -218,6 +218,7 @@ vdu_home = 30
 vdu_goto_xy = 31
 osword_read_clock = 1
 osbyte_set_cursor_editing = $04
+osbyte_reflect_keyboard_status = $76
 osbyte_read_key = $81
 osbyte_enter_language = $8e
 osbyte_rw_escape_key = $e5

@@ -436,22 +436,23 @@ show_more_prompt
 	lda .more_text_char
 	sta $07e7
 } else {
-    ; Wait until SHIFT is pressed; this mimics the OS paged mode behaviour.
-    ; SFTODO: We *don't* print a "more" character; should we? The OS paged mode
-    ; doesn't. I don't know exactly what (if anything) is guaranteed about free
-    ; space at the end of the last line of the screen, but note that AFAIK we
-    ; can't portably print in the very bottom right character position without
-    ; causing the screen to scroll.
-    ; SFTODO: I think the OS paged mode might do some futzing with the keyboard
-    ; LEDs to indicate "waiting for SHIFT". If so, we should emulate that here.
-    ; SFTODO: Will eventually want to disable this if BENCHMARK is defined as
-    ; in Commodore code above.
--   lda #osbyte_read_key
+!ifndef BENCHMARK {
+    ; We mimic the OS paged mode behaviour here: we flicker the keyboard LEDs
+    ; and wait until SHIFT is pressed. It would be difficult (impossible using
+    ; portable OS routines?) to display a more prompt in the bottom right
+    ; character without causing a scroll. We could maybe define a text window
+    ; covering that single character and repeatedly print (say) "X" and " " over
+    ; and over again but that might look a bit ugly, although I haven't tried
+    ; it.
+-   lda #osbyte_reflect_keyboard_status
+    jsr osbyte
+    lda #osbyte_read_key
     ldx #$ff
     ldy #$ff
     jsr osbyte
     tya
     beq -
+}
 }
 .increase_num_rows_done
     rts
