@@ -439,11 +439,19 @@ show_more_prompt
 !ifndef BENCHMARK {
     ; We mimic the OS paged mode behaviour here: we flicker the keyboard LEDs
     ; and wait until SHIFT is pressed. It would be difficult (impossible using
-    ; portable OS routines?) to display a more prompt in the bottom right
+    ; portable OS routines?) to display a "more" prompt in the bottom right
     ; character without causing a scroll. We could maybe define a text window
     ; covering that single character and repeatedly print (say) "X" and " " over
     ; and over again but that might look a bit ugly, although I haven't tried
     ; it.
+    ; SF: ENHANCEMENT: Just possibly we could enable OS paged mode, define a
+    ; single cell text window at the bottom right, print a single-character
+    ; "more" prompt and let the OS block until SHIFT is pressed. I haven't tried
+    ; this and it strikes me as a corner-ish case that may behave differently on
+    ; different OS versions so would need to test carefully. To be honest it
+    ; feels more Acorn-y to not display a "more" prompt character anyway, but
+    ; maybe users will disagree and by noting possibilities to implement this I
+    ; can try to convince myself I'm not adopting a sour grapes attitude. :-)
 -   lda #osbyte_reflect_keyboard_status
     jsr osbyte
     lda #osbyte_read_key
