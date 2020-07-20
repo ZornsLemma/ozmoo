@@ -600,6 +600,7 @@ printstring
 }
 
 !ifdef VMEM {
+; SFTODO: MAY NOT NEED THIS ON ACORN!?
 conv2dec
     ; convert a to decimal in x,a
     ; for example a=#$0f -> x='1', a='5'

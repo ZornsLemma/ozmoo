@@ -128,7 +128,13 @@ read_byte_at_z_address
 	vmem_blocksize = 512
 } else {
 	vmem_blocksize = 1024 ; This hasn't been used in a long time, and probably doesn't work anymore.
+!ifdef ACORN {
+    ; Given the above comment I've not made any attempt to make this work on
+    ; Acorn.
+    !error "VMEM only supports SMALLBLOCK on Acorn"
 }
+}
+
 
 vmem_blockmask = 255 - (>(vmem_blocksize - 1))
 vmem_block_pagecount = vmem_blocksize / 256
