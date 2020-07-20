@@ -28,6 +28,15 @@
 ; the next time it matters (when we try to print something via OSWRCH, or when
 ; the OS cursor becomes visible to the user).
 
+; SFTODO: I think we may need to use s_reverse on Acorn after all but I'd like to
+; wait and see if I can find something breaking before I make this change. IIRC
+; the Z-machine spec says even when reverse video is on white space is not in
+; reverse video, but I believe we will generate reverse video white space when
+; scrolling (vdu_down, OSWRCH of normal character at bottom right) or "erasing"
+; via vdu_cls. If this is the case, we need to track reverse_video in s_reverse
+; and temporarily switch it off before performing those operations it would
+; incorrectly affect.
+
 !zone screenkernal {
 
 s_init
