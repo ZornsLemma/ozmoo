@@ -115,13 +115,8 @@ s_printchar
 }
 +++	jmp .perform_newline
 +   
-    ; SFTODO: Not too sure what to do here; let's see. 20 is PETSCII character
-    ; for DEL. I can't see any obvious *code* which calls this with DEL, but
-    ; a) maybe the running game can output a code (perhaps 127) which would
-    ; normally get transformed into 20 (but won't on Acorn port as we don't
-    ; translate to PETSCII) b) maybe we can get here with a "DEL" character when
-    ; handling command line input. Need to come back to this, for now I'll guess
-    ; changing 20 to 127 is right.
+    ; SF: Note that .readkey will call s_printchar with the native delete
+    ; character.
 !ifndef ACORN {
     cmp #20
 } else {
