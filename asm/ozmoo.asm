@@ -547,6 +547,10 @@ deletable_init_start
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     ; SFTODO: ACORN_CURSOR_PASS_THROUGH is completely untested; I need to find
     ; a game which uses cursor keys.
+    ; SFTODO: Arguably we should always use ACORN_CURSOR_PASS_THROUGH mode *but*
+    ; re-enable cursor editing temporarily when we're reading a line of text
+    ; instead of a single character, then you'd always have cursor editing for
+    ; commands but games could still read cursor keys individually.
     lda #osbyte_set_cursor_editing
     ldx #1
     ldy #0

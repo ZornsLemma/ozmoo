@@ -10,6 +10,10 @@ streams_output_selected		!byte 0, 0, 0, 0
 .streams_tmp	!byte 0,0,0
 .current_character !byte 0
 
+; SF: None of the non-English character sets are supported by the Acorn port
+; yet. I'll look into this as and when someone who speaks the language in
+; question expresses an interest and has a game to test with.
+
 !ifdef SWEDISH_CHARS {
 
 ; SWEDISH
