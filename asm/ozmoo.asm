@@ -637,7 +637,7 @@ deletable_init
     ; DATA file containing the game. Because this is "our" disc, we can assume
     ; any file starting with "D" is the right one. SFTODO: Perhaps slightly more
     ; elegant and no harder (might even save a few bytes due to Y needing less
-    ; shfiting) to look for a file in the "D" directory instead of usig first
+    ; shfiting) to look for a file in the "D" directory instead of using first
     ; character. The file could then be called D.CURSES or D.DEJAVU or whatever
     ; to make the contents more obvious.
     lda #2
