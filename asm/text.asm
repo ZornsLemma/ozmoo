@@ -1309,9 +1309,8 @@ read_text
 }
     pla
     ; convert to lower case
-    ; SF: We are working with ZSCII here, so this is nothing to do with PETSCII
-    ; and we therefore do this on the Acorn too. I assume this helps keep some
-    ; games happier, and no game requires case-sensitive input.
+    ; SF: We are working with ZSCII here, so this is nothing to do with PETSCII.
+    ; I suspect this is done to comply with 3.7 of the Z-machine specification.
 	cmp #$41
 	bcc .dont_invert_case
 	cmp #$5b
