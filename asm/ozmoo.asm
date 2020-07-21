@@ -632,6 +632,54 @@ deletable_init
 	
 	jsr auto_disk_config
 ;	jsr init_screen_colours
+} else {
+    ; Examine the disc catalogue and determine the first sector occupied by the
+    ; DATA file containing the game. Because this is "our" disc, we can assume
+    ; any file starting with "D" is the right one.
+    lda #2
+    sta readblocks_numblocks
+    lda #0
+    sta readblocks_currentblock
+    sta readblocks_currentblock + 1
+    lda #<vmem_cache_start
+    sta zp_temp
+    sta readblocks_mempos
+    lda #>vmem_cache_start
+    sta zp_temp + 1
+    sta readblocks_mempos + 1
+    jsr readblocks
+    lda #65
+    jsr oswrch
+    ldy #8
+find_file_loop
+    lda (zp_temp),y
+    jsr oswrch
+    cmp #'D'
+    beq file_found
+    tya
+    clc
+    adc #8
+    tay
+    bne find_file_loop
+    ; We couldn't find the file.
+    ; SFTODO: Proper error?
+    lda #'X'
+    jsr oswrch
+-   jmp -
+file_found
+    inc zp_temp + 1
+    tya
+    clc
+    adc #6
+    tay
+    lda (zp_temp),y
+    and #$3
+    sta $501
+    iny
+    lda (zp_temp),y
+    sta $500
+sfhand99
+    jmp sfhand99
 }
 } else { ; End of !ifdef VMEM
 !ifndef ACORN { ; SFTODO!?

@@ -32,10 +32,17 @@ disk_info
 	!fill 120
 }
 
+!ifdef ACORN {
+readblock
+    lda #1
+    sta readblocks_numblocks
+    ; fall through to readblocks
+}
 readblocks
     ; read <n> blocks (each 256 bytes) from disc to memory
     ; set values in readblocks_* before calling this function
     ; register: a,x,y
+!ifndef ACORN {
 !ifdef TRACE_FLOPPY {
     jsr newline
     jsr print_following_string
@@ -399,6 +406,99 @@ uname_len = * - .uname
 .blocks_to_go_tmp !byte 0, 0
 .next_disk_index	!byte 0
 .disk_tracks	!byte 0
+} else {
+!ifdef TRACE_FLOPPY {
+    ; SFTODO: This not tested yet
+    jsr newline
+    jsr print_following_string
+    !text "readblocks (n,cblk,mem) ",0
+    lda readblocks_numblocks
+    jsr printa
+    jsr comma
+    lda readblocks_currentblock + 1
+    jsr print_byte_as_hex
+    lda readblocks_currentblock
+    jsr print_byte_as_hex
+    jsr comma
+    lda readblocks_mempos + 1
+    jsr print_byte_as_hex
+    lda readblocks_mempos 
+    jsr print_byte_as_hex
+    jsr newline
+}
+    ; Convert block (sector) number into track and sector.
+    ; SFTODO: DO I NEED TO BE ADDING SOME BASE TO THE BLOCK NUMBER, IS IT RELATIVE
+    ; TO DATA FILE OR TO THE DISC?
+    lda #66
+    jsr oswrch
+    lda readblocks_currentblock
+    sta dividend
+    lda readblocks_currentblock + 1
+    sta dividend + 1
+    lda #10
+    sta divisor
+    lda #0
+    sta divisor + 1
+    jsr divide16
+    lda #67
+    jsr oswrch
+
+    ; SFTODO: For now we just assume drive 0 and we don't make any attempt to
+    ; do clever stuff like validate the game disc is in the drive or allow for
+    ; multi-disc games. (For larger games, the obvious first step would be to
+    ; allow the data to be split over two sides of a single disc. That will
+    ; probably allow most games to fit, as we'd probably have 350K+ for the
+    ; game.)
+    ; SFTODO: It would definitely be a nice-to-have and probably we'd prefer to
+    ; keep things single-sided if the game fit, but is there any prospect of
+    ; minimising disc head movement by allocating "consecutive" blocks to the
+    ; same track but on both sides of the disc? i.e. using "cylinders" instead
+    ; of just "tracks".
+    lda #0+24+8 ; drive 0, single density
+    sta .osword_block + 0 ; drive
+    lda #0
+    sta .osword_block + 3 ; high order word of address
+    sta .osword_block + 4 ; high order word of address
+    ; SFTODO: Could we simply make readblocks_mempos point to .osword_block+1?
+    ; I don't know if it might get updated by the OSWORD call so perhaps best to
+    ; just play it safe.
+    lda readblocks_mempos
+    sta .osword_block + 1
+    lda readblocks_mempos + 1
+    sta .osword_block + 2
+    lda #3 ; number of parameters
+    sta .osword_block + 5
+    lda #$53 ; read data
+    sta .osword_block + 6
+    lda division_result ; track
+    sta .osword_block + 7
+    lda remainder ; sector
+    sta .osword_block + 8
+    ; We know the number of blocks is only going to be vmem_block_pagecount, so
+    ; there's no need to loop round in case it's too many to read 
+    lda readblocks_numblocks
+    ora #$20
+    sta .osword_block + 9 ; sector size and count
+
+    clc
+    lda readblocks_mempos + 1
+    adc readblocks_numblocks
+    sta readblocks_mempos + 1
+    clc
+    lda readblocks_currentblock + 1
+    adc readblocks_numblocks
+    sta readblocks_currentblock + 1
+
+    lda #osword_floppy_op
+    ldx #<.osword_block
+    ldy #>.osword_block
+    jmp osword
+
+    ; We make this 16 bytes to avoid any problems with the Tube MOS always
+    ; copying 16 bytes (see http://beebwiki.mdfs.net/OSWORD_%267F)
+.osword_block
+    !fill 16
+}
 } ; End of !ifdef VMEM
 
 close_io
