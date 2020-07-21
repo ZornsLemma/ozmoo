@@ -1075,6 +1075,7 @@ prepare_static_high_memory
 	dex
 	bpl -
 	
+!ifndef ACORN {
 	lda #5
 	clc
 	adc config_load_address + 4
@@ -1135,6 +1136,12 @@ prepare_static_high_memory
 !ifdef TRACE_VM {
     jsr print_vm_map
 }
+} else {
+    ; SFTODO: HACK
+	lda #0
+ 	sta vmap_used_entries
+	sta vmap_blocks_preloaded
+}
 	rts
 	
 load_suggested_pages
@@ -1190,12 +1197,13 @@ vmem_start
 
 }
 
+!ifndef ACORN { ; SFTODO: For now let's see if I can get away without this to avoid doing all the prep stuff make.rb does, will likely want to reintroduce this later
 !ifdef vmem_cache_size {
 !if vmem_cache_size >= $200 {
 	config_load_address = vmem_cache_start
 }
 }
 !ifndef config_load_address {
-    !error SFTODO
 	config_load_address = $0400
+}
 }

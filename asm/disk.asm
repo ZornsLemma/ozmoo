@@ -19,6 +19,11 @@ readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
 readblocks_base         !byte 0,0
+; SFTODO: I SUSPECT I CAN (AND PROBABLY SHOULD) GET RID OF DISK_INFO FROM THE
+; ACORN BUILD, IF WE NEED SUCH FUNCTIONALITY IT WILL PROBABLY NEED TO BE A FAIRLY
+; CLEAN (IF C64-INSPIRED, MAYBE) IMPLEMENTATION, WE MAY NOT NEED IT AT ALL AND
+; IN THE SHORT TERM SINCE I AM *NOT* POPULATING IT ANY REFERENCE TO IT IS LIKELY
+; A BUG IN THE PORT...
 disk_info
 !ifdef Z3 {
 	!fill 71
