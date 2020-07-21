@@ -1142,7 +1142,7 @@ prepare_static_high_memory
 	sta vmap_blocks_preloaded
     lda #$e0
     sta vmap_z_h
-    lda nonstored_blocks
+    lda vmap_first_ram_page
     sta vmap_z_l
 	lda #1
  	sta vmap_used_entries
