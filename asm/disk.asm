@@ -18,6 +18,7 @@ readblocks_numblocks	!byte 0
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
+readblocks_base         !byte 0,0
 disk_info
 !ifdef Z3 {
 	!fill 71
@@ -426,22 +427,34 @@ uname_len = * - .uname
     jsr print_byte_as_hex
     jsr newline
 }
+	lda readblocks_currentblock
+	sec
+	sbc nonstored_blocks
+	sta readblocks_currentblock_adjusted
+	lda readblocks_currentblock + 1
+	sbc #0
+	sta readblocks_currentblock_adjusted + 1
+    clc
+    lda readblocks_currentblock_adjusted
+    adc readblocks_base
+    sta readblocks_currentblock_adjusted
+    lda readblocks_currentblock_adjusted + 1
+    adc readblocks_base + 1
+    sta readblocks_currentblock_adjusted + 1
+
     ; Convert block (sector) number into track and sector.
-    ; SFTODO: DO I NEED TO BE ADDING SOME BASE TO THE BLOCK NUMBER, IS IT RELATIVE
-    ; TO DATA FILE OR TO THE DISC?
-    lda #66
-    jsr oswrch
-    lda readblocks_currentblock
+    ; SFTODO: I may not need readblocks_currentblock_adjusted as a distinct
+    ; memory location, if I only use it in this limited way I can just populate
+    ; dividend directly
+    lda readblocks_currentblock_adjusted
     sta dividend
-    lda readblocks_currentblock + 1
+    lda readblocks_currentblock_adjusted + 1
     sta dividend + 1
     lda #10
     sta divisor
     lda #0
     sta divisor + 1
     jsr divide16
-    lda #67
-    jsr oswrch
 
     ; SFTODO: For now we just assume drive 0 and we don't make any attempt to
     ; do clever stuff like validate the game disc is in the drive or allow for
@@ -485,9 +498,12 @@ uname_len = * - .uname
     adc readblocks_numblocks
     sta readblocks_mempos + 1
     clc
-    lda readblocks_currentblock + 1
+    lda readblocks_currentblock
     adc readblocks_numblocks
-    sta readblocks_currentblock + 1
+    sta readblocks_currentblock
+    bcc +
+    inc readblocks_currentblock + 1
++
 
     lda #osword_floppy_op
     ldx #<.osword_block

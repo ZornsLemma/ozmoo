@@ -651,13 +651,14 @@ deletable_init
     lda #>vmem_cache_start
     sta zp_temp + 1
     sta readblocks_mempos + 1
+    lda #0
+    sta nonstored_blocks
+    sta readblocks_base
+    sta readblocks_base + 1
     jsr readblocks
-    lda #65
-    jsr oswrch
     ldy #8
 find_file_loop
     lda (zp_temp),y
-    jsr oswrch
     cmp #'D'
     beq file_found
     tya
@@ -678,12 +679,10 @@ file_found
     tay
     lda (zp_temp),y
     and #$3
-    sta $501
+    sta readblocks_base + 1
     iny
     lda (zp_temp),y
-    sta $500
-sfhand99
-    jmp sfhand99
+    sta readblocks_base
 }
 } else { ; End of !ifdef VMEM
 !ifndef ACORN { ; SFTODO!?
