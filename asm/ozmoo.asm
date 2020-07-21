@@ -1138,6 +1138,7 @@ prepare_static_high_memory
 }
 } else {
     ; SFTODO: HACK
+    lda #0
 	sta vmap_blocks_preloaded
     sta vmap_z_h
     lda nonstored_blocks
