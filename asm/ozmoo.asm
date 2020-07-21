@@ -1138,9 +1138,12 @@ prepare_static_high_memory
 }
 } else {
     ; SFTODO: HACK
-	lda #0
- 	sta vmap_used_entries
 	sta vmap_blocks_preloaded
+    sta vmap_z_h
+    lda nonstored_blocks
+    sta vmap_z_l
+	lda #1
+ 	sta vmap_used_entries
 }
 	rts
 	
