@@ -1203,6 +1203,9 @@ vmem_start
 }
 
 !ifndef ACORN { ; SFTODO: For now let's see if I can get away without this to avoid doing all the prep stuff make.rb does, will likely want to reintroduce this later
+; SFTODO: Bear in mind if I do "have" to have a config file, it can be a simple
+; "CONFIG" file on the disc which I load with OSFILE directly into RAM, no need
+; for faffing around with OSWORD 7F.
 !ifdef vmem_cache_size {
 !if vmem_cache_size >= $200 {
 	config_load_address = vmem_cache_start
