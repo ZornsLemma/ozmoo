@@ -320,6 +320,12 @@ load_blocks_from_index
 ;	cmp #$e0
 ;	bcs +
     cmp #first_banked_memory_page
+    ; SFTODO: Ah, this suggests first_banked_memory_page is a threshold above
+    ; which we can't load directly and have to use a bounce buffer, like loading
+    ; to SWR on Acorn. If so we *can* probably set this to $ff for VMEM on
+    ; second processor, as we have no banked RAM in this case. No, on reading
+    ; more code and not yet fully understanding, it looks more sophisticated.
+    ; Not sure right now.
     bcs load_blocks_from_index_using_cache
 +	lda #vmem_block_pagecount ; number of blocks
 	sta readblocks_numblocks
@@ -337,6 +343,8 @@ load_blocks_from_index
 }
     rts
 
+; SFTODO: We may not need this code on Acorn 2P; a variant on it may be helpful
+; if we ever have an SWR-non-2P version.
 load_blocks_from_index_using_cache
     ; vmap_index = index to load
     ; vmem_cache_cnt = which 256 byte cache use as transfer buffer
@@ -461,7 +469,9 @@ read_byte_at_z_address
     ; is there a block with this address in map?
     ; SFTODONOW: In debugger we are loading X with zero here, but the code
     ; seems to assume it is >0 - so we're probably doing something or setting
-    ; something up wrongly before this point.
+    ; something up wrongly before this point. (This may or may not still be true,
+    ; I've done quite a bit of tinkering and it still doesn't work but not
+    ; stepped through this specific code in debugger.)
     ldx vmap_used_entries
 	dex
 -   ; compare with low byte
@@ -499,6 +509,8 @@ read_byte_at_z_address
 
 	; Load 512 byte block into RAM
 	; First, check if this is initial REU loading
+    ; SFTODO: At least for initial Acorn port we could conditionally compile out
+    ; REU support instead of checking for it at runtime - would save a few bytes.
 	ldx use_reu
 	cpx #$80
 	bne +
