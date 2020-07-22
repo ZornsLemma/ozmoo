@@ -432,6 +432,13 @@ uname_len = * - .uname
     jsr print_byte_as_hex
     jsr newline
 }
+    ; SFTODO: At the moment the data file *includes* the non-stored blocks,
+    ; because it's just a raw copy of the original game data. This is wasteful
+    ; of disc space, because we always have those blocks pre-loaded as part of
+    ; the ozmoo binary. Unless/until we start cutting down the game file on the
+    ; disc, we *don't* want to make an adjustment to the block by subtracting
+    ; off nonstored_blocks.
+!if 0 {
 	lda readblocks_currentblock
 	sec
 	sbc nonstored_blocks
@@ -439,6 +446,14 @@ uname_len = * - .uname
 	lda readblocks_currentblock + 1
 	sbc #0
 	sta readblocks_currentblock_adjusted + 1
+} else {
+    ; SFTODO: Rather inefficient but we'll probably revert to the above variant
+    ; at some point.
+	lda readblocks_currentblock
+	sta readblocks_currentblock_adjusted
+	lda readblocks_currentblock + 1
+	sta readblocks_currentblock_adjusted + 1
+}
     clc
     lda readblocks_currentblock_adjusted
     adc readblocks_base
