@@ -1,4 +1,0 @@
-puttext "zboot.txt", "!BOOT", &0000
-putbasic "z.bas", "CHECK"
-putfile "temp/ozmoo-with-data", "OZMOO", &000801
-putfile "examples/dejavu.z3", "DATA", &0000
