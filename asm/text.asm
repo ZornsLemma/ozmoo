@@ -10,6 +10,9 @@
 	
 ; SFTODO: Annoying duplication here...
 ; SFTODO: b-em, Master Turbo, mode 6, drive noises on: $005aa2
+; SFTODO: (I'm taking just the final output there; since I start the "kernal"
+; timer at 0 when the machine loads, this means I am including some startup time
+; but that's fine - I am not including any time before the interpreter starts.)
 !ifdef BENCHMARK {
 benchmark_commands
 !ifndef ACORN {
@@ -35,7 +38,7 @@ benchmark_read_char
 	jsr print_byte_as_hex
 	lda $a1
 	jsr print_byte_as_hex
-	lda $a2 ; SFTODO: Kernal jiffy timer, need to use something else if/when port this bit
+	lda $a2
 } else {
     jsr kernal_readtime
     pha
