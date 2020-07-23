@@ -101,7 +101,11 @@ s_delete_cursor
 !ifdef ACORN {
 s_cursor_to_screenrowcolumn
     lda s_cursors_inconsistent
+!ifndef DEBUG_CURSOR {
     beq .return
+} else {
+    beq .check_cursor
+}
     lda #0
     sta s_cursors_inconsistent
     lda #vdu_goto_xy
@@ -110,6 +114,26 @@ s_cursor_to_screenrowcolumn
     jsr oswrch
     lda zp_screenrow
     jmp oswrch
+!ifdef DEBUG_CURSOR {
+.check_cursor
+    txa
+    pha
+    tya
+    pha
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    cpx zp_screencolumn
+    beq +
+-   jmp -
++   cpy zp_screenrow
+    beq +
+-   jmp -
++   pla
+    tay
+    pla
+    tax
+    rts
+}
 }
 
 s_printchar
@@ -367,6 +391,8 @@ s_printchar
     jsr .s_scroll
 !ifndef ACORN {
     jsr .update_screenpos
+} else {
+    dec s_cursors_inconsistent
 }
     jmp .printchar_end
 

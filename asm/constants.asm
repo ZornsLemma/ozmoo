@@ -107,7 +107,7 @@ s_stored_y			  = $b5 ; !byte 0
 !ifndef ACORN {
 s_current_screenpos_row = $b6 ; !byte $ff
 } else {
-s_cursors_inconsistent = $b6 ; !byte 0
+s_cursors_inconsistent = $4b6 ; SFTODO TEMP HACKED FOR DEBUG $b6 ; !byte 0
 }
 
 max_chars_on_line	  = $bd; !byte 0
@@ -240,6 +240,7 @@ osword_floppy_op = $7f
 osbyte_set_cursor_editing = $04
 osbyte_reflect_keyboard_status = $76
 osbyte_read_key = $81
+osbyte_read_cursor_position = $86
 osbyte_enter_language = $8e
 osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
