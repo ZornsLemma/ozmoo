@@ -482,6 +482,11 @@ uname_len = * - .uname
     ; allow the data to be split over two sides of a single disc. That will
     ; probably allow most games to fit, as we'd probably have 350K+ for the
     ; game.)
+    ; SFTODO: If I continue to use a custom block of memory for osword_block
+    ; I may be able to initialise part of it at assembly time. Of course there
+    ; may be a block of "scratch" memory which it turns out is free for me to
+    ; use here, and that might be a size saving. (Does the C64 code use any
+    ; scratch memory?)
     ; SFTODO: It would definitely be a nice-to-have and probably we'd prefer to
     ; keep things single-sided if the game fit, but is there any prospect of
     ; minimising disc head movement by allocating "consecutive" blocks to the

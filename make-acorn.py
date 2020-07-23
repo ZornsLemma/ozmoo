@@ -128,6 +128,9 @@ if game_blocks <= max_preload_blocks:
     # RAM-only build (which will perform better)? Note that if we eventually
     # build discs which have both 2P and non-2P support, the 2P version may be
     # RAM-only and the non-2P one probably will use VM.
+    # SFTODO: When/if this takes care of the whole build without make-acorn.sh,
+    # we can of course go back and rebuild a non-VM-capable version of ozmoo;
+    # we might not even make the user specify whether they want VM or not.
     print("Warning: virtual memory is not needed")
 else:
     preload_blocks = max_preload_blocks
