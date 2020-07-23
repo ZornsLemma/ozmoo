@@ -8,11 +8,14 @@
 # SFTODO: No support for all-RAM non-VMEM builds yet
 
 from __future__ import print_function
+import os
 import sys
 
 ramtop = 0xf800
+header_version = 0
 header_static_mem = 0xe
 vm_page_blocks = 2 # VM pages are 2x256 byte blocks
+vmap_max_size = 102
 
 labels = {}
 with open("temp/acme_labels.txt", "r") as f:
@@ -26,7 +29,8 @@ with open("temp/acme_labels.txt", "r") as f:
         labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
 
 with open(sys.argv[1], "rb") as f:
-    game_data = f.read()
+    game_data = bytearray(f.read())
+output_name = os.path.basename(os.path.splitext(sys.argv[1])[0] + ".ssd")
 
 
 # This will not cope with an arbitrary disc image; because it's freshly generated
@@ -34,11 +38,51 @@ with open(sys.argv[1], "rb") as f:
 class DiscImage(object):
     def __init__(self, template):
         with open(template, "rb") as f:
-            self.data = f.read()
+            self.data = bytearray(f.read())
+
+    def catalogue_offset(self, file_number):
+        return 8 + file_number * 8
+
+    def num_files(self):
+        return self.data[0x105] / 8
+
+    def length(self, file_number):
+        o = 0x100 + self.catalogue_offset(file_number)
+        return (self.data[o+5] << 8) + self.data[o+4]
+
+    def start_sector(self, file_number):
+        o = 0x100 + self.catalogue_offset(file_number)
+        return ((self.data[o+6] & 0x3) << 8) + self.data[o+7]
+
+    def first_free_sector(self):
+        # The last file on the disc is always in the first catalogue entry.
+        return self.start_sector(0) + bytes_to_blocks(self.length(0))
+
+    def add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
+        assert self.num_files() < 31
+        assert len(directory) == 1
+        assert len(name) <= 7
+        self.data[0x105] += 1*8
+        self.data[0x010:0x100] = self.data[0x008:0x0f8]
+        self.data[0x110:0x200] = self.data[0x108:0x1f8]
+        name = (name + " "*7)[:7] + directory
+        self.data[0x008:0x010] = bytearray(name, "ascii")
+        self.data[0x108] = load_addr & 0xff
+        self.data[0x109] = (load_addr >> 8) & 0xff
+        self.data[0x10a] = exec_addr & 0xff
+        self.data[0x10b] = (exec_addr >> 8) & 0xff
+        self.data[0x10c] = length & 0xff
+        self.data[0x10d] = (length >> 8) & 0xff
+        self.data[0x10e] = (
+                (((exec_addr >> 16) & 0x3) << 6) |
+                (((length >> 16) & 0x3) << 4) |
+                (((load_addr >> 16) & 0x3) << 2) |
+                ((start_sector >> 8) & 0x3))
+        self.data[0x10f] = start_sector & 0xff
 
 
 def get_word(data, i):
-    return ord(data[i])*256 + ord(data[i+1])
+    return data[i]*256 + data[i+1]
 
 def bytes_to_blocks(x):
     if x & 0xff != 0:
@@ -52,6 +96,15 @@ ssd = DiscImage("temp/base.ssd")
 max_preload_blocks = (ramtop - labels["story_start"]) / 256
 
 game_blocks = bytes_to_blocks(len(game_data))
+while game_blocks * 256 > len(game_data):
+    game_data.append(0)
+
+
+z_machine_version = game_data[header_version]
+if z_machine_version == 3:
+    vmem_highbyte_mask = 0x01
+else:
+    assert False # SFTODO
 
 dynamic_size = get_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size)
@@ -75,14 +128,36 @@ if game_blocks <= max_preload_blocks:
     # RAM-only build (which will perform better)? Note that if we eventually
     # build discs which have both 2P and non-2P support, the 2P version may be
     # RAM-only and the non-2P one probably will use VM.
+    print("Warning: virtual memory is not needed")
 else:
     preload_blocks = max_preload_blocks
 
-# TODO: WE NEED TO GENERATE THE VM CONFIG, SAVE IT TO A "CONFIG" FILE ON DISC AND
-# HAVE THE VM CODE (IT CAN BE IN DISCARDABLE INIT) OSFILE "*LOAD" CONFIG INTO THE VM
-# SPACE. THE VM THEN NEEDS TO OSFILE "*LOAD" THE PRELOAD FILE INTO THE STORY SPACE
-# (AGAIN, CAN BE IN DISCARDABLE INIT)
+# Generate initial virtual memory map. We just populate the entire table; if the
+# game is smaller than this we will just never use the other entries. We patch
+# this directly into the ozmoo binary.
+vmap_offset = ssd.data.find('VVVVVVVVV')
+vmap_length = 0
+while ssd.data[vmap_offset + vmap_length] == 'V':
+    vmap_length += 1
+if vmap_length & 1 != 0:
+    vmap_length -= 1
+assert vmap_offset >= vmap_max_size * 2
+for i in range(vmap_length / 2):
+    high = (256 - 8 * (i / 4) - 32) & vmem_highbyte_mask
+    low = nonstored_blocks + i
+    ssd.data[vmap_offset + i + 0] = six.b(high)
+    ssd.data[vmap_offset + i + 1] = six.b(low)
 
-# SFTODO: WE NEED TO PUT THE GAME DATA ON THE DISC *AND* GENERATE AN OVERLAPPING
-# CATALOG ENTRY CALLED "PRELOAD" WHICH INCLUDES THE FIRST preload_blocks BLOCKS
-# OF THAT FILE.
+# We're going to add two files which save the same data on the disc. This is a
+# bit naughty but it means we can avoid duplicating any data. We put the longer
+# of the two files first in the catalogue as that seems least likely to cause
+# problems if the disc is written to by DFS.
+# SFTODO: Might be worth experimenting with writing to the disc using dfferent
+# DFSes.
+first_free_sector = ssd.first_free_sector()
+ssd.data.extend(game_data)
+ssd.add_to_catalogue("$", "PRELOAD", 0, 0, preload_blocks * 256, first_free_sector)
+ssd.add_to_catalogue("$", "DATA", 0, 0, game_blocks * 256, first_free_sector)
+
+with open(output_name, "wb") as f:
+    f.write(ssd.data)

@@ -771,7 +771,8 @@ read_byte_at_z_address
 ; outside our binary. *LOADing the initial VM data is not a huge deal, but it
 ; will "waste" a sector on disc and slow loading slightly if it could otherwise
 ; have been included straight into the binary.
+; SFTODO: For now I'm going to pre-fill this as part of the build
 datasette_buffer_start
-    !FILL $3fb-$334
+    !FILL vmap_max_size * 2, 'V'
 datasette_buffer_end
-    !FILL 1 ; SFTODO: Probably not needed but not bothered checking if _end is inclusive or exclusive yet
+;    !FILL 1 ; SFTODO: Probably not needed but not bothered checking if _end is inclusive or exclusive yet

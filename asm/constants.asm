@@ -218,7 +218,10 @@ header_standard_revision_number = $32
 header_alphabet_table = $34
 header_header_extension_table = $36
 
+!ifdef ACORN {
+
 ; Acorn OS constants
+osfile = $ffdd
 oswrch = $ffee
 osword = $fff1
 osbyte = $fff4
@@ -229,6 +232,7 @@ vdu_reset_text_window = 26
 vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
+osfile_load = $ff
 osword_read_clock = 1
 osword_floppy_op = $7f
 osbyte_set_cursor_editing = $04
@@ -250,3 +254,5 @@ screen_width = $400
 screen_height = $401
 screen_width_minus_1 = $402
 screen_height_minus_1 = $403
+
+}

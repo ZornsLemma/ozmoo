@@ -209,6 +209,10 @@ game_id		!byte 0,0,0,0
     jmp testscreen
 }
 
+    ; SFTODO: We should probably rationalise all the various deletable init
+    ; stuff on Acorn - I suspect if we have a splash screen it will be handled
+    ; by the BASIC loader (that way it can be shown while the larger executable
+    ; is loading) so we don't need to be splitting this up so much.
 	jsr deletable_init_start
 ;	jsr init_screen_colours
 	jsr deletable_screen_init_1
@@ -605,6 +609,14 @@ deletable_init
 	ldy #8
 .store_boot_device
 	sty boot_device ; Boot device# stored
+} else {
+    ; SFTODO: We need to set up an error handler at some point, but I'll wait
+    ; until I do game loading and saving before worrying about that as that will
+    ; be more involved; at this point all we could do is die anyway.
+    lda #osfile_load
+    ldx #<.osfile_load_block
+    ldy #>.osfile_load_block
+    jsr osfile
 }
 !ifdef VMEM {
 !ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
@@ -784,7 +796,7 @@ file_found
     ; think it can verify this constraint is met at build time.
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
-	lda #vmap_max_siz e
+	lda #vmap_max_size
 ++	
 }
 	sta vmap_max_entries
@@ -834,6 +846,20 @@ file_found
 ; +	sty fileblocks
 	; stx fileblocks + 1
 	rts
+
+!ifdef ACORN {
+.osfile_load_block
+    !word .osfile_load_filename
+    !word story_start ; load low word
+    !word 0           ; load high word
+    !word 0           ; exec low word; 0 => use specified load address
+    !word 0           ; exec high word
+    !word 0           ; length low word
+    !word 0           ; length high word
+    !byte 0           ; attributes
+.osfile_load_filename
+    !text "PRELOAD",13
+}
 }
 
 !ifdef VMEM {
