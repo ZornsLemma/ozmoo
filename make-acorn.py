@@ -11,8 +11,8 @@ from __future__ import print_function
 import sys
 
 ramtop = 0xf800
-
 header_static_mem = 0xe
+vm_page_blocks = 2 # VM pages are 2x256 byte blocks
 
 labels = {}
 with open("temp/acme_labels.txt", "r") as f:
@@ -40,27 +40,43 @@ class DiscImage(object):
 def get_word(data, i):
     return ord(data[i])*256 + ord(data[i+1])
 
+def bytes_to_blocks(x):
+    if x & 0xff != 0:
+        return int(x / 256) + 1
+    else:
+        return int(x / 256)
+
 
 ssd = DiscImage("temp/base.ssd")
 
 max_preload_blocks = (ramtop - labels["story_start"]) / 256
 
+game_blocks = bytes_to_blocks(len(game_data))
+
 dynamic_size = get_word(game_data, header_static_mem)
-nonstored_blocks = int(dynamic_size / 256)
-if dynamic_size & 0xff != 0:
-    nonstored_blocks += 1
+nonstored_blocks = bytes_to_blocks(dynamic_size)
 # Virtual memory works in 512 byte (=2 block) chunks
 if nonstored_blocks & 1 != 0:
     nonstored_blocks += 1
 
 if nonstored_blocks > max_preload_blocks:
     die("Not enough free RAM for dynamic memory")
-# SFTODO: If (as is very likely, but not necessarily guaranteed) the game as a whole is larger
-# than nonstored_blocks, we need *at least* one free block of RAM beyond that, and in
-# reality at least a handful, for use for paging in static/high memory. We should die if we
-# don't have even one more free block and warn if we only have a few.
+if game_blocks > nonstored_blocks:
+    if nonstored_blocks + vm_page_blocks > max_preload_blocks:
+        die("Not enough free RAM for any swappable memory")
+    # SFTODO: One VM block of swappable memory is not really going to
+    # work. We should probably emit a warning unless there are at
+    # least n blocks of swappable memory.
 
-preload_blocks = min(nonstored_blocks, max_preload_blocks)
+if game_blocks <= max_preload_blocks:
+    preload_blocks = game_blocks
+    # SFTODO: We don't need virtual memory support in this case. I'm not sure
+    # we "should" do anything - maybe warn, so the user can choose to do a
+    # RAM-only build (which will perform better)? Note that if we eventually
+    # build discs which have both 2P and non-2P support, the 2P version may be
+    # RAM-only and the non-2P one probably will use VM.
+else:
+    preload_blocks = max_preload_blocks
 
 # TODO: WE NEED TO GENERATE THE VM CONFIG, SAVE IT TO A "CONFIG" FILE ON DISC AND
 # HAVE THE VM CODE (IT CAN BE IN DISCARDABLE INIT) OSFILE "*LOAD" CONFIG INTO THE VM
