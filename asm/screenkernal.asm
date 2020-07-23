@@ -392,7 +392,8 @@ s_printchar
 !ifndef ACORN {
     jsr .update_screenpos
 } else {
-    dec s_cursors_inconsistent
+    lda #1
+    sta s_cursors_inconsistent
 }
     jmp .printchar_end
 
