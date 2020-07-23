@@ -291,7 +291,11 @@ end_of_routines_in_vmem_cache
 
 ; SFTODO: This cache may also be a candidate for language workspace at $400,
 ; though if it can benefit from being more than 4 pages it may not be the best
-; use of it.
+; use of it. I suspect this cache is to work around part of C64 memory not
+; being directly loadable into, if so we don't need it on 2P and on a future
+; SWR build we'd probably write our own custom code and only use 512 bytes,
+; though I am guessing as I haven't read over the "cache"-related C64 code in
+; detail yet.
 	!fill cache_pages * 256 - (* - vmem_cache_start),0 ; Typically 4 pages
 
 !ifdef VMEM {
@@ -306,7 +310,9 @@ vmem_cache_count = vmem_cache_size / 256
 !align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
 
 ; SFTODO: It *may* be possible to use the language workspace at $400-$800 for
-; the stack, if it's not larger (it's configurable at assembly time).
+; the stack, if it's not larger (it's configurable at assembly time). Although
+; then we'd just end up wasting the memory on these otherwise-deletable routines
+; that would load in the stack space, so maybe not the perfect alternative.
 stack_start
 
 deletable_screen_init_1
