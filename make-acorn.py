@@ -135,20 +135,20 @@ else:
 # Generate initial virtual memory map. We just populate the entire table; if the
 # game is smaller than this we will just never use the other entries. We patch
 # this directly into the ozmoo binary.
-vmap_offset = ssd.data.find('VVVVVVVVV')
+vmap_offset = ssd.data.index('VVVVVVVVV')
 vmap_length = 0
-while ssd.data[vmap_offset + vmap_length] == 'V':
+while chr(ssd.data[vmap_offset + vmap_length]) == 'V':
     vmap_length += 1
 if vmap_length & 1 != 0:
     vmap_length -= 1
-assert vmap_offset >= vmap_max_size * 2
-for i in range(vmap_length / 2):
-    high = (256 - 8 * (i / 4) - 32) & vmem_highbyte_mask
-    low = nonstored_blocks + i
-    ssd.data[vmap_offset + i + 0] = six.b(high)
-    ssd.data[vmap_offset + i + 1] = six.b(low)
+assert vmap_length >= vmap_max_size * 2
+for i in range(vmap_max_size):
+    high = (256 - 8 * (i / 4) - 32) & ~vmem_highbyte_mask
+    low = ((nonstored_blocks / vm_page_blocks) + i) * vm_page_blocks
+    ssd.data[vmap_offset + i + 0            ] = high
+    ssd.data[vmap_offset + i + vmap_max_size] = low
 
-# We're going to add two files which save the same data on the disc. This is a
+# We're going to add two files which share the same data on the disc. This is a
 # bit naughty but it means we can avoid duplicating any data. We put the longer
 # of the two files first in the catalogue as that seems least likely to cause
 # problems if the disc is written to by DFS.

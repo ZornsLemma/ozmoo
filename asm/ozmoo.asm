@@ -1174,22 +1174,19 @@ prepare_static_high_memory
 	dey
 	bpl -
 .no_entries
+} else {
+    lda #vmap_max_size
+    sta vmap_blocks_preloaded
+    sta vmap_used_entries
+}
 !ifdef TRACE_VM {
     jsr print_vm_map
 }
-} else {
-    ; SFTODO: HACK
-    lda #1
-	sta vmap_blocks_preloaded
-    lda #$e0
-    sta vmap_z_h
-    lda nonstored_blocks
-    sta vmap_z_l
-	lda #1
- 	sta vmap_used_entries
-}
 	rts
 	
+; SFTODO: This may be useful in a SWR build where we can't *LOAD the preloaded
+; data directly into SWR but OZMOO itself can trigger VM reads of these blocks
+; before the game starts.
 load_suggested_pages
 ; Load all suggested pages which have not been pre-loaded
 -	lda vmap_blocks_preloaded ; First index which has not been loaded
