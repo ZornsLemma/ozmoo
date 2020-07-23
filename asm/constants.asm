@@ -222,6 +222,7 @@ header_header_extension_table = $36
 
 ; Acorn OS constants
 osfile = $ffdd
+osrdch = $ffe0
 oswrch = $ffee
 osword = $fff1
 osbyte = $fff4

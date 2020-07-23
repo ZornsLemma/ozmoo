@@ -622,7 +622,11 @@ stack_pull_no_top_value
 .stack_empty_return_0
 !ifdef DEBUG {
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "WARNING: pull from empty stack",13,0
+} else {
+	!text "WARNING: pull from empty stack",13,0
+}
 }
 	lda #0
 	tax

@@ -463,6 +463,7 @@ z_execute
 }
 
 !ifdef DEBUG {
+; SFTODO: PRINTSPEED NOT PORTED YET
 !ifdef PRINTSPEED {
 	lda #0
 	sta $a0
@@ -759,7 +760,11 @@ z_not_implemented
 } else {
 !ifdef DEBUG {
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "opcode: ",0
+} else {
+	!text "opcode: ",0
+}
 	ldx z_opcode
 	jsr printx
 	jsr print_following_string
@@ -1100,9 +1105,10 @@ calc_address_in_byte_array
 	rts
 }
 
-!zone rnd { ; SFTODO!
+!zone rnd {
 z_rnd_init_random
 	; in: Nothing
+!ifndef ACORN {
 	lda $dc04
 	eor #%10101010
 	eor z_rnd_a
@@ -1114,6 +1120,25 @@ z_rnd_init_random
 	lda $d41b
 	eor $d012
 	eor z_rnd_c
+} else {
+    ; SFTODO: Is this good enough?
+    lda #osword_read_clock
+    ldx #<z_temp
+    ldy #>z_temp
+    jsr osword
+    ; It's unlikely z_temp+[34] will be non-0, so we don't try to use them.
+    lda z_rnd_c
+    eor z_temp+0
+    eor z_temp+1
+    tay
+    lda z_rnd_b
+    eor z_temp+0
+    eor z_temp+2
+    tax
+    lda z_rnd_a
+    eor z_temp+1
+    eor z_temp+2
+}
 z_rnd_init
 	; in: a,x,y as seed
 	sta z_rnd_a
@@ -1913,7 +1938,11 @@ z_ins_random
 	ldy z_test
 	beq +
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "seed 0!",13,0
+} else {
+    !text "seed 0!",13,0
+}
 +	
 }
 	jsr z_rnd_init_random
@@ -1928,7 +1957,11 @@ z_ins_random
 	beq +
 	tax
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "seed -1!",13,0
+} else {
+	!text "seed -1!",13,0
+}
 	txa
 +
 }	

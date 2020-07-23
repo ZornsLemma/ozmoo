@@ -529,15 +529,12 @@ z_init
 	sta $d40f
 	ldx #$80
 	stx $d412
+}
 !ifdef BENCHMARK {
 	ldy #1
 	jmp z_rnd_init
 } else {
 	jmp z_rnd_init_random
-}
-} else {
-    ; SFTODO: Need to address rnd stuff at least
-    rts
 }
 }
 

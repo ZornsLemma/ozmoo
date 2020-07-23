@@ -108,7 +108,9 @@ ERROR_TOO_MANY_TERMINATORS = 15
 ; SFTODO: General point - there's lots of !pet stuff in debug-only code which
 ; I haven't ported yet. If ACME allows it, maybe define a !native macro which
 ; wraps !pet or !text depending on whether ACORN is defined or not.
+; SFTODO: Annoying duplication
 !ifdef DEBUG {
+!ifndef ACORN {
 .error_unsupported_stream !pet "unsupported stream#",0
 .error_config !pet "broken config",0
 .error_stream_nesting_error !pet "stream nesting error",0
@@ -124,6 +126,23 @@ ERROR_TOO_MANY_TERMINATORS = 15
 .error_write_above_dynmem !pet "tried to write to non-dynamic memory", 0
 .error_read_above_statmem !pet "tried to read from himem", 0
 .error_too_many_terminators !pet "too many terminators", 0
+} else {
+.error_unsupported_stream !text "unsupported stream#",0
+.error_config !text "broken config",0
+.error_stream_nesting_error !text "stream nesting error",0
+.error_floppy_read_error !text "floppy read error", 0
+.error_memory_over_64kb !text "tried to access z-machine memory over 64kb", 0
+.error_stack_full !text "stack full",0
+.error_stack_empty !text "stack empty",0
+.error_opcode_not_implemented !text "opcode not implemented!",0
+.error_used_nonexistent_local_var !text "used non-existent local var",0
+.error_bad_property_length !text "bad property length", 0
+.error_unsupported_story_version !text "unsupported story version", 0
+.error_out_of_memory !text "out of memory", 0
+.error_write_above_dynmem !text "tried to write to non-dynamic memory", 0
+.error_read_above_statmem !text "tried to read from himem", 0
+.error_too_many_terminators !text "too many terminators", 0
+}
 
 .error_message_high_arr
     !byte >.error_unsupported_stream
@@ -189,7 +208,11 @@ hang
 } else {
     pha
     jsr print_following_string
+!ifndef ACORN {
     !pet "fatal error ", 0
+} else {
+    !text "fatal error ", 0
+}
     pla
     tax
     dex
@@ -203,8 +226,12 @@ hang
     jsr newline
     jsr print_trace
     jsr printchar_flush
+!ifndef ACORN { ; SFTODO
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
+} else {
+-   jmp -
+}
 
 .saved_a !byte 0
 .saved_x !byte 0
@@ -389,10 +416,18 @@ pause
     stx .saved_x
     sty .saved_y
     jsr print_following_string
+!ifndef ACORN {
 	!pet "[Intentional pause. Press ENTER.]",13,0
+} else {
+	!text "[Intentional pause. Press ENTER.]",13,0
+}
     jsr print_trace
     jsr printchar_flush
+!ifndef ACORN {
     jsr kernal_readchar   ; read keyboard
+} else {
+    jsr osrdch
+}
     lda .saved_a
     ldx .saved_x
     ldy .saved_y
@@ -439,6 +474,7 @@ print_following_string
 }
 
 print_trace
+; SFTODO: TRACE NOT PORTED YET
 !ifdef TRACE {
     jsr newline
 	jsr print_following_string
@@ -544,8 +580,11 @@ print_bad_zscii_code
 
 .print_bad_code_buffered	!byte 0	; 0 = s_printchar, $80 = printchar_buffered, $ff = streams_print_output
 .hex_num
-    ; SFTODO: Use of !pet here suggests need for porting, if only conditionally using !text here
+!ifndef ACORN {
 	!pet "0123456789abcdef"
+} else {
+	!text "0123456789abcdef"
+}
 } ; ifdef DBUG
 
 
