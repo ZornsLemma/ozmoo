@@ -226,6 +226,7 @@ osrdch = $ffe0
 oswrch = $ffee
 osword = $fff1
 osbyte = $fff4
+oscli = $fff7
 vdu_down = 10
 vdu_cls = 12
 vdu_set_text_colour = 17

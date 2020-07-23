@@ -654,6 +654,7 @@ insert_msg_3
 
 !ifdef VMEM {
 z_ins_restart
+!ifndef ACORN {
 	; Find right device# for boot disk
 
 	ldx disk_info + 3
@@ -723,6 +724,36 @@ z_ins_restart
 	; !pet 131,0
 .restart_code_end
 
+} else {
+    ; SFTODO: This seems inelegant, but I *think* it's how the C64 code works,
+    ; and without having thought too deeply about it it's probably the best we
+    ; can do having discarded some of our initialisation code. We can maybe
+    ; do this a little bit better than inserting into keyboard buffer though.
+    ; SFTODO: Magic constants
+    lda #21
+    ldx #0
+    ldy #0
+    jsr osbyte
+    ldx #0
+-   ldy .restart_command2,x
+    beq +
+    txa
+    pha
+    lda #138
+    ldx #0
+    jsr osbyte
+    pla
+    tax
+    inx
+    bpl -
++   ldx #<.restart_command1
+    ldy #>.restart_command2
+    jmp oscli
+.restart_command1
+    !text "*BASIC",13
+.restart_command2
+    !text "*EXEC !BOOT",13,0
+}
 }
 
 z_ins_restore
