@@ -775,10 +775,10 @@ file_found
     ; *might* be that we don't need vmap entries for the nonstored pages and so
     ; to save memory vmap_max_size might be a smidge smaller than it "could" be.
     ; But the make script has to know what nonstored pages is anyway, so I
-    ; think it can verify this constraint it smet at build time.
+    ; think it can verify this constraint is met at build time.
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
-	lda #vmap_max_size
+	lda #vmap_max_siz e
 ++	
 }
 	sta vmap_max_entries

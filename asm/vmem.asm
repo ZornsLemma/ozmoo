@@ -763,6 +763,14 @@ read_byte_at_z_address
 }
 
 ; SFTODO: Hack, let's just allocate a fake datasette buffer here
+; SFTODO: *If* we permanently leave this allocated "in" the binary, we could
+; have the build script patch in the initial VM table instead of having to "*LOAD"
+; it at startup. However, if we have the 1K of language workspace at $400 unused
+; (I haven't yet decided if it can be used for something else), using that to
+; hold this would work and we would need to *LOAD the data there as that's 
+; outside our binary. *LOADing the initial VM data is not a huge deal, but it
+; will "waste" a sector on disc and slow loading slightly if it could otherwise
+; have been included straight into the binary.
 datasette_buffer_start
     !FILL $3fb-$334
 datasette_buffer_end
