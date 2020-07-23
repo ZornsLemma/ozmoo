@@ -772,7 +772,9 @@ read_byte_at_z_address
 ; will "waste" a sector on disc and slow loading slightly if it could otherwise
 ; have been included straight into the binary.
 ; SFTODO: For now I'm going to pre-fill this as part of the build
+!ifdef ACORN {
 datasette_buffer_start
     !FILL vmap_max_size * 2, 'V'
 datasette_buffer_end
 ;    !FILL 1 ; SFTODO: Probably not needed but not bothered checking if _end is inclusive or exclusive yet
+}

@@ -1,3 +1,4 @@
+# SFTODO: SINCE THIS IS NOW C64 ONLY SHOULD REVERT TO "master" VERSION
 # specialised make for Ozmoo
 
 require 'fileutils'

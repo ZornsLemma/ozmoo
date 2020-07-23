@@ -103,8 +103,10 @@ while game_blocks * 256 > len(game_data):
 z_machine_version = game_data[header_version]
 if z_machine_version == 3:
     vmem_highbyte_mask = 0x01
+elif z_machine_version == 8:
+    vmem_highbyte_mask = 0x07
 else:
-    assert False # SFTODO
+    vmem_highbyte_mask = 0x03
 
 dynamic_size = get_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size)
