@@ -759,7 +759,7 @@ file_found
 	clc
 	adc #>story_start
 	sta vmap_first_ram_page
-	lda #0
+	lda #0 ; SFTODO: I think this might be a "top of RAM+1" sort of deal and need porting
 	sec
 	sbc vmap_first_ram_page
 	lsr
@@ -767,6 +767,15 @@ file_found
 	lsr
 } else {
 	; This space constraint can not be a problem with big (1KB) vmem blocks.
+    ; SFTODO: Why do we need this, or vmap_max_entries? Surely we can assert
+    ; at assembly time that vmap_max_size <= (&10000-story_start)/256 or whatever
+    ; the exact check we're doing is? And I don't see any obvious correctness
+    ; or performance benefit to using vmap_max_entries instead of #vmap_max_size.
+    ; Think about it, don't fiddle with this yet anyway. I think the thing here
+    ; *might* be that we don't need vmap entries for the nonstored pages and so
+    ; to save memory vmap_max_size might be a smidge smaller than it "could" be.
+    ; But the make script has to know what nonstored pages is anyway, so I
+    ; think it can verify this constraint it smet at build time.
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
 	lda #vmap_max_size
