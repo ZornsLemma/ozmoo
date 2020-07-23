@@ -669,6 +669,8 @@ deletable_init
     lda #>vmem_cache_start
     sta zp_temp + 1
     sta readblocks_mempos + 1
+    ; SFTODO: We may not need to set nonstored_blocks to 0 here, if the "final"
+    ; version of readblocks doesn't apply it as an offset ever anyway.
     lda #0
     sta nonstored_blocks
     sta readblocks_base
@@ -777,7 +779,11 @@ file_found
 	clc
 	adc #>story_start
 	sta vmap_first_ram_page
-	lda #0 ; SFTODO: I think this might be a "top of RAM+1" sort of deal and need porting
+!ifndef ACORN {
+	lda #0
+} else {
+    lda #>ramtop
+}
 	sec
 	sbc vmap_first_ram_page
 	lsr
@@ -1175,7 +1181,15 @@ prepare_static_high_memory
 	bpl -
 .no_entries
 } else {
-    lda #vmap_max_size
+    ; vmap_z_[lh] is pre-populated by the Acorn build system with the full
+    ; vmap_max_size entries, even though there may not been enough RAM for all
+    ; those. vmap_max_entries takes RAM size into account, so we use that for
+    ; initialisation here. If the game is smaller than this, it's harmless as
+    ; there will just be table entries for addresses in the Z-machine we will
+    ; never use.
+    ; SFTODO: Really we should shrink vmap_max_size so it's no larger than
+    ; necessary; this will save a few bytes.
+    lda vmap_max_entries
     sta vmap_blocks_preloaded
     sta vmap_used_entries
 }

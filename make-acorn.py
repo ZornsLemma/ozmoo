@@ -156,7 +156,22 @@ for i in range(vmap_max_size):
 # of the two files first in the catalogue as that seems least likely to cause
 # problems if the disc is written to by DFS.
 # SFTODO: Might be worth experimenting with writing to the disc using dfferent
-# DFSes.
+# DFSes. *COMPACT on DFS 2.24 seems to undo the duplication, but (not tested)
+# not actually corrupt the data. Not ideal. I suppose I *could* just make
+# PRELOAD and DATA disjoint and have readblocks use the right one. However,
+# if we wanted two different-sized PRELOADS (e.g. for a 2P or SWR disc) that
+# wouldn't work. We could have *three* separate disjoint files. Gets a bit
+# messy in a different way though. Actually since we could guarantee the
+# disjoint files followed each other, readblocks wouldn't need to do
+# anything clever (except in the currently hypothetical case of an interleaved
+# double-sided disc), it would just use the start of PRELOAD as its base.
+# I don't think this helps the two-different-sized PRELOADs issue. OTOH a SWR
+# PRELOAD would probably be a dozen-ish K due to limited main RAM size on non-2P
+# so the duplication isn't too big a deal. Still rather avoid it though.
+# SFTODO: *Maybe* we should only use this trick if we would otherwise run out
+# of space on the disc, and duplicate otherwise? OTOH, assuming it isn't risky
+# to save onto a disc with this trick, avoiding the duplication will leave more
+# space for saved games.
 first_free_sector = ssd.first_free_sector()
 ssd.data.extend(game_data)
 ssd.add_to_catalogue("$", "PRELOAD", 0, 0, preload_blocks * 256, first_free_sector)

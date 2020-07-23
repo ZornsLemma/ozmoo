@@ -255,4 +255,8 @@ screen_height = $401
 screen_width_minus_1 = $402
 screen_height_minus_1 = $403
 
+; SFTODO: On a SWR version we'd need to read HIMEM from the OS, but we can get
+; away with this while we only support second processor.
+ramtop = $f800
+
 }
