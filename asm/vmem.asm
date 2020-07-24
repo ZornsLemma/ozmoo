@@ -467,11 +467,6 @@ read_byte_at_z_address
 	lda vmem_temp
 
     ; is there a block with this address in map?
-    ; SFTODONOW: In debugger we are loading X with zero here, but the code
-    ; seems to assume it is >0 - so we're probably doing something or setting
-    ; something up wrongly before this point. (This may or may not still be true,
-    ; I've done quite a bit of tinkering and it still doesn't work but not
-    ; stepped through this specific code in debugger.)
     ldx vmap_used_entries
 	dex
 -   ; compare with low byte
