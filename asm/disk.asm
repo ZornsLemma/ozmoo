@@ -729,6 +729,7 @@ z_ins_restart
     ; and without having thought too deeply about it it's probably the best we
     ; can do having discarded some of our initialisation code. We can maybe
     ; do this a little bit better than inserting into keyboard buffer though.
+    ; SFTODO: Can we just use OSFILE to *RUN OZMOO?
     ; SFTODO: Magic constants
     lda #21
     ldx #0
