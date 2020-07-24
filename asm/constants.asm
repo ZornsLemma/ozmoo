@@ -36,6 +36,7 @@ stack_pushed_bytes	  = $29 ; !byte 0, 0
 stack_ptr             = $2b ; 2 bytes
 stack_top_value 	  = $2d ; 2 bytes !byte 0, 0
 stack_has_top_value   = $2f ; !byte 0
+; SF: z_pc is big-endian, z_pc_mempointer is little-endian
 z_pc				  = $30 ; 3 bytes (last byte shared with z_pc_mempointer)
 z_pc_mempointer		  = $32 ; 2 bytes (first byte shared with z_pc)
 ; z_pc_mempointer_is_unsafe = $34

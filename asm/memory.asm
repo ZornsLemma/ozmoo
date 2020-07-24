@@ -33,6 +33,7 @@ inc_z_pc_page
 	and #255-vmem_blockmask
 	beq get_page_at_z_pc_did_pha
 	lda z_pc_mempointer + 1
+    ;;  SFTODO: This bcc is about cache, which sits below story_start
 	cmp #>story_start
 	bcc get_page_at_z_pc_did_pha
 } else {
@@ -70,6 +71,7 @@ set_z_pc
 	bne .unsafe_2
 	; z_pc is in same vmem_block unless it's in vmem_cache
 	lda z_pc_mempointer + 1
+    ;; SFTODO: More cache stuff here, checking for below story_start
 	cmp #>story_start
 	bcc .unsafe_2
 	; z_pc is in same vmem_block, but different page.
