@@ -1002,12 +1002,16 @@ read_char
 	; set up next time out
     jsr update_cursor_timer
     ; cursor on/off depending on if s_cursormode is even/odd
-    jsr turn_on_cursor
+    lda #CURSORCHAR ; cursor on
+    sta cursor_character
+    jsr update_cursor
 	inc s_cursormode
 	lda s_cursormode
 	and #$01
 	beq .no_cursor_blink
-    jsr turn_off_cursor
+    lda #$20 ; blank space, cursor off
+    sta cursor_character
+    jsr update_cursor
 .no_cursor_blink
 }
 }
@@ -1049,13 +1053,6 @@ read_char
 
 !ifndef ACORN {
 	jsr turn_on_cursor
-!ifdef USE_BLINKING_CURSOR {
-	lda s_cursormode
-	and #$01
-	beq .no_cursor_blink2
-    jsr turn_off_cursor
-.no_cursor_blink2
-}
 }
 	; Interrupt routine has been executed, with value in word
 	; z_interrupt_return_value
@@ -1115,6 +1112,21 @@ update_cursor
     ; we start input and off when we've finished. I think it's clearer to use
     ; distinct names on the two platforms. SFTODO: MAYBE RECONSIDER THIS LATER,
     ; THINGS MAY BE CLEARER ONCE I HAVE CODE WORKING RIGHT
+}
+
+!ifndef ACORN {
+!ifdef USE_BLINKING_CURSOR {
+reset_cursor_blink
+    ; resets the cursor timer and blink mode
+    ; effectively puts the cursor back on the screen for another timer duration
+    lda #$00
+    sta .cursor_jiffy
+    sta .cursor_jiffy + 1
+    sta .cursor_jiffy + 2
+    lda #$01
+    sta s_cursormode
+    rts
+}
 }
 
 read_text
@@ -1210,6 +1222,11 @@ read_text
 	bcs .done_printing_this_char
 }
 	jsr s_printchar
+!ifndef ACORN {
+!ifdef USE_BLINKING_CURSOR {
+	jsr reset_cursor_blink
+}
+}
 .done_printing_this_char
     dex
     jmp .p0
@@ -1230,6 +1247,11 @@ read_text
 	bcs .done_printing_this_char
 }
 	jsr s_printchar
+!ifndef ACORN {
+!ifdef USE_BLINKING_CURSOR {
+	jsr reset_cursor_blink
+}
+}
 .done_printing_this_char
     iny
     jmp .p0
@@ -1266,6 +1288,9 @@ read_text
 	lda .petscii_char_read
     jsr s_printchar ; print the delete char
 !ifndef ACORN {
+!ifdef USE_BLINKING_CURSOR {
+    jsr reset_cursor_blink
+}
 	jsr turn_on_cursor
 }
 !ifdef Z5PLUS {
@@ -1324,6 +1349,9 @@ read_text
 	lda .petscii_char_read
     jsr s_printchar
 !ifndef ACORN {
+!ifdef USE_BLINKING_CURSOR {
+    jsr reset_cursor_blink
+}
     jsr update_cursor
 }
     pla
@@ -1365,6 +1393,11 @@ read_text
     beq +
 ;	pha
     jsr s_printchar; print final char unless it is 0
+!ifndef ACORN {
+!ifdef USE_BLINKING_CURSOR {
+    jsr reset_cursor_blink
+}
+}
 ;	jsr start_buffering
 ;	pla
 +   rts
