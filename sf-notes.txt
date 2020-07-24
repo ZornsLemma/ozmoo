@@ -1,0 +1,29 @@
+On C64 the game normally keeps I/O+ROM paged in from $D000 upwards; copy_page
+is used to copy RAM around with RAM paged in from $D000 upwards. The vmem_cache
+stuff keeps a copy of high RAM pages currently in use in low RAM. This is
+accessible RAM caching inaccessible RAM; it has nothing to do with optimising
+disc access. On Acorn second processor builds this is irrelevant as there's no
+paging. SFTODO: I suspect this is also irrelevant on Acorn SWR builds, but I
+need to investigate exactly how Z-machine non-dynamic memory is accessed to see
+if we can ensure the correct SWR bank is paged in at all times without using
+this caching mechanisms.
+
+mempointer is read in get_page_at_z_pc immediately after calling read_byte_at_z_address - it is copied into z_pc_mempointer+1
+ditto: in initial_copy_loop (REU code)
+read_byte_at_z_address updates mempointer; a fast path relies on mempointer+1 being consistent with zp_pc_[lh]
+read_byte_at_z_address updates zp_pc_[lh]
+read_next_byte uses read_byte_at_z_address to read the address at z_address+[012], it then advances z_address+[012]
+copy_table_common uses read_byte_at_z_address
+zp_pc_[lh] are really only used in vmem.asm instead read_byte_at_z_address; I think they basically boil down to "what page of Z-machine memory does mempointer currently point to?" as an optimisation.
+
+I'm struggling to see why we have both mempointer and zp_pc_mempointer.
+I *think* zp_pc_mempointer is used for the Z-machine program counter, and this may be allowed to be "separate" to mempointer. I see that the *cache* support refuses to evict a cache page if zp_pc_mempointer is referring to it, but I don't see anything in the disc<->RAM stuff which would stop a vmem page being discarded if zp_pc_mempointer refers to it.
+Yes, I think that's basically it
+- mempointer is used for data access, and is also moved in the process of updating zp_pc_mempointer but that's OK because we don't rely on mempointer pointing to any one place except in the short term
+- I still can't see anything protecting vmem pages being used by zp_pc_mempointer being evicted, although I suppose short of extreme memory pressure (SFTODO: which we might see on a hypothetical 32K RAM port) this won't happen - SFTODO: I could potentially tweak the vmem eviction code to check against zp_pc_mempointer
+- since only (?) read_byte_at_z_address can discard pages from vmem, mempointer is always going to be safe from eviction - read_byte_at_z_address is what sets mempointer
+
+I suspect on a SWR build, we would keep the bank containing z_pc_mempointer paged in at all times. read_byte_at_z_address would be used for reads of data, and it would briefly page in the relevant bank. We would probably need to tweak the logic when the Z-machine PC is being moved and might call into read_byte_at_z_address so we don't get into a loop - actually it would probably be fine, but it would be silly to page back in the old PC bank just to revert to paging in the new PC bank in the caller of read_byte_at_z_address in the PC update code.
+- we *could* use the C64-ish cache mechanism to avoid this, but I don't think we need to - the C64 presumably needs its high ROM banked in for kernal interrupts and keyboard reading and so forth, whereas the SWR on the Acorn isn't conflicting with the OS and we can safely keep it paged in all the time, it's just a question of ensuring we cope when the PC and "data" reads are from different SWR banks.
+
+I think zp_pc_[lh] are *not* related to the Z-machine PC; they may be misnamed, or "pc" may stand for something else, or of course I might have the wrong end of the stick.
