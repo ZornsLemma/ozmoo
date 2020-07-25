@@ -329,6 +329,8 @@ load_blocks_from_index
     bcs load_blocks_from_index_using_cache
 +	lda #vmem_block_pagecount ; number of blocks
 	sta readblocks_numblocks
+    lda #0
+    sta readblocks_mempos
 	sty readblocks_mempos + 1
 	lda vmap_z_l,x ; start block
 	sta readblocks_currentblock
