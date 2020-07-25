@@ -150,6 +150,9 @@ assert vmap_length >= vmap_max_size * 2
 for i in range(vmap_max_size):
     high = (256 - 8 * (i // 4) - 32) & ~vmem_highbyte_mask
     low = ((nonstored_blocks // vm_page_blocks) + i) * vm_page_blocks
+    # If this assertion fails, we need to be setting the low bits of high with
+    # the high bits of low. :-)
+    assert low & 0xff == low
     ssd.data[vmap_offset + i + 0            ] = high
     ssd.data[vmap_offset + i + vmap_max_size] = low
 
@@ -174,6 +177,13 @@ for i in range(vmap_max_size):
 # of space on the disc, and duplicate otherwise? OTOH, assuming it isn't risky
 # to save onto a disc with this trick, avoiding the duplication will leave more
 # space for saved games.
+# SFTODO: Since we will probably be discarding the code which is OSFILE-loading
+# the preloads, there isn't really any harm in having PRELOAD1, PRELOAD2 and
+# DATA consecutive on the disk. PRELOAD1 would be loaded by SWR, PRELOAD1 and
+# PRELOAD2 (consecutively, of course) by 2P, and the readblocks code would just
+# use the start of PRELOAD1 as the base block. All this really costs is an extra
+# OSFILE call in 2P case, and if we're discarding that code on startup that's
+# no hardship.
 first_free_sector = ssd.first_free_sector()
 ssd.data.extend(game_data)
 ssd.add_to_catalogue("$", "PRELOAD", 0, 0, preload_blocks * 256, first_free_sector)

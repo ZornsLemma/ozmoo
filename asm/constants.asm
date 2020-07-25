@@ -142,16 +142,7 @@ memory_buffer_length  = 89
 
 !ifndef ACORN {
 first_banked_memory_page = $d0
-} else {
-; SFTODO: I don't fully understand how this is used. I'm still feeling my way round the code, of course. Right now it seems odd that this is relevant when VMEM is *not* defined. Since my !VMEM build works with $ff here, let's go with that for now.
-!ifndef VMEM {
-first_banked_memory_page = $ff ; SF: Was $d0, probably need tweaking for a non-2P port but for now can probably get away with this ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
-} else {
-first_banked_memory_page = $d0
-}
-}
 
-!ifndef ACORN {
 charset_switchable 	  = $291
 
 datasette_buffer_start= $0334 ; Actually starts at 33c, but the eight bytes before that are unused

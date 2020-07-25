@@ -21,12 +21,13 @@
 }
 }
 
+!ifndef ACORN {
 !ifdef ALLRAM {
-; SFTODO: This is probably fine, but are any Acorn-specific tweaks necessary or useful here?
 !ifdef CACHE_PAGES {
 	cache_pages = CACHE_PAGES ; Note, this is not final. One page may be added. vmem_cache_count will hold final # of pages.
 } else {
 	cache_pages = 4 ; Note, this is not final. One page may be added. vmem_cache_count will hold final # of pages.
+}
 }
 }
 
@@ -312,8 +313,13 @@ program_end
 z_trace_page
 	!fill z_trace_size, 0
 
+!ifndef ACORN {
 vmem_cache_start
 
+; SFTODO: I will either need to relocate splashscreen.asm on Acorn or (more
+; likely) decide this binary has nothing to do with splash screens - as noted
+; elsewhere, we have a BASIC loader which can do this, and that way the splash
+; screen can also be displayed while we're loading this binary.
 !ifdef ALLRAM {
 	!if SPLASHWAIT > 0 {
 		!source "splashscreen.asm"
@@ -338,6 +344,7 @@ end_of_routines_in_vmem_cache
 
 vmem_cache_size = * - vmem_cache_start
 vmem_cache_count = vmem_cache_size / 256
+}
 }
 !align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
 
@@ -550,7 +557,6 @@ z_init
 	sta $d405
 	lda #$f2
 	sta $d406
-}
 	
 	; Init randomization
 	lda #$ff
@@ -695,10 +701,16 @@ deletable_init
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    lda #<vmem_cache_start
+    ; SFTODO: If we just moved this before the OSFILE immediately above, we
+    ; could use story_start as our temporary buffer and avoid having .catalogue.
+    ; It's not exactly wasted space as it's part of the stack, but it does
+    ; take up space "in" the stack for code and it makes me a bit edgy in case
+    ; it overflows later and if we can just rearrange this code it's safer all
+    ; round.
+    lda #<.catalogue
     sta zp_temp
     sta readblocks_mempos
-    lda #>vmem_cache_start
+    lda #>.catalogue
     sta zp_temp + 1
     sta readblocks_mempos + 1
     ; SFTODO: We may not need to set nonstored_blocks to 0 here, if the "final"
@@ -897,6 +909,9 @@ file_found
     !byte 0           ; attributes
 .osfile_load_filename
     !text "PRELOAD",13
+
+.catalogue
+    !fill 512
 }
 }
 
@@ -1258,20 +1273,37 @@ load_suggested_pages
     rts
 } 
 
+!ifndef ACORN {
 !ifndef ALLRAM {
 	!if SPLASHWAIT > 0 {
 		!source "splashscreen.asm"
 	}
+}
 }
 
 end_of_routines_in_stack_space
 
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 
+!ifdef ACORN {
+!ifdef VMEM {
+    ; story_start must be at a 512-byte boundary so the virtual memory works
+    ; correctly. On the C64 this alignment is done as part of vmem_cache and
+    ; any extra page gets allocated to vmem_cache, but we don't have vmem_cache
+    ; on Acorn.
+    ; SFTODO: At the moment any such extra page is just wasted. *If* the stack
+    ; remains here rather than at $400 we could probably make the stack have
+    ; an extra page, but it may not be worth it. I won't worry about this until
+    ; I've decided where the stack should live.
+    !align 511, 0, 0
+}
+}
+;!fill $600 ; SFTODO TEMP HACK
 story_start
 !ifdef VMEM {
 vmem_start
 
+!ifndef ACORN {
 !ifdef ALLRAM {
 
 !if $10000 - vmem_start > $cc00 {
@@ -1283,6 +1315,7 @@ vmem_start
 } else {
 	vmem_end = $d000
 }	
+}
 
 }
 

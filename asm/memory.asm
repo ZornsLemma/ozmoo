@@ -69,11 +69,12 @@ set_z_pc
 	eor z_pc + 1
 	and #vmem_blockmask
 	bne .unsafe_2
+!ifndef ACORN {
 	; z_pc is in same vmem_block unless it's in vmem_cache
 	lda z_pc_mempointer + 1
-    ;; SFTODO: More cache stuff here, checking for below story_start
 	cmp #>story_start
 	bcc .unsafe_2
+}
 	; z_pc is in same vmem_block, but different page.
 	stx z_pc + 1
 !ifdef SMALLBLOCK {
@@ -167,6 +168,7 @@ get_page_at_z_pc_did_pha
 	; rts
 ; }	
 
+!ifndef ACORN {
 copy_page
 ; a = source
 ; y = destination
@@ -188,4 +190,5 @@ copy_page
     +set_memory_no_basic_unsafe
     cli
 	rts
+}
 }

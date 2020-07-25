@@ -1,7 +1,9 @@
 
+!ifndef ACORN {
 !ifdef ALLRAM {
 vmem_cache_cnt !byte 0         ; current execution cache
 vmem_cache_index !fill cache_pages + 1, 0
+}
 }
 
 !ifndef VMEM {
@@ -29,6 +31,9 @@ read_byte_at_z_address
 	jmp - ; Always branch
 } else {
 ; No vmem, but ALLRAM 
+!ifdef ACORN {
+    !error "ALLRAM only supported/needed with VMEM on Acorn"
+}
 
 read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
@@ -140,7 +145,7 @@ vmem_blockmask = 255 - (>(vmem_blocksize - 1))
 vmem_block_pagecount = vmem_blocksize / 256
 ; vmap_max_length  = (vmem_end-vmem_start) / vmem_blocksize
 ; SFTODO: DOES vmap_max_size NEED TWEAKING FOR ACORN?
-vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use. 
+vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use. SFTODO: MAY WANT TO TWEAK THIS COMMENT AND/OR THIS VALUE
 ; vmap_max_entries	!byte 0 ; Moved to ZP
 ; vmap_used_entries	!byte 0 ; Moved to ZP
 vmap_blocks_preloaded !byte 0
@@ -222,6 +227,7 @@ print_optimized_vm_map
 !ifdef TRACE_VM {
 print_vm_map
 !zone {
+!ifndef ACORN {
     ; print caches
     jsr space
     lda #66
@@ -246,6 +252,7 @@ print_vm_map
     lda vmem_cache_index + 3
     jsr print_byte_as_hex
     jsr newline
+}
     ldy #0
 -	; print
     cpy #10
@@ -319,14 +326,10 @@ load_blocks_from_index
 	tay ; Store in y so we can use it later.
 ;	cmp #$e0
 ;	bcs +
+!ifndef ACORN {
     cmp #first_banked_memory_page
-    ; SFTODO: Ah, this suggests first_banked_memory_page is a threshold above
-    ; which we can't load directly and have to use a bounce buffer, like loading
-    ; to SWR on Acorn. If so we *can* probably set this to $ff for VMEM on
-    ; second processor, as we have no banked RAM in this case. No, on reading
-    ; more code and not yet fully understanding, it looks more sophisticated.
-    ; Not sure right now.
     bcs load_blocks_from_index_using_cache
+}
 +	lda #vmem_block_pagecount ; number of blocks
 	sta readblocks_numblocks
     lda #0
@@ -345,8 +348,7 @@ load_blocks_from_index
 }
     rts
 
-; SFTODO: We may not need this code on Acorn 2P; a variant on it may be helpful
-; if we ever have an SWR-non-2P version.
+!ifndef ACORN {
 load_blocks_from_index_using_cache
     ; vmap_index = index to load
     ; vmem_cache_cnt = which 256 byte cache use as transfer buffer
@@ -405,6 +407,7 @@ load_blocks_from_index_using_cache
 	ldx vmem_cache_cnt
     sta vmem_cache_index,x
     rts
+}
 
 read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
@@ -539,6 +542,8 @@ read_byte_at_z_address
 	; Found older
 	; Skip if z_pc points here
 	ldy vmap_z_l,x
+!if 1 { ; SFTODO: EXPERIMENTAL HACK - DON'T WE NEED TO CHECK z_pc+1 AGAINST BOTH 256 BYTE PAGES IN vmap_z_l,x? - MAYBE THIS IS OK, I WILL LEAVE THE ORIGINAL CODE ENABLED FOR NOW BUT THINK ABOUT THIS LATER
+; SFTODO THIS IS THE ORIGINAL UPSTREAM CODE
 	cpy z_pc + 1
 	bne ++
 	tay
@@ -546,6 +551,19 @@ read_byte_at_z_address
 	cmp z_pc
 	beq +
 	tya
+} else {
+	cpy z_pc + 1
+    beq .SFTODO1
+    iny
+    cpy z_pc + 1
+	bne ++
+.SFTODO1
+	tay
+	and #vmem_highbyte_mask
+	cmp z_pc
+	beq +
+	tya
+}
 ++	sta vmem_oldest_age
 	stx vmem_oldest_index
 +	inx
@@ -628,6 +646,7 @@ read_byte_at_z_address
 }
 }
 	
+!ifndef ACORN {
 	; Forget any cache pages belonging to the old block at this position.
 	lda vmap_c64_offset
 	cmp #first_banked_memory_page
@@ -642,6 +661,7 @@ read_byte_at_z_address
 +	dey
 	bpl -
 .cant_be_in_cache	
+}
 
 	; Update tick
 	lda vmem_tick
@@ -694,6 +714,7 @@ read_byte_at_z_address
 	; Carry is already clear
 	adc vmap_first_ram_page
 	sta vmap_c64_offset
+!ifndef ACORN {
 	cmp #first_banked_memory_page
     bcc .unswappable
     ; this is swappable memory
@@ -748,6 +769,7 @@ read_byte_at_z_address
     ldx vmap_index
     bne .return_result ; always true
 .unswappable
+}
     ; update memory pointer
     lda vmem_offset_in_block
     clc
