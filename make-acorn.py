@@ -11,6 +11,8 @@ from __future__ import print_function
 import os
 import sys
 
+# SFTODO: Can we take some/all of these values from the labels dictionary? That
+# would be much neater and safer.
 ramtop = 0xf800
 header_version = 0
 header_static_mem = 0xe
