@@ -550,12 +550,16 @@ z_init
 	sta $d405
 	lda #$f2
 	sta $d406
+}
 	
 	; Init randomization
 	lda #$ff
+!ifndef ACORN {
 	sta $d40e
 	sta $d40f
+}
 	ldx #$80
+!ifndef ACORN {
 	stx $d412
 }
 !ifdef BENCHMARK {
