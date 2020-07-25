@@ -554,15 +554,18 @@ z_init
 	
 	; Init randomization
 	lda #$ff
-!ifndef ACORN {
 	sta $d40e
 	sta $d40f
-}
 	ldx #$80
-!ifndef ACORN {
 	stx $d412
 }
 !ifdef BENCHMARK {
+!ifdef ACORN {
+    ; Populate A and X with the values they would have had if we'd done the
+    ; C64 init randomization above.
+	lda #$ff
+	ldx #$80
+}
 	ldy #1
 	jmp z_rnd_init
 } else {
