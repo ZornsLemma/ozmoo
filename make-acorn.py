@@ -123,7 +123,10 @@ if game_blocks > nonstored_blocks:
         die("Not enough free RAM for any swappable memory")
     # SFTODO: One VM block of swappable memory is not really going to
     # work. We should probably emit a warning unless there are at
-    # least n blocks of swappable memory.
+    # least n blocks of swappable memory. I suspect you need at least
+    # 2 VM blocks=4 pages of RAM, one VM block for the PC and one VM
+    # block for data access. That would thrash like hell but I think
+    # in principle it should work, and might be a good torture test.
 
 if game_blocks <= max_preload_blocks:
     preload_blocks = game_blocks
