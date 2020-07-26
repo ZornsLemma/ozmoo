@@ -413,6 +413,9 @@ uname_len = * - .uname
 .next_disk_index	!byte 0
 .disk_tracks	!byte 0
 } else {
+    ; SFTODO: Don't forget that we could get a read error here. I'll wait until
+    ; I've done loading and saving, but ideally we should catch and print errors
+    ; and say "press any key to retry".
 !ifdef TRACE_FLOPPY {
     ; SFTODO: This not tested yet
     jsr newline
