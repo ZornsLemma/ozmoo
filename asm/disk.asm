@@ -442,6 +442,26 @@ uname_len = * - .uname
     jsr print_byte_as_hex
     jsr newline
 }
+
+    ; SFTODO: Something needs to set the "print newlines" value to say 2 once
+    ; we've started up properly - TBH maybe I should just always print 2 newlines
+    ; and who cares if it causes a bit of arbitrary scrolling.
+    jsr setjmp
+    beq .no_error
+    jsr error_print_following_string
+    !text 13, "Press SPACE to retry...", 0
+    lda #osbyte_flush_buffer
+    ldx #buffer_keyboard
+    jsr osbyte
+-   jsr osrdch
+    cmp #' '
+    bne -
+    lda #13
+    jsr error_handler_print_char
+    lda #13
+    jsr error_handler_print_char
+.no_error
+
     ; SFTODO: At the moment the data file *includes* the non-stored blocks,
     ; because it's just a raw copy of the original game data. This is wasteful
     ; of disc space, because we always have those blocks pre-loaded as part of
@@ -528,6 +548,26 @@ uname_len = * - .uname
     ora #$20
     sta .osword_block + 9 ; sector size and count
 
+!if 1 {
+    ; Test code to fake intermittent read failures
+    jsr kernal_readtime
+    cmp #25
+    bcs +
+    brk
+    !byte 'A' ; error code, use a printable character to confirm it isn't printed
+    !text "Fake read error"
+    !byte 0
++
+}
+
+    lda #osword_floppy_op
+    ldx #<.osword_block
+    ldy #>.osword_block
+    jsr osword
+    jsr set_default_error_handler
+
+    ; Now we know the operation has succeeded and there won't be a retry,
+    ; increment the disc and memory positions.
     clc
     lda readblocks_mempos + 1
     adc readblocks_numblocks
@@ -538,12 +578,7 @@ uname_len = * - .uname
     sta readblocks_currentblock
     bcc +
     inc readblocks_currentblock + 1
-+
-
-    lda #osword_floppy_op
-    ldx #<.osword_block
-    ldy #>.osword_block
-    jmp osword
++   rts
 
     ; We make this 16 bytes to avoid any problems with the Tube MOS always
     ; copying 16 bytes (see http://beebwiki.mdfs.net/OSWORD_%267F)

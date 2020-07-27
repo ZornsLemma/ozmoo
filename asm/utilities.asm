@@ -774,7 +774,7 @@ kernal_readtime
     !fill 5
 
 error_handler
-    ldy error_handler_newlines
+    ldy #2 ; SFTODO!? error_handler_newlines
     beq +
 -   lda #13
     jsr error_handler_print_char
@@ -791,20 +791,14 @@ error_handler
 .error_handler_jmp
 +   jmp .press_break
 
-error_handler_newlines !byte 0
+error_handler_newlines !byte 0 ; SFTODO GET RID OF THIS IF NOT USED
 
 .press_break
     ; We don't use print_following_string here because we don't want to assume
     ; Ozmoo's own printing mechanisms are properly initialised.
-    ldy #0
--   lda .press_break_message,y
-.hang
-    beq .hang
-    jsr error_handler_print_char
-    iny
-    bne - ; Always branch
-.press_break_message
+    jsr error_print_following_string
     !text " - press BREAK",0
+-   jmp -
 
 ; We can't assume the Ozmoo printing code is properly initialised if any errors
 ; occur during initial loading. This gets patched to use s_printchar later, so
@@ -813,18 +807,46 @@ error_handler_newlines !byte 0
 error_handler_print_char
     jmp osasci
 
+; Like print_following_string, but using error_handler_print_char.
+error_print_following_string
+    pla
+    sta .error_print_following_string_lda + 1
+    pla
+    sta .error_print_following_string_lda + 2
+-   inc .error_print_following_string_lda + 1
+    bne +
+    inc .error_print_following_string_lda + 2
++
+.error_print_following_string_lda
+    lda $ffff
+    beq +
+    jsr error_handler_print_char
+    jmp -
++   lda .error_print_following_string_lda + 2
+    pha
+    lda .error_print_following_string_lda + 1
+    pha
+    rts
+
+; Allow trapping of errors signalled by the OS via BRKV. Used like this:
+;   jsr setjmp
+;   beq ok
+;   ; error occurred, do something
+;   jsr set_default_error_handler ; before returning
+;   rts
+; ok
+;   ; do something that might cause an error
+;   jsr set_default_error_handler ; errors after this point aren't our problem
 setjmp
-    pla
-    sta .setjmp_return_lda_low + 1
-    pla
-    sta .setjmp_return_lda_high + 1
     lda #<.setjmp_error_handler
     sta .error_handler_jmp + 1
     lda #>.setjmp_error_handler
     sta .error_handler_jmp + 2
     ; We need to save the contents of the stack, because they may be corrupted
     ; when an error message is generated. (They probably won't be, but we can't
-    ; rely on it.)
+    ; rely on it.) As a nice side effect of this, the return address for our
+    ; caller is saved so .setjmp_error_handler can simply rts after restoring
+    ; the stack.
     ; SFTODO: If .jmp_buf is made smaller, we could probably fairly easily
     ; detect overflow - initialise y with -buffer_size, do sta .jmp_buf+1+buffer_size,y
     ; and if the bne after the iny isn't taken we've overflowed. There might be
@@ -845,20 +867,13 @@ setjmp
     ldx .jmp_buf
     txs
     ldy #0
-    inx
+-   inx
     beq +
     lda .jmp_buf+1,y
     sta stack,x
     iny
     bne -
-+   jsr set_default_error_handler
-.setjmp_return_lda_high
-    lda #$ff
-    pha
-.setjmp_return_lda_low
-    lda #$ff
-    pha
-    clc
++   lda #1 ; Z flag is clear
     rts
 
 set_default_error_handler

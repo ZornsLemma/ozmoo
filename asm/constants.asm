@@ -236,6 +236,7 @@ osfile_load = $ff
 osword_read_clock = 1
 osword_floppy_op = $7f
 osbyte_set_cursor_editing = $04
+osbyte_flush_buffer = $15
 osbyte_reflect_keyboard_status = $76
 osbyte_read_key = $81
 osbyte_read_cursor_position = $86
@@ -243,6 +244,7 @@ osbyte_enter_language = $8e
 osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
 del = 127
+buffer_keyboard = 0
 
 ; Acorn memory allocations
 
