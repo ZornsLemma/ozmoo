@@ -530,23 +530,34 @@ read_byte_at_z_address
 	jmp print_optimized_vm_map
 }	
 }
-	; Store age and index of entry at vmap_clock_index
-	lda vmap_z_h,x
-	stx vmem_oldest_index
+        ; Store very recent oldest_age so the first valid index in the following
+        ; loop will be picked as the first candidate.
+        lda #$ff
+!ifdef DEBUG {
+        sta vmem_oldest_index
+}
 	sta vmem_oldest_age
+        bne ++ ; Always branch
 	
 	; Check all other indexes to find something older
 -	lda vmap_z_h,x
 	cmp vmem_oldest_age
 	bcs +
+++
 	; Found older
-	; Skip if z_pc points here
+	; Skip if z_pc points here; it could be in either page of the block.
+!ifndef SMALLBLOCK {
+	!error "Only SMALLBLOCK supported"
+}
 	ldy vmap_z_l,x
 !if 1 { ; SFTODO: EXPERIMENTAL HACK - DON'T WE NEED TO CHECK z_pc+1 AGAINST BOTH 256 BYTE PAGES IN vmap_z_l,x? - MAYBE THIS IS OK, I WILL LEAVE THE ORIGINAL CODE ENABLED FOR NOW BUT THINK ABOUT THIS LATER
 ; SFTODO THIS IS THE ORIGINAL UPSTREAM CODE
 	cpy z_pc + 1
-	bne ++
-	tay
+	beq +++
+        iny
+        cpy z_pc + 1
+        bne ++
++++	tay
 	and #vmem_highbyte_mask
 	cmp z_pc
 	beq +
@@ -603,6 +614,15 @@ read_byte_at_z_address
 	ldy #0
 .not_max_index
 	sty vmap_clock_index
+
+!ifdef DEBUG {
+        lda vmem_oldest_index
+        cmp #$ff
+        bne +
+        lda #ERROR_NO_VMEM_INDEX
+        jsr fatalerror
++
+}
 
 	; We have now decided on a map position where we will store the requested block. Position is held in x.
 !ifdef DEBUG {

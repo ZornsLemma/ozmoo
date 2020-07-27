@@ -104,6 +104,7 @@ ERROR_OUT_OF_MEMORY = 12
 ERROR_WRITE_ABOVE_DYNMEM = 13
 ERROR_READ_ABOVE_STATMEM = 14
 ERROR_TOO_MANY_TERMINATORS = 15
+ERROR_NO_VMEM_INDEX = 16
 
 ; SFTODO: General point - there's lots of !pet stuff in debug-only code which
 ; I haven't ported yet. If ACME allows it, maybe define a !native macro which
@@ -126,6 +127,7 @@ ERROR_TOO_MANY_TERMINATORS = 15
 .error_write_above_dynmem !pet "tried to write to non-dynamic memory", 0
 .error_read_above_statmem !pet "tried to read from himem", 0
 .error_too_many_terminators !pet "too many terminators", 0
+.error_no_vmem_index !pet "no vmem index found", 0
 } else {
 .error_unsupported_stream !text "unsupported stream#",0
 .error_config !text "broken config",0
@@ -142,6 +144,7 @@ ERROR_TOO_MANY_TERMINATORS = 15
 .error_write_above_dynmem !text "tried to write to non-dynamic memory", 0
 .error_read_above_statmem !text "tried to read from himem", 0
 .error_too_many_terminators !text "too many terminators", 0
+.error_no_vmem_index !text "no vmem index found", 0
 }
 
 .error_message_high_arr
@@ -160,6 +163,7 @@ ERROR_TOO_MANY_TERMINATORS = 15
     !byte >.error_write_above_dynmem
     !byte >.error_read_above_statmem
     !byte >.error_too_many_terminators
+    !byte >.error_no_vmem_index
 
 .error_message_low_arr
     !byte <.error_unsupported_stream
@@ -177,6 +181,7 @@ ERROR_TOO_MANY_TERMINATORS = 15
     !byte <.error_write_above_dynmem
     !byte <.error_read_above_statmem
     !byte <.error_too_many_terminators
+    !byte <.error_no_vmem_index
 }
 
 fatalerror
