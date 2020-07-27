@@ -232,15 +232,13 @@ game_id		!byte 0,0,0,0
     jmp testscreen
 }
 
-    ; SFTODO: We should probably rationalise all the various deletable init
-    ; stuff on Acorn - I suspect if we have a splash screen it will be handled
-    ; by the BASIC loader (that way it can be shown while the larger executable
-    ; is loading) so we don't need to be splitting this up so much.
 	jsr deletable_init_start
 ;	jsr init_screen_colours
 	jsr deletable_screen_init_1
+!ifndef ACORN {
 !if SPLASHWAIT > 0 {
 	jsr splash_screen
+}
 }
 
 !ifdef VMEM {
@@ -278,10 +276,6 @@ game_id		!byte 0,0,0,0
 	jsr stack_init
 
 	jsr deletable_screen_init_2
-    ; SFTODO: We seem to do three screen clears on startup - one each in
-    ; deletable_screen_init_[12] and one here. I may be wrong. It doesn't really
-    ; matter, but without diverging too much from upstream it might be nice to
-    ; fix this eventually.
 	ldx #$ff
 	jsr erase_window
 
@@ -331,14 +325,12 @@ z_trace_page
 !ifndef ACORN {
 vmem_cache_start
 
-; SFTODO: I will either need to relocate splashscreen.asm on Acorn or (more
-; likely) decide this binary has nothing to do with splash screens - as noted
-; elsewhere, we have a BASIC loader which can do this, and that way the splash
-; screen can also be displayed while we're loading this binary.
+!ifndef ACORN {
 !ifdef ALLRAM {
 	!if SPLASHWAIT > 0 {
 		!source "splashscreen.asm"
 	}
+}
 
 end_of_routines_in_vmem_cache
 
@@ -375,11 +367,6 @@ deletable_screen_init_1
 !ifndef ACORN {
     lda #147 ; clear screen
     jsr s_printchar
-} else {
-    ; SFTODO: Should we change screen mode here? For the moment it's more
-    ; convenient to leave this alone.
-    lda #vdu_cls
-    jsr oswrch
 }
 	ldy #0
 	sty current_window
@@ -400,11 +387,9 @@ deletable_screen_init_2
 	; start text output from bottom of the screen
 	
 !ifndef ACORN {
-    lda #147 ; clear screen SFTODO
+    lda #147 ; clear screen
     jsr s_printchar
 } else {
-    ; SFTODO: Should we change screen mode here? For the moment it's more
-    ; convenient to leave this alone.
     lda #vdu_cls
     jsr oswrch
 }
