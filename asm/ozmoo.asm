@@ -183,7 +183,12 @@
 
 program_start
 
-    ; SFTODO: I could get rid of this and specify execution address
+    ; SFTODO: We could do away with this on Acorn and just specify .initialize
+    ; as the execution address. Because we're assembling this with ACME, we
+    ; would need to get the value of .initialize and patch it up on the SSD
+    ; afterwards - mildly fiddly, but not a huge deal since we do already need
+    ; a custom script to run and patch up the initial VM map and do other stuff
+    ; to the SSD.
     jmp .initialize
 
 ; global variables
