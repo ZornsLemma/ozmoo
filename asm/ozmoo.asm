@@ -183,6 +183,7 @@
 
 program_start
 
+    ; SFTODO: I could get rid of this and specify execution address
     jmp .initialize
 
 ; global variables
@@ -453,6 +454,8 @@ z_init
     ; foreground colour.) SFTODO: Am I misreading the spec? The original code
     ; only forced bit 0 on for Z5PLUS, but I am now forcing it off for all
     ; versions.
+    ; SFTODO: Whatever I do needs to be protected by ifdef ACORN; at the moment
+    ; these changes would affect a C64 build from this code too.
 !ifdef Z3 {
 	lda story_start + header_flags_1
 	and #(255 - 16 - 64 - 1) ; Statusline IS available, variable-pitch font is not default
@@ -625,6 +628,10 @@ deletable_init_start
     jsr init_readtime
 }
 
+    ; SFTODO: On Acorn, I would really like to use s_printchar in the error
+    ; handler, but that means I must do this initialisation before the error
+    ; handler can be invoked, and it could be invoked during the initial
+    ; disc access, so I need to move this to be earlier.
 	jmp init_screen_colours ; _invisible
 
 
@@ -700,6 +707,8 @@ deletable_init
     ; shfiting) to look for a file in the "D" directory instead of using first
     ; character. The file could then be called D.CURSES or D.DEJAVU or whatever
     ; to make the contents more obvious.
+    ; SFTODO: Once user is maybe saving games onto the same disc,
+    ; looking for the exact filename becomes more important.
     lda #2
     sta readblocks_numblocks
     lda #0
