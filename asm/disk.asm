@@ -548,7 +548,7 @@ uname_len = * - .uname
     ora #$20
     sta .osword_block + 9 ; sector size and count
 
-!if 1 {
+!if 0 {
     ; Test code to fake intermittent read failures
     jsr kernal_readtime
     cmp #25
