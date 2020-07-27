@@ -550,8 +550,6 @@ read_byte_at_z_address
 	!error "Only SMALLBLOCK supported"
 }
 	ldy vmap_z_l,x
-!if 1 { ; SFTODO: EXPERIMENTAL HACK - DON'T WE NEED TO CHECK z_pc+1 AGAINST BOTH 256 BYTE PAGES IN vmap_z_l,x? - MAYBE THIS IS OK, I WILL LEAVE THE ORIGINAL CODE ENABLED FOR NOW BUT THINK ABOUT THIS LATER
-; SFTODO THIS IS THE ORIGINAL UPSTREAM CODE
 	cpy z_pc + 1
 	beq +++
         iny
@@ -562,19 +560,6 @@ read_byte_at_z_address
 	cmp z_pc
 	beq +
 	tya
-} else {
-	cpy z_pc + 1
-    beq .SFTODO1
-    iny
-    cpy z_pc + 1
-	bne ++
-.SFTODO1
-	tay
-	and #vmem_highbyte_mask
-	cmp z_pc
-	beq +
-	tya
-}
 ++	sta vmem_oldest_age
 	stx vmem_oldest_index
 +	inx

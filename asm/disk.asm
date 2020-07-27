@@ -512,7 +512,7 @@ uname_len = * - .uname
     ; allow the data to be split over two sides of a single disc. That will
     ; probably allow most games to fit, as we'd probably have 350K+ for the
     ; game.)
-    ; SFTODO: If I continue to use a custom block of memory for osword_block
+    ; SFTODO: If I continue to use a custom block of memory for .osword_7f_block
     ; I may be able to initialise part of it at assembly time. Of course there
     ; may be a block of "scratch" memory which it turns out is free for me to
     ; use here, and that might be a size saving. (Does the C64 code use any
@@ -523,30 +523,30 @@ uname_len = * - .uname
     ; same track but on both sides of the disc? i.e. using "cylinders" instead
     ; of just "tracks".
     lda #0+24+8 ; drive 0, single density
-    sta .osword_block + 0 ; drive
+    sta .osword_7f_block + 0 ; drive
     lda #0
-    sta .osword_block + 3 ; high order word of address
-    sta .osword_block + 4 ; high order word of address
-    ; SFTODO: Could we simply make readblocks_mempos point to .osword_block+1?
+    sta .osword_7f_block + 3 ; high order word of address
+    sta .osword_7f_block + 4 ; high order word of address
+    ; SFTODO: Could we simply make readblocks_mempos point to .osword_7f_block+1?
     ; I don't know if it might get updated by the OSWORD call so perhaps best to
     ; just play it safe.
     lda readblocks_mempos
-    sta .osword_block + 1
+    sta .osword_7f_block + 1
     lda readblocks_mempos + 1
-    sta .osword_block + 2
+    sta .osword_7f_block + 2
     lda #3 ; number of parameters
-    sta .osword_block + 5
+    sta .osword_7f_block + 5
     lda #$53 ; read data
-    sta .osword_block + 6
+    sta .osword_7f_block + 6
     lda division_result ; track
-    sta .osword_block + 7
+    sta .osword_7f_block + 7
     lda remainder ; sector
-    sta .osword_block + 8
+    sta .osword_7f_block + 8
     ; We know the number of blocks is only going to be vmem_block_pagecount, so
     ; there's no need to loop round in case it's too many to read 
     lda readblocks_numblocks
     ora #$20
-    sta .osword_block + 9 ; sector size and count
+    sta .osword_7f_block + 9 ; sector size and count
 
 !if 0 {
     ; Test code to fake intermittent read failures
@@ -561,8 +561,8 @@ uname_len = * - .uname
 }
 
     lda #osword_floppy_op
-    ldx #<.osword_block
-    ldy #>.osword_block
+    ldx #<.osword_7f_block
+    ldy #>.osword_7f_block
     jsr osword
     jsr set_default_error_handler
 
@@ -582,7 +582,7 @@ uname_len = * - .uname
 
     ; We make this 16 bytes to avoid any problems with the Tube MOS always
     ; copying 16 bytes (see http://beebwiki.mdfs.net/OSWORD_%267F)
-.osword_block
+.osword_7f_block
     !fill 16
 }
 } ; End of !ifdef VMEM
@@ -774,6 +774,10 @@ z_ins_restart
     ; do this a little bit better than inserting into keyboard buffer though.
     ; SFTODO: Can we just use OSFILE to *RUN OZMOO?
     ; SFTODO: Magic constants
+    ; SFTODO: Whatever we do, we should perhaps do *DRIVE 0 and *DIR $ first,
+    ; in case the user has changed these via * commands during save/restore.
+    ; Game data won't be affected as we use OSWORD &7F and specify a drive, but
+    ; this would be.
     lda #21
     ldx #0
     ldy #0
@@ -1357,12 +1361,68 @@ do_save
 } else {
 ; SFTODO
 
+filename_buffer_length = 40 ; SFTODO!?
+; SFTODO: .filename_buffer could maybe share space with something else, but just
+; put it here for now. It doesn't alter the idea of sharing, but I am thinking
+; that *if* we are using four pages of stack, $400-$800 will be the stack and
+; misc buffers will live "inside" the binary, and if we need >4 pages stack
+; misc buffers can live in $00-$800 and stack can live in binary.
+.filename_buffer
+    !fill filename_buffer_length
+.osword_0_block
+    !word .filename_buffer
+    !byte filename_buffer_length ; SFTODO: OFF BY ONE ERRORS?
+    !byte 32 ; minimum ASCII value
+    !byte 127 ; maximum ASCII value
+; Returns with Z set iff user wants to abort the save/restore.
+; SFTODO: WE SHOULD PROBABLY DEFINE A TEXT WINDOW AND USE RAW OS OUTPUT HERE,
+; BECAUSE IF YOU DO ANY * COMMANDS THEY WON'T BE USING s_printchar
+.get_filename
+    lda #>.filename_msg
+    ldx #<.filename_msg
+    jsr printstring_raw
+-   lda #>.filename_prompt
+    ldx #<.filename_prompt
+    jsr printstring_raw
+    lda #osword_input_line
+    ldx #<.osword_0_block
+    ldy #>.osword_0_block
+    jsr osword
+    ldy #$ff
+--  iny
+    lda .filename_buffer,y
+    cmp #' '
+    beq --
+    cmp #13
+    beq .save_game_rts
+    cmp #'*'
+    bne .save_game_rts
+    ldx #<.filename_buffer
+    ldy #>.filename_buffer
+    jsr oscli
+    jmp -
+
+
+
+.filename_msg
+    ; This message is tweaked to work nicely in 40 or 80 column mode without
+    ; needing word wrapping code.
+    !text 13, "Please enter a filename or * command or just press RETURN to carry on playing:", 0
+.filename_prompt
+    !text 13, "?", 0
+
 save_game
+    ; SFTODO: Need to allow for possibility of a disc swap
+    jsr .get_filename
+
     lda #'+'
     jsr oswrch
 -   jmp -
+.save_game_rts
+    rts
 
 restore_game
+    ; SFTODO: Need to allow for possibility of a disc swap
     lda #'*'
     jsr oswrch
 -   jmp -

@@ -233,6 +233,7 @@ vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
 osfile_load = $ff
+osword_input_line = 0
 osword_read_clock = 1
 osword_floppy_op = $7f
 osbyte_set_cursor_editing = $04
