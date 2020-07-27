@@ -194,5 +194,6 @@ ssd.data.extend(game_data)
 ssd.add_to_catalogue("$", "PRELOAD", 0, 0, preload_blocks * 256, first_free_sector)
 ssd.add_to_catalogue("$", "DATA", 0, 0, game_blocks * 256, first_free_sector)
 
+# TODO: I should set the locked bit on all the game files before writing this out
 with open(output_name, "wb") as f:
     f.write(ssd.data)
