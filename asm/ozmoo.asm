@@ -223,6 +223,11 @@ game_id		!byte 0,0,0,0
 !source "objecttable.asm"
 
 .initialize
+!ifdef ACORN {
+    ; Reset the stack pointer; setjmp relies on this. SFTODO: PROBABLY, BUT CHECK
+    ldx #$ff
+    txs
+}
 !ifdef TESTSCREEN {
     jmp testscreen
 }

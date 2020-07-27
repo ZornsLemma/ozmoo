@@ -776,34 +776,105 @@ kernal_readtime
 error_handler
     ldy error_handler_newlines
     beq +
--   jsr osnewl
+-   lda #13
+    jsr error_handler_print_char
     dey
     bne -
 +   ldy #1
 -   lda (error_ptr), y
     beq +
-    jsr oswrch
+    jsr error_handler_print_char
     iny
     bne - ; Always branch
     ; The following jmp will be patched by code which wants to gain control
     ; after an error.
-error_handler_jmp
-+   jmp press_break
+.error_handler_jmp
++   jmp .press_break
 
 error_handler_newlines !byte 0
 
-press_break
+.press_break
     ; We don't use print_following_string here because we don't want to assume
     ; Ozmoo's own printing mechanisms are properly initialised.
     ldy #0
 -   lda .press_break_message,y
 .hang
     beq .hang
-    jsr oswrch
+    jsr error_handler_print_char
     iny
     bne - ; Always branch
 .press_break_message
     !text " - press BREAK",0
+
+; We can't assume the Ozmoo printing code is properly initialised if any errors
+; occur during initial loading. This gets patched to use s_printchar later, so
+; non-fatal errors during saving/restoring play nicely with the rest of the
+; game's output. SFTODO MAKE SURE I DO PATCH THIS
+error_handler_print_char
+    jmp osasci
+
+setjmp
+    pla
+    sta .setjmp_return_lda_low + 1
+    pla
+    sta .setjmp_return_lda_high + 1
+    lda #<.setjmp_error_handler
+    sta .error_handler_jmp + 1
+    lda #>.setjmp_error_handler
+    sta .error_handler_jmp + 2
+    ; We need to save the contents of the stack, because they may be corrupted
+    ; when an error message is generated. (They probably won't be, but we can't
+    ; rely on it.)
+    ; SFTODO: If .jmp_buf is made smaller, we could probably fairly easily
+    ; detect overflow - initialise y with -buffer_size, do sta .jmp_buf+1+buffer_size,y
+    ; and if the bne after the iny isn't taken we've overflowed. There might be
+    ; an off by one error in that, I'm just sketching the idea out.
+    tsx
+    stx .jmp_buf
+    ldy #0
+-   inx
+    beq +
+    lda stack,x
+    sta .jmp_buf+1,y
+    iny
+    bne -
++   ; Z flag is set
+    rts
+
+.setjmp_error_handler
+    ldx .jmp_buf
+    txs
+    ldy #0
+    inx
+    beq +
+    lda .jmp_buf+1,y
+    sta stack,x
+    iny
+    bne -
++   jsr set_default_error_handler
+.setjmp_return_lda_high
+    lda #$ff
+    pha
+.setjmp_return_lda_low
+    lda #$ff
+    pha
+    clc
+    rts
+
+set_default_error_handler
+    lda #<.press_break
+    sta .error_handler_jmp + 1
+    lda #>.press_break
+    sta .error_handler_jmp + 2
+    rts
+
+.jmp_buf
+    ; SFTODO: We won't need this much space. In principle we can work it out by
+    ; analysis of the Ozmoo code, at least provided we don't use the CPU stack
+    ; to handle any sort of recursion controlled by the running game. We may
+    ; also be able to stick this somewhere else in memory, but this will do
+    ; for now.
+    !fill 256
 }
 }
 

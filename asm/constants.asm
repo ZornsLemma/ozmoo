@@ -215,7 +215,7 @@ header_header_extension_table = $36
 !ifdef ACORN {
 
 ; Acorn OS constants
-brkv = $0202
+brkv = $202
 error_ptr = $fd
 osfile = $ffdd
 osrdch = $ffe0
@@ -245,6 +245,8 @@ osbyte_read_language = $fc
 del = 127
 
 ; Acorn memory allocations
+
+stack = $100
 
 ; story_start + header_screen_{width,height}* are only valid for certain
 ; Z-machine versions. We don't want to be querying the OS for these values all
