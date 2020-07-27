@@ -809,7 +809,7 @@ error_handler_newlines !byte 0
 ; We can't assume the Ozmoo printing code is properly initialised if any errors
 ; occur during initial loading. This gets patched to use s_printchar later, so
 ; non-fatal errors during saving/restoring play nicely with the rest of the
-; game's output. SFTODO MAKE SURE I DO PATCH THIS
+; game's output.
 error_handler_print_char
     jmp osasci
 

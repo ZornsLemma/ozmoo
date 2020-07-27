@@ -46,6 +46,17 @@ s_init
     sta s_current_screenpos_row ; force recalculation first time
 } else {
     sta s_cursors_inconsistent
+
+    ; SFTODO: We should query these from the OS, but since there's lots of hardcoded
+    ; 40x25 assumptions at the moment we just go with that for consistency.
+    ldx #40
+    stx screen_width
+    dex
+    stx screen_width_minus_1
+    ldx #25
+    stx screen_height
+    dex
+    stx screen_height_minus_1
 }
     lda #0
     sta zp_screencolumn

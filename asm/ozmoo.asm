@@ -380,17 +380,6 @@ deletable_screen_init_1
     ; convenient to leave this alone.
     lda #vdu_cls
     jsr oswrch
-    ; SFTODO: We should query these from the OS, but since there's lots of hardcoded
-    ; 40x25 assumptions at the moment we just go with that for consistency. We
-    ; need to set these up early so erase_window works correctly.
-    ldx #40
-    stx screen_width
-    dex
-    stx screen_width_minus_1
-    ldx #25
-    stx screen_height
-    dex
-    stx screen_height_minus_1
 }
 	ldy #0
 	sty current_window
@@ -642,12 +631,15 @@ deletable_init_start
     jsr cursor_control
 
     jsr init_readtime
+
+    ; Now Ozmoo's screen output code is (about to be) initialised via
+    ; init_screen_colours, errors can be reported using s_printchar.
+    lda #<s_printchar
+    sta error_handler_print_char + 1
+    lda #>s_printchar
+    sta error_handler_print_char + 2
 }
 
-    ; SFTODO: On Acorn, I would really like to use s_printchar in the error
-    ; handler, but that means I must do this initialisation before the error
-    ; handler can be invoked, and it could be invoked during the initial
-    ; disc access, so I need to move this to be earlier.
 	jmp init_screen_colours ; _invisible
 
 
