@@ -772,6 +772,38 @@ kernal_readtime
 ; to avoid possible clashes with other users we just have this space for now.
 .current_clock
     !fill 5
+
+error_handler
+    ldy error_handler_newlines
+    beq +
+-   jsr osnewl
+    dey
+    bne -
++   ldy #1
+-   lda (error_ptr), y
+    beq +
+    jsr oswrch
+    iny
+    bne - ; Always branch
+    ; The following jmp will be patched by code which wants to gain control
+    ; after an error.
+error_handler_jmp
++   jmp press_break
+
+error_handler_newlines !byte 0
+
+press_break
+    ; We don't use print_following_string here because we don't want to assume
+    ; Ozmoo's own printing mechanisms are properly initialised.
+    ldy #0
+-   lda .press_break_message,y
+.hang
+    beq .hang
+    jsr oswrch
+    iny
+    bne - ; Always branch
+.press_break_message
+    !text " - press BREAK",0
 }
 }
 

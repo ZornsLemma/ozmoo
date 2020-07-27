@@ -215,8 +215,12 @@ header_header_extension_table = $36
 !ifdef ACORN {
 
 ; Acorn OS constants
+brkv = $0202
+error_ptr = $fd
 osfile = $ffdd
 osrdch = $ffe0
+osasci = $ffe3
+osnewl = $ffe7
 oswrch = $ffee
 osword = $fff1
 osbyte = $fff4

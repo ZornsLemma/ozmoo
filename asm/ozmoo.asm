@@ -603,6 +603,12 @@ deletable_init_start
 	lda #$80
 	sta charset_switchable
 } else {
+    ; Install our error handler ASAP.
+    lda #<error_handler
+    sta brkv
+    lda #>error_handler
+    sta brkv + 1
+
     lda #osbyte_rw_escape_key
     ldx #1
     ldy #0
