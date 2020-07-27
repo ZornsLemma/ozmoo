@@ -33,9 +33,10 @@ inc_z_pc_page
 	and #255-vmem_blockmask
 	beq get_page_at_z_pc_did_pha
 	lda z_pc_mempointer + 1
-    ;;  SFTODO: This bcc is about cache, which sits below story_start
+!ifndef ACORN {
 	cmp #>story_start
 	bcc get_page_at_z_pc_did_pha
+}
 } else {
 ; No vmem
 !ifndef ACORN { ; SFTODO!

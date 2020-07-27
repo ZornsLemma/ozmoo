@@ -1184,10 +1184,10 @@ z_ins_rfalse
 ; z_ins_catch (moved to stack.asm)
 
 z_ins_quit
-!IF 0 { ;SF
+!ifndef ACORN { ; SFTODO
 	jmp kernal_reset
 } else {
-        jmp SFHANG
+SFHANG        jmp SFHANG
 }
 
 ; z_ins_restart (moved to disk.asm)

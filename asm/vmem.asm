@@ -508,9 +508,8 @@ read_byte_at_z_address
 .no_such_block
 
 	; Load 512 byte block into RAM
+!ifndef ACORN {
 	; First, check if this is initial REU loading
-    ; SFTODO: At least for initial Acorn port we could conditionally compile out
-    ; REU support instead of checking for it at runtime - would save a few bytes.
 	ldx use_reu
 	cpx #$80
 	bne +
@@ -520,6 +519,7 @@ read_byte_at_z_address
 	bne .block_chosen
 	inx ; Set x to 1
 	bne .block_chosen ; Always branch
+}
 
 +	ldx vmap_clock_index
 -	cpx vmap_used_entries

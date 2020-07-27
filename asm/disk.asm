@@ -1,7 +1,11 @@
+; SFTODO: I half wonder if disk.asm should be pure C64 code and we should
+; just have a disk-acorn.asm for Acorn stuff
+!ifndef ACORN {
 first_unavailable_save_slot_charcode	!byte 0
 current_disks !byte $ff, $ff, $ff, $ff
 boot_device !byte 0
 ask_for_save_device !byte $ff
+}
 
 !ifndef VMEM {
 !ifndef ACORN { ; SFTODO: We probably don't need this, at least not for initial implementation with no slick features
@@ -10,8 +14,9 @@ disk_info
 	!byte 8, 8, 0, 0, 0, 130, 131, 0 
 }
 } else {
-
+!ifndef ACORN {
 device_map !byte 0,0,0,0
+}
 
 nonstored_blocks		!byte 0
 readblocks_numblocks	!byte 0 
@@ -19,11 +24,7 @@ readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
 readblocks_base         !byte 0,0
-; SFTODO: I SUSPECT I CAN (AND PROBABLY SHOULD) GET RID OF DISK_INFO FROM THE
-; ACORN BUILD, IF WE NEED SUCH FUNCTIONALITY IT WILL PROBABLY NEED TO BE A FAIRLY
-; CLEAN (IF C64-INSPIRED, MAYBE) IMPLEMENTATION, WE MAY NOT NEED IT AT ALL AND
-; IN THE SHORT TERM SINCE I AM *NOT* POPULATING IT ANY REFERENCE TO IT IS LIKELY
-; A BUG IN THE PORT...
+!ifndef ACORN {
 disk_info
 !ifdef Z3 {
 	!fill 71
@@ -37,6 +38,7 @@ disk_info
 !ifdef Z8 {
 	!fill 120
 }
+}
 
 !ifdef ACORN {
 readblock
@@ -48,11 +50,15 @@ readblocks
     ; read <n> blocks (each 256 bytes) from disc to memory
     ; set values in readblocks_* before calling this function
     ; register: a,x,y
-!ifndef ACORN {
 !ifdef TRACE_FLOPPY {
+    ; SFTODO: NOT TESTED
     jsr newline
     jsr print_following_string
+!ifndef ACORN {
     !pet "readblocks (n,zp,c64) ",0
+} else {
+    !text "readblocks (n,zp,c64) ",0
+}
     lda readblocks_numblocks
     jsr printa
     jsr comma
@@ -67,6 +73,7 @@ readblocks
     jsr print_byte_as_hex
     jsr newline
 }
+!ifndef ACORN {
 -   jsr readblock ; read block
     inc readblocks_mempos + 1   ; update mempos,block for next iteration
     inc readblocks_currentblock
@@ -545,8 +552,8 @@ uname_len = * - .uname
 }
 } ; End of !ifdef VMEM
 
+!ifndef ACORN {
 close_io
-!IF 0 { ; SF
     lda #$0F      ; filenumber 15
     jsr kernal_close ; call CLOSE
 
@@ -554,12 +561,9 @@ close_io
     jsr kernal_close ; call CLOSE
 
     jmp kernal_clrchn ; call CLRCHN
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
 }
 
+!ifndef ACORN {
 !zone disk_messages {
 prepare_for_disk_msgs
 	rts
@@ -652,6 +656,7 @@ insert_msg_2
 !pet 13,"  in drive ",0
 insert_msg_3
 !pet " [ENTER] ",0
+}
 }
 
 
@@ -797,6 +802,7 @@ z_ins_save
 }
 
 !zone save_restore {
+!ifndef ACORN {
 .inputlen !byte 0
 .filename !pet "!0" ; 0 is changed to slot number
 .inputstring !fill 15 ; filename max 16 chars (fileprefix + 14)
@@ -805,32 +811,20 @@ z_ins_save
     ; return: x = number of characters read
     ;         .inputstring: null terminated string read (max 20 characters)
     ; modifies a,x,y
-!ifndef ACORN {
 	jsr turn_on_cursor
-}
     lda #0
     sta .inputlen
-!IF 0 { ; SF
 -   jsr kernal_getchar
-} else {
--    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     cmp #$14 ; delete
     bne +
     ldx .inputlen
     beq -
     dec .inputlen
-!ifndef ACORN {
 	pha
 	jsr turn_off_cursor
 	pla
-}
     jsr s_printchar
-!ifndef ACORN {
 	jsr turn_on_cursor
-}
     jmp -
 +   cmp #$0d ; enter
     beq .input_done
@@ -851,16 +845,12 @@ z_ins_save
     sta .inputstring,x
     inc .inputlen
     jsr s_printchar
-!ifndef ACORN {
 	jsr update_cursor
-}
     jmp -
 .input_done
-!ifndef ACORN {
 	pha
 	jsr turn_off_cursor
 	pla
-}
 	jsr s_printchar ; return
     ldx .inputlen
     lda #0
@@ -891,19 +881,16 @@ list_save_files
 -	sta .occupied_slots - 1,x
 	dex
 	bne -
-!ifndef ACORN { ; SFTODO HACK
 	; Remember address of row where first entry is printed
 	lda zp_screenline
 	sta .base_screen_pos
 	lda zp_screenline + 1
-}
 	sta .base_screen_pos + 1
 
     ; open the channel file
     lda #1
     ldx #<.dirname
     ldy #>.dirname
-!IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
 
     lda #2      ; file number 2
@@ -922,18 +909,11 @@ list_save_files
 -	jsr kernal_readchar
 	dey
 	bne -
-} else {
--
-+    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
 
 .read_next_line	
 	lda #0
 	sta zp_temp + 1
 	; Read row pointer
-!IF 0 { ; SF
 	jsr kernal_readchar
 	sta zp_temp
 	jsr kernal_readchar
@@ -985,11 +965,6 @@ list_save_files
 	lda #13
 	jsr printchar_raw
 	bne .read_next_line
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
 	
 .end_of_dir
 	jsr close_io
@@ -1096,11 +1071,7 @@ list_save_files
 .dont_print_insert_save_disk	
 	ldx #0
 	ldy #5
-!IF 0 { ; SF
 -	jsr kernal_delay_1ms
-} else {
--
-}
 	dex
 	bne -
 	dey
@@ -1257,7 +1228,6 @@ save_game
     lda #5
     ldx #<.erase_cmd
     ldy #>.erase_cmd
-!IF 0 { ; SF
     jsr kernal_setnam
     lda #$0f      ; file number 15
     ldx disk_info + 4 ; Device# for save disk
@@ -1267,11 +1237,6 @@ save_game
     bcs .restore_failed  ; if carry set, the file could not be opened
     lda #$0f      ; filenumber 15
     jsr kernal_close
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
 	
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
@@ -1294,7 +1259,6 @@ do_restore
     lda #3
     ldx #<.restore_filename
     ldy #>.restore_filename
-!IF 0 { ; SF
     jsr kernal_setnam
     lda #1      ; file number
     ldx disk_info + 4 ; Device# for save disk
@@ -1305,11 +1269,6 @@ do_restore
     php ; store c flag so error can be checked by calling routine
     lda #1 
     jsr kernal_close
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     plp ; restore c flag
     rts
 
@@ -1319,7 +1278,6 @@ do_save
     adc #2 ; add 2 bytes for prefix
     ldx #<.filename
     ldy #>.filename
-!IF 0 { ; SF
     jsr kernal_setnam
     lda #1      ; file# 1
     ldx disk_info + 4 ; Device# for save disk
@@ -1336,20 +1294,9 @@ do_save
     tay
     lda #$c1      ; start address located in $C1/$C2
     jsr kernal_save
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     php ; store c flag so error can be checked by calling routine
     lda #1 
-!IF 0 { ; SF
     jsr kernal_close
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     plp ; restore c flag
     rts
 .last_disk	!byte 0
@@ -1372,8 +1319,17 @@ do_save
 	dex
 	bpl -
 	rts
+} else {
+; SFTODO
+
+save_game
+    lda #'+'
+    jsr oswrch
+-   jmp -
+
+restore_game
+    lda #'*'
+    jsr oswrch
+-   jmp -
 }
-
-
-SFHANG
-    JMP SFHANG
+}

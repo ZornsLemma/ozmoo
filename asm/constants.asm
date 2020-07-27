@@ -88,7 +88,9 @@ s_colour 			  = $74 ; !byte 1 ; white as default
 vmem_temp			  = $92 ; 2 bytes
 alphabet_table		  = $96 ; 2 bytes
 
+!ifndef ACORN {
 use_reu				  = $9b
+}
 
 window_start_row	  = $9c; 4 bytes
 

@@ -200,7 +200,9 @@ game_id		!byte 0,0,0,0
 !source "streams.asm"
 !source "disk.asm"
 !ifdef VMEM {
+!ifndef ACORN {
 !source "reu.asm"
+}
 }
 !source "screen.asm"
 !source "memory.asm"
@@ -246,10 +248,12 @@ game_id		!byte 0,0,0,0
     ;sta $d07f ; disable hardware registers
     ;sta $d07a ; normal speed (1 MHz)
 }
+!ifndef ACORN {
     ; SuperCPU and REU doesn't work well together
     ; https://www.lemon64.com/forum/viewtopic.php?t=68824&sid=330a8c62e22ebd2cf654c14ae8073fb9
     ;
 	jsr reu_start
+}
 .supercpu
 }
 	jsr deletable_init
@@ -855,11 +859,11 @@ file_found
 
 !ifndef ACORN { ; SFTODO!?
 	jsr insert_disks_at_boot
-}
 
 	lda use_reu
 	bne .dont_preload
 	jsr load_suggested_pages
+}
 .dont_preload
 
 } ; End of !ifdef VMEM
@@ -1144,11 +1148,6 @@ reu_start
     !pet 13,"Use REU? (Y/N) ",0
 
 }
-} else {
-reu_start
-	lda #0
-	sta use_reu
-    rts
 }
 
 prepare_static_high_memory
