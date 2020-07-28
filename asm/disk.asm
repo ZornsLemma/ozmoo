@@ -18,6 +18,7 @@ disk_info
 device_map !byte 0,0,0,0
 }
 
+; SFTODODATA
 nonstored_blocks		!byte 0
 readblocks_numblocks	!byte 0 
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
@@ -585,6 +586,7 @@ uname_len = * - .uname
 
     ; We make this 16 bytes to avoid any problems with the Tube MOS always
     ; copying 16 bytes (see http://beebwiki.mdfs.net/OSWORD_%267F)
+    ; SFTODODATA - UNLESS WE PRE-FILL THIS AT ASSEMBLY TIME TO SAVE CODE
 .osword_7f_block
     !fill 16
 }
@@ -1366,7 +1368,6 @@ do_save
 	rts
 
 !ifdef ACORN {
-; SFTODO
 
 filename_buffer_length = 40 ; SFTODO!?
 ; SFTODO: .filename_buffer could maybe share space with something else, but just
@@ -1374,6 +1375,7 @@ filename_buffer_length = 40 ; SFTODO!?
 ; that *if* we are using four pages of stack, $400-$800 will be the stack and
 ; misc buffers will live "inside" the binary, and if we need >4 pages stack
 ; misc buffers can live in $00-$800 and stack can live in binary.
+; SFTODODATA
 .filename_buffer
     !fill filename_buffer_length
 .osword_0_block
@@ -1550,6 +1552,7 @@ save_game
     ldx zp_temp
 	rts
 
+; SFTODODATA - IT *MIGHT* BE A NET SAVING TO INITIALISE THE WHOLE THING IN CODE (WE COULD ZERO IT OUT BEFORE SETTING UP OTHER VALUES)
 .osfile_save_load_block
     !word 0 ; filename
     !word stack_start - zp_bytes_to_save ; load address low

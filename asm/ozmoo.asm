@@ -1,3 +1,5 @@
+; SFTODO I SHOULD MAYBE ZERO OUT THE STACK ON STARTUP (THE CODE IS DISCARDED
+; ANYWAY), THAT WAY SAVED GAMES WON'T INCLUDE RANDOM "PERSONAL" DATA IN
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
 ; Z1, Z2, Z6 and Z7 will (probably) never be supported
@@ -196,6 +198,7 @@ program_start
 ; fileblocks !byte 0, 0
 ; c64_model !byte 0 ; 1=NTSC/6567R56A, 2=NTSC/6567R8, 3=PAL/6569
 ; SFTODO: I suspect we may not need this
+; SFTODODATA (IF WE KEEP IT)
 !ifdef VMEM {
 game_id		!byte 0,0,0,0
 }
@@ -224,7 +227,7 @@ game_id		!byte 0,0,0,0
 
 .initialize
 !ifdef ACORN {
-    ; Reset the stack pointer; setjmp relies on this. SFTODO: PROBABLY, BUT CHECK
+    ; Reset the stack pointer; setjmp relies on this.
     ldx #$ff
     txs
 }
@@ -336,13 +339,6 @@ vmem_cache_start
 
 end_of_routines_in_vmem_cache
 
-; SFTODO: This cache may also be a candidate for language workspace at $400,
-; though if it can benefit from being more than 4 pages it may not be the best
-; use of it. I suspect this cache is to work around part of C64 memory not
-; being directly loadable into, if so we don't need it on 2P and on a future
-; SWR build we'd probably write our own custom code and only use 512 bytes,
-; though I am guessing as I haven't read over the "cache"-related C64 code in
-; detail yet.
 	!fill cache_pages * 256 - (* - vmem_cache_start),0 ; Typically 4 pages
 
 !ifdef VMEM {
@@ -362,6 +358,7 @@ vmem_cache_count = vmem_cache_size / 256
     ; to be at a 512-byte boundary. We don't want a gap between the stack and
     ; story_start because it will increase the size of saved games for no benefit,
     ; so we put it here.
+    ; SFTODODATA-ISH MAYBE SORT OF USABLE TO SQUEEZE SOMETHING IN
     !if (stack_size & $100) = 0 {
         ; Stack is an even number of pages, so this must be a 512-byte boundary.
         !align 511, 0, 0
@@ -921,6 +918,7 @@ file_found
 	rts
 
 !ifdef ACORN {
+; SFTODODATA?
 .osfile_load_block
     !word .osfile_load_filename
     !word story_start ; load low word
@@ -933,6 +931,7 @@ file_found
 .osfile_load_filename
     !text "PRELOAD",13
 
+; SFTODODATA
 .catalogue
     !fill 512
 }

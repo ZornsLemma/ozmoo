@@ -152,6 +152,7 @@ vmap_blocks_preloaded !byte 0
 vmap_z_h = datasette_buffer_start
 vmap_z_l = vmap_z_h + vmap_max_size
 
+;SFTODODATA
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
 vmap_first_ram_page		!byte 0
@@ -796,6 +797,9 @@ read_byte_at_z_address
 ; will "waste" a sector on disc and slow loading slightly if it could otherwise
 ; have been included straight into the binary.
 ; SFTODO: For now I'm going to pre-fill this as part of the build
+; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
+; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
+; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
 !ifdef ACORN {
 datasette_buffer_start
     !FILL vmap_max_size * 2, 'V'

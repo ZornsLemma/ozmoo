@@ -1,6 +1,7 @@
 ; see: http://inform-fiction.org/zmachine/standards/z1point1/sect12.html
 
 ; globals
+; SFTODODATA? DON'T KNOW IF THESE NEED TO BE INITIALISED. NOT THAT BIG.
 num_default_properties !byte 0
 objects_start_ptr      !byte 0, 0
 
@@ -137,6 +138,7 @@ z_ins_get_prop_len
 .zp_parent = object_tree_ptr  ; won't be used at the same time
 .zp_sibling = object_tree_ptr ; won't be used at the same time
 .zp_dest = object_tree_ptr    ; won't be used at the same time
+; SFTODODATA - DON'T KNOW IF NEEDS TO BE INITIALISED, NOT THAT BIG
 ; .object_num !byte 0,0
 .parent_num !byte 0,0
 .child_num !byte 0,0
@@ -317,6 +319,7 @@ find_attr
     sta .attribute_index
     rts
 .bitmask !byte 128,64,32,16,8,4,2,1
+; SFTODODATA SMALL THO, DON'T KNOW IF IT NEEDS TO BE 0 INITED
 .bitmask_index !byte 0
 .attribute_index !byte 0
 
@@ -520,6 +523,7 @@ calculate_property_length_number
 }
 .end_pf_property_list
     rts
+    ; SFTODODATA CHECK 0-INIT REQ
 .property_number !byte 0
 .property_length !byte 0
 

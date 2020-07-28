@@ -1,3 +1,4 @@
+; SFTODO THIS IS NO LONGER INCLUDED AT ALL ON ACORN SO CAN REMOVE ALL !ifdef ACORN FROM IT
 !zone splash_screen {
 splash_screen
 	ldy #0

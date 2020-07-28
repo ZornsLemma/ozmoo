@@ -110,7 +110,7 @@ s_stored_y			  = $b5 ; !byte 0
 !ifndef ACORN {
 s_current_screenpos_row = $b6 ; !byte $ff
 } else {
-s_cursors_inconsistent = $4b6 ; SFTODO TEMP HACKED FOR DEBUG $b6 ; !byte 0
+s_cursors_inconsistent = $b6 ; !byte 0
 }
 
 max_chars_on_line	  = $bd; !byte 0
@@ -122,8 +122,8 @@ zp_cursorswitch       = $cc
 !ifndef ACORN {
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
 }
-zp_screencolumn       = $04d3 ; current cursor column SFTODO AS SCREENROW
-zp_screenrow          = $04d6 ; current cursor row SFTODO HACKED INTO NOT ZP FOR DEBUGGER, REVERT LATER
+zp_screencolumn       = $d3 ; current cursor column
+zp_screenrow          = $d6 ; current cursor row
 !ifndef ACORN {
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
 }

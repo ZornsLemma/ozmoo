@@ -4,6 +4,7 @@
 ;TRACE_TOKENISE = 1
 ;TRACE_SHOW_DICT_ENTRIES = 1
 ;TRACE_PRINT_ARRAYS = 1
+;SFTODODATA
 .text_tmp	!byte 0
 .current_character !byte 0
 .petscii_char_read = zp_temp
@@ -541,6 +542,7 @@ convert_char_to_zchar
 	
 .is_word_found = zp_temp + 1 ; !byte 0
 .triplet_counter = zp_temp + 2; !byte 0
+; SFTODODATA
 .last_char_index		!byte 0
 .parse_array_index 		!byte 0
 .dictionary_address = zp_temp + 3 ;  !byte 0,0
@@ -1402,6 +1404,7 @@ read_text
 ;	jsr start_buffering
 ;	pla
 +   rts
+; SFTODODATA
 .read_parse_buffer !byte 0,0
 .read_text_cursor !byte 0,0
 .read_text_column !byte 0
@@ -1529,6 +1532,7 @@ tokenise_text
     ldy #1
     sta (parse_array),y
     rts
+    ;SFTODODATA
 .maxwords   !byte 0 
 .numwords   !byte 0 
 .wordoffset !byte 0 
@@ -1611,6 +1615,7 @@ get_abbreviation_offset
     asl ; byte -> word 
     tay
     rts
+    ;SFTODODATA
 .current_zchar !byte 0
 
 print_addr

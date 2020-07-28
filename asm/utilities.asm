@@ -12,46 +12,37 @@
 ; SFTODO: Deal with all the !IF 0 stuff in here - at very least it needs to
 ; be !ifndef ACORn
 
+!ifndef ACORN {
 ; zero_processorports: ...<d000><e000><a000> on/off
 !macro set_memory_all_ram {
-!IF 0 { ; SF
     ; Don't forget to disable interrupts first!
     pha
     lda #%00110000 
     sta zero_processorports
     pla
 }
-}
 !macro set_memory_all_ram_unsafe {
-!IF 0 { ; SF
     ; Don't forget to disable interrupts first!
     lda #%00110000 
     sta zero_processorports
-}
 }
 
 !macro set_memory_no_basic {
-!IF 0 { ; SF
     pha
     lda #%00110110
     sta zero_processorports
     pla
 }
-}
 !macro set_memory_no_basic_unsafe {
-!IF 0 { ; SF
     lda #%00110110
     sta zero_processorports
 }
-}
 
 !macro set_memory_normal {
-!IF 0 { ; SF
     pha
     lda #%00110111
     sta zero_processorports
     pla
-}
 }
 
 ; to be expanded to disable NMI IRQs later if needed
@@ -61,6 +52,7 @@
 
 !macro enable_interrupts {
     cli
+}
 }
 
 !ifdef SLOW {
@@ -191,7 +183,9 @@ fatalerror
 	sta z_temp + 11
 !ifndef DEBUG {
     pha
+!ifndef ACORN {
     +set_memory_normal
+}
     ldy #>.fatal_error_string
 	lda #<.fatal_error_string
 	jsr printstring
@@ -238,6 +232,7 @@ hang
 -   jmp -
 }
 
+;SFTODODATA
 .saved_a !byte 0
 .saved_x !byte 0
 .saved_y !byte 0
@@ -645,7 +640,6 @@ printstring
 
 !ifdef VMEM {
 !ifndef ACORN {
-; SFTODO: MAY NOT NEED THIS ON ACORN!?
 conv2dec
     ; convert a to decimal in x,a
     ; for example a=#$0f -> x='1', a='5'
@@ -687,6 +681,7 @@ rotate_r
     dex
     bne shift_r 
     rts
+    ;SFTODODATA
 multiplier
 divisor
 	!byte 0, 0
@@ -770,11 +765,13 @@ kernal_readtime
     lda .current_clock+0
     rts
 
+;SFTODODATA
 .initial_clock
     !fill 5
 
 ; SFTODO: It might be possible to use some temporary scratch space for this, but
 ; to avoid possible clashes with other users we just have this space for now.
+;SFTODODATA
 .current_clock
     !fill 5
 
@@ -926,6 +923,7 @@ printstring_os
    inc .printstring_os_lda + 2
    bne - ; Always branch
 
+;SFTODODATA
 .jmp_buf
     ; SFTODO: We won't need this much space. In principle we can work it out by
     ; analysis of the Ozmoo code, at least provided we don't use the CPU stack
