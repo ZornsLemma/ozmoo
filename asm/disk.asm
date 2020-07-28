@@ -445,7 +445,10 @@ uname_len = * - .uname
 
     ; We prefix errors with two newlines, so even if we're part way through a
     ; line there will always be at least one blank line above the error message.
+    ; We use s_printchar for output here, as this will be mixed in with the
+    ; output from the game which was running when this disc read was required.
     ldx #2
+    ldy #error_print_s_printchar
     jsr setjmp
     beq .no_error
     jsr error_print_following_string
@@ -457,9 +460,9 @@ uname_len = * - .uname
     cmp #' '
     bne -
     lda #13
-    jsr error_handler_print_char
+    jsr s_printchar
     lda #13
-    jsr error_handler_print_char
+    jsr s_printchar
 .no_error
 
     ; SFTODO: At the moment the data file *includes* the non-stored blocks,
@@ -548,7 +551,7 @@ uname_len = * - .uname
     ora #$20
     sta .osword_7f_block + 9 ; sector size and count
 
-!if 0 {
+!ifdef FAKE_READ_ERRORS {
     ; Test code to fake intermittent read failures
     jsr kernal_readtime
     cmp #25
@@ -1414,6 +1417,7 @@ filename_buffer_length = 40 ; SFTODO!?
     cmp #'*'
     bne +
     ldx #1
+    ldy #error_print_osasci
     jsr setjmp
     bne .oscli_error
     ldx #<.filename_buffer

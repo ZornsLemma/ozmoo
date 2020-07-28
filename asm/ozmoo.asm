@@ -619,10 +619,7 @@ deletable_init_start
 
     ; Now Ozmoo's screen output code is (about to be) initialised via
     ; init_screen_colours, errors can be reported using s_printchar.
-    lda #<s_printchar
-    sta error_handler_print_char + 1
-    lda #>s_printchar
-    sta error_handler_print_char + 2
+    jsr set_default_error_handler
 }
 
 	jmp init_screen_colours ; _invisible

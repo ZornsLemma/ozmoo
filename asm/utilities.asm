@@ -782,13 +782,13 @@ error_handler
     ldy .error_handler_newlines
     beq +
 -   lda #13
-    jsr error_handler_print_char
+    jsr .error_handler_print_char
     dey
     bne -
 +   ldy #1
 -   lda (error_ptr), y
     beq +
-    jsr error_handler_print_char
+    jsr .error_handler_print_char
     iny
     bne - ; Always branch
     ; The following jmp will be patched by code which wants to gain control
@@ -810,10 +810,10 @@ default_error_handler_newlines = 2
 ; occur during initial loading. This gets patched to use s_printchar later, so
 ; non-fatal errors during saving/restoring play nicely with the rest of the
 ; game's output.
-error_handler_print_char
+.error_handler_print_char
     jmp osasci
 
-; Like print_following_string, but using error_handler_print_char.
+; Like print_following_string, but using .error_handler_print_char.
 error_print_following_string
     pla
     sta .error_print_following_string_lda + 1
@@ -826,7 +826,7 @@ error_print_following_string
 .error_print_following_string_lda
     lda $ffff
     beq +
-    jsr error_handler_print_char
+    jsr .error_handler_print_char
     jmp -
 +   lda .error_print_following_string_lda + 2
     pha
@@ -834,8 +834,18 @@ error_print_following_string
     pha
     rts
 
+error_print_s_printchar = 0
+error_print_osasci = 1
+.error_print_table_l
+    !byte <s_printchar
+    !byte <osasci
+.error_print_table_h
+    !byte >s_printchar
+    !byte >osasci
+
 ; Allow trapping of errors signalled by the OS via BRKV. Used like this:
 ;   ldx #2 ; number of newlines to print before any error
+;   ldy #n ; type of printing to use if an error occurs (0 s_printchar, 1 osasci)
 ;   jsr setjmp
 ;   beq ok
 ;   ; error occurred, do something
@@ -846,6 +856,10 @@ error_print_following_string
 ;   jsr set_default_error_handler ; errors after this point aren't our problem
 setjmp
     stx .error_handler_newlines
+    lda .error_print_table_l,y
+    sta .error_handler_print_char + 1
+    lda .error_print_table_h,y
+    sta .error_handler_print_char + 2
     lda #<.setjmp_error_handler
     sta .error_handler_jmp + 1
     lda #>.setjmp_error_handler
@@ -887,6 +901,10 @@ setjmp
 set_default_error_handler
     lda #default_error_handler_newlines
     sta .error_handler_newlines
+    lda #<s_printchar
+    sta .error_handler_print_char + 1
+    lda #>s_printchar
+    sta .error_handler_print_char + 2
     lda #<.press_break
     sta .error_handler_jmp + 1
     lda #>.press_break
