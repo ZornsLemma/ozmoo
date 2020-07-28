@@ -443,9 +443,9 @@ uname_len = * - .uname
     jsr newline
 }
 
-    ; SFTODO: Something needs to set the "print newlines" value to say 2 once
-    ; we've started up properly - TBH maybe I should just always print 2 newlines
-    ; and who cares if it causes a bit of arbitrary scrolling.
+    ; We prefix errors with two newlines, so even if we're part way through a
+    ; line there will always be at least one blank line above the error message.
+    ldx #2
     jsr setjmp
     beq .no_error
     jsr error_print_following_string
@@ -1371,55 +1371,92 @@ filename_buffer_length = 40 ; SFTODO!?
     !fill filename_buffer_length
 .osword_0_block
     !word .filename_buffer
-    !byte filename_buffer_length ; SFTODO: OFF BY ONE ERRORS?
+    !byte filename_buffer_length - 1
     !byte 32 ; minimum ASCII value
     !byte 127 ; maximum ASCII value
 ; Returns with Z set iff user wants to abort the save/restore.
-; SFTODO: WE SHOULD PROBABLY DEFINE A TEXT WINDOW AND USE RAW OS OUTPUT HERE,
-; BECAUSE IF YOU DO ANY * COMMANDS THEY WON'T BE USING s_printchar
 .get_filename
+    ; We use raw OS text output here, because * commands will do and their output
+    ; will mix with ours.
+    ; Start off with the OS text cursor where it should be.
+    jsr s_cursor_to_screenrowcolumn
+    ; Set up a text window so the raw OS text output only scrolls what it should.
+    clc
+    jsr s_pre_scroll
+    ; Print the initial descriptive prompt
     lda #>.filename_msg
     ldx #<.filename_msg
-    jsr printstring_raw
--   lda #>.filename_prompt
+    jsr printstring_os
+    ; Loop round printing a brief prompt, reading input and acting accordingly.
+.get_filename_loop
+    lda #>.filename_prompt
     ldx #<.filename_prompt
-    jsr printstring_raw
+    jsr printstring_os
+    ldx #1
+    jsr cursor_control
     lda #osword_input_line
     ldx #<.osword_0_block
     ldy #>.osword_0_block
     jsr osword
+    ldx #0
+    jsr cursor_control
     ldy #$ff
---  iny
+-   iny
     lda .filename_buffer,y
     cmp #' '
-    beq --
+    beq - 
     cmp #13
-    beq .save_game_rts
+    beq +
     cmp #'*'
-    bne .save_game_rts
+    bne +
+    ldx #1
+    jsr setjmp
+    bne .oscli_error
     ldx #<.filename_buffer
     ldy #>.filename_buffer
     jsr oscli
-    jmp -
-
-
+.oscli_done
+    jsr set_default_error_handler
+    jmp .get_filename_loop
+.oscli_error
+    jsr osnewl
+    jmp .oscli_done
++   php
+    ; We're about to return control to our caller, so we need to prepare for
+    ; a return to Ozmoo-mediated output.
+    ; Pick up the current OS cursor position and use it as the position of the
+    ; internal Ozmoo cursor used by s_printchar.
+    jsr s_screenrowcolumn_from_cursor
+    ; Reset the text window; this moves the OS cursor but it doesn't matter as
+    ; Ozmoo is now managing the cursor position again.
+    lda #vdu_reset_text_window
+    jsr oswrch
+    plp
+    rts
 
 .filename_msg
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
-    !text 13, "Please enter a filename or * command or just press RETURN to carry on playing:", 0
+    !text "Please enter a filename or * command or just press RETURN to carry on playing:", 13, 0
 .filename_prompt
-    !text 13, "?", 0
+    ; SFTODO: If this remains a single character we could more efficiently just
+    ; print it with a simple call to osasci.
+    !text "?", 0
 
 save_game
     ; SFTODO: Need to allow for possibility of a disc swap
     jsr .get_filename
-
-    lda #'+'
-    jsr oswrch
--   jmp -
-.save_game_rts
-    rts
+    beq .save_game_ok ; we treat user aborting save as a success
+	; Return failed status SFTODO TEMP
++	lda #0
+	tax
+	rts
+    ; SFTODO!
+    ; SFTODO: DO I NEED TO DISTINGUISH SUCCESSFUL AND UNSUCCESFUL SAVES VIA RETURN CODE?
+.save_game_ok
++	lda #0
+	ldx #1
+	rts
 
 restore_game
     ; SFTODO: Need to allow for possibility of a disc swap

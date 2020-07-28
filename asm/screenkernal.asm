@@ -145,6 +145,21 @@ s_cursor_to_screenrowcolumn
     tax
     rts
 }
+
+s_screenrowcolumn_from_cursor
+    lda #osbyte_read_vdu_variable
+    sta s_cursors_inconsistent
+    ldx #vdu_variable_text_window_top
+    jsr osbyte
+    stx zp_screenrow
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    stx zp_screencolumn
+    tya
+    clc
+    adc zp_screenrow
+    sta zp_screenrow
+    rts
 }
 
 s_printchar
@@ -351,7 +366,8 @@ s_printchar
     ; and it *might* look ugly, but we might gain a performance boost
     ; (particularly in high resolution modes) by doing a hardware scroll of the
     ; entire screen then redrawing the status line/window 1 afterwards.
-    jsr .s_pre_scroll
+    ; C is already set
+    jsr s_pre_scroll
     pla
     jsr oswrch
     lda #vdu_reset_text_window
@@ -523,7 +539,8 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 } else {
-    jsr .s_pre_scroll
+    sec
+    jsr s_pre_scroll
     ; Move the cursor down one line to force a scroll
     lda #vdu_down
     jsr oswrch
@@ -558,10 +575,12 @@ s_erase_line_from_cursor
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
-    ; s_pre_scroll preserves X and Y
-.s_pre_scroll
-    ; Define a text window covering the region to scroll, leaving the OS text
-    ; cursor at the bottom right of the text window.
+    ; s_pre_scroll preserves X and Y if C is set on entry.
+s_pre_scroll
+    ; Define a text window covering the region to scroll.
+    ; If C is set on entry, leave the OS text cursor at the bottom right of the
+    ; text window.
+    ; If C is clear on entry, leave the OS text cursor at zp_screen{row,column}.
     ; SF: ENHANCEMENT: If window_start_row+1 is 0 we are scrolling the whole
     ; screen, so defining the text window has no visible effect and will slow
     ; things down by preventing the OS doing a hardware scroll. It wouldn't be
@@ -569,6 +588,23 @@ s_erase_line_from_cursor
     ; suspect there's nearly always a status bar or similar on the screen and
     ; this case won't occur. If a game where this would be useful turns up I
     ; can consider it.
+    bcs .s_pre_scroll_leave_bottom_right
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    tya
+    pha
+    txa
+    pha
+    jsr .s_pre_scroll_leave_bottom_right
+    lda #vdu_goto_xy
+    jsr oswrch
+    pla
+    jsr oswrch
+    pla
+    sec
+    sbc window_start_row + 1
+    jmp oswrch
+.s_pre_scroll_leave_bottom_right
     lda #vdu_define_text_window
     jsr oswrch
     lda #0

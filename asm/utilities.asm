@@ -779,7 +779,7 @@ kernal_readtime
     !fill 5
 
 error_handler
-    ldy #2 ; SFTODO!? error_handler_newlines
+    ldy .error_handler_newlines
     beq +
 -   lda #13
     jsr error_handler_print_char
@@ -796,7 +796,8 @@ error_handler
 .error_handler_jmp
 +   jmp .press_break
 
-error_handler_newlines !byte 0 ; SFTODO GET RID OF THIS IF NOT USED
+default_error_handler_newlines = 2
+.error_handler_newlines !byte default_error_handler_newlines
 
 .press_break
     ; We don't use print_following_string here because we don't want to assume
@@ -834,6 +835,7 @@ error_print_following_string
     rts
 
 ; Allow trapping of errors signalled by the OS via BRKV. Used like this:
+;   ldx #2 ; number of newlines to print before any error
 ;   jsr setjmp
 ;   beq ok
 ;   ; error occurred, do something
@@ -843,6 +845,7 @@ error_print_following_string
 ;   ; do something that might cause an error
 ;   jsr set_default_error_handler ; errors after this point aren't our problem
 setjmp
+    stx .error_handler_newlines
     lda #<.setjmp_error_handler
     sta .error_handler_jmp + 1
     lda #>.setjmp_error_handler
@@ -882,11 +885,28 @@ setjmp
     rts
 
 set_default_error_handler
+    lda #default_error_handler_newlines
+    sta .error_handler_newlines
     lda #<.press_break
     sta .error_handler_jmp + 1
     lda #>.press_break
     sta .error_handler_jmp + 2
+.set_default_error_handler_rts
     rts
+
+; Like printstring_raw, but using OSASCI.
+printstring_os
+    stx .printstring_os_lda + 1
+    sta .printstring_os_lda + 2
+-
+.printstring_os_lda
+   lda $ffff
+   beq .set_default_error_handler_rts
+   jsr osasci
+   inc .printstring_os_lda + 1
+   bne -
+   inc .printstring_os_lda + 2
+   bne - ; Always branch
 
 .jmp_buf
     ; SFTODO: We won't need this much space. In principle we can work it out by

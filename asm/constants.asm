@@ -242,8 +242,10 @@ osbyte_reflect_keyboard_status = $76
 osbyte_read_key = $81
 osbyte_read_cursor_position = $86
 osbyte_enter_language = $8e
+osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
+vdu_variable_text_window_top = $0b
 del = 127
 buffer_keyboard = 0
 
