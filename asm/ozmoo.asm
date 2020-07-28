@@ -294,6 +294,8 @@ game_id		!byte 0,0,0,0
 } else {
     ldx #1
     jsr cursor_control
+    ; SFTODO: We have a few calls to this OSBYTE, factor it out into a subroutine
+    ; to save a few bytes?
     lda #osbyte_rw_escape_key
     ldx #0
     ldy #0

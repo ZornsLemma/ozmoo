@@ -1421,6 +1421,12 @@ filename_buffer_length = 40 ; SFTODO!?
     jsr setjmp
     bne .oscli_error
 .no_oscli_error
+    ; We re-enable Escape generating errors while we're executing the command,
+    ; this way the user can terminate a long-running command.
+    lda #osbyte_rw_escape_key
+    ldx #0
+    ldy #0
+    jsr osbyte
     ldx #<.filename_buffer
     ldy #>.filename_buffer
     jsr oscli
@@ -1428,6 +1434,15 @@ filename_buffer_length = 40 ; SFTODO!?
 .oscli_error
     jsr osnewl
 .oscli_done
+    lda #osbyte_rw_escape_key
+    ldx #1
+    ldy #0
+    jsr osbyte
+    ; There might be an Escape pending which the * command didn't acknowledge,
+    ; so we do it ourselves. (To see this is necessary, do *ROMS on OS 3.20 and
+    ; press Escape while the output is being produced.)
+    lda #osbyte_acknowledge_escape
+    jsr osbyte
     jsr set_default_error_handler
     jmp .get_filename_loop
 .filename_msg

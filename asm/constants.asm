@@ -240,6 +240,7 @@ osword_floppy_op = $7f
 osbyte_set_cursor_editing = $04
 osbyte_flush_buffer = $15
 osbyte_reflect_keyboard_status = $76
+osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
 osbyte_read_cursor_position = $86
 osbyte_enter_language = $8e
