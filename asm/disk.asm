@@ -1380,6 +1380,8 @@ filename_buffer_length = 40 ; SFTODO!?
     ; will mix with ours. SFTODO: THIS IS ALL VERY WELL, BUT THE LOAD/SAVE ITSELF
     ; MAY GENERATE OS ERRORS. SO WE REALLY NEED TO BE DOING THIS SET UP AND
     ; CLEANUP AFTERWARDS OUTSIDE GET_FILENAME, AROUND THE WHOLE SAVE OR RESTORE.
+    ; SFTODO: ACTUALLY IT'S ALSO NOT IDEAL THAT THE SHARED ERROR HANDLER WHICH
+    ; PRINTS THER ERROR MESSAGE *IS* USING s_printchar NOW...
     ; Start off with the OS text cursor where it should be.
     jsr s_cursor_to_screenrowcolumn
     ; Set up a text window so the raw OS text output only scrolls what it should.
