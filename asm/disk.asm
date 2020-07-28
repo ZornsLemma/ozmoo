@@ -1549,7 +1549,7 @@ save_game
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
     lda #0
-    ldx zp_temp
+    ldx zp_temp ; must be last as caller will check Z flag
 	rts
 
 ; SFTODODATA - IT *MIGHT* BE A NET SAVING TO INITIALISE THE WHOLE THING IN CODE (WE COULD ZERO IT OUT BEFORE SETTING UP OTHER VALUES)
