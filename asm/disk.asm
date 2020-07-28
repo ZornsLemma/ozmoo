@@ -1451,7 +1451,9 @@ filename_buffer_length = 40 ; SFTODO!?
     !text "Please enter a filename or * command or just press RETURN to carry on playing:", 13, 0
 .filename_prompt
     ; SFTODO: If this remains a single character we could more efficiently just
-    ; print it with a simple call to osasci.
+    ; print it with a simple call to osasci. We could potentially print "load>"
+    ; or "save>" or something like that, in case the user forgets which is in
+    ; use after doing many * commands and the screen scrolling.
     !text "?", 0
 
 .io_restore_output
@@ -1465,7 +1467,14 @@ filename_buffer_length = 40 ; SFTODO!?
     lda #vdu_reset_text_window
     jmp oswrch
 
+restore_game
+    lda #osfile_load
+    bne .save_restore_game ; Always branch
 save_game
+    lda #osfile_save
+    ; fall through to .save_restore_game
+.save_restore_game
+    sta zp_temp + 1
     ; SFTODO: Need to allow for possibility of a disc swap - what I think I will
     ; do is (possibly) include a message in "get filename" prompt saying you can
     ; take the game disc out if you want. After the save, I will do some check
@@ -1481,7 +1490,7 @@ save_game
     lda #1
     sta zp_temp
     jsr .get_filename
-    beq .save_game_cleanup_no_swap ; we treat user aborting save as a success
+    beq .save_restore_game_cleanup_partial ; we treat user aborting as a success
     ; SFTODO: The C64 code temporarily puts some data below stack_start; this
     ; is going to be a problem for me (maybe) if I have the stack at $400, as
     ; below that is OS workspace. It *may* be acceptable on both non-2P and 2P
@@ -1499,60 +1508,57 @@ save_game
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
 
-	; Perform save
+	; Perform save or load
     ldx #1
     ldy #error_print_osasci
     jsr setjmp
-    beq .save_ok
+    beq .no_osfile_error
     jsr osnewl
     lda #0
     sta zp_temp
-    beq .save_game_cleanup_swap
-.save_ok
-    ; The OSFILE block is updated after saving, so we have to populate these
+    beq .save_restore_game_cleanup_full
+.no_osfile_error
+    ; The OSFILE block is updated after the call, so we have to populate these
     ; values via code every time.
+    lda #<.filename_buffer
+    sta .osfile_save_load_block + $00
+    lda #>.filename_buffer
+    sta .osfile_save_load_block + $01
     lda #<(stack_start - zp_bytes_to_save)
-    sta .osfile_save_block + $0a
+    sta .osfile_save_load_block + $0a
     lda #>(stack_start - zp_bytes_to_save)
-    sta .osfile_save_block + $0b
+    sta .osfile_save_load_block + $0b
     lda story_start + header_static_mem + 1
-    sta .osfile_save_block + $0e
+    sta .osfile_save_load_block + $0e
     lda story_start + header_static_mem
     clc
     adc #>story_start
-    sta .osfile_save_block + $0f
-    lda #osfile_save
-    ldx #<.osfile_save_block
-    ldy #>.osfile_save_block
+    sta .osfile_save_load_block + $0f
+    lda zp_temp + 1
+    ldx #<.osfile_save_load_block
+    ldy #>.osfile_save_load_block
     jsr osfile
     lda #1
 
-.save_game_cleanup_swap
+.save_restore_game_cleanup_full
 	; Swap out z_pc and stack_ptr
 	jsr .swap_pointers_for_save
-
-.save_game_cleanup_no_swap
+    jsr set_default_error_handler
+.save_restore_game_cleanup_partial
  	jsr .io_restore_output
     lda #0
     ldx zp_temp
 	rts
 
-    ; SFTODO CAN THIS BE SHARED BETWEEN SAVE AND LOAD?
-.osfile_save_block
-    !word .filename_buffer
-    !word 0 ; load address low
+.osfile_save_load_block
+    !word 0 ; filename
+    !word stack_start - zp_bytes_to_save ; load address low
     !word 0 ; load address high
-    !word 0 ; exec address low
+    !word 0 ; exec address low: 0 => use specified load address (on load)
     !word 0 ; exec address high
     !word 0 ; start address low
     !word 0 ; start address high
     !word 0 ; end address low
     !word 0 ; end address high
-
-restore_game
-    ; SFTODO: Need to allow for possibility of a disc swap
-    lda #'*'
-    jsr oswrch
--   jmp -
 }
 }
