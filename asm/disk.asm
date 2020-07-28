@@ -1380,11 +1380,7 @@ filename_buffer_length = 40 ; SFTODO!?
 ; Returns with Z set iff user wants to abort the save/restore.
 .get_filename
     ; We use raw OS text output here, because * commands will do and their output
-    ; will mix with ours. SFTODO: THIS IS ALL VERY WELL, BUT THE LOAD/SAVE ITSELF
-    ; MAY GENERATE OS ERRORS. SO WE REALLY NEED TO BE DOING THIS SET UP AND
-    ; CLEANUP AFTERWARDS OUTSIDE GET_FILENAME, AROUND THE WHOLE SAVE OR RESTORE.
-    ; SFTODO: ACTUALLY IT'S ALSO NOT IDEAL THAT THE SHARED ERROR HANDLER WHICH
-    ; PRINTS THER ERROR MESSAGE *IS* USING s_printchar NOW...
+    ; will mix with ours.
     ; Start off with the OS text cursor where it should be.
     jsr s_cursor_to_screenrowcolumn
     ; Set up a text window so the raw OS text output only scrolls what it should.
@@ -1429,19 +1425,7 @@ filename_buffer_length = 40 ; SFTODO!?
 .oscli_error
     jsr osnewl
     jmp .oscli_done
-+   php
-    ; We're about to return control to our caller, so we need to prepare for
-    ; a return to Ozmoo-mediated output.
-    ; Pick up the current OS cursor position and use it as the position of the
-    ; internal Ozmoo cursor used by s_printchar.
-    jsr s_screenrowcolumn_from_cursor
-    ; Reset the text window; this moves the OS cursor but it doesn't matter as
-    ; Ozmoo is now managing the cursor position again.
-    lda #vdu_reset_text_window
-    jsr oswrch
-    plp
-    rts
-
++   rts
 .filename_msg
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
@@ -1451,18 +1435,30 @@ filename_buffer_length = 40 ; SFTODO!?
     ; print it with a simple call to osasci.
     !text "?", 0
 
+.io_restore_output
+    ; We're about to return control to our caller, so we need to prepare for
+    ; a return to Ozmoo-mediated output.
+    ; Pick up the current OS cursor position and use it as the position of the
+    ; internal Ozmoo cursor used by s_printchar.
+    jsr s_screenrowcolumn_from_cursor
+    ; Reset the text window; this moves the OS cursor but it doesn't matter as
+    ; Ozmoo is now managing the cursor position again.
+    lda #vdu_reset_text_window
+    jmp oswrch
+
 save_game
     ; SFTODO: Need to allow for possibility of a disc swap
     jsr .get_filename
     beq .save_game_ok ; we treat user aborting save as a success
+    ; SFTODO!
 	; Return failed status SFTODO TEMP
-+	lda #0
++	jsr .io_restore_output
+    lda #0
 	tax
 	rts
-    ; SFTODO!
-    ; SFTODO: DO I NEED TO DISTINGUISH SUCCESSFUL AND UNSUCCESFUL SAVES VIA RETURN CODE?
 .save_game_ok
-+	lda #0
++	jsr .io_restore_output
+    lda #0
 	ldx #1
 	rts
 
