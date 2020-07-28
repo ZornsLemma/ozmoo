@@ -1492,6 +1492,9 @@ save_game
     lda #1
     sta zp_temp
     jsr .get_filename
+    ; SFTODO: Should we treat user aborting as a failure, at least for save? I
+    ; wonder if some game might feel freer about killing the user if they
+    ; recently had a successfuly save? Probably not likely, but still.
     beq .save_restore_game_cleanup_partial ; we treat user aborting as a success
     ; SFTODO: The C64 code temporarily puts some data below stack_start; this
     ; is going to be a problem for me (maybe) if I have the stack at $400, as
