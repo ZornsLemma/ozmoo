@@ -1450,6 +1450,19 @@ save_game
     ; SFTODO: Need to allow for possibility of a disc swap
     jsr .get_filename
     beq .save_game_ok ; we treat user aborting save as a success
+    ; SFTODO: The C64 code temporarily puts some data below stack_start; this
+    ; is going to be a problem for me (maybe) if I have the stack at $400, as
+    ; below that is OS workspace. It *may* be acceptable on both non-2P and 2P
+    ; to temporarily corrupt a bit of memory there, but I'd really rather not
+    ; if I have to. Looking at AllMem it's probably OK on non-2P but not found
+    ; any docs about 2P case. Be better to think of a nicer solution, although
+    ; a) I can't write two chunks separately as I want to use OSFILE *SAVE to
+    ; avoid needing PAGE>&1100 on a B b) I really would like to have the option
+    ; to use $400-800 for stack c) I don't want to *SAVE two files. Ah,
+    ; actually it's worse than that, because we need to save bit-of-zp+stack+
+    ; dynamic memory, so it is "essential" that all of these are contiguous.
+    ; This may be the final nail in the coffin of stack-at-$400. Let me think
+    ; about it.
     ; SFTODO!
 	; Return failed status SFTODO TEMP
 +	jsr .io_restore_output
