@@ -879,8 +879,8 @@ file_found
 	lda use_reu
 	bne .dont_preload
 	jsr load_suggested_pages
-}
 .dont_preload
+}
 
 } ; End of !ifdef VMEM
 
@@ -1262,6 +1262,7 @@ prepare_static_high_memory
 }
 	rts
 	
+!ifndef ACORN {
 ; SFTODO: This may be useful in a SWR build where we can't *LOAD the preloaded
 ; data directly into SWR but OZMOO itself can trigger VM reads of these blocks
 ; before the game starts.
@@ -1288,6 +1289,7 @@ load_suggested_pages
     jsr print_vm_map
 }
     rts
+}
 } 
 
 !ifndef ACORN {
