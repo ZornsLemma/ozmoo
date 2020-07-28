@@ -1450,7 +1450,18 @@ filename_buffer_length = 40 ; SFTODO!?
     jmp oswrch
 
 save_game
-    ; SFTODO: Need to allow for possibility of a disc swap
+    ; SFTODO: Need to allow for possibility of a disc swap - what I think I will
+    ; do is (possibly) include a message in "get filename" prompt saying you can
+    ; take the game disc out if you want. After the save, I will do some check
+    ; to see if the game disc is in the drive, and if not print a prompt to
+    ; put it back in. Only question is what is that check. I could read a
+    ; sector and compare it to what I expect, maybe the catalogue sector and
+    ; check title. I could also read a block of game data (ideally a static
+    ; page, so it shouldn't be on a save game disc) and compare that. Need to
+    ; be careful whatever I have doesn't assume VMEM. The only "problem" here is
+    ; finding 256 bytes to read the page into temporarily. On VMEM I could
+    ; forcibly evict a page of data, but that's a bit annoying/complex and it
+    ; wouldn't work on a non-VMEM build.
     lda #1
     sta zp_temp
     jsr .get_filename
