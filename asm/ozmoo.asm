@@ -667,10 +667,20 @@ deletable_init
     ; SFTODO: We need to set up an error handler at some point, but I'll wait
     ; until I do game loading and saving before worrying about that as that will
     ; be more involved; at this point all we could do is die anyway.
+!if 0 { ; SFTODO
+    jsr kernal_readtime
+    sta $700
+    stx $701
+    sty $702
     lda #osfile_load
     ldx #<.osfile_load_block
     ldy #>.osfile_load_block
     jsr osfile
+    jsr kernal_readtime
+    sta $703
+    stx $704
+    sty $705
+}
 }
 !ifdef VMEM {
 !ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
@@ -765,6 +775,35 @@ file_found
     iny
     lda (zp_temp),y
     sta readblocks_base
+!if 1 { ; SFTODO
+    jsr kernal_readtime
+    sta $700
+    stx $701
+    sty $702
+    lda #<story_start
+    sta readblocks_mempos
+    lda #>story_start
+    sta readblocks_mempos+1
+    lda #0
+    sta readblocks_currentblock
+    sta readblocks_currentblock+1
+    lda #2
+    sta readblocks_numblocks
+    lda #$c8/2
+    pha
+.SFTODO
+    jsr readblocks
+    pla
+    sec
+    sbc #1
+    pha
+    bne .SFTODO
+    pla
+    jsr kernal_readtime
+    sta $703
+    stx $704
+    sty $705
+}
 }
 } else { ; End of !ifdef VMEM
 !ifndef ACORN { ; SFTODO!?

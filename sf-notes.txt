@@ -27,3 +27,16 @@ I suspect on a SWR build, we would keep the bank containing z_pc_mempointer page
 - we *could* use the C64-ish cache mechanism to avoid this, but I don't think we need to - the C64 presumably needs its high ROM banked in for kernal interrupts and keyboard reading and so forth, whereas the SWR on the Acorn isn't conflicting with the OS and we can safely keep it paged in all the time, it's just a question of ensuring we cope when the PC and "data" reads are from different SWR banks.
 
 I think zp_pc_[lh] are *not* related to the Z-machine PC; they may be misnamed, or "pc" may stand for something else, or of course I might have the wrong end of the stick.
+
+
+
+Loading a $C800 byte preload file using readblocks (2 pages at a time) took (b-em, drive noises on, timings via kernal_readtime):
+Master Turbo OS 3.2 - 8.22s
+DFS 0.9 with Turbo copro - 8.0s
+DFS 2.26 with Turbo copro - 8.2s
+compared with OSFILE:
+Master Turbo OS 3.2 - 7.62s
+DFS 0.9 with Turbo copro - 7.62s
+DFS 2.26 with Turbo copro - 7.62s
+- so it looks as though giving up PRELOAD and using readblocks to do the initial load (which would simplify things if I have two different-sized preloads and/or if I start interleaving across both sides of the disc) is not a significant performance hit
+
