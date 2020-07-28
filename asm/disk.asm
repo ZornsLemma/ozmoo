@@ -1352,6 +1352,8 @@ do_save
 .save_device_msg !pet 13,"Device# (8-11, RETURN=default): ",0
 .restore_filename !pet "!0*" ; 0 will be changed to selected slot
 .erase_cmd !pet "s:!0*" ; 0 will be changed to selected slot
+}
+
 .swap_pointers_for_save
 	ldx #zp_bytes_to_save - 1
 -	lda zp_save_start,x
@@ -1361,7 +1363,8 @@ do_save
 	dex
 	bpl -
 	rts
-} else {
+
+!ifdef ACORN {
 ; SFTODO
 
 filename_buffer_length = 40 ; SFTODO!?
@@ -1464,6 +1467,26 @@ save_game
     ; This may be the final nail in the coffin of stack-at-$400. Let me think
     ; about it.
     ; SFTODO!
+
+	; Swap in z_pc and stack_ptr
+	jsr .swap_pointers_for_save
+
+	; Perform save
+    ; SFTODO ADD ERROR HANDLING!
+    lda story_start + header_static_mem + 1
+    sta .osfile_save_block + $0e
+    lda story_start + header_static_mem
+    clc
+    adc #>story_start
+    sta .osfile_save_block + $0f
+    lda #osfile_save
+    ldx #<.osfile_save_block
+    ldy #>.osfile_save_block
+    jsr osfile
+
+	; Swap out z_pc and stack_ptr SFTODO MUST DO THIS WHETHER WE ERROR OR NOT, AND ONLY ONCE!
+	jsr .swap_pointers_for_save
+
 	; Return failed status SFTODO TEMP
 +	jsr .io_restore_output
     lda #0
@@ -1474,6 +1497,18 @@ save_game
     lda #0
 	ldx #1
 	rts
+
+    ; SFTODO CAN THIS BE SHARED BETWEEN SAVE AND LOAD?
+.osfile_save_block
+    !word .filename_buffer
+    !word 0 ; load address low
+    !word 0 ; load address high
+    !word 0 ; exec address low
+    !word 0 ; exec address high
+    !word stack_start - zp_bytes_to_save ; start address low
+    !word 0 ; start address high
+    !word 0 ; end address low - patched up by code
+    !word 0 ; end address high
 
 restore_game
     ; SFTODO: Need to allow for possibility of a disc swap

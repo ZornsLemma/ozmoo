@@ -354,6 +354,21 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 !align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
+!ifdef ACORN {
+!ifdef VMEM {
+    ; The stack needs to be page-aligned. If we're using vmem, story_start needs
+    ; to be at a 512-byte boundary. We don't want a gap between the stack and
+    ; story_start because it will increase the size of saved games for no benefit,
+    ; so we put it here.
+    !if (stack_size & $100) = 0 {
+        ; Stack is an even number of pages, so this must be a 512-byte boundary.
+        !align 511, 0, 0
+    } else {
+        ; Stack is an odd number of pages, so this must not be a 512-byte boundary.
+        !align 511, 256, 0
+    }
+}
+}
 
 ; SFTODO: It *may* be possible to use the language workspace at $400-$800 for
 ; the stack, if it's not larger (it's configurable at assembly time). Although
@@ -1286,23 +1301,15 @@ end_of_routines_in_stack_space
 
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 
-!ifdef ACORN {
-!ifdef VMEM {
-    ; story_start must be at a 512-byte boundary so the virtual memory works
-    ; correctly. On the C64 this alignment is done as part of vmem_cache and
-    ; any extra page gets allocated to vmem_cache, but we don't have vmem_cache
-    ; on Acorn.
-    ; SFTODO: At the moment any such extra page is just wasted. *If* the stack
-    ; remains here rather than at $400 we could probably make the stack have
-    ; an extra page, but it may not be worth it. I won't worry about this until
-    ; I've decided where the stack should live.
-    !align 511, 0, 0
-}
-}
-;!fill $600 ; SFTODO TEMP HACK
 story_start
+!if (story_start & 0xff) != 0 {
+    !error "story_start must be page-aligned"
+}
 !ifdef VMEM {
 vmem_start
+!if (vmem_start & 0x1ff) != 0 {
+    !error "vmem_start must be at a 512-byte boundary"
+}
 
 !ifndef ACORN {
 !ifdef ALLRAM {
