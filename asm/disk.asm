@@ -1377,7 +1377,9 @@ filename_buffer_length = 40 ; SFTODO!?
 ; Returns with Z set iff user wants to abort the save/restore.
 .get_filename
     ; We use raw OS text output here, because * commands will do and their output
-    ; will mix with ours.
+    ; will mix with ours. SFTODO: THIS IS ALL VERY WELL, BUT THE LOAD/SAVE ITSELF
+    ; MAY GENERATE OS ERRORS. SO WE REALLY NEED TO BE DOING THIS SET UP AND
+    ; CLEANUP AFTERWARDS OUTSIDE GET_FILENAME, AROUND THE WHOLE SAVE OR RESTORE.
     ; Start off with the OS text cursor where it should be.
     jsr s_cursor_to_screenrowcolumn
     ; Set up a text window so the raw OS text output only scrolls what it should.
