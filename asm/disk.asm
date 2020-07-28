@@ -1451,8 +1451,10 @@ filename_buffer_length = 40 ; SFTODO!?
 
 save_game
     ; SFTODO: Need to allow for possibility of a disc swap
+    lda #1
+    sta zp_temp
     jsr .get_filename
-    beq .save_game_ok ; we treat user aborting save as a success
+    beq .save_game_cleanup_no_swap ; we treat user aborting save as a success
     ; SFTODO: The C64 code temporarily puts some data below stack_start; this
     ; is going to be a problem for me (maybe) if I have the stack at $400, as
     ; below that is OS workspace. It *may* be acceptable on both non-2P and 2P
@@ -1466,13 +1468,26 @@ save_game
     ; dynamic memory, so it is "essential" that all of these are contiguous.
     ; This may be the final nail in the coffin of stack-at-$400. Let me think
     ; about it.
-    ; SFTODO!
 
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
 
 	; Perform save
-    ; SFTODO ADD ERROR HANDLING!
+    ldx #1
+    ldy #error_print_osasci
+    jsr setjmp
+    beq .save_ok
+    jsr osnewl
+    lda #0
+    sta zp_temp
+    beq .save_game_cleanup_swap
+.save_ok
+    ; The OSFILE block is updated after saving, so we have to populate these
+    ; values via code every time.
+    lda #<(stack_start - zp_bytes_to_save)
+    sta .osfile_save_block + $0a
+    lda #>(stack_start - zp_bytes_to_save)
+    sta .osfile_save_block + $0b
     lda story_start + header_static_mem + 1
     sta .osfile_save_block + $0e
     lda story_start + header_static_mem
@@ -1483,19 +1498,16 @@ save_game
     ldx #<.osfile_save_block
     ldy #>.osfile_save_block
     jsr osfile
+    lda #1
 
-	; Swap out z_pc and stack_ptr SFTODO MUST DO THIS WHETHER WE ERROR OR NOT, AND ONLY ONCE!
+.save_game_cleanup_swap
+	; Swap out z_pc and stack_ptr
 	jsr .swap_pointers_for_save
 
-	; Return failed status SFTODO TEMP
-+	jsr .io_restore_output
+.save_game_cleanup_no_swap
+ 	jsr .io_restore_output
     lda #0
-	tax
-	rts
-.save_game_ok
-+	jsr .io_restore_output
-    lda #0
-	ldx #1
+    ldx zp_temp
 	rts
 
     ; SFTODO CAN THIS BE SHARED BETWEEN SAVE AND LOAD?
@@ -1505,9 +1517,9 @@ save_game
     !word 0 ; load address high
     !word 0 ; exec address low
     !word 0 ; exec address high
-    !word stack_start - zp_bytes_to_save ; start address low
+    !word 0 ; start address low
     !word 0 ; start address high
-    !word 0 ; end address low - patched up by code
+    !word 0 ; end address low
     !word 0 ; end address high
 
 restore_game
