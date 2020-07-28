@@ -1391,8 +1391,9 @@ filename_buffer_length = 40 ; SFTODO!?
     jsr printstring_os
     ; Loop round printing a brief prompt, reading input and acting accordingly.
 .get_filename_loop
-    lda #>.filename_prompt
-    ldx #<.filename_prompt
+.filename_prompt_loads
+    lda #$ff ; high byte
+    ldx #$ff ; low byte
     jsr printstring_os
     ldx #1
     jsr cursor_control
@@ -1444,12 +1445,10 @@ filename_buffer_length = 40 ; SFTODO!?
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
     !text "Please enter a filename or * command or just press RETURN to carry on playing:", 13, 0
-.filename_prompt
-    ; SFTODO: If this remains a single character we could more efficiently just
-    ; print it with a simple call to osasci. We could potentially print "load>"
-    ; or "save>" or something like that, in case the user forgets which is in
-    ; use after doing many * commands and the screen scrolling.
-    !text "?", 0
+.save_prompt
+    !text "save>", 0
+.restore_prompt
+    !text "restore>", 0
 
 .io_restore_output
     ; We're about to return control to our caller, so we need to prepare for
@@ -1463,9 +1462,17 @@ filename_buffer_length = 40 ; SFTODO!?
     jmp oswrch
 
 restore_game
+    lda #>.restore_prompt
+    sta .filename_prompt_loads + 1
+    lda #<.restore_prompt
+    sta .filename_prompt_loads + 3
     lda #osfile_load
     bne .save_restore_game ; Always branch
 save_game
+    lda #>.save_prompt
+    sta .filename_prompt_loads + 1
+    lda #<.save_prompt
+    sta .filename_prompt_loads + 3
     lda #osfile_save
     ; fall through to .save_restore_game
 .save_restore_game
