@@ -663,47 +663,6 @@ deletable_init
 .store_boot_device
 	sty boot_device ; Boot device# stored
 } else {
-    ; SFTODO: We need to set up an error handler at some point, but I'll wait
-    ; until I do game loading and saving before worrying about that as that will
-    ; be more involved; at this point all we could do is die anyway.
-    lda #osfile_load
-    ldx #<.osfile_load_block
-    ldy #>.osfile_load_block
-    jsr osfile
-}
-!ifdef VMEM {
-!ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
-	lda #<config_load_address
-	sta readblocks_mempos
-	lda #>config_load_address
-	sta readblocks_mempos + 1
-	lda #CONF_TRK
-	ldx #0
-; No need to load y with boot device#, already in place
-	jsr read_track_sector
-	inc readblocks_mempos + 1
-	lda #CONF_TRK
-	ldx #1
-	ldy boot_device
-	jsr read_track_sector
-;    jsr kernal_readchar   ; read keyboard
-; Copy game id
-	ldx #3
--	lda config_load_address,x
-	sta game_id,x
-	dex
-	bpl -
-; Copy disk info
-	ldx config_load_address + 4
-	dex
--	lda config_load_address + 4,x
-	sta disk_info - 1,x
-	dex
-	bne -
-	
-	jsr auto_disk_config
-;	jsr init_screen_colours
-} else {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game. Because this is "our" disc, we can assume
     ; any file starting with "D" is the right one. SFTODO: Perhaps slightly more
@@ -718,16 +677,10 @@ deletable_init
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    ; SFTODO: If we just moved this before the OSFILE immediately above, we
-    ; could use story_start as our temporary buffer and avoid having .catalogue.
-    ; It's not exactly wasted space as it's part of the stack, but it does
-    ; take up space "in" the stack for code and it makes me a bit edgy in case
-    ; it overflows later and if we can just rearrange this code it's safer all
-    ; round.
-    lda #<.catalogue
+    lda #<story_start
     sta zp_temp
     sta readblocks_mempos
-    lda #>.catalogue
+    lda #>story_start
     sta zp_temp + 1
     sta readblocks_mempos + 1
     ; SFTODO: We may not need to set nonstored_blocks to 0 here, if the "final"
@@ -764,6 +717,66 @@ file_found
     iny
     lda (zp_temp),y
     sta readblocks_base
+
+    ; Preload as much of the game as possible into memory.
+    ; SFTODO: This currently will read past the end of the game if it's small
+    ; enough to fit entirely into memory, which is harmless but slow and inelegant.
+    lda #2
+    sta readblocks_numblocks
+    lda #0
+    sta readblocks_currentblock
+    sta readblocks_currentblock + 1
+    lda #<story_start
+    sta readblocks_mempos
+    lda #>story_start
+    sta readblocks_mempos + 1
+    lda #>ramtop
+    sec
+    sbc #>story_start
+    sta zp_temp
+.preload_loop
+    cmp readblocks_numblocks
+    bcs +
+    sta readblocks_numblocks
++   jsr readblocks
+    lda zp_temp
+    sec
+    sbc readblocks_numblocks
+    sta zp_temp
+    bne .preload_loop
+}
+!ifdef VMEM {
+!ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
+	lda #<config_load_address
+	sta readblocks_mempos
+	lda #>config_load_address
+	sta readblocks_mempos + 1
+	lda #CONF_TRK
+	ldx #0
+; No need to load y with boot device#, already in place
+	jsr read_track_sector
+	inc readblocks_mempos + 1
+	lda #CONF_TRK
+	ldx #1
+	ldy boot_device
+	jsr read_track_sector
+;    jsr kernal_readchar   ; read keyboard
+; Copy game id
+	ldx #3
+-	lda config_load_address,x
+	sta game_id,x
+	dex
+	bpl -
+; Copy disk info
+	ldx config_load_address + 4
+	dex
+-	lda config_load_address + 4,x
+	sta disk_info - 1,x
+	dex
+	bne -
+	
+	jsr auto_disk_config
+;	jsr init_screen_colours
 }
 } else { ; End of !ifdef VMEM
 !ifndef ACORN { ; SFTODO!?
@@ -916,25 +929,6 @@ file_found
 ; +	sty fileblocks
 	; stx fileblocks + 1
 	rts
-
-!ifdef ACORN {
-; SFTODODATA?
-.osfile_load_block
-    !word .osfile_load_filename
-    !word story_start ; load low word
-    !word 0           ; load high word
-    !word 0           ; exec low word; 0 => use specified load address
-    !word 0           ; exec high word
-    !word 0           ; length low word
-    !word 0           ; length high word
-    !byte 0           ; attributes
-.osfile_load_filename
-    !text "PRELOAD",13
-
-; SFTODODATA
-.catalogue
-    !fill 512
-}
 }
 
 !ifdef VMEM {

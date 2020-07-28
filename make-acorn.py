@@ -82,6 +82,10 @@ class DiscImage(object):
                 ((start_sector >> 8) & 0x3))
         self.data[0x10f] = start_sector & 0xff
 
+    def lock_all(self):
+        for i in range(self.num_files()):
+            self.data[0x00f + i*8] |= 128
+
 
 def get_word(data, i):
     return data[i]*256 + data[i+1]
@@ -128,6 +132,8 @@ if game_blocks > nonstored_blocks:
     # block for data access. That would thrash like hell but I think
     # in principle it should work, and might be a good torture test.
 
+# SFTODO: We mostly don't need preload_blocks now, but I'll keep it for now as it
+# is how we can decide whether we need VMEM or not.
 if game_blocks <= max_preload_blocks:
     preload_blocks = game_blocks
     # SFTODO: We don't need virtual memory support in this case. I'm not sure
@@ -161,39 +167,23 @@ for i in range(vmap_max_size):
     ssd.data[vmap_offset + i + 0            ] = high
     ssd.data[vmap_offset + i + vmap_max_size] = low
 
-# We're going to add two files which share the same data on the disc. This is a
-# bit naughty but it means we can avoid duplicating any data. We put the longer
-# of the two files first in the catalogue as that seems least likely to cause
-# problems if the disc is written to by DFS.
-# SFTODO: Might be worth experimenting with writing to the disc using dfferent
-# DFSes. *COMPACT on DFS 2.24 seems to undo the duplication, but (not tested)
-# not actually corrupt the data. Not ideal. I suppose I *could* just make
-# PRELOAD and DATA disjoint and have readblocks use the right one. However,
-# if we wanted two different-sized PRELOADS (e.g. for a 2P or SWR disc) that
-# wouldn't work. We could have *three* separate disjoint files. Gets a bit
-# messy in a different way though. Actually since we could guarantee the
-# disjoint files followed each other, readblocks wouldn't need to do
-# anything clever (except in the currently hypothetical case of an interleaved
-# double-sided disc), it would just use the start of PRELOAD as its base.
-# I don't think this helps the two-different-sized PRELOADs issue. OTOH a SWR
-# PRELOAD would probably be a dozen-ish K due to limited main RAM size on non-2P
-# so the duplication isn't too big a deal. Still rather avoid it though.
-# SFTODO: *Maybe* we should only use this trick if we would otherwise run out
-# of space on the disc, and duplicate otherwise? OTOH, assuming it isn't risky
-# to save onto a disc with this trick, avoiding the duplication will leave more
-# space for saved games.
-# SFTODO: Since we will probably be discarding the code which is OSFILE-loading
-# the preloads, there isn't really any harm in having PRELOAD1, PRELOAD2 and
-# DATA consecutive on the disk. PRELOAD1 would be loaded by SWR, PRELOAD1 and
-# PRELOAD2 (consecutively, of course) by 2P, and the readblocks code would just
-# use the start of PRELOAD1 as the base block. All this really costs is an extra
-# OSFILE call in 2P case, and if we're discarding that code on startup that's
-# no hardship.
 first_free_sector = ssd.first_free_sector()
+# SFTODO: I thought this padding would be necessary, but it seems not to be even if
+# I deliberately force a "bad" alignment.
+if False:
+    pad_sectors = 0
+    while (first_free_sector + pad_sectors) & (vm_page_blocks - 1) != 0:
+        # readblocks will fail if we try to read a VM block which straddles a track
+        # boundary, so make sure the game data starts on a multiple of the block
+        # size.
+        pad_sectors += 1
+    if pad_sectors != 0:
+        ssd.data.extend(pad_sectors * 256 * b'\0')
+        ssd.add_to_catalogue("$", "PAD", 0, 0, pad_sectors * 256, first_free_sector)
+        first_free_sector += pad_sectors
 ssd.data.extend(game_data)
-ssd.add_to_catalogue("$", "PRELOAD", 0, 0, preload_blocks * 256, first_free_sector)
 ssd.add_to_catalogue("$", "DATA", 0, 0, game_blocks * 256, first_free_sector)
+ssd.lock_all()
 
-# TODO: I should set the locked bit on all the game files before writing this out
 with open(output_name, "wb") as f:
     f.write(ssd.data)

@@ -424,25 +424,6 @@ uname_len = * - .uname
     ; SFTODO: Don't forget that we could get a read error here. I'll wait until
     ; I've done loading and saving, but ideally we should catch and print errors
     ; and say "press any key to retry".
-!ifdef TRACE_FLOPPY {
-    ; SFTODO: This not tested yet
-    jsr newline
-    jsr print_following_string
-    !text "readblocks (n,cblk,mem) ",0
-    lda readblocks_numblocks
-    jsr printa
-    jsr comma
-    lda readblocks_currentblock + 1
-    jsr print_byte_as_hex
-    lda readblocks_currentblock
-    jsr print_byte_as_hex
-    jsr comma
-    lda readblocks_mempos + 1
-    jsr print_byte_as_hex
-    lda readblocks_mempos 
-    jsr print_byte_as_hex
-    jsr newline
-}
 
     ; We prefix errors with two newlines, so even if we're part way through a
     ; line there will always be at least one blank line above the error message.
@@ -510,6 +491,7 @@ uname_len = * - .uname
     sta divisor + 1
     jsr divide16
 
+.retry
     ; SFTODO: For now we just assume drive 0 and we don't make any attempt to
     ; do clever stuff like validate the game disc is in the drive or allow for
     ; multi-disc games. (For larger games, the obvious first step would be to
@@ -547,7 +529,9 @@ uname_len = * - .uname
     lda remainder ; sector
     sta .osword_7f_block + 8
     ; We know the number of blocks is only going to be vmem_block_pagecount, so
-    ; there's no need to loop round in case it's too many to read 
+    ; there's no need to loop round in case it's too many to read. (Note also
+    ; that you apparently can't read across a track boundary, except that it
+    ; does seem to work if readblocks_numblocks is exactly 2.)
     lda readblocks_numblocks
     ora #$20
     sta .osword_7f_block + 9 ; sector size and count
@@ -568,6 +552,15 @@ uname_len = * - .uname
     ldx #<.osword_7f_block
     ldy #>.osword_7f_block
     jsr osword
+    lda .osword_7f_block + 3 + 7
+    beq .read_ok
+    cmp #$10
+    beq .retry
+    brk
+    !byte 0
+    !text "Disc read error"
+    !byte 0
+.read_ok
     jsr set_default_error_handler
 
     ; Now we know the operation has succeeded and there won't be a retry,
