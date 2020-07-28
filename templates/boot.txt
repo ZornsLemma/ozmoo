@@ -1,3 +1,4 @@
 *BASIC
+*DRIVE 0
 *DIR $
 CHAIN "LOADER"

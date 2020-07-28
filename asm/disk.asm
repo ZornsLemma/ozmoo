@@ -770,7 +770,7 @@ z_ins_restart
     ; and without having thought too deeply about it it's probably the best we
     ; can do having discarded some of our initialisation code. We can maybe
     ; do this a little bit better than inserting into keyboard buffer though.
-    ; SFTODO: Can we just use OSFILE to *RUN OZMOO?
+    ; SFTODO: Can we just use OSFILE to *RUN :0.$.OZMOO?
     ; SFTODO: Magic constants
     ; SFTODO: Whatever we do, we should perhaps do *DRIVE 0 and *DIR $ first,
     ; in case the user has changed these via * commands during save/restore.
@@ -798,7 +798,7 @@ z_ins_restart
 .restart_command1
     !text "*BASIC",13
 .restart_command2
-    !text "*EXEC !BOOT",13,0
+    !text "*EXEC :0.$.!BOOT",13,0
 }
 }
 
