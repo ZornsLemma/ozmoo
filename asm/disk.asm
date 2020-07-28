@@ -1362,6 +1362,7 @@ do_save
 	sty zp_save_start,x
 	dex
 	bpl -
+.swap_pointers_for_save_rts
 	rts
 
 !ifdef ACORN {
@@ -1412,23 +1413,23 @@ filename_buffer_length = 40 ; SFTODO!?
     cmp #' '
     beq - 
     cmp #13
-    beq +
+    beq .swap_pointers_for_save_rts
     cmp #'*'
-    bne +
+    bne .swap_pointers_for_save_rts
     ldx #1
     ldy #error_print_osasci
     jsr setjmp
     bne .oscli_error
+.no_oscli_error
     ldx #<.filename_buffer
     ldy #>.filename_buffer
     jsr oscli
+    jmp .oscli_done
+.oscli_error
+    jsr osnewl
 .oscli_done
     jsr set_default_error_handler
     jmp .get_filename_loop
-.oscli_error
-    jsr osnewl
-    jmp .oscli_done
-+   rts
 .filename_msg
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
