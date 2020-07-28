@@ -452,7 +452,7 @@ uname_len = * - .uname
     jsr setjmp
     beq .no_error
     jsr error_print_following_string
-    !text 13, "Press SPACE to retry...", 0
+    !text 13, "press SPACE to retry...", 0
     lda #osbyte_flush_buffer
     ldx #buffer_keyboard
     jsr osbyte
