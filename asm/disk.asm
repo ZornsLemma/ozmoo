@@ -22,8 +22,11 @@ device_map !byte 0,0,0,0
 nonstored_blocks		!byte 0
 readblocks_numblocks	!byte 0 
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
+!ifndef ACORN {
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
+}
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
+; SFTODO: readblocks_base only needs 1 byte for ACORN_DSD
 readblocks_base         !byte 0,0
 !ifndef ACORN {
 disk_info
@@ -421,10 +424,6 @@ uname_len = * - .uname
 .next_disk_index	!byte 0
 .disk_tracks	!byte 0
 } else {
-    ; SFTODO: Don't forget that we could get a read error here. I'll wait until
-    ; I've done loading and saving, but ideally we should catch and print errors
-    ; and say "press any key to retry".
-
     ; We prefix errors with two newlines, so even if we're part way through a
     ; line there will always be at least one blank line above the error message.
     ; We use s_printchar for output here, as this will be mixed in with the
@@ -447,49 +446,59 @@ uname_len = * - .uname
     jsr s_printchar
 .no_error
 
-    ; SFTODO: At the moment the data file *includes* the non-stored blocks,
-    ; because it's just a raw copy of the original game data. This is wasteful
-    ; of disc space, because we always have those blocks pre-loaded as part of
-    ; the ozmoo binary. Unless/until we start cutting down the game file on the
-    ; disc, we *don't* want to make an adjustment to the block by subtracting
-    ; off nonstored_blocks.
-!if 0 {
-	lda readblocks_currentblock
-	sec
-	sbc nonstored_blocks
-	sta readblocks_currentblock_adjusted
-	lda readblocks_currentblock + 1
-	sbc #0
-	sta readblocks_currentblock_adjusted + 1
-} else {
-    ; SFTODO: Rather inefficient but we'll probably revert to the above variant
-    ; at some point.
-	lda readblocks_currentblock
-	sta readblocks_currentblock_adjusted
-	lda readblocks_currentblock + 1
-	sta readblocks_currentblock_adjusted + 1
-}
+    ; Convert (256 byte) block number within game into drive, track and sector.
+.drive_bits = 24+8 ; single density SFTODO: from code on beebwiki, not too sure why
+.track = division_result
+.sector = remainder
+.drive = remainder + 1
+!ifndef ACORN_DSD {
     clc
-    lda readblocks_currentblock_adjusted
+    lda readblocks_currentblock
     adc readblocks_base
-    sta readblocks_currentblock_adjusted
-    lda readblocks_currentblock_adjusted + 1
-    adc readblocks_base + 1
-    sta readblocks_currentblock_adjusted + 1
-
-    ; Convert block (sector) number into track and sector.
-    ; SFTODO: I may not need readblocks_currentblock_adjusted as a distinct
-    ; memory location, if I only use it in this limited way I can just populate
-    ; dividend directly
-    lda readblocks_currentblock_adjusted
     sta dividend
-    lda readblocks_currentblock_adjusted + 1
+    lda readblocks_currentblock + 1
+    adc readblocks_base + 1
     sta dividend + 1
     lda #10
+    sta divisor
+    lda #.drive_bits + 0
+    sta .drive
+    lda #0
+    sta divisor + 1
+    jsr divide16
+
+    lda division_result
+    sta .track
+    lda remainder
+    sta .sector
+} else {
+    clc
+    lda readblocks_currentblock
+    sta dividend
+    lda readblocks_currentblock + 1
+    sta dividend + 1
+    lda #20
     sta divisor
     lda #0
     sta divisor + 1
     jsr divide16
+
+    lda division_result
+    clc
+    adc readblocks_base
+    sta .track
+    lda remainder ; cylinder sector, 0-9 on drive 0, 10-19 on drive 2
+    ldx #0
+    cmp #10
+    bcc +
+    ; sec - carry is already set
+    sbc #10
+    ldx #2
++   sta .sector
+    txa
+    ora #.drive_bits
+    sta .drive
+}
 
 .retry
     ; SFTODO: For now we just assume drive 0 and we don't make any attempt to
@@ -508,7 +517,7 @@ uname_len = * - .uname
     ; minimising disc head movement by allocating "consecutive" blocks to the
     ; same track but on both sides of the disc? i.e. using "cylinders" instead
     ; of just "tracks".
-    lda #0+24+8 ; drive 0, single density
+    lda .drive
     sta .osword_7f_block + 0 ; drive
     lda #0
     sta .osword_7f_block + 3 ; high order word of address
@@ -524,9 +533,9 @@ uname_len = * - .uname
     sta .osword_7f_block + 5
     lda #$53 ; read data
     sta .osword_7f_block + 6
-    lda division_result ; track
+    lda .track
     sta .osword_7f_block + 7
-    lda remainder ; sector
+    lda .sector
     sta .osword_7f_block + 8
     ; We know the number of blocks is only going to be vmem_block_pagecount, so
     ; there's no need to loop round in case it's too many to read. (Note also

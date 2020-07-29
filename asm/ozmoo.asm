@@ -695,7 +695,11 @@ deletable_init
     lda #0
     sta nonstored_blocks
     sta readblocks_base
+!ifndef ACORN_DSD {
     sta readblocks_base + 1
+}
+    ; Note that because we're reading the first few sectors, this works
+    ; correctly whether this is an ACORN_DSD build or not.
     jsr readblocks
     ldy #8
 find_file_loop
@@ -720,10 +724,24 @@ file_found
     tay
     lda (zp_temp),y
     and #$3
+!ifndef ACORN_DSD {
     sta readblocks_base + 1
     iny
     lda (zp_temp),y
     sta readblocks_base
+} else {
+    sta dividend + 1
+    iny
+    lda (zp_temp),y
+    sta dividend
+    lda #0
+    sta divisor + 1
+    lda #10
+    sta divisor
+    jsr divide16
+    lda division_result
+    sta readblocks_base
+}
 
     ; Preload as much of the game as possible into memory.
     ; SFTODO: This currently will read past the end of the game if it's small
