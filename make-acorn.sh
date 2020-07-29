@@ -3,7 +3,7 @@ set -e
 mkdir -p temp
 cd asm
 # SFTODO: The next line hard-codes Z3, the Commodore build system automatically sets the right Zn flag. All I really need to do is invoke these commands from within make-acorn.py and get rid of this file, but I want to keep things simple for now.
-acme --setpc "\$600" -DACORN_DSD=1 -DBENCHMARK=1 -DDEBUG=1 -DACORN=1 -DSTACK_PAGES=4 -DZ3=1 --cpu 6502 --format plain -DSMALLBLOCK=1 -DVMEM=1 -DSPLASHWAIT=0 -l "../temp/acme_labels.txt" -r "../temp/acme_report.txt" --outfile "../temp/ozmoo" ozmoo.asm
+acme --setpc "\$600" -DBENCHMARK=1 -DDEBUG=1 -DACORN=1 -DSTACK_PAGES=4 -DZ3=1 --cpu 6502 --format plain -DSMALLBLOCK=1 -DVMEM=1 -DSPLASHWAIT=0 -l "../temp/acme_labels.txt" -r "../temp/acme_report.txt" --outfile "../temp/ozmoo" ozmoo.asm
 #acme --setpc "\$600" -DACORN=1 -DSTACK_PAGES=4 -DZ5=1 --cpu 6502 --format plain -DSMALLBLOCK=1 -DVMEM=1 -DSPLASHWAIT=0 -l "../temp/acme_labels.txt" -r "../temp/acme_report.txt" --outfile "../temp/ozmoo" ozmoo.asm
 cd ..
 # SFTODO: This swallows any beebasm errors, so if you break the beebasm part of the build it can get very confusing
