@@ -36,7 +36,7 @@
 ; via vdu_cls. If this is the case, we need to track reverse_video in s_reverse
 ; and temporarily switch it off before performing those operations it would
 ; incorrectly affect.
-; SFTODO: etude.z5 styles test does not seem to use reverse text where it claims and there's also a hint of the probably s_reverse bug noted in previous paragraph too.
+; SFTODO: etude.z5 styles test does not seem to use reverse text where it claims and there's also a hint of the probably s_reverse bug noted in previous paragraph too. This fails (at least the first bit; ignoring the possible bug from previous paragraph) on C64 too. I think the issue is that on both systems we set reverse on/off by taking some action but s_printchar is not called for the intervening text characters until afterwards because it's buffered and there's no newline. This may be too hard to fix; I assume upstream knows, given etude is in the upstream distribution. But maybe worth a think.
 
 !zone screenkernal {
 
