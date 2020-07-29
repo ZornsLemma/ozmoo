@@ -37,9 +37,6 @@
 ; and temporarily switch it off before performing those operations it would
 ; incorrectly affect.
 ; SFTODO: etude.z5 styles test does not seem to use reverse text where it claims and there's also a hint of the probably s_reverse bug noted in previous paragraph too.
-; SFTODO: etude.z5 timed input test shows hardware cursor (Ozmoo cursor seems
-; fine) at top left of screen if a character has been typed in column 40 when
-; the timed message appears.
 
 !zone screenkernal {
 
@@ -383,6 +380,11 @@ s_printchar
     ; This OSWRCH call is the one which actually prints most of the text on the
     ; screen.
     jsr oswrch
+    ; Force the OS text cursor to move if necessary; normally it would be
+    ; invisible at this point, but TerpEtude's "Timed full-line input" test can
+    ; leave the OS text cursor visible at the top left if you type a character
+    ; in the rightmost column and then wait for the timed mwessage to appear.
+    jsr s_cursor_to_screenrowcolumn
 }
 .printchar_end
     ldx s_stored_x
