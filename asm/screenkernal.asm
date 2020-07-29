@@ -36,6 +36,10 @@
 ; via vdu_cls. If this is the case, we need to track reverse_video in s_reverse
 ; and temporarily switch it off before performing those operations it would
 ; incorrectly affect.
+; SFTODO: etude.z5 styles test does not seem to use reverse text where it claims and there's also a hint of the probably s_reverse bug noted in previous paragraph too.
+; SFTODO: etude.z5 timed input test shows hardware cursor (Ozmoo cursor seems
+; fine) at top left of screen if a character has been typed in column 40 when
+; the timed message appears.
 
 !zone screenkernal {
 
