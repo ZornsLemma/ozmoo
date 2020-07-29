@@ -1468,7 +1468,9 @@ save_game
     lda #osfile_save
     ; fall through to .save_restore_game
 .save_restore_game
-    sta zp_temp + 1
+.osfile_op = zp_temp
+.result = zp_temp + 1 ; 0 for failure, 1 for success
+    sta .osfile_op
     ; SFTODO: Need to allow for possibility of a disc swap - what I think I will
     ; do is (possibly) include a message in "get filename" prompt saying you can
     ; take the game disc out if you want. After the save, I will do some check
@@ -1482,26 +1484,21 @@ save_game
     ; forcibly evict a page of data, but that's a bit annoying/complex and it
     ; wouldn't work on a non-VMEM build. - OK, I now have scratch_page which I
     ; can use for this.
-    lda #1
-    sta zp_temp
+    ; We default the result to failure and only set it to success after actually
+    ; loading/saving something. If the user aborts the operation, that counts
+    ; as failure. See discussion at
+    ; https://stardot.org.uk/forums/viewtopic.php?f=2&t=19975&p=281210#p281204
+    ; and in the light of that, note that if this subroutine returned 1
+    ; (success) after a restore was aborted by the user, we wouldn't comply with
+    ; the observation in the Z-machine standard (under "restore") saying
+    ; "If the restore fails, 0 is returned, but once again this necessarily
+    ; happens since otherwise control is already elsewhere.", because we would
+    ; return 2 (z_ins_restore bumps 1->2) but control would not be elsewhere.
+    ; Finally, note that the Commodore 64 code treats aborting as failure.
+    lda #0
+    sta .result
     jsr .get_filename
-    ; SFTODO: Should we treat user aborting as a failure, at least for save? I
-    ; wonder if some game might feel freer about killing the user if they
-    ; recently had a successfuly save? Probably not likely, but still.
-    beq .save_restore_game_cleanup_partial ; we treat user aborting as a success
-    ; SFTODO: The C64 code temporarily puts some data below stack_start; this
-    ; is going to be a problem for me (maybe) if I have the stack at $400, as
-    ; below that is OS workspace. It *may* be acceptable on both non-2P and 2P
-    ; to temporarily corrupt a bit of memory there, but I'd really rather not
-    ; if I have to. Looking at AllMem it's probably OK on non-2P but not found
-    ; any docs about 2P case. Be better to think of a nicer solution, although
-    ; a) I can't write two chunks separately as I want to use OSFILE *SAVE to
-    ; avoid needing PAGE>&1100 on a B b) I really would like to have the option
-    ; to use $400-800 for stack c) I don't want to *SAVE two files. Ah,
-    ; actually it's worse than that, because we need to save bit-of-zp+stack+
-    ; dynamic memory, so it is "essential" that all of these are contiguous.
-    ; This may be the final nail in the coffin of stack-at-$400. Let me think
-    ; about it.
+    beq .save_restore_game_cleanup_partial ; user aborted 
 
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
@@ -1511,10 +1508,12 @@ save_game
     ldy #error_print_osasci
     jsr setjmp
     beq .no_osfile_error
+    ; If this is a load and a disc error occurred partway through, the game is
+    ; probably in an inconsistent or otherwise corrupt state. There really isn't
+    ; much we can do - we don't have enough RAM to take a copy of the game
+    ; before the load so we can restore it if the load fails.
     jsr osnewl
-    lda #0
-    sta zp_temp
-    beq .save_restore_game_cleanup_full
+    jmp .save_restore_game_cleanup_full
 .no_osfile_error
     ; The OSFILE block is updated after the call, so we have to populate these
     ; values via code every time.
@@ -1532,11 +1531,12 @@ save_game
     clc
     adc #>story_start
     sta .osfile_save_load_block + $0f
-    lda zp_temp + 1
+    lda .osfile_op
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
     jsr osfile
     lda #1
+    sta .result
 
 .save_restore_game_cleanup_full
 	; Swap out z_pc and stack_ptr
@@ -1545,7 +1545,7 @@ save_game
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
     lda #0
-    ldx zp_temp ; must be last as caller will check Z flag
+    ldx .result ; must be last as caller will check Z flag
 	rts
 
 ; SFTODODATA - IT *MIGHT* BE A NET SAVING TO INITIALISE THE WHOLE THING IN CODE (WE COULD ZERO IT OUT BEFORE SETTING UP OTHER VALUES)
