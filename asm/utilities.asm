@@ -857,29 +857,35 @@ setjmp
     ; rely on it.) As a nice side effect of this, the return address for our
     ; caller is saved so .setjmp_error_handler can simply rts after restoring
     ; the stack.
-    ; SFTODO: If .jmp_buf is made smaller, we could probably fairly easily
-    ; detect overflow - initialise y with -buffer_size, do sta .jmp_buf+1+buffer_size,y
+    ; SFTODO: If jmp_buf is made smaller, we could probably fairly easily
+    ; detect overflow - initialise y with -buffer_size, do sta jmp_buf+1+buffer_size,y
     ; and if the bne after the iny isn't taken we've overflowed. There might be
-    ; an off by one error in that, I'm just sketching the idea out.
+    ; an off by one error in that, I'm just sketching the idea out. This is
+    ; tempting, *but* at the moment jmp_buf is going to live in $400-800 and
+    ; (except for the possibility of starting code at say $600 on 2P) we have
+    ; loads of free space down there, so adding a few bytes of code to the VM
+    ; to detect overflow and cause a fatal error will eat into valuable memory
+    ; for the sake of optimising use of a currently not-scare resource. Think
+    ; about it, maybe convert this to an SF: comment.
     tsx
-    stx .jmp_buf
+    stx jmp_buf
     ldy #0
 -   inx
     beq +
     lda stack,x
-    sta .jmp_buf+1,y
+    sta jmp_buf+1,y
     iny
     bne -
 +   ; Z flag is set
     rts
 
 .setjmp_error_handler
-    ldx .jmp_buf
+    ldx jmp_buf
     txs
     ldy #0
 -   inx
     beq +
-    lda .jmp_buf+1,y
+    lda jmp_buf+1,y
     sta stack,x
     iny
     bne -
@@ -913,15 +919,6 @@ printstring_os
    bne -
    inc .printstring_os_lda + 2
    bne - ; Always branch
-
-;SFTODODATA
-.jmp_buf
-    ; SFTODO: We won't need this much space. In principle we can work it out by
-    ; analysis of the Ozmoo code, at least provided we don't use the CPU stack
-    ; to handle any sort of recursion controlled by the running game. We may
-    ; also be able to stick this somewhere else in memory, but this will do
-    ; for now.
-    !fill 256
 }
 }
 

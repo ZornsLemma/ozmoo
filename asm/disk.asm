@@ -1480,7 +1480,8 @@ save_game
     ; be careful whatever I have doesn't assume VMEM. The only "problem" here is
     ; finding 256 bytes to read the page into temporarily. On VMEM I could
     ; forcibly evict a page of data, but that's a bit annoying/complex and it
-    ; wouldn't work on a non-VMEM build.
+    ; wouldn't work on a non-VMEM build. - OK, I now have scratch_page which I
+    ; can use for this.
     lda #1
     sta zp_temp
     jsr .get_filename

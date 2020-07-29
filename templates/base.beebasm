@@ -1,3 +1,3 @@
 puttext "templates/boot.txt", "!BOOT", &0000
 putbasic "templates/loader.bas", "LOADER"
-putfile "temp/ozmoo", "OZMOO", &000800
+putfile "temp/ozmoo", "OZMOO", &000600
