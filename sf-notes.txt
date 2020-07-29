@@ -43,8 +43,4 @@ DFS 2.26 with Turbo copro - 7.62s
 
 
 Biggish chunks of data for initial move to $400:
-.filename_buffer ~40 bytes but variable
-.{initial,current}_clock 10 bytes total, not much but easy to move as it's my code
 .jmp_buf max 257 bytes but in reality much smaller, not measured/analysed yet
-vmap 204 bytes (if we populate it via code)
-memory_buffer probably <10 bytes though in practice

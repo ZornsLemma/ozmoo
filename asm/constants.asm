@@ -139,8 +139,8 @@ print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S P
 
 !ifndef ACORN {
 memory_buffer         =	$02a7
-}
 memory_buffer_length  = 89
+}
 
 !ifndef ACORN {
 first_banked_memory_page = $d0
@@ -255,15 +255,22 @@ buffer_keyboard = 0
 
 stack = $100
 
+scratch_page = $400
 ; story_start + header_screen_{width,height}* are only valid for certain
 ; Z-machine versions. We don't want to be querying the OS for these values all
 ; the time, so we keep them here.
 ; SFTODO: IF we don't get value from both "full" and -1 versions, get rid of the
 ; low-value ones.
-screen_width = $400
-screen_height = $401
-screen_width_minus_1 = $402
-screen_height_minus_1 = $403
+screen_width = $500
+screen_height = $501
+screen_width_minus_1 = $502
+screen_height_minus_1 = $503
+memory_buffer = $504 ; 7 bytes (larger on C64, but this is all we use)
+initial_clock = $50b ; 5 bytes
+; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
+; discardable init code in this binary rather than pre-calculating them and
+; patching them into the binary. I won't touch this until I decide about SWR
+; and pre-opt, as this may well influence my decision.
 
 ; SFTODO: On a SWR version we'd need to read HIMEM from the OS, but we can get
 ; away with this while we only support second processor.

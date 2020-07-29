@@ -735,11 +735,12 @@ divide16
     ; the initial value and subtract that from any subsequent reads.
 init_readtime
     lda #osword_read_clock
-    ldx #<.initial_clock
-    ldy #>.initial_clock
+    ldx #<initial_clock
+    ldy #>initial_clock
     jmp osword
 
 kernal_readtime
+.current_clock = scratch_page
     lda #osword_read_clock
     ldx #<.current_clock
     ldy #>.current_clock
@@ -747,7 +748,7 @@ kernal_readtime
     ldx #(256-5)
     sec
 -   lda .current_clock-(256-5),x
-    sbc .initial_clock-(256-5),x
+    sbc initial_clock-(256-5),x
     sta .current_clock-(256-5),x
     inx
     bne -
@@ -764,16 +765,6 @@ kernal_readtime
     ldx .current_clock+1
     lda .current_clock+0
     rts
-
-;SFTODODATA
-.initial_clock
-    !fill 5
-
-; SFTODO: It might be possible to use some temporary scratch space for this, but
-; to avoid possible clashes with other users we just have this space for now.
-;SFTODODATA
-.current_clock
-    !fill 5
 
 error_handler
     ldy .error_handler_newlines

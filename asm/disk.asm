@@ -1362,18 +1362,10 @@ do_save
 
 !ifdef ACORN {
 
-filename_buffer_length = 40 ; SFTODO!?
-; SFTODO: .filename_buffer could maybe share space with something else, but just
-; put it here for now. It doesn't alter the idea of sharing, but I am thinking
-; that *if* we are using four pages of stack, $400-$800 will be the stack and
-; misc buffers will live "inside" the binary, and if we need >4 pages stack
-; misc buffers can live in $00-$800 and stack can live in binary.
-; SFTODODATA
-.filename_buffer
-    !fill filename_buffer_length
+.filename_buffer = scratch_page
 .osword_0_block
     !word .filename_buffer
-    !byte filename_buffer_length - 1
+    !byte 255 ; size of buffer - 1
     !byte 32 ; minimum ASCII value
     !byte 127 ; maximum ASCII value
 ; Returns with Z set iff user wants to abort the save/restore.
