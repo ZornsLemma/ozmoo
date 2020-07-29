@@ -793,7 +793,7 @@ z_ins_restart
     inx
     bpl -
 +   ldx #<.restart_command1
-    ldy #>.restart_command2
+    ldy #>.restart_command1
     jmp oscli
 .restart_command1
     !text "*BASIC",13
