@@ -44,3 +44,7 @@ DFS 2.26 with Turbo copro - 7.62s
 
 Biggish chunks of data for initial move to $400:
 .jmp_buf max 257 bytes but in reality much smaller, not measured/analysed yet
+
+
+Empirically working out .jmp_buf storage requirement: poking stack page full of $EA and running benchmark then examining stack afterwards, it looks like we never got down below $1E0 (and some of that may be interrupts below our stack, which don't count for .jmp_buf purposes).
+Skimming the call code, it doesn't look like Z machine function calls build up state on the 6502 stack - this makes sense, as otherwise a save/restore wouldn't restore that state correctly. So I don't think a sufficiently convoluted program running on Ozmoo can't provoke higher-than-normal 6502 stack use.
