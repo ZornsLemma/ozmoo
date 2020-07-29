@@ -1511,7 +1511,15 @@ save_game
     ; If this is a load and a disc error occurred partway through, the game is
     ; probably in an inconsistent or otherwise corrupt state. There really isn't
     ; much we can do - we don't have enough RAM to take a copy of the game
-    ; before the load so we can restore it if the load fails.
+    ; before the load so we can restore it if the load fails. SFTODO: While it
+    ; would break savegame compatibility with Commodore port - unless the change
+    ; was pushed upstream - we could calculate a CRC over the save and put it
+    ; in an additional two bytes at the start. We could then re-calculate the
+    ; CRC after a load and if it doesn't match we at least know the load failed
+    ; in a dangerous way and can hang/print a very loud warning. (Most errors
+    ; are harmless, e.g. "file not found", so we need the CRC to distinguish
+    ; harmless and dangerous errors.) This would work well, but it would add
+    ; extra code (less free RAM => more disc access) for an unlikely case.
     jsr osnewl
     jmp .save_restore_game_cleanup_full
 .no_osfile_error
