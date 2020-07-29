@@ -1519,7 +1519,11 @@ save_game
     ; in a dangerous way and can hang/print a very loud warning. (Most errors
     ; are harmless, e.g. "file not found", so we need the CRC to distinguish
     ; harmless and dangerous errors.) This would work well, but it would add
-    ; extra code (less free RAM => more disc access) for an unlikely case.
+    ; extra code (less free RAM => more disc access) for an unlikely case. (I
+    ; don't think the savegame compatibility is a big issue; even if this ever
+    ; turns out to be useful, it's easy enough to chop two bytes off the front
+    ; of an Acorn file before transferring to Commodore or to calculate a CRC
+    ; for a Commdore savegame before loading onto Acorn.)
     jsr osnewl
     jmp .save_restore_game_cleanup_full
 .no_osfile_error
