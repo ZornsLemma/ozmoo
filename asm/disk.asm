@@ -1406,12 +1406,17 @@ do_save
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
     !text "Please enter a filename or * command or just press RETURN to carry on playing.", 13
+    ; SFTODO: We could omit the following message (don't forget all builds would
+    ; need the 0!) on a VMEM build, where you never need to keep the game disc
+    ; in. Arguably it's clearer to say it, and it's harmless except for using
+    ; a few bytes of memory.
     !text "You can safely remove the game disc now.", 13, 0
 .save_prompt
     !text "save>", 0
 .restore_prompt
     !text "restore>", 0
 
+!ifdef VMEM {
     ; This uses s_printchar for output; we've reverted to the normal Ozmoo
     ; output mechanism by the time this is called, and readblocks might use it
     ; to print error messages if we get disc errors during the read, so we need
@@ -1458,6 +1463,7 @@ do_save
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
     !text 13, "Please put the game disc in drive 0 and press SPACE...", 13, 0
+}
 
 .io_restore_output
     ; We're about to return control to our caller, so we need to prepare for
@@ -1561,7 +1567,9 @@ save_game
     jsr set_default_error_handler
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
+!ifdef VMEM {
     jsr .get_game_disc_back
+}
     lda #0
     ldx .result ; must be last as caller will check Z flag
 	rts
