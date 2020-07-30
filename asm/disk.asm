@@ -8,7 +8,7 @@ ask_for_save_device !byte $ff
 }
 
 !ifndef VMEM {
-!ifndef ACORN { ; SFTODO: We probably don't need this, at least not for initial implementation with no slick features
+!ifndef ACORN {
 disk_info
 	!byte 0, 0, 1  ; Interleave, save slots, # of disks
 	!byte 8, 8, 0, 0, 0, 130, 131, 0 
@@ -325,29 +325,14 @@ read_track_sector
     lda #cname_len
     ldx #<.cname
     ldy #>.cname
-!IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
-} else {
-    LDA #'X'
-    JSR $FFEE
-}
 
     lda #$02      ; file number 2
     ldx .device
 	tay      ; secondary address 2
-!IF 0 { ; SF
     jsr kernal_setlfs ; call SETLFS
 
     jsr kernal_open     ; call OPEN
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-conv2dec
-    LDA #'Q'
-    JSR $FFEE
-    JMP SFHANG
-}
 
     bcs .error    ; if carry set, the file could not be opened
 
@@ -356,38 +341,20 @@ conv2dec
     lda #uname_len
     ldx #<.uname
     ldy #>.uname
-!IF 0 { ; SF
     jsr kernal_setnam ; call SETNAM
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     lda #$0F      ; file number 15
     ldx .device
     tay      ; secondary address 15
-!IF 0 { ; SF
     jsr kernal_setlfs ; call SETLFS
 
     jsr kernal_open ; call OPEN (open command channel and send U1 command)
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     bcs .error    ; if carry set, the file could not be opened
 
     ; check drive error channel here to test for
     ; FILE NOT FOUND error etc.
 
     ldx #$02      ; filenumber 2
-!IF 0 { ; SF
     jsr kernal_chkin ; call CHKIN (file 2 now used as input)
-} else {
-    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
 
     lda readblocks_mempos
     sta zp_mempos
@@ -395,13 +362,7 @@ conv2dec
     sta zp_mempos + 1
 
     ldy #$00
-!IF 0 { ; SF
 -   jsr kernal_readchar ; call CHRIN (get a byte from file)
-} else {
--    LDA #'X'
-    JSR $FFEE
-    JMP SFHANG
-}
     sta (zp_mempos),Y   ; write byte to memory
     iny
     bne -         ; next byte, end when 256 bytes are read
@@ -440,12 +401,7 @@ uname_len = * - .uname
     beq .no_error
     jsr error_print_following_string
     !text 13, "press SPACE to retry...", 0
-    lda #osbyte_flush_buffer
-    ldx #buffer_keyboard
-    jsr osbyte
--   jsr osrdch
-    cmp #' '
-    bne -
+    jsr wait_for_space
     lda #13
     jsr s_printchar
     lda #13
@@ -507,12 +463,6 @@ uname_len = * - .uname
 }
 
 .retry
-    ; SFTODO: For now we just assume drive 0 and we don't make any attempt to
-    ; do clever stuff like validate the game disc is in the drive or allow for
-    ; multi-disc games. (For larger games, the obvious first step would be to
-    ; allow the data to be split over two sides of a single disc. That will
-    ; probably allow most games to fit, as we'd probably have 350K+ for the
-    ; game.)
     ; SFTODO: If I continue to use a custom block of memory for .osword_7f_block
     ; I may be able to initialise part of it at assembly time. Of course there
     ; may be a block of "scratch" memory which it turns out is free for me to
@@ -592,6 +542,15 @@ uname_len = * - .uname
     ; SFTODODATA - UNLESS WE PRE-FILL THIS AT ASSEMBLY TIME TO SAVE CODE
 .osword_7f_block
     !fill 16
+
+wait_for_space
+    lda #osbyte_flush_buffer
+    ldx #buffer_keyboard
+    jsr osbyte
+-   jsr osrdch
+    cmp #' '
+    bne -
+    rts
 }
 } ; End of !ifdef VMEM
 
@@ -1446,11 +1405,59 @@ do_save
 .filename_msg
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
-    !text "Please enter a filename or * command or just press RETURN to carry on playing:", 13, 0
+    !text "Please enter a filename or * command or just press RETURN to carry on playing.", 13
+    !text "You can safely remove the game disc now.", 13, 0
 .save_prompt
     !text "save>", 0
 .restore_prompt
     !text "restore>", 0
+
+    ; This uses s_printchar for output; we've reverted to the normal Ozmoo
+    ; output mechanism by the time this is called, and readblocks might use it
+    ; to print error messages if we get disc errors during the read, so we need
+    ; to be consistent with that.
+.get_game_disc_back
+    ; We check to see if the game disc is inserted by reading block 0 of the
+    ; game file into scratch memory and comparing its CRC it with the one we
+    ; calculated on startup. Although save games could include this data,
+    ; thanks to the small number of zp bytes included at the beginning of a
+    ; save, no sector on as save game disc will have a copy of block 0. It's
+    ; also likely something in that block has been modified between startup and
+    ; saving the game. Of course it's possible to contrive situations where this
+    ; check will allow a non-game disc to be left in the drive, but this is
+    ; pretty good and it avoids the need for spurious prompts in the most common
+    ; case where the user didn't take the disc out at all.
+.retry
+    lda #0
+    sta readblocks_currentblock
+    sta readblocks_currentblock + 1
+    lda #1
+    sta readblocks_numblocks
+    lda #<scratch_page
+    sta readblocks_mempos
+    lda #>scratch_page
+    sta readblocks_mempos + 1
+    jsr readblocks
+    lda #0
+    ldx #<scratch_page
+    ldy #>scratch_page
+    jsr calculate_crc
+    cpx game_disc_crc
+    bne .crc_bad
+    cpy game_disc_crc + 1
+    beq .crc_ok
+.crc_bad
+    lda #>.reinsert_prompt
+    ldx #<.reinsert_prompt
+    jsr printstring_raw
+    jsr wait_for_space
+    jmp .retry
+.crc_ok
+    rts
+.reinsert_prompt
+    ; This message is tweaked to work nicely in 40 or 80 column mode without
+    ; needing word wrapping code.
+    !text 13, "Please put the game disc in drive 0 and press SPACE...", 13, 0
 
 .io_restore_output
     ; We're about to return control to our caller, so we need to prepare for
@@ -1481,19 +1488,6 @@ save_game
 .osfile_op = zp_temp
 .result = zp_temp + 1 ; 0 for failure, 1 for success
     sta .osfile_op
-    ; SFTODO: Need to allow for possibility of a disc swap - what I think I will
-    ; do is (possibly) include a message in "get filename" prompt saying you can
-    ; take the game disc out if you want. After the save, I will do some check
-    ; to see if the game disc is in the drive, and if not print a prompt to
-    ; put it back in. Only question is what is that check. I could read a
-    ; sector and compare it to what I expect, maybe the catalogue sector and
-    ; check title. I could also read a block of game data (ideally a static
-    ; page, so it shouldn't be on a save game disc) and compare that. Need to
-    ; be careful whatever I have doesn't assume VMEM. The only "problem" here is
-    ; finding 256 bytes to read the page into temporarily. On VMEM I could
-    ; forcibly evict a page of data, but that's a bit annoying/complex and it
-    ; wouldn't work on a non-VMEM build. - OK, I now have scratch_page which I
-    ; can use for this.
     ; We default the result to failure and only set it to success after actually
     ; loading/saving something. If the user aborts the operation, that counts
     ; as failure. See discussion at
@@ -1533,7 +1527,8 @@ save_game
     ; don't think the savegame compatibility is a big issue; even if this ever
     ; turns out to be useful, it's easy enough to chop two bytes off the front
     ; of an Acorn file before transferring to Commodore or to calculate a CRC
-    ; for a Commdore savegame before loading onto Acorn.)
+    ; for a Commdore savegame before loading onto Acorn.) I do already have CRC
+    ; code now for the disc swap, so this wouldn't cost all that much extra.
     jsr osnewl
     jmp .save_restore_game_cleanup_full
 .no_osfile_error
@@ -1566,6 +1561,7 @@ save_game
     jsr set_default_error_handler
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
+    jsr .get_game_disc_back
     lda #0
     ldx .result ; must be last as caller will check Z flag
 	rts

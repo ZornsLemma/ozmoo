@@ -919,6 +919,46 @@ printstring_os
    bne -
    inc .printstring_os_lda + 2
    bne - ; Always branch
+
+; Calculate a CRC over A bytes of data at YX (A=0 => 256 bytes), returning it in
+; YX.
+calculate_crc
+.crc = zp_temp ; 2 bytes
+    sta .cpy_imm + 1
+    stx .eor_abs + 1
+    sty .eor_abs + 2
+    lda #0
+    sta .crc + 1
+    sta .crc
+    tay
+.nbyt
+    lda .crc + 1
+.eor_abs
+    eor $ffff,y
+    sta .crc + 1
+    ldx #8
+.loop
+    lda .crc + 1
+    rol
+    bcc .b7z
+    lda .crc + 1
+    eor #8
+    sta .crc + 1
+    lda .crc
+    eor #$10
+    sta .crc
+.b7z
+    rol .crc
+    rol .crc + 1
+    dex
+    bne .loop
+    iny
+.cpy_imm
+    cpy #$ff
+    bne .nbyt
+    ldx .crc
+    ldy .crc + 1
+    rts
 }
 }
 

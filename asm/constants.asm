@@ -267,7 +267,8 @@ screen_width_minus_1 = $502
 screen_height_minus_1 = $503
 memory_buffer = $504 ; 7 bytes (larger on C64, but this is all we use)
 initial_clock = $50b ; 5 bytes
-jmp_buf = $510 ; "up to" 257 bytes - in reality 64 bytes is probably enough
+game_disc_crc = $510 ; 2 bytes
+jmp_buf = $512 ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR

@@ -762,6 +762,15 @@ file_found
     sbc readblocks_numblocks
     sta zp_temp
     bne .preload_loop
+
+    ; Calculate a CRC of block 0 before it gets modified, so we can use it later
+    ; to identify the game disc after a save or restore.
+    lda #0
+    ldx #<story_start
+    ldy #>story_start
+    jsr calculate_crc
+    stx game_disc_crc
+    sty game_disc_crc + 1
 }
 !ifdef VMEM {
 !ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
