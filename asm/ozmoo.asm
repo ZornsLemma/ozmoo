@@ -699,16 +699,18 @@ deletable_init
     ; to make the contents more obvious.
     ; SFTODO: Once user is maybe saving games onto the same disc,
     ; looking for the exact filename becomes more important.
+.dir_ptr = zp_temp ; 2 bytes
+.length_blocks = zp_temp + 2 ; 2 bytes
     lda #2
     sta readblocks_numblocks
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
     lda #<story_start
-    sta zp_temp
+    sta .dir_ptr
     sta readblocks_mempos
     lda #>story_start
-    sta zp_temp + 1
+    sta .dir_ptr + 1
     sta readblocks_mempos + 1
     lda #0
     sta readblocks_base
@@ -720,7 +722,7 @@ deletable_init
     jsr readblocks
     ldy #8
 find_file_loop
-    lda (zp_temp),y
+    lda (.dir_ptr),y
     cmp #'D'
     beq file_found
     tya
@@ -734,22 +736,23 @@ find_file_loop
     jsr oswrch
 -   jmp -
 file_found
-    inc zp_temp + 1
-    tya
-    clc
-    adc #6
-    tay
-    lda (zp_temp),y
+    ; We found the file's name using sector 0, we now want to look at the
+    ; corresponding part of sector 1. Adjust .dir_ptr for convenience.
+    inc .dir_ptr + 1
+    sty .dir_ptr ; story_start is page-aligned
+    ; Determine the start sector of the DATA file and set readblocks_base.
+    ldy #6
+    lda (.dir_ptr),y
     and #$3
 !ifndef ACORN_DSD {
     sta readblocks_base + 1
     iny
-    lda (zp_temp),y
+    lda (.dir_ptr),y
     sta readblocks_base
 } else {
     sta dividend + 1
     iny
-    lda (zp_temp),y
+    lda (.dir_ptr),y
     sta dividend
     lda #0
     sta divisor + 1
@@ -759,35 +762,60 @@ file_found
     lda division_result
     sta readblocks_base
 }
+    ; Determine the length of the DATA file in blocks.
+    ldy #6
+    lda (.dir_ptr),y
+    and #%110000
+    lsr
+    lsr
+    lsr
+    lsr
+    sta .length_blocks + 1 ; high byte of length in blocks
+    dey
+    lda (.dir_ptr),y
+    sta .length_blocks ; low byte of length in blocks
+    dey
+    lda (.dir_ptr),y ; low byte of length in bytes
+    beq +
+    inc .length_blocks
+    bne +
+    inc .length_blocks + 1
++
 
     ; Preload as much of the game as possible into memory.
-    ; SFTODO: This currently will read past the end of the game if it's small
-    ; enough to fit entirely into memory, which is harmless but slow and inelegant.
+.blocks_to_read = zp_temp + 4 ; 1 byte
     lda #2
     sta readblocks_numblocks
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    lda #<story_start
-    sta readblocks_mempos
+    sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta readblocks_mempos + 1
+    ; SFTODO: Next few lines do a constant subtraction, which could be done at
+    ; assembly time. I'll leave it for now as this is deletable init code and
+    ; on SWR build ramtop may not be a constant (shadow vs non-shadow memory).
     lda #>ramtop
     sec
     sbc #>story_start
-    sta zp_temp
+    ldx .length_blocks + 1
+    bne +
+    cmp .length_blocks
+    bcc +
+    lda .length_blocks
++   sta .blocks_to_read
 .preload_loop
     cmp readblocks_numblocks
     bcs +
     sta readblocks_numblocks
 +   jsr readblocks
-    lda zp_temp
+    lda .blocks_to_read
     sec
     sbc readblocks_numblocks
-    sta zp_temp
+    sta .blocks_to_read
     bne .preload_loop
 
-    ; Calculate a CRC of block 0 before it gets modified, so we can use it later
+    ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
     lda #0
     ldx #<story_start
