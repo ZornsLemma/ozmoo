@@ -26,8 +26,14 @@ readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 }
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
-; SFTODO: readblocks_base only needs 1 byte for ACORN_DSD
+!ifndef ACORN {
 readblocks_base         !byte 0,0
+} else {
+readblocks_base         !byte 0
+!ifndef ACORN_DSD {
+                        !byte 0
+}
+}
 !ifndef ACORN {
 disk_info
 !ifdef Z3 {
@@ -512,11 +518,6 @@ uname_len = * - .uname
     ; may be a block of "scratch" memory which it turns out is free for me to
     ; use here, and that might be a size saving. (Does the C64 code use any
     ; scratch memory?)
-    ; SFTODO: It would definitely be a nice-to-have and probably we'd prefer to
-    ; keep things single-sided if the game fit, but is there any prospect of
-    ; minimising disc head movement by allocating "consecutive" blocks to the
-    ; same track but on both sides of the disc? i.e. using "cylinders" instead
-    ; of just "tracks".
     lda .drive
     sta .osword_7f_block + 0 ; drive
     lda #0

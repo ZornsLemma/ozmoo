@@ -369,10 +369,6 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
-; SFTODO: It *may* be possible to use the language workspace at $400-$800 for
-; the stack, if it's not larger (it's configurable at assembly time). Although
-; then we'd just end up wasting the memory on these otherwise-deletable routines
-; that would load in the stack space, so maybe not the perfect alternative.
 stack_start
 
 deletable_screen_init_1
@@ -690,10 +686,7 @@ deletable_init
     lda #>story_start
     sta zp_temp + 1
     sta readblocks_mempos + 1
-    ; SFTODO: We may not need to set nonstored_blocks to 0 here, if the "final"
-    ; version of readblocks doesn't apply it as an offset ever anyway.
     lda #0
-    sta nonstored_blocks
     sta readblocks_base
 !ifndef ACORN_DSD {
     sta readblocks_base + 1
