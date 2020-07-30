@@ -335,7 +335,9 @@ z_ins_set_text_style
     lda #146 ; reverse off
     jmp s_printchar
 } else {
-    jmp normal_video
+    ; A is zero
+    sta s_reverse
+    rts
 }
 .t0 cmp #1
     bne .do_nothing
@@ -343,7 +345,9 @@ z_ins_set_text_style
     lda #18 ; reverse on
     jmp s_printchar
 } else {
-    jmp reverse_video
+    lda #$80
+    sta s_reverse
+    rts
 }
 
 
@@ -654,15 +658,11 @@ printchar_buffered
 .save_y			   !byte 0
 first_buffered_column !byte 0
 
-clear_screen_raw
 !ifndef ACORN {
+clear_screen_raw
 	lda #147
 	jsr s_printchar
 	rts
-} else {
-    ; SFTODO: I'm not 100% sure this will be needed in a fully tidied up port.
-    lda #vdu_cls
-    jmp oswrch
 }
 
 printchar_raw
@@ -738,7 +738,7 @@ draw_status_line
 	lda zcolours,y
 	jsr s_set_text_colour
 } else {
-    jsr reverse_video 
+    jsr set_os_reverse_video 
 }
     ;
     ; Room name
@@ -850,7 +850,7 @@ draw_status_line
     lda #146 ; reverse off
     jsr s_printchar
 } else {
-    jsr normal_video
+    jsr set_os_normal_video
 }
 	pla
 	sta current_window
@@ -888,31 +888,6 @@ draw_status_line
 }
 
 !ifdef ACORN {
-; SFTODO: This assumes non-mode 7. We can probably support reverse video at least
-; for the status line in mode 7, although we'd lose a few characters to control
-; codes. (Lurkio on stardot suggests just using cyan-on-black for the status
-; bar in mode 7; that would only burn one space on a control code instead of
-; three and seems a good idea.)
-normal_video
-    lda #7
-    jsr .set_tcol
-    lda #128
-    jmp .set_tcol
-
-reverse_video
-    lda #0
-    jsr .set_tcol
-    lda #135
-    ; jmp .set_tcol - just fall through
-
-.set_tcol
-    pha
-    lda #vdu_set_text_colour
-    jsr oswrch
-    pla
-    jmp oswrch
-
-;
 cursor_control
 ; Turn the OS cursor on or off. When it's turned on it's forced into the
 ; location corresponding to zp_screen{column,row}, which is where it "should"

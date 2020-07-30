@@ -40,6 +40,8 @@
 
 !zone screenkernal {
 
+; SF: I think s_init could be part of the discardable init code; the only
+; problem is that it logically belongs in this file. Maybe turn it into a macro?!
 s_init
     ; init cursor
     lda #$ff
@@ -62,12 +64,11 @@ s_init
     lda #0
     sta zp_screencolumn
     sta zp_screenrow
-	; Set to 0: s_ignore_next_linebreak, s_reverse
-!ifndef ACORN {
-    ldx #3
-} else {
-    ldx #2 ; there's no s_reverse byte on Acorn
+!ifdef ACORN {
+    sta s_os_reverse
 }
+	; Set to 0: s_ignore_next_linebreak, s_reverse
+    ldx #3
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -
@@ -160,7 +161,45 @@ s_screenrowcolumn_from_cursor
     clc
     adc zp_screenrow
     sta zp_screenrow
+.rts
     rts
+
+s_reverse_to_os_reverse
+    lda s_reverse
+    bne set_os_reverse_video
+    ; fall through to set_os_normal_video
+
+; SFTODO: This assumes non-mode 7. We can probably support reverse video at least
+; for the status line in mode 7, although we'd lose a few characters to control
+; codes. (Lurkio on stardot suggests just using cyan-on-black for the status
+; bar in mode 7; that would only burn one space on a control code instead of
+; three and seems a good idea.)
+set_os_normal_video
+    lda s_os_reverse
+    beq .rts
+    lda #0
+    sta s_os_reverse
+    lda #7
+    jsr .set_tcol
+    lda #128
+    jmp .set_tcol
+
+set_os_reverse_video
+    lda s_os_reverse
+    bne .rts
+    lda #$80
+    sta s_os_reverse
+    lda #0
+    jsr .set_tcol
+    lda #135
+    ; jmp .set_tcol - just fall through
+
+.set_tcol
+    pha
+    lda #vdu_set_text_colour
+    jsr oswrch
+    pla
+    jmp oswrch
 }
 
 s_printchar
@@ -225,6 +264,7 @@ s_printchar
     sta (zp_colourline),y
 } else {
     jsr s_cursor_to_screenrowcolumn
+    jsr s_reverse_to_os_reverse
     lda #127
     jsr oswrch
     dec zp_screencolumn ; move back
@@ -242,7 +282,9 @@ s_printchar
     jmp .printchar_end
 +
     ; SF: Reverse video isn't handled by sending control codes through
-    ; s_printchar on the Acorn.
+    ; s_printchar on the Acorn. (It could be, but it seems simplest just to
+    ; update s_reverse directly. This is a bit gratuitously incompatible with
+    ; the Commodore though.)
 !ifndef ACORN {
     cmp #$93 
     bne +
@@ -348,6 +390,7 @@ s_printchar
 
     pha
     jsr s_cursor_to_screenrowcolumn
+    jsr s_reverse_to_os_reverse
     ldy zp_screencolumn
     iny
     sty zp_screencolumn
@@ -371,6 +414,7 @@ s_printchar
     jsr s_pre_scroll
     pla
     jsr oswrch
+    ; SFTODO: THIS IS A BUGGER, WE ARE OUTPUTTING A NORMAL CHAR WHICH WILL CAUSE THE SCREEN TO SCROLL AND THE OS WILL HELPFULLY MAKE IT REVERSE VIDEO - SO IF WE'RE IN REVERSE VIDEO WE NEED TO DO AN ERASE OF THE BOTTOM LINE
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     pha
@@ -548,6 +592,7 @@ s_erase_line_from_cursor
     sec
     jsr s_pre_scroll
     ; Move the cursor down one line to force a scroll
+    jsr set_os_normal_video ; new line must not be reverse video
     lda #vdu_down
     jsr oswrch
     ; Remove the text window
@@ -575,6 +620,7 @@ s_erase_line_from_cursor
     pla
     jsr oswrch
     ; Clear it and reset the text window.
+    jsr set_os_normal_video ; clear must not be to reverse video
     lda #vdu_cls
     jsr oswrch
     lda #vdu_reset_text_window
