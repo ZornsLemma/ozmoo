@@ -1187,7 +1187,7 @@ z_ins_quit
 !ifndef ACORN { ; SFTODO
 	jmp kernal_reset
 } else {
-SFHANG        jmp SFHANG
+    jmp clean_up_and_quit
 }
 
 ; z_ins_restart (moved to disk.asm)

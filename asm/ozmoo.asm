@@ -191,6 +191,7 @@ program_start
     ; afterwards - mildly fiddly, but not a huge deal since we do already need
     ; a custom script to run and patch up the initial VM map and do other stuff
     ; to the SSD.
+initial_jmp
     jmp .initialize
 
 ; global variables
@@ -295,6 +296,7 @@ game_id		!byte 0,0,0,0
 	jsr $ff5b ; more init
     jmp ($a000)
 } else {
+clean_up_and_quit
     ldx #1
     jsr cursor_control
     ; SFTODO: We have a few calls to this OSBYTE, factor it out into a subroutine
@@ -312,11 +314,10 @@ game_id		!byte 0,0,0,0
     ; Re-enter the current language.
     ; SFTODO: Does this work? Do we ever get here? Should we just do OSCLI
     ; "BASIC"? We know BASIC is available because we are using it in our loader.
-    lda #osbyte_read_language
-    ldx #0
-    ldy #$ff
-    jsr osbyte
+re_enter_language
     lda #osbyte_enter_language
+re_enter_language_ldx_imm
+    ldx #$ff
     jsr osbyte
     ; never returns
 }
@@ -659,6 +660,29 @@ deletable_init
 .store_boot_device
 	sty boot_device ; Boot device# stored
 } else {
+    ; Patch re_enter_language to enter the current language; reading it here
+    ; saves a few bytes of non-deletable code.
+    lda #osbyte_read_language
+    ldx #0
+    ldy #$ff
+    jsr osbyte
+    stx re_enter_language_ldx_imm + 1
+
+    ; On a second processor, a soft break will transfer control back to our
+    ; execution address. We will have thrown away our initialisation code by
+    ; that point and can't restart properly. In order to avoid random behaviour
+    ; and probably a crash, we patch the jmp at the start of the executable to
+    ; transfer control to re_enter_language. This means that although the
+    ; language name gets printed twice, a soft break otherwise gives a clean
+    ; result similar to that on a non-second processor. This code is harmless
+    ; if we're not running on a second processor. SFTODO: But we could possibly
+    ; conditionally compile it out anyway, even if this is deletable init code
+    ; we might need the space for something else deletable.
+    lda #<re_enter_language
+    sta initial_jmp + 1
+    lda #>re_enter_language
+    sta initial_jmp + 2
+
     ; Change to the S (for "save") directory; the user can override this, but
     ; it will by default help keep saves distinct from game files if the user
     ; saves on the game disc.
