@@ -136,6 +136,7 @@ cursor_column		  = $7c; SF: WAS $f9 ; 2 bytes
 zp_temp               = $75; SF: WAS $fb ; 5 bytes
 
 print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+print_buffer2             = $129 ; 41 bytes
 
 !ifndef ACORN {
 memory_buffer         =	$02a7
