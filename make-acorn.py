@@ -98,7 +98,7 @@ class DiscImage(object):
         self.data[0x10f] = start_sector & 0xff
 
     def add_file(self, directory, name, load_addr, exec_addr, data):
-        self.add_to_catalogue(directory, name, load_addr, exec_addr, bytes_to_blocks(len(data)) * 256, self.first_free_sector())
+        self.add_to_catalogue(directory, name, load_addr, exec_addr, len(data), self.first_free_sector())
         self.data += data
         pad = (256 - len(self.data) % 256) & 0xff
         self.data += bytearray(pad)
@@ -137,8 +137,8 @@ if double_sided:
 max_preload_blocks = (ramtop - labels["story_start"]) / 256
 
 game_blocks = bytes_to_blocks(len(game_data))
-while game_blocks * 256 > len(game_data):
-    game_data.append(0)
+#while game_blocks * 256 > len(game_data):
+#    game_data.append(0)
 
 
 z_machine_version = game_data[header_version]
