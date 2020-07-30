@@ -2,9 +2,6 @@
 ; SFTODO: Because we're initially targetting a second processor only, we can use
 ; 0-$EE. I therefore haven't tried to compact this and remove the (apparent)
 ; gaps in zero page yet.
-; SFTODO: It's not a big deal, but pressing BREAK on second processor during
-; game gives a slightly "corrupt" display and it would be nice if this didn't
-; happen.
 ; BASIC not much used, so many positions free to use
 ; memory bank control
 !ifndef ACORN {
