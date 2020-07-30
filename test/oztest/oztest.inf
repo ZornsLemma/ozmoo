@@ -1683,6 +1683,14 @@ Object -> SouthWall "south wall"
    style roman;
    print " This should be normal video.";
    @new_line;
+   print "Press any key to hear a high-pitched bleep.";
+   @new_line;
+   read mytable 0;
+   @sound_effect 1;
+   print "Press any key to hear a low-pitched bleep.";
+   @new_line;
+   read mytable 0;
+   @sound_effect 2;
    print "Last test: quit! (press any key)^";
    read mytable 0;
    @quit;
