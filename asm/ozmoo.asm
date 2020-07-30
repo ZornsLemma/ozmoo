@@ -312,8 +312,6 @@ clean_up_and_quit
     jsr osbyte
 }
     ; Re-enter the current language.
-    ; SFTODO: Does this work? Do we ever get here? Should we just do OSCLI
-    ; "BASIC"? We know BASIC is available because we are using it in our loader.
 re_enter_language
     lda #osbyte_enter_language
 re_enter_language_ldx_imm
