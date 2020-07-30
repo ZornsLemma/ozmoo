@@ -404,7 +404,7 @@ s_printchar
     inc zp_screenrow
 	lda zp_screenrow
 	cmp #25 ; SFTODO: Implicit screen height assumption?
-	bcc +
+	bcc .printchar_nowrap
     ; SF: ENHANCEMENT: I don't know if the VM allows it (do we have enough
     ; information to reliably do the redraw without the game's cooperation?),
     ; and it *might* look ugly, but we might gain a performance boost
@@ -414,11 +414,17 @@ s_printchar
     jsr s_pre_scroll
     pla
     jsr oswrch
-    ; SFTODO: THIS IS A BUGGER, WE ARE OUTPUTTING A NORMAL CHAR WHICH WILL CAUSE THE SCREEN TO SCROLL AND THE OS WILL HELPFULLY MAKE IT REVERSE VIDEO - SO IF WE'RE IN REVERSE VIDEO WE NEED TO DO AN ERASE OF THE BOTTOM LINE
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
+    lda s_reverse
+    beq .not_reverse
+    ; Reverse video is on and the character we just output has caused the text
+    ; window to scroll, so the OS will have added a blank line in reverse video.
+    ; The Z-machine spec requires the blank line to be in normal video, so we
+    ; need to fix this up.
+    jsr s_erase_line_from_cursor
+.not_reverse
     pha
-+
 .printchar_nowrap
     pla
     ; This OSWRCH call is the one which actually prints most of the text on the

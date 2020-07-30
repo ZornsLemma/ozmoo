@@ -1645,7 +1645,7 @@ Object -> SouthWall "south wall"
 ];
 
     
-[ Main;
+[ Main i;
    Testnum = 0; Passed = 0; Failed = 0; Print_Tests = 0;
    @print "OZTEST, version ";
    @print_paddr TEST_VERSION;
@@ -1663,6 +1663,26 @@ Object -> SouthWall "south wall"
       @print " passed + failed + print tests!^^";
    }
    print "Didn't crash: hooray!^";
+
+   !! On the Acorn port, printing at the bottom right of the screen
+   !! with reverse video active requires special care, so test that.
+   for (i=0: i<=25: i++)
+      @new_line;
+   print "The next line should be reverse video:";
+   @new_line;
+   style reverse;
+   print "0123456789012345678901234567890123456789";
+   @new_line;
+   style roman;
+   print "but this line should be normal video.";
+   @new_line;
+   !! Scrolling with reverse video but without actually printing at
+   !! the bottom right also requires some care.
+   style reverse;
+   print "Reverse video again, but only for this sentence.";
+   style roman;
+   print " This should be normal video.";
+   @new_line;
    print "Last test: quit! (press any key)^";
    read mytable 0;
    @quit;
