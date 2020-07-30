@@ -2009,15 +2009,19 @@ z_ins_random
 	
 ; z_ins_output_stream jumps directly to streams_output_stream.
 
-; SFTODO!
 z_ins_sound_effect
+!ifndef ACORN {
 	lda #$08
+} else {
+    lda #0 ; B1
+}
 	ldx z_operand_value_low_arr
 	dex
 	beq .sound_high_pitched_beep
 	dex
 	beq .sound_low_pitched_beep
 	rts
+!ifndef ACORN {
 .sound_high_pitched_beep
 	lda #$40
 .sound_low_pitched_beep
@@ -2033,6 +2037,37 @@ z_ins_sound_effect
 	lda #$20
 	sta $d404
 	rts
+} else {
+    ; MOS 6581 SID datasheet says for standard 1.0MHz clock, frequency is given
+    ; by Fout = (Fn * 0.0596) Hz. The C64 code uses Fn=$4000->976 Hz for the
+    ; high-pitched bleep and Fn=$0800->122 Hz for the low-pitched bleep. Looking
+    ; up those frequencies in https://en.wikipedia.org/wiki/Piano_key_frequencies
+    ; and correlating that with the table in the BBC User Guide gives the values
+    ; used here. This is far too much effort for such a tiny sound. :-)
+.sound_high_pitched_beep
+    lda #144 ; B4
+.sound_low_pitched_beep
+    sta .sound_block + 4
+    ; SFTODO: The C64 code won't return until the sound has finished playing. I
+    ; am really struggling to find a way to wait until the sound has played;
+    ; checking the free space in the sound buffer only tells us it has started
+    ; playing as far as I can see from my experiments. It probably doesn't
+    ; matter that we return to the caller before the sound has finished, but I
+    ; could vaguely imagine a game playing sounds repeatedly in a timed loop and
+    ; with this implementation the OS buffer would cause the sounds to go on a
+    ; bit longer than desired. In practice the buffer isn't huge and these
+    ; sounds are very short and it's almost certainly not going to matter.
+    lda #osword_sound
+    ldx #<.sound_block
+    ldy #>.sound_block
+    jmp osword
+
+.sound_block
+    !word 1   ; channel
+    !word -15 ; amplitude
+    !word 0   ; pitch
+    !word 1   ; duration (twentieths of a second) - C64 bleep is ~(1/20) sec
+}
 
 !ifdef Z4PLUS {
 z_ins_scan_table

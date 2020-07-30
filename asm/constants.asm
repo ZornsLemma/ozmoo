@@ -243,6 +243,7 @@ osfile_save = $00
 osfile_load = $ff
 osword_input_line = 0
 osword_read_clock = 1
+osword_sound = 7
 osword_floppy_op = $7f
 osbyte_set_cursor_editing = $04
 osbyte_flush_buffer = $15
