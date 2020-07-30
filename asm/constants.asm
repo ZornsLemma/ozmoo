@@ -135,6 +135,11 @@ cursor_row			  = $7a; SF: WAS $f7 ; 2 bytes
 cursor_column		  = $7c; SF: WAS $f9 ; 2 bytes
 zp_temp               = $75; SF: WAS $fb ; 5 bytes
 
+; SFTODO: Implicit screen width assumption. If I have 80 column support, these
+; two may be getting a bit big for the stack, though in reality they're probably
+; OK. I could probably move them into some wasted padding space below the
+; Z-machine stack or something, though that might be annoyingly brittle as the
+; code size changes.
 print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 print_buffer2             = $129 ; 41 bytes
 
