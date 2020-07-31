@@ -738,7 +738,8 @@ draw_status_line
 	lda zcolours,y
 	jsr s_set_text_colour
 } else {
-    jsr set_os_reverse_video 
+    lda #$80
+    sta s_reverse
 }
     ;
     ; Room name
@@ -850,7 +851,8 @@ draw_status_line
     lda #146 ; reverse off
     jsr s_printchar
 } else {
-    jsr set_os_normal_video
+    lda #0
+    sta s_reverse
 }
 	pla
 	sta current_window
