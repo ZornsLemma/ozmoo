@@ -39,7 +39,7 @@ inc_z_pc_page
 }
 } else {
 ; No vmem
-!ifndef ACORN { ; SFTODO!
+!ifndef ACORN { ; SFTODO: I think for Acorn we can avoid doing the pha/pla
 	lda z_pc + 1
 	cmp #(first_banked_memory_page - (>story_start))
 	bcs get_page_at_z_pc_did_pha

@@ -185,12 +185,6 @@
 
 program_start
 
-    ; SFTODO: We could do away with this on Acorn and just specify .initialize
-    ; as the execution address. Because we're assembling this with ACME, we
-    ; would need to get the value of .initialize and patch it up on the SSD
-    ; afterwards - mildly fiddly, but not a huge deal since we do already need
-    ; a custom script to run and patch up the initial VM map and do other stuff
-    ; to the SSD.
 initial_jmp
     jmp .initialize
 
@@ -198,10 +192,10 @@ initial_jmp
 ; filelength !byte 0, 0, 0
 ; fileblocks !byte 0, 0
 ; c64_model !byte 0 ; 1=NTSC/6567R56A, 2=NTSC/6567R8, 3=PAL/6569
-; SFTODO: I suspect we may not need this
-; SFTODODATA (IF WE KEEP IT)
+!ifndef ACORN {
 !ifdef VMEM {
 game_id		!byte 0,0,0,0
+}
 }
 
 ; include other assembly files
