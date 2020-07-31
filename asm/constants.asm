@@ -209,8 +209,10 @@ header_screen_width_units = $22
 header_screen_height_units = $24
 header_font_width_units = $26
 header_font_height_units = $27
+!ifndef ACORN {
 header_default_bg_colour = $2c
 header_default_fg_colour = $2d
+}
 header_terminating_chars_table = $2e
 header_standard_revision_number = $32
 header_alphabet_table = $34
