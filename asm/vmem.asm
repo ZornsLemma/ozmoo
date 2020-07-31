@@ -811,8 +811,10 @@ read_byte_at_z_address
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
 !ifdef ACORN {
+!ifdef VMEM {
 datasette_buffer_start
     !FILL vmap_max_size * 2, 'V'
 datasette_buffer_end
 ;    !FILL 1 ; SFTODO: Probably not needed but not bothered checking if _end is inclusive or exclusive yet
+}
 }

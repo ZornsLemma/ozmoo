@@ -818,8 +818,8 @@ file_found
     stx game_disc_crc
     sty game_disc_crc + 1
 }
+!ifndef ACORN {
 !ifdef VMEM {
-!ifndef ACORN { ; SFTODO: I don't think we need this stuff, but let's see how it goes - obviously if we don't, we can probably exclude some labels and memory allocations from our build - if nothing else this is probably part of quite a slick VMEM experience, I am just starting and want to get the core working first
 	lda #<config_load_address
 	sta readblocks_mempos
 	lda #>config_load_address
@@ -850,11 +850,8 @@ file_found
 	
 	jsr auto_disk_config
 ;	jsr init_screen_colours
-}
 } else { ; End of !ifdef VMEM
-!ifndef ACORN { ; SFTODO!?
 	sty disk_info + 4
-}
 	ldx #$30 ; First unavailable slot
 	lda story_start + header_static_mem
 	clc
@@ -880,7 +877,6 @@ file_found
 	stx first_unavailable_save_slot_charcode
 	txa
 	and #$0f
-!ifndef ACORN { ; SFTODO!?
 	sta disk_info + 1 ; # of save slots
 }
 }

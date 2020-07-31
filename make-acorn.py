@@ -35,6 +35,8 @@ with open("temp/acme_labels.txt", "r") as f:
 double_sided = "ACORN_DSD" in labels
 extension = ".dsd" if double_sided else ".ssd"
 
+use_vmem = "VMEM" in labels
+
 with open(sys.argv[1], "rb") as f:
     game_data = bytearray(f.read())
 output_name = os.path.basename(os.path.splitext(sys.argv[1])[0] + extension)
@@ -179,28 +181,30 @@ if game_blocks <= max_preload_blocks:
     # SFTODO: When/if this takes care of the whole build without make-acorn.sh,
     # we can of course go back and rebuild a non-VM-capable version of ozmoo;
     # we might not even make the user specify whether they want VM or not.
-    print("Warning: virtual memory is not needed")
+    if use_vmem:
+        print("Warning: virtual memory is not needed")
 else:
     preload_blocks = max_preload_blocks
 
-# Generate initial virtual memory map. We just populate the entire table; if the
-# game is smaller than this we will just never use the other entries. We patch
-# this directly into the ozmoo binary.
-vmap_offset = ssd.data.index(b'VVVVVVVVV')
-vmap_length = 0
-while chr(ssd.data[vmap_offset + vmap_length]) == 'V':
-    vmap_length += 1
-if vmap_length & 1 != 0:
-    vmap_length -= 1
-assert vmap_length >= vmap_max_size * 2
-for i in range(vmap_max_size):
-    high = (256 - 8 * (i // 4) - 32) & ~vmem_highbyte_mask
-    low = ((nonstored_blocks // vm_page_blocks) + i) * vm_page_blocks
-    # If this assertion fails, we need to be setting the low bits of high with
-    # the high bits of low. :-)
-    assert low & 0xff == low
-    ssd.data[vmap_offset + i + 0            ] = high
-    ssd.data[vmap_offset + i + vmap_max_size] = low
+if use_vmem:
+    # Generate initial virtual memory map. We just populate the entire table; if the
+    # game is smaller than this we will just never use the other entries. We patch
+    # this directly into the ozmoo binary.
+    vmap_offset = ssd.data.index(b'VVVVVVVVV')
+    vmap_length = 0
+    while chr(ssd.data[vmap_offset + vmap_length]) == 'V':
+        vmap_length += 1
+    if vmap_length & 1 != 0:
+        vmap_length -= 1
+    assert vmap_length >= vmap_max_size * 2
+    for i in range(vmap_max_size):
+        high = (256 - 8 * (i // 4) - 32) & ~vmem_highbyte_mask
+        low = ((nonstored_blocks // vm_page_blocks) + i) * vm_page_blocks
+        # If this assertion fails, we need to be setting the low bits of high with
+        # the high bits of low. :-)
+        assert low & 0xff == low
+        ssd.data[vmap_offset + i + 0            ] = high
+        ssd.data[vmap_offset + i + vmap_max_size] = low
 
 
 if not double_sided:

@@ -7,12 +7,20 @@ boot_device !byte 0
 ask_for_save_device !byte $ff
 }
 
-!ifndef VMEM {
-!ifndef ACORN {
+!ifdef ACORN {
+    WANT_READBLOCK = 1
+} else {
+    !ifdef VMEM {
+        WANT_READBLOCK = 1
+    } else {
+        WANT_READBLOCK = 0
+    }
+}
+
+!if WANT_READBLOCK = 0 {
 disk_info
 	!byte 0, 0, 1  ; Interleave, save slots, # of disks
 	!byte 8, 8, 0, 0, 0, 130, 131, 0 
-}
 } else {
 !ifndef ACORN {
 device_map !byte 0,0,0,0

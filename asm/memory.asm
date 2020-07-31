@@ -94,8 +94,10 @@ set_z_pc
 }
 } else {
 ; No vmem 
+!ifndef ACORN {
 	cpx #(first_banked_memory_page - (>story_start))
 	bcs .unsafe_2
+}
 	stx z_pc + 1
 	txa
 	clc
