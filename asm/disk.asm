@@ -1330,15 +1330,36 @@ do_save
     jsr osword
     ldx #0
     jsr cursor_control
+    ; Skip leading spaces, if any.
     ldy #$ff
 -   iny
     lda .filename_buffer,y
     cmp #' '
     beq - 
+    ; Check for empty string or * command.
     cmp #13
     beq .swap_pointers_for_save_rts
     cmp #'*'
-    bne .swap_pointers_for_save_rts
+    beq .oscli
+    ; It's a filename. We could just return it and let the filing system do what
+    ; it likes with it. However, a) I seem to have a tendency to type "SAVE FOO"
+    ; at the save prompt b) DFS silently truncates filenames at a space, and
+    ; these two things together mean I end up saving as SAVE instead of FOO as
+    ; I intended. Since spaces aren't allowed in filenames, we check for this.
+-   iny
+    lda .filename_buffer,y
+    cmp #' '
+    beq .space_in_filename
+    cmp #13
+    bne -
+    tax ; clear Z
+    rts
+.space_in_filename
+    lda #>.space_in_filename_msg
+    ldx #<.space_in_filename_msg
+    jsr printstring_os
+    jmp .get_filename_loop
+.oscli
     ldx #1
     ldy #error_print_osasci
     jsr setjmp
@@ -1381,6 +1402,8 @@ do_save
     !text "save>", 0
 .restore_prompt
     !text "restore>", 0
+.space_in_filename_msg
+    !text "Sorry, no spaces allowed in filenames.", 13, 0
 
 !ifdef VMEM {
     ; This uses s_printchar for output; we've reverted to the normal Ozmoo
@@ -1480,6 +1503,15 @@ save_game
 	jsr .swap_pointers_for_save
 
 	; Perform save or load
+    ; SFTODO: Can/should we check if the file already exists on save and ask
+    ; user to confirm? I really don't want to use OSFIND to try to open the
+    ; file for input as a test, because I want to avoid any problems with
+    ; using memory from $1100 upwards on a B/B+. I also don't want to query the
+    ; catalogue directly because it means I have to start parsing things like
+    ; :1.S.FOO, not to mention that I'd have to make assumptions about the
+    ; format of the save game disc which are less warranted than assumptions
+    ; about the game disc; maybe it's some double-density 62-file DFS or
+    ; something. I want to let the filing system deal with it.
     ldx #1
     ldy #error_print_osasci
     jsr setjmp
