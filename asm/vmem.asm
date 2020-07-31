@@ -252,8 +252,8 @@ print_vm_map
     jsr dollar
     lda vmem_cache_index + 3
     jsr print_byte_as_hex
-    jsr newline
 }
+    jsr newline
     ldy #0
 -	; print
     cpy #10
@@ -262,12 +262,14 @@ print_vm_map
 +   jsr printy
     jsr space
     lda vmap_z_h,y ; zmachine mem offset ($0 - 
-    and #%11100000
+    ; SF: I changed the masks here, I think this is correct but it is a
+    ; divergence from upstream.
+    and #($ff xor vmem_highbyte_mask)
     jsr print_byte_as_hex
     jsr space
     jsr dollar
     lda vmap_z_h,y ; zmachine mem offset ($0 - 
-    and #%00011111
+    and #vmem_highbyte_mask
     jsr printa
     lda vmap_z_l,y ; zmachine mem offset ($0 - 
     jsr print_byte_as_hex
@@ -344,7 +346,11 @@ load_blocks_from_index
 	jsr readblocks
 !ifdef TRACE_VM {
     jsr print_following_string
+!ifndef ACORN {
     !pet "load_blocks (normal) ",0
+} else {
+    !text "load_blocks (normal) ",0
+}
     jsr print_vm_map
 }
     rts
@@ -634,7 +640,9 @@ read_byte_at_z_address
 	cpx vmap_used_entries
 	bcs .printswaps_part_2
     lda vmap_z_h,x
-	and #$7
+    ; SF: I altered the mask here, I think it's correct but it's a divergence
+    ; from upstream.
+	and #vmem_highbyte_mask
 	jsr dollar
 	jsr print_byte_as_hex
     lda vmap_z_l,x
@@ -702,6 +710,8 @@ read_byte_at_z_address
     and #vmem_blockmask ; skip bit 0 since 512 byte blocks
     sta vmap_z_l,x
     stx vmap_index
+    ; SF: Be aware that if tracing is on here, the newly loaded block will
+    ; show with its pre-adjusted tick.
     jsr load_blocks_from_index
 .index_found
     ; index found
