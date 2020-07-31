@@ -66,7 +66,7 @@ def bytes_to_blocks(x):
         return int(x / 256)
 
 parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using Ozmoo.")
-parser.add_argument("-v", "--verbose", action="count", help="show the commands being executed")
+parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
