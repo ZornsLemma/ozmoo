@@ -690,13 +690,6 @@ deletable_init
     lda #>re_enter_language
     sta initial_jmp + 2
 
-    ; Change to the S (for "save") directory; the user can override this, but
-    ; it will by default help keep saves distinct from game files if the user
-    ; saves on the game disc.
-    ldx #<dir_s_command
-    ldy #>dir_s_command
-    jsr oscli
-
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game. Because this is "our" disc, we can assume
     ; any file starting with "D" is the right one. SFTODO: Perhaps slightly more
@@ -1378,9 +1371,6 @@ load_suggested_pages
 		!source "splashscreen.asm"
 	}
 }
-} else {
-dir_s_command
-    !text "DIR S", 13
 }
 
 end_of_routines_in_stack_space
