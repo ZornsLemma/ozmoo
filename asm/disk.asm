@@ -24,8 +24,8 @@ readblocks_numblocks	!byte 0
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 !ifndef ACORN {
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
-}
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
+}
 !ifndef ACORN {
 readblocks_base         !byte 0,0
 } else {
@@ -465,32 +465,13 @@ uname_len = * - .uname
 }
 
 .retry
-    ; SFTODO: If I continue to use a custom block of memory for .osword_7f_block
-    ; I may be able to initialise part of it at assembly time. Of course there
-    ; may be a block of "scratch" memory which it turns out is free for me to
-    ; use here, and that might be a size saving. (Does the C64 code use any
-    ; scratch memory?)
     lda .drive
     sta .osword_7f_block + 0 ; drive
-    lda #0
-    sta .osword_7f_block + 3 ; high order word of address
-    sta .osword_7f_block + 4 ; high order word of address
-    ; SFTODO: Could we simply make readblocks_mempos point to .osword_7f_block+1?
-    ; I don't know if it might get updated by the OSWORD call so perhaps best to
-    ; just play it safe.
-    lda readblocks_mempos
-    sta .osword_7f_block + 1
-    lda readblocks_mempos + 1
-    sta .osword_7f_block + 2
-    lda #3 ; number of parameters
-    sta .osword_7f_block + 5
-    lda #$53 ; read data
-    sta .osword_7f_block + 6
     lda .track
     sta .osword_7f_block + 7
     lda .sector
     sta .osword_7f_block + 8
-    ; We know the number of blocks is only going to be vmem_block_pagecount, so
+    ; We know the number of blocks is only going to be <=vmem_block_pagecount, so
     ; there's no need to loop round in case it's too many to read. (Note also
     ; that you apparently can't read across a track boundary, except that it
     ; does seem to work if readblocks_numblocks is exactly 2.)
@@ -539,11 +520,17 @@ uname_len = * - .uname
     inc readblocks_currentblock + 1
 +   rts
 
-    ; We make this 16 bytes to avoid any problems with the Tube MOS always
-    ; copying 16 bytes (see http://beebwiki.mdfs.net/OSWORD_%267F)
-    ; SFTODODATA - UNLESS WE PRE-FILL THIS AT ASSEMBLY TIME TO SAVE CODE
 .osword_7f_block
-    !fill 16
+     !byte 0   ; drive
+readblocks_mempos
+     !word 0   ; low order word of address
+     !word 0   ; high order word of address
+     !byte 3   ; number of parameters
+     !byte $53 ; read data
+     !byte 0   ; track
+     !byte 0   ; sector
+     !byte 0   ; sector size and count
+     !byte 0   ; result
 
 wait_for_space
     lda #osbyte_flush_buffer
