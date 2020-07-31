@@ -407,8 +407,11 @@ uname_len = * - .uname
     jsr s_printchar
 .no_error
 
+    ; This code is based on the BASIC FNdisk() function here:
+    ; http://beebwiki.mdfs.net/OSWORD_%267F#Coding
+
     ; Convert (256 byte) block number within game into drive, track and sector.
-.drive_bits = 24+8 ; single density SFTODO: from code on beebwiki, not too sure why
+.drive_bits = 24+8
 .track = division_result
 .sector = remainder
 .drive = remainder + 1
