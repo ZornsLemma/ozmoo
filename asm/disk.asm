@@ -471,7 +471,7 @@ uname_len = * - .uname
     sta .osword_7f_block + 7
     lda .sector
     sta .osword_7f_block + 8
-    ; We know the number of blocks is only going to be <=vmem_block_pagecount, so
+    ; We know the number of blocks is going to be <= vmem_block_pagecount, so
     ; there's no need to loop round in case it's too many to read. (Note also
     ; that you apparently can't read across a track boundary, except that it
     ; does seem to work if readblocks_numblocks is exactly 2.)
@@ -724,39 +724,16 @@ z_ins_restart
 .restart_code_end
 
 } else {
-    ; SFTODO: This seems inelegant, but I *think* it's how the C64 code works,
-    ; and without having thought too deeply about it it's probably the best we
-    ; can do having discarded some of our initialisation code. We can maybe
-    ; do this a little bit better than inserting into keyboard buffer though.
-    ; SFTODO: Can we just use OSFILE to *RUN :0.$.OZMOO?
-    ; SFTODO: Magic constants
-    ; SFTODO: Whatever we do, we should perhaps do *DRIVE 0 and *DIR $ first,
-    ; in case the user has changed these via * commands during save/restore.
-    ; Game data won't be affected as we use OSWORD &7F and specify a drive, but
-    ; this would be.
-    lda #21
-    ldx #0
-    ldy #0
-    jsr osbyte
-    ldx #0
--   ldy .restart_command2,x
-    beq +
-    txa
-    pha
-    lda #138
-    ldx #0
-    jsr osbyte
-    pla
-    tax
-    inx
-    bpl -
-+   ldx #<.restart_command1
-    ldy #>.restart_command1
+    ; Since we discarded our initialisation code on startup, we have to
+    ; re-execute the Ozmoo binary from disc to restart.
+    ldx #<.restart_command
+    ldy #>.restart_command
     jmp oscli
-.restart_command1
-    !text "*BASIC",13
-.restart_command2
-    !text "*EXEC :0.$.!BOOT",13,0
+
+    ; We specify the drive and directory in case the user has used *DRIVE/*DIR
+    ; commands during save or restore.
+.restart_command
+    !text "/:0.$.OZMOO", 13
 }
 }
 
