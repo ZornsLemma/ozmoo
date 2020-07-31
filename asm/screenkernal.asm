@@ -826,8 +826,7 @@ z_ins_set_colour
 .current_foreground
     rts
 } else {
-    ; SFTODO: Is this OK? Probably, but be good to test...
-    rts
+    jmp printchar_flush
 }
 }
 
