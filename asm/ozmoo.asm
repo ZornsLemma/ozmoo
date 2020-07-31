@@ -1,5 +1,3 @@
-; SFTODO I SHOULD MAYBE ZERO OUT THE STACK ON STARTUP (THE CODE IS DISCARDED
-; ANYWAY), THAT WAY SAVED GAMES WON'T INCLUDE RANDOM "PERSONAL" DATA IN
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
 ; Z1, Z2, Z6 and Z7 will (probably) never be supported

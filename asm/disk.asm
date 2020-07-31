@@ -7,6 +7,9 @@ boot_device !byte 0
 ask_for_save_device !byte $ff
 }
 
+; SFTODO: readblock could be part of discardable init code on a non-VMEM build;
+; maybe make it a macro so ozmoo.asm can put it in discardable init or not as
+; appropriate?
 !ifdef ACORN {
     WANT_READBLOCK = 1
 } else {
