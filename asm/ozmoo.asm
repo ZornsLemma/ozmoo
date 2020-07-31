@@ -387,10 +387,19 @@ deletable_screen_init_1
 	sty window_start_row + 1
 	ldy #25
 	sty window_start_row
+!ifndef ACORN {
 	ldy #0
 	sty is_buffered_window
 	ldx #$ff
 	jmp erase_window
+} else {
+    ; Don't clear the screen; on Acorn we are going to spend several seconds
+    ; doing the preload in deletable_init so we want to leave whatever the
+    ; loader left on screen up while we do that. deletable_screen_init_2 will
+    ; set is_buffered_window and call erase_window so everything will still be
+    ; set up properly when we start executing the game's code.
+    rts
+}
 
 deletable_screen_init_2
 	; start text output from bottom of the screen
