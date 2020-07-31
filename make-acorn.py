@@ -1,45 +1,170 @@
-# SFTODO: Do proper argument parsing etc
-
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
 
 # SFTODO: No support for PREOPT yet
 
-# SFTODO: No support for all-RAM non-VMEM builds yet
-
 # SFTODO: Lots of magic constants around sector size and track size and so forth here
 
+# SFTODO: Some uses of assert check things which are not internal errors
+
 from __future__ import print_function
+import argparse
 import os
+import shutil
+import subprocess
 import sys
 
-# SFTODO: Can we take some/all of these values from the labels dictionary? That
-# would be much neater and safer.
-ramtop = 0xf800
+def die(s):
+    print(s, file=sys.stderr)
+    sys.exit(1)
+
+def info(s):
+    if verbose_level >= 1:
+        print(s)
+
+def warn(s):
+    print("Warning: %s" % s, file=sys.stderr)
+
+def substitute(lst, a, b):
+    return [x.replace(a, b) for x in lst]
+
+def run_and_check(args, output_filter=None):
+    if output_filter is None:
+        output_filter = lambda x: True
+    if verbose_level >= 2:
+        print(" ".join(args))
+    child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    child.wait()
+    child_output = [line for line in child.stdout.readlines() if output_filter(line)]
+    # The child's stdout and stderr will both be output to our stdout, but that's not
+    # a big deal.
+    if verbose_level >= 2 and len(child_output) > 0:
+        print("".join(child_output))
+    if child.returncode != 0:
+        die("%s failed" % args[0])
+
+def parse_labels(filename):
+    labels = {}
+    with open(filename, "r") as f:
+        for line in f.readlines():
+            line = line[:-1]
+            components = line.split("=")
+            value = components[1].strip()
+            i = value.find(";")
+            if i != -1:
+                value = value[:i]
+            labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
+    return labels
+
+def get_word(data, i):
+    return data[i]*256 + data[i+1]
+
+def bytes_to_blocks(x):
+    if x & 0xff != 0:
+        return int(x / 256) + 1
+    else:
+        return int(x / 256)
+
+parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using Ozmoo.")
+parser.add_argument("-v", "--verbose", action="count", help="show the commands being executed")
+parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
+parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
+parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
+group = parser.add_argument_group("developer-only options (not normally needed)")
+group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
+group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+# SFTODO: MORE
+args = parser.parse_args()
+verbose_level = args.verbose
+
+if args.output_file is not None:
+    _, user_extension = os.path.splitext(args.output_file)
+    if user_extension.lower() == '.dsd':
+        args.double_sided = True
+
 header_version = 0
-header_static_mem = 0xe
-vm_page_blocks = 2 # VM pages are 2x256 byte blocks
-vmap_max_size = 102
 
-labels = {}
-with open("temp/acme_labels.txt", "r") as f:
-    for line in f.readlines():
-        line = line[:-1]
-        components = line.split("=")
-        value = components[1].strip()
-        i = value.find(";")
-        if i != -1:
-            value = value[:i]
-        labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
-
-double_sided = "ACORN_DSD" in labels
-extension = ".dsd" if double_sided else ".ssd"
-
-use_vmem = "VMEM" in labels
-
-with open(sys.argv[1], "rb") as f:
+with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
-output_name = os.path.basename(os.path.splitext(sys.argv[1])[0] + extension)
+game_blocks = bytes_to_blocks(len(game_data))
+
+acme_args1 = [
+    "acme",
+    "--setpc", "$600",
+    "-DACORN=1",
+    "-DSTACK_PAGES=4",
+    "-DSMALLBLOCK=1",
+    "-DSPLASHWAIT=0"
+]
+acme_args2 = [
+    "--cpu", "6502",
+    "--format", "plain",
+    "-l", "../temp/acme_labels_VERSION.txt",
+    "-r", "../temp/acme_report_VERSION.txt",
+    "--outfile", "../temp/ozmoo_VERSION",
+    "ozmoo.asm"
+]
+
+z_machine_version = game_data[header_version]
+if z_machine_version == 3:
+    acme_args1 += ["-DZ3=1"]
+elif z_machine_version == 5:
+    acme_args1 += ["-DZ5=1"]
+elif z_machine_version == 8:
+    acme_args1 += ["-DZ8=1"]
+else:
+    die("Unsupported Z-machine version: %d" % (z_machine_version,))
+
+debug = args.debug
+if args.benchmark:
+    debug = True
+    acme_args1 += ["-DBENCHMARK=1"]
+if args.double_sided:
+    acme_args1 += ["-DACORN_DSD=1"]
+if debug:
+    acme_args1 += ["-DDEBUG=1"]
+
+try:
+    os.mkdir("temp")
+except OSError:
+    pass
+os.chdir("asm")
+run_and_check(substitute(acme_args1 + acme_args2, "VERSION", "no_vmem"))
+run_and_check(substitute(acme_args1 + ["-DVMEM=1"] + acme_args2, "VERSION", "vmem"))
+os.chdir("..")
+
+labels_no_vmem = parse_labels("temp/acme_labels_no_vmem.txt")
+ramtop_no_vmem = labels_no_vmem["ramtop"]
+assert ramtop_no_vmem >= 0x7c00 # SFTODO: ready to catch this changing to an address not a value
+max_game_blocks_no_vmem = (ramtop_no_vmem - labels_no_vmem["story_start"]) / 256
+# SFTODO: If we put the binary on the disc ourselves - which isn't a big deal -
+# instead of letting beebasm do it, we wouldn't need to do the file copying here.
+if game_blocks <= max_game_blocks_no_vmem:
+    info("Game is small enough to run without virtual memory")
+    labels = labels_no_vmem
+    shutil.copyfile("temp/ozmoo_no_vmem", "temp/ozmoo")
+else:
+    info("Game will be run using virtual memory")
+    labels = parse_labels("temp/acme_labels_vmem.txt")
+    shutil.copyfile("temp/ozmoo_vmem", "temp/ozmoo")
+
+run_and_check([
+    "beebasm",
+    "-i", "templates/base.beebasm",
+    "-do", "temp/base.ssd",
+    "-opt", "3"
+], lambda x: "no SAVE command" not in x)
+
+header_static_mem = labels["header_static_mem"]
+double_sided = "ACORN_DSD" in labels
+use_vmem = "VMEM" in labels
+if use_vmem:
+    vmem_block_pagecount = labels["vmem_block_pagecount"]
+    vmap_max_size = labels["vmap_max_size"]
+
+
+class DiscFull(object):
+    pass
 
 
 class DiscImage(object):
@@ -81,6 +206,8 @@ class DiscImage(object):
         assert self.num_files() < 31
         assert len(directory) == 1
         assert len(name) <= 7
+        if bytes_to_blocks(length) >= (80*10 - start_sector):
+            raise DiscFull()
         self.data[0x105] += 1*8
         self.data[0x010:0x100] = self.data[0x008:0x0f8]
         self.data[0x110:0x200] = self.data[0x108:0x1f8]
@@ -122,71 +249,30 @@ class DiscImage(object):
             self.data[0x00f + i*8] |= 128
 
 
-def get_word(data, i):
-    return data[i]*256 + data[i+1]
-
-def bytes_to_blocks(x):
-    if x & 0xff != 0:
-        return int(x / 256) + 1
-    else:
-        return int(x / 256)
-
-
 ssd = DiscImage("temp/base.ssd")
 if double_sided:
     ssd2 = DiscImage()
 
-max_preload_blocks = (ramtop - labels["story_start"]) / 256
-
-game_blocks = bytes_to_blocks(len(game_data))
-#while game_blocks * 256 > len(game_data):
-#    game_data.append(0)
-
-
-z_machine_version = game_data[header_version]
-if z_machine_version == 3:
-    vmem_highbyte_mask = 0x01
-elif z_machine_version == 8:
-    vmem_highbyte_mask = 0x07
-else:
-    vmem_highbyte_mask = 0x03
-
-dynamic_size = get_word(game_data, header_static_mem)
-nonstored_blocks = bytes_to_blocks(dynamic_size)
-# Virtual memory works in 512 byte (=2 block) chunks
-if nonstored_blocks & 1 != 0:
-    nonstored_blocks += 1
-
-if nonstored_blocks > max_preload_blocks:
-    die("Not enough free RAM for dynamic memory")
-if game_blocks > nonstored_blocks:
-    if nonstored_blocks + vm_page_blocks > max_preload_blocks:
-        die("Not enough free RAM for any swappable memory")
-    # SFTODO: One VM block of swappable memory is not really going to
-    # work. We should probably emit a warning unless there are at
-    # least n blocks of swappable memory. I suspect you need at least
-    # 2 VM blocks=4 pages of RAM, one VM block for the PC and one VM
-    # block for data access. That would thrash like hell but I think
-    # in principle it should work, and might be a good torture test.
-
-# SFTODO: We mostly don't need preload_blocks now, but I'll keep it for now as it
-# is how we can decide whether we need VMEM or not.
-if game_blocks <= max_preload_blocks:
-    preload_blocks = game_blocks
-    # SFTODO: We don't need virtual memory support in this case. I'm not sure
-    # we "should" do anything - maybe warn, so the user can choose to do a
-    # RAM-only build (which will perform better)? Note that if we eventually
-    # build discs which have both 2P and non-2P support, the 2P version may be
-    # RAM-only and the non-2P one probably will use VM.
-    # SFTODO: When/if this takes care of the whole build without make-acorn.sh,
-    # we can of course go back and rebuild a non-VM-capable version of ozmoo;
-    # we might not even make the user specify whether they want VM or not.
-    if use_vmem:
-        print("Warning: virtual memory is not needed")
-else:
-    preload_blocks = max_preload_blocks
-
 if use_vmem:
+    if z_machine_version == 3:
+        vmem_highbyte_mask = 0x01
+    elif z_machine_version == 8:
+        vmem_highbyte_mask = 0x07
+    else:
+        vmem_highbyte_mask = 0x03
+
+    dynamic_size_bytes = get_word(game_data, header_static_mem)
+    nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
+    while nonstored_blocks % vmem_block_pagecount != 0:
+        nonstored_blocks += 1
+    ozmoo_ram_blocks = (labels["ramtop"] - labels["story_start"]) / 256
+    if nonstored_blocks > ozmoo_ram_blocks:
+        die("Not enough free RAM for game's dynamic memory")
+    if game_blocks > nonstored_blocks:
+        min_vmem_blocks = 2 # absolute minimum, one for PC, one for data
+        if nonstored_blocks + min_vmem_blocks * vmem_block_pagecount > ozmoo_ram_blocks:
+            die("Not enough free RAM for any swappable memory")
+
     # Generate initial virtual memory map. We just populate the entire table; if the
     # game is smaller than this we will just never use the other entries. We patch
     # this directly into the ozmoo binary.
@@ -199,20 +285,25 @@ if use_vmem:
     assert vmap_length >= vmap_max_size * 2
     for i in range(vmap_max_size):
         high = (256 - 8 * (i // 4) - 32) & ~vmem_highbyte_mask
-        low = ((nonstored_blocks // vm_page_blocks) + i) * vm_page_blocks
+        low = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
         # If this assertion fails, we need to be setting the low bits of high with
         # the high bits of low. :-)
         assert low & 0xff == low
         ssd.data[vmap_offset + i + 0            ] = high
         ssd.data[vmap_offset + i + vmap_max_size] = low
 
-
+# SFTODO: It would be nice if we automatically expanded to a double-sided disc if
+# necessary, but since this alters the binaries we build it's a bit fiddly and I don't
+# think it's a huge problem.
 if not double_sided:
     # SFTODO: I thought this padding would be necessary, but it seems not to be even if
     # I deliberately force a "bad" alignment.
     if False:
-        ssd.pad(lambda track, sector: sector % vm_page_blocks == 0)
-    ssd.add_file("$", "DATA", 0, 0, game_data)
+        ssd.pad(lambda track, sector: sector % vmem_block_pagecount == 0)
+    try:
+        ssd.add_file("$", "DATA", 0, 0, game_data)
+    except DiscFull:
+        die("Game won't fit on a single-sided disc, try specifying --double-sided")
 else:
     # The game data must start on a track boundary at the same place on both surfaces.
     ssd.pad(lambda track, sector: sector == 0)
@@ -220,14 +311,28 @@ else:
     data = [bytearray(), bytearray()]
     for i in range(0, bytes_to_blocks(len(game_data)), 10):
         data[(i % 20) / 10].extend(game_data[i*256:i*256+10*256])
-    ssd.add_file("$", "DATA", 0, 0, data[0])
-    ssd2.add_file("$", "DATA", 0, 0, data[1])
+    try:
+        ssd.add_file("$", "DATA", 0, 0, data[0])
+        ssd2.add_file("$", "DATA", 0, 0, data[1])
+    except DiscFull:
+        die("Game won't fit on a double-sided disc")
 
 ssd.lock_all()
 if double_sided:
     ssd2.lock_all()
 
-with open(output_name, "wb") as f:
+preferred_extension = ".dsd" if double_sided else ".ssd"
+if args.output_file is None:
+    output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+else:
+    user_prefix, user_extension = os.path.splitext(args.output_file)
+    # If the user wants to call the file .img or something, we'll leave it alone.
+    if user_extension.lower() in (".ssd", ".dsd") and user_extension.lower() != preferred_extension.lower():
+        warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
+        user_extension = preferred_extension
+    output_file = user_prefix + user_extension
+
+with open(output_file, "wb") as f:
     if not double_sided:
         f.write(ssd.data)
     else:
