@@ -711,7 +711,7 @@ read_byte_at_z_address
     sta vmap_z_l,x
     stx vmap_index
     ; SF: Be aware that if tracing is on here, the newly loaded block will
-    ; show with its pre-adjusted tick.
+    ; show with its pre-adjustment tick.
     jsr load_blocks_from_index
 .index_found
     ; index found
