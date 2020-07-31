@@ -1579,7 +1579,6 @@ save_game
     ldx .result ; must be last as caller will check Z flag
 	rts
 
-; SFTODODATA - IT *MIGHT* BE A NET SAVING TO INITIALISE THE WHOLE THING IN CODE (WE COULD ZERO IT OUT BEFORE SETTING UP OTHER VALUES)
 .osfile_save_load_block
     !word 0 ; filename
     !word stack_start - zp_bytes_to_save ; load address low
