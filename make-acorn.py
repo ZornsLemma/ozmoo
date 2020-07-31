@@ -70,12 +70,12 @@ parser.add_argument("-v", "--verbose", action="count", help="be more verbose abo
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
-group = parser.add_argument_group("developer-only options (not normally needed)")
+group = parser.add_argument_group("developer-only arguments (not normally needed)")
 group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
 group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
 # SFTODO: MORE
 args = parser.parse_args()
-verbose_level = args.verbose
+verbose_level = 0 if args.verbose is None else args.verbose
 
 if args.output_file is not None:
     _, user_extension = os.path.splitext(args.output_file)
@@ -153,7 +153,7 @@ run_and_check([
     "-i", "templates/base.beebasm",
     "-do", "temp/base.ssd",
     "-opt", "3"
-], lambda x: "no SAVE command" not in x)
+], lambda x: b"no SAVE command" not in x)
 
 header_static_mem = labels["header_static_mem"]
 double_sided = "ACORN_DSD" in labels
@@ -185,7 +185,7 @@ class DiscImage(object):
         return 8 + file_number * 8
 
     def num_files(self):
-        return self.data[0x105] / 8
+        return self.data[0x105] // 8
 
     def length(self, file_number):
         o = 0x100 + self.catalogue_offset(file_number)
