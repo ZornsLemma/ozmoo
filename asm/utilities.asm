@@ -728,6 +728,12 @@ divide16
 
 !ifdef ACORN {
 !zone {
+do_osbyte_rw_escape_key
+    lda #osbyte_rw_escape_key
+do_osbyte_y_0
+    ldy #0
+    jmp osbyte
+
     ; The Acorn OS time counter is a 5 byte value, whereas (ignoring the
     ; difference in resolution) the Commodore one is 3 bytes. Because the Acorn
     ; OS time counter may have an arbitrarily large value (perhaps some kind of

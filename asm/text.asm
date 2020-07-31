@@ -970,8 +970,7 @@ getchar_and_maybe_toggle_darkmode
 } else {
     lda #osbyte_read_key
     ldx #0
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_y_0
     bcc +
     ldx #0
 +   txa

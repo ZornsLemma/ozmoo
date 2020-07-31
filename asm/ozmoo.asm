@@ -291,17 +291,12 @@ game_id		!byte 0,0,0,0
 clean_up_and_quit
     ldx #1
     jsr cursor_control
-    ; SFTODO: We have a few calls to this OSBYTE, factor it out into a subroutine
-    ; to save a few bytes?
-    lda #osbyte_rw_escape_key
     ldx #0
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_rw_escape_key
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     lda #osbyte_set_cursor_editing
     ldx #0
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_y_0
 }
     ; Re-enter the current language.
 re_enter_language
@@ -598,10 +593,8 @@ deletable_init_start
     lda #>error_handler
     sta brkv + 1
 
-    lda #osbyte_rw_escape_key
     ldx #1
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_rw_escape_key
 
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     ; SFTODO: ACORN_CURSOR_PASS_THROUGH is completely untested; I need to find
@@ -612,8 +605,7 @@ deletable_init_start
     ; commands but games could still read cursor keys individually.
     lda #osbyte_set_cursor_editing
     ldx #1
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_y_0
 }
 
     ; We keep the hardware cursor off most of the time; this way the user can't

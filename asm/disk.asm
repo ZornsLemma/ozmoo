@@ -1378,10 +1378,8 @@ do_save
 .no_oscli_error
     ; We re-enable Escape generating errors while we're executing the command,
     ; this way the user can terminate a long-running command.
-    lda #osbyte_rw_escape_key
     ldx #0
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_rw_escape_key
     ldx #<.filename_buffer
     ldy #>.filename_buffer
     jsr oscli
@@ -1389,10 +1387,8 @@ do_save
 .oscli_error
     jsr osnewl
 .oscli_done
-    lda #osbyte_rw_escape_key
     ldx #1
-    ldy #0
-    jsr osbyte
+    jsr do_osbyte_rw_escape_key
     ; There might be an Escape pending which the * command didn't acknowledge,
     ; so we do it ourselves. (To see this is necessary, do *ROMS on OS 3.20 and
     ; press Escape while the output is being produced.)
