@@ -61,7 +61,6 @@ readblocks
     ; set values in readblocks_* before calling this function
     ; register: a,x,y
 !ifdef TRACE_FLOPPY {
-    ; SFTODO: NOT TESTED
     jsr newline
     jsr print_following_string
 !ifndef ACORN {
