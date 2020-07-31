@@ -1472,6 +1472,9 @@ do_save
     lda #vdu_reset_text_window
     jmp oswrch
 
+; SFTODO: If I support non-40x25 modes eventually, see section 8.4 of the
+; Z-machine spec - the restore needs to update $20, $21 and maybe $22 and $24
+; in the header.
 restore_game
     lda #>.restore_prompt
     sta .filename_prompt_loads + 1
