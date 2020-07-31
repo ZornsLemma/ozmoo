@@ -461,9 +461,6 @@ z_init
 }
 ; SFTODO: We might want to support 40 and or 80 column width eventually (shadow screen),
 ; simililarly we might want to vary the height, for now just stick with these values.
-; SFTODO: Should we change the interpreter_number and interpreter_version? OTOH *if*
-; any games check these (maybe old ones will), given we are using this C64-oriented
-; interpreter it's probably a good idea to avoid problems by leaving this alone.
 !ifdef Z4PLUS {
 	lda #8
 	sta story_start + header_interpreter_number ; Interpreter number (8 = C64)
@@ -622,7 +619,7 @@ deletable_init_start
 
 deletable_init
 	cld
-!ifndef ACORN { ; SFTODO!?
+!ifndef ACORN {
     ; ; check if PAL or NTSC (needed for read_line timer)
 ; w0  lda $d012
 ; w1  cmp $d012
@@ -668,14 +665,7 @@ deletable_init
     sta initial_jmp + 2
 
     ; Examine the disc catalogue and determine the first sector occupied by the
-    ; DATA file containing the game. Because this is "our" disc, we can assume
-    ; any file starting with "D" is the right one. SFTODO: Perhaps slightly more
-    ; elegant and no harder (might even save a few bytes due to Y needing less
-    ; shfiting) to look for a file in the "D" directory instead of using first
-    ; character. The file could then be called D.CURSES or D.DEJAVU or whatever
-    ; to make the contents more obvious.
-    ; SFTODO: Once user is maybe saving games onto the same disc,
-    ; looking for the exact filename becomes more important.
+    ; DATA file containing the game.
 .dir_ptr = zp_temp ; 2 bytes
 .length_blocks = zp_temp + 2 ; 2 bytes
     lda #2
@@ -683,9 +673,7 @@ deletable_init
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    lda #<story_start
-    sta .dir_ptr
-    sta readblocks_mempos
+    sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta .dir_ptr + 1
     sta readblocks_mempos + 1
@@ -697,26 +685,37 @@ deletable_init
     ; Note that because we're reading the first few sectors, this works
     ; correctly whether this is an ACORN_DSD build or not.
     jsr readblocks
-    ldy #8
-find_file_loop
+    lda #8
+    sta .dir_ptr
+.find_file_loop
+    ldy #0
+    ldx #(-8 & $ff)
+.name_compare_loop
     lda (.dir_ptr),y
-    cmp #'D'
-    beq file_found
-    tya
+    ; The directory name will have the top bit set iff the file is locked; we
+    ; don't care about that here, so we need to strip it off. It's harmless to
+    ; just do this for all characters.
+    and #$7f
+    cmp .data_filename-(-8 & $ff),x
+    bne .file_not_found
+    iny
+    inx
+    beq .file_found
+    bne .name_compare_loop
+.file_not_found
     clc
+    lda .dir_ptr
     adc #8
-    tay
-    bne find_file_loop
-    ; We couldn't find the file.
-    ; SFTODO: Proper error?
-    lda #'X'
-    jsr oswrch
--   jmp -
-file_found
+    sta .dir_ptr
+    bne .find_file_loop
+    brk
+    !byte 0
+    !text "DATA not found"
+    !byte 0
+.file_found
     ; We found the file's name using sector 0, we now want to look at the
     ; corresponding part of sector 1. Adjust .dir_ptr for convenience.
     inc .dir_ptr + 1
-    sty .dir_ptr ; story_start is page-aligned
     ; Determine the start sector of the DATA file and set readblocks_base.
     ldy #6
     lda (.dir_ptr),y
@@ -981,6 +980,11 @@ file_found
 ; +	sty fileblocks
 	; stx fileblocks + 1
 	rts
+
+!ifdef ACORN {
+.data_filename
+    !text "DATA   $"
+}
 }
 
 !ifdef VMEM {
