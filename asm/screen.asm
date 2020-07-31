@@ -34,7 +34,6 @@ init_screen_colours
     jmp s_printchar
 } else {
 init_screen_colours
-    ; SFTODO: *Maybe* this needs to clear the screen?
     jmp s_init
 }
 
@@ -133,7 +132,6 @@ z_ins_erase_line
     jmp s_erase_line_from_cursor
 
 !ifdef Z5PLUS {
-; SFTODO: COPY THIS STYLE IN DISK.ASM SAVE/RESTORE CODE
 .pt_cursor = z_temp;  !byte 0,0
 .pt_width = z_temp + 2 ; !byte 0
 .pt_height = z_temp + 3; !byte 0

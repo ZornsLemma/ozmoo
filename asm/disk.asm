@@ -36,8 +36,6 @@ readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 !ifndef ACORN {
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
-}
-!ifndef ACORN {
 readblocks_base         !byte 0,0
 } else {
 readblocks_base         !byte 0
@@ -477,18 +475,18 @@ uname_len = * - .uname
 
 .retry
     lda .drive
-    sta .osword_7f_block + 0 ; drive
+    sta .osword_7f_block_drive
     lda .track
-    sta .osword_7f_block + 7
+    sta .osword_7f_block_track
     lda .sector
-    sta .osword_7f_block + 8
+    sta .osword_7f_block_sector
     ; We know the number of blocks is going to be <= vmem_block_pagecount, so
     ; there's no need to loop round in case it's too many to read. (Note also
     ; that you apparently can't read across a track boundary, except that it
     ; does seem to work if readblocks_numblocks is exactly 2.)
     lda readblocks_numblocks
     ora #$20
-    sta .osword_7f_block + 9 ; sector size and count
+    sta .osword_7f_block_sector_size_and_count
 
 !ifdef FAKE_READ_ERRORS {
     ; Test code to fake intermittent read failures
@@ -506,7 +504,7 @@ uname_len = * - .uname
     ldx #<.osword_7f_block
     ldy #>.osword_7f_block
     jsr osword
-    lda .osword_7f_block + 3 + 7
+    lda .osword_7f_block_result
     beq .read_ok
     cmp #$10
     beq .retry
@@ -532,15 +530,20 @@ uname_len = * - .uname
 +   rts
 
 .osword_7f_block
+.osword_7f_block_drive
      !byte 0   ; drive
 readblocks_mempos
      !word 0   ; low order word of address
      !word 0   ; high order word of address
      !byte 3   ; number of parameters
      !byte $53 ; read data
+.osword_7f_block_track
      !byte 0   ; track
+.osword_7f_block_sector
      !byte 0   ; sector
+.osword_7f_block_sector_size_and_count
      !byte 0   ; sector size and count
+.osword_7f_block_result
      !byte 0   ; result
 
 wait_for_space

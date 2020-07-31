@@ -16,7 +16,6 @@
 ; s_scrollstart is set to the number of top lines to keep when scrolling
 ;
 ; Uncomment TESTSCREEN and call testscreen for a demo.
-; SFTODO: TESCTSCREEN is not currently supported for Acorn, probably should be
 
 ;TESTSCREEN = 1
 
@@ -833,6 +832,9 @@ z_ins_set_colour
 }
 
 !ifdef TESTSCREEN {
+!ifdef ACORN {
+    !error "TESTSCREEN not supported on Acorn"
+}
 
 .testtext !pet 5,147,18,"Status Line 123         ",146,13
           !pet 28,"tesx",20,"t aA@! ",18,"Test aA@!",146,13

@@ -937,7 +937,7 @@ deletable_init
 
 	jsr prepare_static_high_memory
 
-!ifndef ACORN { ; SFTODO!?
+!ifndef ACORN {
 	jsr insert_disks_at_boot
 
 	lda use_reu
@@ -988,7 +988,7 @@ deletable_init
 }
 
 !ifdef VMEM {
-!ifndef ACORN { ; SFTODO: We may want some of this later, but for now I think not
+!ifndef ACORN {
 !zone disk_config {
 auto_disk_config
 ; Limit # of save slots to no more than 10
@@ -1313,9 +1313,7 @@ prepare_static_high_memory
 	rts
 	
 !ifndef ACORN {
-; SFTODO: This may be useful in a SWR build where we can't *LOAD the preloaded
-; data directly into SWR but OZMOO itself can trigger VM reads of these blocks
-; before the game starts.
+; SFTODO: This may be useful if I support PREOPT and/or for a SWR build.
 load_suggested_pages
 ; Load all suggested pages which have not been pre-loaded
 -	lda vmap_blocks_preloaded ; First index which has not been loaded
@@ -1380,10 +1378,7 @@ vmem_start
 
 }
 
-!ifndef ACORN { ; SFTODO: For now let's see if I can get away without this to avoid doing all the prep stuff make.rb does, will likely want to reintroduce this later
-; SFTODO: Bear in mind if I do "have" to have a config file, it can be a simple
-; "CONFIG" file on the disc which I load with OSFILE directly into RAM, no need
-; for faffing around with OSWORD 7F.
+!ifndef ACORN {
 !ifdef vmem_cache_size {
 !if vmem_cache_size >= $200 {
 	config_load_address = vmem_cache_start
