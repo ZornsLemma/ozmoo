@@ -1339,6 +1339,9 @@ do_save
     ldx #1
     jsr cursor_control
     lda #osword_input_line
+    ; SFTODO: I really need to stop using OSWORD 0, it will happily allow the
+    ; user to type CTRL-V CTRL-@ to switch into mode 0, which will trash the
+    ; game on a non-2P build.
     ldx #<.osword_0_block
     ldy #>.osword_0_block
     jsr osword
