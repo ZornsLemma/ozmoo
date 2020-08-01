@@ -465,12 +465,28 @@ z_execute
 !ifdef DEBUG {
 ; SFTODO: PRINTSPEED NOT PORTED YET
 !ifdef PRINTSPEED {
+!ifndef ACORN {
 	lda #0
 	sta $a0
 	sta $a1
 	sta $a2 ; SF: Kernal jiffy timer
 	sta $4b
 	sta $4c
+} else {
+    lda #0
+    jsr kernal_readtime
+    sta .printspeed_last_time
+    stx .printspeed_last_time + 1
+    sty .printspeed_last_time + 2
+    jmp +
+.printspeed_last_time
+    !byte 0, 0, 0
+.printspeed_this_time
+    !byte 0, 0, 0
+.printspeed_count
+    !word 0
++
+}
 }
 }
 
@@ -478,6 +494,7 @@ z_execute
 
 !ifdef DEBUG {
 !ifdef PRINTSPEED {
+!ifndef ACORN {
 	lda $a2
 	cmp #60
 	bcc ++
@@ -500,6 +517,45 @@ z_execute
 	bne +
 	inc $4c
 +
+} else {
+    jsr kernal_readtime
+    sta .printspeed_this_time
+    stx .printspeed_this_time + 1
+    sty .printspeed_this_time + 2
+    sec
+    sbc .printspeed_last_time ; A is now $a2 from C64 code
+    php
+    cmp #50 ; Acorn port has 50Hz jiffies, not 60Hz ones
+    bcc ++
+    bne +
+    plp
+    txa
+    sbc .printspeed_last_time + 1 ; A is now $a1 from C64 code
+    bne +++
+    lda .printspeed_count + 1
+    ldx .printspeed_count
+    jsr printinteger
+    jsr comma
+    php
+
++   plp
++++ lda .printspeed_this_time
+    sta .printspeed_last_time
+    lda .printspeed_this_time + 1
+    sta .printspeed_last_time + 1
+    lda .printspeed_this_time + 2
+    sta .printspeed_last_time + 2
+    lda #0
+    sta .printspeed_count
+    sta .printspeed_count + 1
+    php
+
+++  plp
+    inc .printspeed_count
+    bne +
+    inc .printspeed_count + 1
++
+}
 }
 }
 	
