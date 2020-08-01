@@ -53,11 +53,12 @@ s_init
     lda #0
     sta zp_screencolumn
     sta zp_screenrow
-!ifdef ACORN {
-    sta s_os_reverse
-}
 	; Set to 0: s_ignore_next_linebreak, s_reverse
+!ifndef ACORN {
     ldx #3
+} else {
+    ldx #4 ; also s_os_reverse
+}
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -

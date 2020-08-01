@@ -1,7 +1,4 @@
 ; --- ZERO PAGE --
-; SFTODO: Because we're initially targetting a second processor only, we can use
-; 0-$EE. I therefore haven't tried to compact this and remove the (apparent)
-; gaps in zero page yet.
 ; BASIC not much used, so many positions free to use
 ; memory bank control
 !ifndef ACORN {
@@ -42,7 +39,9 @@ zp_save_start = z_local_vars_ptr
 zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
 
 
+!ifndef ACORN {
 vmap_max_entries	  = $34
+}
 
 zchar_triplet_cnt	  = $35
 packed_text			  = $36 ; 2 bytes
@@ -80,14 +79,14 @@ vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
 
 z_temp				  = $68 ; 12 bytes
 
+!ifndef ACORN {
+
 s_colour 			  = $74 ; !byte 1 ; white as default
 
 vmem_temp			  = $92 ; 2 bytes
 alphabet_table		  = $96 ; 2 bytes
 
-!ifndef ACORN {
 use_reu				  = $9b
-}
 
 window_start_row	  = $9c; 4 bytes
 
@@ -99,17 +98,10 @@ is_buffered_window	  = $ab;  !byte 1
 ; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
 s_ignore_next_linebreak = $b0 ; 3 bytes
 s_reverse 			  = $b3 ; !byte 0
-!ifdef ACORN {
-s_os_reverse          = $00 ; !byte 0
-}
 
 s_stored_x			  = $b4 ; !byte 0
 s_stored_y			  = $b5 ; !byte 0
-!ifndef ACORN {
 s_current_screenpos_row = $b6 ; !byte $ff
-} else {
-s_cursors_inconsistent = $b6 ; !byte 0
-}
 
 max_chars_on_line	  = $bd; !byte 0
 buffer_index		  = $be ; !byte 0
@@ -117,21 +109,14 @@ last_break_char_buffer_pos = $bf ; !byte 0
 
 
 zp_cursorswitch       = $cc
-!ifndef ACORN {
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
-}
 zp_screencolumn       = $d3 ; current cursor column
 zp_screenrow          = $d6 ; current cursor row
-!ifndef ACORN {
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
+cursor_row			  = $f7 ; 2 bytes
+cursor_column		  = $f9 ; 2 bytes
+zp_temp               = $fb ; 5 bytes
 }
-; SF: cursor_{row,column} are used to hold the cursor positions for the two
-; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
-; the active cursor position is zp_screen{row,column} and that's all that
-; matters most of the time.
-cursor_row			  = $7a; SF: WAS $f7 ; 2 bytes
-cursor_column		  = $7c; SF: WAS $f9 ; 2 bytes
-zp_temp               = $75; SF: WAS $fb ; 5 bytes
 
 ; SFTODO: Implicit screen width assumption. If I have 80 column support, these
 ; two may be getting a bit big for the stack, though in reality they're probably
@@ -144,10 +129,8 @@ print_buffer2             = $129 ; 41 bytes
 !ifndef ACORN {
 memory_buffer         =	$02a7
 memory_buffer_length  = 89
-}
 
-!ifndef ACORN {
-first_banked_memory_page = $d0
+first_banked_memory_page = $d0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
 
 charset_switchable 	  = $291
 
@@ -260,6 +243,39 @@ buffer_keyboard = 0
 
 ; Acorn memory allocations
 
+; SF: cursor_{row,column} are used to hold the cursor positions for the two
+; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
+; the active cursor position is zp_screen{row,column} and that's all that
+; matters most of the time.
+cursor_row			  = $7a
+cursor_column		  = $7c
+zp_temp               = $75
+
+vmem_temp			  = $00 ; 2 bytes
+alphabet_table		  = $7e ; 2 bytes
+
+window_start_row	  = $80; 4 bytes
+
+current_window		  = $74 ; !byte 0
+
+is_buffered_window	  = $08;  !byte 1
+
+; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
+s_ignore_next_linebreak = $84 ; 3 bytes
+s_reverse 			  = $87 ; !byte 0
+s_os_reverse          = $88 ; !byte 0
+
+s_stored_x			  = $89 ; !byte 0
+s_stored_y			  = $8a ; !byte 0
+s_cursors_inconsistent = $34 ; !byte 0
+
+max_chars_on_line	  = $8b; !byte 0
+buffer_index		  = $8c ; !byte 0
+last_break_char_buffer_pos = $8d ; !byte 0
+
+zp_screencolumn       = $8e ; current cursor column
+zp_screenrow          = $8f ; current cursor row
+
 stack = $100
 
 scratch_page = $400
@@ -275,7 +291,9 @@ screen_height_minus_1 = $503
 memory_buffer = $504 ; 7 bytes (larger on C64, but this is all we use)
 initial_clock = $50b ; 5 bytes
 game_disc_crc = $510 ; 2 bytes
-jmp_buf = $512 ; "up to" 257 bytes - in reality 64 bytes is probably enough
+num_rows = $512 ; !byte 0
+vmap_max_entries = $513 ; !byte 0
+jmp_buf = $514 ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR
