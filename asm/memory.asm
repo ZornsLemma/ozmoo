@@ -21,6 +21,9 @@
 ; }
 ; }
 
+; SF: On Acorn non-VMEM (and, I believe, C64 non-ALLMEM) this just needs to do
+; the two inc statements and rts, no need for anything else. Conditionally
+; assembling this is a real faff so we just accept the small inefficiency.
 inc_z_pc_page
 !zone {
 	pha
@@ -39,7 +42,7 @@ inc_z_pc_page
 }
 } else {
 ; No vmem
-!ifndef ACORN { ; SFTODO: I think for Acorn we can avoid doing the pha/pla
+!ifndef ACORN {
 	lda z_pc + 1
 	cmp #(first_banked_memory_page - (>story_start))
 	bcs get_page_at_z_pc_did_pha
