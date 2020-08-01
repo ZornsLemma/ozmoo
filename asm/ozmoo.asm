@@ -1390,4 +1390,6 @@ vmem_start
 ; SFTODO: In principle we could support bold and underlined text in non-mode 7
 ; by generating UDGs on the fly. It would probably not be all that fast given
 ; we'd need an OS call to read the character bitmap each time, but might be nice
-; to experiment with at some point.
+; to experiment with at some point. Actually, although I'd probably prefer to
+; do it that way as it would work in any mode, you could also use e.g. mode 1
+; and use (say) yellow for bold, but I'd probably rather not go there.
