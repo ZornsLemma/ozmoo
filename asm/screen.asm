@@ -888,7 +888,12 @@ draw_status_line
 }
 
 !ifdef ACORN {
-cursor_control
+turn_off_cursor
+    ldx #0
+    beq .cursor_control
+turn_on_cursor
+    ldx #1
+.cursor_control
 ; Turn the OS cursor on or off. When it's turned on it's forced into the
 ; location corresponding to zp_screen{column,row}, which is where it "should"
 ; have been all along.

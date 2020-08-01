@@ -81,12 +81,7 @@ z_ins_read_char
     ; ldy z_operand_value_low_arr
     ; optional time routine arguments
 	jsr printchar_flush
-!ifndef ACORN {
     jsr turn_on_cursor
-} else {
-    ldx #1
-    jsr cursor_control
-}
     ldy #0
 	tya
     sty .read_text_time
@@ -113,12 +108,7 @@ z_ins_read_char
     cmp #0
     beq .read_char_loop ; timer routine returned false
 	pha
-!ifndef ACORN {
     jsr turn_off_cursor
-} else {
-    ldx #0
-    jsr cursor_control
-}
 	; lda current_window
 	; bne .no_need_to_start_buffering
 	; lda is_buffered_window
@@ -1039,11 +1029,7 @@ read_char
 	bcc .no_timer
 .call_routine	
     ; current time >= .read_text_jiffy. Time to call routine
-!ifndef ACORN {
-    ; SFTODO: Probably makes sense on Acorn, we don't want the cursor visible
-    ; if the timed routine starts printing stuff and causing scrolling etc
     jsr turn_off_cursor
-}
 
 	lda .read_text_routine
 	sta z_operand_value_high_arr
@@ -1061,10 +1047,7 @@ read_char
 	; sta is_buffered_window
 	jsr printchar_flush
 
-!ifndef ACORN {
-    ; SFTODO: Probably makes sense on Acorn, see "off" just above
 	jsr turn_on_cursor
-}
 	; Interrupt routine has been executed, with value in word
 	; z_interrupt_return_value
 	; set up next time out
@@ -1115,14 +1098,6 @@ update_cursor
 	sta (zp_colourline),y
 	ldy object_temp
     rts
-} else {
-    ; We don't use turn_{on,off}_cursor as routine names for Acorn hardware
-    ; cursor control because it gets confusing. The software cursor and its
-    ; blinking support on the C64 mean these two routines are called repeatedly
-    ; during input, whereas we simply want to turn the hardware cursor on when
-    ; we start input and off when we've finished. I think it's clearer to use
-    ; distinct names on the two platforms. SFTODO: MAYBE RECONSIDER THIS LATER,
-    ; THINGS MAY BE CLEARER ONCE I HAVE CODE WORKING RIGHT
 }
 
 !ifndef ACORN {
@@ -1184,13 +1159,8 @@ read_text
 	tya
 }
     sta .read_text_column
-!ifndef ACORN {
     ; turn on blinking cursor
     jsr turn_on_cursor
-} else {
-    ldx #1
-    jsr cursor_control
-}
 .readkey
     jsr get_cursor ; x=row, y=column
     stx .read_text_cursor
@@ -1204,10 +1174,7 @@ read_text
     cpy .read_text_cursor + 1
     beq .readkey
     ; text changed, redraw input line
-!ifndef ACORN {
 	jsr turn_off_cursor
-    ; SFTODO WE SHOULD PROB TURN OFF FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL - YES, THIS ONE DOES SEEM LIKE WE SHOULD DO IT TOO
-}
     jsr clear_num_rows
 !ifdef Z5PLUS {
 	; lda #$0d ; Enter
@@ -1268,10 +1235,7 @@ read_text
     jmp .p0
 .p1
 }
-!ifndef ACORN {
-    ; SFTODO WE SHOULD PROB TURN ON FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL - YES, THIS ONE SEEMS GOOD
     jsr turn_on_cursor
-}
     jmp .readkey
 +   cmp #1
     bne +
@@ -1294,8 +1258,6 @@ read_text
     bcc .readkey
 	dec .read_text_column
 !ifndef ACORN {
-    ; SFTODO: THIS ONE IS PROBABLY NOT NECESSARY (IT WOULDN'T HURT, REALLY, BUT
-    ; PROBABLY BEST NOT TO INCLUDE IT)
 	jsr turn_off_cursor
 }
 	lda .petscii_char_read
@@ -1304,7 +1266,6 @@ read_text
 !ifdef USE_BLINKING_CURSOR {
     jsr reset_cursor_blink
 }
-    ; SFTODO: AS WITH PRECEDING OFF, PROB NOT NECESSARY
 	jsr turn_on_cursor
 }
 !ifdef Z5PLUS {
@@ -1389,13 +1350,8 @@ read_text
     jmp .readkey
 .read_text_done
     pha ; return value
-!ifndef ACORN {
     ; turn off blinking cursor
     jsr turn_off_cursor
-} else {
-    ldx #0
-    jsr cursor_control
-}
 !ifndef Z5PLUS {
 	; Store terminating 0, in case characters were deleted at the end.
     ldy .read_text_column ; compare with size of keybuffer

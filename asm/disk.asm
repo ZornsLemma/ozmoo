@@ -1336,8 +1336,7 @@ do_save
     lda #$ff ; high byte
     ldx #$ff ; low byte
     jsr printstring_os
-    ldx #1
-    jsr cursor_control
+    jsr turn_on_cursor
     lda #osword_input_line
     ; SFTODO: I really need to stop using OSWORD 0, it will happily allow the
     ; user to type CTRL-V CTRL-@ to switch into mode 0, which will trash the
@@ -1345,8 +1344,7 @@ do_save
     ldx #<.osword_0_block
     ldy #>.osword_0_block
     jsr osword
-    ldx #0
-    jsr cursor_control
+    jsr turn_off_cursor
     ; Skip leading spaces, if any.
     ldy #$ff
 -   iny

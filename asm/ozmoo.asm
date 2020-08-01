@@ -289,8 +289,7 @@ game_id		!byte 0,0,0,0
     jmp ($a000)
 } else {
 clean_up_and_quit
-    ldx #1
-    jsr cursor_control
+    jsr turn_on_cursor
     ldx #0
     jsr do_osbyte_rw_escape_key
 !ifdef ACORN_CURSOR_PASS_THROUGH {
@@ -604,8 +603,7 @@ deletable_init_start
     ; is a software creation.) We position it appropriately and turn it on only
     ; when we're expecting user input. (As far as I can see the Z-machine has
     ; no way for the running program to turn the cursor on and off.)
-    ldx #0
-    jsr cursor_control
+    jsr turn_off_cursor
 
     jsr init_readtime
 
