@@ -228,7 +228,6 @@ fatalerror
 -   jmp -
 }
 
-;SFTODODATA
 .saved_a !byte 0
 .saved_x !byte 0
 .saved_y !byte 0
