@@ -1560,19 +1560,19 @@ save_game
     ; The OSFILE block is updated after the call, so we have to populate these
     ; values via code every time.
     lda #<.filename_buffer
-    sta .osfile_save_load_block + $00
+    sta .osfile_save_load_block_filename_ptr
     lda #>.filename_buffer
-    sta .osfile_save_load_block + $01
+    sta .osfile_save_load_block_filename_ptr + 1
     lda #<(stack_start - zp_bytes_to_save)
-    sta .osfile_save_load_block + $0a
+    sta .osfile_save_load_block_start_address
     lda #>(stack_start - zp_bytes_to_save)
-    sta .osfile_save_load_block + $0b
+    sta .osfile_save_load_block_start_address + 1
     lda story_start + header_static_mem + 1
-    sta .osfile_save_load_block + $0e
+    sta .osfile_save_load_block_end_address
     lda story_start + header_static_mem
     clc
     adc #>story_start
-    sta .osfile_save_load_block + $0f
+    sta .osfile_save_load_block_end_address + 1
     lda .osfile_op
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
@@ -1594,13 +1594,16 @@ save_game
 	rts
 
 .osfile_save_load_block
+.osfile_save_load_block_filename_ptr
     !word 0 ; filename
     !word stack_start - zp_bytes_to_save ; load address low
     !word 0 ; load address high
     !word 0 ; exec address low: 0 => use specified load address (on load)
     !word 0 ; exec address high
+.osfile_save_load_block_start_address
     !word 0 ; start address low
     !word 0 ; start address high
+.osfile_save_load_block_end_address
     !word 0 ; end address low
     !word 0 ; end address high
 }
