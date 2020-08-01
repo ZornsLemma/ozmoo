@@ -276,9 +276,12 @@ z_ins_read
 	ldx z_operand_value_low_arr
     jsr read_text
 !ifdef TRACE_READTEXT {
-    ; SFTODO: Need to port this to Acorn?
     jsr print_following_string
+!ifndef ACORN {
     !pet "read_text ",0
+} else {
+    !text "read_text ",0
+}
     ldx z_operand_value_low_arr
     lda z_operand_value_high_arr
     jsr printx
@@ -1037,6 +1040,8 @@ read_char
 .call_routine	
     ; current time >= .read_text_jiffy. Time to call routine
 !ifndef ACORN {
+    ; SFTODO: Probably makes sense on Acorn, we don't want the cursor visible
+    ; if the timed routine starts printing stuff and causing scrolling etc
     jsr turn_off_cursor
 }
 
@@ -1057,6 +1062,7 @@ read_char
 	jsr printchar_flush
 
 !ifndef ACORN {
+    ; SFTODO: Probably makes sense on Acorn, see "off" just above
 	jsr turn_on_cursor
 }
 	; Interrupt routine has been executed, with value in word
@@ -1200,7 +1206,7 @@ read_text
     ; text changed, redraw input line
 !ifndef ACORN {
 	jsr turn_off_cursor
-    ; SFTODO WE SHOULD PROB TURN OFF FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL
+    ; SFTODO WE SHOULD PROB TURN OFF FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL - YES, THIS ONE DOES SEEM LIKE WE SHOULD DO IT TOO
 }
     jsr clear_num_rows
 !ifdef Z5PLUS {
@@ -1263,7 +1269,7 @@ read_text
 .p1
 }
 !ifndef ACORN {
-    ; SFTODO WE SHOULD PROB TURN ON FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL
+    ; SFTODO WE SHOULD PROB TURN ON FOR ACORN HERE, SO IT LOOKS MORE AND MORE LIKE turn_{on,off}_cursor ARE ACTUALLY A FAIRLY GOOD FIT FOR CONTROLLING HW CURSOR AFTER ALL - YES, THIS ONE SEEMS GOOD
     jsr turn_on_cursor
 }
     jmp .readkey
@@ -1288,6 +1294,8 @@ read_text
     bcc .readkey
 	dec .read_text_column
 !ifndef ACORN {
+    ; SFTODO: THIS ONE IS PROBABLY NOT NECESSARY (IT WOULDN'T HURT, REALLY, BUT
+    ; PROBABLY BEST NOT TO INCLUDE IT)
 	jsr turn_off_cursor
 }
 	lda .petscii_char_read
@@ -1296,6 +1304,7 @@ read_text
 !ifdef USE_BLINKING_CURSOR {
     jsr reset_cursor_blink
 }
+    ; SFTODO: AS WITH PRECEDING OFF, PROB NOT NECESSARY
 	jsr turn_on_cursor
 }
 !ifdef Z5PLUS {
