@@ -463,7 +463,6 @@ z_execute
 }
 
 !ifdef DEBUG {
-; SFTODO: PRINTSPEED NOT PORTED YET
 !ifdef PRINTSPEED {
 !ifndef ACORN {
 	lda #0
