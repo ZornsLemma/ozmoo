@@ -1,4 +1,3 @@
-; SFTODO THIS IS NO LONGER INCLUDED AT ALL ON ACORN SO CAN REMOVE ALL !ifdef ACORN FROM IT
 !zone splash_screen {
 splash_screen
 	ldy #0
@@ -17,7 +16,6 @@ splash_line_y
 	cpy #5
 	bne splash_line_y
 
-!ifndef ACORN { ; SFTODO: $A2 is kernal jiffy clock
 	lda $a2
 	clc
 	adc #<(SPLASHWAIT*60)
@@ -25,11 +23,8 @@ splash_line_y
 	lda $a1
 	adc #>(SPLASHWAIT*60)
 	sta z_temp + 1
-}
 	
-!ifndef ACORN { ; SFTODO
 -	jsr kernal_getchar
-
 	bne +
 	lda z_temp + 2
 	cmp $a2
@@ -40,11 +35,6 @@ splash_line_y
 +	
 	lda #147
 	jmp s_printchar
-} else {
--       ; jsr osrdch SFTODO: For the moment the splashscreen is a single line of
-        ; text so no need to pause, will need a proper splashscreen eventually
-        rts
-}
 
 !source "splashlines.asm"
 
