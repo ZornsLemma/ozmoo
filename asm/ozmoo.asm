@@ -1386,3 +1386,8 @@ vmem_start
 	config_load_address = $0400
 }
 }
+
+; SFTODO: In principle we could support bold and underlined text in non-mode 7
+; by generating UDGs on the fly. It would probably not be all that fast given
+; we'd need an OS call to read the character bitmap each time, but might be nice
+; to experiment with at some point.
