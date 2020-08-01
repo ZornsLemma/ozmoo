@@ -404,8 +404,6 @@ s_printchar
     jsr s_pre_scroll
     pla
     jsr oswrch
-    lda #vdu_reset_text_window
-    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     lda s_reverse
     beq .not_reverse
     ; Reverse video is on and the character we just output has caused the text
@@ -414,6 +412,8 @@ s_printchar
     ; need to fix this up.
     jsr s_erase_line_from_cursor
 .not_reverse
+    lda #vdu_reset_text_window
+    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     pha
 .printchar_nowrap
     pla
