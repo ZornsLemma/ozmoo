@@ -1318,9 +1318,6 @@ read_text
 !ifdef Z5PLUS {
     iny
 }
-    ; SFTODO: WE MAY NEED SOME TRANSLATION OR ADDITIONAL SPECIAL CASES IN
-    ; s_printchar IF "WEIRD" CHARS ARE ALLOWED IN THE INPUT (EG FUNCTION KEYS)
-    ; WHICH WON'T JUST WORK NICELY IF PRINTED VIA OSWRCH
 	lda .petscii_char_read
     jsr s_printchar
 !ifndef ACORN {
