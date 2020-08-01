@@ -470,11 +470,14 @@ print_following_string
 }
 
 print_trace
-; SFTODO: TRACE NOT PORTED YET
 !ifdef TRACE {
     jsr newline
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "last opcodes: (#, z_pc, opcode)",0
+} else {
+	!text "last opcodes: (#, z_pc, opcode)",0
+}
     jsr newline
 	lda z_trace_index
 	tay
@@ -482,7 +485,11 @@ print_trace
 	cmp #%11
 	bne +
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "last opcode not stored (shown as $ee)",13,0
+} else {
+	!text "last opcode not stored (shown as $ee)",13,0
+}
 	lda #$ee
 	sta z_trace_page,y
 	iny

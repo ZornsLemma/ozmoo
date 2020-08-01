@@ -73,6 +73,7 @@ parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None,
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
 group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
 group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+group.add_argument("-t", "--trace", action="store_true", help="enable tracing (implies -d)")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -119,6 +120,9 @@ debug = args.debug
 if args.benchmark:
     debug = True
     acme_args1 += ["-DBENCHMARK=1"]
+if args.trace:
+    debug = True
+    acme_args1 += ["-DTRACE=1"]
 if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if debug:
