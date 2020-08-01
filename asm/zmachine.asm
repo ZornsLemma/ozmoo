@@ -1121,12 +1121,13 @@ z_rnd_init_random
 	eor $d012
 	eor z_rnd_c
 } else {
-    ; SFTODO: Is this good enough?
     lda #osword_read_clock
     ldx #<z_temp
     ldy #>z_temp
     jsr osword
-    ; It's unlikely z_temp+[34] will be non-0, so we don't try to use them.
+    ; z_temp+[34] are unlikely to change so we don't try to include them.
+    ; z_temp+3 only advances every 46.6 hours, z_temp+4 only advances every
+    ; 497.1 days.
     lda z_rnd_c
     eor z_temp+0
     eor z_temp+1
@@ -1184,7 +1185,7 @@ z_ins_rfalse
 ; z_ins_catch (moved to stack.asm)
 
 z_ins_quit
-!ifndef ACORN { ; SFTODO
+!ifndef ACORN {
 	jmp kernal_reset
 } else {
     jmp clean_up_and_quit
