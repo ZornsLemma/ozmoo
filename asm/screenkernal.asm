@@ -681,7 +681,9 @@ s_pre_scroll
     ; Define a text window covering the region to scroll.
     ; If C is set on entry, leave the OS text cursor at the bottom right of the
     ; text window.
-    ; If C is clear on entry, leave the OS text cursor where it was.
+    ; If C is clear on entry, leave the OS text cursor where it was on the
+    ; physical screen (its co-ordinates will be different because of the text
+    ; window).
     ; SF: ENHANCEMENT: If window_start_row+1 is 0 we are scrolling the whole
     ; screen, so defining the text window has no visible effect and will slow
     ; things down by preventing the OS doing a hardware scroll. It wouldn't be
@@ -697,8 +699,6 @@ s_pre_scroll
     txa
     pha
     jsr .s_pre_scroll_leave_bottom_right
-    ; SFTODO: This is wrong - we now have a text window, so we need to subtract
-    ; off the top margin. We get away with it in practice, but it's not right.
     lda #vdu_goto_xy
     jsr oswrch
     pla
