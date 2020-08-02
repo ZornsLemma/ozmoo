@@ -405,11 +405,7 @@ s_printchar
 	lda zp_screenrow
 	cmp #25 ; SFTODO: Implicit screen height assumption?
 	bcc .printchar_nowrap
-    ; SF: ENHANCEMENT: I don't know if the VM allows it (do we have enough
-    ; information to reliably do the redraw without the game's cooperation?),
-    ; and it *might* look ugly, but we might gain a performance boost
-    ; (particularly in high resolution modes) by doing a hardware scroll of the
-    ; entire screen then redrawing the status line/window 1 afterwards.
+    ; SFTODO: I should probably always avoid HW scrolling if we're in mode 7.
 !ifdef ACORN_HW_SCROLL {
     lda screen_height_minus_1
     sta zp_screenrow ; s_pre_scroll normally does this but we may not call it
