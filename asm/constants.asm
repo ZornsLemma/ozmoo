@@ -233,6 +233,7 @@ osbyte_reflect_keyboard_status = $76
 osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
 osbyte_read_cursor_position = $86
+osbyte_read_screen_mode = $87
 osbyte_enter_language = $8e
 osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5
@@ -293,7 +294,10 @@ initial_clock = $50b ; 5 bytes
 game_disc_crc = $510 ; 2 bytes
 num_rows = $512 ; !byte 0
 vmap_max_entries = $513 ; !byte 0
-jmp_buf = $514 ; "up to" 257 bytes - in reality 64 bytes is probably enough
+!ifdef ACORN_HW_SCROLL {
+    use_hw_scroll = $514 ; !byte 0
+}
+jmp_buf = $515 ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR

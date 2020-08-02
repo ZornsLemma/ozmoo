@@ -407,11 +407,14 @@ s_printchar
 	bcc .printchar_nowrap
     ; SFTODO: I should probably always avoid HW scrolling if we're in mode 7.
 !ifdef ACORN_HW_SCROLL {
+    lda use_hw_scroll
+    beq .no_hw_scroll0
     lda screen_height_minus_1
     sta zp_screenrow ; s_pre_scroll normally does this but we may not call it
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     beq .no_pre_scroll
+.no_hw_scroll0
 }
     ; C is already set
     jsr s_pre_scroll
@@ -429,10 +432,12 @@ s_printchar
 !ifdef ACORN_HW_SCROLL {
     ldx window_start_row + 1 ; how many top lines to protect
     dex
-    bne .no_hw_scroll
+    bne .no_hw_scroll1
+    lda use_hw_scroll
+    beq .no_hw_scroll1
     jsr .redraw_top_line
     jmp .printchar_oswrch_done
-.no_hw_scroll
+.no_hw_scroll1
 }
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
@@ -612,6 +617,8 @@ s_erase_line_from_cursor
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     bne .no_hw_scroll2
+    lda use_hw_scroll
+    beq .no_hw_scroll2
     lda #vdu_goto_xy
     jsr oswrch
     lda #0

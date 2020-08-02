@@ -607,6 +607,18 @@ deletable_init_start
 
     jsr init_readtime
 
+    ; SFTODO: We could allow the user to toggle use_hw_scroll by pressing a
+    ; function key or something like that.
+!ifdef ACORN_HW_SCROLL {
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    ldx #1
+    cpy #7
+    bne +
+    dex
++   stx use_hw_scroll
+}
+
     ; Now Ozmoo's screen output code is (about to be) initialised via
     ; init_screen_colours, errors can be reported using s_printchar.
     jsr set_default_error_handler
