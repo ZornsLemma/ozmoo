@@ -18,6 +18,9 @@
 ; SFTODO: New times with latest code and .dsd/.ssd variants:
 ; SFTODO: b-em, Master Turbo, mode 6, drive noises on, .dsd: $0049dd
 ; SFTODO: b-em, Master Turbo, mode 6, drive noises on, .ssd: $005300
+; SFTODO: New times with latest code:
+; SFTODO: b-em, Master Turbo, mode 6, hw scroll, drive noises on, .ssd: $003e2f
+; SFTODO: b-em, Master Turbo, mode 6, sw scroll, drive noises on, .ssd: $005411
 !ifdef BENCHMARK {
 benchmark_commands
 !ifndef ACORN {

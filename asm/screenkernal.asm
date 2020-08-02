@@ -1,3 +1,4 @@
+ACORN_HW_SCROLL = 1 ; SFTODO:TEMP HERE
 ; replacement for these C64 kernal routines and their variables:
 ; printchar $ffd2
 ; plot      $fff0
@@ -318,6 +319,15 @@ s_printchar
 +	; Skip if column > 39
 	cpx #40 ; SFTODO: Implicit screen width assumption
 	bcs .printchar_end
+!ifdef ACORN_HW_SCROLL {
+    ldy zp_screenrow
+    bne +
+    sta .top_line_buffer,x
+    lda s_reverse
+    sta .top_line_buffer_reverse,x
+    lda .top_line_buffer,x
++
+}
 	; Reset ignore next linebreak setting
 	ldx current_window
 	ldy s_ignore_next_linebreak,x
@@ -400,8 +410,16 @@ s_printchar
     ; and it *might* look ugly, but we might gain a performance boost
     ; (particularly in high resolution modes) by doing a hardware scroll of the
     ; entire screen then redrawing the status line/window 1 afterwards.
+!ifdef ACORN_HW_SCROLL {
+    lda screen_height_minus_1
+    sta zp_screenrow ; s_pre_scroll normally does this but we may not call it
+    ldx window_start_row + 1 ; how many top lines to protect
+    dex
+    beq .no_pre_scroll
+}
     ; C is already set
     jsr s_pre_scroll
+.no_pre_scroll
     pla
     jsr oswrch
     lda s_reverse
@@ -412,6 +430,14 @@ s_printchar
     ; need to fix this up.
     jsr s_erase_line_from_cursor
 .not_reverse
+!ifdef ACORN_HW_SCROLL {
+    ldx window_start_row + 1 ; how many top lines to protect
+    dex
+    bne .no_hw_scroll
+    jsr .redraw_top_line
+    jmp .printchar_oswrch_done
+.no_hw_scroll
+}
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     pha
@@ -420,6 +446,7 @@ s_printchar
     ; This OSWRCH call is the one which actually prints most of the text on the
     ; screen.
     jsr oswrch
+.printchar_oswrch_done
     ; Force the OS text cursor to move if necessary; normally it would be
     ; invisible at this point, but TerpEtude's "Timed full-line input" test can
     ; leave the OS text cursor visible at the top left if you type a character
@@ -585,6 +612,23 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 } else {
+!ifdef ACORN_HW_SCROLL {
+    ldx window_start_row + 1 ; how many top lines to protect
+    dex
+    bne .no_hw_scroll2
+    lda #vdu_goto_xy
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    lda screen_height_minus_1
+    sta zp_screenrow
+    jsr oswrch
+    jsr set_os_normal_video ; new line must not be reverse video
+    lda #vdu_down
+    jsr oswrch
+    jmp .redraw_top_line
+.no_hw_scroll2
+}
     sec
     jsr s_pre_scroll
     ; Move the cursor down one line to force a scroll
@@ -601,6 +645,19 @@ s_erase_line
 	lda #0
 	sta zp_screencolumn
 s_erase_line_from_cursor
+!ifdef ACORN_HW_SCROLL {
+    ldx zp_screenrow
+    bne +
+    ldx zp_screencolumn
+-   lda #' '
+    sta .top_line_buffer,x
+    lda #0
+    sta .top_line_buffer_reverse,x
+    inx
+    cpx #40 ; SFTODO: Screen width assumption
+    bne -
++
+}
     ; Define a text window covering the region to clear
     ; SFTODO: It may be possible to factor out the sequence of OSWRCH calls for
     ; the text window definition.
@@ -678,6 +735,25 @@ s_pre_scroll
     sec
     sbc window_start_row + 1
     jmp oswrch
+
+!ifdef ACORN_HW_SCROLL {
+.redraw_top_line
+    lda #vdu_home
+    jsr oswrch
+    ldx #0
+-   lda .top_line_buffer_reverse,x
+    beq +
+    jsr set_os_reverse_video
+    jmp ++
++   jsr set_os_normal_video
+++  lda .top_line_buffer,x
+    jsr oswrch
+    inx
+    cpx #40 ; SFTODO: screen width assumption
+    bne -
+    stx s_cursors_inconsistent
+    rts
+}
 }
 
 
@@ -833,6 +909,14 @@ z_ins_set_colour
 } else {
     jmp printchar_flush
 }
+}
+
+; SFTODODATA
+!ifdef ACORN_HW_SCROLL {
+.top_line_buffer
+    !fill 40 ; SFTODO: line length assumption
+.top_line_buffer_reverse
+    !fill 40 ; SFTODO: line length assumption
 }
 
 !ifdef TESTSCREEN {
