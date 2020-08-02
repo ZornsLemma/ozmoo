@@ -289,6 +289,7 @@ game_id		!byte 0,0,0,0
     jmp ($a000)
 } else {
 clean_up_and_quit
+    jsr set_os_normal_video
     jsr turn_on_cursor
     ldx #0
     jsr do_osbyte_rw_escape_key
