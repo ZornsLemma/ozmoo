@@ -463,8 +463,6 @@ z_init
 	sta story_start + header_flags_2 + 1
 }
 }
-; SFTODO: We might want to support 40 and or 80 column width eventually (shadow screen),
-; simililarly we might want to vary the height, for now just stick with these values.
 !ifdef Z4PLUS {
 	lda #8
 	sta story_start + header_interpreter_number ; Interpreter number (8 = C64)

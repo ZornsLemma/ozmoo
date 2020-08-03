@@ -120,16 +120,16 @@ cursor_column		  = $f9 ; 2 bytes
 zp_temp               = $fb ; 5 bytes
 }
 
-; SFTODO: Implicit screen width assumption. If I have 80 column support, these
-; two may be getting a bit big for the stack, though in reality they're probably
-; OK. I could probably move them into some wasted padding space below the
-; Z-machine stack or something, though that might be annoyingly brittle as the
-; code size changes. SFTODO: I will go with these on stack for 80 columns for
-; now but maybe revisit this later.
 !ifndef ACORN {
 print_buffer		  = $100 ; 41 bytes
 print_buffer2             = $129 ; 41 bytes
 } else {
+; SFTODO: Is it OK to use 162 bytes of the stack like this? In practice we
+; certainly seem to get away with it, and my brief experiments when I
+; implemented setjmp suggest Ozmoo won't ever get near 64 bytes of stack use,
+; but (particularly if we have some otherwise wasted space floating around due
+; to page alignment issues) it might be worth relocating at least one of these
+; buffers.
 print_buffer		  = $100 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 }

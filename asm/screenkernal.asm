@@ -1,4 +1,3 @@
-ACORN_HW_SCROLL = 1 ; SFTODO:TEMP HERE
 ; replacement for these C64 kernal routines and their variables:
 ; printchar $ffd2
 ; plot      $fff0
@@ -79,9 +78,9 @@ s_plot
     rts
 .set_cursor_pos
 !ifndef ACORN {
-+	cpx #25 ; SFTODO: Implicit screen height assumption?
++	cpx #25
 	bcc +
-	ldx #24 ; SFTODO: Implicit screen height assumption?
+	ldx #24
 } else {
 +	cpx screen_height
 	bcc +
@@ -210,11 +209,6 @@ s_reverse_to_os_reverse
     bne set_os_reverse_video
     ; fall through to set_os_normal_video
 
-; SFTODO: This assumes non-mode 7. We can probably support reverse video at least
-; for the status line in mode 7, although we'd lose a few characters to control
-; codes. (Lurkio on stardot suggests just using cyan-on-black for the status
-; bar in mode 7; that would only burn one space on a control code instead of
-; three and seems a good idea.)
 set_os_normal_video
     lda s_os_reverse
     beq .rts
@@ -295,7 +289,7 @@ s_printchar
 	cmp window_start_row + 1,y
 	bcc ++
 	dec zp_screenrow
-	lda #39 ; SFTODO: Implicit screen width assumption?
+	lda #39
 	sta zp_screencolumn
 ++  jsr .update_screenpos
     lda #$20
@@ -377,7 +371,7 @@ s_printchar
 }
 }
 !ifndef ACORN {
-	cpx #40 ; SFTODO: Implicit screen width assumption
+	cpx #40
 } else {
     cpx screen_width
 }
@@ -435,14 +429,14 @@ s_printchar
     sty zp_screencolumn
 	ldx current_window
 	bne .printchar_end ; For upper window and statusline (in z3), don't advance to next line.
-    cpy #40 ; SFTODO: Implicit screen width assumption?
+    cpy #40
     bcc .printchar_end
 	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
     lda #0
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
-	cmp #25 ; SFTODO: Implicit screen height assumption?
+	cmp #25
 	bcs +
 	jsr .update_screenpos
 	jmp .printchar_end
@@ -469,7 +463,6 @@ s_printchar
 	lda zp_screenrow
 	cmp screen_height
 	bcc .printchar_nowrap
-    ; SFTODO: I should probably always avoid HW scrolling if we're in mode 7.
 !ifdef ACORN_HW_SCROLL {
     lda use_hw_scroll
     beq .no_hw_scroll0
@@ -612,7 +605,7 @@ s_erase_window
 .s_scroll
     lda zp_screenrow
 !ifndef ACORN {
-    cmp #25 ; SFTODO: Implicit screen height assumption?
+    cmp #25
 } else {
     cmp screen_height
 }
@@ -865,10 +858,6 @@ current_cursor_colour !byte CURSORCOL
 cursor_character !byte CURSORCHAR
 }
 
-; SFTODO: Eventually it might be nice if (e.g.) f0 cycled through the available
-; background colours and f1 did the same for the foreground. (Perhaps SHIFT+f0/1
-; instead to leave the unshifted ones available for *KEY and/or games which try
-; to use function keys.)
 !ifndef ACORN {
 toggle_darkmode
 !ifdef Z5PLUS {

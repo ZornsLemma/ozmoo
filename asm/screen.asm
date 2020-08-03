@@ -83,7 +83,7 @@ erase_window
     inc zp_screenrow
     lda zp_screenrow
 !ifndef ACORN {
-    cmp #25 ; SFTODO: Implicit screen height assumption?
+    cmp #25
 } else {
     cmp screen_height
 }
@@ -100,7 +100,7 @@ erase_window
     lda window_start_row + 1
 } else {
 !ifndef ACORN {
-    lda #24 ; SFTODO: Implicit screen height assumption?
+    lda #24
 } else {
     lda screen_height_minus_1
 }
@@ -187,7 +187,7 @@ z_ins_print_table
 -	jsr read_next_byte
 	ldx .current_col
 !ifndef ACORN {
-	cpx #40 ; SFTODO: Implicit screen width assumption?
+	cpx #40
 } else {
     cpx screen_width
 }
@@ -257,8 +257,6 @@ start_buffering
 	sty last_break_char_buffer_pos
 	rts
 
-; SFTODO: Some constants here which probably need tweaking for varying Acorn
-; screen dimensions
 !ifdef Z3 {
 !ifndef ACORN {
 .max_lines = 24
@@ -572,7 +570,7 @@ printchar_buffered
 .check_break_char
     ldy buffer_index
 !ifndef ACORN {
-	cpy #40 ; SFTODO: Implicit screen width assumption?
+	cpy #40
 } else {
     cpy screen_width
 }
@@ -592,7 +590,7 @@ printchar_buffered
 	iny
     sty buffer_index
 !ifndef ACORN {
-    cpy #41 ; SFTODO: Implicit screen width assumption?
+    cpy #41
 } else {
     cpy screen_width_plus_1
 }
@@ -602,7 +600,7 @@ printchar_buffered
     ; print the line until last space
 	; First calculate max# of characters on line
 !ifndef ACORN {
-	ldx #40 ; SFTODO: Implicit screen width assumption?
+	ldx #40
 } else {
     ldx screen_width
 }
@@ -687,7 +685,7 @@ printchar_buffered
     jsr increase_num_rows
 	lda last_break_char_buffer_pos
 !ifndef ACORN {
-	cmp #40 ; SFTODO: Implicit screen width assumption?
+	cmp #40
 } else {
     cmp screen_width
 }
@@ -813,7 +811,7 @@ draw_status_line
     ;
 -   lda zp_screencolumn
 !ifndef ACORN {
-	cmp #40 ; SFTODO: Implicit screen width assumption?
+	cmp #40
 } else {
     cmp screen_width
 }
@@ -838,7 +836,7 @@ draw_status_line
 	pha
     ldx #0
 !ifndef ACORN {
-    ldy #25 ; SFTODO: Implicit screen width assumption?
+    ldy #25
 } else {
     sec
     lda screen_width
@@ -877,7 +875,7 @@ draw_status_line
     ; time game
     ldx #0
 !ifndef ACORN {
-    ldy #25 ; SFTODO: Implicit screen width assumption?
+    ldy #25
 } else {
     sec
     lda screen_width

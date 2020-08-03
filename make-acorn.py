@@ -95,6 +95,7 @@ acme_args1 = [
     "acme",
     "--setpc", "$600",
     "-DACORN=1",
+    "-DACORN_HW_SCROLL=1",
     "-DSTACK_PAGES=4",
     "-DSMALLBLOCK=1",
     "-DSPLASHWAIT=0"

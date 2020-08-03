@@ -9,7 +9,8 @@ ask_for_save_device !byte $ff
 
 ; SFTODO: readblock could be part of discardable init code on a non-VMEM build;
 ; maybe make it a macro so ozmoo.asm can put it in discardable init or not as
-; appropriate?
+; appropriate? (If we support restart on non-VMEM builds for Acorn, we'd
+; need readblock to do the check for having the game disc in the drive.)
 !ifdef ACORN {
     WANT_READBLOCK = 1
 } else {
@@ -1427,7 +1428,7 @@ do_save
     ; needing word wrapping code.
     !text "Please enter a filename or * command or just press RETURN to carry on playing.", 13
     ; SFTODO: We could omit the following message (don't forget all builds would
-    ; need the 0!) on a VMEM build, where you never need to keep the game disc
+    ; need the 0!) on a non-VMEM build, where you never need to keep the game disc
     ; in. Arguably it's clearer to say it, and it's harmless except for using
     ; a few bytes of memory.
     !text "You can safely remove the game disc now.", 13, 0
