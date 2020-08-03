@@ -1327,6 +1327,7 @@ do_save
     clc
     jsr s_pre_scroll
     ; Print the initial descriptive prompt
+    jsr set_os_normal_video
     lda #>.filename_msg
     ldx #<.filename_msg
     jsr printstring_os
