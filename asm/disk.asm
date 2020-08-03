@@ -1312,11 +1312,7 @@ do_save
 !ifdef ACORN {
 
 .filename_buffer = scratch_page
-.osword_0_block
-    !word .filename_buffer
-    !byte 255 ; size of buffer - 1
-    !byte 32 ; minimum ASCII value
-    !byte 127 ; maximum ASCII value
+.filename_buffer_size = 255
 ; Returns with Z set iff user wants to abort the save/restore.
 .get_filename
     ; We use raw OS text output here, because * commands will do and their output
@@ -1337,14 +1333,34 @@ do_save
     lda #$ff ; high byte
     ldx #$ff ; low byte
     jsr printstring_os
+    ; Read a string from the keyboard. We don't use OSWORD 0 because it allows
+    ; the user to type arbitrary control codes and have them sent through to
+    ; OSWRCH.
     jsr turn_on_cursor
-    lda #osword_input_line
-    ; SFTODO: I really need to stop using OSWORD 0, it will happily allow the
-    ; user to type CTRL-V CTRL-@ to switch into mode 0, which will trash the
-    ; game on a non-2P build.
-    ldx #<.osword_0_block
-    ldy #>.osword_0_block
-    jsr osword
+    ldx #0
+.input_loop
+    jsr osrdch
+    cmp #cr
+    beq .input_loop_done
+    cmp #32
+    bcc .input_loop
+    cmp #del
+    beq .delete
+    cpx #.filename_buffer_size - 1
+    beq .input_loop
+    jsr oswrch
+    sta .filename_buffer,x
+    inx
+    bne .input_loop ; Always branch
+.delete
+    cpx #0
+    beq .input_loop
+    jsr oswrch
+    dex
+    jmp .input_loop
+.input_loop_done
+    sta .filename_buffer,x
+    jsr osnewl
     jsr turn_off_cursor
     ; Skip leading spaces, if any.
     ldy #$ff

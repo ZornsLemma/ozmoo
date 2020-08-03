@@ -239,6 +239,7 @@ osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
 vdu_variable_text_window_top = $0b
+cr = 13
 del = 127
 buffer_keyboard = 0
 
