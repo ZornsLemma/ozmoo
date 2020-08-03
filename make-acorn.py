@@ -68,6 +68,7 @@ def bytes_to_blocks(x):
 parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using Ozmoo.")
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
+parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -129,6 +130,8 @@ if args.speed:
     acme_args1 += ["-DPRINTSPEED=1"]
 if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
+if not args.no_mode_7_colour:
+    acme_args1 += ["-DMODE_7_STATUS=1"]
 if debug:
     acme_args1 += ["-DDEBUG=1"]
 

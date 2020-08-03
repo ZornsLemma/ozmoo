@@ -103,6 +103,32 @@ s_delete_cursor
 }
 
 !ifdef ACORN {
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+; Return with Z clear iff the cursor is on a mode 7 status line
+.check_if_mode_7_status
+    ldy zp_screenrow
+    bne +
+.check_if_mode_7_status2
+    ldy window_start_row + 1 ; how many top lines to protect
+    dey
+    bne +
+    ldy screen_mode
+    cpy #7
++   rts
+
+check_and_add_mode_7_colour_code
+    jsr .check_if_mode_7_status2
+    bne +
+    lda #vdu_home
+    jsr oswrch
+    lda #mode_7_status_colour
+    jsr oswrch
+    sta s_cursors_inconsistent
++   rts
+}
+}
+
 s_cursor_to_screenrowcolumn
     lda s_cursors_inconsistent
 !ifndef DEBUG_CURSOR {
@@ -115,6 +141,15 @@ s_cursor_to_screenrowcolumn
     lda #vdu_goto_xy
     jsr oswrch
     lda zp_screencolumn
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    jsr .check_if_mode_7_status
+    bne +
+    clc
+    adc #1
++
+}
+}
     jsr oswrch
     lda zp_screenrow
     jmp oswrch
@@ -317,7 +352,17 @@ s_printchar
 	inc zp_screencolumn
 	jmp .printchar_end
 +	; Skip if column > 39
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    jsr .check_if_mode_7_status
+    bne +
+    cpx #39
+    bcs .printchar_end_bcs
++
+}
+}
 	cpx #40 ; SFTODO: Implicit screen width assumption
+.printchar_end_bcs
 	bcs .printchar_end
 !ifdef ACORN_HW_SCROLL {
     ldy zp_screenrow
@@ -679,6 +724,14 @@ s_erase_line_from_cursor
     jsr set_os_normal_video ; clear must not be to reverse video
     lda #vdu_cls
     jsr oswrch
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    lda zp_screenrow
+    bne +
+    jsr check_and_add_mode_7_colour_code
++
+}
+}
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch

@@ -265,6 +265,11 @@ split_window
     ; unsplit
     ldx window_start_row + 2
     stx window_start_row + 1
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    jsr check_and_add_mode_7_colour_code
+}
+}
     rts
 .split_window
 	cpx #.max_lines
@@ -278,6 +283,11 @@ split_window
 	ldx #1
 	jsr erase_window
 }	
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    jsr check_and_add_mode_7_colour_code
+}
+}
 	lda current_window
 	beq .ensure_cursor_in_window
 	; Window 1 was already selected => Reset cursor if outside window
@@ -738,6 +748,14 @@ draw_status_line
 } else {
     lda #$80
     sta s_reverse
+!ifdef MODE_7_STATUS {
+    lda screen_mode
+    cmp #7
+    bne +
+    lda #mode_7_status_colour
+    jsr s_printchar
++
+}
 }
     ;
     ; Room name

@@ -242,6 +242,9 @@ vdu_variable_text_window_top = $0b
 del = 127
 buffer_keyboard = 0
 
+; SFTODO: It would be good to make this alterable using a function key.
+mode_7_status_colour = 134
+
 ; Acorn memory allocations
 
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
@@ -297,7 +300,8 @@ vmap_max_entries = $513 ; !byte 0
 !ifdef ACORN_HW_SCROLL {
     use_hw_scroll = $514 ; !byte 0
 }
-jmp_buf = $515 ; "up to" 257 bytes - in reality 64 bytes is probably enough
+screen_mode = $515 ; !byte 0
+jmp_buf = $516 ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR

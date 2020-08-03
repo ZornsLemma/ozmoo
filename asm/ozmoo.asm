@@ -610,9 +610,10 @@ deletable_init_start
 
     ; SFTODO: We could allow the user to toggle use_hw_scroll by pressing a
     ; function key or something like that.
-!ifdef ACORN_HW_SCROLL {
     lda #osbyte_read_screen_mode
     jsr osbyte
+    sty screen_mode
+!ifdef ACORN_HW_SCROLL {
     ldx #1
     cpy #7
     bne +
