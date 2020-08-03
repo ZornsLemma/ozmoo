@@ -1340,6 +1340,11 @@ do_save
     ldx #0
 .input_loop
     jsr osrdch
+    ; We don't call check_user_interface_controls here. We could do, but:
+    ; - It corrupts X. This would be easy to work around.
+    ; - In mode 7, the fact we have a text window in effect will interfere with
+    ;   changing the colour of the status bar. This could be worked around, but
+    ;   it is a big faff and quite a lot of code for very little real benefit.
     cmp #cr
     beq .input_loop_done
     cmp #32

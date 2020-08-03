@@ -604,22 +604,9 @@ deletable_init_start
     ; is a software creation.) We position it appropriately and turn it on only
     ; when we're expecting user input. (As far as I can see the Z-machine has
     ; no way for the running program to turn the cursor on and off.)
-    jsr turn_off_cursor
+    jsr init_cursor_control
 
     jsr init_readtime
-
-    ; SFTODO: We could allow the user to toggle use_hw_scroll by pressing a
-    ; function key or something like that.
-    lda #osbyte_read_screen_mode
-    jsr osbyte
-    sty screen_mode
-!ifdef ACORN_HW_SCROLL {
-    ldx #1
-    cpy #7
-    bne +
-    dex
-+   stx use_hw_scroll
-}
 
     ; Now Ozmoo's screen output code is (about to be) initialised via
     ; init_screen_colours, errors can be reported using s_printchar.
@@ -653,6 +640,27 @@ deletable_init
 .store_boot_device
 	sty boot_device ; Boot device# stored
 } else {
+    ; Query screen mode and set things up accordingly. We do this here so
+    ; window_start_row has been initialised and it's safe to call update_colours.
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    sty screen_mode
+!ifdef ACORN_HW_SCROLL {
+    ldx #1
+    cpy #7
+    bne +
+    dex
++   stx use_hw_scroll
+}
+    lda #default_mode_6_fg_colour
+    cpy #7
+    bne +
+    lda #default_mode_7_status_colour
++   sta fg_colour
+    lda #default_mode_6_bg_colour
+    sta bg_colour
+    jsr update_colours
+
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language

@@ -970,7 +970,7 @@ getchar_and_maybe_toggle_darkmode
     bcc +
     ldx #0
 +   txa
-    rts
+    jmp check_user_interface_controls
 }
 
 read_char

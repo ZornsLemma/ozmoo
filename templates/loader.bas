@@ -5,9 +5,14 @@ PRINT "Which screen mode do you want to play"'"in, 6 or 7? ";
 REPEAT
 M$=GET$
 UNTIL M$="6" OR M$="7"
-MODE VAL(M$)
+M%=VAL(M$)
+MODE M%
 VDU 23,1,0;0;0;0;
 VDU 19,0,4,0,0,0
+REM Z3 games may put a teletext control character at top left before
+REM loading the game data, so put one there ourselves to avoid a
+REM visual glitch.
+IF M%=7 THEN PRINT CHR$(134);
 PRINT "Loading, please wait...";
 *DIR S
 */$.OZMOO

@@ -2100,6 +2100,7 @@ z_ins_sound_effect
     ; up those frequencies in https://en.wikipedia.org/wiki/Piano_key_frequencies
     ; and correlating that with the table in the BBC User Guide gives the values
     ; used here. This is far too much effort for such a tiny sound. :-)
+sound_high_pitched_beep
 .sound_high_pitched_beep
     lda #144 ; B4
 .sound_low_pitched_beep

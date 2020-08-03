@@ -108,25 +108,30 @@ s_delete_cursor
 ; Return with Z clear iff the cursor is on a mode 7 status line
 .check_if_mode_7_status
     ldy zp_screenrow
-    bne +
+    bne .check_if_mode_7_status2_rts
 .check_if_mode_7_status2
     ldy window_start_row + 1 ; how many top lines to protect
     dey
-    bne +
+    bne .check_if_mode_7_status2_rts
     ldy screen_mode
     cpy #7
-+   rts
+.check_if_mode_7_status2_rts
+    rts
 
 check_and_add_mode_7_colour_code
     jsr .check_if_mode_7_status2
-    bne +
-    lda #vdu_home
-    jsr oswrch
-    lda #mode_7_status_colour
-    jsr oswrch
-    sta s_cursors_inconsistent
-+   rts
+    bne .check_if_mode_7_status2_rts
+    ; fall through to .output_mode_7_colour_code
 }
+
+.output_mode_7_colour_code
+    lda #vdu_home
+    sta s_cursors_inconsistent
+    jsr oswrch
+    clc
+    lda fg_colour
+    adc #mode_7_text_colour_base
+    jmp oswrch
 }
 
 s_cursor_to_screenrowcolumn
@@ -794,8 +799,20 @@ s_pre_scroll
 
 !ifdef ACORN_HW_SCROLL {
 .redraw_top_line
+    jsr turn_off_cursor
     lda #vdu_home
     jsr oswrch
+    ldy #40 ; SFTODO: screen width assumption
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    lda screen_mode
+    cmp #7
+    bne +
+    jsr .output_mode_7_colour_code
+    ldy #39
++
+}
+}
     ldx #0
 -   lda .top_line_buffer_reverse,x
     beq +
@@ -805,10 +822,10 @@ s_pre_scroll
 ++  lda .top_line_buffer,x
     jsr oswrch
     inx
-    cpx #40 ; SFTODO: screen width assumption
+    dey
     bne -
     stx s_cursors_inconsistent
-    rts
+    jmp turn_on_cursor
 }
 }
 
@@ -918,6 +935,76 @@ toggle_darkmode
 	bne .compare
 	jsr update_cursor
 	rts 
+} else {
+update_colours
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    jsr turn_off_cursor
+    jsr check_and_add_mode_7_colour_code
+    jsr turn_on_cursor
+}
+!ifdef Z3 {
+    lda screen_mode
+    cmp #7
+    bne +
+    jsr turn_off_cursor
+    jsr .output_mode_7_colour_code
+    jsr turn_on_cursor
++
+}
+}
+    ldx #0
+    ldy bg_colour
+    jsr .redefine_colour
+    ldx #7
+    ldy fg_colour
+    ; fall through to .redefine_colour
+.redefine_colour
+    lda #vdu_redefine_colour
+    jsr oswrch
+    txa
+    jsr oswrch
+    tya
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    jsr oswrch
+    jmp oswrch
+
+check_user_interface_controls
+!ifdef ACORN_HW_SCROLL {
+    cmp #'S' - ctrl_key_adjust
+    bne +
+    lda use_hw_scroll
+    eor #1
+    sta use_hw_scroll
+    ; We make a sound here because this has no immediately visible effect, so
+    ; it's nice to offer the user some sort of feedback.
+    jsr sound_high_pitched_beep
+    lda #0
+    rts
+}
++   ldx screen_mode
+    ldy #0
+    cpx #7
+    bne +
+    ldy #1
++   ldx #0
+    cmp #'F' - ctrl_key_adjust
+    beq +
+    inx
+    cmp #'B' - ctrl_key_adjust
+    bne .done
++   inc fg_colour,x
+    lda fg_colour,x
+    cmp #8
+    bne +
+    tya
++   sta fg_colour,x
+    jsr update_colours
+    lda #0
+.done
+    rts
 }
 
 

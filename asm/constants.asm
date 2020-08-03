@@ -217,6 +217,7 @@ oscli = $fff7
 vdu_down = 10
 vdu_cls = 12
 vdu_set_text_colour = 17
+vdu_redefine_colour = 19
 vdu_reset_text_window = 26
 vdu_define_text_window = 28
 vdu_home = 30
@@ -241,10 +242,13 @@ osbyte_read_language = $fc
 vdu_variable_text_window_top = $0b
 cr = 13
 del = 127
+mode_7_text_colour_base = 128
+ctrl_key_adjust = 64
 buffer_keyboard = 0
 
-; SFTODO: It would be good to make this alterable using a function key.
-mode_7_status_colour = 134
+default_mode_7_status_colour = 6
+default_mode_6_fg_colour = 7
+default_mode_6_bg_colour = 4
 
 ; Acorn memory allocations
 
@@ -302,7 +306,11 @@ vmap_max_entries = $513 ; !byte 0
     use_hw_scroll = $514 ; !byte 0
 }
 screen_mode = $515 ; !byte 0
-jmp_buf = $516 ; "up to" 257 bytes - in reality 64 bytes is probably enough
+; fg_colour and bg_colour must be adjacent and in this order
+fg_colour = $516 ; !byte 0
+bg_colour = $517 ; !byte 0
+cursor_status = $518; !byte 0
+jmp_buf = $519 ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR

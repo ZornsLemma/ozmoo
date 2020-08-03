@@ -752,7 +752,9 @@ draw_status_line
     lda screen_mode
     cmp #7
     bne +
-    lda #mode_7_status_colour
+    clc
+    lda fg_colour
+    adc #mode_7_text_colour_base
     jsr s_printchar
 +
 }
@@ -906,20 +908,25 @@ draw_status_line
 }
 
 !ifdef ACORN {
+init_cursor_control
+    lda #$ff
+    sta cursor_status
+    bne .cursor_control ; Always branch
+
 turn_off_cursor
-    ldx #0
-    beq .cursor_control
+    dec cursor_status
+    jmp .cursor_control
 turn_on_cursor
-    ldx #1
+    inc cursor_status
 .cursor_control
 ; Turn the OS cursor on or off. When it's turned on it's forced into the
 ; location corresponding to zp_screen{column,row}, which is where it "should"
-; have been all along.
-; Parameters: X=0 for off, 1 for on
-    txa
-    pha
-    beq +
+; have been all along. The cursor is turned on iff cursor_status is non-negative.
+    ldx #0
+    lda cursor_status
+    bmi +
     jsr s_cursor_to_screenrowcolumn
+    ldx #1
 +   lda #23
     jsr oswrch
     lda #1
@@ -931,9 +938,9 @@ turn_on_cursor
 -   jsr oswrch
     dex
     bne -
-    pla
-    bne +
 !ifndef ACORN_CURSOR_PASS_THROUGH {
+    lda cursor_status
+    bpl +
     ; We allow the use of the standard Acorn cursor editing. Judging from the
     ; OS 1.20 disassembly, this only gets disabled when a carriage return is
     ; output via OSWRCH, which we don't normally do. We therefore do it here
