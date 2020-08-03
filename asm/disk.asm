@@ -1498,16 +1498,28 @@ do_save
     lda #vdu_reset_text_window
     jmp oswrch
 
-; SFTODO: If I support non-40x25 modes eventually, see section 8.4 of the
-; Z-machine spec - the restore needs to update $20, $21 and maybe $22 and $24
-; in the header.
 restore_game
     lda #>.restore_prompt
     sta .filename_prompt_loads + 1
     lda #<.restore_prompt
     sta .filename_prompt_loads + 3
     lda #osfile_load
-    bne .save_restore_game ; Always branch
+    jsr .save_restore_game
+    ; As described in section 8.4 of the Z-machine standards document, we need
+    ; to update the header in case the screen dimensions have changed compared
+    ; to when this game was saved.
+    lda screen_height
+	sta story_start + header_screen_height_lines
+!ifdef Z5PLUS {
+	sta story_start + header_screen_height_units + 1
+}
+    lda screen_width
+	sta story_start + header_screen_width_chars
+!ifdef Z5PLUS {
+	sta story_start + header_screen_width_units + 1
+}
+    rts
+    
 save_game
     lda #>.save_prompt
     sta .filename_prompt_loads + 1

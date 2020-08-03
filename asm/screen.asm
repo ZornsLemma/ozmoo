@@ -82,7 +82,11 @@ erase_window
 -   jsr s_erase_line
     inc zp_screenrow
     lda zp_screenrow
+!ifndef ACORN {
     cmp #25 ; SFTODO: Implicit screen height assumption?
+} else {
+    cmp screen_height
+}
     bne -
 	jsr clear_num_rows
     ; set cursor to top left (or, if Z4, bottom left)
@@ -95,7 +99,11 @@ erase_window
 !ifdef Z5PLUS {
     lda window_start_row + 1
 } else {
+!ifndef ACORN {
     lda #24 ; SFTODO: Implicit screen height assumption?
+} else {
+    lda screen_height_minus_1
+}
 }
 	stx cursor_row + 1
     pha
@@ -178,7 +186,11 @@ z_ins_print_table
 	ldy .pt_width
 -	jsr read_next_byte
 	ldx .current_col
+!ifndef ACORN {
 	cpx #40 ; SFTODO: Implicit screen width assumption?
+} else {
+    cpx screen_width
+}
 	bcs +
 	jsr streams_print_output
 +	inc .current_col
@@ -248,9 +260,17 @@ start_buffering
 ; SFTODO: Some constants here which probably need tweaking for varying Acorn
 ; screen dimensions
 !ifdef Z3 {
+!ifndef ACORN {
 .max_lines = 24
 } else {
+.max_lines = screen_height_minus_1
+}
+} else {
+!ifndef ACORN {
 .max_lines = 25
+} else {
+.max_lines = screen_height
+}
 }
 
 z_ins_split_window
@@ -272,9 +292,15 @@ split_window
 }
     rts
 .split_window
+!ifndef ACORN {
 	cpx #.max_lines
 	bcc +
 	ldx #.max_lines
+} else {
+	cpx .max_lines
+	bcc +
+	ldx .max_lines
+}
 +	txa
 	clc
 	adc window_start_row + 2
@@ -545,7 +571,11 @@ printchar_buffered
     jmp .printchar_done
 .check_break_char
     ldy buffer_index
+!ifndef ACORN {
 	cpy #40 ; SFTODO: Implicit screen width assumption?
+} else {
+    cpy screen_width
+}
 	bcs .add_char ; Don't register break chars on last position of buffer.
     cmp #$20 ; Space
     beq .break_char
@@ -561,13 +591,21 @@ printchar_buffered
     sta print_buffer2,y
 	iny
     sty buffer_index
+!ifndef ACORN {
     cpy #41 ; SFTODO: Implicit screen width assumption?
+} else {
+    cpy screen_width_plus_1
+}
     beq +
     jmp .printchar_done
 +
     ; print the line until last space
 	; First calculate max# of characters on line
+!ifndef ACORN {
 	ldx #40 ; SFTODO: Implicit screen width assumption?
+} else {
+    ldx screen_width
+}
 	lda window_start_row
 	sec
 	sbc window_start_row + 1
@@ -648,7 +686,11 @@ printchar_buffered
     ; more on the same line
     jsr increase_num_rows
 	lda last_break_char_buffer_pos
+!ifndef ACORN {
 	cmp #40 ; SFTODO: Implicit screen width assumption?
+} else {
+    cmp screen_width
+}
 	bcs +
     lda #$0d
     jsr s_printchar
@@ -770,7 +812,11 @@ draw_status_line
     ; fill the rest of the line with spaces
     ;
 -   lda zp_screencolumn
+!ifndef ACORN {
 	cmp #40 ; SFTODO: Implicit screen width assumption?
+} else {
+    cmp screen_width
+}
 	bcs +
     lda #$20
     jsr s_printchar
@@ -791,7 +837,14 @@ draw_status_line
 	lda z_operand_value_high_arr + 1
 	pha
     ldx #0
+!ifndef ACORN {
     ldy #25 ; SFTODO: Implicit screen width assumption?
+} else {
+    sec
+    lda screen_width
+    sbc #(40-25)
+    tay
+}
     jsr set_cursor
     ldy #0
 -   lda .score_str,y
@@ -823,7 +876,14 @@ draw_status_line
 .timegame
     ; time game
     ldx #0
+!ifndef ACORN {
     ldy #25 ; SFTODO: Implicit screen width assumption?
+} else {
+    sec
+    lda screen_width
+    sbc #(40-25)
+    tay
+}
     jsr set_cursor
 	lda #>.time_str
 	ldx #<.time_str

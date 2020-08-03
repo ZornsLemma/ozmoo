@@ -1,10 +1,10 @@
 IF PAGE<>&800 THEN PRINT "Sorry, second processor only for now!":END
 MODE 7
-PRINT "Which screen mode do you want to play"'"in, 6 or 7? ";
+PRINT "Which screen mode do you want to play"'"in, 0, 3, 4, 6 or 7? ";
 *FX21
 REPEAT
 M$=GET$
-UNTIL M$="6" OR M$="7"
+UNTIL INSTR("03467",M$)<>0
 M%=VAL(M$)
 MODE M%
 VDU 23,1,0;0;0;0;

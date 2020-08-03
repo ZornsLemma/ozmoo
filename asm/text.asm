@@ -21,6 +21,9 @@
 ; SFTODO: New times with latest code:
 ; SFTODO: b-em, Master Turbo, mode 6, hw scroll, drive noises on, .ssd: $003e2f
 ; SFTODO: b-em, Master Turbo, mode 6, sw scroll, drive noises on, .ssd: $005411
+; SFTODO: With non-40x25 mode support:
+; SFTODO: mode 6, hw scroll: $0041a7
+; SFTODO: mode 0, hw scroll: $00484f
 !ifdef BENCHMARK {
 benchmark_commands
 !ifndef ACORN {

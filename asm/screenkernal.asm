@@ -40,16 +40,20 @@ s_init
 } else {
     sta s_cursors_inconsistent
 
-    ; SFTODO: We should query these from the OS, but since there's lots of hardcoded
-    ; 40x25 assumptions at the moment we just go with that for consistency.
-    ldx #40
-    stx screen_width
-    dex
-    stx screen_width_minus_1
-    ldx #25
-    stx screen_height
-    dex
+    ; story_start + header_screen_{width,height}* are only valid for certain
+    ; Z-machine versions. We don't want to be querying the OS for these values all
+    ; the time, so we keep them here.
+    lda #osbyte_read_vdu_variable
+    ldx #vdu_variable_text_window_bottom
+    jsr osbyte
     stx screen_height_minus_1
+    inx
+    stx screen_height
+    sty screen_width_minus_1
+    iny
+    sty screen_width
+    iny
+    sty screen_width_plus_1
 }
     lda #0
     sta zp_screencolumn
@@ -74,9 +78,15 @@ s_plot
     ldy zp_screencolumn
     rts
 .set_cursor_pos
+!ifndef ACORN {
 +	cpx #25 ; SFTODO: Implicit screen height assumption?
 	bcc +
 	ldx #24 ; SFTODO: Implicit screen height assumption?
+} else {
++	cpx screen_height
+	bcc +
+	ldx screen_height_minus_1
+}
 +	stx zp_screenrow
 	sty zp_screencolumn
 !ifndef ACORN {
@@ -306,7 +316,7 @@ s_printchar
 	cmp window_start_row + 1,y
 	bcc ++
 	dec zp_screenrow
-	lda #39 ; SFTODO: Implicit screen width assumption?
+	lda screen_width_minus_1
 	sta zp_screencolumn
 ++
 }
@@ -366,7 +376,11 @@ s_printchar
 +
 }
 }
+!ifndef ACORN {
 	cpx #40 ; SFTODO: Implicit screen width assumption
+} else {
+    cpx screen_width
+}
 .printchar_end_bcs
 	bcs .printchar_end
 !ifdef ACORN_HW_SCROLL {
@@ -446,14 +460,14 @@ s_printchar
     sty zp_screencolumn
 	ldx current_window
 	bne .printchar_nowrap ; For upper window and statusline (in z3), don't advance to next line.
-    cpy #40 ; SFTODO: Implicit screen width assumption?
+    cpy screen_width
     bcc .printchar_nowrap
 	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
     lda #0
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
-	cmp #25 ; SFTODO: Implicit screen height assumption?
+	cmp screen_height
 	bcc .printchar_nowrap
     ; SFTODO: I should probably always avoid HW scrolling if we're in mode 7.
 !ifdef ACORN_HW_SCROLL {
@@ -597,7 +611,11 @@ s_erase_window
 
 .s_scroll
     lda zp_screenrow
+!ifndef ACORN {
     cmp #25 ; SFTODO: Implicit screen height assumption?
+} else {
+    cmp screen_height
+}
     bpl +
     rts
 +
@@ -707,7 +725,7 @@ s_erase_line_from_cursor
     lda #0
     sta .top_line_buffer_reverse,x
     inx
-    cpx #40 ; SFTODO: Screen width assumption
+    cpx screen_width
     bne -
 +
 }
@@ -802,7 +820,7 @@ s_pre_scroll
     jsr turn_off_cursor
     lda #vdu_home
     jsr oswrch
-    ldy #40 ; SFTODO: screen width assumption
+    ldy screen_width
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
     lda screen_mode
@@ -1057,9 +1075,9 @@ z_ins_set_colour
 ; SFTODODATA
 !ifdef ACORN_HW_SCROLL {
 .top_line_buffer
-    !fill 40 ; SFTODO: line length assumption
+    !fill max_screen_width
 .top_line_buffer_reverse
-    !fill 40 ; SFTODO: line length assumption
+    !fill max_screen_width
 }
 
 !ifdef TESTSCREEN {

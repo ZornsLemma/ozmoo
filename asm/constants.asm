@@ -65,7 +65,9 @@ vmap_used_entries	  = $4f
 
 z_low_global_vars_ptr	  = $50 ; 2 bytes
 z_high_global_vars_ptr	  = $52 ; 2 bytes
+!ifndef ACORN {
 z_trace_index		  = $54
+}
 z_exe_mode	  		  = $55
 
 stack_tmp			  = $56; ! 5 bytes
@@ -122,9 +124,15 @@ zp_temp               = $fb ; 5 bytes
 ; two may be getting a bit big for the stack, though in reality they're probably
 ; OK. I could probably move them into some wasted padding space below the
 ; Z-machine stack or something, though that might be annoyingly brittle as the
-; code size changes.
-print_buffer		  = $100 ; 41 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+; code size changes. SFTODO: I will go with these on stack for 80 columns for
+; now but maybe revisit this later.
+!ifndef ACORN {
+print_buffer		  = $100 ; 41 bytes
 print_buffer2             = $129 ; 41 bytes
+} else {
+print_buffer		  = $100 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+}
 
 !ifndef ACORN {
 memory_buffer         =	$02a7
@@ -239,26 +247,29 @@ osbyte_enter_language = $8e
 osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
+vdu_variable_text_window_bottom = $09
 vdu_variable_text_window_top = $0b
 cr = 13
 del = 127
 mode_7_text_colour_base = 128
 ctrl_key_adjust = 64
 buffer_keyboard = 0
+max_screen_width = 80
 
 default_mode_7_status_colour = 6
 default_mode_6_fg_colour = 7
 default_mode_6_bg_colour = 4
 
 ; Acorn memory allocations
+; SFTODO: It might be worth reordering/reallocating these so the order is a
+; bit more logical.
 
-; SF: cursor_{row,column} are used to hold the cursor positions for the two
-; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
-; the active cursor position is zp_screen{row,column} and that's all that
-; matters most of the time.
-cursor_row			  = $7a
-cursor_column		  = $7c
-zp_temp               = $75
+zp_temp               = $75 ; 5 bytes
+cursor_row            = $7a ; 2 bytes
+cursor_column         = $7c ; 2 bytes
+screen_width          = $54 ; 1 byte
+screen_height         = $89 ; 1 byte
+screen_height_minus_1 = $8a ; 1 byte
 
 vmem_temp			  = $00 ; 2 bytes
 alphabet_table		  = $7e ; 2 bytes
@@ -274,8 +285,6 @@ s_ignore_next_linebreak = $84 ; 3 bytes
 s_reverse 			  = $87 ; !byte 0
 s_os_reverse          = $88 ; !byte 0
 
-s_stored_x			  = $89 ; !byte 0
-s_stored_y			  = $8a ; !byte 0
 s_cursors_inconsistent = $34 ; !byte 0
 
 max_chars_on_line	  = $8b; !byte 0
@@ -288,29 +297,29 @@ zp_screenrow          = $8f ; current cursor row
 stack = $100
 
 scratch_page = $400
-; story_start + header_screen_{width,height}* are only valid for certain
-; Z-machine versions. We don't want to be querying the OS for these values all
-; the time, so we keep them here.
-; SFTODO: IF we don't get value from both "full" and -1 versions, get rid of the
-; low-value ones.
-screen_width = $500
-screen_height = $501
-screen_width_minus_1 = $502
-screen_height_minus_1 = $503
-memory_buffer = $504 ; 7 bytes (larger on C64, but this is all we use)
-initial_clock = $50b ; 5 bytes
-game_disc_crc = $510 ; 2 bytes
-num_rows = $512 ; !byte 0
-vmap_max_entries = $513 ; !byte 0
+; SF: cursor_{row,column} are used to hold the cursor positions for the two
+; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
+; the active cursor position is zp_screen{row,column} and that's all that
+; matters most of the time.
+z_trace_index = $500 ; 1 byte
+s_stored_x = $501 ; !byte 0
+s_stored_y = $502 ; !byte 0
+screen_width_minus_1 = $503 ; 1 byte
+screen_width_plus_1 = $504 ; 1 byte
+memory_buffer = $505 ; 7 bytes (larger on C64, but this is all we use)
+initial_clock = $50c ; 5 bytes
+game_disc_crc = $511 ; 2 bytes
+num_rows = $513 ; !byte 0
+vmap_max_entries = $514 ; !byte 0
 !ifdef ACORN_HW_SCROLL {
-    use_hw_scroll = $514 ; !byte 0
+    use_hw_scroll = $515 ; !byte 0
 }
-screen_mode = $515 ; !byte 0
+screen_mode = $516 ; !byte 0
 ; fg_colour and bg_colour must be adjacent and in this order
-fg_colour = $516 ; !byte 0
-bg_colour = $517 ; !byte 0
-cursor_status = $518; !byte 0
-jmp_buf = $519 ; "up to" 257 bytes - in reality 64 bytes is probably enough
+fg_colour = $517 ; !byte 0
+bg_colour = $518 ; !byte 0
+cursor_status = $519; !byte 0
+jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR
