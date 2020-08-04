@@ -493,6 +493,9 @@ show_more_prompt
     ; feels more Acorn-y to not display a "more" prompt character anyway, but
     ; maybe users will disagree and by noting possibilities to implement this I
     ; can try to convince myself I'm not adopting a sour grapes attitude. :-)
+    ; SF: ENHANCEMENT: I'm not sure it's a good idea, but I *could* turn the
+    ; cursor on and fiddle with the CRTC registers to give it a flashing block
+    ; appearance at the bottom right position as a kind of "more" prompt.
 -   lda #osbyte_reflect_keyboard_status
     jsr osbyte
     lda #osbyte_read_key
