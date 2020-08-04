@@ -141,18 +141,29 @@ read_byte_at_z_address
 }
 
 
+; SFTODO: I suspect - I haven't yet analysed the code which can access dynamic memory, especially writes - we may need to keep the RAM bank which dynamic memory (might, depending on game size) overflow into paged in by default.
 vmem_blockmask = 255 - (>(vmem_blocksize - 1))
 vmem_block_pagecount = vmem_blocksize / 256
 ; vmap_max_length  = (vmem_end-vmem_start) / vmem_blocksize
-; SFTODO: DOES vmap_max_size NEED TWEAKING FOR ACORN?
-vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use. SFTODO: MAY WANT TO TWEAK THIS COMMENT AND/OR THIS VALUE
+!ifndef ACORN {
+vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+} else {
+!ifndef ACORN_SWR {
+; SFTODO: DOES vmap_max_size NEED TWEAKING FOR ACORN NON-SWR? NO POINT MAKING IT BIGGER THAN THE 2P CAN ACCOMMODATE
+vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+} else {
+vmap_max_size = 120 ; SFTODO SHOULD BE 255 BUT I WILL KEEP IT 7-BIT FOR NOW TO AVOID CODE ASSUMING 7-BIT WHICH I HAVE MISSED BREAKING THINGS AT FIRST, THEN WHEN THAT WORKS CAN RAMP THIS UP ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+}
+}
 ; vmap_max_entries	!byte 0 ; Moved to ZP
 ; vmap_used_entries	!byte 0 ; Moved to ZP
+; SFTODO: Do we need vmap_blocks_preloaded on Acorn?
 vmap_blocks_preloaded !byte 0
 vmap_z_h = datasette_buffer_start
 vmap_z_l = vmap_z_h + vmap_max_size
 
 ;SFTODODATA
+!error "SFTODO vmap_clock_index and vmap_index PROB REQUIRE REVIEW"
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
 vmap_first_ram_page		!byte 0
@@ -165,6 +176,11 @@ vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
+; SFTODO: I suspect with large amounts of RAM backing the virtual memory, the
+; tick resolution may not really be high enough. We'll probably mostly get
+; away with it, but maybe come back to this later. It might be OK actually given
+; the way vmap_clock_index moves round rather than us always starting at 0;
+; anyway, I can see how this works in practice later.
 !ifdef Z8 {
 	vmem_tick_increment = 8
 	vmem_highbyte_mask = $07
@@ -178,6 +194,8 @@ vmem_oldest_index	!byte 0
 }
 }
 
+; SFTODO: Might be a useful statistic for benchmarking with different builds/
+; amounts of SWR (not just benchmarking, checking more RAM is reducing swaps)
 !ifdef COUNT_SWAPS {
 vmem_swap_count !byte 0,0
 }
@@ -225,6 +243,7 @@ print_optimized_vm_map
     jmp kernal_reset      ; reset
 }
 
+; SFTODO: This might need tweaking to print SWR stuff correctly
 !ifdef TRACE_VM {
 print_vm_map
 !zone {
@@ -313,6 +332,7 @@ load_blocks_from_index
 	jsr print_byte_as_hex
 }
 
+!error "SFTODO THIS WILL NEED TWEAKING!"
 	lda vmap_index
 	tax
 	asl
@@ -343,14 +363,8 @@ load_blocks_from_index
 	lda vmap_z_h,x ; start block
 	and #vmem_highbyte_mask
 	sta readblocks_currentblock + 1
+    !error "SFTODO CONTINUATION OF ABOVE, BUT TO BE CLEAR - WE NEED TO SET UP CORRECTLY FOR READBLOCKS CALL"
 	jsr readblocks
-!ifdef ACORN_SWR {
-    ; SFTODO: readblocks will have paged out our RAM bank and paged in
-    ; hack_ram_bank - obviously that's no good here, so page it back in.
-    lda #ram_bank
-    sta $f4
-    sta $fe30
-}
 !ifdef TRACE_VM {
     jsr print_following_string
 !ifndef ACORN {
@@ -428,6 +442,7 @@ read_byte_at_z_address
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
 !ifdef ACORN_SWR {
+!error "SFTODO"
     pha
     lda #ram_bank
     sta $f4
@@ -458,6 +473,8 @@ read_byte_at_z_address
 	cpx nonstored_blocks
 	bcs .non_dynmem
 	; Dynmem access
+    ; SFTODO: This will need tweaking to allow for a hole for a non-shadow
+    ; screen, but let's not worry about that right now.
 	sta zp_pc_h
 	txa
     sta zp_pc_l
@@ -508,8 +525,17 @@ read_byte_at_z_address
     beq +
 .check_next_block
 	dex
+!ifndef ACORN_SWR {
 	bpl -
 	bmi .no_such_block ; Always branch
+} else {
+    ; SFTODO: So note that (as I expected) we can only have 255 entries in the
+    ; vmem map, numbered 0-254. Probably not worth playing games trying to have
+    ; vmap_used_entries == 0 meaning 256 used.
+    cpx #255
+	bne -
+	beq .no_such_block ; Always branch
+}
 	; is the highbyte correct?
 +   lda vmap_z_h,x
 	and #vmem_highbyte_mask
@@ -550,6 +576,9 @@ read_byte_at_z_address
 	bne .block_chosen ; Always branch
 }
 
+; SFTODO: I am not sure the bcs case can ever occur on Acorn, since we always
+; pre-populate vmap. If this is true we can probably ifdef this out for both SWR
+; and 2P builds. (But it's only one instruction, so hardly worth it?)
 +	ldx vmap_clock_index
 -	cpx vmap_used_entries
 	bcs .block_chosen
@@ -609,6 +638,7 @@ read_byte_at_z_address
 ++
 }
 	
+    ; SFTODO: The bcc here may always occur on Acorn?
 	cpx vmap_used_entries
 	bcc +
 	inc vmap_used_entries
@@ -619,6 +649,10 @@ read_byte_at_z_address
 	asl
 }
 	; Carry is already clear
+    ; SFTODO: The next couple of lines aren't "right" for SWR case, but I think
+    ; they are only used by PRINT_SWAPS or the non-Acorn cache case just below.
+    ; I think we could therefore !if out these couple of lines on all Acorn
+    ; builds except for debug ones.
 	adc vmap_first_ram_page
 	sta vmap_c64_offset
 	; Pick next index to use
@@ -639,6 +673,7 @@ read_byte_at_z_address
 }
 
 	; We have now decided on a map position where we will store the requested block. Position is held in x.
+    ; SFTODO: Will need tweaking for SWR
 !ifdef DEBUG {
 !ifdef PRINT_SWAPS {
 	lda streams_output_selected + 2
@@ -718,7 +753,12 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 ++	sta vmap_z_h,x
 	dex
+!ifndef ACORN_SWR {
 	bpl -
+} else {
+    cpx #255
+    bne -
+}
 	
 	pla
 	tax
@@ -726,6 +766,7 @@ read_byte_at_z_address
 +	sta vmem_tick
 
 	; Store address of 512 byte block to load, then load it
+    !error "SFTODO WILL NEED TWEAKS HERE AND/OR IN load_blocks_from_index"
 	lda zp_pc_h
     sta vmap_z_h,x
     lda zp_pc_l
@@ -745,6 +786,7 @@ read_byte_at_z_address
 	sta vmap_z_h,x
 	txa
 	
+    !error "SFTODO: HERE WE ARE TURNING X INTO MEM ADDRESS AND ASL WILL OVERFLOW ETC"
 	asl
 !ifndef SMALLBLOCK {
 	asl

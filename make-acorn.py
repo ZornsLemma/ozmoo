@@ -300,8 +300,9 @@ if use_vmem:
     if vmap_length & 1 != 0:
         vmap_length -= 1
     assert vmap_length >= vmap_max_size * 2
+    divisor = 4 * vmap_max_size // 102
     for i in range(vmap_max_size):
-        high = (256 - 8 * (i // 4) - 32) & ~vmem_highbyte_mask
+        high = (256 - 8 * (i // divisor) - 32) & ~vmem_highbyte_mask
         low = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
         # If this assertion fails, we need to be setting the low bits of high with
         # the high bits of low. :-)

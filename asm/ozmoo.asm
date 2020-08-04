@@ -703,6 +703,11 @@ deletable_init
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
+    ; SFTODO: It's pretty unlikely to ever be a problem, but note this means
+    ; there must be at least two pages of memory at story_start. (If I support
+    ; dynamic memory in sideways RAM, as I probably will, this *might* not be
+    ; the case, either through sheer code bloat or perhaps just squeezing in
+    ; a non-mode-7 screen without shadow RAM by using SWR for dynamic memory.)
     sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta .dir_ptr + 1
@@ -817,6 +822,7 @@ deletable_init
     lda .length_blocks
 +   sta .blocks_to_read
 .preload_loop
+!error "SFTODO: This needs to be SWR aware and set bank and absolute address for readblocks"
     cmp readblocks_numblocks
     bcs +
     sta readblocks_numblocks

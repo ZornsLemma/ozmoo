@@ -401,6 +401,10 @@ uname_len = * - .uname
 .disk_tracks	!byte 0
 } else {
 !ifdef ACORN_SWR {
+    ; Our caller is responsible for paging in a suitable RAM bank and setting
+    ; readblocks_mempos to the physical address within that bank. All we do
+    ; here to accommodate sideways RAM is use a bounce buffer when loading to
+    ; it.
     lda readblocks_mempos + 1
     pha
     bpl +
@@ -529,11 +533,9 @@ uname_len = * - .uname
 !ifdef ACORN_SWR {
     pla
     bpl +
+    ; SFTODO: This copy loop is possibly not optimial, I bashed it out quickly.
     sta readblocks_mempos + 1
     sta .copy_sta_abs_y + 2
-    lda #ram_bank
-    sta $f4
-    sta $fe30
     ldx #1
     ldy #0
 -   
@@ -548,10 +550,6 @@ uname_len = * - .uname
     dex
     bpl -
 +
-    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
-    lda #hack_ram_bank
-    sta $f4
-    sta $fe30
 }
 
     ; Now we know the operation has succeeded and there won't be a retry,

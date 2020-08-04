@@ -77,6 +77,10 @@ zchars				  = $5d ; 3 bytes
 vmap_quick_index_match= $60
 vmap_next_quick_index = $61
 vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
+; SFTODO: It might be worth upping vmap_quick_index_length for SWR, although
+; don't assume this will be beneficial, and as it lives in scarce ZP there is
+; a real cost to increasing it. (As an experiment only, I could steal some ZP
+; belonging to e.g. Econet just as an easy way to test different sizes.)
 vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
 
 z_temp				  = $68 ; 12 bytes
@@ -299,10 +303,12 @@ stack = $100
 !ifndef ACORN_SWR {
 scratch_page = $400
 } else {
-; SFTODO: In this build we're currently wasting $400-$4FF altogether, but this
+; SFTODO: In this build we're currently wasting most of $400-$4FF, but this
 ; minimises rejigging.
 scratch_page = $600
 scratch_double_page = $600
+ram_bank_count = $400
+ram_bank_list = $401 ; SFTODO: size? potentially up to 9 banks???
 }
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
 ; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
@@ -344,7 +350,7 @@ ramtop = $f800
 
 !ifdef ACORN_SWR {
 ; SFTODO: Mega hacky, but this constant will allow me to identify hack locations
-ram_bank = 4
+; SFTODO: DELETE ram_bank = 4
 hack_ram_bank = 15
 }
 

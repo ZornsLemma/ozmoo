@@ -866,6 +866,12 @@ error_print_osasci = 1
 ; ok
 ;   ; do something that might cause an error
 ;   jsr set_default_error_handler ; errors after this point aren't our problem
+; SFTODO: Any problems with SWR here? On a BRK, will the OS page the current
+; language back in or will it leave whatever bank we had paged in (and set at $f4)
+; ourselves paged in? Remember we might be inside readblock doing a retry here
+; and if the retry succeeds the vmem code which called readblock will expect to
+; see the same bank paged in (and readblock to have written to that bank, not
+; some random one).
 setjmp
     stx .error_handler_newlines
     lda .error_print_table_l,y
