@@ -296,7 +296,14 @@ zp_screenrow          = $8f ; current cursor row
 
 stack = $100
 
+!ifndef ACORN_SWR {
 scratch_page = $400
+} else {
+; SFTODO: In this build we're currently wasting $400-$4FF altogether, but this
+; minimises rejigging.
+scratch_page = $600
+scratch_double_page = $600
+}
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
 ; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
 ; the active cursor position is zp_screen{row,column} and that's all that
@@ -328,11 +335,16 @@ jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: On a SWR version we'd need to read HIMEM from the OS, but we can get
 ; away with this while we only support second processor.
 !ifdef ACORN_SWR {
-    ; SFTODO: I need to handle non-shadow mode 7, but this will keep things
-    ; simple while I get started.
-    ramtop = $8000
+; SFTODO: I need to handle non-shadow mode 7, but this will keep things
+; simple while I get started.
+ramtop = $8000
 } else {
-    ramtop = $f800
+ramtop = $f800
+}
+
+!ifdef ACORN_SWR {
+; SFTODO: Mega hacky, but this constant will allow me to identify hack locations
+ram_bank = 4
 }
 
 }

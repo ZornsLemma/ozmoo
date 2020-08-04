@@ -801,7 +801,13 @@ deletable_init
     ; SFTODO: Next few lines do a constant subtraction, which could be done at
     ; assembly time. I'll leave it for now as this is deletable init code and
     ; on SWR build ramtop may not be a constant (shadow vs non-shadow memory).
+!ifndef ACORN_SWR {
     lda #>ramtop
+} else {
+    ; SFTODO: Super hacky, this approach won't work with >1 bank, but let's see
+    ; if I can get anything working first.
+    lda #$c0 
+}
     sec
     sbc #>story_start
     ldx .length_blocks + 1
@@ -937,7 +943,13 @@ deletable_init
 !ifndef ACORN {
 	lda #0
 } else {
+!ifndef ACORN_SWR {
     lda #>ramtop
+} else {
+    ; SFTODO: Super hacky, this approach won't work with >1 bank, but let's see
+    ; if I can get anything working first.
+    lda #$c0 
+}
 }
 	sec
 	sbc vmap_first_ram_page

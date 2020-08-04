@@ -400,6 +400,16 @@ uname_len = * - .uname
 .next_disk_index	!byte 0
 .disk_tracks	!byte 0
 } else {
+!ifdef ACORN_SWR {
+    lda readblocks_mempos + 1
+    pha
+    bpl +
+    lda #>scratch_double_page
+    sta readblocks_mempos + 1
+    sta .copy_lda_abs_y + 2
++
+}
+
     ; We prefix errors with two newlines, so even if we're part way through a
     ; line there will always be at least one blank line above the error message.
     ; We use s_printchar for output here, as this will be mixed in with the
@@ -515,6 +525,30 @@ uname_len = * - .uname
     !byte 0
 .read_ok
     jsr set_default_error_handler
+
+!ifdef ACORN_SWR {
+    pla
+    bpl +
+    sta readblocks_mempos + 1
+    sta .copy_sta_abs_y + 2
+    lda #ram_bank
+    sta $f4
+    sta $fe30
+    ldx #1
+    ldy #0
+-   
+.copy_lda_abs_y
+    lda scratch_double_page,y
+.copy_sta_abs_y
+    sta $ff00,y
+    iny
+    bne -
+    inc .copy_sta_abs_y + 2
+    inc .copy_lda_abs_y + 2
+    dex
+    bpl -
++
+}
 
     ; Now we know the operation has succeeded and there won't be a retry,
     ; increment the disc and memory positions.

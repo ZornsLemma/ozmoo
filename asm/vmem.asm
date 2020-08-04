@@ -39,6 +39,11 @@ read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
+!ifdef ACORN_SWR {
+    lda #ram_bank
+    sta $f4
+    sta $fe30
+}
     sty mempointer ; low byte unchanged
     ; same page as before?
     cpx zp_pc_l

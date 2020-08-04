@@ -55,6 +55,7 @@
 
 !ifdef SLOW {
 read_next_byte_at_z_pc_sub
+    ; SFTODO: This should support SWR too
 	ldy #0
 	lda (z_pc_mempointer),y
 	inc z_pc_mempointer ; Also increases z_pc
@@ -69,6 +70,11 @@ read_next_byte_at_z_pc_sub
 } else {
 
 !macro read_next_byte_at_z_pc {
+!ifdef ACORN_SWR {
+    lda #ram_bank
+    sta $f4
+    sta $fe30
+}
 	ldy #0
 	lda (z_pc_mempointer),y
 	inc z_pc_mempointer ; Also increases z_pc
