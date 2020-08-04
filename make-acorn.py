@@ -74,6 +74,7 @@ parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None,
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
 group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
 group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
 group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
 group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
 # SFTODO: MORE
@@ -130,6 +131,9 @@ if args.trace:
 if args.speed:
     debug = True
     acme_args1 += ["-DPRINTSPEED=1"]
+if args.print_swaps:
+    debug = True
+    acme_args1 += ["-DPRINT_SWAPS=1"]
 if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:
