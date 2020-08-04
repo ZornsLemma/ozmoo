@@ -794,10 +794,14 @@ deletable_init
 +
 
     ; Preload as much of the game as possible into memory.
-.blocks_to_read = zp_temp + 4 ; 1 byte
+.blocks_to_read = .dir_ptr ; 2 bytes
     lda #2
     sta readblocks_numblocks
     lda #0
+    sta .blocks_to_read + 1
+!ifndef ACORN_SWR {
+    sta .blocks_to_read
+}
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
     sta readblocks_mempos ; story_start is page-aligned
@@ -806,31 +810,87 @@ deletable_init
     ; SFTODO: Next few lines do a constant subtraction, which could be done at
     ; assembly time. I'll leave it for now as this is deletable init code and
     ; on SWR build ramtop may not be a constant (shadow vs non-shadow memory).
-!ifndef ACORN_SWR {
-    lda #>ramtop
-} else {
-    ; SFTODO: Super hacky, this approach won't work with >1 bank, but let's see
-    ; if I can get anything working first.
-    lda #$c0 
+    ; We read 64 256-byte blocks per sideways RAM bank, if we have any.
+!ifdef ACORN_SWR {
+    lda #0
+    lda ram_bank_count
+    sta .blocks_to_read
+    ldx #6
+-   asl a
+    rol .blocks_to_read + 1
+    dex
+    bne -
 }
+    ; We read an additional number of 256-byte blocks between story_start and
+    ; ramtop. SFTODO: Constant subtraction done in code for some builds. Not
+    ; really a big deal as this is deletable init.
+    lda #>ramtop
     sec
     sbc #>story_start
-    ldx .length_blocks + 1
-    bne +
-    cmp .length_blocks
+    clc
+    adc .blocks_to_read
+    sta .blocks_to_read
     bcc +
-    lda .length_blocks
-+   sta .blocks_to_read
+    inc .blocks_to_read + 1
++
+    ; But of course we don't want to read more blocks than there are in the game.
+    lda .length_blocks + 1
+    ldy .length_blocks
+    cmp .blocks_to_read + 1
+    bne +
+    cpy .blocks_to_read
++   bcs +
+    sta .blocks_to_read + 1
+    sty .blocks_to_read
++
+
+!ifdef ACORN_SWR {
+    ; Page in the first bank.
+    lda #0
+    sta .current_ram_bank_index
+    lda ram_bank_list
+    sta ramsel_copy
+    sta ramsel
+}
+
+; SFTODO: This will need tweaking to skip a non-shadow screen in SWR build, but let's not
+; worry about that for now.
 .preload_loop
-!error "SFTODO: This needs to be SWR aware and set bank and absolute address for readblocks"
+    ; At the end of the file, we might need to shrink readblocks_numblocks to
+    ; avoid reading past the end.
+    lda .blocks_to_read + 1
+    bne +
+    lda .blocks_to_read
     cmp readblocks_numblocks
     bcs +
     sta readblocks_numblocks
-+   jsr readblocks
++   
+    ; Actually do the read
+    jsr readblocks
+
+!ifdef ACORN_SWR {
+    ; Switch to the next bank if necessary
+    lda readblocks_mempos + 1
+    cmp #$c0 ; SFTODO: magic constant
+    bcc +
+    inc .current_ram_bank_index
+    ldx .current_ram_bank_index
+    lda ram_bank_list,x
+    sta ramsel_copy
+    sta ramsel
+    lda #$80 ; SFTODO: magic constant
+    sta readblocks_mempos + 1
++
+}
+
+    ; Decrement .blocks_to_read and loop round if it's not zero.
     lda .blocks_to_read
     sec
     sbc readblocks_numblocks
     sta .blocks_to_read
+    bcs +
+    dec .blocks_to_read + 1
++   ora .blocks_to_read + 1
     bne .preload_loop
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
@@ -842,6 +902,7 @@ deletable_init
     stx game_disc_crc
     sty game_disc_crc + 1
 }
+; SFTODO: the following ifndef ACORN can probably move up into the ifndef ACORN for the preceding block
 !ifndef ACORN {
 !ifdef VMEM {
 	lda #<config_load_address
