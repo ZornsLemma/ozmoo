@@ -39,11 +39,6 @@ read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
-!ifdef ACORN_SWR {
-    lda #ram_bank
-    sta $f4
-    sta $fe30
-}
     sty mempointer ; low byte unchanged
     ; same page as before?
     cpx zp_pc_l
@@ -349,6 +344,13 @@ load_blocks_from_index
 	and #vmem_highbyte_mask
 	sta readblocks_currentblock + 1
 	jsr readblocks
+!ifdef ACORN_SWR {
+    ; SFTODO: readblocks will have paged out our RAM bank and paged in
+    ; hack_ram_bank - obviously that's no good here, so page it back in.
+    lda #ram_bank
+    sta $f4
+    sta $fe30
+}
 !ifdef TRACE_VM {
     jsr print_following_string
 !ifndef ACORN {
@@ -425,6 +427,13 @@ read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
+!ifdef ACORN_SWR {
+    pha
+    lda #ram_bank
+    sta $f4
+    sta $fe30
+    pla
+}
     sty mempointer ; low byte unchanged
     ; same page as before?
     cpx zp_pc_l
@@ -434,6 +443,14 @@ read_byte_at_z_address
     ; same 256 byte segment, just return
 -	ldy #0
 	lda (mempointer),y
+!ifdef ACORN_SWR {
+    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    pha
+    lda #hack_ram_bank
+    sta $f4
+    sta $fe30
+    pla
+}
 	rts
 .read_new_byte
 	cmp #0
@@ -799,6 +816,14 @@ read_byte_at_z_address
 .return_result
     ldy #0
     lda (mempointer),y
+!ifdef ACORN_SWR {
+    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    pha
+    lda #hack_ram_bank
+    sta $f4
+    sta $fe30
+    pla
+}
     rts
 }
 

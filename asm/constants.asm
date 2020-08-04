@@ -345,6 +345,7 @@ ramtop = $f800
 !ifdef ACORN_SWR {
 ; SFTODO: Mega hacky, but this constant will allow me to identify hack locations
 ram_bank = 4
+hack_ram_bank = 15
 }
 
 }

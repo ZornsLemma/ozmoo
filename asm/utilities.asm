@@ -55,7 +55,9 @@
 
 !ifdef SLOW {
 read_next_byte_at_z_pc_sub
-    ; SFTODO: This should support SWR too
+!ifdef ACORN_SWR {
+    !error "SFTODO"
+}
 	ldy #0
 	lda (z_pc_mempointer),y
 	inc z_pc_mempointer ; Also increases z_pc
@@ -81,6 +83,14 @@ read_next_byte_at_z_pc_sub
 	bne ++
 	jsr inc_z_pc_page
 ++
+!ifdef ACORN_SWR {
+    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    pha
+    lda #hack_ram_bank
+    sta $f4
+    sta $fe30
+    pla
+}
 }	
 
 }

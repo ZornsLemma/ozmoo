@@ -548,6 +548,10 @@ uname_len = * - .uname
     dex
     bpl -
 +
+    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    lda #hack_ram_bank
+    sta $f4
+    sta $fe30
 }
 
     ; Now we know the operation has succeeded and there won't be a retry,
