@@ -327,6 +327,12 @@ jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
 
 ; SFTODO: On a SWR version we'd need to read HIMEM from the OS, but we can get
 ; away with this while we only support second processor.
-ramtop = $f800
+!ifdef ACORN_SWR {
+    ; SFTODO: I need to handle non-shadow mode 7, but this will keep things
+    ; simple while I get started.
+    ramtop = $8000
+} else {
+    ramtop = $f800
+}
 
 }

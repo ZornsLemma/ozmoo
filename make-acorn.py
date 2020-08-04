@@ -93,9 +93,10 @@ game_blocks = bytes_to_blocks(len(game_data))
 
 acme_args1 = [
     "acme",
-    "--setpc", "$600",
+    "--setpc", "$E00", # SFTODO: Needs to vary per build
     "-DACORN=1",
     "-DACORN_HW_SCROLL=1",
+    "-DACORN_SWR=1", # SFTODO!?
     "-DSTACK_PAGES=4",
     "-DSMALLBLOCK=1",
     "-DSPLASHWAIT=0"
