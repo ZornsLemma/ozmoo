@@ -1,3 +1,4 @@
 puttext "templates/boot.txt", "!BOOT", &0000
 putbasic "templates/loader.bas", "LOADER"
+putbasic "templates/mode7-3c00.bas", "M7" ; SFTODO: temporary
 putfile "temp/ozmoo", "OZMOO", &000E00 ; SFTODO: Needs to vary per build, probably have make-acorn.py put it on the .ssd
