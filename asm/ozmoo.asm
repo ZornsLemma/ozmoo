@@ -511,6 +511,7 @@ z_init
 	ldx story_start + header_alphabet_table + 1
 	lda story_start + header_alphabet_table
 	clc
+; SFTODO: I suspect this may be relevant for ACORN_SWR
 	adc #>story_start
 	tay
 .no_custom_alphabet
@@ -529,6 +530,7 @@ z_init
 	jsr get_page_at_z_pc
 
 	; Setup globals pointer
+; SFTODO: I suspect this may be relevant for ACORN_SWR
 	lda story_start + header_globals + 1
 	clc
 	adc #<(story_start - 32)
@@ -708,6 +710,13 @@ deletable_init
     ; dynamic memory in sideways RAM, as I probably will, this *might* not be
     ; the case, either through sheer code bloat or perhaps just squeezing in
     ; a non-mode-7 screen without shadow RAM by using SWR for dynamic memory.)
+    ; - no, this really isn't going to happen, is it? It would be a nightmare
+    ; anyway for coping with a "screen hole", and currently story_start is at
+    ; $4a00-ish on a Master - no way is it going to get up to nearly $7c00
+    ; even if we did a PAGE=&1D00 ADFS variant for the B/B+. (Nightmare because
+    ; we want to access the header - in the first page of the story - by 
+    ; simple lda story_start+foo type ops, without worrying about a memory
+    ; hole.)
     sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta .dir_ptr + 1
@@ -1032,6 +1041,7 @@ deletable_init
 	sty nonstored_blocks
 	tya
 	clc
+    ; SFTODO: This could be relevant for ACORN_SWR
 	adc #>story_start
 	sta vmap_first_ram_page
 !ifndef ACORN_SWR {

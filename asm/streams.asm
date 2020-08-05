@@ -568,6 +568,7 @@ z_ins_output_stream
 	sta streams_current_entry
 	lda z_operand_value_high_arr + 1
 	clc
+    ; SFTODO: This could be relevant for ACORN_SWR
 	adc #>story_start
 	sta streams_current_entry + 1
 	; Setup pointer to current storage location

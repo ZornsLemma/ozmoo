@@ -1642,6 +1642,17 @@ save_game
     sta .osfile_save_load_block_end_address
     lda story_start + header_static_mem
     clc
+    ; SFTODO: This could be relevant for ACORN_SWR - this might be a nasty one,
+    ; as if we have a memory hole for screen we can't *SAVE/*LOAD "around" it.
+    ; Hacks like including it and adding a flag at start of the save saying
+    ; whether/where it exists so it can be removed after re-loading might
+    ; be possible, or added if restoring a save from a shadow game onto a
+    ; non-shadow machine. The screen would get corrupted during a load on
+    ; non-shadow. This is horrible. Let's think carefully and be sure I *need*
+    ; to support this case in reality. Also, is there any chance I could move
+    ; non-shadow mode 7 down to $3C00 on a B (the only machine with no shadow
+    ; screen) and shuffle *code* around it rather than have to make *data* fit
+    ; round it at $7C00?
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
     lda .osfile_op
