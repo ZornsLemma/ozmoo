@@ -1653,6 +1653,11 @@ save_game
     ; non-shadow mode 7 down to $3C00 on a B (the only machine with no shadow
     ; screen) and shuffle *code* around it rather than have to make *data* fit
     ; round it at $7C00?
+    ; http://beebwiki.mdfs.net/Address_translation#TTX_VDU says how to get
+    ; mode 7 screen at $3C00, but note that I may well end up without the OS
+    ; handling it for me, which would also be a near-killer. It might be possible
+    ; (remember we're specifically on a B here) to poke some OS low memory
+    ; address and have it work with a $3C00-address screen.
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
     lda .osfile_op
