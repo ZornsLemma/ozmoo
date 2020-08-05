@@ -1662,6 +1662,15 @@ save_game
     ; start the code at $1300 not $1100 on a B/B+ and use OPENOUT/OSGBPB to save,
     ; although that will be slower and more verboser and we'd probably want to
     ; use the same code on all machines, which is a shame.
+    ; Another possibility would be to start dynmem at $8000 if there isn't
+    ; room for it entirely below $7c00 (on a B) and just "waste" the memory
+    ; above our binary and below $7c00. Just maybe we could use that "wasted"
+    ; memory as vmem cache. I really don't want to get *too* complex if I can
+    ; help it. And it would have been nice to allow dynmem to use main RAM+
+    ; one bank of SWR with a memory hole, to allow for larger games to work -
+    ; you'd have maybe 26K for dynmem on a B with main RAM+one bank of SWR,
+    ; if it could be discontiguous around the $7c00 screen. Or maybe the screen
+    ; at $3c00 hack isn't too bad.
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
     lda .osfile_op
