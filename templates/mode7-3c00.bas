@@ -1,5 +1,28 @@
 REM SFTODO: This file is just a temporary holding place for some experiments.
 REM SFTODO TEMP HACK
+DIM code% 256
+wrchv=&20E
+FOR opt%=0 TO 3 STEP 3
+P%=code%
+[OPT opt%
+LDA wrchv:STA call_old_wrchv+1
+LDA wrchv+1:STA call_old_wrchv+2
+LDA #our_oswrch MOD 256:STA wrchv
+LDA #our_oswrch DIV 256:STA wrchv+1
+RTS
+.our_oswrch
+.call_old_wrchv
+JSR &FFFF
+PHA
+LDA #14:STA &FE00
+LDA &34B:SEC:SBC #&1C:STA &FE01
+LDA #15:STA &FE00
+LDA &34A:STA &FE01
+PLA
+RTS
+]
+NEXT
+CALL code%
 MODE 7
 PRINT "Hello"
 ?&3C00=ASC("F")
