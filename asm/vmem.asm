@@ -895,7 +895,16 @@ read_byte_at_z_address
     sta mempointer_ram_bank
     sta romsel_copy
     sta romsel
+    ; SFTODO: The way this code is currently written vmap_c64_offset is not
+    ; always populated, I think.
+!if 0 {
     lda vmap_c64_offset
+} else {
+    txa
+    asl
+    ; Carry is already clear
+    adc vmap_first_ram_page
+}
     rts
 .address_in_swr
     txa
