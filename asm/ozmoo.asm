@@ -1555,4 +1555,9 @@ vmem_start
 ; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways
 ; RAM. If we put it last in the list of RAM banks, it probably wouldn't require
 ; too much special casing - we'd just make sure not to count it as a full 16K
-; during the initial load, then I suspect it would mostly "just work".
+; during the initial load, then I suspect it would mostly "just work". (Though
+; this would clash with e.g. my "private RAM MMFS"; it might be prudent to ask
+; the user if we can use the 12K private RAM, since unlike normal SWR we can't
+; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
+; because they could be using the more common SWMMFS in a regular sideways RAM
+; bank and have the 12K private RAM free.)
