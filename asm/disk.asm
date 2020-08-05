@@ -1658,6 +1658,10 @@ save_game
     ; handling it for me, which would also be a near-killer. It might be possible
     ; (remember we're specifically on a B here) to poke some OS low memory
     ; address and have it work with a $3C00-address screen.
+    ; It's also perhaps worth (from memory, check this accepting we'll have to
+    ; start the code at $1300 not $1100 on a B/B+ and use OPENOUT/OSGBPB to save,
+    ; although that will be slower and more verboser and we'd probably want to
+    ; use the same code on all machines, which is a shame.
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
     lda .osfile_op
