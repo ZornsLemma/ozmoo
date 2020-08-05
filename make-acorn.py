@@ -303,9 +303,11 @@ if use_vmem:
     divisor = 4 * vmap_max_size // 102
     min_age = vmem_highbyte_mask + 1
     max_age = 0xff & ~vmem_highbyte_mask
+    print("X", nonstored_blocks)
     for i in range(vmap_max_size):
         age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
         addr = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
+        print("Q", i, addr)
         assert ((addr >> 8) & ~vmem_highbyte_mask) == 0
         vmap_entry = (age << 8) | addr
         ssd.data[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff

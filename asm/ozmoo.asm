@@ -824,12 +824,12 @@ deletable_init
 !ifdef ACORN_SWR {
     lda #0
     lda ram_bank_count
-    sta .blocks_to_read
     ldx #6
 -   asl
     rol .blocks_to_read + 1
     dex
     bne -
+    sta .blocks_to_read
 }
     ; We read an additional number of 256-byte blocks between story_start and
     ; ramtop. SFTODO: Constant subtraction done in code for some builds. Not
@@ -883,8 +883,6 @@ deletable_init
     bcs +
     sta readblocks_numblocks
 +   
-    ; Actually do the read
-    jsr readblocks
 
 !ifdef ACORN_SWR {
     ; Switch to the next bank if necessary
@@ -892,6 +890,14 @@ deletable_init
     cmp #$c0 ; SFTODO: magic constant
     bcc +
     inc .current_ram_bank_index
+!if 0 {
+; SFTODO HACK
+    lda .current_ram_bank_index
+    clc
+    adc #'0'
+    jsr oswrch
+    jsr osrdch
+}
     ldx .current_ram_bank_index
     lda ram_bank_list,x
     sta romsel_copy
@@ -900,6 +906,9 @@ deletable_init
     sta readblocks_mempos + 1
 +
 }
+
+    ; Actually do the read
+    jsr readblocks
 
     ; Decrement .blocks_to_read and loop round if it's not zero.
     lda .blocks_to_read
