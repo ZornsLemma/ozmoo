@@ -1073,7 +1073,13 @@ deletable_init
     bne .cap_at_vmap_max_size
     txa
     ror
--   bcs - ; SFTODO: I think this is impossible as nonstored_blocks is always a multiple of 2, but let's check for now with this hang code - actually I suspect if the game data isn't a multiple of 512 bytes long this can happen, it's not a big deal (we just need to be careful not to increment A by 1 if it would roll round from 255 to 0), but let's wait and see if it happens or until I start tidying all this codeup
+    bcc +
++   ; We loaded a half VM block at the end of the game. Bump A up by 1, unless
+    ; it would wrap round in which case we stick at 255.
+    adc #0
+    bne +
+    lda #255
++
     cmp #vmap_max_size
     bcc +
 .cap_at_vmap_max_size
@@ -1545,3 +1551,8 @@ vmem_start
 ; to experiment with at some point. Actually, although I'd probably prefer to
 ; do it that way as it would work in any mode, you could also use e.g. mode 1
 ; and use (say) yellow for bold, but I'd probably rather not go there.
+
+; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways
+; RAM. If we put it last in the list of RAM banks, it probably wouldn't require
+; too much special casing - we'd just make sure not to count it as a full 16K
+; during the initial load, then I suspect it would mostly "just work".

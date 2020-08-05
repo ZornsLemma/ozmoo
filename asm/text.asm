@@ -24,6 +24,12 @@
 ; SFTODO: With non-40x25 mode support:
 ; SFTODO: mode 6, hw scroll: $0041a7
 ; SFTODO: mode 0, hw scroll: $00484f
+; SFTODO: Hacky SWR support, Master 128, mode 6, disc drive noises on, hw scroll, .ssd:
+; bit<60K SWR (vmap_max_size = 120): $005bea
+; 80K SWR (vmap_max_size = 255 from now): $0059dd
+; 96K SWR - this holds the entire game in RAM: $0057d2
+; 16K SWR: $00d99c
+; 32K SWR: $006b56
 !ifdef BENCHMARK {
 benchmark_commands
 !ifndef ACORN {

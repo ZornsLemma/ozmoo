@@ -152,7 +152,10 @@ vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overf
 ; SFTODO: DOES vmap_max_size NEED TWEAKING FOR ACORN NON-SWR? NO POINT MAKING IT BIGGER THAN THE 2P CAN ACCOMMODATE
 vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
-vmap_max_size = 120 ; SFTODO SHOULD BE 255 BUT I WILL KEEP IT 7-BIT FOR NOW TO AVOID CODE ASSUMING 7-BIT WHICH I HAVE MISSED BREAKING THINGS AT FIRST, THEN WHEN THAT WORKS CAN RAMP THIS UP ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
+; too large. Not necessarily a problem, but think about it - will there be a
+; problem? Are we wasting (a few bytes only) of RAM for no good reason?
+vmap_max_size = 255 ; SFTODO SHOULD BE 255 BUT I WILL KEEP IT 7-BIT FOR NOW TO AVOID CODE ASSUMING 7-BIT WHICH I HAVE MISSED BREAKING THINGS AT FIRST, THEN WHEN THAT WORKS CAN RAMP THIS UP ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 }
 }
 ; vmap_max_entries	!byte 0 ; Moved to ZP
