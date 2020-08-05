@@ -73,9 +73,9 @@ read_next_byte_at_z_pc_sub
 
 !macro read_next_byte_at_z_pc {
 !ifdef ACORN_SWR {
-    lda #ram_bank
-    sta $f4
-    sta $fe30
+    lda z_pc_mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
 }
 	ldy #0
 	lda (z_pc_mempointer),y

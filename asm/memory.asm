@@ -129,6 +129,10 @@ get_page_at_z_pc_did_pha
 	ldx z_pc + 1
 	ldy z_pc + 2
 	jsr read_byte_at_z_address
+!ifdef ACORN_SWR {
+    ldy mempointer_ram_bank
+    sty z_pc_mempointer_ram_bank
+}
 	ldy mempointer + 1
 	sty z_pc_mempointer + 1
 	ldy #0 ; Important: y should always be 0 when exiting this routine!

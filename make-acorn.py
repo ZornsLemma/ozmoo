@@ -301,14 +301,15 @@ if use_vmem:
         vmap_length -= 1
     assert vmap_length >= vmap_max_size * 2
     divisor = 4 * vmap_max_size // 102
+    min_age = vmem_highbyte_mask + 1
+    max_age = 0xff & ~vmem_highbyte_mask
     for i in range(vmap_max_size):
-        high = (256 - 8 * (i // divisor) - 32) & ~vmem_highbyte_mask
-        low = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
-        # If this assertion fails, we need to be setting the low bits of high with
-        # the high bits of low. :-)
-        assert low & 0xff == low
-        ssd.data[vmap_offset + i + 0            ] = high
-        ssd.data[vmap_offset + i + vmap_max_size] = low
+        age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
+        addr = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
+        assert ((addr >> 8) & ~vmem_highbyte_mask) == 0
+        vmap_entry = (age << 8) | addr
+        ssd.data[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
+        ssd.data[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if
 # necessary, but since this alters the binaries we build it's a bit fiddly and I don't

@@ -309,8 +309,11 @@ scratch_page = $600
 scratch_double_page = $600
 ram_bank_count = $400
 ram_bank_list = $401 ; SFTODO: size? potentially up to 9 banks???
-ramsel = $fe30
-ramsel_copy = $f4
+mempointer_ram_bank = $410 ; SFTODO: might benefit from zp?
+vmap_main_ram_vm_blocks = $411 ; 1 byte
+z_pc_mempointer_ram_bank = $412 ; SFTODO: might benefit from zp?
+romsel = $fe30
+romsel_copy = $f4
 }
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
 ; on-screen windows. They mainly come into play via save_cursor/restore_cursor;

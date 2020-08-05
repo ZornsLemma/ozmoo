@@ -794,7 +794,17 @@ deletable_init
 +
 
     ; Preload as much of the game as possible into memory.
+    ; SFTODO: If we have 8 banks of SWR and some main RAM as vmem too, this will
+    ; read more data than we can actually use because we can only handle 255
+    ; VM blocks. More generally, if vmap_max_size
+    ; is (though it won't be, except during dev/debugging) smaller than the
+    ; number of blocks of main RAM+SWR we have available for vmem storage, this
+    ; will again read more data than we can actually use. This is mostly
+    ; harmless, but wastes a bit of time. Actually it's not so harmless now
+    ; we use this to help initialise vmap_max_entries. OK, that might be OK. Just
+    ; read the damn code, future me. :-) Then make it clear.
 .blocks_to_read = .dir_ptr ; 2 bytes
+.current_ram_bank_index = zp_temp + 4 ; 1 byte
     lda #2
     sta readblocks_numblocks
     lda #0
@@ -816,7 +826,7 @@ deletable_init
     lda ram_bank_count
     sta .blocks_to_read
     ldx #6
--   asl a
+-   asl
     rol .blocks_to_read + 1
     dex
     bne -
@@ -833,6 +843,7 @@ deletable_init
     bcc +
     inc .blocks_to_read + 1
 +
+
     ; But of course we don't want to read more blocks than there are in the game.
     lda .length_blocks + 1
     ldy .length_blocks
@@ -845,12 +856,19 @@ deletable_init
 +
 
 !ifdef ACORN_SWR {
+    ; Stash a copy of .blocks_to_read so we can use it later to help initialise
+    ; vmap_max_entries.
+    lda .blocks_to_read + 1
+    pha
+    lda .blocks_to_read
+    pha
+
     ; Page in the first bank.
     lda #0
     sta .current_ram_bank_index
     lda ram_bank_list
-    sta ramsel_copy
-    sta ramsel
+    sta romsel_copy
+    sta romsel
 }
 
 ; SFTODO: This will need tweaking to skip a non-shadow screen in SWR build, but let's not
@@ -876,8 +894,8 @@ deletable_init
     inc .current_ram_bank_index
     ldx .current_ram_bank_index
     lda ram_bank_list,x
-    sta ramsel_copy
-    sta ramsel
+    sta romsel_copy
+    sta romsel
     lda #$80 ; SFTODO: magic constant
     sta readblocks_mempos + 1
 +
@@ -1007,16 +1025,11 @@ deletable_init
 	clc
 	adc #>story_start
 	sta vmap_first_ram_page
+!ifndef ACORN_SWR {
 !ifndef ACORN {
 	lda #0
 } else {
-!ifndef ACORN_SWR {
     lda #>ramtop
-} else {
-    ; SFTODO: Super hacky, this approach won't work with >1 bank, but let's see
-    ; if I can get anything working first.
-    lda #$c0 
-}
 }
 	sec
 	sbc vmap_first_ram_page
@@ -1038,6 +1051,25 @@ deletable_init
 	bcc ++
 	lda #vmap_max_size
 ++	
+}
+} else {
+    pla ; number of 256 byte blocks we read from disc earlier, low byte
+    sec
+    sbc nonstored_blocks
+    tax
+    pla ; high byte
+    sbc #0
+    ; Convert from 256 byte blocks to 512 byte VM bloocks.
+    lsr
+    bne .cap_at_vmap_max_size
+    txa
+    ror
+-   bcs - ; SFTODO: I think this is impossible as nonstored_blocks is always a multiple of 2, but let's check for now with this hang code - actually I suspect if the game data isn't a multiple of 512 bytes long this can happen, it's not a big deal (we just need to be careful not to increment A by 1 if it would roll round from 255 to 0), but let's wait and see if it happens or until I start tidying all this codeup
+    cmp #vmap_max_size
+    bcc +
+.cap_at_vmap_max_size
+    lda #vmap_max_size
++   
 }
 !ifdef VMEM_STRESS {
         lda #2 ; one block for PC, one block for data

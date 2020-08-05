@@ -163,7 +163,6 @@ vmap_z_h = datasette_buffer_start
 vmap_z_l = vmap_z_h + vmap_max_size
 
 ;SFTODODATA
-!error "SFTODO vmap_clock_index and vmap_index PROB REQUIRE REVIEW"
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
 vmap_first_ram_page		!byte 0
@@ -332,7 +331,7 @@ load_blocks_from_index
 	jsr print_byte_as_hex
 }
 
-!error "SFTODO THIS WILL NEED TWEAKING!"
+!ifndef ACORN_SWR {
 	lda vmap_index
 	tax
 	asl
@@ -341,6 +340,9 @@ load_blocks_from_index
 }
 	; Carry is already clear
 	adc vmap_first_ram_page
+} else {
+    jsr .convert_index_x_to_ram_bank_and_address
+}
 
 !ifdef TRACE_FLOPPY {
 	jsr comma
@@ -363,7 +365,6 @@ load_blocks_from_index
 	lda vmap_z_h,x ; start block
 	and #vmem_highbyte_mask
 	sta readblocks_currentblock + 1
-    !error "SFTODO CONTINUATION OF ABOVE, BUT TO BE CLEAR - WE NEED TO SET UP CORRECTLY FOR READBLOCKS CALL"
 	jsr readblocks
 !ifdef TRACE_VM {
     jsr print_following_string
@@ -441,14 +442,6 @@ read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
-!ifdef ACORN_SWR {
-!error "SFTODO"
-    pha
-    lda #ram_bank
-    sta $f4
-    sta $fe30
-    pla
-}
     sty mempointer ; low byte unchanged
     ; same page as before?
     cpx zp_pc_l
@@ -456,7 +449,14 @@ read_byte_at_z_address
     cmp zp_pc_h
     bne .read_new_byte
     ; same 256 byte segment, just return
--	ldy #0
+-
+!ifdef ACORN_SWR {
+    ; SFTODO: For now I'll assume I always need to page the bank in.
+    lda mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
+}
+ 	ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
     ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
@@ -474,7 +474,8 @@ read_byte_at_z_address
 	bcs .non_dynmem
 	; Dynmem access
     ; SFTODO: This will need tweaking to allow for a hole for a non-shadow
-    ; screen, but let's not worry about that right now.
+    ; screen, but let's not worry about that right now. It may also need to page
+    ; in the right RAM bank once dynmem can spill over into SWR.
 	sta zp_pc_h
 	txa
     sta zp_pc_l
@@ -766,7 +767,6 @@ read_byte_at_z_address
 +	sta vmem_tick
 
 	; Store address of 512 byte block to load, then load it
-    !error "SFTODO WILL NEED TWEAKS HERE AND/OR IN load_blocks_from_index"
 	lda zp_pc_h
     sta vmap_z_h,x
     lda zp_pc_l
@@ -784,9 +784,9 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 	ora vmem_tick
 	sta vmap_z_h,x
+!ifndef ACORN_SWR {
 	txa
 	
-    !error "SFTODO: HERE WE ARE TURNING X INTO MEM ADDRESS AND ASL WILL OVERFLOW ETC"
 	asl
 !ifndef SMALLBLOCK {
 	asl
@@ -854,6 +854,11 @@ read_byte_at_z_address
     lda vmem_offset_in_block
     clc
     adc vmap_c64_offset
+} else {
+    jsr .convert_index_x_to_ram_bank_and_address
+    clc
+    adc vmem_offset_in_block
+}
     sta mempointer + 1
 .return_result
     ldy #0
@@ -867,6 +872,55 @@ read_byte_at_z_address
     pla
 }
     rts
+
+!ifdef ACORN_SWR {
+; SFTODO: Not sure I will want this as a subroutine, but let's write it here
+; like this to help me think about it. For the moment it returns page of physical
+; memory in A and ram bank is selected and stored at mempointer_ram_bank.
+.convert_index_x_to_ram_bank_and_address
+    ; SFTODO: This code is not necessarily optimal, e.g. among other things it
+    ; may calculate things we could calculate once and cache.
+    ; SFTODO: Once dynmem can properly spill over into the first SWR bank,
+    ; this first test may be redundant - more to the point, this naive
+    ; implementation will probably fail to detect this case correctly.
+    sec
+    lda #>ramtop
+    sbc vmap_first_ram_page
+    lsr
+    sta vmap_main_ram_vm_blocks ; SFTODO: think we could calc this once on startup rather than having it in a temp
+    cpx vmap_main_ram_vm_blocks
+    bcs .address_in_swr
+    lda #hack_ram_bank ; we don't care about the RAM bank, let's force to this for now but in principle we could let it be any old value
+    sta mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
+    lda vmap_c64_offset
+    rts
+.address_in_swr
+    txa
+    sec
+    sbc vmap_main_ram_vm_blocks ; SFTODO: could we do this instead of the cpx above, to save "duplication"?
+    ; A is now the block number within SWR. There are 32 512-byte blocks per RAM bank.
+    ; SFTODO: This assumes vmem starts at beginning of first bank, which won't
+    ; be true once dynmem is allowed to spill over into first bank.
+    pha
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    tay
+    lda ram_bank_list,y
+    sta mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
+    pla
+    and #31
+    asl
+    ; Carry is already clear
+    adc #$80
+    rts
+}
 }
 
 ; SFTODO: Hack, let's just allocate a fake datasette buffer here
