@@ -1671,6 +1671,13 @@ save_game
     ; you'd have maybe 26K for dynmem on a B with main RAM+one bank of SWR,
     ; if it could be discontiguous around the $7c00 screen. Or maybe the screen
     ; at $3c00 hack isn't too bad.
+    ; Sigh. I think I might be able to get the $3c00 screen working, *but*
+    ; of course you won't be able to *SAVE/*LOAD dynamic memory which lies
+    ; partly in sideways RAM regardless - this will apply on *any* machine using
+    ; SWR. The $3c00 screen probably does avoid one complexity on the B anyway,
+    ; but I may have to accept PAGE=&1300 on B/B+ and on all machines (maybe not
+    ; on 2P; after all, I've already written the code for OSFILE load/save)
+    ; using OSFIND/OSGBPB for load/save.
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
     lda .osfile_op

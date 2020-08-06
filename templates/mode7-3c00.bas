@@ -1,5 +1,6 @@
 MODE 7
 HIMEM=&3C00
+IF INKEY-256<>-1 THEN PRINT "Sorry, BBC B only!":END
 vdu_status=&D0
 wrchv=&20E
 keyv=&228
