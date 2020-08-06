@@ -105,6 +105,7 @@ acme_args1 = [
 acme_args2 = [
     "--cpu", "6502",
     "--format", "plain",
+    # SFTODO: Should really use the OS-local path join character in next three lines, not '/'
     "-l", "../temp/acme_labels_VERSION.txt",
     "-r", "../temp/acme_report_VERSION.txt",
     "--outfile", "../temp/ozmoo_VERSION",
