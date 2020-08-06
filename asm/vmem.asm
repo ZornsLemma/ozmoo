@@ -871,8 +871,8 @@ read_byte_at_z_address
     ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
     pha
     lda #hack_ram_bank
-    sta $f4
-    sta $fe30
+    sta romsel_copy
+    sta romsel
     pla
 }
     rts

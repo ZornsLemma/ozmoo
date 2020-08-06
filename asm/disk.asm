@@ -533,7 +533,7 @@ uname_len = * - .uname
 !ifdef ACORN_SWR {
     pla
     bpl +
-    ; SFTODO: This copy loop is possibly not optimial, I bashed it out quickly.
+    ; SFTODO: This copy loop is possibly not optimal, I bashed it out quickly.
     sta readblocks_mempos + 1
     sta .copy_sta_abs_y + 2
     ldx #1
