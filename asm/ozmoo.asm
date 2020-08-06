@@ -812,6 +812,11 @@ deletable_init
     ; harmless, but wastes a bit of time. Actually it's not so harmless now
     ; we use this to help initialise vmap_max_entries. OK, that might be OK. Just
     ; read the damn code, future me. :-) Then make it clear.
+    ; SFTODO: It might be nice to tell the user (how exactly? does the loader
+    ; leave us positioned correctly to output a string, and then we say "press
+    ; SPACE to start" or something?) if the game has loaded entirely into RAM
+    ; and they can remove the disc, and then we'd also want to remove the
+    ; check for the game disc being in the drive after a save/restore.
 .blocks_to_read = .dir_ptr ; 2 bytes
 .current_ram_bank_index = zp_temp + 4 ; 1 byte
     lda #2
