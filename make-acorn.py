@@ -1,3 +1,6 @@
+# SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
+# on startup and generate a clear error if they're not found.
+
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
 
