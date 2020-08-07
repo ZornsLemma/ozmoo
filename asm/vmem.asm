@@ -489,6 +489,12 @@ read_byte_at_z_address
     ; would simply be to have a separate E00 build rather than relocating, but
     ; I'm probably looking at having three binaries (tube, model B, B+/Master)
     ; as it is and a fourth might really be overdoing it.
+    ; SFTODO: That ACORN_DYNMEM_IN_SWR flag would also be useful for conditionally
+    ; assembling either the current OSFILE save/restore code or the to-be-written
+    ; OSFIND+OSGBPB code which will handle case when some data is in SWR. Oh,
+    ; and the build system can also benefit from determining this for itself
+    ; because it can then choose to assemble the B/B+ code to run at $1100 not
+    ; $1300.
     pha
     lda ram_bank_list
     sta romsel_copy
