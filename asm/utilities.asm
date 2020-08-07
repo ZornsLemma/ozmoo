@@ -84,11 +84,12 @@ read_next_byte_at_z_pc_sub
 	jsr inc_z_pc_page
 ++
 !ifdef ACORN_SWR {
-    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    ; We must keep the first bank of sideways RAM paged in by default, because
+    ; dynamic memory may have overflowed into it.
     pha
-    lda #hack_ram_bank
-    sta $f4
-    sta $fe30
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
     pla
 }
 }	

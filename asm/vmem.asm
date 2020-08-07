@@ -453,19 +453,44 @@ read_byte_at_z_address
     cmp zp_pc_h
     bne .read_new_byte
     ; same 256 byte segment, just return
--
 !ifdef ACORN_SWR {
     ; SFTODO: For now I'll assume I always need to page the bank in.
+    ; SFTODO: I believe we're allowed to corrupt X here - e.g. we would if
+    ; this called into VM subsystem. We could use X to hold the ram bank both
+    ; here and in the path which enters via .read_new_byte and the '-' label,
+    ; then at the page out step just below we could cpx ram_bank_list:beq rts
+    ; to skip over the pha...pla code if the bank is already paged in. This
+    ; might or might not be a performance win; we'd pay 7 cycles for the check+
+    ; branch, but we'd save 18 cycles of redundant paging in *sometimes*.
+    ; May well not be worth it, but have a think, maybe do some timings.
     lda mempointer_ram_bank
     sta romsel_copy
     sta romsel
 }
- 	ldy #0
+-   ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
-    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    ; We must keep the first bank of sideways RAM paged in by default, because
+    ; dynamic memory may have overflowed into it.
+    ; SFTODO: Conceivably the build script could detect whether this is going
+    ; to happen and tell us via a -DACORN_DYNMEM_IN_SWR=1 flag or
+    ; something like that. We could then avoid doing this page in of the first
+    ; bank every time if we don't have dynmem in SWR. (In a debug build, we
+    ; could page in a ROM instead of just doing nothing, as I did a few commits
+    ; ago with hack_ram_bank.) This wouldn't just be here of course, it would
+    ; be everywhere we currently have to page in the first RAM bank. If we
+    ; had a macro '+page_in_dynmem_swr' we could just call it everywhere, and
+    ; that macro would be a single place to respect the -DACORN_DYNMEM_IN_SWR
+    ; flag. (We might sometimes set it "unnecessarily", e.g. I think B+ and Master
+    ; will share a binary and it will relocate down on Master, so the Master
+    ; might be able to squeeze dynmem in main RAM when B+ couldn't and the Master
+    ; would still be doing the pointless-to-it page in of the first bank, but
+    ; that's a corner case and probably not worth worrying about. The "fix"
+    ; would simply be to have a separate E00 build rather than relocating, but
+    ; I'm probably looking at having three binaries (tube, model B, B+/Master)
+    ; as it is and a fourth might really be overdoing it.
     pha
-    lda #hack_ram_bank
+    lda ram_bank_list
     sta romsel_copy
     sta romsel
     pla
@@ -485,6 +510,14 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
+    ; We have to set mempointer_ram_bank correctly so subsequent calls to
+    ; read_byte_at_z_address don't page in the wrong bank, but because
+    ; the first bank is always left selected by default (so miscellaneous code
+    ; can access dynamic memory directly) we know it's already paged in now,
+    ; hence the '-' label being *after* the page in code. It would be correct
+    ; but slightly slower to page in anyway, of course.
+    lda ram_bank_list
+    sta mempointer_ram_bank
 	bne - ; Always branch
 .non_dynmem
 	sta zp_pc_h
@@ -868,9 +901,10 @@ read_byte_at_z_address
     ldy #0
     lda (mempointer),y
 !ifdef ACORN_SWR {
-    ; SFTODO: Hack to see if I'm "accidentally" accessing SWR
+    ; We must keep the first bank of sideways RAM paged in by default, because
+    ; dynamic memory may have overflowed into it.
     pha
-    lda #hack_ram_bank
+    lda ram_bank_list
     sta romsel_copy
     sta romsel
     pla
@@ -890,14 +924,19 @@ read_byte_at_z_address
     sec
     lda #>ramtop
     sbc vmap_first_ram_page
-    lsr
+    ; Arithmetic shift right
+    cmp #$80
+    ror
     sta vmap_main_ram_vm_blocks ; SFTODO: think we could calc this once on startup rather than having it in a temp
+    ; vmap_main_ram_vm_blocks needs to be treated as a signed quantity; if the
+    ; dynamic memory overflows from main RAM into the first sideways RAM bank,
+    ; it will be negative. We don't have to worry about overflow because 
+    ; $40<<vmap_first_ram_page<=$c0. story_start will be above $4000 and
+    ; vmap_first_ram_page will be above that. ramtop will be $8000.
+    lda vmap_main_ram_vm_blocks
+    bmi .index_in_swr
     cpx vmap_main_ram_vm_blocks
-    bcs .address_in_swr
-    lda #hack_ram_bank ; we don't care about the RAM bank, let's force to this for now but in principle we could let it be any old value
-    sta mempointer_ram_bank
-    sta romsel_copy
-    sta romsel
+    bcs .index_in_swr
     ; SFTODO: The way this code is currently written vmap_c64_offset is not
     ; always populated, I think.
 !if 0 {
@@ -909,13 +948,12 @@ read_byte_at_z_address
     adc vmap_first_ram_page
 }
     rts
-.address_in_swr
+.index_in_swr
     txa
+    ; Again, note that vmap_main_ram_vm_blocks may be negative here.
     sec
     sbc vmap_main_ram_vm_blocks ; SFTODO: could we do this instead of the cpx above, to save "duplication"?
     ; A is now the block number within SWR. There are 32 512-byte blocks per RAM bank.
-    ; SFTODO: This assumes vmem starts at beginning of first bank, which won't
-    ; be true once dynmem is allowed to spill over into first bank.
     pha
     lsr
     lsr

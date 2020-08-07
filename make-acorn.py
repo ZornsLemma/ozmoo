@@ -283,6 +283,7 @@ if use_vmem:
     nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
     while nonstored_blocks % vmem_block_pagecount != 0:
         nonstored_blocks += 1
+    labels["ramtop"] = 0xc000 # SFTODO TOTAL HACK TO GET THINGS WORKING CORRECTLY ON SWR FOR NOW
     ozmoo_ram_blocks = (labels["ramtop"] - labels["story_start"]) / 256
     if nonstored_blocks > ozmoo_ram_blocks:
         die("Not enough free RAM for game's dynamic memory")

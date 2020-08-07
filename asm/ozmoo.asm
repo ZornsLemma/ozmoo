@@ -355,6 +355,9 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
+; SFTODO: temp hack to test dynmem overflowing into SWR
+!fill 4096
+
 stack_start
 
 deletable_screen_init_1
@@ -848,6 +851,9 @@ deletable_init
     ; We read an additional number of 256-byte blocks between story_start and
     ; ramtop. SFTODO: Constant subtraction done in code for some builds. Not
     ; really a big deal as this is deletable init.
+    ; SFTODO: Maybe ramtop should be passed in via a -D on command line? Or
+    ; perhaps instead it will be set to 8000 or F800 only based on whether this
+    ; is a SWR or 2P build, as we'll be using the screen-at-3C00 hack on a B.
     lda #>ramtop
     sec
     sbc #>story_start
@@ -933,6 +939,12 @@ deletable_init
     dec .blocks_to_read + 1
 +   ora .blocks_to_read + 1
     bne .preload_loop
+
+    ; We must keep the first bank of sideways RAM paged in by default, because
+    ; dynamic memory may have overflowed into it.
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
@@ -1047,8 +1059,10 @@ deletable_init
 	tya
 	clc
     ; SFTODO: This could be relevant for ACORN_SWR
+    ; SFTODO: Something - probably the build script - needs to check that on a
+    ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
-	sta vmap_first_ram_page
+	sta vmap_first_ram_page ; SFTODO: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
 !ifndef ACORN_SWR {
 !ifndef ACORN {
 	lda #0
