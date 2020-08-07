@@ -303,18 +303,26 @@ zp_screenrow          = $8f ; current cursor row
 
 stack = $100
 
+; $0400-$046B hold the BASIC resident integer variables. We use some of these
+; to pass information from the loader to the Ozmoo executable.
+; SFTODONOW: This all needs tidying up, there are gaps and it's a right mess with
+; the switch to using resident integer variables to communicate with loader.
 !ifndef ACORN_SWR {
+!error "SFTODONOW: I am going to need to have scratch page at $500 and vars at $4xx to work with passing data from loader in resident integer variables"
 scratch_page = $400
 } else {
-; SFTODO: In this build we're currently wasting most of $400-$4FF, but this
+; SFTODONOW: In this build we're currently wasting most of $400-$4FF, but this
 ; minimises rejigging.
+; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
+; we probably don't need all this.
+ram_bank_count = $410
+ram_bank_list = $411 ; SFTODO: size? potentially up to 9 banks???
+; End of memory shared between loader and Ozmoo executable.
 scratch_page = $600
 scratch_double_page = $600
-ram_bank_count = $400
-ram_bank_list = $401 ; SFTODO: size? potentially up to 9 banks???
-mempointer_ram_bank = $410 ; SFTODO: might benefit from zp?
-vmap_main_ram_vm_blocks = $411 ; 1 byte
-z_pc_mempointer_ram_bank = $412 ; SFTODO: might benefit from zp?
+mempointer_ram_bank = $460 ; SFTODO: might benefit from zp?
+vmap_main_ram_vm_blocks = $461 ; 1 byte
+z_pc_mempointer_ram_bank = $462 ; SFTODO: might benefit from zp?
 romsel = $fe30
 romsel_copy = $f4
 }
