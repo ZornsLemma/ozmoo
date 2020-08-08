@@ -592,6 +592,7 @@ find_prop
     rts
 .find_prop_result !byte 0,0 ; x,a
 
++make_acorn_screen_hole
 z_ins_get_prop
     ; get_prop object property -> (result)
     jsr find_first_prop

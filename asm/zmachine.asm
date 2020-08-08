@@ -655,7 +655,13 @@ dumptovice
 	;lda z_opcode
 }
 	bit z_opcode
+!ifndef ACORN_SWR {
 	bpl .top_bits_are_0x
+} else {
+	bmi .skip_top_bits_are_0x
+    jmp .top_bits_are_0x
+.skip_top_bits_are_0x
+}
 	bvc .top_bits_are_10
 
 	; Top bits are 11. Form = Variable

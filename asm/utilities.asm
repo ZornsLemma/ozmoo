@@ -86,11 +86,9 @@ read_next_byte_at_z_pc_sub
 !ifdef ACORN_SWR {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
-    pha
-    lda ram_bank_list
-    sta romsel_copy
-    sta romsel
-    pla
+    ldy ram_bank_list
+    sty romsel_copy
+    sty romsel
 }
 }	
 

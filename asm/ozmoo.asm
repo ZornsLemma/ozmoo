@@ -1706,3 +1706,6 @@ vmem_start
 ; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
 ; because they could be using the more common SWMMFS in a regular sideways RAM
 ; bank and have the 12K private RAM free.)
+
+; SFTODONOW: hitchhik.z5 HINTs fall over on b-em model B - this may be due to
+; "large" SWR or it may be something about the model B
