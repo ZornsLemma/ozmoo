@@ -141,7 +141,7 @@ read_byte_at_z_address
 }
 
 
-; SFTODO: I suspect - I haven't yet analysed the code which can access dynamic memory, especially writes - we may need to keep the RAM bank which dynamic memory (might, depending on game size) overflow into paged in by default.
+; SFTODONOW: I suspect - I haven't yet analysed the code which can access dynamic memory, especially writes - we may need to keep the RAM bank which dynamic memory (might, depending on game size) overflow into paged in by default. - PRETTY SURE WE DO THIS, BUT CHECK, AND WRITE A PERMANENT COMMENT SOMEWHERE ON HOW WE MANAGE SWR FOR FUTURE REFERENCE
 vmem_blockmask = 255 - (>(vmem_blocksize - 1))
 vmem_block_pagecount = vmem_blocksize / 256
 ; vmap_max_length  = (vmem_end-vmem_start) / vmem_blocksize
@@ -149,18 +149,18 @@ vmem_block_pagecount = vmem_blocksize / 256
 vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
 !ifndef ACORN_SWR {
-; SFTODO: DOES vmap_max_size NEED TWEAKING FOR ACORN NON-SWR? NO POINT MAKING IT BIGGER THAN THE 2P CAN ACCOMMODATE
+; SFTODONOW: DOES vmap_max_size NEED TWEAKING FOR ACORN NON-SWR? NO POINT MAKING IT BIGGER THAN THE 2P CAN ACCOMMODATE
 vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
-; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
+; SFTODONOW: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
 ; too large. Not necessarily a problem, but think about it - will there be a
 ; problem? Are we wasting (a few bytes only) of RAM for no good reason?
-vmap_max_size = 255 ; SFTODO SHOULD BE 255 BUT I WILL KEEP IT 7-BIT FOR NOW TO AVOID CODE ASSUMING 7-BIT WHICH I HAVE MISSED BREAKING THINGS AT FIRST, THEN WHEN THAT WORKS CAN RAMP THIS UP ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+vmap_max_size = 255
 }
 }
 ; vmap_max_entries	!byte 0 ; Moved to ZP
 ; vmap_used_entries	!byte 0 ; Moved to ZP
-; SFTODO: Do we need vmap_blocks_preloaded on Acorn?
+; SFTODONOW: Do we need vmap_blocks_preloaded on Acorn?
 vmap_blocks_preloaded !byte 0
 vmap_z_h = datasette_buffer_start
 vmap_z_l = vmap_z_h + vmap_max_size
@@ -178,7 +178,7 @@ vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
-; SFTODO: I suspect with large amounts of RAM backing the virtual memory, the
+; SFTODONOW: I suspect with large amounts of RAM backing the virtual memory, the
 ; tick resolution may not really be high enough. We'll probably mostly get
 ; away with it, but maybe come back to this later. It might be OK actually given
 ; the way vmap_clock_index moves round rather than us always starting at 0;
@@ -196,7 +196,7 @@ vmem_oldest_index	!byte 0
 }
 }
 
-; SFTODO: Might be a useful statistic for benchmarking with different builds/
+; SFTODONOW: Might be a useful statistic for benchmarking with different builds/
 ; amounts of SWR (not just benchmarking, checking more RAM is reducing swaps)
 !ifdef COUNT_SWAPS {
 vmem_swap_count !byte 0,0
@@ -245,7 +245,7 @@ print_optimized_vm_map
     jmp kernal_reset      ; reset
 }
 
-; SFTODO: This might need tweaking to print SWR stuff correctly
+; SFTODONOW: This might need tweaking to print SWR stuff correctly
 !ifdef TRACE_VM {
 print_vm_map
 !zone {
@@ -454,8 +454,8 @@ read_byte_at_z_address
     bne .read_new_byte
     ; same 256 byte segment, just return
 !ifdef ACORN_SWR {
-    ; SFTODO: For now I'll assume I always need to page the bank in.
-    ; SFTODO: I believe we're allowed to corrupt X here - e.g. we would if
+    ; SFTODONOW: For now I'll assume I always need to page the bank in.
+    ; SFTODONOW: I believe we're allowed to corrupt X here - e.g. we would if
     ; this called into VM subsystem. We could use X to hold the ram bank both
     ; here and in the path which enters via .read_new_byte and the '-' label,
     ; then at the page out step just below we could cpx ram_bank_list:beq rts
@@ -472,7 +472,7 @@ read_byte_at_z_address
 !ifdef ACORN_SWR {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
-    ; SFTODO: Conceivably the build script could detect whether this is going
+    ; SFTODONOW: Conceivably the build script could detect whether this is going
     ; to happen and tell us via a -DACORN_DYNMEM_IN_SWR=1 flag or
     ; something like that. We could then avoid doing this page in of the first
     ; bank every time if we don't have dynmem in SWR. (In a debug build, we
@@ -489,7 +489,7 @@ read_byte_at_z_address
     ; would simply be to have a separate E00 build rather than relocating, but
     ; I'm probably looking at having three binaries (tube, model B, B+/Master)
     ; as it is and a fourth might really be overdoing it.
-    ; SFTODO: That ACORN_DYNMEM_IN_SWR flag would also be useful for conditionally
+    ; SFTODONOW: That ACORN_DYNMEM_IN_SWR flag would also be useful for conditionally
     ; assembling either the current OSFILE save/restore code or the to-be-written
     ; OSFIND+OSGBPB code which will handle case when some data is in SWR. Oh,
     ; and the build system can also benefit from determining this for itself
@@ -508,9 +508,6 @@ read_byte_at_z_address
 	cpx nonstored_blocks
 	bcs .non_dynmem
 	; Dynmem access
-    ; SFTODO: This will need tweaking to allow for a hole for a non-shadow
-    ; screen, but let's not worry about that right now. It may also need to page
-    ; in the right RAM bank once dynmem can spill over into SWR.
 	sta zp_pc_h
 	txa
     sta zp_pc_l
@@ -575,9 +572,10 @@ read_byte_at_z_address
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
-    ; SFTODO: So note that (as I expected) we can only have 255 entries in the
+    ; SFTODONOW: So note that (as I expected) we can only have 255 entries in the
     ; vmem map, numbered 0-254. Probably not worth playing games trying to have
-    ; vmap_used_entries == 0 meaning 256 used.
+    ; vmap_used_entries == 0 meaning 256 used. - THIS IS FINE, JUST NEED TO
+    ; MAKE A PERMANENT COMMENT ABOUT THIS
     cpx #255
 	bne -
 	beq .no_such_block ; Always branch
@@ -695,7 +693,7 @@ read_byte_at_z_address
 	asl
 }
 	; Carry is already clear
-    ; SFTODO: The next couple of lines aren't "right" for SWR case, but I think
+    ; SFTODONOW: The next couple of lines aren't "right" for SWR case, but I think
     ; they are only used by PRINT_SWAPS or the non-Acorn cache case just below.
     ; I think we could therefore !if out these couple of lines on all Acorn
     ; builds except for debug ones.
@@ -719,7 +717,7 @@ read_byte_at_z_address
 }
 
 	; We have now decided on a map position where we will store the requested block. Position is held in x.
-    ; SFTODO: Will need tweaking for SWR
+    ; SFTODONOW: Will need tweaking for SWR
 !ifdef DEBUG {
 !ifdef PRINT_SWAPS {
 	lda streams_output_selected + 2
@@ -920,13 +918,13 @@ read_byte_at_z_address
     rts
 
 !ifdef ACORN_SWR {
-; SFTODO: Not sure I will want this as a subroutine, but let's write it here
+; SFTODONOW: Not sure I will want this as a subroutine, but let's write it here
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
 .convert_index_x_to_ram_bank_and_address
-    ; SFTODO: This code is not necessarily optimal, e.g. among other things it
+    ; SFTODONOW: This code is not necessarily optimal, e.g. among other things it
     ; may calculate things we could calculate once and cache.
-    ; SFTODO: Once dynmem can properly spill over into the first SWR bank,
+    ; SFTODONOW: Once dynmem can properly spill over into the first SWR bank,
     ; this first test may be redundant - more to the point, this naive
     ; implementation will probably fail to detect this case correctly.
     sec
@@ -935,7 +933,7 @@ read_byte_at_z_address
     ; Arithmetic shift right
     cmp #$80
     ror
-    sta vmap_main_ram_vm_blocks ; SFTODO: think we could calc this once on startup rather than having it in a temp
+    sta vmap_main_ram_vm_blocks ; SFTODONOW: think we could calc this once on startup rather than having it in a temp
     ; vmap_main_ram_vm_blocks needs to be treated as a signed quantity; if the
     ; dynamic memory overflows from main RAM into the first sideways RAM bank,
     ; it will be negative. We don't have to worry about overflow because 
@@ -945,7 +943,7 @@ read_byte_at_z_address
     bmi .index_in_swr
     cpx vmap_main_ram_vm_blocks
     bcs .index_in_swr
-    ; SFTODO: The way this code is currently written vmap_c64_offset is not
+    ; SFTODONOW: The way this code is currently written vmap_c64_offset is not
     ; always populated, I think.
 !if 0 {
     lda vmap_c64_offset
@@ -960,7 +958,7 @@ read_byte_at_z_address
     txa
     ; Again, note that vmap_main_ram_vm_blocks may be negative here.
     sec
-    sbc vmap_main_ram_vm_blocks ; SFTODO: could we do this instead of the cpx above, to save "duplication"?
+    sbc vmap_main_ram_vm_blocks ; SFTODONOW: could we do this instead of the cpx above, to save "duplication"?
     ; A is now the block number within SWR. There are 32 512-byte blocks per RAM bank.
     pha
     lsr
@@ -982,8 +980,8 @@ read_byte_at_z_address
 }
 }
 
-; SFTODO: Hack, let's just allocate a fake datasette buffer here
-; SFTODO: *If* we permanently leave this allocated "in" the binary, we could
+; SFTODONOW: Hack, let's just allocate a fake datasette buffer here
+; SFTODONOW: *If* we permanently leave this allocated "in" the binary, we could
 ; have the build script patch in the initial VM table instead of having to "*LOAD"
 ; it at startup. However, if we have the 1K of language workspace at $400 unused
 ; (I haven't yet decided if it can be used for something else), using that to
@@ -991,8 +989,8 @@ read_byte_at_z_address
 ; outside our binary. *LOADing the initial VM data is not a huge deal, but it
 ; will "waste" a sector on disc and slow loading slightly if it could otherwise
 ; have been included straight into the binary.
-; SFTODO: For now I'm going to pre-fill this as part of the build
-; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
+; SFTODONOW: For now I'm going to pre-fill this as part of the build
+; SFTODODATA SFTODONOW - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
 !ifdef ACORN {

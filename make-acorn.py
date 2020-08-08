@@ -83,6 +83,7 @@ group.add_argument("-b", "--benchmark", action="store_true", help="enable the bu
 group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
 group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
 group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
+group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -139,6 +140,8 @@ if args.speed:
 if args.print_swaps:
     debug = True
     acme_args1 += ["-DPRINT_SWAPS=1"]
+if args.no_hole_check:
+    acme_args1 += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
 if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:
@@ -156,10 +159,10 @@ tube_start_addr = 0x600
 swr_start_addr = 0x1900
 run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(tube_start_addr)] + acme_args2, "VERSION", "tube_no_vmem"))
 run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(tube_start_addr), "-DVMEM=1"] + acme_args2, "VERSION", "tube_vmem"))
-# SFTODO: It's worse than this, because we really need to build all of the following code with the
+# SFTODONOW: It's worse than this, because we really need to build all of the following code with the
 # two possible versions of the save/restore code, and if the one with the OSFILE version doesn't
 # require SWR for the dynamic memory, use that, otherwise use the OSFIND version.
-# SFTODO: Except for not making things seem worse than they likely are in the case where we decide
+# SFTODONOW: Except for not making things seem worse than they likely are in the case where we decide
 # which type of save/restore we need (as in previous SFTODO), there's no reason the high version
 # has to be at $1900(ish) - it could be at say $2000 or $3000 and then we could cope with systems which
 # do have a very high PAGE for whatever reason. The low version doesn't have to be at $e00 either
@@ -347,7 +350,7 @@ def add_swr_shr_executable(ssd):
     assert low_executable[-2:] == b'\0\0'
     assert high_executable[-2:] == b'\0\0'
     relocations = make_relocations(low_executable, high_executable)
-    # SFTODO: We could do something similar to the next couple of lines to trim the unneeded 0s off the other versions of the executable.
+    # SFTODONOW: We could do something similar to the next couple of lines to trim the unneeded 0s off the other versions of the executable.
     relocations_offset = high_labels["vmreloccount"] - swr_shr_high_start_addr
     executable = high_executable[:relocations_offset] + relocations
     # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
@@ -387,7 +390,7 @@ def patch_vmem(executable, labels):
     if game_blocks > nonstored_blocks:
         min_vmem_blocks = 2 # absolute minimum, one for PC, one for data
         if nonstored_blocks + min_vmem_blocks * vmem_block_pagecount > ozmoo_ram_blocks:
-            # SFTODO: On an ACORN_SWR build, this is not necessarily a problem, but let's
+            # SFTODONOW: On an ACORN_SWR build, this is not necessarily a problem, but let's
             # keep the check in place for now, as if we fail to meet this condition we
             # would have to require at least two sideways RAM banks in order to run and
             # right now the loader doesn't check for that.

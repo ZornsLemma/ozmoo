@@ -6,7 +6,7 @@ relocstart = program_start
 !if <relocstart != 0 {
     !error "relocstart must be on a page boundary"
 }
-; SFTODO: ALL THESE SHOULD START WITH A . TO MAKE THEM LOCAL
+; SFTODONOW: ALL THESE SHOULD START WITH A . TO MAKE THEM LOCAL
 delta = $70
 codep = $71 ; 2 bytes
 deltap = $73 ; 2 bytes
@@ -99,7 +99,7 @@ relocate
     ; precise about how many bytes we copy. (We do round up to the nearest page,
     ; though.)
 .bytes_to_copy = relocate - program_start
-    ; SFTODO: We're rounding .bytes_to_copy up to a whole number of pages at
+    ; SFTODONOW: We're rounding .bytes_to_copy up to a whole number of pages at
     ; run time, when we could trivially do it at assembly time.
     lda #>.bytes_to_copy
     sta count + 1
@@ -107,7 +107,7 @@ relocate
     beq +
     inc count + 1
     ldy #0
-+   sty count ; SFTODO: We never actually read this, could get rid of it
++   sty count ; SFTODONOW: We never actually read this, could get rid of it
 .copy_loop
     lda (src),y
     sta (dst),y

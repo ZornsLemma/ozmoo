@@ -77,7 +77,7 @@ zchars				  = $5d ; 3 bytes
 vmap_quick_index_match= $60
 vmap_next_quick_index = $61
 vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
-; SFTODO: It might be worth upping vmap_quick_index_length for SWR, although
+; SFTODONOW: It might be worth upping vmap_quick_index_length for SWR, although
 ; don't assume this will be beneficial, and as it lives in scarce ZP there is
 ; a real cost to increasing it. (As an experiment only, I could steal some ZP
 ; belonging to e.g. Econet just as an easy way to test different sizes.)
@@ -322,7 +322,7 @@ relocate_target = $408 ; low byte of B%
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
 ; we probably don't need all this.
 ram_bank_count = $410
-ram_bank_list = $411 ; SFTODO: size? potentially up to 9 banks???
+ram_bank_list = $411 ; SFTODONOW: size? potentially up to 9 banks???
 ; End of memory shared between loader and Ozmoo executable.
 scratch_page = $600
 scratch_double_page = $600
@@ -355,18 +355,14 @@ fg_colour = $517 ; !byte 0
 bg_colour = $518 ; !byte 0
 cursor_status = $519; !byte 0
 jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
-; SFTODO: vmap_z_[hl] can probably live in $400-800, if I populate them in the
+; SFTODONOW: vmap_z_[hl] can probably live in $400-800, if I populate them in the
 ; discardable init code in this binary rather than pre-calculating them and
 ; patching them into the binary. I won't touch this until I decide about SWR
 ; and pre-opt, as this may well influence my decision.
 
-; SFTODO: On a SWR version we'd need to read HIMEM from the OS, but we can get
-; away with this while we only support second processor.
-; SFTODO: Rename ramtop as flat_ramtop or similar? It's not actual "top of RAM"
+; SFTODONOW: Rename ramtop as flat_ramtop or similar? It's not actual "top of RAM"
 ; on ACORN_SWR, but we want it to be $8000.
 !ifdef ACORN_SWR {
-; SFTODO: I need to handle non-shadow mode 7, but this will keep things
-; simple while I get started.
 ramtop = $8000
 } else {
 ramtop = $f800

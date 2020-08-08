@@ -323,6 +323,7 @@ find_attr
 .bitmask_index !byte 0
 .attribute_index !byte 0
 
++make_acorn_screen_hole
 z_ins_print_obj
     ; print_obj object
     ldx z_operand_value_low_arr

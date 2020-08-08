@@ -549,7 +549,7 @@ uname_len = * - .uname
 !ifdef ACORN_SWR {
     pla
     bpl +
-    ; SFTODO: This copy loop is possibly not optimal, I bashed it out quickly.
+    ; SFTODONOW: This copy loop is possibly not optimal, I bashed it out quickly.
     sta readblocks_mempos + 1
     sta .copy_sta_abs_y + 2
     ldx #1
@@ -1635,7 +1635,7 @@ save_game
 	jsr .swap_pointers_for_save
 
 	; Perform save or load
-    ; SFTODO: Can/should we check if the file already exists on save and ask
+    ; SFTODONOW: Can/should we check if the file already exists on save and ask
     ; user to confirm? I really don't want to use OSFIND to try to open the
     ; file for input as a test, because I want to avoid any problems with
     ; using memory from $1100 upwards on a B/B+. I also don't want to query the

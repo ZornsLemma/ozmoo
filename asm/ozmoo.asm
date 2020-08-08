@@ -366,9 +366,6 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
-; SFTODO: temp hack to test dynmem overflowing into SWR
-!fill 4096
-
 stack_start
 
 deletable_screen_init_1
@@ -680,7 +677,7 @@ deletable_init_start
     sta bottom_of_screen_memory_high
     sta display_start_address + 1
 
-    ; SFTODO COMMENT
+    ; SFTODONOW COMMENT
     ; Position the cursor where it currently is; doing this forces the OS to
     ; pick up the changes we just made and ensures visual continuity if the
     ; loader and this executable are trying to generate a nice display between
@@ -703,10 +700,6 @@ deletable_init_start
     jsr oswrch
     tya
     jsr oswrch
-        !if 0 { ; SFTODO
-        lda #vdu_cls
-        jsr oswrch
-        }
 
     ; Install our handlers to fix some problems with the OS's handling of this
     ; unofficial mode.
@@ -816,7 +809,7 @@ deletable_init
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    ; SFTODO: It's pretty unlikely to ever be a problem, but note this means
+    ; SFTODONOW: It's pretty unlikely to ever be a problem, but note this means
     ; there must be at least two pages of memory at story_start. (If I support
     ; dynamic memory in sideways RAM, as I probably will, this *might* not be
     ; the case, either through sheer code bloat or perhaps just squeezing in
@@ -914,7 +907,7 @@ deletable_init
 +
 
     ; Preload as much of the game as possible into memory.
-    ; SFTODO: If we have 8 banks of SWR and some main RAM as vmem too, this will
+    ; SFTODONOW: If we have 8 banks of SWR and some main RAM as vmem too, this will
     ; read more data than we can actually use because we can only handle 255
     ; VM blocks. More generally, if vmap_max_size
     ; is (though it won't be, except during dev/debugging) smaller than the
@@ -923,7 +916,7 @@ deletable_init
     ; harmless, but wastes a bit of time. Actually it's not so harmless now
     ; we use this to help initialise vmap_max_entries. OK, that might be OK. Just
     ; read the damn code, future me. :-) Then make it clear.
-    ; SFTODO: It might be nice to tell the user (how exactly? does the loader
+    ; SFTODONOW: It might be nice to tell the user (how exactly? does the loader
     ; leave us positioned correctly to output a string, and then we say "press
     ; SPACE to start" or something?) if the game has loaded entirely into RAM
     ; and they can remove the disc, and then we'd also want to remove the
@@ -942,7 +935,7 @@ deletable_init
     sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta readblocks_mempos + 1
-    ; SFTODO: Next few lines do a constant subtraction, which could be done at
+    ; SFTODONOW: Next few lines do a constant subtraction, which could be done at
     ; assembly time. I'll leave it for now as this is deletable init code and
     ; on SWR build ramtop may not be a constant (shadow vs non-shadow memory).
     ; We read 64 256-byte blocks per sideways RAM bank, if we have any.
@@ -957,9 +950,9 @@ deletable_init
     sta .blocks_to_read
 }
     ; We read an additional number of 256-byte blocks between story_start and
-    ; ramtop. SFTODO: Constant subtraction done in code for some builds. Not
+    ; ramtop. SFTODONOW: Constant subtraction done in code for some builds. Not
     ; really a big deal as this is deletable init.
-    ; SFTODO: Maybe ramtop should be passed in via a -D on command line? Or
+    ; SFTODONOW: Maybe ramtop should be passed in via a -D on command line? Or
     ; perhaps instead it will be set to 8000 or F800 only based on whether this
     ; is a SWR or 2P build, as we'll be using the screen-at-3C00 hack on a B.
     lda #>ramtop
@@ -999,8 +992,6 @@ deletable_init
     sta romsel
 }
 
-; SFTODO: This will need tweaking to skip a non-shadow screen in SWR build, but let's not
-; worry about that for now.
 .preload_loop
     ; At the end of the file, we might need to shrink readblocks_numblocks to
     ; avoid reading past the end.
@@ -1015,22 +1006,14 @@ deletable_init
 !ifdef ACORN_SWR {
     ; Switch to the next bank if necessary
     lda readblocks_mempos + 1
-    cmp #$c0 ; SFTODO: magic constant
+    cmp #$c0 ; SFTODONOW: magic constant
     bcc +
     inc .current_ram_bank_index
-!if 0 {
-; SFTODO HACK
-    lda .current_ram_bank_index
-    clc
-    adc #'0'
-    jsr oswrch
-    jsr osrdch
-}
     ldx .current_ram_bank_index
     lda ram_bank_list,x
     sta romsel_copy
     sta romsel
-    lda #$80 ; SFTODO: magic constant
+    lda #$80 ; SFTODONOW: magic constant
     sta readblocks_mempos + 1
 +
 }
@@ -1065,7 +1048,7 @@ deletable_init
     stx game_disc_crc
     sty game_disc_crc + 1
 }
-; SFTODO: the following ifndef ACORN can probably move up into the ifndef ACORN for the preceding block
+; SFTODONOW: the following ifndef ACORN can probably move up into the ifndef ACORN for the preceding block
 !ifndef ACORN {
 !ifdef VMEM {
 	lda #<config_load_address
@@ -1168,10 +1151,10 @@ deletable_init
 	sty nonstored_blocks
 	tya
 	clc
-    ; SFTODO: Something - probably the build script - needs to check that on a
+    ; SFTODONOW: Something - probably the build script - needs to check that on a
     ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
-	sta vmap_first_ram_page ; SFTODO: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
+	sta vmap_first_ram_page ; SFTODONOW: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
 !ifndef ACORN_SWR {
 !ifndef ACORN {
 	lda #0
@@ -1185,7 +1168,7 @@ deletable_init
 	lsr
 } else {
 	; This space constraint can not be a problem with big (1KB) vmem blocks.
-    ; SFTODO: Why do we need this, or vmap_max_entries? Surely we can assert
+    ; SFTODONOW: Why do we need this, or vmap_max_entries? Surely we can assert
     ; at assembly time that vmap_max_size <= (&10000-story_start)/256 or whatever
     ; the exact check we're doing is? And I don't see any obvious correctness
     ; or performance benefit to using vmap_max_entries instead of #vmap_max_size.
@@ -1595,7 +1578,7 @@ prepare_static_high_memory
     ; initialisation here. If the game is smaller than this, it's harmless as
     ; there will just be table entries for addresses in the Z-machine we will
     ; never use.
-    ; SFTODO: Really we should shrink vmap_max_size so it's no larger than
+    ; SFTODONOW: Really we should shrink vmap_max_size so it's no larger than
     ; necessary; this will save a few bytes.
     lda vmap_max_entries
     sta vmap_blocks_preloaded
@@ -1607,7 +1590,7 @@ prepare_static_high_memory
 	rts
 	
 !ifndef ACORN {
-; SFTODO: This may be useful if I support PREOPT and/or for a SWR build.
+; SFTODONOW: This may be useful if I support PREOPT and/or for a SWR build. - it probably isn't actually, but think about it before I get rid of this comment
 load_suggested_pages
 ; Load all suggested pages which have not been pre-loaded
 -	lda vmap_blocks_preloaded ; First index which has not been loaded
@@ -1689,14 +1672,20 @@ vmem_start
 }
 
 !ifdef ACORN_NO_SHADOW {
-    !ifndef acorn_screen_hole_start {
-        !error "Acorn screen hole has not been added"
-    } else {
-        !if acorn_screen_hole_start > $3c00 {
-            !error "Acorn screen hole starts too late"
-        }
-        !if acorn_screen_hole_end < $4000 {
-            !error "Acorn screen hole ends too soon"
+    ; This check is important to ensure the no shadow RAM build doesn't crash,
+    ; but when the check fails, we need to be able to disable it in order to
+    ; allow assembly to complete so we can look at the acme report output and
+    ; decide where to add a +make_acorn_screen_hole invocation.
+    !ifndef ACORN_DISABLE_SCREEN_HOLE_CHECK {
+        !ifndef acorn_screen_hole_start {
+            !error "Acorn screen hole has not been added"
+        } else {
+            !if acorn_screen_hole_start > $3c00 {
+                !error "Acorn screen hole starts too late"
+            }
+            !if acorn_screen_hole_end < $4000 {
+                !error "Acorn screen hole ends too soon"
+            }
         }
     }
 }
@@ -1708,7 +1697,7 @@ vmem_start
 ; do it that way as it would work in any mode, you could also use e.g. mode 1
 ; and use (say) yellow for bold, but I'd probably rather not go there.
 
-; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways
+; SFTODONOW: It might be possible to use the 12K private RAM in the B+ as sideways
 ; RAM. If we put it last in the list of RAM banks, it probably wouldn't require
 ; too much special casing - we'd just make sure not to count it as a full 16K
 ; during the initial load, then I suspect it would mostly "just work". (Though

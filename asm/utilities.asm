@@ -56,7 +56,7 @@
 !ifdef SLOW {
 read_next_byte_at_z_pc_sub
 !ifdef ACORN_SWR {
-    !error "SFTODO"
+    !error "SFTODONOW"
 }
 	ldy #0
 	lda (z_pc_mempointer),y
@@ -867,7 +867,7 @@ error_print_osasci = 1
 ; ok
 ;   ; do something that might cause an error
 ;   jsr set_default_error_handler ; errors after this point aren't our problem
-; SFTODO: Any problems with SWR here? On a BRK, will the OS page the current
+; SFTODONOW: Any problems with SWR here? On a BRK, will the OS page the current
 ; language back in or will it leave whatever bank we had paged in (and set at $f4)
 ; ourselves paged in? Remember we might be inside readblock doing a retry here
 ; and if the retry succeeds the vmem code which called readblock will expect to
@@ -992,15 +992,6 @@ calculate_crc
     rts
 
 !ifdef ACORN_NO_SHADOW {
-!macro adjust_cursor {
-    lda #crtc_cursor_start_high
-    sta crtc_register
-    lda text_cursor_address + 1
-    sec
-    sbc #$1c
-    sta crtc_data
-}
-
 ; SFTODO: I should perhaps have a variant on this or allow it to take an
 ; argument which will cause it to emit a jmp around the hole. This would allow
 ; me to minimise wasted space.
@@ -1015,7 +1006,14 @@ acorn_screen_hole_end
     }
 }
 
-; SFTODO: Have a check_acorn_screen_hole macro to make sure one got put in
+!macro adjust_cursor {
+    lda #crtc_cursor_start_high
+    sta crtc_register
+    lda text_cursor_address + 1
+    sec
+    sbc #$1c
+    sta crtc_data
+}
 
 our_wrchv
 call_old_wrchv
@@ -1041,11 +1039,17 @@ our_keyv
     rts
 call_old_keyv
     jmp $ffff ; patched during initialization
-} else {
+}
+}
+}
+
+; This macro is called at strategically chosen points where it might be
+; appropriate to insert the screen hole for some Acorn builds. To minimise
+; clutter it isn't protected by !ifndef ACORN everywhere it occurs; we just make
+; it a no-op.
+!ifndef ACORN_NO_SHADOW {
 !macro make_acorn_screen_hole {
     ; no-op
-}
-}
 }
 }
 

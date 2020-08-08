@@ -28,7 +28,7 @@ REM mode 7 out of necessity not choice the user gets a chance to see the
 REM output of the loader while the game is loading. (If the user is
 REM prompted to choose a mode they get a chance to read whatever else is
 REM on the screen at that point.)
-REM SFTODO: Should I make the Ozmoo executable change mode when it's
+REM SFTODONOW: Should I make the Ozmoo executable change mode when it's
 REM ready to start playing the game? (Just where it currently does vdu_cls
 REM and calls update_colours.) That way we'd always keep the loading screen
 REM up during the initial load on all versions regardless. On the other hand,
@@ -95,8 +95,7 @@ NEXT
 CALL detect_swr
 IF ?ram_bank_count = 0 THEN PROCdie("Sorry, no sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
 REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
-REM SFTODO: If someone has >11 banks of sideways RAM it's maybe a bit confusing to not detect all of it. Not a big deal really.
-REM SFTODO: If you don't get a choice of mode (no shadow RAM) you never really get a chance to see this message.
+REM SFTODONOW: If someone has >11 banks of sideways RAM it's maybe a bit confusing to not detect all of it. Not a big deal really.
 PRINT ;16*?ram_bank_count;"K of free sideways RAM detected"
 PRINT "(bank";
 IF ?ram_bank_count > 1 THEN PRINT "s";
@@ -133,6 +132,7 @@ PRINT "Which screen mode do you want to play"'"in, 0, 3, 4, 6 or 7? ";
 REPEAT
 M$=GET$
 UNTIL INSTR("03467",M$)<>0
+PRINT M$'
 =VAL(M$)
 :
 DEF PROCdie(message$)
