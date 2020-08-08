@@ -523,6 +523,9 @@ uname_len = * - .uname
     beq .read_ok
     cmp #$10
     beq .retry
+    ; SFTODONOW: On BeebEm with Integra-B mode, this happens all the time during
+    ; initial loading - need to investigate. Happens with Watford 1.44 or Acorn
+    ; 1.20 DFS, so it's probably not DFS-specific.
     brk
     !byte 0
     !text "Disc read error"
