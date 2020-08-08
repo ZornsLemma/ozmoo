@@ -25,7 +25,7 @@ IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=FNmode
 REM We don't change mode if we're using mode 7; this means if we're using
 REM mode 7 out of necessity not choice the user gets a chance to see the
-REM output of the loader while the game iks loading. (If the user is
+REM output of the loader while the game is loading. (If the user is
 REM prompted to choose a mode they get a chance to read whatever else is
 REM on the screen at that point.)
 REM SFTODO: Should I make the Ozmoo executable change mode when it's
