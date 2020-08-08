@@ -72,15 +72,7 @@ relocate
     ; executable ends and the relocation code begins.)
 .patch_loop
     lda (deltap),y
-    bne .not_advance_255
-    clc
-    lda codep
-    adc #255
-    sta codep
-    bcc +
-    inc codep + 1
-+
-.not_advance_255
+    beq .advance_255
     clc
     adc codep
     sta codep
@@ -90,6 +82,7 @@ relocate
     clc
     adc delta
     sta (codep),y
+.patch_next
     inc deltap
     bne +
     inc deltap + 1
@@ -105,7 +98,9 @@ relocate
     ; code while it's executing, which is why it's right at the end and we're
     ; precise about how many bytes we copy. (We do round up to the nearest page,
     ; though.)
-.bytes_to_copy = relocate - initialize
+.bytes_to_copy = relocate - program_start
+    ; SFTODO: We're rounding .bytes_to_copy up to a whole number of pages at
+    ; run time, when we could trivially do it at assembly time.
     lda #>.bytes_to_copy
     sta count + 1
     ldy #<.bytes_to_copy
@@ -117,20 +112,30 @@ relocate
     lda (src),y
     sta (dst),y
     iny
-    bne +
+    bne .copy_loop
     inc src + 1
     inc dst + 1
-+   dec count + 1
+    dec count + 1
     bne .copy_loop
 
     ; Now execute the relocated code; this absolute address will have been
     ; fixed up.
     jmp initialize
+
+.advance_255
+    clc
+    lda codep
+    adc #255
+    sta codep
+    bcc +
+    inc codep + 1
++   bne .patch_next ; Always branch
     
 
 
 
-; The following must be right at the very end of the executable.
+; The following must be right at the very end of the executable. A bit of
+; padding is tolerable, though.
 vmreloccount
     !word 0
 vmreloc

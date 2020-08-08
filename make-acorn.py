@@ -347,7 +347,9 @@ def add_swr_shr_executable(ssd):
     assert low_executable[-2:] == b'\0\0'
     assert high_executable[-2:] == b'\0\0'
     relocations = make_relocations(low_executable, high_executable)
-    executable = high_executable[:-2] + relocations
+    # SFTODO: We could do something similar to the next couple of lines to trim the unneeded 0s off the other versions of the executable.
+    relocations_offset = high_labels["vmreloccount"] - swr_shr_high_start_addr
+    executable = high_executable[:relocations_offset] + relocations
     # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
     # for a double-sided game, this is probably the one to pick - it's going to be at least
     # slightly larger due to the relocations, and the second surface has slightly more free
