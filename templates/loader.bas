@@ -28,6 +28,10 @@ REM mode 7 out of necessity not choice the user gets a chance to see the
 REM output of the loader while the game iks loading. (If the user is
 REM prompted to choose a mode they get a chance to read whatever else is
 REM on the screen at that point.)
+REM SFTODO: Should I make the Ozmoo executable change mode when it's
+REM ready to start playing the game? (Just where it currently does vdu_cls
+REM and calls update_colours.) That way we'd always keep the loading screen
+REM up during the initial load on all versions regardless.
 IF mode%<>7 THEN MODE 128+mode%
 VDU 23,1,0;0;0;0;
 VDU 19,0,4,0,0,0
