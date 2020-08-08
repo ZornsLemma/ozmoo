@@ -218,6 +218,10 @@ game_id		!byte 0,0,0,0
 ;##}
 !source "zmachine.asm"
 !source "zaddress.asm"
+; SFTODO: I rearranged these for the convenience of Acorn screen hole, I should
+; !ifdef this so C64 is not affected - it's probably immaterial, except I would
+; like to be able to verify the final version of this code generates an identical
+; binary to upstream for C64 so don't want gratuitous reordering.
 !source "dictionary.asm"
 !source "objecttable.asm"
 !source "text.asm"
