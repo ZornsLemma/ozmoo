@@ -31,6 +31,7 @@
 ; 16K SWR: $00d99c
 ; 32K SWR: $006b56
 !ifdef BENCHMARK {
++make_acorn_screen_hole
 benchmark_commands
 !ifndef ACORN {
 ; !pet "turn statue w:turn it e:turn it n:n:open door:",255,0

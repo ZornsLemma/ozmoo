@@ -217,6 +217,8 @@ header_header_extension_table = $36
 
 ; Acorn OS constants
 brkv = $202
+wrchv = $20e
+keyv = $228
 error_ptr = $fd
 osfile = $ffdd
 osrdch = $ffe0
@@ -367,6 +369,17 @@ jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ramtop = $8000
 } else {
 ramtop = $f800
+}
+
+!ifdef ACORN_NO_SHADOW {
+vdu_status = $d0
+text_cursor_address = $34a
+bottom_of_screen_memory_high = $34e
+display_start_address = $350
+crtc_register = $fe00
+crtc_data = $fe01
+crtc_screen_start_high = 12
+crtc_cursor_start_high = 14
 }
 
 }

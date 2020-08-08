@@ -990,6 +990,59 @@ calculate_crc
     ldx .crc
     ldy .crc + 1
     rts
+
+!ifdef ACORN_NO_SHADOW {
+!macro adjust_cursor {
+    lda #crtc_cursor_start_high
+    sta crtc_register
+    lda text_cursor_address + 1
+    sec
+    sbc #$1c
+    sta crtc_data
+}
+
+!macro make_acorn_screen_hole {
+.tolerance = 256
+    !if * <= $3c00 {
+        !if ($3c00 - *) <= .tolerance {
+acorn_screen_hole_start = *
+            !fill $4000 - *, 'X'
+acorn_screen_hole_end
+        }
+    }
+}
+
+; SFTODO: Have a check_acorn_screen_hole macro to make sure one got put in
+
+our_wrchv
+call_old_wrchv
+    jsr $ffff ; patched during initialization
+    pha
+    +adjust_cursor
+    pla
+    rts
+
+our_keyv
+    bcc call_old_keyv
+    bvc call_old_keyv
+    ; keyboard timer interrupt entry
+    jsr call_old_keyv
+    php
+    pha
+    bit vdu_status
+    bvc .not_cursor_editing
+    +adjust_cursor
+.not_cursor_editing
+    pla
+    plp
+    rts
+call_old_keyv
+    jmp $ffff ; patched during initialization
+} else {
+!macro make_acorn_screen_hole {
+    ; no-op
+}
+}
 }
 }
 

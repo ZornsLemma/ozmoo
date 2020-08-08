@@ -218,9 +218,9 @@ game_id		!byte 0,0,0,0
 ;##}
 !source "zmachine.asm"
 !source "zaddress.asm"
-!source "text.asm"
 !source "dictionary.asm"
 !source "objecttable.asm"
+!source "text.asm"
 
 .initialize
 !ifdef ACORN_RELOCATABLE {
@@ -607,6 +607,109 @@ deletable_init_start
 
     ldx #1
     jsr do_osbyte_rw_escape_key
+
+!ifdef ACORN_NO_SHADOW {
+!ifndef ACORN_SWR {
+    !error "ACORN_NO_SHADOW only makes sense with ACORN_SWR"
+}
+!ifdef ACORN_HW_SCROLL {
+    !error "ACORN_HW_SCROLL is not compatible with ACORN_NO_SHADOW"
+}
+    ; If we have no shadow RAM, we need to relocate the mode 7 screen to $3c00
+    ; to create a contiguous are of RAM from $4000-$c000.
+
+    ; SFTODO: If we are called again as part of a re-start, the screen contents
+    ; will be trashed by the screen hole loading inside the binary. This code
+    ; attempts to avoid re-initialising itself, in reality it might be better
+    ; for us to reset to normal mode 7 before re-executing and then let this
+    ; set up agai. Then again, that is more code for a rare case as we'd need
+    ; to copy the screen back *up* to $7c00 to avoid visual glitches as well as
+    ; reset the OS vectors. Think about it.
+
+    ; If we've been restarted by re-executing the Ozmoo executable, this is
+    ; already done so make it a no-op.
+    lda wrchv
+    cmp #<our_wrchv
+    bne +
+    lda wrchv + 1
+    cmp #>our_wrchv
+    beq .mode_7_screen_relocated
++
+
+    ; Copy the contents of the current screen for neatness.
+    ldx #4
+.screen_copy_loop
+    ldy #0
+.screen_copy_loop2
+.screen_copy_lda_abs_y
+    lda $7c00,y
+.screen_copy_sta_abs_y
+    sta $3c00,y
+    iny
+    bne .screen_copy_loop2
+    inc .screen_copy_lda_abs_y + 2
+    inc .screen_copy_sta_abs_y + 2
+    dex
+    bne .screen_copy_loop
+
+    ; Reprogram the CRTC and poke the OS variables to mostly compensate.
+    lda #crtc_screen_start_high
+    sta crtc_register
+    lda #$20
+    sta crtc_data
+    lda #$3c
+    sta bottom_of_screen_memory_high
+    sta display_start_address + 1
+
+    ; SFTODO COMMENT
+    ; Position the cursor where it currently is; doing this forces the OS to
+    ; pick up the changes we just made and ensures visual continuity if the
+    ; loader and this executable are trying to generate a nice display between
+    ; them.
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    lda #vdu_define_text_window
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    lda #24
+    jsr oswrch
+    lda #39
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    lda #vdu_goto_xy
+    jsr oswrch
+    txa
+    jsr oswrch
+    tya
+    jsr oswrch
+        !if 0 { ; SFTODO
+        lda #vdu_cls
+        jsr oswrch
+        }
+
+    ; Install our handlers to fix some problems with the OS's handling of this
+    ; unofficial mode.
+    lda wrchv
+    sta call_old_wrchv + 1
+    lda wrchv + 1
+    sta call_old_wrchv + 2
+    lda #<our_wrchv
+    sta wrchv
+    lda #>our_wrchv
+    sta wrchv + 1
+    lda keyv
+    sta call_old_keyv + 1
+    lda keyv + 1
+    sta call_old_keyv + 2
+    lda #<our_keyv
+    sta keyv
+    lda #>our_keyv
+    sta keyv + 1
+
+.mode_7_screen_relocated
+}
 
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     ; SFTODO: ACORN_CURSOR_PASS_THROUGH is completely untested; I need to find
@@ -1586,6 +1689,19 @@ vmem_start
 !ifndef config_load_address {
 	config_load_address = $0400
 }
+}
+
+!ifdef ACORN_NO_SHADOW {
+    !ifndef acorn_screen_hole_start {
+        !error "Acorn screen hole has not been added"
+    } else {
+        !if acorn_screen_hole_start > $3c00 {
+            !error "Acorn screen hole starts too late"
+        }
+        !if acorn_screen_hole_end < $4000 {
+            !error "Acorn screen hole ends too soon"
+        }
+    }
 }
 
 ; SFTODO: In principle we could support bold and underlined text in non-mode 7

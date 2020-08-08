@@ -189,7 +189,7 @@ else:
     swr_shr_high_start_addr = 0x1900
 assert (swr_shr_high_start_addr - swr_shr_low_start_addr) % 0x200 == 0
 run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(swr_shr_high_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"] + acme_args2, "VERSION", "swr_shr_vmem_" + ourhex(swr_shr_high_start_addr)))
-run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(swr_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"] + acme_args2, "VERSION", "swr_vmem"))
+run_and_check(substitute([x for x in acme_args1 if "ACORN_HW_SCROLL" not in x] + ["--setpc", "$" + ourhex(swr_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"] + acme_args2, "VERSION", "swr_vmem"))
 os.chdir("..")
 
 run_and_check([

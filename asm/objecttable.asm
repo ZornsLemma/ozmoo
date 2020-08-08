@@ -345,6 +345,7 @@ print_obj
     jsr read_next_byte ; length of object short name
     jmp print_addr
 
++make_acorn_screen_hole
 z_ins_jin
     ; jin obj1 obj2 ?(label)
     ldx z_operand_value_low_arr
