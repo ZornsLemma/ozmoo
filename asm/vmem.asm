@@ -526,7 +526,7 @@ read_byte_at_z_address
     lda ram_bank_list
     sta mempointer_ram_bank
 }
-	bne - ; Always branch SFTODO: NOT ON ACORN_SWR IT WON'T...
+	bne - ; Always branch SFTODONOW: NOT ON ACORN_SWR IT WON'T...
 .non_dynmem
 	sta zp_pc_h
 	sta vmem_temp + 1

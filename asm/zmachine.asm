@@ -1153,7 +1153,6 @@ calc_address_in_byte_array
 	ldy #1
 	rts
 .is_in_dynmem	
-; SFTODO: I suspect this may be relevant for ACORN_SWR
 	stx zp_temp
 	adc #>story_start ; Carry is already clear
 	sta zp_temp + 1
@@ -1621,7 +1620,6 @@ z_ins_loadw_and_storew
 	pla
 	jmp z_store_result
 .word_read_in_dynmem
-; SFTODO: I suspect this may be relevant for ACORN_SWR
 	lda zp_temp +1
 	adc #>story_start
 	sta zp_temp + 1
@@ -1631,7 +1629,6 @@ z_ins_loadw_and_storew
 	lda (zp_temp),y
 	jmp z_store_result
 .storew
-; SFTODO: I suspect this may be relevant for ACORN_SWR
 !ifdef DEBUG {
 	; Check that address is in dynamic memory
 	cpx story_start + header_static_mem + 1
@@ -2212,7 +2209,6 @@ z_ins_copy_table
 	sta zp_temp
 	lda z_operand_value_high_arr
 	clc
-    ; SFTODO: This could be relevant for ACORN_SWR
 	adc #>story_start
 	sta zp_temp + 1
 
@@ -2242,7 +2238,6 @@ z_ins_copy_table
 	sta zp_temp
 	lda z_operand_value_high_arr + 1
 	clc
-    ; SFTODO: This could be relevant for ACORN_SWR
 	adc #>story_start
 	sta zp_temp + 1
 

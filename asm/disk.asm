@@ -1689,7 +1689,7 @@ save_game
     sta .osfile_save_load_block_end_address
     lda story_start + header_static_mem
     clc
-    ; SFTODO: This could be relevant for ACORN_SWR - this might be a nasty one,
+    ; SFTODONOW: This could be relevant for ACORN_SWR - this might be a nasty one,
     ; as if we have a memory hole for screen we can't *SAVE/*LOAD "around" it.
     ; Hacks like including it and adding a flag at start of the save saying
     ; whether/where it exists so it can be removed after re-loading might

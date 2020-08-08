@@ -549,7 +549,6 @@ z_init
 	ldx story_start + header_alphabet_table + 1
 	lda story_start + header_alphabet_table
 	clc
-; SFTODO: I suspect this may be relevant for ACORN_SWR
 	adc #>story_start
 	tay
 .no_custom_alphabet
@@ -568,7 +567,6 @@ z_init
 	jsr get_page_at_z_pc
 
 	; Setup globals pointer
-; SFTODO: I suspect this may be relevant for ACORN_SWR
 	lda story_start + header_globals + 1
 	clc
 	adc #<(story_start - 32)
@@ -1170,7 +1168,6 @@ deletable_init
 	sty nonstored_blocks
 	tya
 	clc
-    ; SFTODO: This could be relevant for ACORN_SWR
     ; SFTODO: Something - probably the build script - needs to check that on a
     ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start

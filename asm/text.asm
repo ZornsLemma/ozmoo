@@ -145,7 +145,6 @@ z_ins_tokenise_text
 	lda z_operand_value_high_arr
     stx string_array
     clc
-    ; SFTODO: This could be relevant for ACORN_SWR
     adc #>story_start
     sta string_array + 1
     ; setup user dictionary, if supplied
@@ -184,7 +183,6 @@ z_ins_encode_text
 	lda z_operand_value_high_arr
     stx string_array
     clc
-    ; SFTODO: This could be relevant for ACORN_SWR
     adc #>story_start
     sta string_array + 1
     ; setup length (seems okay to ignore)
@@ -199,7 +197,6 @@ z_ins_encode_text
 	lda z_operand_value_high_arr + 3
     stx string_array
     clc
-    ; SFTODO: This could be relevant for ACORN_SWR
     adc #>story_start
     sta string_array + 1
     ldy #0
@@ -1142,7 +1139,6 @@ read_text
     ; used registers: a,x,y
     stx string_array
     clc
-    ; SFTODO: This could be relevant for ACORN_SWR
     adc #>story_start
     sta string_array + 1
 	jsr printchar_flush
@@ -1420,7 +1416,6 @@ tokenise_text
     sty .ignore_unknown_words
     stx parse_array
     clc
-    ; SFTODO: This could be relevant for ACORN_SWR
     adc #>story_start
     sta parse_array + 1
     lda #2

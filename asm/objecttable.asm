@@ -664,7 +664,6 @@ z_ins_put_prop
     jsr find_prop
     stx zp_mempos
     clc
-; SFTODO: I suspect this may be relevant for ACORN_SWR
     adc #>story_start
     sta zp_mempos + 1
     lda .property_length
@@ -693,7 +692,6 @@ parse_object_table
     ; property defaults table
     stx default_properties_ptr
     clc
-; SFTODO: I suspect this may be relevant for ACORN_SWR
     adc #>story_start
     sta default_properties_ptr + 1
 !ifndef Z4PLUS {

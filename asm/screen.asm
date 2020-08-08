@@ -389,7 +389,6 @@ z_ins_get_cursor
     stx string_array
     lda z_operand_value_high_arr
     clc
-    ; SFTODO: This might be relevant for ACORN_SWR
     adc #>story_start
     sta string_array + 1
     lda #0

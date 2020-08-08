@@ -31,7 +31,10 @@ REM on the screen at that point.)
 REM SFTODO: Should I make the Ozmoo executable change mode when it's
 REM ready to start playing the game? (Just where it currently does vdu_cls
 REM and calls update_colours.) That way we'd always keep the loading screen
-REM up during the initial load on all versions regardless.
+REM up during the initial load on all versions regardless. On the other hand,
+REM we'd then end up with a "flicker" when the mode is changed needlessly
+REM after a restart - but of course we could compare current with target mode
+REM and only do the change if they're different.
 IF mode%<>7 THEN MODE 128+mode%
 VDU 23,1,0;0;0;0;
 VDU 19,0,4,0,0,0
