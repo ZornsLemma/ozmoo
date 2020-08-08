@@ -308,11 +308,14 @@ stack = $100
 ; SFTODONOW: This all needs tidying up, there are gaps and it's a right mess with
 ; the switch to using resident integer variables to communicate with loader.
 !ifndef ACORN_SWR {
-!error "SFTODONOW: I am going to need to have scratch page at $500 and vars at $4xx to work with passing data from loader in resident integer variables"
+;!error "SFTODONOW: I am going to need to have scratch page at $500 and vars at $4xx to work with passing data from loader in resident integer variables"
 scratch_page = $400
 } else {
 ; SFTODONOW: In this build we're currently wasting most of $400-$4FF, but this
 ; minimises rejigging.
+!ifdef ACORN_RELOCATABLE {
+relocate_target = $408 ; low byte of B%
+}
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
 ; we probably don't need all this.
 ram_bank_count = $410
@@ -356,6 +359,8 @@ jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
 
 ; SFTODO: On a SWR version we'd need to read HIMEM from the OS, but we can get
 ; away with this while we only support second processor.
+; SFTODO: Rename ramtop as flat_ramtop or similar? It's not actual "top of RAM"
+; on ACORN_SWR, but we want it to be $8000.
 !ifdef ACORN_SWR {
 ; SFTODO: I need to handle non-shadow mode 7, but this will keep things
 ; simple while I get started.

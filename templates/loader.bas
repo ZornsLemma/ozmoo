@@ -1,25 +1,27 @@
 REM The loader uses some of the resident integer variables (or at least the
 REM corresponding memory) to communicate with the Ozmoo executable. This
 REM means it's probably least error prone to avoid using resident integer
-REM variables gratuitously in the loader.
-MODE 7
-tube%=(PAGE<&E00)
+REM variables gratuitously in this code.
+REM SFTODO: It would be nice if the loader and build system could work
+REM together to allow the user to *optionally* specify a high-res title
+REM screen and/or a nice mode 7 banner to display at the top of the
+REM "options" screen before we launch the game proper.
+MODE 135
+*FX229,1
+PRINT "Powered by Ozmoo alpha 1"'
+:
+REM The following need to be kept consistent with asm/constants.asm
+relocate_target=&408
 ram_bank_count=&410
 ram_bank_list=&411
 max_ram_bank_count=11
+:
+shadow%=(HIMEM>=&8000)
+tube%=(PAGE<&E00)
+A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
 IF NOT tube% THEN PROCdetect_swr ELSE PRINT "Second processor detected"'
-PRINT "Which screen mode do you want to play"'"in, 0, 3, 4, 6 or 7? ";
-*FX21
-REPEAT
-M$=GET$
-UNTIL INSTR("03467",M$)<>0
-mode%=VAL(M$)
-REM SFTODO: TEMP HACK
-?&400=4
-?&401=4
-?&402=5
-?&403=6
-?&404=7
+IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
+mode%=FNmode
 MODE 128+mode%
 VDU 23,1,0;0;0;0;
 VDU 19,0,4,0,0,0
@@ -29,7 +31,10 @@ REM visual glitch. SFTODO: Perhaps tweak this.
 IF mode%=7 THEN PRINT CHR$(134);
 PRINT "Loading, please wait...";
 *DIR S
-*/$.OZMOO
+IF tube% THEN */$.OZMOO2P
+IF shadow% THEN */$.OZMOOSH
+REM We must be on a BBC B with no shadow RAM.
+*/$.OZMOOSW
 END
 :
 DEF PROCdetect_swr
@@ -79,9 +84,10 @@ RTS
 ]
 NEXT
 CALL detect_swr
-IF ?ram_bank_count = 0 THEN PRINT "Sorry, no sideways RAM or second"'"processor detected.":END
+IF ?ram_bank_count = 0 THEN PROCdie("Sorry, no sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
 REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
 REM SFTODO: If someone has >11 banks of sideways RAM it's maybe a bit confusing to not detect all of it. Not a big deal really.
+REM SFTODO: If you don't get a choice of mode (no shadow RAM) you never really get a chance to see this message.
 PRINT ;16*?ram_bank_count;"K of free sideways RAM detected"
 PRINT "(bank";
 IF ?ram_bank_count > 1 THEN PRINT "s";
@@ -94,3 +100,33 @@ c$=", "
 NEXT
 PRINT ")"'
 ENDPROC
+:
+DEF FNrelocate_to
+REM SFTODO: We could potentially be more aggressive, relocating down to &1100 or &1300
+REM (we'd need to set a resident integer variable in !BOOT or something so the build
+REM script could communicate which is appropriate) on a B or B+. However, a) I suspect
+REM doing so is incompatible with shadow RAM on a B, where the third party shadow RAM
+REM will have workspace probably at &1900, so we'd probably want to avoid doing that
+REM if we're on a B and shadow RAM is available b) I have in the past had problems with
+REM the SRAM utilities writing (legitimately, if annoyingly) to their part of the "DFS"
+REM workspace and corrupting the RAM I've used below &1900 on OS errors, so this might
+REM be error prone or require some careful setup work here to disable such things. For
+REM now just play it safe.
+REM SFTODO: If the next line is "=PAGE", beebasm seems to tokenise it incorrectly.
+dummy%=PAGE
+=dummy%
+:
+DEF FNmode
+LOCAL M$
+IF NOT shadow% THEN =7
+PRINT "Which screen mode do you want to play"'"in, 0, 3, 4, 6 or 7? ";
+*FX21
+REPEAT
+M$=GET$
+UNTIL INSTR("03467",M$)<>0
+=VAL(M$)
+:
+DEF PROCdie(message$)
+PRINT message$
+*FX229,0
+END

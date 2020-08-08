@@ -516,6 +516,7 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
+!ifdef ACORN_SWR {
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank, but because
     ; the first bank is always left selected by default (so miscellaneous code
@@ -524,7 +525,8 @@ read_byte_at_z_address
     ; but slightly slower to page in anyway, of course.
     lda ram_bank_list
     sta mempointer_ram_bank
-	bne - ; Always branch
+}
+	bne - ; Always branch SFTODO: NOT ON ACORN_SWR IT WON'T...
 .non_dynmem
 	sta zp_pc_h
 	sta vmem_temp + 1

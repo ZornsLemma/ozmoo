@@ -184,7 +184,11 @@
 program_start
 
 initial_jmp
+!ifndef ACORN_RELOCATABLE {
     jmp .initialize
+} else {
+    jmp relocate
+}
 
 ; global variables
 ; filelength !byte 0, 0, 0
@@ -219,6 +223,9 @@ game_id		!byte 0,0,0,0
 !source "objecttable.asm"
 
 .initialize
+!ifdef ACORN_RELOCATABLE {
+initialize
+}
 !ifdef ACORN {
     ; Reset the stack pointer; setjmp relies on this.
     ldx #$ff
@@ -940,11 +947,13 @@ deletable_init
 +   ora .blocks_to_read + 1
     bne .preload_loop
 
+!ifdef ACORN_SWR {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     lda ram_bank_list
     sta romsel_copy
     sta romsel
+}
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
@@ -1534,6 +1543,11 @@ load_suggested_pages
 }
 
 end_of_routines_in_stack_space
+
+!ifdef ACORN_RELOCATABLE {
+    ; This must be the last thing in the executable.
+    !source "relocate.asm"
+}
 
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 

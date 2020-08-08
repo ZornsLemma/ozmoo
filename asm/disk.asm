@@ -783,6 +783,8 @@ z_ins_restart
 
     ; We specify the drive and directory in case the user has used *DRIVE/*DIR
     ; commands during save or restore.
+    ; SFTODO: This is now going to have to vary per-executable, since each one
+    ; needs to know what it's called so it can call itself.
 .restart_command
     !text "/:0.$.OZMOO", 13
 }
