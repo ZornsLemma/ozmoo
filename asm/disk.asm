@@ -525,7 +525,20 @@ uname_len = * - .uname
     beq .retry
     ; SFTODONOW: On BeebEm with Integra-B mode, this happens all the time during
     ; initial loading - need to investigate. Happens with Watford 1.44 or Acorn
-    ; 1.20 DFS, so it's probably not DFS-specific.
+    ; 1.20 DFS, so it's probably not DFS-specific. OK, perhaps don't get too
+    ; worked up about this. BeebEm model B mode with a 6502 second processor
+    ; shows the same fault, but this works fine on b-em (though that uses DFS
+    ; 0.9) and on jsbeeb in B-tube mode (which does use DFS 1.2), so I'm
+    ; inclined to blame this on BeebEm - I maybe don't have the latest version,
+    ; so check that out. This is with BeebEm 4.14, Feb 2012. OK, I just tried to
+    ; install 4.15, which hung at the last stage of the installation but does
+    ; seem to have installed. However, it behaves exactly the same. Given the
+    ; code works on jsbeeb with the same DFS version and same copro I am going
+    ; to put this down to an emulation bug and not worry about it right now.
+    ; Might be worth coming back to later on. It does work fine on BeebEm in
+    ; Master 128 mode. I could probably knock up a BASIC program using the
+    ; mdfs BASIC function I based my OSWORD 7F code on to hopefully reproduce the problem
+    ; in a simple way on BeebEm and post it to stardot if that fails too.
     brk
     !byte 0
     !text "Disc read error"
