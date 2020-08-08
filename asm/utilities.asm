@@ -1001,6 +1001,9 @@ calculate_crc
     sta crtc_data
 }
 
+; SFTODO: I should perhaps have a variant on this or allow it to take an
+; argument which will cause it to emit a jmp around the hole. This would allow
+; me to minimise wasted space.
 !macro make_acorn_screen_hole {
 .tolerance = 256
     !if * <= $3c00 {

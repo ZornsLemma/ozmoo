@@ -20,15 +20,17 @@ shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
 IF NOT tube% THEN PROCdetect_swr ELSE PRINT "Second processor detected"'
+IF NOT tube% AND shadow% THEN PRINT "Shadow RAM detected"'
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=FNmode
-MODE 128+mode%
+REM We don't change mode if we're using mode 7; this means if we're using
+REM mode 7 out of necessity not choice the user gets a chance to see the
+REM output of the loader while the game iks loading. (If the user is
+REM prompted to choose a mode they get a chance to read whatever else is
+REM on the screen at that point.)
+IF mode%<>7 THEN MODE 128+mode%
 VDU 23,1,0;0;0;0;
 VDU 19,0,4,0,0,0
-REM Z3 games may put a teletext control character at top left before
-REM loading the game data, so put one there ourselves to avoid a
-REM visual glitch. SFTODO: Perhaps tweak this.
-IF mode%=7 THEN PRINT CHR$(134);
 PRINT "Loading, please wait...";
 *DIR S
 IF tube% THEN */$.OZMOO2P

@@ -415,6 +415,30 @@ deletable_screen_init_2
 } else {
     lda #vdu_cls
     jsr oswrch
+
+    ; Query screen mode and set things up accordingly. We do this late; we
+    ; need window_start_row to have been initialised for it to be safe to call
+    ; update_colours, although that happens quite a lot earlier anyway, and
+    ; we also don't want Z3 games in mode 7 to write a colour control code to
+    ; the top left of the screen before they're ready to start.
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    sty screen_mode
+!ifdef ACORN_HW_SCROLL {
+    ldx #1
+    cpy #7
+    bne +
+    dex
++   stx use_hw_scroll
+}
+    lda #default_mode_6_fg_colour
+    cpy #7
+    bne +
+    lda #default_mode_7_status_colour
++   sta fg_colour
+    lda #default_mode_6_bg_colour
+    sta bg_colour
+    jsr update_colours
 }
 	ldy #1
 	sty is_buffered_window
@@ -622,16 +646,9 @@ deletable_init_start
     ; If we have no shadow RAM, we need to relocate the mode 7 screen to $3c00
     ; to create a contiguous are of RAM from $4000-$c000.
 
-    ; SFTODO: If we are called again as part of a re-start, the screen contents
-    ; will be trashed by the screen hole loading inside the binary. This code
-    ; attempts to avoid re-initialising itself, in reality it might be better
-    ; for us to reset to normal mode 7 before re-executing and then let this
-    ; set up agai. Then again, that is more code for a rare case as we'd need
-    ; to copy the screen back *up* to $7c00 to avoid visual glitches as well as
-    ; reset the OS vectors. Think about it.
-
-    ; If we've been restarted by re-executing the Ozmoo executable, this is
-    ; already done so make it a no-op.
+    ; In reality we don't expect to be called with our handlers already
+    ; installed, but be paranoid - this is deletable init code so it's mostly
+    ; free.
     lda wrchv
     cmp #<our_wrchv
     bne +
@@ -769,27 +786,6 @@ deletable_init
 .store_boot_device
 	sty boot_device ; Boot device# stored
 } else {
-    ; Query screen mode and set things up accordingly. We do this here so
-    ; window_start_row has been initialised and it's safe to call update_colours.
-    lda #osbyte_read_screen_mode
-    jsr osbyte
-    sty screen_mode
-!ifdef ACORN_HW_SCROLL {
-    ldx #1
-    cpy #7
-    bne +
-    dex
-+   stx use_hw_scroll
-}
-    lda #default_mode_6_fg_colour
-    cpy #7
-    bne +
-    lda #default_mode_7_status_colour
-+   sta fg_colour
-    lda #default_mode_6_bg_colour
-    sta bg_colour
-    jsr update_colours
-
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language

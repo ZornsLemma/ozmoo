@@ -232,6 +232,7 @@ vdu_down = 10
 vdu_cls = 12
 vdu_set_text_colour = 17
 vdu_redefine_colour = 19
+vdu_set_mode = 22
 ; SFTODO: I think (check all OSes just to be safe) it's not actually necessary
 ; to use VDU 26 before defining a new text window. It is possible that not
 ; having a text window in effect speeds up output though. Maybe do some timings?
