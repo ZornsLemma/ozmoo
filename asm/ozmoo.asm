@@ -642,7 +642,6 @@ deletable_init
 .store_boot_device
 	sty boot_device ; Boot device# stored
 
-; SFTODONOW: the following ifndef ACORN can probably move up into the ifndef ACORN for the preceding block
 !ifdef VMEM {
 	lda #<config_load_address
 	sta readblocks_mempos

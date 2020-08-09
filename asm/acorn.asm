@@ -50,7 +50,9 @@
     jmp init_cursor_control
 } ; End of acorn_deletable_init_start
 
-; SFTODO: COMMENT?
+; Initialization performed shortly after startup, just after
+; acorn_deletable_init_start. (The distinction is not that important on Acorn
+; as the Ozmoo executable itself doesn't generate a splash screen.)
 !macro acorn_deletable_init_inline {
 ; SFTODONOW: MOVE THIS BLOCK TO acorn.asm - IT'S VERY "ACORNY", IT IS NOT AN ACORN EQUIVALENT
 ; OF THE CORRESPNDING C64 CODE, SO THERE'S NO READABILITY/MAINTENANCE BENFIT FROM HAVING IT
