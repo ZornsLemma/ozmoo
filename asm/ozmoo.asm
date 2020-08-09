@@ -398,36 +398,7 @@ deletable_screen_init_2
     lda #147 ; clear screen
     jsr s_printchar
 } else {
-    lda #vdu_cls
-    jsr oswrch
-
-    ; SFTODONOW: Maybe move the following (and the vdu_cls above?) into acorn.asm
-    ; Query screen mode and set things up accordingly. We do this late; we
-    ; need window_start_row to have been initialised for it to be safe to call
-    ; update_colours, although that happens quite a lot earlier anyway, and
-    ; we also don't want Z3 games in mode 7 to write a colour control code to
-    ; the top left of the screen before they're ready to start.
-    ; SFTODO: This will reset the colours on a restart. It might be better to
-    ; have the loader poke these colours into RAM and this binary works with
-    ; whatever values the loader leaves there.
-    lda #osbyte_read_screen_mode
-    jsr osbyte
-    sty screen_mode
-!ifdef ACORN_HW_SCROLL {
-    ldx #1
-    cpy #7
-    bne +
-    dex
-+   stx use_hw_scroll
-}
-    lda #default_mode_6_fg_colour
-    cpy #7
-    bne +
-    lda #default_mode_7_status_colour
-+   sta fg_colour
-    lda #default_mode_6_bg_colour
-    sta bg_colour
-    jsr update_colours
+    +acorn_deletable_screen_init_2_inline
 }
 	ldy #1
 	sty is_buffered_window
@@ -1244,8 +1215,8 @@ end_of_routines_in_stack_space
 
 !if (* - stack_start) > stack_size {
     !error "Routines in stack space have overflowed stack"
-    ; SFTODO: On Acorn this needn't be a problem, we'd just need to say:
-    ;     story_start = stack_start + stack-size
+    ; SF: On Acorn this needn't be a problem, we'd just need to say:
+    ;     story_start = stack_start + stack_size
     ;     vmem_start = story_start
     ; instead of defining them via the following labels. The validation code
     ; would remain the same. This won't work on a C64 build, as there we need to
@@ -1309,10 +1280,6 @@ vmem_start
 ; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
 ; because they could be using the more common SWMMFS in a regular sideways RAM
 ; bank and have the 12K private RAM free.)
-
-; SFTODONOW: hitchhik.z5 HINTs fall over on b-em model B - this may be due to
-; "large" SWR or it may be something about the model B - OK, a B+ with 176K SWR
-; exhibits milder but similar-ish corruption on hints
 
 ; SFTODONOW: If we have lots of SWR, we could maybe benefit by bumping
 ; nonstored_blocks up in order to get maximum use out of it (this is useful if

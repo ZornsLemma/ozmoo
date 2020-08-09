@@ -7,10 +7,10 @@
 !zone {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialization and finalization
+; initialization and finalization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Initialization performed ASAP on startup.
+; initialization performed ASAP on startup.
 !macro acorn_deletable_init_start_subroutine {
     ldx #1
     jsr do_osbyte_rw_escape_key
@@ -50,7 +50,7 @@
     jmp init_cursor_control
 } ; End of acorn_deletable_init_start
 
-; Initialization performed shortly after startup, just after
+; initialization performed shortly after startup, just after
 ; acorn_deletable_init_start. (The distinction is not that important on Acorn
 ; as the Ozmoo executable itself doesn't generate a splash screen.)
 !macro acorn_deletable_init_inline {
@@ -66,7 +66,7 @@
     stx re_enter_language_ldx_imm + 1
 
     ; On a second processor, a soft break will transfer control back to our
-    ; execution address. We will have thrown away our initialisation code by
+    ; execution address. We will have thrown away our initialization code by
     ; that point and can't restart properly. In order to avoid random behaviour
     ; and probably a crash, we patch the jmp at the start of the executable to
     ; transfer control to re_enter_language. This means that although the
@@ -196,7 +196,7 @@
     ; number of blocks of main RAM+SWR we have available for vmem storage, this
     ; will again read more data than we can actually use. This is mostly
     ; harmless, but wastes a bit of time. Actually it's not so harmless now
-    ; we use this to help initialise vmap_max_entries. OK, that might be OK. Just
+    ; we use this to help initialize vmap_max_entries. OK, that might be OK. Just
     ; read the damn code, future me. :-) Then make it clear.
     ; SFTODONOW: It might be nice to tell the user (how exactly? does the loader
     ; leave us positioned correctly to output a string, and then we say "press
@@ -262,7 +262,7 @@
     ; I believe this harmless except for wasting time, but not ideal.
 
 !ifdef ACORN_SWR {
-    ; Stash a copy of .blocks_to_read so we can use it later to help initialise
+    ; Stash a copy of .blocks_to_read so we can use it later to help initialize
     ; vmap_max_entries.
     lda .blocks_to_read + 1
     pha
@@ -334,6 +334,42 @@
     sty game_disc_crc + 1
 } ; End of acorn_deletable_init_inline
 
+; Acorn-specific initialization to carry out in deletable_screen_init_2. This is
+; quite late in the initialization process - in particular it happens after the
+; lengthy loading process in acorn_deletable_init_inline.
+; SFTODO COMMENT
+!macro acorn_deletable_screen_init_2_inline {
+    lda #vdu_cls
+    jsr oswrch
+
+    ; Query screen mode and set things up accordingly. We do this late; we
+    ; need window_start_row to have been initialized for it to be safe to call
+    ; update_colours, although that happens quite a lot earlier anyway, and
+    ; we also don't want Z3 games in mode 7 to write a colour control code to
+    ; the top left of the screen before they're ready to start.
+    ; SFTODONOW: This will reset the colours on a restart. It might be better to
+    ; have the loader poke these colours into RAM and this binary works with
+    ; whatever values the loader leaves there.
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    sty screen_mode
+!ifdef ACORN_HW_SCROLL {
+    ldx #1
+    cpy #7
+    bne +
+    dex
++   stx use_hw_scroll
+}
+    lda #default_mode_6_fg_colour
+    cpy #7
+    bne +
+    lda #default_mode_7_status_colour
++   sta fg_colour
+    lda #default_mode_6_bg_colour
+    sta bg_colour
+    jsr update_colours
+} ; End of acorn_deletable_screen_init_2_inline
+
 !macro clean_up_and_quit_inline {
     jsr set_os_normal_video
     jsr turn_on_cursor
@@ -380,7 +416,7 @@ default_error_handler_newlines = 2
 
 .press_break
     ; We don't use print_following_string here because we don't want to assume
-    ; Ozmoo's own printing mechanisms are properly initialised.
+    ; Ozmoo's own printing mechanisms are properly initialized.
     jsr error_print_following_string
     !text " - press BREAK",0
 -   jmp -
@@ -454,7 +490,7 @@ setjmp
     ; caller is saved so .setjmp_error_handler can simply rts after restoring
     ; the stack.
     ; SFTODO: If jmp_buf is made smaller, we could probably fairly easily
-    ; detect overflow - initialise y with -buffer_size, do sta jmp_buf+1+buffer_size,y
+    ; detect overflow - initialize y with -buffer_size, do sta jmp_buf+1+buffer_size,y
     ; and if the bne after the iny isn't taken we've overflowed. There might be
     ; an off by one error in that, I'm just sketching the idea out. This is
     ; tempting, *but* at the moment jmp_buf is going to live in $400-800 and
@@ -598,7 +634,7 @@ acorn_screen_hole_end
     }
 }
 
-; This macro is like an initialisation subroutine, but by using a macro we
+; This macro is like an initialization subroutine, but by using a macro we
 ; can place it in the discardable init code while still having it in this file
 ; where it logically belongs.
 !macro set_up_mode_7_3c00_inline {
