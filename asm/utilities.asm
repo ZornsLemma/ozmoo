@@ -817,12 +817,11 @@ default_error_handler_newlines = 2
     !text " - press BREAK",0
 -   jmp -
 
-; We can't assume the Ozmoo printing code is properly initialised if any errors
-; occur during initial loading. This gets patched to use s_printchar later, so
-; non-fatal errors during saving/restoring play nicely with the rest of the
-; game's output.
+; Depending on what's happening when an error occurs, we need to output using
+; different primitives. We therefore always use this subroutine and it gets
+; patched at runtime.
 .error_handler_print_char
-    jmp osasci
+    jmp s_printchar
 
 ; Like print_following_string, but using .error_handler_print_char.
 error_print_following_string

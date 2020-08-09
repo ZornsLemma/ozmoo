@@ -627,49 +627,10 @@ deletable_init_start
     sta reg_screen_char_mode
 	lda #$80
 	sta charset_switchable
-} else {
-    ; Install our error handler ASAP.
-    lda #<error_handler
-    sta brkv
-    lda #>error_handler
-    sta brkv + 1
-
-    ldx #1
-    jsr do_osbyte_rw_escape_key
-
-!ifdef ACORN_NO_SHADOW {
-    +set_up_mode_7_3c00
-}
-
-!ifdef ACORN_CURSOR_PASS_THROUGH {
-    ; SFTODO: ACORN_CURSOR_PASS_THROUGH is completely untested; I need to find
-    ; a game which uses cursor keys.
-    ; SFTODO: Arguably we should always use ACORN_CURSOR_PASS_THROUGH mode *but*
-    ; re-enable cursor editing temporarily when we're reading a line of text
-    ; instead of a single character, then you'd always have cursor editing for
-    ; commands but games could still read cursor keys individually.
-    lda #osbyte_set_cursor_editing
-    ldx #1
-    jsr do_osbyte_y_0
-}
-
-    ; We keep the hardware cursor off most of the time; this way the user can't
-    ; see it flitting round the screen doing various updates. (The C64 doesn't
-    ; have this issue, as it uses direct screen writes and in fact its cursor
-    ; is a software creation.) We position it appropriately and turn it on only
-    ; when we're expecting user input. (As far as I can see the Z-machine has
-    ; no way for the running program to turn the cursor on and off.)
-    jsr init_cursor_control
-
-    jsr init_readtime
-
-    ; Now Ozmoo's screen output code is (about to be) initialised via
-    ; init_screen_colours, errors can be reported using s_printchar.
-    jsr set_default_error_handler
-}
-
 	jmp init_screen_colours ; _invisible
-
+} else {
+    +acorn_deletable_init_start ; ends with rts
+}
 
 deletable_init
 	cld
