@@ -249,7 +249,6 @@ initialize
 !if SPLASHWAIT > 0 {
 	jsr splash_screen
 }
-}
 
 !ifdef VMEM {
 !ifdef TARGET_C64 {
@@ -267,13 +266,12 @@ initialize
     ;sta $d07f ; disable hardware registers
     ;sta $d07a ; normal speed (1 MHz)
 }
-!ifndef ACORN {
     ; SuperCPU and REU doesn't work well together
     ; https://www.lemon64.com/forum/viewtopic.php?t=68824&sid=330a8c62e22ebd2cf654c14ae8073fb9
     ;
 	jsr reu_start
-}
 .supercpu
+}
 }
 	jsr deletable_init
     jsr parse_object_table
@@ -302,6 +300,7 @@ initialize
 	jsr $ff5b ; more init
     jmp ($a000)
 } else {
+; SFTODONOW: Maybe move this into a macro in acorn.asm
 clean_up_and_quit
     jsr set_os_normal_video
     jsr turn_on_cursor
@@ -330,7 +329,6 @@ z_trace_page
 !ifndef ACORN {
 vmem_cache_start
 
-!ifndef ACORN {
 !ifdef ALLRAM {
 	!if SPLASHWAIT > 0 {
 		!source "splashscreen.asm"
@@ -350,14 +348,14 @@ end_of_routines_in_vmem_cache
 vmem_cache_size = * - vmem_cache_start
 vmem_cache_count = vmem_cache_size / 256
 }
-}
 !align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
 !ifdef ACORN {
 !ifdef VMEM {
     ; The stack needs to be page-aligned. If we're using vmem, story_start needs
     ; to be at a 512-byte boundary. We don't want a gap between the stack and
-    ; story_start because it will increase the size of saved games for no benefit,
-    ; so we put it here.
+    ; story_start because it will increase the size of saved games and mean
+    ; they're only compatible with builds of Ozmoo with the same alignment
+    ; padding, so we put the gap here.
     ; SFTODODATA-ISH MAYBE SORT OF USABLE TO SQUEEZE SOMETHING IN
     !if (stack_size & $100) = 0 {
         ; Stack is an even number of pages, so this must be a 512-byte boundary.
@@ -386,6 +384,9 @@ deletable_screen_init_1
 }
 	sty window_start_row + 2
 	sty window_start_row + 1
+    ; SFTODO: Maybe for minimal readability disruption, we could have some macros
+    ; like 'ldy_screen_height' and use those everywhere necessary and wrap all
+    ; this platform !ifdef in there.
 !ifndef ACORN {
 	ldy #25
 } else {
@@ -416,6 +417,7 @@ deletable_screen_init_2
     lda #vdu_cls
     jsr oswrch
 
+    ; SFTODONOW: Maybe move the following (and the vdu_cls above?) into acorn.asm
     ; Query screen mode and set things up accordingly. We do this late; we
     ; need window_start_row to have been initialised for it to be safe to call
     ; update_colours, although that happens quite a lot earlier anyway, and
@@ -655,7 +657,79 @@ deletable_init
 	ldy #8
 .store_boot_device
 	sty boot_device ; Boot device# stored
+
+; SFTODONOW: the following ifndef ACORN can probably move up into the ifndef ACORN for the preceding block
+!ifdef VMEM {
+	lda #<config_load_address
+	sta readblocks_mempos
+	lda #>config_load_address
+	sta readblocks_mempos + 1
+	lda #CONF_TRK
+	ldx #0
+; No need to load y with boot device#, already in place
+	jsr read_track_sector
+	inc readblocks_mempos + 1
+	lda #CONF_TRK
+	ldx #1
+	ldy boot_device
+	jsr read_track_sector
+;    jsr kernal_readchar   ; read keyboard
+; Copy game id
+	ldx #3
+-	lda config_load_address,x
+	sta game_id,x
+	dex
+	bpl -
+; Copy disk info
+	ldx config_load_address + 4
+	dex
+-	lda config_load_address + 4,x
+	sta disk_info - 1,x
+	dex
+	bne -
+	
+	jsr auto_disk_config
+;	jsr init_screen_colours
+} else { ; End of !ifdef VMEM
+	sty disk_info + 4
+	ldx #$30 ; First unavailable slot
+	lda story_start + header_static_mem
+	clc
+	adc #(>stack_size) + 4
+	sta zp_temp
+	lda #>664
+	sta zp_temp + 1
+	lda #<664
+.one_more_slot
+	sec
+	sbc zp_temp
+	tay
+	lda zp_temp + 1
+	sbc #0
+	sta zp_temp + 1
+	bmi .no_more_slots
+	inx
+	cpx #$3a
+	bcs .no_more_slots
+	tya
+	bcc .one_more_slot ; Always branch
+.no_more_slots
+	stx first_unavailable_save_slot_charcode
+	txa
+	and #$0f
+	sta disk_info + 1 ; # of save slots
+}
+
+	; ldy #0
+	; ldx #0
+	; jsr set_cursor
+	
+	; Default banks during execution: Like standard except Basic ROM is replaced by RAM.
+	+set_memory_no_basic
 } else {
+; SFTODONOW: MOVE THIS BLOCK TO acorn.asm - IT'S VERY "ACORNY", IT IS NOT AN ACORN EQUIVALENT
+; OF THE CORRESPNDING C64 CODE, SO THERE'S NO READABILITY/MAINTENANCE BENFIT FROM HAVING IT
+; HERE
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
@@ -930,78 +1004,6 @@ deletable_init
     stx game_disc_crc
     sty game_disc_crc + 1
 }
-; SFTODONOW: the following ifndef ACORN can probably move up into the ifndef ACORN for the preceding block
-!ifndef ACORN {
-!ifdef VMEM {
-	lda #<config_load_address
-	sta readblocks_mempos
-	lda #>config_load_address
-	sta readblocks_mempos + 1
-	lda #CONF_TRK
-	ldx #0
-; No need to load y with boot device#, already in place
-	jsr read_track_sector
-	inc readblocks_mempos + 1
-	lda #CONF_TRK
-	ldx #1
-	ldy boot_device
-	jsr read_track_sector
-;    jsr kernal_readchar   ; read keyboard
-; Copy game id
-	ldx #3
--	lda config_load_address,x
-	sta game_id,x
-	dex
-	bpl -
-; Copy disk info
-	ldx config_load_address + 4
-	dex
--	lda config_load_address + 4,x
-	sta disk_info - 1,x
-	dex
-	bne -
-	
-	jsr auto_disk_config
-;	jsr init_screen_colours
-} else { ; End of !ifdef VMEM
-	sty disk_info + 4
-	ldx #$30 ; First unavailable slot
-	lda story_start + header_static_mem
-	clc
-	adc #(>stack_size) + 4
-	sta zp_temp
-	lda #>664
-	sta zp_temp + 1
-	lda #<664
-.one_more_slot
-	sec
-	sbc zp_temp
-	tay
-	lda zp_temp + 1
-	sbc #0
-	sta zp_temp + 1
-	bmi .no_more_slots
-	inx
-	cpx #$3a
-	bcs .no_more_slots
-	tya
-	bcc .one_more_slot ; Always branch
-.no_more_slots
-	stx first_unavailable_save_slot_charcode
-	txa
-	and #$0f
-	sta disk_info + 1 ; # of save slots
-}
-} ; SFTODO: CAN PROBABLY PULL THIS CLOSING BRACE DOWN AND GET RID OF FOLLOWING IFNDEF ACORN
-
-	; ldy #0
-	; ldx #0
-	; jsr set_cursor
-	
-!ifndef ACORN {
-	; Default banks during execution: Like standard except Basic ROM is replaced by RAM.
-	+set_memory_no_basic
-}
 
 ; parse_header section
 
@@ -1036,6 +1038,7 @@ deletable_init
 	sty nonstored_blocks
 	tya
 	clc
+    ; SFTODONOW: Following block is in need of tidying, maybe pull some out into helper macros or something
     ; SFTODONOW: Something - probably the build script - needs to check that on a
     ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
@@ -1160,6 +1163,7 @@ deletable_init
 	; stx fileblocks + 1
 	rts
 
+; SFTODONOW: This wants to move into acorn.asm with the associated code
 !ifdef ACORN {
 .data_filename
     !text "DATA   $"
@@ -1536,10 +1540,16 @@ end_of_routines_in_stack_space
 
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 
-; SFTODO: Maybe we should change this to say "story_start = stack_start + stack_size"
-; and similarly for vmem_start - that way the routines in stack space will be
-; allowed to exceed the actual stack size. This would need to be Acorn only, as
-; on C64 we want to attach preload data at this point.
+!if (* - stack_start) > stack_size {
+    !error "Routines in stack space have overflowed stack"
+    ; SFTODO: On Acorn this needn't be a problem, we'd just need to say:
+    ;     story_start = stack_start + stack-size
+    ;     vmem_start = story_start
+    ; instead of defining them via the following labels. The validation code
+    ; would remain the same. This won't work on a C64 build, as there we need to
+    ; attach the preload data to the binary, so this would have to be conditional
+    ; on ACORN being defined; I won't do it unless the error gets triggered.
+}
 story_start
 !if (story_start & 0xff) != 0 {
     !error "story_start must be page-aligned"
@@ -1577,6 +1587,7 @@ vmem_start
 }
 }
 
+; SFTODONOW: MOVE THIS OVER INTO acorn.asm ALONG WITH REST OF NO SHADOW SUPPORT
 !ifdef ACORN_NO_SHADOW {
     ; This check is important to ensure the no shadow RAM build doesn't crash,
     ; but when the check fails, we need to be able to disable it in order to
