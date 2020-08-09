@@ -1163,8 +1163,8 @@ deletable_init
     ; SFTODONOW: Something - probably the build script - needs to check that on a
     ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
-	sta vmap_first_ram_page ; SFTODONOW: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
 !ifndef ACORN_SWR {
+	sta vmap_first_ram_page ; SFTODONOW: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
 !ifndef ACORN {
 	lda #0
 } else {
@@ -1192,12 +1192,9 @@ deletable_init
 ++	
 }
 } else {
-    ; SFTODO: A probably contains vmap_first_ram_page, but let's not worry about
-    ; that. I need to tidy up the different branches and variables later.
-    lda #0
-    sta vmem_blocks_in_main_ram
-    sta vmem_blocks_stolen_in_first_bank
-    lda vmap_first_ram_page
+    ldx #0
+    stx vmem_blocks_in_main_ram
+    stx vmem_blocks_stolen_in_first_bank
     sec
     sbc #>ramtop
     bcc .some_vmem_in_main_ram

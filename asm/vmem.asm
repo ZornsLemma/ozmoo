@@ -168,9 +168,11 @@ vmap_z_l = vmap_z_h + vmap_max_size
 ;SFTODODATA
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
+!ifndef ACORN_SWR {
 ; SFTODO: I think we could conditionally omit vmap_first_ram_page and vmap_c64_offset for ACORN_SWR
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
+}
 vmap_index !byte 0              ; current vmap index matching the z pointer
 vmem_offset_in_block !byte 0         ; 256 byte offset in 512 byte block (0-1)
 ; vmem_temp !byte 0
@@ -696,6 +698,7 @@ read_byte_at_z_address
 	inc vmap_used_entries
 +	txa
 	tay
+!ifndef ACORN_SWR {
     ; SFTODONOW: Isn't this at risk of overflow now X (index into VM table) can
     ; be as high as 254? In this specific case it won't be a problem, because
     ; all we are going to do with the result is update vmap_c64_offset, which we
@@ -714,6 +717,7 @@ read_byte_at_z_address
     ; builds except for debug ones.
 	adc vmap_first_ram_page
 	sta vmap_c64_offset
+}
 	; Pick next index to use
 	iny
 	cpy vmap_max_entries
