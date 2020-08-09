@@ -495,6 +495,8 @@ read_byte_at_z_address
     ; and the build system can also benefit from determining this for itself
     ; because it can then choose to assemble the B/B+ code to run at $1100 not
     ; $1300.
+    ; SFTODONOW: If we are allowed to corrupt X or Y here we could use one of
+    ; them to do the loads and stores and avoid the pha/pla.
     pha
     lda ram_bank_list
     sta romsel_copy
@@ -513,7 +515,9 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
-!ifdef ACORN_SWR {
+!ifndef ACORN_SWR {
+	bne - ; Always branch
+} else {
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank, but because
     ; the first bank is always left selected by default (so miscellaneous code
@@ -522,8 +526,8 @@ read_byte_at_z_address
     ; but slightly slower to page in anyway, of course.
     lda ram_bank_list
     sta mempointer_ram_bank
+    bpl - ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
 }
-	bne - ; Always branch SFTODONOW: NOT ON ACORN_SWR IT WON'T...
 .non_dynmem
 	sta zp_pc_h
 	sta vmem_temp + 1
@@ -685,9 +689,19 @@ read_byte_at_z_address
     ; SFTODO: The bcc here may always occur on Acorn?
 	cpx vmap_used_entries
 	bcc +
+!if 1 { ; SFTODO TEMP CODE FOR DEBUG
+-   jmp -
+}
 	inc vmap_used_entries
 +	txa
 	tay
+    ; SFTODONOW: Isn't this at risk of overflow now X (index into VM table) can
+    ; be as high as 254? In this specific case it won't be a problem, because
+    ; all we are going to do with the result is update vmap_c64_offset, which we
+    ; never actually use. (This needs tidying up, of course, but it isn't actually
+    ; broken. It might be best to simply not have vmap_c64_offset - remove it
+    ; conditionally and just don't even define it - on ACORN_SWR builds, as its
+    ; use is error prone.)
 	asl
 !ifndef SMALLBLOCK {
 	asl
@@ -830,6 +844,7 @@ read_byte_at_z_address
 !ifndef ACORN_SWR {
 	txa
 	
+    ; SFTODONOW: Risk of overflow since X can be as high as 254
 	asl
 !ifndef SMALLBLOCK {
 	asl
@@ -908,7 +923,8 @@ read_byte_at_z_address
     lda (mempointer),y
 !ifdef ACORN_SWR {
     ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it.
+    ; dynamic memory may have overflowed into it. SFTODONOW: Can we use X for the
+    ; load/store here to avoid the pha/pla?
     pha
     lda ram_bank_list
     sta romsel_copy
@@ -957,6 +973,8 @@ read_byte_at_z_address
 .index_in_swr
     txa
     ; Again, note that vmap_main_ram_vm_blocks may be negative here.
+    ; SFTODONOW: AND IF IT IS AND WE HAVE A LARGE (UNSIGNED) VM INDEX IN X, WE
+    ; COULD WRAP ROUND HERE WITH BAD CONSEQUENCES
     sec
     sbc vmap_main_ram_vm_blocks ; SFTODONOW: could we do this instead of the cpx above, to save "duplication"?
     ; A is now the block number within SWR. There are 32 512-byte blocks per RAM bank.

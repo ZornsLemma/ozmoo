@@ -418,6 +418,9 @@ deletable_screen_init_2
     ; update_colours, although that happens quite a lot earlier anyway, and
     ; we also don't want Z3 games in mode 7 to write a colour control code to
     ; the top left of the screen before they're ready to start.
+    ; SFTODO: This will reset the colours on a restart. It might be better to
+    ; have the loader poke these colours into RAM and this binary works with
+    ; whatever values the loader leaves there.
     lda #osbyte_read_screen_mode
     jsr osbyte
     sty screen_mode
@@ -976,6 +979,9 @@ deletable_init
     sty .blocks_to_read
 +
 
+    ; SFTODONOW: We may still end up reading more data into RAM than we can use.
+    ; I believe this harmless except for wasting time, but not ideal.
+
 !ifdef ACORN_SWR {
     ; Stash a copy of .blocks_to_read so we can use it later to help initialise
     ; vmap_max_entries.
@@ -1110,7 +1116,7 @@ deletable_init
 	and #$0f
 	sta disk_info + 1 ; # of save slots
 }
-}
+} ; SFTODO: CAN PROBABLY PULL THIS CLOSING BRACE DOWN AND GET RID OF FOLLOWING IFNDEF ACORN
 
 	; ldy #0
 	; ldx #0
@@ -1123,6 +1129,9 @@ deletable_init
 
 ; parse_header section
 
+; SFTODO: WE COULD MAYBE DEFINE UNSAFE ON ACORN, GIVEN THE BUILD SYSTEM IS
+; CHECKING THIS - SEE WHAT ELSE IT DOES, IF IT *ONLY* SAVES THIS IT'S PROBABLY
+; NOT WORTH IT (DELETABLE INIT CODE), AND SOME OF THE OTHER CHECKS MAY BE MORE VALAUBLE
 !ifndef UNSAFE {
     ; check z machine version
     lda story_start + header_version
@@ -1708,4 +1717,10 @@ vmem_start
 ; bank and have the 12K private RAM free.)
 
 ; SFTODONOW: hitchhik.z5 HINTs fall over on b-em model B - this may be due to
-; "large" SWR or it may be something about the model B
+; "large" SWR or it may be something about the model B - OK, a B+ with 176K SWR
+; exhibits milder but similar-ish corruption on hints
+
+; SFTODONOW: If we have lots of SWR, we could maybe benefit by bumping
+; nonstored_blocks up in order to get maximum use out of it (this is useful if
+; we would hit the max 255 512-byte blocks of vmem without using all our SWR) -
+; but we'd need to keep the original value around for save/restore.

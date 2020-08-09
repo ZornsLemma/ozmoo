@@ -6,6 +6,18 @@ REM SFTODO: It would be nice if the loader and build system could work
 REM together to allow the user to *optionally* specify a high-res title
 REM screen and/or a nice mode 7 banner to display at the top of the
 REM "options" screen before we launch the game proper.
+REM SFTODO: In principle the build system could communicate size of
+REM "nonstored_blocks" to this code (it's hard for it to modify it
+REM directly, but it could set a resident integer variable in !BOOT)
+REM and it could also pass on the value of story_start, then this code
+REM (with some fiddling to allow for relocation - but this code tells
+REM where to relocate to, so it's possible) could tell the user if
+REM the game fits entirely in RAM on their machine. It could even set
+REM a flag to communicate this to the Ozmoo binary and prevent it
+REM mentioning removing game disc for save. It would still need to
+REM request/check for the binary on RESTART, so it would need code
+REM for that and maybe RESTART counts as "playing" the game, so the
+REM user shouldn't be told here in the first place.
 MODE 135
 *FX229,1
 PRINT "Powered by Ozmoo alpha 1"'
