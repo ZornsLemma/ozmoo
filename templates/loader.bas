@@ -26,7 +26,7 @@ REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408
 ram_bank_count=&410
 ram_bank_list=&411
-max_ram_bank_count=11
+max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 :
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
@@ -107,9 +107,7 @@ NEXT
 CALL detect_swr
 IF ?ram_bank_count = 0 THEN PROCdie("Sorry, no sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
 REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
-REM SFTODONOW: If someone has >11 banks of sideways RAM it's maybe a bit confusing to not detect all of it. Not a big deal really.
-PRINT ;16*?ram_bank_count;"K of free sideways RAM detected"
-PRINT "(bank";
+PRINT "Will use ";16*?ram_bank_count;"K of sideways RAM (bank";
 IF ?ram_bank_count > 1 THEN PRINT "s";
 PRINT " ";
 c$=""
