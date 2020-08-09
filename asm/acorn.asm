@@ -1,6 +1,6 @@
-; SFTODO: Headers for ozmoo style
+; Acorn-specific code factored out into its own file for readability.
 
-; Note that the macros defined in here have the suffix "_inline" if control
+; Note that the code macros defined in here have the suffix "_inline" if control
 ; flows straight through them or "_subroutine" if they end by executing rts (or
 ; equivalent).
 
@@ -17,7 +17,7 @@
     jsr do_osbyte_rw_escape_key
 
 !ifdef ACORN_NO_SHADOW {
-    +set_up_mode_7_3c00
+    +set_up_mode_7_3c00_inline
 }
 
     +screenkernal_init_inline
@@ -280,7 +280,7 @@ acorn_screen_hole_end
 ; This macro is like an initialisation subroutine, but by using a macro we
 ; can place it in the discardable init code while still having it in this file
 ; where it logically belongs.
-!macro set_up_mode_7_3c00 {
+!macro set_up_mode_7_3c00_inline {
     ; In reality we don't expect to be called with our handlers already
     ; installed, but be paranoid - this is deletable init code so it's mostly
     ; free.
@@ -363,7 +363,7 @@ acorn_screen_hole_end
 .set_up_mode_7_3c00_done
 }
 
-!macro adjust_cursor {
+!macro adjust_cursor_inline {
     lda #crtc_cursor_start_high
     sta crtc_register
     lda text_cursor_address + 1
@@ -376,7 +376,7 @@ our_wrchv
 call_old_wrchv
     jsr $ffff ; patched during initialization
     pha
-    +adjust_cursor
+    +adjust_cursor_inline
     pla
     rts
 
@@ -389,7 +389,7 @@ our_keyv
     pha
     bit vdu_status
     bvc .not_cursor_editing
-    +adjust_cursor
+    +adjust_cursor_inline
 .not_cursor_editing
     pla
     plp
