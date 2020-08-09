@@ -168,6 +168,7 @@ vmap_z_l = vmap_z_h + vmap_max_size
 ;SFTODODATA
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
+; SFTODO: I think we could conditionally omit vmap_first_ram_page and vmap_c64_offset for ACORN_SWR
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
 vmap_index !byte 0              ; current vmap index matching the z pointer
@@ -938,48 +939,20 @@ read_byte_at_z_address
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
 .convert_index_x_to_ram_bank_and_address
-    ; SFTODONOW: This code is not necessarily optimal, e.g. among other things it
-    ; may calculate things we could calculate once and cache.
-    ; SFTODONOW: Once dynmem can properly spill over into the first SWR bank,
-    ; this first test may be redundant - more to the point, this naive
-    ; implementation will probably fail to detect this case correctly.
-    sec
-    lda #>ramtop
-    sbc vmap_first_ram_page
-    ; Arithmetic shift right
-    cmp #$80
-    ror
-    sta vmap_main_ram_vm_blocks ; SFTODONOW: think we could calc this once on startup rather than having it in a temp
-    ; vmap_main_ram_vm_blocks needs to be treated as a signed quantity; if the
-    ; dynamic memory overflows from main RAM into the first sideways RAM bank,
-    ; it will be negative. We don't have to worry about overflow because 
-    ; $40<<vmap_first_ram_page<=$c0. story_start will be above $4000 and
-    ; vmap_first_ram_page will be above that. ramtop will be $8000.
-    lda vmap_main_ram_vm_blocks
-    bmi .index_in_swr
-    cpx vmap_main_ram_vm_blocks
-    bcs .index_in_swr
-    ; SFTODONOW: The way this code is currently written vmap_c64_offset is not
-    ; always populated, I think.
-!if 0 {
-    lda vmap_c64_offset
-} else {
+    ; 0<=X<=254 is the index of the 512-byte virtual memory block we want to
+    ; access. Index 0 may be in main RAM or sideways RAM, depending on the size
+    ; of dynamic memory.
     txa
-    asl
-    ; Carry is already clear
-    adc vmap_first_ram_page
-}
-    rts
-.index_in_swr
-    txa
-    ; Again, note that vmap_main_ram_vm_blocks may be negative here.
-    ; SFTODONOW: AND IF IT IS AND WE HAVE A LARGE (UNSIGNED) VM INDEX IN X, WE
-    ; COULD WRAP ROUND HERE WITH BAD CONSEQUENCES
     sec
-    sbc vmap_main_ram_vm_blocks ; SFTODONOW: could we do this instead of the cpx above, to save "duplication"?
-    ; A is now the block number within SWR. There are 32 512-byte blocks per RAM bank.
+    sbc vmem_blocks_in_main_ram
+    bcc .SFTODOMAINRAM
+    clc
+    adc vmem_blocks_stolen_in_first_bank
+    ; CA is now the 9-bit block offset of the required data from the start of
+    ; our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so
+    ; we need to divide by 32=2^5 to get the bank index.
     pha
-    lsr
+    ror
     lsr
     lsr
     lsr
@@ -989,11 +962,20 @@ read_byte_at_z_address
     sta mempointer_ram_bank
     sta romsel_copy
     sta romsel
+    ; Now get the low 5 bits of the block offset, multiply by two to convert to
+    ; 256 byte pages and that gives us the page offset within the bank.
     pla
     and #31
     asl
     ; Carry is already clear
     adc #$80
+    rts
+.SFTODOMAINRAM
+    ; A contains a negative block offset from the top of main RAM. Multiply by
+    ; two to get a page offset and add it to ramtop to get the actual start.
+    asl
+    ; Carry is set
+    adc #(>ramtop)-1
     rts
 }
 }

@@ -327,8 +327,9 @@ ram_bank_list = $411 ; SFTODONOW: size? potentially up to 9 banks???
 scratch_page = $600
 scratch_double_page = $600
 mempointer_ram_bank = $460 ; SFTODO: might benefit from zp?
-vmap_main_ram_vm_blocks = $461 ; 1 byte
-z_pc_mempointer_ram_bank = $462 ; SFTODO: might benefit from zp?
+vmem_blocks_in_main_ram = $461 ; 1 byte
+vmem_blocks_stolen_in_first_bank = $462 ; 1 byte
+z_pc_mempointer_ram_bank = $463 ; SFTODO: might benefit from zp?
 romsel = $fe30
 romsel_copy = $f4
 }

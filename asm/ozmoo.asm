@@ -1192,6 +1192,26 @@ deletable_init
 ++	
 }
 } else {
+    ; SFTODO: A probably contains vmap_first_ram_page, but let's not worry about
+    ; that. I need to tidy up the different branches and variables later.
+    lda #0
+    sta vmem_blocks_in_main_ram
+    sta vmem_blocks_stolen_in_first_bank
+    lda vmap_first_ram_page
+    sec
+    sbc #>ramtop
+    bcc .some_vmem_in_main_ram
+    lsr
+    sta vmem_blocks_stolen_in_first_bank
+    bpl + ; Always branch
+.some_vmem_in_main_ram
+    ; Carry is clear; negate A
+    eor #$ff
+    adc #1
+    lsr
+    sta vmem_blocks_in_main_ram
++
+
     pla ; number of 256 byte blocks we read from disc earlier, low byte
     sec
     sbc nonstored_blocks
