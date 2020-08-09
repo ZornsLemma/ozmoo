@@ -629,7 +629,7 @@ deletable_init_start
 	sta charset_switchable
 	jmp init_screen_colours ; _invisible
 } else {
-    +acorn_deletable_init_start ; ends with rts
+    +acorn_deletable_init_start_subroutine ; ends with rts
 }
 
 deletable_init

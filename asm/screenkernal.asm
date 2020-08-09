@@ -29,23 +29,29 @@
 
 !zone screenkernal {
 
-; SF: I think s_init could be part of the discardable init code; the only
-; problem is that it logically belongs in this file. Maybe turn it into a macro?!
+!ifndef ACORN {
 s_init
     ; init cursor
     lda #$ff
-!ifndef ACORN {
     sta s_current_screenpos_row ; force recalculation first time
 
     lda #0
     sta zp_screencolumn
     sta zp_screenrow
+	; Set to 0: s_ignore_next_linebreak, s_reverse
+    ldx #3
+-	sta s_ignore_next_linebreak,x
+	dex
+	bpl -
+    rts
 } else {
-    sta s_cursors_inconsistent
-
+!macro screenkernal_init_inline {
     ; story_start + header_screen_{width,height}* are only valid for certain
     ; Z-machine versions. We don't want to be querying the OS for these values all
     ; the time, so we keep them here.
+    ; SFTODO: Note that if I ever decide I want the Ozmoo executable to set the
+    ; mode itself rather than letting the loader do it, we will need to be
+    ; careful to call this code again after changing mode.
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
     jsr osbyte
@@ -62,20 +68,17 @@ s_init
     ; any errors occuring during initialization, and it doesn't affect the game
     ; because we will erase the screen before it starts executing.
     lda #osbyte_read_cursor_position
+    sta s_cursors_inconsistent
     jsr osbyte
     stx zp_screencolumn
     sty zp_screenrow
-}
-	; Set to 0: s_ignore_next_linebreak, s_reverse
-!ifndef ACORN {
-    ldx #3
-} else {
+	; Set to 0: s_ignore_next_linebreak, s_reverse, s_os_reverse
     ldx #4 ; also s_os_reverse
-}
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -
-    rts
+}
+}
 
 s_plot
     ; y=column (0-39)

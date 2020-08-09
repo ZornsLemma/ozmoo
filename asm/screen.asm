@@ -32,9 +32,6 @@ init_screen_colours
 }
     lda #147 ; clear screen
     jmp s_printchar
-} else {
-init_screen_colours
-    jmp s_init
 }
 
 !ifdef Z4PLUS {

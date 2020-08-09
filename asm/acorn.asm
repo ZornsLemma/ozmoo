@@ -1,5 +1,9 @@
 ; SFTODO: Headers for ozmoo style
 
+; Note that the macros defined in here have the suffix "_inline" if control
+; flows straight through them or "_subroutine" if they end by executing rts (or
+; equivalent).
+
 !zone {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -8,7 +12,7 @@
 
 ; Initialization performed ASAP on startup. This should end with an rts or
 ; equivalent.
-!macro acorn_deletable_init_start {
+!macro acorn_deletable_init_start_subroutine {
     ldx #1
     jsr do_osbyte_rw_escape_key
 
@@ -16,9 +20,9 @@
     +set_up_mode_7_3c00
 }
 
-	jsr init_screen_colours
+    +screenkernal_init_inline
 
-    ; Now init_screen_colours has been called, it's safe to call s_printchar, so
+    ; Now screenkernal_init_inline has been executed, it's safe to call s_printchar, so
     ; install our own error handler which will use s_printchar by default. No
     ; error should be able to occur before this point. If an error occurs during
     ; a restart, which will re-run the executable, there's not much we can do
@@ -43,7 +47,7 @@
     jsr do_osbyte_y_0
 }
 
-    +init_readtime
+    +init_readtime_inline
     jmp init_cursor_control
 } ; End of acorn_deletable_init_start
 
@@ -56,7 +60,7 @@
     ; OS time counter may have an arbitrarily large value (perhaps some kind of
     ; soft RTC solution) when we start up and we don't want to zero it, we read
     ; the initial value and subtract that from any subsequent reads.
-!macro init_readtime {
+!macro init_readtime_inline {
     lda #osword_read_clock
     ldx #<initial_clock
     ldy #>initial_clock
