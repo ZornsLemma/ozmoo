@@ -210,6 +210,9 @@ game_id		!byte 0,0,0,0
 !source "reu.asm"
 }
 }
+!ifdef ACORN {
+!source "acorn.asm"
+}
 !source "screen.asm"
 !source "memory.asm"
 !source "stack.asm"
@@ -635,95 +638,7 @@ deletable_init_start
     jsr do_osbyte_rw_escape_key
 
 !ifdef ACORN_NO_SHADOW {
-!ifndef ACORN_SWR {
-    !error "ACORN_NO_SHADOW only makes sense with ACORN_SWR"
-}
-!ifdef ACORN_HW_SCROLL {
-    !error "ACORN_HW_SCROLL is not compatible with ACORN_NO_SHADOW"
-}
-    ; If we have no shadow RAM, we need to relocate the mode 7 screen to $3c00
-    ; to create a contiguous are of RAM from $4000-$c000.
-
-    ; In reality we don't expect to be called with our handlers already
-    ; installed, but be paranoid - this is deletable init code so it's mostly
-    ; free.
-    lda wrchv
-    cmp #<our_wrchv
-    bne +
-    lda wrchv + 1
-    cmp #>our_wrchv
-    beq .mode_7_screen_relocated
-+
-
-    ; Copy the contents of the current screen for neatness.
-    ldx #4
-.screen_copy_loop
-    ldy #0
-.screen_copy_loop2
-.screen_copy_lda_abs_y
-    lda $7c00,y
-.screen_copy_sta_abs_y
-    sta $3c00,y
-    iny
-    bne .screen_copy_loop2
-    inc .screen_copy_lda_abs_y + 2
-    inc .screen_copy_sta_abs_y + 2
-    dex
-    bne .screen_copy_loop
-
-    ; Reprogram the CRTC and poke the OS variables to mostly compensate.
-    lda #crtc_screen_start_high
-    sta crtc_register
-    lda #$20
-    sta crtc_data
-    lda #$3c
-    sta bottom_of_screen_memory_high
-    sta display_start_address + 1
-
-    ; SFTODONOW COMMENT
-    ; Position the cursor where it currently is; doing this forces the OS to
-    ; pick up the changes we just made and ensures visual continuity if the
-    ; loader and this executable are trying to generate a nice display between
-    ; them.
-    lda #osbyte_read_cursor_position
-    jsr osbyte
-    lda #vdu_define_text_window
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    lda #24
-    jsr oswrch
-    lda #39
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    lda #vdu_goto_xy
-    jsr oswrch
-    txa
-    jsr oswrch
-    tya
-    jsr oswrch
-
-    ; Install our handlers to fix some problems with the OS's handling of this
-    ; unofficial mode.
-    lda wrchv
-    sta call_old_wrchv + 1
-    lda wrchv + 1
-    sta call_old_wrchv + 2
-    lda #<our_wrchv
-    sta wrchv
-    lda #>our_wrchv
-    sta wrchv + 1
-    lda keyv
-    sta call_old_keyv + 1
-    lda keyv + 1
-    sta call_old_keyv + 2
-    lda #<our_keyv
-    sta keyv
-    lda #>our_keyv
-    sta keyv + 1
-
-.mode_7_screen_relocated
+    +set_up_mode_7_3c00
 }
 
 !ifdef ACORN_CURSOR_PASS_THROUGH {

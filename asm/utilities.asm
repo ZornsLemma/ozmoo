@@ -988,63 +988,14 @@ calculate_crc
     ldx .crc
     ldy .crc + 1
     rts
-
-!ifdef ACORN_NO_SHADOW {
-; SFTODO: I should perhaps have a variant on this or allow it to take an
-; argument which will cause it to emit a jmp around the hole. This would allow
-; me to minimise wasted space.
-!macro make_acorn_screen_hole {
-.tolerance = 256
-    !if * <= $3c00 {
-        !if ($3c00 - *) <= .tolerance {
-acorn_screen_hole_start = *
-            !fill $4000 - *, 'X'
-acorn_screen_hole_end
-        }
-    }
-}
-
-!macro adjust_cursor {
-    lda #crtc_cursor_start_high
-    sta crtc_register
-    lda text_cursor_address + 1
-    sec
-    sbc #$1c
-    sta crtc_data
-}
-
-our_wrchv
-call_old_wrchv
-    jsr $ffff ; patched during initialization
-    pha
-    +adjust_cursor
-    pla
-    rts
-
-our_keyv
-    bcc call_old_keyv
-    bvc call_old_keyv
-    ; keyboard timer interrupt entry
-    jsr call_old_keyv
-    php
-    pha
-    bit vdu_status
-    bvc .not_cursor_editing
-    +adjust_cursor
-.not_cursor_editing
-    pla
-    plp
-    rts
-call_old_keyv
-    jmp $ffff ; patched during initialization
-}
 }
 }
 
 ; This macro is called at strategically chosen points where it might be
-; appropriate to insert the screen hole for some Acorn builds. To minimise
-; clutter it isn't protected by !ifndef ACORN everywhere it occurs; we just make
-; it a no-op.
+; appropriate to insert the screen hole for ACORN_NO_SHADOW builds. To minimise
+; clutter it isn't protected by !ifndef everywhere it occurs; on all other
+; builds (including non-Acorn builds) we just define it here as a no-op.
+; it a no-op. (The ACORN_NO_SHADOW implementation is in acorn.asm.)
 !ifndef ACORN_NO_SHADOW {
 !macro make_acorn_screen_hole {
     ; no-op

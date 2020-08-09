@@ -20,7 +20,7 @@ REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
 MODE 135
 *FX229,1
-PRINT "Powered by Ozmoo alpha 1"'
+PRINT "Powered by Ozmoo 3.4 (Acorn alpha 1)"'
 :
 REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408
