@@ -50,7 +50,7 @@ REM and only do the change if they're different.
 IF mode%<>7 THEN MODE 128+mode%
 VDU 23,1,0;0;0;0;
 VDU 19,0,4,0,0,0
-PRINT "Loading, please wait...";
+PRINT "Loading, please wait..."'
 *DIR S
 IF tube% THEN */$.OZMOO2P
 IF shadow% THEN */$.OZMOOSH

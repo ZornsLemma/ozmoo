@@ -36,6 +36,10 @@ s_init
     lda #$ff
 !ifndef ACORN {
     sta s_current_screenpos_row ; force recalculation first time
+
+    lda #0
+    sta zp_screencolumn
+    sta zp_screenrow
 } else {
     sta s_cursors_inconsistent
 
@@ -53,10 +57,15 @@ s_init
     sty screen_width
     iny
     sty screen_width_plus_1
+
+    ; Pick up the current OS cursor position; this will improve readability if
+    ; any errors occuring during initialization, and it doesn't affect the game
+    ; because we will erase the screen before it starts executing.
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    stx zp_screencolumn
+    sty zp_screenrow
 }
-    lda #0
-    sta zp_screencolumn
-    sta zp_screenrow
 	; Set to 0: s_ignore_next_linebreak, s_reverse
 !ifndef ACORN {
     ldx #3
