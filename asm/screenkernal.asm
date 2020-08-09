@@ -66,13 +66,14 @@ s_init
 
     ; Pick up the current OS cursor position; this will improve readability if
     ; any errors occuring during initialization, and it doesn't affect the game
-    ; because we will erase the screen before it starts executing.
+    ; because deletable_screen_init_2 calls set_cursor anyway.
     lda #osbyte_read_cursor_position
     sta s_cursors_inconsistent
     jsr osbyte
     stx zp_screencolumn
     sty zp_screenrow
 	; Set to 0: s_ignore_next_linebreak, s_reverse, s_os_reverse
+    lda #0
     ldx #4 ; also s_os_reverse
 -	sta s_ignore_next_linebreak,x
 	dex
