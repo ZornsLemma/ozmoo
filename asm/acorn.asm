@@ -7,11 +7,10 @@
 !zone {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialization
+; Initialization and finalization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Initialization performed ASAP on startup. This should end with an rts or
-; equivalent.
+; Initialization performed ASAP on startup.
 !macro acorn_deletable_init_start_subroutine {
     ldx #1
     jsr do_osbyte_rw_escape_key
@@ -50,6 +49,307 @@
     +init_readtime_inline
     jmp init_cursor_control
 } ; End of acorn_deletable_init_start
+
+; SFTODO: COMMENT?
+!macro acorn_deletable_init_inline {
+; SFTODONOW: MOVE THIS BLOCK TO acorn.asm - IT'S VERY "ACORNY", IT IS NOT AN ACORN EQUIVALENT
+; OF THE CORRESPNDING C64 CODE, SO THERE'S NO READABILITY/MAINTENANCE BENFIT FROM HAVING IT
+; HERE
+    ; Patch re_enter_language to enter the current language; reading it here
+    ; saves a few bytes of non-deletable code.
+    lda #osbyte_read_language
+    ldx #0
+    ldy #$ff
+    jsr osbyte
+    stx re_enter_language_ldx_imm + 1
+
+    ; On a second processor, a soft break will transfer control back to our
+    ; execution address. We will have thrown away our initialisation code by
+    ; that point and can't restart properly. In order to avoid random behaviour
+    ; and probably a crash, we patch the jmp at the start of the executable to
+    ; transfer control to re_enter_language. This means that although the
+    ; language name gets printed twice, a soft break otherwise gives a clean
+    ; result similar to that on a non-second processor. This code is harmless
+    ; if we're not running on a second processor. SFTODO: But we could possibly
+    ; conditionally compile it out anyway, even if this is deletable init code
+    ; we might need the space for something else deletable.
+    lda #<re_enter_language
+    sta initial_jmp + 1
+    lda #>re_enter_language
+    sta initial_jmp + 2
+
+    ; Examine the disc catalogue and determine the first sector occupied by the
+    ; DATA file containing the game.
+.dir_ptr = zp_temp ; 2 bytes
+.length_blocks = zp_temp + 2 ; 2 bytes
+    lda #2
+    sta readblocks_numblocks
+    lda #0
+    sta readblocks_currentblock
+    sta readblocks_currentblock + 1
+    ; SFTODONOW: It's pretty unlikely to ever be a problem, but note this means
+    ; there must be at least two pages of memory at story_start. (If I support
+    ; dynamic memory in sideways RAM, as I probably will, this *might* not be
+    ; the case, either through sheer code bloat or perhaps just squeezing in
+    ; a non-mode-7 screen without shadow RAM by using SWR for dynamic memory.)
+    ; - no, this really isn't going to happen, is it? It would be a nightmare
+    ; anyway for coping with a "screen hole", and currently story_start is at
+    ; $4a00-ish on a Master - no way is it going to get up to nearly $7c00
+    ; even if we did a PAGE=&1D00 ADFS variant for the B/B+. (Nightmare because
+    ; we want to access the header - in the first page of the story - by 
+    ; simple lda story_start+foo type ops, without worrying about a memory
+    ; hole.)
+    sta readblocks_mempos ; story_start is page-aligned
+    lda #>story_start
+    sta .dir_ptr + 1
+    sta readblocks_mempos + 1
+    lda #0
+    sta readblocks_base
+!ifndef ACORN_DSD {
+    sta readblocks_base + 1
+}
+    ; Note that because we're reading the first few sectors, this works
+    ; correctly whether this is an ACORN_DSD build or not.
+    jsr readblocks
+    lda #8
+    sta .dir_ptr
+.find_file_loop
+    ldy #0
+    ldx #(-8 & $ff)
+.name_compare_loop
+    lda (.dir_ptr),y
+    ; The directory name will have the top bit set iff the file is locked; we
+    ; don't care about that here, so we need to strip it off. It's harmless to
+    ; just do this for all characters.
+    and #$7f
+    cmp .data_filename-(-8 & $ff),x
+    bne .file_not_found
+    iny
+    inx
+    beq .file_found
+    bne .name_compare_loop
+.data_filename
+    !text "DATA   $"
+.file_not_found
+    clc
+    lda .dir_ptr
+    adc #8
+    sta .dir_ptr
+    bne .find_file_loop
+    brk
+    !byte 0
+    !text "DATA not found"
+    !byte 0
+.file_found
+    ; We found the file's name using sector 0, we now want to look at the
+    ; corresponding part of sector 1. Adjust .dir_ptr for convenience.
+    inc .dir_ptr + 1
+    ; Determine the start sector of the DATA file and set readblocks_base.
+    ldy #6
+    lda (.dir_ptr),y
+    and #$3
+!ifndef ACORN_DSD {
+    sta readblocks_base + 1
+    iny
+    lda (.dir_ptr),y
+    sta readblocks_base
+} else {
+    sta dividend + 1
+    iny
+    lda (.dir_ptr),y
+    sta dividend
+    lda #0
+    sta divisor + 1
+    lda #10
+    sta divisor
+    jsr divide16
+    lda division_result
+    sta readblocks_base
+}
+    ; Determine the length of the DATA file in blocks.
+    ldy #6
+    lda (.dir_ptr),y
+    and #%110000
+    lsr
+    lsr
+    lsr
+    lsr
+    sta .length_blocks + 1 ; high byte of length in blocks
+    dey
+    lda (.dir_ptr),y
+    sta .length_blocks ; low byte of length in blocks
+    dey
+    lda (.dir_ptr),y ; low byte of length in bytes
+    beq +
+    inc .length_blocks
+    bne +
+    inc .length_blocks + 1
++
+
+    ; Preload as much of the game as possible into memory.
+    ; SFTODONOW: If we have 8 banks of SWR and some main RAM as vmem too, this will
+    ; read more data than we can actually use because we can only handle 255
+    ; VM blocks. More generally, if vmap_max_size
+    ; is (though it won't be, except during dev/debugging) smaller than the
+    ; number of blocks of main RAM+SWR we have available for vmem storage, this
+    ; will again read more data than we can actually use. This is mostly
+    ; harmless, but wastes a bit of time. Actually it's not so harmless now
+    ; we use this to help initialise vmap_max_entries. OK, that might be OK. Just
+    ; read the damn code, future me. :-) Then make it clear.
+    ; SFTODONOW: It might be nice to tell the user (how exactly? does the loader
+    ; leave us positioned correctly to output a string, and then we say "press
+    ; SPACE to start" or something?) if the game has loaded entirely into RAM
+    ; and they can remove the disc, and then we'd also want to remove the
+    ; check for the game disc being in the drive after a save/restore.
+.blocks_to_read = .dir_ptr ; 2 bytes
+.current_ram_bank_index = zp_temp + 4 ; 1 byte
+    lda #2
+    sta readblocks_numblocks
+    lda #0
+    sta .blocks_to_read + 1
+!ifndef ACORN_SWR {
+    sta .blocks_to_read
+}
+    sta readblocks_currentblock
+    sta readblocks_currentblock + 1
+    sta readblocks_mempos ; story_start is page-aligned
+    lda #>story_start
+    sta readblocks_mempos + 1
+    ; SFTODONOW: Next few lines do a constant subtraction, which could be done at
+    ; assembly time. I'll leave it for now as this is deletable init code and
+    ; on SWR build ramtop may not be a constant (shadow vs non-shadow memory).
+    ; We read 64 256-byte blocks per sideways RAM bank, if we have any.
+!ifdef ACORN_SWR {
+    lda #0
+    lda ram_bank_count
+    ldx #6
+-   asl
+    rol .blocks_to_read + 1
+    dex
+    bne -
+    sta .blocks_to_read
+}
+    ; We read an additional number of 256-byte blocks between story_start and
+    ; ramtop. SFTODONOW: Constant subtraction done in code for some builds. Not
+    ; really a big deal as this is deletable init.
+    ; SFTODONOW: Maybe ramtop should be passed in via a -D on command line? Or
+    ; perhaps instead it will be set to 8000 or F800 only based on whether this
+    ; is a SWR or 2P build, as we'll be using the screen-at-3C00 hack on a B.
+    lda #>ramtop
+    sec
+    sbc #>story_start
+    clc
+    adc .blocks_to_read
+    sta .blocks_to_read
+    bcc +
+    inc .blocks_to_read + 1
++
+
+    ; But of course we don't want to read more blocks than there are in the game.
+    lda .length_blocks + 1
+    ldy .length_blocks
+    cmp .blocks_to_read + 1
+    bne +
+    cpy .blocks_to_read
++   bcs +
+    sta .blocks_to_read + 1
+    sty .blocks_to_read
++
+
+    ; SFTODONOW: We may still end up reading more data into RAM than we can use.
+    ; I believe this harmless except for wasting time, but not ideal.
+
+!ifdef ACORN_SWR {
+    ; Stash a copy of .blocks_to_read so we can use it later to help initialise
+    ; vmap_max_entries.
+    lda .blocks_to_read + 1
+    pha
+    lda .blocks_to_read
+    pha
+
+    ; Page in the first bank.
+    lda #0
+    sta .current_ram_bank_index
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
+}
+
+.preload_loop
+    ; At the end of the file, we might need to shrink readblocks_numblocks to
+    ; avoid reading past the end.
+    lda .blocks_to_read + 1
+    bne +
+    lda .blocks_to_read
+    cmp readblocks_numblocks
+    bcs +
+    sta readblocks_numblocks
++   
+
+!ifdef ACORN_SWR {
+    ; Switch to the next bank if necessary
+    lda readblocks_mempos + 1
+    cmp #$c0 ; SFTODONOW: magic constant
+    bcc +
+    inc .current_ram_bank_index
+    ldx .current_ram_bank_index
+    lda ram_bank_list,x
+    sta romsel_copy
+    sta romsel
+    lda #$80 ; SFTODONOW: magic constant
+    sta readblocks_mempos + 1
++
+}
+
+    ; Actually do the read
+    jsr readblocks
+
+    ; Decrement .blocks_to_read and loop round if it's not zero.
+    lda .blocks_to_read
+    sec
+    sbc readblocks_numblocks
+    sta .blocks_to_read
+    bcs +
+    dec .blocks_to_read + 1
++   ora .blocks_to_read + 1
+    bne .preload_loop
+
+!ifdef ACORN_SWR {
+    ; We must keep the first bank of sideways RAM paged in by default, because
+    ; dynamic memory may have overflowed into it.
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
+}
+
+    ; Calculate CRC of block 0 before it gets modified, so we can use it later
+    ; to identify the game disc after a save or restore.
+    lda #0
+    ldx #<story_start
+    ldy #>story_start
+    jsr calculate_crc
+    stx game_disc_crc
+    sty game_disc_crc + 1
+} ; End of acorn_deletable_init_inline
+
+!macro clean_up_and_quit_inline {
+    jsr set_os_normal_video
+    jsr turn_on_cursor
+    ldx #0
+    jsr do_osbyte_rw_escape_key
+!ifdef ACORN_CURSOR_PASS_THROUGH {
+    lda #osbyte_set_cursor_editing
+    ldx #0
+    jsr do_osbyte_y_0
+}
+    ; Re-enter the current language.
+re_enter_language
+    lda #osbyte_enter_language
+re_enter_language_ldx_imm
+    ldx #$ff
+    jsr osbyte
+    ; never returns
+}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; OS error handling and associated routines
@@ -273,6 +573,25 @@ kernal_readtime
 acorn_screen_hole_start = *
             !fill $4000 - *, 'X'
 acorn_screen_hole_end
+        }
+    }
+}
+
+!macro check_acorn_screen_hole {
+    ; This check is important to ensure the no shadow RAM build doesn't crash,
+    ; but when the check fails, we need to be able to disable it in order to
+    ; allow assembly to complete so we can look at the acme report output and
+    ; decide where to add a +make_acorn_screen_hole invocation.
+    !ifndef ACORN_DISABLE_SCREEN_HOLE_CHECK {
+        !ifndef acorn_screen_hole_start {
+            !error "Acorn screen hole has not been added"
+        } else {
+            !if acorn_screen_hole_start > $3c00 {
+                !error "Acorn screen hole starts too late"
+            }
+            !if acorn_screen_hole_end < $4000 {
+                !error "Acorn screen hole ends too soon"
+            }
         }
     }
 }
