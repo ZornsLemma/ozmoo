@@ -2,6 +2,10 @@
 
 !zone {
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initialization
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; Initialization performed ASAP on startup. This should end with an rts or
 ; equivalent.
 !macro acorn_deletable_init_start {
@@ -39,22 +43,56 @@
     jsr do_osbyte_y_0
 }
 
-    ; We keep the hardware cursor off most of the time; this way the user can't
-    ; see it flitting round the screen doing various updates. (The C64 doesn't
-    ; have this issue, as it uses direct screen writes and in fact its cursor
-    ; is a software creation.) We position it appropriately and turn it on only
-    ; when we're expecting user input. (As far as I can see the Z-machine has
-    ; no way for the running program to turn the cursor on and off.)
-    jsr init_cursor_control
-
-    jsr init_readtime
-
-    ; Now Ozmoo's screen output code is (about to be) initialised via
-    ; init_screen_colours, errors can be reported using s_printchar.
-    jmp set_default_error_handler
+    +init_readtime
+    jmp init_cursor_control
 } ; End of acorn_deletable_init_start
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; C64 kernal_readtime emulation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+    ; The Acorn OS time counter is a 5 byte value, whereas (ignoring the
+    ; difference in resolution) the Commodore one is 3 bytes. Because the Acorn
+    ; OS time counter may have an arbitrarily large value (perhaps some kind of
+    ; soft RTC solution) when we start up and we don't want to zero it, we read
+    ; the initial value and subtract that from any subsequent reads.
+!macro init_readtime {
+    lda #osword_read_clock
+    ldx #<initial_clock
+    ldy #>initial_clock
+    jsr osword
+}
+
+kernal_readtime
+.current_clock = scratch_page
+    lda #osword_read_clock
+    ldx #<.current_clock
+    ldy #>.current_clock
+    jsr osword
+    ldx #(256-5)
+    sec
+-   lda .current_clock-(256-5),x
+    sbc initial_clock-(256-5),x
+    sta .current_clock-(256-5),x
+    inx
+    bne -
+    ; The Acorn clock is in centiseconds; a PAL C64 would use fiftieths of a
+    ; second, so halve the value before we return it.
+    ldx #4
+    clc
+-   ror .current_clock,x
+    dex
+    bpl -
+    ; All the above means we're at no more or less risk than a C64 of having the
+    ; time roll over during a game. It would take >3.8 days for this to happen.
+    ldy .current_clock+2
+    ldx .current_clock+1
+    lda .current_clock+0
+    rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ACORN_NO_SHADOW support (mode 7 screen at $3c00 instead of $7c00)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; If we have no shadow RAM, we need to relocate the mode 7 screen to $3c00 to
 ; create a contiguous area of RAM from $4000-$c000. See

@@ -1536,6 +1536,10 @@ end_of_routines_in_stack_space
 
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 
+; SFTODO: Maybe we should change this to say "story_start = stack_start + stack_size"
+; and similarly for vmem_start - that way the routines in stack space will be
+; allowed to exceed the actual stack size. This would need to be Acorn only, as
+; on C64 we want to attach preload data at this point.
 story_start
 !if (story_start & 0xff) != 0 {
     !error "story_start must be page-aligned"

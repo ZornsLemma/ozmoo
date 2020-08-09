@@ -969,6 +969,12 @@ draw_status_line
 }
 
 !ifdef ACORN {
+    ; We keep the hardware cursor off most of the time; this way the user can't
+    ; see it flitting round the screen doing various updates. (The C64 doesn't
+    ; have this issue, as it uses direct screen writes and in fact its cursor
+    ; is a software creation.) We allow it to remain in "illogical" positions
+    ; while it's invisible and only position it where it belongs when it's turned
+    ; on, as it is during user input.
 init_cursor_control
     lda #$ff
     sta cursor_status
