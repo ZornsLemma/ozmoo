@@ -549,7 +549,6 @@ uname_len = * - .uname
 !ifdef ACORN_SWR {
     pla
     bpl +
-    ; SFTODONOW: This copy loop is possibly not optimal, I bashed it out quickly.
     sta readblocks_mempos + 1
     sta .copy_sta_abs_y + 2
     ldx #1
@@ -558,7 +557,7 @@ uname_len = * - .uname
 .copy_lda_abs_y
     lda scratch_double_page,y
 .copy_sta_abs_y
-    sta $ff00,y
+    sta $ff00,y ; patched
     iny
     bne -
     inc .copy_sta_abs_y + 2
@@ -1616,22 +1615,10 @@ save_game
 	jsr .swap_pointers_for_save
 
 	; Perform save or load
-    ; SFTODONOW: Can/should we check if the file already exists on save and ask
-    ; user to confirm? I really don't want to use OSFIND to try to open the
-    ; file for input as a test, because I want to avoid any problems with
-    ; using memory from $1100 upwards on a B/B+. I also don't want to query the
-    ; catalogue directly because it means I have to start parsing things like
-    ; :1.S.FOO, not to mention that I'd have to make assumptions about the
-    ; format of the save game disc which are less warranted than assumptions
-    ; about the game disc; maybe it's some double-density 62-file DFS or
-    ; something. I want to let the filing system deal with it. If we're willing
-    ; (not too unreasonable) to assume DFS, we could potentially futz around
-    ; using *ACCESS to lock the file before the save and catching an error
-    ; caused by trying to save over a locked file, then un-lock and check the
-    ; user is happy to overwrite. But that would interfere with any locking the
-    ; user has done of their own on the file, and would be pretty fiddly code
-    ; to write. I'm probably over-complicating this - I could almost certainly
-    ; just use OSFILE 5 to read the attributes.
+    ; SFTODO: Can/should we check if the file already exists on save and ask
+    ; user to confirm? Just use OSFILE 5 to do this, then I believe that's not
+    ; going to cause problems with having PAGE at $1100 if that's otherwise
+    ; possible.
     ldx #1
     ldy #error_print_osasci
     jsr setjmp
