@@ -141,7 +141,6 @@ read_byte_at_z_address
 }
 
 
-; SFTODONOW: I suspect - I haven't yet analysed the code which can access dynamic memory, especially writes - we may need to keep the RAM bank which dynamic memory (might, depending on game size) overflow into paged in by default. - PRETTY SURE WE DO THIS, BUT CHECK, AND WRITE A PERMANENT COMMENT SOMEWHERE ON HOW WE MANAGE SWR FOR FUTURE REFERENCE
 vmem_blockmask = 255 - (>(vmem_blocksize - 1))
 vmem_block_pagecount = vmem_blocksize / 256
 ; vmap_max_length  = (vmem_end-vmem_start) / vmem_blocksize
@@ -182,7 +181,7 @@ vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
-; SFTODONOW: I suspect with large amounts of RAM backing the virtual memory, the
+; SFTODO: I suspect with large amounts of RAM backing the virtual memory, the
 ; tick resolution may not really be high enough. We'll probably mostly get
 ; away with it, but maybe come back to this later. It might be OK actually given
 ; the way vmap_clock_index moves round rather than us always starting at 0;
@@ -200,7 +199,7 @@ vmem_oldest_index	!byte 0
 }
 }
 
-; SFTODONOW: Might be a useful statistic for benchmarking with different builds/
+; SFTODO: Might be a useful statistic for benchmarking with different builds/
 ; amounts of SWR (not just benchmarking, checking more RAM is reducing swaps)
 !ifdef COUNT_SWAPS {
 vmem_swap_count !byte 0,0
@@ -249,7 +248,7 @@ print_optimized_vm_map
     jmp kernal_reset      ; reset
 }
 
-; SFTODONOW: This might need tweaking to print SWR stuff correctly
+; SFTODO: This might need tweaking to print SWR stuff correctly
 !ifdef TRACE_VM {
 print_vm_map
 !zone {
@@ -458,8 +457,8 @@ read_byte_at_z_address
     bne .read_new_byte
     ; same 256 byte segment, just return
 !ifdef ACORN_SWR {
-    ; SFTODONOW: For now I'll assume I always need to page the bank in.
-    ; SFTODONOW: I believe we're allowed to corrupt X here - e.g. we would if
+    ; SFTODO: For now I'll assume I always need to page the bank in.
+    ; SFTODO: I believe we're allowed to corrupt X here - e.g. we would if
     ; this called into VM subsystem. We could use X to hold the ram bank both
     ; here and in the path which enters via .read_new_byte and the '-' label,
     ; then at the page out step just below we could cpx ram_bank_list:beq rts
@@ -476,7 +475,7 @@ read_byte_at_z_address
 !ifdef ACORN_SWR {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
-    ; SFTODONOW: Conceivably the build script could detect whether this is going
+    ; SFTODO: Conceivably the build script could detect whether this is going
     ; to happen and tell us via a -DACORN_DYNMEM_IN_SWR=1 flag or
     ; something like that. We could then avoid doing this page in of the first
     ; bank every time if we don't have dynmem in SWR. (In a debug build, we
@@ -493,13 +492,13 @@ read_byte_at_z_address
     ; would simply be to have a separate E00 build rather than relocating, but
     ; I'm probably looking at having three binaries (tube, model B, B+/Master)
     ; as it is and a fourth might really be overdoing it.
-    ; SFTODONOW: That ACORN_DYNMEM_IN_SWR flag would also be useful for conditionally
+    ; SFTODO: That ACORN_DYNMEM_IN_SWR flag would also be useful for conditionally
     ; assembling either the current OSFILE save/restore code or the to-be-written
     ; OSFIND+OSGBPB code which will handle case when some data is in SWR. Oh,
     ; and the build system can also benefit from determining this for itself
     ; because it can then choose to assemble the B/B+ code to run at $1100 not
     ; $1300.
-    ; SFTODONOW: If we are allowed to corrupt X or Y here we could use one of
+    ; SFTODO: If we are allowed to corrupt X or Y here we could use one of
     ; them to do the loads and stores and avoid the pha/pla.
     pha
     lda ram_bank_list
@@ -580,10 +579,6 @@ read_byte_at_z_address
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
-    ; SFTODONOW: So note that (as I expected) we can only have 255 entries in the
-    ; vmem map, numbered 0-254. Probably not worth playing games trying to have
-    ; vmap_used_entries == 0 meaning 256 used. - THIS IS FINE, JUST NEED TO
-    ; MAKE A PERMANENT COMMENT ABOUT THIS
     cpx #255
 	bne -
 	beq .no_such_block ; Always branch
@@ -700,22 +695,11 @@ read_byte_at_z_address
 +	txa
 	tay
 !ifndef ACORN_SWR {
-    ; SFTODONOW: Isn't this at risk of overflow now X (index into VM table) can
-    ; be as high as 254? In this specific case it won't be a problem, because
-    ; all we are going to do with the result is update vmap_c64_offset, which we
-    ; never actually use. (This needs tidying up, of course, but it isn't actually
-    ; broken. It might be best to simply not have vmap_c64_offset - remove it
-    ; conditionally and just don't even define it - on ACORN_SWR builds, as its
-    ; use is error prone.)
 	asl
 !ifndef SMALLBLOCK {
 	asl
 }
 	; Carry is already clear
-    ; SFTODONOW: The next couple of lines aren't "right" for SWR case, but I think
-    ; they are only used by PRINT_SWAPS or the non-Acorn cache case just below.
-    ; I think we could therefore !if out these couple of lines on all Acorn
-    ; builds except for debug ones.
 	adc vmap_first_ram_page
 	sta vmap_c64_offset
 }
@@ -737,7 +721,7 @@ read_byte_at_z_address
 }
 
 	; We have now decided on a map position where we will store the requested block. Position is held in x.
-    ; SFTODONOW: Will need tweaking for SWR
+    ; SFTODO: Will need tweaking for SWR
 !ifdef DEBUG {
 !ifdef PRINT_SWAPS {
 	lda streams_output_selected + 2
@@ -850,7 +834,6 @@ read_byte_at_z_address
 !ifndef ACORN_SWR {
 	txa
 	
-    ; SFTODONOW: Risk of overflow since X can be as high as 254
 	asl
 !ifndef SMALLBLOCK {
 	asl
@@ -929,7 +912,7 @@ read_byte_at_z_address
     lda (mempointer),y
 !ifdef ACORN_SWR {
     ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it. SFTODONOW: Can we use X for the
+    ; dynamic memory may have overflowed into it. SFTODO: Can we use X for the
     ; load/store here to avoid the pha/pla?
     pha
     lda ram_bank_list
@@ -940,7 +923,7 @@ read_byte_at_z_address
     rts
 
 !ifdef ACORN_SWR {
-; SFTODONOW: Not sure I will want this as a subroutine, but let's write it here
+; SFTODO: Not sure I will want this as a subroutine, but let's write it here
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
 ; adjust_dynamic_memory_inline also relies on the RAM bank index being returned
@@ -987,17 +970,9 @@ convert_index_x_to_ram_bank_and_address
 }
 }
 
-; SFTODONOW: Hack, let's just allocate a fake datasette buffer here
-; SFTODONOW: *If* we permanently leave this allocated "in" the binary, we could
-; have the build script patch in the initial VM table instead of having to "*LOAD"
-; it at startup. However, if we have the 1K of language workspace at $400 unused
-; (I haven't yet decided if it can be used for something else), using that to
-; hold this would work and we would need to *LOAD the data there as that's 
-; outside our binary. *LOADing the initial VM data is not a huge deal, but it
-; will "waste" a sector on disc and slow loading slightly if it could otherwise
-; have been included straight into the binary.
-; SFTODONOW: For now I'm going to pre-fill this as part of the build
-; SFTODODATA SFTODONOW - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
+; SFTODO: Hack, let's just allocate a fake datasette buffer here
+; SFTODO: For now I'm going to pre-fill this as part of the build
+; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
 !ifdef ACORN {
