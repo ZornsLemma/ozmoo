@@ -89,18 +89,8 @@
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    ; SFTODONOW: It's pretty unlikely to ever be a problem, but note this means
-    ; there must be at least two pages of memory at story_start. (If I support
-    ; dynamic memory in sideways RAM, as I probably will, this *might* not be
-    ; the case, either through sheer code bloat or perhaps just squeezing in
-    ; a non-mode-7 screen without shadow RAM by using SWR for dynamic memory.)
-    ; - no, this really isn't going to happen, is it? It would be a nightmare
-    ; anyway for coping with a "screen hole", and currently story_start is at
-    ; $4a00-ish on a Master - no way is it going to get up to nearly $7c00
-    ; even if we did a PAGE=&1D00 ADFS variant for the B/B+. (Nightmare because
-    ; we want to access the header - in the first page of the story - by 
-    ; simple lda story_start+foo type ops, without worrying about a memory
-    ; hole.)
+    ; SF: It's never going to be a problem, but note that this assumes we have
+    ; at least two pages of memory at story_start.
     sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta .dir_ptr + 1
@@ -217,9 +207,6 @@
     sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta readblocks_mempos + 1
-    ; SFTODONOW: Next few lines do a constant subtraction, which could be done at
-    ; assembly time. I'll leave it for now as this is deletable init code and
-    ; on SWR build ramtop may not be a constant (shadow vs non-shadow memory).
     ; We read 64 256-byte blocks per sideways RAM bank, if we have any.
 !ifdef ACORN_SWR {
     lda #0
@@ -232,8 +219,11 @@
     sta .blocks_to_read
 }
     ; We read an additional number of 256-byte blocks between story_start and
-    ; ramtop. SFTODONOW: Constant subtraction done in code for some builds. Not
-    ; really a big deal as this is deletable init.
+    ; ramtop.
+    ; SF: We're doing a constant subtraction in code here, but a) this is
+    ; deletable init code so it doesn't really cost anything b) if we don't,
+    ; the relocation code fails because we have a variation which doesn't follow
+    ; the simple fixed relationship we expect.
     ; SFTODONOW: Maybe ramtop should be passed in via a -D on command line? Or
     ; perhaps instead it will be set to 8000 or F800 only based on whether this
     ; is a SWR or 2P build, as we'll be using the screen-at-3C00 hack on a B.
