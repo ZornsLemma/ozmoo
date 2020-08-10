@@ -792,26 +792,7 @@ z_ins_restart
 
 } else {
 !ifdef ACORN_NO_SHADOW {
-    ; Reset the vectors we fiddled with. If we don't do this, any errors during
-    ; re-loading the executable are likely to cause a hang, as the old vector
-    ; locations we patched into the code will be overwritten with the dummy
-    ; values.
-    lda call_old_wrchv + 1
-    sta wrchv
-    lda call_old_wrchv + 2
-    sta wrchv + 1
-    lda call_old_keyv + 1
-    sta keyv
-    lda call_old_keyv + 2
-    sta keyv + 1
-
-    ; We also switch to normal mode 7. This clears the screen, which doesn't
-    ; happen on other versions during a restart, but I don't think that's a
-    ; big deal.
-    lda #vdu_set_mode
-    jsr oswrch
-    lda #7
-    jsr oswrch
+    jsr undo_mode_7_3c00
 }
 
     ; Since we discarded our initialisation code on startup, we have to

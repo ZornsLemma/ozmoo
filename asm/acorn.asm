@@ -50,7 +50,7 @@
     jmp init_cursor_control
 } ; End of acorn_deletable_init_start
 
-; initialization performed shortly after startup, just after
+; Initialization performed shortly after startup, just after
 ; acorn_deletable_init_start. (The distinction is not that important on Acorn
 ; as the Ozmoo executable itself doesn't generate a splash screen.)
 !macro acorn_deletable_init_inline {
@@ -179,6 +179,11 @@
 +
 
     ; Preload as much of the game as possible into memory.
+    ; SFTODO: If we're restarting, we only need to reload the dynamic memory.
+    ; If we set an "only load X sectors" flag in the persistent storage in page
+    ; 4, we could minimise restart time. (On an ACORN_NO_SHADOW build we would
+    ; need to reload enough to restore what we lost through temporarily switching
+    ; to real mode 7 with the screen at $3c00.)
     ; SFTODONOW: If we have 8 banks of SWR and some main RAM as vmem too, this will
     ; read more data than we can actually use because we can only handle 255
     ; VM blocks. More generally, if vmap_max_size
@@ -516,6 +521,9 @@ nonstored_blocks_adjusted
 } ; End of acorn_deletable_screen_init_2_inline
 
 !macro clean_up_and_quit_inline {
+!ifdef ACORN_NO_SHADOW {
+    jsr undo_mode_7_3c00
+}
     jsr set_os_normal_video
     jsr turn_on_cursor
     ldx #0
@@ -795,20 +803,9 @@ acorn_screen_hole_end
 +
 
     ; Copy the contents of the current screen for neatness.
-    ldx #4
-.screen_copy_loop
-    ldy #0
-.screen_copy_loop2
-.screen_copy_lda_abs_y
-    lda $7c00,y
-.screen_copy_sta_abs_y
-    sta $3c00,y
-    iny
-    bne .screen_copy_loop2
-    inc .screen_copy_lda_abs_y + 2
-    inc .screen_copy_sta_abs_y + 2
-    dex
-    bne .screen_copy_loop
+    ldx #$7c
+    ldy #$3c
+    jsr screen_copy
 
     ; Reprogram the CRTC and poke the OS variables to mostly compensate.
     lda #crtc_screen_start_high
@@ -898,6 +895,59 @@ our_keyv
     rts
 call_old_keyv
     jmp $ffff ; patched during initialization
+
+undo_mode_7_3c00
+    ; Reset the vectors we fiddled with.
+    lda call_old_wrchv + 1
+    sta wrchv
+    lda call_old_wrchv + 2
+    sta wrchv + 1
+    lda call_old_keyv + 1
+    sta keyv
+    lda call_old_keyv + 2
+    sta keyv + 1
+
+    ; Switch to normal mode 7. This clears the screen, so we copy the contents
+    ; back and restore the cursor position. This is maybe overkill, but it's
+    ; important any final message shown when the game quits can be seen by the
+    ; user.
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    lda #vdu_set_mode
+    jsr oswrch
+    lda #7
+    jsr oswrch
+    ; SFTODO: Do we do vdu_goto_xy a lot? Can we factor out the code to save
+    ; space?
+    lda #vdu_goto_xy
+    jsr oswrch
+    txa
+    jsr oswrch
+    tya
+    jsr oswrch
+
+    ldx #$3c
+    ldy #$7c
+    ; fall through to screen_copy
+
+screen_copy
+    stx .screen_copy_lda_abs_y + 2
+    sty .screen_copy_sta_abs_y + 2
+    ldx #4
+.screen_copy_loop
+    ldy #0
+.screen_copy_loop2
+.screen_copy_lda_abs_y
+    lda $ff00,y ; patched
+.screen_copy_sta_abs_y
+    sta $ff00,y ; patched
+    iny
+    bne .screen_copy_loop2
+    inc .screen_copy_lda_abs_y + 2
+    inc .screen_copy_sta_abs_y + 2
+    dex
+    bne .screen_copy_loop
+    rts
 } ; End of !ifdef ACORN_NO_SHADOW
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -911,7 +961,7 @@ printstring_os
 -
 .printstring_os_lda
    lda $ffff
-   beq .set_default_error_handler_rts
+   beq .calculate_crc_rts
    jsr osasci
    inc .printstring_os_lda + 1
    bne -
@@ -956,6 +1006,7 @@ calculate_crc
     bne .nbyt
     ldx .crc
     ldy .crc + 1
+.calculate_crc_rts
     rts
 
 ; Two wrappers for calling osbyte_rw_escape_key to reduce code size; we do this
