@@ -306,11 +306,13 @@ def add_tube_executable(ssd):
     if game_blocks <= max_game_blocks_no_vmem:
         info("Game is small enough to run without virtual memory on second processor")
         with open("temp/ozmoo_tube_no_vmem", "rb") as f:
-            executable = f.read()
+            executable = truncate_executable(f.read(), labels_no_vmem)
     else:
         info("Game will be run using virtual memory on second processor")
         with open("temp/ozmoo_tube_vmem", "rb") as f:
-            executable = patch_vmem(f.read(), parse_labels("temp/acme_labels_tube_vmem.txt"))
+            labels_vmem = parse_labels("temp/acme_labels_tube_vmem.txt")
+            executable = truncate_executable(f.read(), labels_vmem)
+            executable = patch_vmem(executable, labels_vmem)
     ssd.add_file("$", "OZMOO2P", tube_start_addr, tube_start_addr, executable)
 
 # SFTODO: Move this function?
@@ -357,15 +359,28 @@ def add_swr_shr_executable(ssd):
     assert low_executable[-2:] == b'\0\0'
     assert high_executable[-2:] == b'\0\0'
     relocations = make_relocations(low_executable, high_executable)
-    # SFTODONOW: We could do something similar to the next couple of lines to trim the unneeded 0s off the other versions of the executable.
-    relocations_offset = high_labels["reloc_count"] - swr_shr_high_start_addr
-    executable = high_executable[:relocations_offset] + relocations
+    executable = truncate_executable(high_executable, high_labels) + relocations
     # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
     # for a double-sided game, this is probably the one to pick - it's going to be at least
     # slightly larger due to the relocations, and the second surface has slightly more free
     # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
     # two Ozmoo executables.
     ssd.add_file("$", "OZMOOSH", host | swr_shr_high_start_addr, host | swr_shr_high_start_addr, executable)
+
+# SFTODO: Move this function?
+def add_shr_executable(ssd):
+    with open("temp/ozmoo_swr_vmem", "rb") as f:
+        swr_labels = parse_labels("temp/acme_labels_swr_vmem.txt")
+        executable = truncate_executable(f.read(), swr_labels)
+        executable = patch_vmem(executable, swr_labels)
+        ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, executable)
+
+def truncate_executable(executable, labels, truncate_label = None):
+    if "ACORN_RELOCATABLE" in labels:
+        truncate_label = "reloc_count"
+    else:
+        truncate_label = "end_of_routines_in_stack_space"
+    return executable[:labels[truncate_label]-labels["program_start"]]
 
 # SFTODO: Move this function
 def patch_vmem(executable, labels):
@@ -438,8 +453,7 @@ if args.double_sided:
 
 add_tube_executable(ssd)
 add_swr_shr_executable(ssd)
-with open("temp/ozmoo_swr_vmem", "rb") as f:
-    ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, patch_vmem(f.read(), parse_labels("temp/acme_labels_swr_vmem.txt")))
+add_shr_executable(ssd)
 
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if

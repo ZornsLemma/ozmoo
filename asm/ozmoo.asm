@@ -1152,12 +1152,12 @@ load_suggested_pages
 }
 }
 
-end_of_routines_in_stack_space
-
 !ifdef ACORN_RELOCATABLE {
     ; This must be the last thing in the executable.
     !source "relocate.asm"
 }
+
+end_of_routines_in_stack_space
 
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 
