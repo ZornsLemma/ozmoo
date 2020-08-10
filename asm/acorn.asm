@@ -7,10 +7,10 @@
 !zone {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; initialization and finalization
+; Initialization and finalization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; initialization performed ASAP on startup.
+; Initialization performed ASAP on startup.
 !macro acorn_deletable_init_start_subroutine {
     ldx #1
     jsr do_osbyte_rw_escape_key
@@ -54,9 +54,6 @@
 ; acorn_deletable_init_start. (The distinction is not that important on Acorn
 ; as the Ozmoo executable itself doesn't generate a splash screen.)
 !macro acorn_deletable_init_inline {
-; SFTODONOW: MOVE THIS BLOCK TO acorn.asm - IT'S VERY "ACORNY", IT IS NOT AN ACORN EQUIVALENT
-; OF THE CORRESPNDING C64 CODE, SO THERE'S NO READABILITY/MAINTENANCE BENFIT FROM HAVING IT
-; HERE
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
@@ -245,9 +242,6 @@
     sty .blocks_to_read
 +
 
-    ; SFTODONOW: We may still end up reading more data into RAM than we can use.
-    ; I believe this harmless except for wasting time, but not ideal.
-
 !ifdef ACORN_SWR {
     ; Stash a copy of .blocks_to_read so we can use it later to help initialize
     ; vmap_max_entries.
@@ -278,14 +272,14 @@
 !ifdef ACORN_SWR {
     ; Switch to the next bank if necessary
     lda readblocks_mempos + 1
-    cmp #$c0 ; SFTODONOW: magic constant
+    cmp #>swr_ramtop
     bcc +
     inc .current_ram_bank_index
     ldx .current_ram_bank_index
     lda ram_bank_list,x
     sta romsel_copy
     sta romsel
-    lda #$80 ; SFTODONOW: magic constant
+    lda #>flat_ramtop
     sta readblocks_mempos + 1
 +
 }

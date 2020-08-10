@@ -269,6 +269,7 @@ max_screen_width = 80
 romsel = $fe30
 romsel_copy = $f4
 flat_ramtop = $8000
+swr_ramtop = $c000
 } else {
 flat_ramtop = $f800
 }
