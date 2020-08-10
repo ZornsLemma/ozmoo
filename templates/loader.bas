@@ -20,6 +20,15 @@ REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
 MODE 135
 *FX229,1
+REM SFTODO: Note that for Z3 games, anything shown on the top line of
+REM the screen will remain present occupying the not-yet-displayed
+REM status line until the game starts. This means that if any disc
+REM errors occur during the initial loading, the screen may scroll
+REM but the top line won't. This isn't a big deal but for the nicest
+REM possible appearance in this admittedly unlikely situation either
+REM clear the top line before running the Ozmoo executable or make
+REM sure it has something that looks OK on its own. (For example,
+REM *not* the top half of some double-height text.)
 PRINT "Powered by Ozmoo 3.4 (Acorn alpha 1)"'
 :
 REM The following need to be kept consistent with asm/constants.asm

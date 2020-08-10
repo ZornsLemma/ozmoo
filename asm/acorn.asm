@@ -478,6 +478,15 @@ nonstored_blocks_adjusted
 ; lengthy loading process in acorn_deletable_init_inline.
 ; SFTODO COMMENT
 !macro acorn_deletable_screen_init_2_inline {
+!ifdef ACORN_NO_SHADOW {
+    ; It's not safe to do vdu_cls without having a text window in effect.
+    ; Normally the one set up when we first entered this version of mode 7 is
+    ; in effect, but if there's been any output (e.g. due to disc errors) via
+    ; s_printchar between then and now we may no longer have one in effect.
+    ; s_printchar normally takes care of creating one as needed, but since we're
+    ; going to do vdu_cls directly we need to take care of this.
+    +define_mode_7_3c00_text_window_inline
+}
     lda #vdu_cls
     jsr oswrch
 
@@ -486,7 +495,7 @@ nonstored_blocks_adjusted
     ; update_colours, although that happens quite a lot earlier anyway, and
     ; we also don't want Z3 games in mode 7 to write a colour control code to
     ; the top left of the screen before they're ready to start.
-    ; SFTODONOW: This will reset the colours on a restart. It might be better to
+    ; SFTODO: This will reset the colours on a restart. It might be better to
     ; have the loader poke these colours into RAM and this binary works with
     ; whatever values the loader leaves there.
     lda #osbyte_read_screen_mode
@@ -626,6 +635,12 @@ setjmp
     sta .error_handler_jmp + 1
     lda #>.setjmp_error_handler
     sta .error_handler_jmp + 2
+!ifdef ACORN_SWR {
+    ; The OS will page the current language back in on BRK, so we need to save
+    ; the current bank and restore it in .setjmp_error_handler.
+    lda romsel_copy
+    sta jmp_buf_ram_bank
+}
     ; We need to save the contents of the stack, because they may be corrupted
     ; when an error message is generated. (They probably won't be, but we can't
     ; rely on it.) As a nice side effect of this, the return address for our
@@ -663,7 +678,13 @@ setjmp
     sta stack,x
     iny
     bne -
-+   lda #1 ; Z flag is clear
++   
+!ifdef ACORN_SWR {
+    lda jmp_buf_ram_bank
+    sta romsel_copy
+    sta romsel
+}
+    lda #1 ; Z flag is clear
     rts
 
 set_default_error_handler
@@ -812,16 +833,7 @@ acorn_screen_hole_end
     ; in place straight away is useful insurance.
     lda #osbyte_read_cursor_position
     jsr osbyte
-    lda #vdu_define_text_window
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    lda #24
-    jsr oswrch
-    lda #39
-    jsr oswrch
-    lda #0
-    jsr oswrch
+    +define_mode_7_3c00_text_window_inline
     lda #vdu_goto_xy
     jsr oswrch
     txa
@@ -849,6 +861,19 @@ acorn_screen_hole_end
     sta keyv + 1
 
 .set_up_mode_7_3c00_done
+}
+
+!macro define_mode_7_3c00_text_window_inline {
+    lda #vdu_define_text_window
+    jsr oswrch
+    lda #0
+    jsr oswrch
+    lda #24
+    jsr oswrch
+    lda #39
+    jsr oswrch
+    lda #0
+    jsr oswrch
 }
 
 !macro adjust_cursor_inline {

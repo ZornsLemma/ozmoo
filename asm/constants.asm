@@ -356,14 +356,15 @@ mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp?
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
 z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp?
+jmp_buf_ram_bank = $420 ; 1 byte
 }
-screen_mode = $420 ; !byte 0
+screen_mode = $421 ; !byte 0
 ; fg_colour and bg_colour must be adjacent and in this order
-fg_colour = $421 ; !byte 0
-bg_colour = $422 ; !byte 0
-cursor_status = $423 ; !byte 0
-memory_buffer = $424 ; 7 bytes (larger on C64, but this is all we use)
-jmp_buf = $42b ; "up to" 257 bytes - in reality 64 bytes is probably enough
+fg_colour = $422 ; !byte 0
+bg_colour = $423 ; !byte 0
+cursor_status = $424 ; !byte 0
+memory_buffer = $425 ; 7 bytes (larger on C64, but this is all we use)
+jmp_buf = $42c ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
 scratch_page = $500
