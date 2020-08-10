@@ -1013,6 +1013,7 @@ convert_index_x_to_ram_bank_and_address
     ; Carry is clear
     adc #$40 ; SFTODO MAGIC NUMBER, ASSUMES 16K BANK
 .last_bank_partly_used
+    tax
     beq .no_wasted_swr
     ; A now contains the number of 256-byte blocks wasted at the end of the
     ; final bank(s); they contain game data but can't be accessed. We therefore
@@ -1053,30 +1054,22 @@ convert_index_x_to_ram_bank_and_address
     lda vmap_z_l,x
     clc
     adc .wasted_pages_reclaimable
+    sta vmap_z_l,x
     bcc .no_carry
-    ; There's a carry into vmap_z_h,x. It's possible this will cause vmap_z_h,x to
-    ; overflow the non-timestamp bits (as identified by vmem_highbyte_mask) if
-    ; this is a Z3 game. If this happens, we just decrement vmap_max_entries to
-    ; take this entry out of play, as it can't ever be useful.
-    sta zp_temp + 1 ; We don't store A in vmap_z_l,x just yet
+    ; There's a carry into vmap_z_h,x. This can't cause a problem, because this
+    ; is a Z4+ game and so the address space is large enough that we can
+    ; never overflow the vmem_highbyte_mask bits. SFTODO: If we supported
+    ; PRELOAD and didn't have a linear sequence of low addresses in the initial
+    ; vmap that might not be true.
     lda vmap_z_h,x
     and #vmem_highbyte_mask
-    ; Carry is set
     adc #0
-    cmp #vmem_highbyte_mask + 1
-    bne .not_overflow
-    dec vmap_max_entries
-    bne .overflow ; Always branch
-.not_overflow
-    sta zp_temp + 2
+    sta zp_temp + 1
     lda vmap_z_h,x
     and #($ff xor vmem_highbyte_mask)
-    ora zp_temp + 2
+    ora zp_temp + 1
     sta vmap_z_h,x
-    lda zp_temp + 1
 .no_carry
-    sta vmap_z_l,x
-.overflow
     dex
     cpx #255
     bne .vmap_fixup_loop
