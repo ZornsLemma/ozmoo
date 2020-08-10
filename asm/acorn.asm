@@ -387,7 +387,10 @@ nonstored_blocks_adjusted
 ; constrained at all by the 255 entry limit.
 !macro adjust_dynamic_memory_inline {
 !ifndef Z3 {
-    ldx #vmap_max_size - 1
+    ldx vmap_max_entries
+    cpx #vmap_max_size
+    bcc .no_wasted_swr
+    dex
     jsr convert_index_x_to_ram_bank_and_address
     iny
     cpy ram_bank_count
