@@ -56,10 +56,20 @@
 !ifdef SLOW {
 read_next_byte_at_z_pc_sub
 !ifdef ACORN_SWR {
-    !error "SFTODONOW"
+    lda z_pc_mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
 }
 	ldy #0
 	lda (z_pc_mempointer),y
+!ifdef ACORN_SWR {
+    ; We must keep the first bank of sideways RAM paged in by default, because
+    ; dynamic memory may have overflowed into it.
+    ldy ram_bank_list
+    sty romsel_copy
+    sty romsel
+    ldy #0
+}
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
 	rts
@@ -89,6 +99,7 @@ read_next_byte_at_z_pc_sub
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
+    ldy #0
 }
 }	
 

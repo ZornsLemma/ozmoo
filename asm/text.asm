@@ -176,6 +176,7 @@ z_ins_tokenise_text
     ldy z_operand_value_low_arr + 3
     jmp tokenise_text
 
++make_acorn_screen_hole
 z_ins_encode_text
     ; encode_text zscii-text length from coded-text
     ; setup string_array
@@ -1416,6 +1417,7 @@ read_text
 }
 }
 
++make_acorn_screen_hole
 tokenise_text
     ; divide read_line input into words and look up them in the dictionary
     ; input: string_array should be pointing to the text array
