@@ -1002,9 +1002,8 @@ turn_on_cursor
 -   jsr oswrch
     dex
     bne -
-!ifndef ACORN_CURSOR_PASS_THROUGH {
     lda cursor_status
-    bpl +
+    bpl inc_z_pc_page_rts
     ; We allow the use of the standard Acorn cursor editing. Judging from the
     ; OS 1.20 disassembly, this only gets disabled when a carriage return is
     ; output via OSWRCH, which we don't normally do. We therefore do it here
@@ -1012,6 +1011,4 @@ turn_on_cursor
     lda #$0d
     sta s_cursors_inconsistent
     jmp oswrch
-}
-+   rts
 }

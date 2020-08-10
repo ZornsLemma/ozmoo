@@ -249,6 +249,14 @@ z_ins_read
     ; z4: sread text parse time routine
     ; z5: aread text parse time routine -> (result)
     jsr printchar_flush
+!ifdef ACORN_CURSOR_PASS_THROUGH {
+    ; Since we're reading a line of text here, we temporarily re-enable cursor
+    ; editing.
+    ; SFTODO: If this occurs a lot now, can possibly save code with a helper subroutine.
+    lda #osbyte_set_cursor_editing
+    ldx #0
+    jsr do_osbyte_y_0
+}
 !ifdef Z3 {
     ; Z1 - Z3 should redraw the status line before input
     jsr draw_status_line
@@ -336,6 +344,12 @@ z_ins_read
     jsr newline
 }
 .read_done
+!ifdef ACORN_CURSOR_PASS_THROUGH {
+    ; SFTODO: If this occurs a lot now, can possibly save code with a helper subroutine.
+    lda #osbyte_set_cursor_editing
+    ldx #1
+    jsr do_osbyte_y_0
+}
 	jsr start_buffering
     ; debug - print parsearray
 !ifdef TRACE_PRINT_ARRAYS {

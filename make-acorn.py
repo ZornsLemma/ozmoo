@@ -105,6 +105,7 @@ acme_args1 = [
     "acme",
     "-DACORN=1",
     "-DACORN_HW_SCROLL=1",
+    "-DACORN_CURSOR_PASS_THROUGH=1",
     "-DSTACK_PAGES=4",
     "-DSMALLBLOCK=1",
     "-DSPLASHWAIT=0"

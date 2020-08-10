@@ -50,6 +50,7 @@ inc_z_pc_page
 }
 ; safe
 	pla
+inc_z_pc_page_rts
 	rts
 
 }
