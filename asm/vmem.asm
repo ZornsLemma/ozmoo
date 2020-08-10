@@ -160,8 +160,9 @@ vmap_max_size = 255
 }
 ; vmap_max_entries	!byte 0 ; Moved to ZP
 ; vmap_used_entries	!byte 0 ; Moved to ZP
-; SFTODONOW: Do we need vmap_blocks_preloaded on Acorn?
+!ifndef ACORN {
 vmap_blocks_preloaded !byte 0
+}
 vmap_z_h = datasette_buffer_start
 vmap_z_l = vmap_z_h + vmap_max_size
 

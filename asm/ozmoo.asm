@@ -1108,7 +1108,7 @@ prepare_static_high_memory
     ; there will just be table entries for addresses in the Z-machine we will
     ; never use.
     lda vmap_max_entries
-    sta vmap_blocks_preloaded
+    ; sta vmap_blocks_preloaded
     sta vmap_used_entries
 }
 !ifdef TRACE_VM {
