@@ -84,6 +84,7 @@ group.add_argument("--print-swaps", action="store_true", help="print virtual mem
 group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
 group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
 group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
+group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynmem adjustment")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -142,6 +143,8 @@ if args.print_swaps:
     acme_args1 += ["-DPRINT_SWAPS=1"]
 if args.no_hole_check:
     acme_args1 += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
+if args.no_dynmem_adjust:
+    acme_args1 += ["-DACORN_NO_DYNMEM_ADJUST=1"]
 if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:

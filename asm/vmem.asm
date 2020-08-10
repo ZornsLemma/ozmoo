@@ -348,7 +348,7 @@ load_blocks_from_index
 	adc vmap_first_ram_page
 } else {
     ldx vmap_index
-    jsr .convert_index_x_to_ram_bank_and_address
+    jsr convert_index_x_to_ram_bank_and_address
 }
 
 !ifdef TRACE_FLOPPY {
@@ -918,7 +918,7 @@ read_byte_at_z_address
     clc
     adc vmap_c64_offset
 } else {
-    jsr .convert_index_x_to_ram_bank_and_address
+    jsr convert_index_x_to_ram_bank_and_address
     clc
     adc vmem_offset_in_block
 }
@@ -942,15 +942,16 @@ read_byte_at_z_address
 ; SFTODONOW: Not sure I will want this as a subroutine, but let's write it here
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
-SFTODOEXPOSED
-.convert_index_x_to_ram_bank_and_address
+; adjust_dynamic_memory_inline also relies on the RAM bank index being returned
+; in Y.
+convert_index_x_to_ram_bank_and_address
     ; 0<=X<=254 is the index of the 512-byte virtual memory block we want to
     ; access. Index 0 may be in main RAM or sideways RAM, depending on the size
     ; of dynamic memory.
     txa
     sec
     sbc vmem_blocks_in_main_ram
-    bcc .SFTODOMAINRAM
+    bcc .in_main_ram
     clc
     adc vmem_blocks_stolen_in_first_bank
     ; CA is now the 9-bit block offset of the required data from the start of
@@ -975,13 +976,122 @@ SFTODOEXPOSED
     ; Carry is already clear
     adc #$80
     rts
-.SFTODOMAINRAM
+.in_main_ram
     ; A contains a negative block offset from the top of main RAM. Multiply by
     ; two to get a page offset and add it to ramtop to get the actual start.
     asl
     ; Carry is set
     adc #(>ramtop)-1
     rts
+
+; The amount of sideways RAM we can access is limited by having only
+; vmap_max_size (=255) entries in vmap_z_[hl]. We independently access up to 16K
+; of sideways RAM where dynamic memory spills over into sideways RAM. We can
+; therefore make use of a bit more sideways RAM by bumping up nonstored_blocks
+; (in multiples of vmap_block_pagecount (=2), of course) until either
+; story_start+nonstored_blocks hits the top of the first 16K RAM bank ($c000)
+; or the last vmap entry hits the top of the last RAM bank.
+;
+; This is only useful for Z4+ games; a Z3 game is limited to 128K and the 255
+; 512-byte vmap entries already allow us to access 127.5K; given any realistic
+; game is going to have at least 512 bytes of dynamic memory, we are not
+; constrained at all by the 255 entry limit.
+!macro adjust_dynamic_memory_inline {
+!ifndef Z3 {
+    ldx #vmap_max_size - 1
+    jsr convert_index_x_to_ram_bank_and_address
+    iny
+    cpy ram_bank_count
+    php
+    sta zp_temp
+    lda #$c0 - vmem_block_pagecount ; SFTODO MAGIC NUMBER
+    sec
+    sbc zp_temp
+    plp
+    bcs .last_bank_partly_used
+    ; We have at least one bank completely unused
+    ; Carry is clear
+    adc #$40 ; SFTODO MAGIC NUMBER, ASSUMES 16K BANK
+.last_bank_partly_used
+    beq .no_wasted_swr
+    ; A now contains the number of 256-byte blocks wasted at the end of the
+    ; final bank(s); they contain game data but can't be accessed. We therefore
+    ; bump nonstored_blocks up by up to this amount; this locks some of the low
+    ; could-have-been-swappable static memory into place, but brings into play
+    ; some more swappable static memory in the otherwise wasted sideways RAM.
+    ; It's "up to" this amount because we can't have nonstored_blocks overrunning
+    ; the first bank of sideways RAM.
+    ; (If the game isn't long enough, all this is harmless; we'll just have some
+    ; vmap entries for too-high Z addresses pointing to uninitialised data, and
+    ; those will never be used.)
+    !if vmem_block_pagecount <> 2 {
+        !error "Only SMALLBLOCK supported"
+    }
+    sta zp_temp
+    lda #>story_start
+    clc
+    adc nonstored_blocks
+    sta zp_temp + 1
+    adc zp_temp
+    cmp #$c0 ; SFTODO MAGIC NUMBER
+    bcc +
+    lda #$c0 ; SFTODO MAGIC NUMBER
++   sec
+    sbc zp_temp + 1
+    beq .no_wasted_swr
+    sta zp_temp
+.wasted_pages_reclaimable = zp_temp
+    clc
+    adc nonstored_blocks
+    sta nonstored_blocks
+    ; We now need to adjust vmap_[lh] to take account of the modified value of
+    ; nonstored_blocks, since the build script pre-populated it based on the
+    ; pre-modification value.
+    ldx vmap_max_entries
+    dex
+.vmap_fixup_loop
+    lda vmap_z_l,x
+    clc
+    adc .wasted_pages_reclaimable
+    bcc .no_carry
+    ; There's a carry into vmap_z_h,x. It's possible this will cause vmap_z_h,x to
+    ; overflow the non-timestamp bits (as identified by vmem_highbyte_mask) if
+    ; this is a Z3 game. If this happens, we just decrement vmap_max_entries to
+    ; take this entry out of play, as it can't ever be useful.
+    sta zp_temp + 1 ; We don't store A in vmap_z_l,x just yet
+    lda vmap_z_h,x
+    and #vmem_highbyte_mask
+    ; Carry is set
+    adc #0
+    cmp #vmem_highbyte_mask + 1
+    bne .not_overflow
+    dec vmap_max_entries
+    bne .overflow ; Always branch
+.not_overflow
+    sta zp_temp + 2
+    lda vmap_z_h,x
+    and #($ff xor vmem_highbyte_mask)
+    ora zp_temp + 2
+    sta vmap_z_h,x
+    lda zp_temp + 1
+.no_carry
+    sta vmap_z_l,x
+.overflow
+    dex
+    cpx #255
+    bne .vmap_fixup_loop
+    ; Now loop back round to fix up vmem_blocks_stolen_in_first_bank and
+    ; vmem_blocks_in_main_ram.
+    jmp nonstored_blocks_adjusted
+
+.no_wasted_swr
+    ; convert_index_x_to_ram_bank_and_address will have left the last bank
+    ; paged in, and we need the first bank paged in by default.
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
+}
+}
 }
 }
 
