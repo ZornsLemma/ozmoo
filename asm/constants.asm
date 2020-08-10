@@ -215,7 +215,7 @@ header_header_extension_table = $36
 
 !ifdef ACORN {
 
-; Acorn OS constants
+; Acorn OS and hardware constants
 brkv = $202
 wrchv = $20e
 keyv = $228
@@ -265,6 +265,23 @@ mode_7_text_colour_base = 128
 ctrl_key_adjust = 64
 buffer_keyboard = 0
 max_screen_width = 80
+!ifdef ACORN_SWR {
+romsel = $fe30
+romsel_copy = $f4
+flat_ramtop = $8000
+} else {
+flat_ramtop = $f800
+}
+!ifdef ACORN_NO_SHADOW {
+vdu_status = $d0
+text_cursor_address = $34a
+bottom_of_screen_memory_high = $34e
+display_start_address = $350
+crtc_register = $fe00
+crtc_data = $fe01
+crtc_screen_start_high = 12
+crtc_cursor_start_high = 14
+}
 
 default_mode_7_status_colour = 6
 default_mode_6_fg_colour = 7
@@ -275,6 +292,10 @@ default_mode_6_bg_colour = 4
 ; bit more logical.
 
 zp_temp               = $75 ; 5 bytes
+; SF: cursor_{row,column} are used to hold the cursor positions for the two
+; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
+; the active cursor position is zp_screen{row,column} and that's all that
+; matters most of the time.
 cursor_row            = $7a ; 2 bytes
 cursor_column         = $7c ; 2 bytes
 screen_width          = $54 ; 1 byte
@@ -307,77 +328,51 @@ zp_screenrow          = $8f ; current cursor row
 stack = $100
 
 ; $0400-$046B hold the BASIC resident integer variables. We use some of these
-; to pass information from the loader to the Ozmoo executable.
-; SFTODONOW: This all needs tidying up, there are gaps and it's a right mess with
-; the switch to using resident integer variables to communicate with loader.
-!ifndef ACORN_SWR {
-;!error "SFTODONOW: I am going to need to have scratch page at $500 and vars at $4xx to work with passing data from loader in resident integer variables"
-scratch_page = $400
-} else {
-; SFTODONOW: In this build we're currently wasting most of $400-$4FF, but this
-; minimises rejigging.
+; addresses to pass information from the loader to the Ozmoo executable.
+z_trace_index = $400 ; 1 byte
+s_stored_x = $401 ; !byte 0
+s_stored_y = $402 ; !byte 0
+screen_width_minus_1 = $403 ; 1 byte
+screen_width_plus_1 = $404 ; 1 byte
+game_disc_crc = $405 ; 2 bytes
+num_rows = $407 ; !byte 0
 !ifdef ACORN_RELOCATABLE {
 relocate_target = $408 ; low byte of B%
 }
+!ifdef VMEM {
+vmap_max_entries = $409 ; !byte 0
+}
+initial_clock = $40a ; 5 bytes
+!ifdef ACORN_HW_SCROLL {
+use_hw_scroll = $40f ; !byte 0
+}
+!ifdef ACORN_SWR {
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
 ; we probably don't need all this.
 ram_bank_count = $410
-ram_bank_list = $411 ; SFTODONOW: size? potentially up to 9 banks???
-; End of memory shared between loader and Ozmoo executable.
-scratch_page = $600
-scratch_double_page = $600
-mempointer_ram_bank = $460 ; SFTODO: might benefit from zp?
-vmem_blocks_in_main_ram = $461 ; 1 byte
-vmem_blocks_stolen_in_first_bank = $462 ; 1 byte
-z_pc_mempointer_ram_bank = $463 ; SFTODO: might benefit from zp?
-romsel = $fe30
-romsel_copy = $f4
+ram_bank_list = $411 ; 11 bytes, we only use 9
+mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp?
+vmem_blocks_in_main_ram = $41d ; 1 byte
+vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
+z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp?
 }
-; SF: cursor_{row,column} are used to hold the cursor positions for the two
-; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
-; the active cursor position is zp_screen{row,column} and that's all that
-; matters most of the time.
-z_trace_index = $500 ; 1 byte
-s_stored_x = $501 ; !byte 0
-s_stored_y = $502 ; !byte 0
-screen_width_minus_1 = $503 ; 1 byte
-screen_width_plus_1 = $504 ; 1 byte
-memory_buffer = $505 ; 7 bytes (larger on C64, but this is all we use)
-initial_clock = $50c ; 5 bytes
-game_disc_crc = $511 ; 2 bytes
-num_rows = $513 ; !byte 0
-vmap_max_entries = $514 ; !byte 0
-!ifdef ACORN_HW_SCROLL {
-    use_hw_scroll = $515 ; !byte 0
-}
-screen_mode = $516 ; !byte 0
+screen_mode = $420 ; !byte 0
 ; fg_colour and bg_colour must be adjacent and in this order
-fg_colour = $517 ; !byte 0
-bg_colour = $518 ; !byte 0
-cursor_status = $519; !byte 0
-jmp_buf = $51a ; "up to" 257 bytes - in reality 64 bytes is probably enough
-; SFTODONOW: vmap_z_[hl] can probably live in $400-800, if I populate them in the
-; discardable init code in this binary rather than pre-calculating them and
-; patching them into the binary. I won't touch this until I decide about SWR
-; and pre-opt, as this may well influence my decision.
+fg_colour = $421 ; !byte 0
+bg_colour = $422 ; !byte 0
+cursor_status = $423 ; !byte 0
+memory_buffer = $424 ; 7 bytes (larger on C64, but this is all we use)
+jmp_buf = $42b ; "up to" 257 bytes - in reality 64 bytes is probably enough
+; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
-; SFTODONOW: Rename ramtop as flat_ramtop or similar? It's not actual "top of RAM"
-; on ACORN_SWR, but we want it to be $8000.
+scratch_page = $500
 !ifdef ACORN_SWR {
-ramtop = $8000
-} else {
-ramtop = $f800
-}
-
-!ifdef ACORN_NO_SHADOW {
-vdu_status = $d0
-text_cursor_address = $34a
-bottom_of_screen_memory_high = $34e
-display_start_address = $350
-crtc_register = $fe00
-crtc_data = $fe01
-crtc_screen_start_high = 12
-crtc_cursor_start_high = 14
+scratch_double_page = scratch_page
+; SFTODO: $700-$800 is currently wasted
+; SFTODO: There's no advantage for second processor builds, but on ACORN_SWR
+; builds we could potentially put vmap_z_[hl] somewhere in $400-800 (we'd probably
+; have the VVVVVV identifier in the discardable init code for the build script
+; to patch and copy that down to $400-800 in the discardable init code).
 }
 
 }

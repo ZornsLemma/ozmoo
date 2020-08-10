@@ -100,7 +100,7 @@ relocate
     ; precise about how many bytes we copy. (We do round up to the nearest page,
     ; though.)
 .bytes_to_copy = relocate - program_start
-    !if <.bytes_to_copy == 0 {
+    !if <.bytes_to_copy = 0 {
         ldx #>.bytes_to_copy
     } else {
         ldx #(>.bytes_to_copy) + 1

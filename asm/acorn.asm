@@ -219,15 +219,12 @@
     sta .blocks_to_read
 }
     ; We read an additional number of 256-byte blocks between story_start and
-    ; ramtop.
+    ; flat_ramtop.
     ; SF: We're doing a constant subtraction in code here, but a) this is
     ; deletable init code so it doesn't really cost anything b) if we don't,
     ; the relocation code fails because we have a variation which doesn't follow
     ; the simple fixed relationship we expect.
-    ; SFTODONOW: Maybe ramtop should be passed in via a -D on command line? Or
-    ; perhaps instead it will be set to 8000 or F800 only based on whether this
-    ; is a SWR or 2P build, as we'll be using the screen-at-3C00 hack on a B.
-    lda #>ramtop
+    lda #>flat_ramtop
     sec
     sbc #>story_start
     clc
@@ -358,7 +355,7 @@ nonstored_blocks_adjusted
     stx vmem_blocks_in_main_ram
     stx vmem_blocks_stolen_in_first_bank
     sec
-    sbc #>ramtop
+    sbc #>flat_ramtop
     bcc .some_vmem_in_main_ram
     lsr
     sta vmem_blocks_stolen_in_first_bank

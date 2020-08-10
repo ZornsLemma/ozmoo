@@ -296,7 +296,7 @@ class DiscImage(object):
 # SFTODO: Move this function?
 def add_tube_executable(ssd):
     labels_no_vmem = parse_labels("temp/acme_labels_tube_no_vmem.txt")
-    ramtop_no_vmem = labels_no_vmem["ramtop"]
+    ramtop_no_vmem = labels_no_vmem["flat_ramtop"]
     assert ramtop_no_vmem == 0xf800
     max_game_blocks_no_vmem = (ramtop_no_vmem - labels_no_vmem["story_start"]) / 256
     if game_blocks <= max_game_blocks_no_vmem:
@@ -383,7 +383,7 @@ def patch_vmem(executable, labels):
     if "ACORN_SWR" in labels:
         pseudo_ramtop = 0xc000
     else:
-        pseudo_ramtop = labels["ramtop"]
+        pseudo_ramtop = labels["flat_ramtop"]
     ozmoo_ram_blocks = (pseudo_ramtop - labels["story_start"]) / 256
     # SFTODO: Ideally these failures would result in us generating a disc which doesn't
     # support the system type we're currently patching the executable for, but which

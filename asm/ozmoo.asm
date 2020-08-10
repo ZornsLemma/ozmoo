@@ -723,7 +723,7 @@ deletable_init
 !ifndef ACORN {
 	lda #0
 } else {
-    lda #>ramtop
+    lda #>flat_ramtop
 }
 	sec
 	sbc vmap_first_ram_page
