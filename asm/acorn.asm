@@ -178,22 +178,17 @@
     inc .length_blocks + 1
 +
 
-    ; Preload as much of the game as possible into memory.
+    ; Preload as much of the game as possible into memory. This will always fill
+    ; whole RAM banks (provided there's game data left) even if we can't access
+    ; that game data, but at worst we're making the user wait while we read
+    ; about 16K too much, and adjust_dynamic_memory_inline will probably mean
+    ; most of the "excess" read isn't wasted after all.
     ; SFTODO: If we're restarting, we only need to reload the dynamic memory.
     ; If we set an "only load X sectors" flag in the persistent storage in page
     ; 4, we could minimise restart time. (On an ACORN_NO_SHADOW build we would
     ; need to reload enough to restore what we lost through temporarily switching
     ; to real mode 7 with the screen at $3c00.)
-    ; SFTODONOW: If we have 8 banks of SWR and some main RAM as vmem too, this will
-    ; read more data than we can actually use because we can only handle 255
-    ; VM blocks. More generally, if vmap_max_size
-    ; is (though it won't be, except during dev/debugging) smaller than the
-    ; number of blocks of main RAM+SWR we have available for vmem storage, this
-    ; will again read more data than we can actually use. This is mostly
-    ; harmless, but wastes a bit of time. Actually it's not so harmless now
-    ; we use this to help initialize vmap_max_entries. OK, that might be OK. Just
-    ; read the damn code, future me. :-) Then make it clear.
-    ; SFTODONOW: It might be nice to tell the user (how exactly? does the loader
+    ; SFTODO: It might be nice to tell the user (how exactly? does the loader
     ; leave us positioned correctly to output a string, and then we say "press
     ; SPACE to start" or something?) if the game has loaded entirely into RAM
     ; and they can remove the disc, and then we'd also want to remove the
