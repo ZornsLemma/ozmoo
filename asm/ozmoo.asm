@@ -721,11 +721,10 @@ deletable_init
 !ifndef ACORN_SWR {
 	tya
 	clc
-    ; SFTODONOW: Following block is in need of tidying, maybe pull some out into helper macros or something
     ; SFTODONOW: Something - probably the build script - needs to check that on a
     ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
-	sta vmap_first_ram_page ; SFTODONOW: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
+	sta vmap_first_ram_page
 !ifndef ACORN {
 	lda #0
 } else {
@@ -744,54 +743,7 @@ deletable_init
 ++	sta vmap_max_entries
 }
 } else {
-    ; Calculate vmap_max_entries.
-    pla ; number of 256 byte blocks we read from disc earlier, low byte
-    sec
-    sbc nonstored_blocks
-    tax
-    pla ; high byte
-    sbc #0
-    ; Convert from 256 byte blocks to 512 byte VM bloocks.
-    lsr
-    bne .cap_at_vmap_max_size
-    txa
-    ror
-    bcc +
-+   ; We loaded a half VM block at the end of the game. Bump A up by 1, unless
-    ; it would wrap round in which case we stick at 255.
-    adc #0
-    bne +
-    lda #255
-+   cmp #vmap_max_size
-    bcc +
-.cap_at_vmap_max_size
-    lda #vmap_max_size
-+   sta vmap_max_entries
-
-nonstored_blocks_adjusted
-    lda nonstored_blocks
-    clc
-    adc #>story_start
-    ldx #0
-    stx vmem_blocks_in_main_ram
-    stx vmem_blocks_stolen_in_first_bank
-    sec
-    sbc #>ramtop
-    bcc .some_vmem_in_main_ram
-    lsr
-    sta vmem_blocks_stolen_in_first_bank
-    bpl + ; Always branch
-.some_vmem_in_main_ram
-    ; Carry is clear; negate A
-    eor #$ff
-    adc #1
-    lsr
-    sta vmem_blocks_in_main_ram
-+
-
-!ifndef ACORN_NO_DYNMEM_ADJUST {
-    +adjust_dynamic_memory_inline
-}
+    +acorn_swr_calculate_vmap_max_entries_inline
 }
 
 !ifdef VMEM_STRESS {
