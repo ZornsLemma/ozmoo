@@ -715,14 +715,9 @@ deletable_init
 }
 .store_nonstored_blocks
 	sty nonstored_blocks
-    ; SFTODONOW: Following block is in need of tidying, maybe pull some out into helper macros or something
-    ; SFTODONOW: Something - probably the build script - needs to check that on a
-    ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 !ifndef ACORN_SWR {
 	tya
 	clc
-    ; SFTODONOW: Something - probably the build script - needs to check that on a
-    ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
 	sta vmap_first_ram_page
 !ifndef ACORN {
@@ -1112,8 +1107,6 @@ prepare_static_high_memory
     ; initialisation here. If the game is smaller than this, it's harmless as
     ; there will just be table entries for addresses in the Z-machine we will
     ; never use.
-    ; SFTODONOW: Really we should shrink vmap_max_size so it's no larger than
-    ; necessary; this will save a few bytes.
     lda vmap_max_entries
     sta vmap_blocks_preloaded
     sta vmap_used_entries
@@ -1124,7 +1117,7 @@ prepare_static_high_memory
 	rts
 	
 !ifndef ACORN {
-; SFTODONOW: This may be useful if I support PREOPT and/or for a SWR build. - it probably isn't actually, but think about it before I get rid of this comment
+; SFTODO: This may be useful if I support PREOPT
 load_suggested_pages
 ; Load all suggested pages which have not been pre-loaded
 -	lda vmap_blocks_preloaded ; First index which has not been loaded
@@ -1226,7 +1219,7 @@ vmem_start
 ; do it that way as it would work in any mode, you could also use e.g. mode 1
 ; and use (say) yellow for bold, but I'd probably rather not go there.
 
-; SFTODONOW: It might be possible to use the 12K private RAM in the B+ as sideways
+; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways
 ; RAM. If we put it last in the list of RAM banks, it probably wouldn't require
 ; too much special casing - we'd just make sure not to count it as a full 16K
 ; during the initial load, then I suspect it would mostly "just work". (Though
@@ -1235,8 +1228,3 @@ vmem_start
 ; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
 ; because they could be using the more common SWMMFS in a regular sideways RAM
 ; bank and have the 12K private RAM free.)
-
-; SFTODONOW: If we have lots of SWR, we could maybe benefit by bumping
-; nonstored_blocks up in order to get maximum use out of it (this is useful if
-; we would hit the max 255 512-byte blocks of vmem without using all our SWR) -
-; but we'd need to keep the original value around for save/restore.

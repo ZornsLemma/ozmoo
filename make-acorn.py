@@ -192,7 +192,7 @@ if even_length < odd_length:
     swr_shr_high_start_addr = 0x2000
 else:
     swr_shr_low_start_addr = 0xf00
-    swr_shr_high_start_addr = 0x1900
+    swr_shr_high_start_addr = 0x2100
 assert (swr_shr_high_start_addr - swr_shr_low_start_addr) % 0x200 == 0
 run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(swr_shr_high_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"] + acme_args2, "VERSION", "swr_shr_vmem_" + ourhex(swr_shr_high_start_addr)))
 run_and_check(substitute([x for x in acme_args1 if "ACORN_HW_SCROLL" not in x] + ["--setpc", "$" + ourhex(swr_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"] + acme_args2, "VERSION", "swr_vmem"))
@@ -354,7 +354,7 @@ def add_swr_shr_executable(ssd):
     assert high_executable[-2:] == b'\0\0'
     relocations = make_relocations(low_executable, high_executable)
     # SFTODONOW: We could do something similar to the next couple of lines to trim the unneeded 0s off the other versions of the executable.
-    relocations_offset = high_labels["vmreloccount"] - swr_shr_high_start_addr
+    relocations_offset = high_labels["reloc_count"] - swr_shr_high_start_addr
     executable = high_executable[:relocations_offset] + relocations
     # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
     # for a double-sided game, this is probably the one to pick - it's going to be at least
