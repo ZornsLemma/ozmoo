@@ -77,7 +77,7 @@ zchars				  = $5d ; 3 bytes
 vmap_quick_index_match= $60
 vmap_next_quick_index = $61
 vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
-; SFTODONOW: It might be worth upping vmap_quick_index_length for SWR, although
+; SFTODO: It might be worth upping vmap_quick_index_length for SWR, although
 ; don't assume this will be beneficial, and as it lives in scarce ZP there is
 ; a real cost to increasing it. (As an experiment only, I could steal some ZP
 ; belonging to e.g. Econet just as an easy way to test different sizes.)
