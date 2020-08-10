@@ -942,6 +942,7 @@ read_byte_at_z_address
 ; SFTODONOW: Not sure I will want this as a subroutine, but let's write it here
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
+SFTODOEXPOSED
 .convert_index_x_to_ram_bank_and_address
     ; 0<=X<=254 is the index of the 512-byte virtual memory block we want to
     ; access. Index 0 may be in main RAM or sideways RAM, depending on the size

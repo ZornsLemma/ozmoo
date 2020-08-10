@@ -715,13 +715,16 @@ deletable_init
 }
 .store_nonstored_blocks
 	sty nonstored_blocks
+    ; SFTODONOW: Following block is in need of tidying, maybe pull some out into helper macros or something
+    ; SFTODONOW: Something - probably the build script - needs to check that on a
+    ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
+!ifndef ACORN_SWR {
 	tya
 	clc
     ; SFTODONOW: Following block is in need of tidying, maybe pull some out into helper macros or something
     ; SFTODONOW: Something - probably the build script - needs to check that on a
     ; SWR build the dynamic memory isn't overflowing main+first bank of SWR.
 	adc #>story_start
-!ifndef ACORN_SWR {
 	sta vmap_first_ram_page ; SFTODONOW: Need to check uses of this now we want to allow this to start "inside" first RAM bank if necessary not at its beginning
 !ifndef ACORN {
 	lda #0
@@ -738,26 +741,10 @@ deletable_init
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
 	lda #vmap_max_size
-++	
+++	sta vmap_max_entries
 }
 } else {
-    ldx #0
-    stx vmem_blocks_in_main_ram
-    stx vmem_blocks_stolen_in_first_bank
-    sec
-    sbc #>ramtop
-    bcc .some_vmem_in_main_ram
-    lsr
-    sta vmem_blocks_stolen_in_first_bank
-    bpl + ; Always branch
-.some_vmem_in_main_ram
-    ; Carry is clear; negate A
-    eor #$ff
-    adc #1
-    lsr
-    sta vmem_blocks_in_main_ram
-+
-
+    ; Calculate vmap_max_entries.
     pla ; number of 256 byte blocks we read from disc earlier, low byte
     sec
     sbc nonstored_blocks
@@ -775,17 +762,127 @@ deletable_init
     adc #0
     bne +
     lda #255
-+
-    cmp #vmap_max_size
++   cmp #vmap_max_size
     bcc +
 .cap_at_vmap_max_size
     lda #vmap_max_size
-+   
++   sta vmap_max_entries
+
+.nonstored_blocks_adjusted
+    lda nonstored_blocks
+    clc
+    adc #>story_start
+    ldx #0
+    stx vmem_blocks_in_main_ram
+    stx vmem_blocks_stolen_in_first_bank
+    sec
+    sbc #>ramtop
+    bcc .some_vmem_in_main_ram
+    lsr
+    sta vmem_blocks_stolen_in_first_bank
+    bpl + ; Always branch
+.some_vmem_in_main_ram
+    ; Carry is clear; negate A
+    eor #$ff
+    adc #1
+    lsr
+    sta vmem_blocks_in_main_ram
++
+
+!if 1 { ; SFTODONOW EXPERIMENTAL
+    ldx #254
+    jsr SFTODOEXPOSED
+    ; SFTODONOW: We assume the last bank goes up to $C0; if we support 12K private
+    ; RAM it won't necessarily. Not a big problem, we just need to be aware.
+    sta zp_temp
+    lda #$c0 - vmem_block_pagecount ; SFTODO MAGIC NUMBER
+    sec
+    sbc zp_temp
+    beq .no_wasted_swr
+    ; A now contains the number of 256-byte blocks wasted at the end of the
+    ; final bank; they contain game data but can't be accessed. We therefore
+    ; bump nonstored_blocks up by up to this amount; this locks some of the low
+    ; could-have-been-swappable static memory into place, but brings into play
+    ; some more swappable static memory in the otherwise wasted sideways RAM.
+    ; It's "up to" this amount because we can't have nonstored_blocks overrunning
+    ; the first bank of sideways RAM.
+    ; (If the game isn't long enough, all this is harmless; we'll just have some
+    ; vmap entries for too-high Z addresses pointing to uninitialised data, and
+    ; those will never be used.)
+    !if vmem_block_pagecount <> 2 {
+        !error "Only SMALLBLOCK supported"
+    }
+    sta zp_temp
+    lda #>story_start
+    clc
+    adc nonstored_blocks
+    sta zp_temp + 1
+    adc zp_temp
+    cmp #$c0 ; SFTODO MAGIC NUMBER
+    bcc +
+    lda #$c0 ; SFTODO MAGIC NUMBER
++   sec
+    sbc zp_temp + 1
+    beq .no_wasted_swr
+    sta zp_temp
+.wasted_pages_reclaimable = zp_temp
+    clc
+    adc nonstored_blocks
+    sta nonstored_blocks
+    ; We now need to adjust vmap_[lh] to take account of the modified value of
+    ; nonstored_blocks, since the build script pre-populated it based on the
+    ; pre-modification value.
+    ldx vmap_max_entries
+    dex
+.vmap_fixup_loop
+    lda vmap_z_l,x
+    clc
+    adc .wasted_pages_reclaimable
+    bcc .no_carry
+    ; There's a carry into vmap_z_h,x. It's possible this will cause vmap_z_h,x to
+    ; overflow the non-timestamp bits (as identified by vmem_highbyte_mask) if
+    ; this is a Z3 game. If this happens, we just decrement vmap_max_entries to
+    ; take this entry out of play, as it can't ever be useful.
+    sta zp_temp + 1 ; We don't store A in vmap_z_l,x just yet
+    lda vmap_z_h,x
+    and #vmem_highbyte_mask
+    ; Carry is set
+    adc #0
+    cmp #vmem_highbyte_mask + 1
+    bne .not_overflow
+    dec vmap_max_entries
+    bne .overflow ; Always branch
+.not_overflow
+    sta zp_temp + 2
+    lda vmap_z_h,x
+    and #($ff xor vmem_highbyte_mask)
+    ora zp_temp + 2
+    sta vmap_z_h,x
+    lda zp_temp + 1
+.no_carry
+    sta vmap_z_l,x
+.overflow
+    dex
+    cpx #255
+    bne .vmap_fixup_loop
+    ; Now loop back round to fix up vmem_blocks_stolen_in_first_bank and
+    ; vmem_blocks_in_main_ram.
+    jmp .nonstored_blocks_adjusted
+
+.no_wasted_swr
+    ; SFTODOEXPOSED will have left the last bank paged in, and we need the first
+    ; bank paged in by default.
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
 }
+
+}
+
 !ifdef VMEM_STRESS {
-        lda #2 ; one block for PC, one block for data
-}
+    lda #2 ; one block for PC, one block for data
 	sta vmap_max_entries
+}
 
 	jsr prepare_static_high_memory
 
