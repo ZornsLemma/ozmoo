@@ -627,6 +627,7 @@ encode_text
 	sta zword + 4
 	rts
 
++make_acorn_screen_hole
 find_word_in_dictionary
     ; convert word to zchars and find it in the dictionary
     ; see: http://inform-fiction.org/zmachine/standards/z1point1/sect13.html
