@@ -201,18 +201,31 @@ game_id		!byte 0,0,0,0
 }
 
 ; include other assembly files
+!ifndef ACORN {
 !source "utilities.asm"
 !source "screenkernal.asm"
 !source "streams.asm"
 !source "disk.asm"
 !ifdef VMEM {
-!ifndef ACORN {
 !source "reu.asm"
 }
-}
-!ifdef ACORN {
+!source "screen.asm"
+!source "memory.asm"
+!source "stack.asm"
+;##!ifdef VMEM {
+!source "vmem.asm"
+;##}
+!source "zmachine.asm"
+!source "zaddress.asm"
+!source "text.asm"
+!source "dictionary.asm"
+!source "objecttable.asm"
+} else {
+!source "utilities.asm"
+!source "screenkernal.asm"
+!source "streams.asm"
+!source "disk.asm"
 !source "acorn.asm"
-}
 !source "screen.asm"
 !source "memory.asm"
 !source "stack.asm"
@@ -228,6 +241,7 @@ game_id		!byte 0,0,0,0
 !source "dictionary.asm"
 !source "objecttable.asm"
 !source "text.asm"
+}
 
 .initialize
 !ifdef ACORN_RELOCATABLE {
