@@ -1377,7 +1377,11 @@ do_save
 
 ; SFTODO: This may change in future - if the build system can determine dynamic
 ; memory will fit in main RAM on all supported machines we can use the OSFILE
-; variants on those machines too, which is faster and probably smaller.
+; variants on those machines too, which is faster and probably smaller. (Note
+; that it doesn't matter if we grew "dynamic" memory to help maximise SWR use;
+; all we care about is the truly dynamic bit. We don't even need the
+; nonstored_blocks rounding up, the true to-the-byte dynmem size from the header
+; is what counts.)
 !ifdef ACORN_SWR {
     ACORN_SAVE_RESTORE_OSFIND = 1
 } else {
@@ -1612,7 +1616,7 @@ save_game
 !ifdef ACORN_SAVE_RESTORE_OSFIND {
     .start_ptr = zp_temp + 2 ; 2 bytes
 }
-    ; SFTODO: Feels a little bit off to be using OSFILE codes as the "controlling"
+    ; SFTODONOW: Feels a little bit off to be using OSFILE codes as the "controlling"
     ; factor on OSFIND builds.
     sta .osfile_op
     ; We default the result to failure and only set it to success after actually
@@ -1671,8 +1675,12 @@ save_game
     ; don't think the savegame compatibility is a big issue; even if this ever
     ; turns out to be useful, it's easy enough to chop two bytes off the front
     ; of an Acorn file before transferring to Commodore or to calculate a CRC
-    ; for a Commdore savegame before loading onto Acorn.) I do already have CRC
+    ; for a Commodore savegame before loading onto Acorn.) I do already have CRC
     ; code now for the disc swap, so this wouldn't cost all that much extra.
+    ; (I'm not super keen to do this, but savegame compatibility with the C64
+    ; is a red herring, since those savegames will include some absolute C64
+    ; addresses in the zp bytes and would need a trivial-ish fixup *anyway*,
+    ; they would not "just work".)
     jsr osnewl
     jmp .save_restore_game_cleanup_full
 .no_osfile_error
@@ -1761,7 +1769,7 @@ save_game
 ; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
 ; it can handle data located in sideways RAM. A contains the OSFIND operation
 ; code on entry.
-; SFTODO WE ARE GOING TO NEED TO BE SURE TO CLOSE THE FILE ON ANY ERRORS - WE
+; SFTODONOW WE ARE GOING TO NEED TO BE SURE TO CLOSE THE FILE ON ANY ERRORS - WE
 ; PROBABLY NEED A GLOBAL FILE HANDLE WHICH IS 0 WHEN INVALID, AND THE SETJMP
 ; HANDLER MUST CHECK THAT AND SET IT TO 0 THEN CLOSE IT IF IT'S NON 0. (SET TO
 ; 0 FIRST BECAUSE THAT WAY IF CLOSE FAILS WE WON'T GET INTO AN INFINITE LOOP.) - THIS IS DONE BUT NEEDS TESTING
@@ -1917,10 +1925,6 @@ save_game
     !word 0 ; high word
     !word 0 ; pointer low word (ignored)
     !word 0 ; pointer high word (ignored)
-
-; SFTODODATA MOVE INTO PAGE 4
-osfile_emulation_workspace !word 0
-;SFTODONOW - ALL THE SFTODOS HERE IN THIS NEW CODE ARE REALLY SFTODONOW
 }
 }
 }
