@@ -145,7 +145,7 @@ z_ins_get_prop_len
 .sibling_num !byte 0,0        ; won't be used at the same time
 .dest_num = .sibling_num      ; won't be used at the same time
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 z_ins_remove_obj
     ; remove_obj object
 z_ins_remove_obj_body
@@ -324,7 +324,7 @@ find_attr
 .bitmask_index !byte 0
 .attribute_index !byte 0
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 z_ins_print_obj
     ; print_obj object
     ldx z_operand_value_low_arr
@@ -347,7 +347,7 @@ print_obj
     jsr read_next_byte ; length of object short name
     jmp print_addr
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 z_ins_jin
     ; jin obj1 obj2 ?(label)
     ldx z_operand_value_low_arr
@@ -593,7 +593,7 @@ find_prop
     rts
 .find_prop_result !byte 0,0 ; x,a
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 z_ins_get_prop
     ; get_prop object property -> (result)
     jsr find_first_prop

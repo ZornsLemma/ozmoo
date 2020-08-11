@@ -221,26 +221,23 @@ game_id		!byte 0,0,0,0
 !source "dictionary.asm"
 !source "objecttable.asm"
 } else {
-!source "utilities.asm"
-!source "screenkernal.asm"
-!source "streams.asm"
-!source "disk.asm"
-!source "acorn.asm"
-!source "screen.asm"
-!source "memory.asm"
-!source "stack.asm"
-;##!ifdef VMEM {
-!source "vmem.asm"
-;##}
-!source "zmachine.asm"
-!source "zaddress.asm"
-; SFTODO: I rearranged these for the convenience of Acorn screen hole, I should
-; !ifdef this so C64 is not affected - it's probably immaterial, except I would
-; like to be able to verify the final version of this code generates an identical
-; binary to upstream for C64 so don't want gratuitous reordering.
-!source "dictionary.asm"
-!source "objecttable.asm"
-!source "text.asm"
+; SFTODO: OK, THIS REORDERING DOESN'T REALLY HELP MUCH BECAUSE THE CODE
+; MORE-OR-LESS OCCUPIES UP TO $4000 ANYWAY, IT'S NOT LIKE THE FIRST FEW FILES
+; BURN THROUGH ENOUGH TO GET US WELL PAST $3C00 WITHOUT VARIATION
+!source "utilities.asm" ; SFTODO SWR ETC VARIABLE - THO MACRO REALLY - BUT MUST COME BEFORE ZMACHINE AND STACK
+!source "stack.asm" ; SFTODO ACORN CONSTANT
+!source "zmachine.asm" ; SFTODO PRETTY ACORN CONSTANT
+!source "zaddress.asm" ; SFTODO ACORN CONST
+!source "dictionary.asm" ; SFTODO ACORN CONST
+!source "objecttable.asm" ; SFTODO PRETTY ACORN CONST
+!source "screen.asm" ; SFTODO PRETTY ACORN CONSTANT
+!source "memory.asm" ; SFTODO PRETTY ACORN CONSTANT
+!source "streams.asm" ; SFTODO PRETTY ACORN CONSTANT (JUST CURSOR PASS THROUGH)
+!source "screenkernal.asm" ; SFTODO MILDLY ACORN VARIABLE BUT NOT THAT MUCH
+!source "disk.asm" ; SFTODO VERY VARIABLE
+!source "acorn.asm" ; SFTODO VERY VARIABLE
+!source "vmem.asm" ; SFTODO PRETTY ACORN VARIABLE
+!source "text.asm" ; SFTODO VARIABLE DUE TO BENCHMARK
 }
 
 .initialize

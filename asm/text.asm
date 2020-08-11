@@ -31,7 +31,7 @@
 ; 16K SWR: $00d99c
 ; 32K SWR: $006b56
 !ifdef BENCHMARK {
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 benchmark_commands
 !ifndef ACORN {
 ; !pet "turn statue w:turn it e:turn it n:n:open door:",255,0
@@ -176,7 +176,7 @@ z_ins_tokenise_text
     ldy z_operand_value_low_arr + 3
     jmp tokenise_text
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 z_ins_encode_text
     ; encode_text zscii-text length from coded-text
     ; setup string_array
@@ -627,7 +627,7 @@ encode_text
 	sta zword + 4
 	rts
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 find_word_in_dictionary
     ; convert word to zchars and find it in the dictionary
     ; see: http://inform-fiction.org/zmachine/standards/z1point1/sect13.html
@@ -1144,7 +1144,7 @@ reset_cursor_blink
 }
 }
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 
 read_text
     ; read line from keyboard into an array (address: a/x)
@@ -1418,7 +1418,7 @@ read_text
 }
 }
 
-+make_acorn_screen_hole
+; SFTODO +make_acorn_screen_hole
 tokenise_text
     ; divide read_line input into words and look up them in the dictionary
     ; input: string_array should be pointing to the text array
