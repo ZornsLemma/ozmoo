@@ -22,6 +22,7 @@ dec_z_address
 +   pla
     rts
 
++make_acorn_screen_hole
 set_z_himem_address
     stx z_address + 2
     sta z_address + 1

@@ -1538,6 +1538,7 @@ z_jump_to_offset_in_zp_temp
 
 ; z_ins_jin (moved to objecttable.asm)
 
++make_acorn_screen_hole
 z_ins_test
 	lda z_operand_value_low_arr
 	and z_operand_value_low_arr + 1

@@ -954,6 +954,7 @@ draw_status_line
 	ora #$30
 	jmp s_printchar
 
++make_acorn_screen_hole
 !ifndef ACORN {
 .score_str !pet "Score: ",0
 .time_str !pet "Time: ",0

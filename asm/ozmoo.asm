@@ -201,13 +201,21 @@ game_id		!byte 0,0,0,0
 }
 
 ; include other assembly files
-!ifndef ACORN {
+; SF: We move text.asm near the beginning for Acorn because it can contain a
+; big "un-breakable" chunk of text, so we don't want it to come anywhere near
+; the screen hole.
+!ifdef ACORN {
+!source "text.asm"
+!source "acorn.asm"
+}
 !source "utilities.asm"
 !source "screenkernal.asm"
 !source "streams.asm"
 !source "disk.asm"
 !ifdef VMEM {
+!ifndef ACORN {
 !source "reu.asm"
+}
 }
 !source "screen.asm"
 !source "memory.asm"
@@ -217,28 +225,11 @@ game_id		!byte 0,0,0,0
 ;##}
 !source "zmachine.asm"
 !source "zaddress.asm"
+!ifndef ACORN {
 !source "text.asm"
+}
 !source "dictionary.asm"
 !source "objecttable.asm"
-} else {
-; SFTODO: OK, THIS REORDERING DOESN'T REALLY HELP MUCH BECAUSE THE CODE
-; MORE-OR-LESS OCCUPIES UP TO $4000 ANYWAY, IT'S NOT LIKE THE FIRST FEW FILES
-; BURN THROUGH ENOUGH TO GET US WELL PAST $3C00 WITHOUT VARIATION
-!source "utilities.asm" ; SFTODO SWR ETC VARIABLE - THO MACRO REALLY - BUT MUST COME BEFORE ZMACHINE AND STACK
-!source "stack.asm" ; SFTODO ACORN CONSTANT
-!source "zmachine.asm" ; SFTODO PRETTY ACORN CONSTANT
-!source "zaddress.asm" ; SFTODO ACORN CONST
-!source "dictionary.asm" ; SFTODO ACORN CONST
-!source "objecttable.asm" ; SFTODO PRETTY ACORN CONST
-!source "screen.asm" ; SFTODO PRETTY ACORN CONSTANT
-!source "memory.asm" ; SFTODO PRETTY ACORN CONSTANT
-!source "streams.asm" ; SFTODO PRETTY ACORN CONSTANT (JUST CURSOR PASS THROUGH)
-!source "screenkernal.asm" ; SFTODO MILDLY ACORN VARIABLE BUT NOT THAT MUCH
-!source "disk.asm" ; SFTODO VERY VARIABLE
-!source "acorn.asm" ; SFTODO VERY VARIABLE
-!source "vmem.asm" ; SFTODO PRETTY ACORN VARIABLE
-!source "text.asm" ; SFTODO VARIABLE DUE TO BENCHMARK
-}
 
 .initialize
 !ifdef ACORN_RELOCATABLE {
