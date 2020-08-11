@@ -523,7 +523,7 @@ uname_len = * - .uname
     beq .read_ok
     cmp #$10
     beq .retry
-    ; SFTODONOW: On BeebEm with Integra-B mode, this happens all the time during
+    ; SFTODO: On BeebEm with Integra-B mode, this happens all the time during
     ; initial loading - need to investigate. Happens with Watford 1.44 or Acorn
     ; 1.20 DFS, so it's probably not DFS-specific. OK, perhaps don't get too
     ; worked up about this. BeebEm model B mode with a 6502 second processor
@@ -538,7 +538,13 @@ uname_len = * - .uname
     ; Might be worth coming back to later on. It does work fine on BeebEm in
     ; Master 128 mode. I could probably knock up a BASIC program using the
     ; mdfs BASIC function I based my OSWORD 7F code on to hopefully reproduce the problem
-    ; in a simple way on BeebEm and post it to stardot if that fails too.
+    ; in a simple way on BeebEm and post it to stardot if that fails too. - OK,
+    ; having had a play with this a bit more, I think there's a) something to
+    ; do with the 8271 emulation maybe identifying the disc format wrong, if I
+    ; switch to 1770 DFS on the B+65C02 it works fine b) maybe something odd
+    ; with Integra-B, it hangs *very* early after loading even with a 1770 DFS.
+    ; Let's see what people on stardot have to say before worrying about this
+    ; further.
     brk
     !byte 0
     !text "Disc read error"
