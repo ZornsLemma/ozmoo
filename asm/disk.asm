@@ -1839,10 +1839,7 @@ save_game
 .bytes_read = osfile_emulation_workspace
 .osgbpb_load_loop
     ; Read some data into the bounce buffer and work out how much we read; if we
-    ; read nothing, we're done. (We don't try to be clever and recognise that
-    ; reading less than .chunk_size bytes indicates EOF; we go ahead and do
-    ; another read which will indicate 0 bytes read.) SFTODONOW: I MAY NEED TO
-    ; DO THIS, I AM GETTING EOF ERRORS ON B+128K THO IT ACTUALLY SEEMS TO WORK
+    ; read nothing, it's EOF and we're done.
     ldx #<.chunk_size
     stx .osgbpb_block_transfer_length
     ldx #>.chunk_size
@@ -1866,6 +1863,10 @@ save_game
     iny
     cpy .bytes_read
     bne -
+
+    ; If we read less than .chunk_size bytes, we've hit EOF and we're done.
+    lda .bytes_read + 1
+    beq .osgbpb_load_done
 
     ; Advance .start_ptr
     clc
