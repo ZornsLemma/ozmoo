@@ -70,7 +70,6 @@ END
 DEF PROCdetect_swr
 DIM code% 256
 paged_rom_table=&2A1
-binary_version_number=&8008
 romsel_copy=&F4
 romsel=&FE30
 FOR opt%=0 TO 2 STEP 2
@@ -79,40 +78,72 @@ P%=code%
 .detect_swr
 LDA romsel_copy
 PHA
-LDX #0
+LDA #0
+STA ram_bank_count
+:
+\ Try storing some distinct data in each bank which doesn't have a language or
+\ service entry.
 LDY #15
-.detect_swr_loop
-\ Does bank Y have a language or service entry?
-LDA paged_rom_table,Y
-AND #&C0
-BNE skip_bank
-\ No, it doesn't. See if it's RAM.
-\ SFTODO Isn't there some possibility of false positives due to values hanging
-\ around on the data bus? What's the recommended way to deal with this?
+.prime_swr_loop
 STY romsel_copy
 STY romsel
-INC binary_version_number
-LDA binary_version_number
-DEC binary_version_number
-CMP binary_version_number
-BEQ skip_bank
-\ Yes, it's RAM.
+LDA paged_rom_table,Y
+AND #&C0
+BNE prime_skip_bank
+LDX #0
+.copy_loop
 TYA
-STA ram_bank_list,X
-INX
+EOR code%,X
+STA &8100,X
+DEX
+BNE copy_loop
+.prime_skip_bank
+DEY
+BPL prime_swr_loop
+:
+\ Now see if we can retrieve that distinct data from all those banks.
+LDY #15
+.detect_swr_loop
+STY romsel_copy
+STY romsel
+LDA paged_rom_table,Y
+AND #&C0
+BNE detect_skip_bank
+LDX #0
+.check_loop
+TYA
+EOR code%,X
+\ Note that the value we're looking for was just created in A inside the CPU,
+\ not read from memory, which I hope will prevent any weird buffering effects
+\ causing false positives.
+CMP &8100,X
+BNE not_ram
+DEX
+BNE check_loop
+\ It's RAM.
+LDX ram_bank_count
 CPX #max_ram_bank_count
 BEQ done
-.skip_bank
+TYA
+STA ram_bank_list,X
+INC ram_bank_count
+.not_ram
+.detect_skip_bank
 DEY
 BPL detect_swr_loop
+:
 .done
-STX ram_bank_count
 PLA
 STA romsel_copy
 STA romsel
 RTS
+:
+.variable_data
 ]
 NEXT
+REM Try to ensure the data we use in the RAM test varies from run to run; it
+REM doesn't really matter.
+!variable_data=TIME
 CALL detect_swr
 IF ?ram_bank_count = 0 THEN PROCdie("Sorry, no sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
 REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
