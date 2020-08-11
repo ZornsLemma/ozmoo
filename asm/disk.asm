@@ -1574,238 +1574,7 @@ do_save
     lda #vdu_reset_text_window
     jmp oswrch
 
-!ifdef ACORN_SAVE_RESTORE_OSFIND {
-; This code emulates OSFILE (as far as we need it, of course; it's not a
-; comprehensive emulation) using OSFIND+OSGBPB and using a bounce buffer for
-; data located in sideways RAM.
-; SFTODO WE ARE GOING TO NEED TO BE SURE TO CLOSE THE FILE ON ANY ERRORS - WE
-; PROBABLY NEED A GLOBAL FILE HANDLE WHICH IS 0 WHEN INVALID, AND THE SETJMP
-; HANDLER MUST CHECK THAT AND SET IT TO 0 THEN CLOSE IT IF IT'S NON 0. (SET TO
-; 0 FIRST BECAUSE THAT WAY IF CLOSE FAILS WE WON'T GET INTO AN INFINITE LOOP.)
-!macro osfile_emulation_using_osfind_inline {
-.osfile_block_ptr = zp_temp + 2 ; 2 bytes
-.osfile_start_address = zp_temp + 4 ; 2 bytes
-.osfile_end_address = zp_temp + 2 ; 2 bytes - note re-use of .osfile_block_ptr
 
-    stx .osfile_block_ptr
-    sty .osfile_block_ptr + 1
-
-    ; SFTODO WE WILL NEED TO STASH A, X AND Y ON ENTRY
-    ; Open the file for input or output
-    tax
-    inx ; X is 0 for load, 1 for save
-    lda osfind_op_table,x
-    ldy #0
-    lda (.osfile_block_ptr),y
-    tax
-    iny
-    lda (.osfile_block_ptr),y
-    tay
-    jsr osfind
-    cmp #0
-    bne +
-    brk
-    !byte err_not_found
-    !text "File not found"
-    !byte 0
-+
-    sta osgbpb_block_handle
-
-    ; SFTODO COMMENT
-    ; Get the start and end address from the OSFILE block
-    ; SFTODO: It would probably make more sense to have the emulation be a little
-    ; less "thorough" and the code which sets up the OSFILE block just set this
-    ; up directly.
-    ldy #.osfile_save_load_block_start_address - .osfile_save_load_block
-    lda (.osfile_block_ptr),y
-    sta .osfile_start_address
-    iny
-    lda (.osfile_block_ptr),y
-    sta .osfile_start_address + 1
-    ldy #.osfile_save_load_block_end_address - .osfile_save_load_block
-    lda (.osfile_block_ptr),y
-    tax
-    iny
-    lda (.osfile_block_ptr),y
-    stx .osfile_end_address
-    sta .osfile_end_address + 1
-
-.chunk_size = $200 ; we use scratch_double_page as a bounce buffer
-.osgbpb_loop
-    ; Calculate how much data to transfer; we transfer the smaller of .chunk_size
-    ; and end_address-start_address. (In general OSFILE loads are not provided
-    ; with a valid end_address, but we happen to have one.)
-    sec
-    lda .osfile_end_address
-    sbc .osfile_start_address
-    sta osgbpb_block_transfer_length
-    lda .osfile_end_address + 1
-    sbc .osfile_start_address + 1
-    sta osgbpb_block_transfer_length + 1
-    ora osgbpb_block_transfer_length
-    beq .osgbpb_loop_done
-    lda osgbpb_block_transfer_length + 1
-    ldy osgbpb_block_transfer_length
-    cmp #>.chunk_size
-    bne +
-    cpy #<.chunk_size
-+   bcc +
-    lda #>.chunk_size
-    sta osgbpb_block_transfer_length + 1
-    lda #<.chunk_size
-    sta osgbpb_block_transfer_length
-+
-
-    lda #SFTODO
-    ldx #<osgbpb_block
-    ldy #>osgbpb_block
-    jsr osgbpb
-
-
-
-
-
-SFTODO SEMI-FRESH START
-.chunk_size = 256
-
-
-
-.osgbpb_wrapper
-    ldx #<scratch_page
-    stx osgbpb_block_data_address
-    ldx #>scratch_page
-    stx osgbpb_block_data_address + 1
-    ldx #<osgbpb_block
-    ldy #>osgbpb_block
-    jmp osgbpb
-
-
-    ; SFTODO OK THE FOLLOWING CODE IS SAVE ONLY, I WILL FACTOR OUT COMMON STUFF
-    ; INTO HELPER SUBROUTINES WHEN I DO LOAD
-
-.osgbpb_save_loop
-    lda length + 1
-    cmp #>.chunk_size
-    bcc +
-    lda #>.chunk_size
-+   sta osgbpb_block_transfer_length + 1
-    lda length
-    sta osgbpb_block_transfer_length
-    ora length + 1
-    beq .osgbpb_save_done
-
-    sec
-    lda length
-    sbc osgbpb_block_transfer_length
-    sta length
-    lda length + 1
-    sbc osgbpb_block_transfer_length + 1
-    sta length + 1
-
-    ; SFTODO I AM WRITING A LOT OF COPY LOOPS, I SHOULD PROBABLY HAVE A UTILITY
-    ; ONE A BIT LIKE THE C64 CODE
-    ldy #0
-.osgbpb_save_copy_loop
-    lda (data_ptr),y
-    sta scratch_patch,y
-    iny
-    cpy osgbpb_block_transfer_length
-    bne .osgbpb_save_copy_loop
-
-    clc
-    lda data_ptr
-    adc osgbpb_block_transfer_length
-    sta data_ptr
-    lda data_ptr + 1
-    adc osgbpb_block_transfer_length + 1
-    sta data_ptr + 1
-    
-
-.osgbpb_save_inner_loop
-    lda #osgbpb_write_ignoring_ptr
-    jsr .osgbpb_wrapper
-    ; SFTODO CAN THIS ACTUALLY HAPPEN?
-    lda osgbpb_block_transfer_length
-    ora osgbpb_block_transfer_length + 1
-    bne .osgbpb_save_inner_loop
-
-.osgbpb_save_done
-
-
-
-
-.osgbpb_load_loop
-
-
-
-
-    lda #osgbpb_read_ignoring_ptr
-    jsr .osgbpb_wrapper
-    sec
-    lda #<.chunk_size
-    sbc osgbpb_block_transfer_length
-    sta .bytes_read
-    lda #>.chunk_size
-    sbc osgbpb_block_transfer_length + 1
-    sta .bytes_read + 1
-    ora .bytes_read
-    beq .osgbpb_load_done
-
-    ldy #0
-.osgbpb_load_copy_loop
-    lda scratch_page,y
-    sta (data_ptr),y
-    iny
-    cpy .bytes_read
-    bne .osgbpb_load_copy_loop
-
-    clc
-    lda data_ptr
-    adc .bytes_read
-    sta data_ptr
-    lda data_ptr + 1
-    adc .bytes_read +1
-    sta data_ptr + 1
-
-    jmp osgbpb_load_loop
-
-    
-
-
-
-
-    ;!error "SFTODO"
-
-    jsr close_osgbpb_block_handle
-}
-
-; Close osgbpb_block_handle iff it's non-0. If it's non-0 we set it to 0
-; before doing anything, so we don't get into an infinite loop if the close
-; operation fails.
-close_osgbpb_block_handle
-    ldy osgbpb_block_handle
-    beq .restore_game_rts
-    lda #0
-    sta osgbpb_block_handle
-    lda #osfind_close
-    jmp osfind
-
-osgbpb_block
-osgbpb_block_handle
-    !byte 0
-osgbpb_block_data_address
-    !word 0 ; low word
-    !word 0 ; high word
-osgbpb_block_transfer_length
-    !word 0 ; low word
-    !word 0 ; high word
-    !word 0 ; pointer low word (ignored)
-    !word 0 ; pointer high word (ignored)
-
-osfind_op_table
-    !byte osfind_input
-    !byte osfind_output
-}
 
 restore_game
     lda #>.restore_prompt
@@ -1838,8 +1607,11 @@ save_game
     lda #osfile_save
     ; fall through to .save_restore_game
 .save_restore_game
-.osfile_op = zp_temp
-.result = zp_temp + 1 ; 0 for failure, 1 for success
+.osfile_op = zp_temp ; 1 byte
+.result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
+!ifdef ACORN_SAVE_RESTORE_OSFIND {
+    .start_ptr = zp_temp + 2 ; 2 bytes
+}
     ; SFTODO: Feels a little bit off to be using OSFILE codes as the "controlling"
     ; factor on OSFIND builds.
     sta .osfile_op
@@ -1871,6 +1643,9 @@ save_game
     ldy #error_print_osasci
     jsr setjmp
     beq .no_osfile_error
+!ifdef ACORN_SAVE_RESTORE_OSFIND {
+    jsr .close_osgbpb_block_handle
+}
     ; If this is a load and a disc error occurred partway through, the game is
     ; probably in an inconsistent or otherwise corrupt state. There really isn't
     ; much we can do - we don't have enough RAM to take a copy of the game
@@ -1893,69 +1668,56 @@ save_game
 .no_osfile_error
     ; The OSFILE block is updated after the call, so we have to populate these
     ; values via code every time.
+!ifndef ACORN_SAVE_RESTORE_OSFIND {
     lda #<.filename_buffer
     sta .osfile_save_load_block_filename_ptr
     lda #>.filename_buffer
     sta .osfile_save_load_block_filename_ptr + 1
+    .start_ptr = .osfile_save_load_block_start_address
+}
     lda #<(stack_start - zp_bytes_to_save)
-    sta .osfile_save_load_block_start_address
+    sta .start_ptr
     lda #>(stack_start - zp_bytes_to_save)
-    sta .osfile_save_load_block_start_address + 1
+    sta .start_ptr + 1
+!ifndef ACORN_SAVE_RESTORE_OSFIND {
     lda story_start + header_static_mem + 1
     sta .osfile_save_load_block_end_address
     lda story_start + header_static_mem
     clc
-    ; SFTODONOW: This could be relevant for ACORN_SWR - this might be a nasty one,
-    ; as if we have a memory hole for screen we can't *SAVE/*LOAD "around" it.
-    ; Hacks like including it and adding a flag at start of the save saying
-    ; whether/where it exists so it can be removed after re-loading might
-    ; be possible, or added if restoring a save from a shadow game onto a
-    ; non-shadow machine. The screen would get corrupted during a load on
-    ; non-shadow. This is horrible. Let's think carefully and be sure I *need*
-    ; to support this case in reality. Also, is there any chance I could move
-    ; non-shadow mode 7 down to $3C00 on a B (the only machine with no shadow
-    ; screen) and shuffle *code* around it rather than have to make *data* fit
-    ; round it at $7C00?
-    ; http://beebwiki.mdfs.net/Address_translation#TTX_VDU says how to get
-    ; mode 7 screen at $3C00, but note that I may well end up without the OS
-    ; handling it for me, which would also be a near-killer. It might be possible
-    ; (remember we're specifically on a B here) to poke some OS low memory
-    ; address and have it work with a $3C00-address screen.
-    ; It's also perhaps worth (from memory, check this accepting we'll have to
-    ; start the code at $1300 not $1100 on a B/B+ and use OPENOUT/OSGBPB to save,
-    ; although that will be slower and more verboser and we'd probably want to
-    ; use the same code on all machines, which is a shame.
-    ; Another possibility would be to start dynmem at $8000 if there isn't
-    ; room for it entirely below $7c00 (on a B) and just "waste" the memory
-    ; above our binary and below $7c00. Just maybe we could use that "wasted"
-    ; memory as vmem cache. I really don't want to get *too* complex if I can
-    ; help it. And it would have been nice to allow dynmem to use main RAM+
-    ; one bank of SWR with a memory hole, to allow for larger games to work -
-    ; you'd have maybe 26K for dynmem on a B with main RAM+one bank of SWR,
-    ; if it could be discontiguous around the $7c00 screen. Or maybe the screen
-    ; at $3c00 hack isn't too bad.
-    ; Sigh. I think I might be able to get the $3c00 screen working, *but*
-    ; of course you won't be able to *SAVE/*LOAD dynamic memory which lies
-    ; partly in sideways RAM regardless - this will apply on *any* machine using
-    ; SWR. The $3c00 screen probably does avoid one complexity on the B anyway,
-    ; but I may have to accept PAGE=&1300 on B/B+ and on all machines (maybe not
-    ; on 2P; after all, I've already written the code for OSFILE load/save)
-    ; using OSFIND/OSGBPB for load/save.
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
+} else {
+    lda story_start + header_static_mem + 1
+    clc
+    adc #<(stack_size + zp_bytes_to_save)
+    sta .osgbpb_save_length
+    lda story_start + header_static_mem
+    adc #>(stack_size + zp_bytes_to_save)
+    sta .osgbpb_save_length + 1
+}
+!ifndef ACORN_SAVE_RESTORE_OSFIND {
     lda .osfile_op
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
-!ifdef ACORN_SAVE_RESTORE_OSFIND {
-    +osfile_emulation_using_osfind_inline
-} else {
     jsr osfile
+} else {
+    lda #osfind_open_input
+    ldx .osfile_op
+    bne .osfile_op_is_load
+    lda #osfind_open_output
+.osfile_op_is_load
+    jsr .osfile_pseudo_emulation
 }
     lda #1
     sta .result
 
 .save_restore_game_cleanup_full
 	; Swap out z_pc and stack_ptr
+    ; SFTODONOW IT LOOKS LIKE THE SAVE BAKES IN SOME ABSOLUTE ADDRESSES, WHICH
+    ; MEAN THE SAVES AREN'T COMPATIBLE BETWEEN DIFFERENT SYSTEMS (EG TUBE VS
+    ; NON TUBE VS B VS MASTER) - I PROBABLY NEED TO APPLY A DELTA TO MAKE THESE
+    ; SYSTEM INDEPENDENT, BUT NEED TO THINK ABOUT THIS, NOT LOOKED YET, IT MAY
+    ; NOT BE THAT SIMPLE
 	jsr .swap_pointers_for_save
     jsr set_default_error_handler
 .save_restore_game_cleanup_partial
@@ -1967,6 +1729,7 @@ save_game
     ldx .result ; must be last as caller will check Z flag
 	rts
 
+!ifndef ACORN_SAVE_RESTORE_OSFIND {
 .osfile_save_load_block
 .osfile_save_load_block_filename_ptr
     !word 0 ; filename
@@ -1980,5 +1743,168 @@ save_game
 .osfile_save_load_block_end_address
     !word 0 ; end address low
     !word 0 ; end address high
+} else {
+; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
+; it can handle data located in sideways RAM. A contains the OSFIND operation
+; code on entry.
+; SFTODO WE ARE GOING TO NEED TO BE SURE TO CLOSE THE FILE ON ANY ERRORS - WE
+; PROBABLY NEED A GLOBAL FILE HANDLE WHICH IS 0 WHEN INVALID, AND THE SETJMP
+; HANDLER MUST CHECK THAT AND SET IT TO 0 THEN CLOSE IT IF IT'S NON 0. (SET TO
+; 0 FIRST BECAUSE THAT WAY IF CLOSE FAILS WE WON'T GET INTO AN INFINITE LOOP.) - THIS IS DONE BUT NEEDS TESTING
+.osfile_pseudo_emulation
+.chunk_size = 256 ; for documentation; we hard-code assumptions about this too
+    ; Open the file
+    ldx #<.filename_buffer
+    ldy #>.filename_buffer
+    jsr osfind
+    cmp #0
+    bne +
+    brk
+    !byte err_not_found
+    !text "Not found"
+    !byte 0
++   sta .osgbpb_block_handle
+
+    ; Is this a load or save?
+    lda .osfile_op
+    bne .osfile_pseudo_emulation_load
+
+    ; It's a save.
+.osgbpb_save_length = osfile_emulation_workspace
+.osgbpb_save_loop
+    ; Save the smaller of .chunk_size and .osgbpb_save_length bytes. If
+    ; .osgbpb_save_length is 0, we're done.
+    ldx #>.chunk_size
+    ldy #<.chunk_size
+    lda .osgbpb_save_length + 1
+    bne +
+    tay
+    ldx .osgbpb_save_length
+    beq .osgbpb_save_done
++   stx .osgbpb_block_transfer_length
+    sty .osgbpb_block_transfer_length + 1
+
+    ; Subtract the number of bytes to save from .osgbpb_save_length.
+    sec
+    lda .osgbpb_save_length
+    sbc .osgbpb_block_transfer_length
+    sta .osgbpb_save_length
+    lda .osgbpb_save_length + 1
+    sbc .osgbpb_block_transfer_length + 1
+    sta .osgbpb_save_length + 1
+
+    ; Copy the data into the bounce buffer.
+    ldy #0
+-   lda (.start_ptr),y
+    sta scratch_page,y
+    iny
+    cpy .osgbpb_block_transfer_length
+    bne -
+
+    ; Advance .start_ptr.
+    clc
+    lda .start_ptr
+    adc .osgbpb_block_transfer_length
+    sta .start_ptr
+    lda .start_ptr + 1
+    adc .osgbpb_block_transfer_length + 1
+    sta .start_ptr + 1
+
+    ; Write the bounce buffer out.
+    lda #osgbpb_write_ignoring_ptr
+    jsr .osgbpb_wrapper
+
+    ; Loop round until we're done.
+    jmp .osgbpb_save_loop
+
+.osgbpb_save_done
+    jmp .close_osgbpb_block_handle
+
+    ; It's a load.
+.osfile_pseudo_emulation_load
+.bytes_read = osfile_emulation_workspace
+.osgbpb_load_loop
+    ; Read some data into the bounce buffer and work out how much we read; if we
+    ; read nothing, we're done. (We don't try to be clever and recognise that
+    ; reading less than .chunk_size bytes indicates EOF; we go ahead and do
+    ; another read which will indicate 0 bytes read.)
+    ldx #<.chunk_size
+    stx .osgbpb_block_transfer_length
+    ldx #>.chunk_size
+    stx .osgbpb_block_transfer_length + 1
+    lda #osgbpb_read_ignoring_ptr
+    jsr .osgbpb_wrapper
+    sec
+    lda #<.chunk_size
+    sbc .osgbpb_block_transfer_length
+    sta .bytes_read
+    lda #>.chunk_size
+    sbc .osgbpb_block_transfer_length + 1
+    sta .bytes_read + 1
+    ora .bytes_read
+    beq .osgbpb_load_done
+
+    ; Copy the data out of the bounce buffer.
+    ldy #0
+-   lda scratch_page,y
+    sta (.start_ptr),y
+    iny
+    cpy .bytes_read
+    bne -
+
+    ; Advance .start_ptr
+    clc
+    lda .start_ptr
+    adc .bytes_read
+    sta .start_ptr
+    lda .start_ptr + 1
+    adc .bytes_read + 1
+    sta .start_ptr + 1
+
+    ; Loop round until we're done.
+    bne .osgbpb_load_loop ; Always branch
+
+.osgbpb_load_done
+    ; fall through to .close_osgbpb_block_handle
+
+; Close .osgbpb_block_handle iff it's non-0. If it's non-0 we set it to 0
+; before doing anything, so we don't get into an infinite loop if the close
+; operation fails.
+.close_osgbpb_block_handle
+    ldy .osgbpb_block_handle
+    beq +
+    lda #0
+    sta .osgbpb_block_handle
+    lda #osfind_close
+    jmp osfind
++   rts
+
+.osgbpb_wrapper
+    ; These values in the OSGBPB block keep getting updated, so we have to
+    ; set them every time.
+    ldx #<scratch_page
+    stx .osgbpb_block_data_address
+    ldx #>scratch_page
+    stx .osgbpb_block_data_address + 1
+    ldx #<.osgbpb_block
+    ldy #>.osgbpb_block
+    jmp osgbpb
+
+.osgbpb_block
+.osgbpb_block_handle
+    !byte 0
+.osgbpb_block_data_address
+    !word 0 ; low word
+    !word 0 ; high word
+.osgbpb_block_transfer_length
+    !word 0 ; low word
+    !word 0 ; high word
+    !word 0 ; pointer low word (ignored)
+    !word 0 ; pointer high word (ignored)
+
+; SFTODODATA MOVE INTO PAGE 4
+osfile_emulation_workspace !word 0
+;SFTODONOW - ALL THE SFTODOS HERE IN THIS NEW CODE ARE REALLY SFTODONOW
+}
 }
 }
