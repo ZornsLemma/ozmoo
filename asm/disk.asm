@@ -1384,11 +1384,15 @@ do_save
 ; is what counts.)
 !ifdef ACORN_SWR {
     ACORN_SAVE_RESTORE_OSFIND = 1
+    .save_op = osfind_open_output
+    .load_op = osfind_open_input
 } else {
     !ifdef ACORN_SAVE_RESTORE_OSFIND {
         !error "ACORN_SAVE_RESTORE_OSFIND is only for ACORN_SWR"
         ; SFTODO: It would work, but it would be slower than necessary
     }
+    .save_op = osfile_save
+    .load_op = osfile_load
 }
 
 .filename_buffer = scratch_page
@@ -1585,7 +1589,7 @@ restore_game
     sta .filename_prompt_loads + 1
     lda #<.restore_prompt
     sta .filename_prompt_loads + 3
-    lda #osfile_load
+    lda #.load_op
     jsr .save_restore_game
     ; As described in section 8.4 of the Z-machine standards document, we need
     ; to update the header in case the screen dimensions have changed compared
@@ -1608,17 +1612,15 @@ save_game
     sta .filename_prompt_loads + 1
     lda #<.save_prompt
     sta .filename_prompt_loads + 3
-    lda #osfile_save
+    lda #.save_op
     ; fall through to .save_restore_game
 .save_restore_game
-.osfile_op = zp_temp ; 1 byte
+.osfile_or_osfind_op = zp_temp ; 1 byte
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
 !ifdef ACORN_SAVE_RESTORE_OSFIND {
     .start_ptr = zp_temp + 2 ; 2 bytes
 }
-    ; SFTODONOW: Feels a little bit off to be using OSFILE codes as the "controlling"
-    ; factor on OSFIND builds.
-    sta .osfile_op
+    sta .osfile_or_osfind_op
     ; We default the result to failure and only set it to success after actually
     ; loading/saving something. If the user aborts the operation, that counts
     ; as failure. See discussion at
@@ -1713,17 +1715,12 @@ save_game
     adc #>(stack_size + zp_bytes_to_save)
     sta .osgbpb_save_length + 1
 }
+    lda .osfile_or_osfind_op
 !ifndef ACORN_SAVE_RESTORE_OSFIND {
-    lda .osfile_op
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
     jsr osfile
 } else {
-    lda #osfind_open_input
-    ldx .osfile_op
-    bne .osfile_op_is_load
-    lda #osfind_open_output
-.osfile_op_is_load
     jsr .osfile_pseudo_emulation
 }
     lda #1
@@ -1788,8 +1785,9 @@ save_game
 +   sta .osgbpb_block_handle
 
     ; Is this a load or save?
-    lda .osfile_op
-    bne .osfile_pseudo_emulation_load
+    lda .osfile_or_osfind_op
+    cmp #osfind_open_input
+    beq .osfile_pseudo_emulation_load
 
     ; It's a save.
 .osgbpb_save_length = osfile_emulation_workspace
