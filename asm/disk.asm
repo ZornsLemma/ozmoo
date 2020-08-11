@@ -1632,6 +1632,16 @@ save_game
     beq .save_restore_game_cleanup_partial ; user aborted 
 
 	; Swap in z_pc and stack_ptr
+    ; We need to normalise z_local_vars_ptr and stack_ptr first so saves are
+    ; compatible between different builds.
+    lda z_local_vars_ptr + 1
+    sec
+    sbc #>stack_start
+    sta z_local_vars_ptr + 1
+    lda stack_ptr + 1
+    sec
+    sbc #>stack_start
+    sta stack_ptr + 1
 	jsr .swap_pointers_for_save
 
 	; Perform save or load
@@ -1713,12 +1723,16 @@ save_game
 
 .save_restore_game_cleanup_full
 	; Swap out z_pc and stack_ptr
-    ; SFTODONOW IT LOOKS LIKE THE SAVE BAKES IN SOME ABSOLUTE ADDRESSES, WHICH
-    ; MEAN THE SAVES AREN'T COMPATIBLE BETWEEN DIFFERENT SYSTEMS (EG TUBE VS
-    ; NON TUBE VS B VS MASTER) - I PROBABLY NEED TO APPLY A DELTA TO MAKE THESE
-    ; SYSTEM INDEPENDENT, BUT NEED TO THINK ABOUT THIS, NOT LOOKED YET, IT MAY
-    ; NOT BE THAT SIMPLE
 	jsr .swap_pointers_for_save
+    ; We need to un-normalise z_local_vars_ptr and stack_ptr now.
+    lda z_local_vars_ptr + 1
+    clc
+    adc #>stack_start
+    sta z_local_vars_ptr + 1
+    lda stack_ptr + 1
+    clc
+    adc #>stack_start
+    sta stack_ptr + 1
     jsr set_default_error_handler
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
@@ -1827,7 +1841,8 @@ save_game
     ; Read some data into the bounce buffer and work out how much we read; if we
     ; read nothing, we're done. (We don't try to be clever and recognise that
     ; reading less than .chunk_size bytes indicates EOF; we go ahead and do
-    ; another read which will indicate 0 bytes read.)
+    ; another read which will indicate 0 bytes read.) SFTODONOW: I MAY NEED TO
+    ; DO THIS, I AM GETTING EOF ERRORS ON B+128K THO IT ACTUALLY SEEMS TO WORK
     ldx #<.chunk_size
     stx .osgbpb_block_transfer_length
     ldx #>.chunk_size
