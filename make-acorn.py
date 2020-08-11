@@ -169,16 +169,9 @@ tube_start_addr = 0x600
 swr_start_addr = 0x1900
 run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(tube_start_addr)] + acme_args2, "VERSION", "tube_no_vmem"))
 run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(tube_start_addr), "-DVMEM=1"] + acme_args2, "VERSION", "tube_vmem"))
-# SFTODONOW: It's worse than this, because we really need to build all of the following code with the
+# SFTODO: It's worse than this, because we really need to build all of the following code with the
 # two possible versions of the save/restore code, and if the one with the OSFILE version doesn't
 # require SWR for the dynamic memory, use that, otherwise use the OSFIND version.
-# SFTODONOW: Except for not making things seem worse than they likely are in the case where we decide
-# which type of save/restore we need (as in previous SFTODO), there's no reason the high version
-# has to be at $1900(ish) - it could be at say $2000 or $3000 and then we could cope with systems which
-# do have a very high PAGE for whatever reason. The low version doesn't have to be at $e00 either
-# but using $e00 means the report/labels files are convenient for debugging on a Master with.
-# This is also a small advantage of using $1900 - the report/labels files for that are then
-# convenient for debugging on a typical B/B+, *if* we aren't relocating down.
 # End of SFTODO
 # Because VMEM builds require story_start to be double-page aligned, the executable will be quite
 # different depending on whether it starts at an even or odd page and the size of padding required
@@ -415,7 +408,7 @@ def patch_vmem(executable, labels):
     if game_blocks > nonstored_blocks:
         min_vmem_blocks = 2 # absolute minimum, one for PC, one for data
         if nonstored_blocks + min_vmem_blocks * vmem_block_pagecount > ozmoo_ram_blocks:
-            # SFTODONOW: On an ACORN_SWR build, this is not necessarily a problem, but let's
+            # SFTODO: On an ACORN_SWR build, this is not necessarily a problem, but let's
             # keep the check in place for now, as if we fail to meet this condition we
             # would have to require at least two sideways RAM banks in order to run and
             # right now the loader doesn't check for that.
