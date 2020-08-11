@@ -1375,6 +1375,18 @@ do_save
 
 !ifdef ACORN {
 
+; SFTODO: This may change in future - if the build system can determine dynamic
+; memory will fit in main RAM on all supported machines we can use the OSFILE
+; variants on those machines too, which is faster and probably smaller.
+!ifdef ACORN_SWR {
+    ACORN_SAVE_RESTORE_OSFIND = 1
+} else {
+    !ifdef ACORN_SAVE_RESTORE_OSFIND {
+        !error "ACORN_SAVE_RESTORE_OSFIND is only for ACORN_SWR"
+        ; SFTODO: It would work, but it would be slower than necessary
+    }
+}
+
 .filename_buffer = scratch_page
 .filename_buffer_size = 255
 ; Returns with Z set iff user wants to abort the save/restore.
@@ -1562,6 +1574,239 @@ do_save
     lda #vdu_reset_text_window
     jmp oswrch
 
+!ifdef ACORN_SAVE_RESTORE_OSFIND {
+; This code emulates OSFILE (as far as we need it, of course; it's not a
+; comprehensive emulation) using OSFIND+OSGBPB and using a bounce buffer for
+; data located in sideways RAM.
+; SFTODO WE ARE GOING TO NEED TO BE SURE TO CLOSE THE FILE ON ANY ERRORS - WE
+; PROBABLY NEED A GLOBAL FILE HANDLE WHICH IS 0 WHEN INVALID, AND THE SETJMP
+; HANDLER MUST CHECK THAT AND SET IT TO 0 THEN CLOSE IT IF IT'S NON 0. (SET TO
+; 0 FIRST BECAUSE THAT WAY IF CLOSE FAILS WE WON'T GET INTO AN INFINITE LOOP.)
+!macro osfile_emulation_using_osfind_inline {
+.osfile_block_ptr = zp_temp + 2 ; 2 bytes
+.osfile_start_address = zp_temp + 4 ; 2 bytes
+.osfile_end_address = zp_temp + 2 ; 2 bytes - note re-use of .osfile_block_ptr
+
+    stx .osfile_block_ptr
+    sty .osfile_block_ptr + 1
+
+    ; SFTODO WE WILL NEED TO STASH A, X AND Y ON ENTRY
+    ; Open the file for input or output
+    tax
+    inx ; X is 0 for load, 1 for save
+    lda osfind_op_table,x
+    ldy #0
+    lda (.osfile_block_ptr),y
+    tax
+    iny
+    lda (.osfile_block_ptr),y
+    tay
+    jsr osfind
+    cmp #0
+    bne +
+    brk
+    !byte err_not_found
+    !text "File not found"
+    !byte 0
++
+    sta osgbpb_block_handle
+
+    ; SFTODO COMMENT
+    ; Get the start and end address from the OSFILE block
+    ; SFTODO: It would probably make more sense to have the emulation be a little
+    ; less "thorough" and the code which sets up the OSFILE block just set this
+    ; up directly.
+    ldy #.osfile_save_load_block_start_address - .osfile_save_load_block
+    lda (.osfile_block_ptr),y
+    sta .osfile_start_address
+    iny
+    lda (.osfile_block_ptr),y
+    sta .osfile_start_address + 1
+    ldy #.osfile_save_load_block_end_address - .osfile_save_load_block
+    lda (.osfile_block_ptr),y
+    tax
+    iny
+    lda (.osfile_block_ptr),y
+    stx .osfile_end_address
+    sta .osfile_end_address + 1
+
+.chunk_size = $200 ; we use scratch_double_page as a bounce buffer
+.osgbpb_loop
+    ; Calculate how much data to transfer; we transfer the smaller of .chunk_size
+    ; and end_address-start_address. (In general OSFILE loads are not provided
+    ; with a valid end_address, but we happen to have one.)
+    sec
+    lda .osfile_end_address
+    sbc .osfile_start_address
+    sta osgbpb_block_transfer_length
+    lda .osfile_end_address + 1
+    sbc .osfile_start_address + 1
+    sta osgbpb_block_transfer_length + 1
+    ora osgbpb_block_transfer_length
+    beq .osgbpb_loop_done
+    lda osgbpb_block_transfer_length + 1
+    ldy osgbpb_block_transfer_length
+    cmp #>.chunk_size
+    bne +
+    cpy #<.chunk_size
++   bcc +
+    lda #>.chunk_size
+    sta osgbpb_block_transfer_length + 1
+    lda #<.chunk_size
+    sta osgbpb_block_transfer_length
++
+
+    lda #SFTODO
+    ldx #<osgbpb_block
+    ldy #>osgbpb_block
+    jsr osgbpb
+
+
+
+
+
+SFTODO SEMI-FRESH START
+.chunk_size = 256
+
+
+
+.osgbpb_wrapper
+    ldx #<scratch_page
+    stx osgbpb_block_data_address
+    ldx #>scratch_page
+    stx osgbpb_block_data_address + 1
+    ldx #<osgbpb_block
+    ldy #>osgbpb_block
+    jmp osgbpb
+
+
+    ; SFTODO OK THE FOLLOWING CODE IS SAVE ONLY, I WILL FACTOR OUT COMMON STUFF
+    ; INTO HELPER SUBROUTINES WHEN I DO LOAD
+
+.osgbpb_save_loop
+    lda length + 1
+    cmp #>.chunk_size
+    bcc +
+    lda #>.chunk_size
++   sta osgbpb_block_transfer_length + 1
+    lda length
+    sta osgbpb_block_transfer_length
+    ora length + 1
+    beq .osgbpb_save_done
+
+    sec
+    lda length
+    sbc osgbpb_block_transfer_length
+    sta length
+    lda length + 1
+    sbc osgbpb_block_transfer_length + 1
+    sta length + 1
+
+    ; SFTODO I AM WRITING A LOT OF COPY LOOPS, I SHOULD PROBABLY HAVE A UTILITY
+    ; ONE A BIT LIKE THE C64 CODE
+    ldy #0
+.osgbpb_save_copy_loop
+    lda (data_ptr),y
+    sta scratch_patch,y
+    iny
+    cpy osgbpb_block_transfer_length
+    bne .osgbpb_save_copy_loop
+
+    clc
+    lda data_ptr
+    adc osgbpb_block_transfer_length
+    sta data_ptr
+    lda data_ptr + 1
+    adc osgbpb_block_transfer_length + 1
+    sta data_ptr + 1
+    
+
+.osgbpb_save_inner_loop
+    lda #osgbpb_write_ignoring_ptr
+    jsr .osgbpb_wrapper
+    ; SFTODO CAN THIS ACTUALLY HAPPEN?
+    lda osgbpb_block_transfer_length
+    ora osgbpb_block_transfer_length + 1
+    bne .osgbpb_save_inner_loop
+
+.osgbpb_save_done
+
+
+
+
+.osgbpb_load_loop
+
+
+
+
+    lda #osgbpb_read_ignoring_ptr
+    jsr .osgbpb_wrapper
+    sec
+    lda #<.chunk_size
+    sbc osgbpb_block_transfer_length
+    sta .bytes_read
+    lda #>.chunk_size
+    sbc osgbpb_block_transfer_length + 1
+    sta .bytes_read + 1
+    ora .bytes_read
+    beq .osgbpb_load_done
+
+    ldy #0
+.osgbpb_load_copy_loop
+    lda scratch_page,y
+    sta (data_ptr),y
+    iny
+    cpy .bytes_read
+    bne .osgbpb_load_copy_loop
+
+    clc
+    lda data_ptr
+    adc .bytes_read
+    sta data_ptr
+    lda data_ptr + 1
+    adc .bytes_read +1
+    sta data_ptr + 1
+
+    jmp osgbpb_load_loop
+
+    
+
+
+
+
+    ;!error "SFTODO"
+
+    jsr close_osgbpb_block_handle
+}
+
+; Close osgbpb_block_handle iff it's non-0. If it's non-0 we set it to 0
+; before doing anything, so we don't get into an infinite loop if the close
+; operation fails.
+close_osgbpb_block_handle
+    ldy osgbpb_block_handle
+    beq .restore_game_rts
+    lda #0
+    sta osgbpb_block_handle
+    lda #osfind_close
+    jmp osfind
+
+osgbpb_block
+osgbpb_block_handle
+    !byte 0
+osgbpb_block_data_address
+    !word 0 ; low word
+    !word 0 ; high word
+osgbpb_block_transfer_length
+    !word 0 ; low word
+    !word 0 ; high word
+    !word 0 ; pointer low word (ignored)
+    !word 0 ; pointer high word (ignored)
+
+osfind_op_table
+    !byte osfind_input
+    !byte osfind_output
+}
+
 restore_game
     lda #>.restore_prompt
     sta .filename_prompt_loads + 1
@@ -1582,6 +1827,7 @@ restore_game
 !ifdef Z5PLUS {
 	sta story_start + header_screen_width_units + 1
 }
+.restore_game_rts
     rts
     
 save_game
@@ -1594,6 +1840,8 @@ save_game
 .save_restore_game
 .osfile_op = zp_temp
 .result = zp_temp + 1 ; 0 for failure, 1 for success
+    ; SFTODO: Feels a little bit off to be using OSFILE codes as the "controlling"
+    ; factor on OSFIND builds.
     sta .osfile_op
     ; We default the result to failure and only set it to success after actually
     ; loading/saving something. If the user aborts the operation, that counts
@@ -1698,7 +1946,11 @@ save_game
     lda .osfile_op
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
+!ifdef ACORN_SAVE_RESTORE_OSFIND {
+    +osfile_emulation_using_osfind_inline
+} else {
     jsr osfile
+}
     lda #1
     sta .result
 
