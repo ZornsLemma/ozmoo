@@ -8,6 +8,7 @@ set_z_address
     sta z_address
     rts
 
++make_acorn_screen_hole
 dec_z_address
     pha
     dec z_address + 2

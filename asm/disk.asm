@@ -1766,10 +1766,6 @@ save_game
 ; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
 ; it can handle data located in sideways RAM. A contains the OSFIND operation
 ; code on entry.
-; SFTODONOW WE ARE GOING TO NEED TO BE SURE TO CLOSE THE FILE ON ANY ERRORS - WE
-; PROBABLY NEED A GLOBAL FILE HANDLE WHICH IS 0 WHEN INVALID, AND THE SETJMP
-; HANDLER MUST CHECK THAT AND SET IT TO 0 THEN CLOSE IT IF IT'S NON 0. (SET TO
-; 0 FIRST BECAUSE THAT WAY IF CLOSE FAILS WE WON'T GET INTO AN INFINITE LOOP.) - THIS IS DONE BUT NEEDS TESTING
 .osfile_pseudo_emulation
 .chunk_size = 256 ; for documentation; we hard-code assumptions about this too
     ; Open the file
@@ -1897,7 +1893,7 @@ save_game
     beq +
     lda #0
     sta .osgbpb_block_handle
-    lda #osfind_close
+    ; lda #osfind_close ; osfind_close is 0
     jmp osfind
 +   rts
 
