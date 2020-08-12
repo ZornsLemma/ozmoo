@@ -68,23 +68,24 @@ REM We must be on a BBC B with no shadow RAM.
 END
 :
 DEF PROCdetect_swr
-REM This sideways RAm detection code is derived from Wouter Scholten's public
+REM This sideways RAM detection code is derived from Wouter Scholten's public
 REM domain swrtype-0.7. (http://wouter.bbcmicro.net/bbc/software-whs.html)
 DIM code 512
 DIM data 64
-swr_backup = data
-swr_test = data + &10
+swr_backup=data
+swr_test=data+&10
 
-swr_type = data + &20
-swr_banks = data + &21
+swr_type=data+&20
+swr_banks=data+&21
 
-swr_byte_value1 = data  + &22
-swr_byte_value2 = data  + &23
+swr_byte_value1=data+&22
+swr_byte_value2=data+&23
 
-dummy = data  + &24
-tmp = data  + &25
+dummy=data+&24
+tmp=data+&25
 
-test_location = &8008:REM binary version number
+test_location=&8008:REM binary version number
+paged_rom_table=&2A1
 
 FOR N%=0 TO 2 STEP 2
 P%=code
@@ -111,6 +112,9 @@ LDA #&E3: STA swr_byte_value2
 LDY #0
 .bank_lp_y
   JSR set_all
+  LDA paged_rom_table,Y
+  AND #&C0 \ skip banks with a language or service entry
+  BNE cmp_next_y
   TYA:EOR swr_byte_value1:STA tmp:STA test_location
   LDX #15
 .bank_lp_x
@@ -210,7 +214,7 @@ RTS
 JSR set_all_to_wrong_bank
 .set_solidisk \ for old solidisk swr
 LDX #&0F:STX &FE62 \ user port -> output
-STY &FE60 \ user port output = A
+STY &FE60 \ user port output=A
 RTS
 
 .set_only_romsel
@@ -223,7 +227,7 @@ STY &FE30:RTS
 .set_only_ramsel
 JSR set_all_to_wrong_bank
 JSR set_ramsel
-\ now set ROMSEL to the wrong bank, if ROMSEL = RAMSEL, RAMSEL will be deselected too.
+\ now set ROMSEL to the wrong bank, if ROMSEL=RAMSEL, RAMSEL will be deselected too.
 TYA:EOR #1:TAY:JSR set_romsel:TYA:EOR #1:TAY
 RTS
 .set_ramsel
@@ -248,21 +252,42 @@ NEXT
 IF P%-code > 512 PRINT"Too much code":END
 
 CALL swr_check
-PRINT
-IF ?swr_banks = 0 PRINT "No sideways RAM found (if there is RAM, it's write protected or uses an unknown write select method)":END
+IF ?swr_banks=0 THEN PROCdie("Sorry, no free sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
+IF ?swr_type>2 THEN PROCdie("Sorry, only ROMSEL-controlled sideways"+CHR$(13)+CHR$(10)+"RAM currently supported.")
+REM We don't trust ?swr_banks because ROM write through can make it misleading.
+REM Instead we take the first max_ram_bank_count banks with a non-0 count in
+REM swr_test.
+c%=0
+FOR i%=0 TO 15
+IF i%?swr_test>0 AND c%<max_ram_bank_count THEN ram_bank_list?c%=i%:c%=c%+1
+NEXT
+?ram_bank_count=c%
+REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
+PRINT "Will use ";16*?ram_bank_count;"K of sideways RAM (bank";
+IF c%>1 THEN PRINT "s";
+PRINT " ";
+c$=""
+FOR i%=0 TO c%-1
+IF i%=c%-1 AND c%>1 THEN c$=" and "
+PRINT c$;~(ram_bank_list?i%);
+c$=", "
+NEXT
+PRINT ")"'
+ENDPROC
+REM SFTODO: Delete the following unreachable code eventually.
 
-IF ?swr_banks = 1 PRINT "1 RAM bank";
+IF ?swr_banks=1 PRINT "1 RAM bank";
 IF ?swr_banks > 1 PRINT "";?swr_banks;" RAM banks";
 
-IF ?swr_type = 1 AND ?swr_banks < 16 PRINT ", almost always selected for writing"
-IF ?swr_type = 1 AND ?swr_banks = 16 PRINT ", always selected for writing"
+IF ?swr_type=1 AND ?swr_banks < 16 PRINT ", almost always selected for writing"
+IF ?swr_type=1 AND ?swr_banks=16 PRINT ", always selected for writing"
 
 IF ?swr_type > 1 PRINT ", write bank is selected with ";
-IF ?swr_type = 2 PRINT "FE30 (ROMSEL)"
-IF ?swr_type = 3 PRINT "FE32 (RAMSEL)"
-IF ?swr_type = 4 PRINT "FE62/FE60 (Solidisk, user port), only 3 bits decoded (0=8)"
-IF ?swr_type = 5 PRINT "FE62/FE60 (Solidisk, user port), all 4 bits properly decoded"
-IF ?swr_type = 6 PRINT " a write to {FF30+bank_no} (Watford ROM/RAM board)"
+IF ?swr_type=2 PRINT "FE30 (ROMSEL)"
+IF ?swr_type=3 PRINT "FE32 (RAMSEL)"
+IF ?swr_type=4 PRINT "FE62/FE60 (Solidisk, user port), only 3 bits decoded (0=8)"
+IF ?swr_type=5 PRINT "FE62/FE60 (Solidisk, user port), all 4 bits properly decoded"
+IF ?swr_type=6 PRINT " a write to {FF30+bank_no} (Watford ROM/RAM board)"
 
 FOR R%=0 TO 15
  U%=?(swr_test+R%)
@@ -270,158 +295,6 @@ FOR R%=0 TO 15
  IF U%>1 PRINT ;"s" ELSE IF U%=1 PRINT
 NEXT
 END
-
-
-
-
-
-
-DIM code% 256
-paged_rom_table=&2A1
-binary_version_number=&8008
-romsel_copy=&F4
-romsel=&FE30
-FOR opt%=0 TO 2 STEP 2
-P%=code%
-[OPT opt%
-.detect_swr
-LDA romsel_copy
-PHA
-LDA #0
-STA ram_bank_count
-
-
-
-LDY #15
-.SFTODOX1
-JSR select_y_and_check_entry
-BNE SFTODOX2
-
-.SFTODOX2
-DEY
-BPL SFTODOX1
-
-
-
-
-:
-\ We do an initial search not modifying anything except binary_version_number
-\ so we don't damage anything if the hardware can write to a bank which isn't
-\ currently selected.
-LDY #15
-.initial_write_loop
-JSR select_y
-JSR check_entry
-BNE .initial_write_skip
-LDA binary_version_number
-STA original_binary_version_number,Y
-TYA
-EOR #&F0 \ make sure there's always a change, even if Y=0
-EOR binary_version_number
-STA changed_binary_version_number,Y
-STA binary_version_number
-.initial_write_skip
-DEY
-BPL initial_write_loop
-LDY #15
-.initial_read_loop
-JSR select_y
-JSR check_entry
-BNE .initial_read_skip
-LDA binary_version_number
-CMP original_binary_version_number,Y
-BEQ not_ram
-SFTODO
-.initial_read_skip
-DEY
-BPL initial_read_loop
-
-
-
-
-
-
-
-
-
-:
-\ Try storing some distinct data in each bank which doesn't have a language or
-\ service entry.
-LDY #15
-.prime_swr_loop
-STY romsel_copy
-STY romsel
-LDA paged_rom_table,Y
-AND #&C0
-BNE prime_skip_bank
-LDX #0
-.copy_loop
-TYA
-EOR code%,X
-STA &8100,X
-DEX
-BNE copy_loop
-.prime_skip_bank
-DEY
-BPL prime_swr_loop
-:
-\ Now see if we can retrieve that distinct data from all those banks.
-LDY #15
-.detect_swr_loop
-STY romsel_copy
-STY romsel
-LDA paged_rom_table,Y
-AND #&C0
-BNE detect_skip_bank
-LDX #0
-.check_loop
-TYA
-EOR code%,X
-\ Note that the value we're looking for was just created in A inside the CPU,
-\ not read from memory, which I hope will prevent any weird buffering effects
-\ causing false positives.
-CMP &8100,X
-BNE not_ram
-DEX
-BNE check_loop
-\ It's RAM.
-LDX ram_bank_count
-CPX #max_ram_bank_count
-BEQ done
-TYA
-STA ram_bank_list,X
-INC ram_bank_count
-.not_ram
-.detect_skip_bank
-DEY
-BPL detect_swr_loop
-:
-.done
-PLA
-STA romsel_copy
-STA romsel
-RTS
-:
-.variable_data
-]
-NEXT
-REM Try to ensure the data we use in the RAM test varies from run to run; it
-REM doesn't really matter.
-!variable_data=TIME
-CALL detect_swr
-IF ?ram_bank_count = 0 THEN PROCdie("Sorry, no sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
-REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
-PRINT "Will use ";16*?ram_bank_count;"K of sideways RAM (bank";
-IF ?ram_bank_count > 1 THEN PRINT "s";
-PRINT " ";
-c$=""
-FOR i%=(?ram_bank_count)-1 TO 0 STEP -1
-IF i%=0 AND (?ram_bank_count > 1) THEN c$=" and "
-PRINT c$;~(ram_bank_list?i%);
-c$=", "
-NEXT
-PRINT ")"'
-ENDPROC
 :
 DEF FNrelocate_to
 REM SFTODO: We could potentially be more aggressive, relocating down to &1100 or &1300
