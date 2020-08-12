@@ -68,8 +68,217 @@ REM We must be on a BBC B with no shadow RAM.
 END
 :
 DEF PROCdetect_swr
+REM This sideways RAm detection code is derived from Wouter Scholten's public
+REM domain swrtype-0.7. (http://wouter.bbcmicro.net/bbc/software-whs.html)
+DIM code 512
+DIM data 64
+swr_backup = data
+swr_test = data + &10
+
+swr_type = data + &20
+swr_banks = data + &21
+
+swr_byte_value1 = data  + &22
+swr_byte_value2 = data  + &23
+
+dummy = data  + &24
+tmp = data  + &25
+
+test_location = &8008:REM binary version number
+
+FOR N%=0 TO 2 STEP 2
+P%=code
+[ OPT N%
+
+.swr_check
+SEI
+\ save original contents
+LDY #0
+.lp STY &FE30 \ set rom -> #Y
+LDA test_location:STA swr_backup,Y
+INY:CPY #16:BCC lp
+
+LDA #0: STA swr_banks
+LDA #255:STA swr_type
+
+\ now test which type:
+LDY #0:LDA #0
+.lp0 STA swr_test,Y:INY:CPY #16:BCC lp0
+
+LDA #&80: STA swr_byte_value1
+LDA #&E3: STA swr_byte_value2
+
+LDY #0
+.bank_lp_y
+  JSR set_all
+  TYA:EOR swr_byte_value1:STA tmp:STA test_location
+  LDX #15
+.bank_lp_x
+    LDA #0:STA dummy
+    STX &FE30:LDA test_location:CMP tmp:BNE cmp_next_x
+    \ equality could be accidental (ROM or RAM bank had tested value
+    \ already), so try a 2nd value.
+    \ First restore romsel for write
+    JSR set_romsel
+    TYA:EOR swr_byte_value2:STA tmp: STA test_location
+    \ write 0 to a dummy location. Goal is to change the databus value.
+    \ Otherwise, in a fully decoded bank system, locations that do not
+    \ have ROM or RAM, will not change the value on the address bus,
+    \ at least for several cycles, so the old one stays...
+    \ On my main BBC, this works with at least 2 NOPs
+    \     LDA #value STA test_location NOP NOP CMP test_location
+    \ but here we need at least 3
+    \     LDA #value STA test_location NOP NOP NOP LDA test_location CMP #value
+    \ Better explicity change the value to something else, as this may
+    \ vary between CPUs/systems? (e.g. depending on load on the bus).
+    LDA #0:STA dummy
+
+    STX &FE30:LDA test_location:CMP tmp:BNE cmp_next_x
+    INC swr_banks:INC swr_test,X
+    \ we don't know which method it is yet...
+    JMP cmp_next_y
+.cmp_next_x
+    \ restore the corrupted byte in swr (from the 2nd write!)
+    JSR set_romsel
+    TYA:EOR swr_byte_value1:STA tmp: STA test_location
+    DEX:BPL bank_lp_x
+.cmp_next_y
+  INY:CPY #16:BCC bank_lp_y
+LDA swr_banks:BNE continue:STA swr_type \ no SWR found
+JMP end2
+
+.found_type_1
+LDA #1:STA swr_type:STA swr_banks
+\ restore swr bank byte
+LDA swr_backup,Y:STA test_location
+JMP end2
+
+.continue \ type 1-6
+LDY #16
+.find_type_lp
+DEY: \BMI find_type_end \ no need, we only get here if there is RAM.
+LDA swr_test,Y:BEQ find_type_lp
+CMP #8:BCS found_type_1 \XXX CHANGE THIS
+JSR set_only_solidisk
+\ N.B. STY &FE30 should take care of the databus problem, as long as the
+\ value written to RAM is not in the set {0,...,15}.
+TYA:EOR swr_byte_value1:EOR #&22: STA test_location:STY &FE30:CMP test_location:BEQ found_soli
+JSR set_only_ramsel
+TYA:EOR swr_byte_value2:EOR #&23: STA test_location:STY &FE30:CMP test_location:BEQ found_ram_sel
+JSR set_only_romsel
+TYA:EOR swr_byte_value2:EOR #&34: STA test_location:STY &FE30:CMP test_location:BEQ found_rom_sel
+\ which leaves the watford rom/ram method
+
+.found_watford_romram
+LDA #6:STA swr_type
+JMP end
+
+.found_rom_sel
+LDA #2:STA swr_type
+JMP end
+
+.found_ram_sel
+LDA #3:STA swr_type
+JMP end
+
+.found_soli LDA #4:STA swr_type
+LDA swr_test,Y:CMP #1:BNE soli_3bits
+INC swr_type
+JMP end
+.soli_3bits
+\ remove factor 2 from solidisk's incomplete address decoding
+LSR swr_banks
+JMP end
+
+.end
+\ restore swr, using method found
+LDY #0
+\ note that we must write in low to high order for swr_type=4, or only
+
+\   copy for Y=8-15 in that case.
+.restore_lp
+JSR set_all
+LDA swr_backup,Y:STA test_location
+INY:CPY #16:BCC restore_lp
+.end2
+LDA &F4:STA &FE30:CLI
+RTS
+
+\ Utilities
+
+.set_only_solidisk
+JSR set_all_to_wrong_bank
+.set_solidisk \ for old solidisk swr
+LDX #&0F:STX &FE62 \ user port -> output
+STY &FE60 \ user port output = A
+RTS
+
+.set_only_romsel
+JSR set_all_to_wrong_bank
+.set_romsel
+STY &FE30:RTS
+
+\ RAMSEL may not exist, in which case it is equivalent to ROMSEL
+\ (incomplete address decoding), therefore this code:
+.set_only_ramsel
+JSR set_all_to_wrong_bank
+JSR set_ramsel
+\ now set ROMSEL to the wrong bank, if ROMSEL = RAMSEL, RAMSEL will be deselected too.
+TYA:EOR #1:TAY:JSR set_romsel:TYA:EOR #1:TAY
+RTS
+.set_ramsel
+STY &FE32:RTS
+
+.set_only_watford_romram
+JSR set_all_to_wrong_bank
+.set_watford_romram
+STA &FF30,Y:RTS \ write latch set by writing anything to location (FF30+n)
+
+.set_all
+JSR set_solidisk:JSR set_romsel:JSR set_ramsel:JMP set_watford_romram
+
+.set_all_to_wrong_bank
+TYA:EOR #1:TAY \ this is fine with solidisks incomplete address decoding (bit 3 not used)
+JSR set_all
+TYA:EOR #1:TAY
+RTS
+
+]
+NEXT
+IF P%-code > 512 PRINT"Too much code":END
+
+CALL swr_check
+PRINT
+IF ?swr_banks = 0 PRINT "No sideways RAM found (if there is RAM, it's write protected or uses an unknown write select method)":END
+
+IF ?swr_banks = 1 PRINT "1 RAM bank";
+IF ?swr_banks > 1 PRINT "";?swr_banks;" RAM banks";
+
+IF ?swr_type = 1 AND ?swr_banks < 16 PRINT ", almost always selected for writing"
+IF ?swr_type = 1 AND ?swr_banks = 16 PRINT ", always selected for writing"
+
+IF ?swr_type > 1 PRINT ", write bank is selected with ";
+IF ?swr_type = 2 PRINT "FE30 (ROMSEL)"
+IF ?swr_type = 3 PRINT "FE32 (RAMSEL)"
+IF ?swr_type = 4 PRINT "FE62/FE60 (Solidisk, user port), only 3 bits decoded (0=8)"
+IF ?swr_type = 5 PRINT "FE62/FE60 (Solidisk, user port), all 4 bits properly decoded"
+IF ?swr_type = 6 PRINT " a write to {FF30+bank_no} (Watford ROM/RAM board)"
+
+FOR R%=0 TO 15
+ U%=?(swr_test+R%)
+ IF U%>0 PRINT"RAM: ";R%;" used ";U%;" time";
+ IF U%>1 PRINT ;"s" ELSE IF U%=1 PRINT
+NEXT
+END
+
+
+
+
+
+
 DIM code% 256
 paged_rom_table=&2A1
+binary_version_number=&8008
 romsel_copy=&F4
 romsel=&FE30
 FOR opt%=0 TO 2 STEP 2
@@ -80,6 +289,61 @@ LDA romsel_copy
 PHA
 LDA #0
 STA ram_bank_count
+
+
+
+LDY #15
+.SFTODOX1
+JSR select_y_and_check_entry
+BNE SFTODOX2
+
+.SFTODOX2
+DEY
+BPL SFTODOX1
+
+
+
+
+:
+\ We do an initial search not modifying anything except binary_version_number
+\ so we don't damage anything if the hardware can write to a bank which isn't
+\ currently selected.
+LDY #15
+.initial_write_loop
+JSR select_y
+JSR check_entry
+BNE .initial_write_skip
+LDA binary_version_number
+STA original_binary_version_number,Y
+TYA
+EOR #&F0 \ make sure there's always a change, even if Y=0
+EOR binary_version_number
+STA changed_binary_version_number,Y
+STA binary_version_number
+.initial_write_skip
+DEY
+BPL initial_write_loop
+LDY #15
+.initial_read_loop
+JSR select_y
+JSR check_entry
+BNE .initial_read_skip
+LDA binary_version_number
+CMP original_binary_version_number,Y
+BEQ not_ram
+SFTODO
+.initial_read_skip
+DEY
+BPL initial_read_loop
+
+
+
+
+
+
+
+
+
 :
 \ Try storing some distinct data in each bank which doesn't have a language or
 \ service entry.
