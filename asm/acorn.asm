@@ -394,7 +394,6 @@ nonstored_blocks_adjusted
     ; We have at least one bank completely unused
     ; Carry is clear
     adc #>(swr_ramtop - flat_ramtop) ; SFTODO: ASSUMES 16K BANK
-    i
 .last_bank_partly_used
     tax
     beq .no_wasted_swr
