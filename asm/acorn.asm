@@ -19,9 +19,9 @@
     +set_up_mode_7_3c00_inline
 }
 
-    +screenkernal_init_inline
+    jsr screenkernal_init
 
-    ; Now screenkernal_init_inline has been executed, it's safe to call s_printchar, so
+    ; Now screenkernal_init has been executed, it's safe to call s_printchar, so
     ; install our own error handler which will use s_printchar by default. No
     ; error should be able to occur before this point. If an error occurs during
     ; a restart, which will re-run the executable, there's not much we can do
@@ -40,6 +40,10 @@
 
     +init_readtime_inline
     jmp init_cursor_control
+
+screenkernal_init
+    +screenkernal_init_inline
+    rts
 } ; End of acorn_deletable_init_start
 
 ; Initialization performed shortly after startup, just after
@@ -482,11 +486,21 @@ nonstored_blocks_adjusted
     lda #vdu_cls
     jsr oswrch
 } else {
+    ; SFTODO: Maybe (this is deletable code) if we're already in the right mode
+    ; we should not set it again, to avoid screen flashing temporarily to black
+    ; on RESTART.
     lda #vdu_set_mode
     jsr oswrch
     lda screen_mode
     ora #128 ; force shadow mode on
     jsr oswrch
+    ; Setting the mode will have turned the cursor back on, so fix that.
+    jsr init_cursor_control
+    ; We must re-initialise screenkernal to pick up the details of the new mode.
+    jsr screenkernal_init
+    ; We must also reset the window sizes; we do this by re-executing
+    ; deletable_screen_init_1.
+    jsr deletable_screen_init_1
 }
 
 !ifdef ACORN_HW_SCROLL {
