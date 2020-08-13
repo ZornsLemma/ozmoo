@@ -45,7 +45,7 @@ def run_and_check(args, output_filter=None):
     # The child's stdout and stderr will both be output to our stdout, but that's not
     # a big deal.
     if verbose_level >= 2 and len(child_output) > 0:
-        print("".join(child_output))
+        print("".join(x.decode(encoding="ascii") for x in child_output))
     if child.returncode != 0:
         die("%s failed" % args[0])
 
