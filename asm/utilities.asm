@@ -81,6 +81,7 @@ read_next_byte_at_z_pc_sub
 	
 } else {
 
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {
 !ifdef ACORN_SWR {
     lda z_pc_mempointer_ram_bank
@@ -99,7 +100,7 @@ read_next_byte_at_z_pc_sub
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
-    ldy #0
+    ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
 }
 }	
 
