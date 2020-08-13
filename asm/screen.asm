@@ -765,6 +765,7 @@ restore_cursor
 
 !ifdef Z3 {
 
++make_acorn_screen_hole
 z_ins_show_status
     ; show_status (hardcoded size)
 ;    jmp draw_status_line

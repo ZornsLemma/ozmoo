@@ -35,6 +35,9 @@ PRINT "Powered by Ozmoo 3.4 (Acorn alpha 1.4)"'
 :
 REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408
+fg_colour=&409
+bg_colour=&40A
+screen_mode=&40B
 ram_bank_count=&410
 ram_bank_list=&411
 max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
@@ -46,21 +49,10 @@ IF NOT tube% THEN PROCdetect_swr ELSE PRINT "Second processor detected"'
 IF NOT tube% AND shadow% THEN PRINT "Shadow RAM detected"'
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=FNmode
-REM We don't change mode if we're using mode 7; this means if we're using
-REM mode 7 out of necessity not choice the user gets a chance to see the
-REM output of the loader while the game is loading. (If the user is
-REM prompted to choose a mode they get a chance to read whatever else is
-REM on the screen at that point.)
-REM SFTODO: Should I make the Ozmoo executable change mode when it's
-REM ready to start playing the game? (Just where it currently does vdu_cls
-REM and calls update_colours.) That way we'd always keep the loading screen
-REM up during the initial load on all versions regardless. On the other hand,
-REM we'd then end up with a "flicker" when the mode is changed needlessly
-REM after a restart - but of course we could compare current with target mode
-REM and only do the change if they're different.
-IF mode%<>7 THEN MODE 128+mode%
+?screen_mode=mode%
+IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
+?bg_colour=4
 VDU 23,1,0;0;0;0;
-VDU 19,0,4,0,0,0
 PRINT "Loading, please wait..."'
 *DIR S
 IF tube% THEN */$.OZMOO2P

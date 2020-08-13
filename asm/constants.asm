@@ -260,7 +260,7 @@ osbyte_reflect_keyboard_status = $76
 osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
 osbyte_read_cursor_position = $86
-osbyte_read_screen_mode = $87
+; SFTODO: DELETE osbyte_read_screen_mode = $87
 osbyte_enter_language = $8e
 osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5
@@ -293,9 +293,11 @@ crtc_screen_start_high = 12
 crtc_cursor_start_high = 14
 }
 
+!if 0 { ; SFTODO DELETE
 default_mode_7_status_colour = 6
 default_mode_6_fg_colour = 7
 default_mode_6_bg_colour = 4
+}
 
 ; Acorn memory allocations
 ; SFTODO: It might be worth reordering/reallocating these so the order is a
@@ -347,15 +349,20 @@ screen_width_plus_1 = $404 ; 1 byte
 game_disc_crc = $405 ; 2 bytes
 num_rows = $407 ; !byte 0
 !ifdef ACORN_RELOCATABLE {
-relocate_target = $408 ; low byte of B%
+relocate_target = $408 ; !byte 0, low byte of B%
 }
+; fg_colour and bg_colour must be adjacent and in this order
+fg_colour = $409 ; !byte 0
+bg_colour = $40a ; !byte 0
+screen_mode = $40b ; !byte 0, high byte of B% SFTODO IF WE KEEP THIS, CAN USE IT INSTEAD OF MAKING OS CALLS
 !ifdef VMEM {
-vmap_max_entries = $409 ; !byte 0
+vmap_max_entries = $40c ; !byte 0
 }
-initial_clock = $40a ; 5 bytes
 !ifdef ACORN_HW_SCROLL {
-use_hw_scroll = $40f ; !byte 0
+use_hw_scroll = $40d ; !byte 0
 }
+; SFTOD: $40e is currently wasted - move up to fill gap
+cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
 ; we probably don't need all this.
@@ -368,13 +375,9 @@ z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp?
 osfile_emulation_workspace = $420 ; 2 bytes
 jmp_buf_ram_bank = $422 ; 1 byte
 }
-screen_mode = $423 ; !byte 0
-; fg_colour and bg_colour must be adjacent and in this order
-fg_colour = $424 ; !byte 0
-bg_colour = $425 ; !byte 0
-cursor_status = $426 ; !byte 0
-memory_buffer = $427 ; 7 bytes (larger on C64, but this is all we use)
-jmp_buf = $42e ; "up to" 257 bytes - in reality 64 bytes is probably enough
+initial_clock = $423 ; 5 bytes
+memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
+jmp_buf = $42f ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
 scratch_page = $500

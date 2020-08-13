@@ -479,35 +479,24 @@ nonstored_blocks_adjusted
     ; s_printchar normally takes care of creating one as needed, but since we're
     ; going to do vdu_cls directly we need to take care of this.
     +define_mode_7_3c00_text_window_inline
-}
     lda #vdu_cls
     jsr oswrch
+} else {
+    lda #vdu_set_mode
+    jsr oswrch
+    lda screen_mode
+    ora #128 ; force shadow mode on
+    jsr oswrch
+}
 
-    ; Query screen mode and set things up accordingly. We do this late; we
-    ; need window_start_row to have been initialized for it to be safe to call
-    ; update_colours, although that happens quite a lot earlier anyway, and
-    ; we also don't want Z3 games in mode 7 to write a colour control code to
-    ; the top left of the screen before they're ready to start.
-    ; SFTODO: This will reset the colours on a restart. It might be better to
-    ; have the loader poke these colours into RAM and this binary works with
-    ; whatever values the loader leaves there.
-    lda #osbyte_read_screen_mode
-    jsr osbyte
-    sty screen_mode
 !ifdef ACORN_HW_SCROLL {
     ldx #1
+    ldy screen_mode
     cpy #7
     bne +
     dex
 +   stx use_hw_scroll
 }
-    lda #default_mode_6_fg_colour
-    cpy #7
-    bne +
-    lda #default_mode_7_status_colour
-+   sta fg_colour
-    lda #default_mode_6_bg_colour
-    sta bg_colour
     jsr update_colours
 } ; End of acorn_deletable_screen_init_2_inline
 
