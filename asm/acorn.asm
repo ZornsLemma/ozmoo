@@ -178,12 +178,14 @@
     ; If we set an "only load X sectors" flag in the persistent storage in page
     ; 4, we could minimise restart time. (On an ACORN_NO_SHADOW build we would
     ; need to reload enough to restore what we lost through temporarily switching
-    ; to real mode 7 with the screen at $3c00.)
+    ; to real mode 7 with the screen at $7c00.)
     ; SFTODO: It might be nice to tell the user (how exactly? does the loader
     ; leave us positioned correctly to output a string, and then we say "press
     ; SPACE to start" or something?) if the game has loaded entirely into RAM
     ; and they can remove the disc, and then we'd also want to remove the
-    ; check for the game disc being in the drive after a save/restore.
+    ; check for the game disc being in the drive after a save/restore. (But
+    ; they would still need the disc in the drive to do a RESTART, so this is
+    ; maybe not a good idea.)
 .blocks_to_read = .dir_ptr ; 2 bytes
 .current_ram_bank_index = zp_temp + 4 ; 1 byte
     lda #2
@@ -384,14 +386,15 @@ nonstored_blocks_adjusted
     cpy ram_bank_count
     php
     sta zp_temp
-    lda #$c0 - vmem_block_pagecount ; SFTODO MAGIC NUMBER
+    lda #(>swr_ramtop) - vmem_block_pagecount
     sec
     sbc zp_temp
     plp
     bcs .last_bank_partly_used
     ; We have at least one bank completely unused
     ; Carry is clear
-    adc #$40 ; SFTODO MAGIC NUMBER, ASSUMES 16K BANK
+    adc #>(swr_ramtop - flat_ramtop) ; SFTODO: ASSUMES 16K BANK
+    i
 .last_bank_partly_used
     tax
     beq .no_wasted_swr
@@ -414,9 +417,9 @@ nonstored_blocks_adjusted
     adc nonstored_blocks
     sta zp_temp + 1
     adc zp_temp
-    cmp #$c0 ; SFTODO MAGIC NUMBER
+    cmp #>swr_ramtop
     bcc +
-    lda #$c0 ; SFTODO MAGIC NUMBER
+    lda #>swr_ramtop
 +   sec
     sbc zp_temp + 1
     beq .no_wasted_swr
@@ -470,7 +473,6 @@ nonstored_blocks_adjusted
 ; Acorn-specific initialization to carry out in deletable_screen_init_2. This is
 ; quite late in the initialization process - in particular it happens after the
 ; lengthy loading process in acorn_deletable_init_inline.
-; SFTODO COMMENT
 !macro acorn_deletable_screen_init_2_inline {
 !ifdef ACORN_NO_SHADOW {
     ; It's not safe to do vdu_cls without having a text window in effect.

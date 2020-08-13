@@ -2112,15 +2112,15 @@ sound_high_pitched_beep
     lda #144 ; B4
 .sound_low_pitched_beep
     sta .sound_block + 4
-    ; SFTODO: The C64 code won't return until the sound has finished playing. I
-    ; am really struggling to find a way to wait until the sound has played;
-    ; checking the free space in the sound buffer only tells us it has started
-    ; playing as far as I can see from my experiments. It probably doesn't
-    ; matter that we return to the caller before the sound has finished, but I
-    ; could vaguely imagine a game playing sounds repeatedly in a timed loop and
-    ; with this implementation the OS buffer would cause the sounds to go on a
-    ; bit longer than desired. In practice the buffer isn't huge and these
-    ; sounds are very short and it's almost certainly not going to matter.
+    ; SF: ENHANCEMENT: The C64 code won't return until the sound has finished
+    ; playing. I am really struggling to find a way to wait until the sound has
+    ; played; checking the free space in the sound buffer only tells us it has
+    ; started playing as far as I can see from my experiments. It probably
+    ; doesn't matter that we return to the caller before the sound has finished,
+    ; but I could vaguely imagine a game playing sounds repeatedly in a timed
+    ; loop and with this implementation the OS buffer would cause the sounds to
+    ; go on a bit longer than desired. In practice the buffer isn't huge and
+    ; these sounds are very short and it's almost certainly not going to matter.
     lda #osword_sound
     ldx #<.sound_block
     ldy #>.sound_block

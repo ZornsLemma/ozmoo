@@ -352,6 +352,7 @@ def add_swr_shr_executable(ssd):
         high_executable = patch_vmem(f.read(), high_labels)
     assert "ACORN_RELOCATABLE" in low_labels
     assert "ACORN_RELOCATABLE" in high_labels
+    # SFTODO: These assertions are a bit pointless given the executables having stack padding at this point.
     assert low_executable[-2:] == b'\0\0'
     assert high_executable[-2:] == b'\0\0'
     relocations = make_relocations(low_executable, high_executable)

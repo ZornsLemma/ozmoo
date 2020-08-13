@@ -539,12 +539,9 @@ uname_len = * - .uname
     ; Master 128 mode. I could probably knock up a BASIC program using the
     ; mdfs BASIC function I based my OSWORD 7F code on to hopefully reproduce the problem
     ; in a simple way on BeebEm and post it to stardot if that fails too. - OK,
-    ; having had a play with this a bit more, I think there's a) something to
+    ; having had a play with this a bit more, I think there's something to
     ; do with the 8271 emulation maybe identifying the disc format wrong, if I
-    ; switch to 1770 DFS on the B+65C02 it works fine b) maybe something odd
-    ; with Integra-B, it hangs *very* early after loading even with a 1770 DFS.
-    ; Let's see what people on stardot have to say before worrying about this
-    ; further.
+    ; switch to 1770 DFS on the B+65C02 it works fine.
     brk
     !byte 0
     !text "Disc read error"

@@ -169,7 +169,6 @@ vmap_z_l = vmap_z_h + vmap_max_size
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
 !ifndef ACORN_SWR {
-; SFTODO: I think we could conditionally omit vmap_first_ram_page and vmap_c64_offset for ACORN_SWR
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
 }
