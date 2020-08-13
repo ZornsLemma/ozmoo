@@ -444,7 +444,7 @@ load_blocks_from_index_using_cache
     rts
 }
 
-; SF: Note that this is allowed to corrupt Y, but must preserve X.
+; SF: Note that this is allowed to corrupt X and Y.
 read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
@@ -505,6 +505,10 @@ read_byte_at_z_address
     sta romsel_copy
     sta romsel
     pla
+}
+!if 1 { ; SFTODO: JUST TO PROVE IT'S OK
+    ldx #42
+    ldy #86
 }
 	rts
 .read_new_byte
