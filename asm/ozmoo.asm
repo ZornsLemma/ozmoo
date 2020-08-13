@@ -370,14 +370,7 @@ deletable_screen_init_1
 }
 	sty window_start_row + 2
 	sty window_start_row + 1
-    ; SFTODO: Maybe for minimal readability disruption, we could have some macros
-    ; like 'ldy_screen_height' and use those everywhere necessary and wrap all
-    ; this platform !ifdef in there.
-!ifndef ACORN {
-	ldy #25
-} else {
-    ldy screen_height
-}
+	+ldy_screen_height
 	sty window_start_row
 !ifndef ACORN {
 	ldy #0
@@ -468,11 +461,7 @@ z_init
 	sta story_start + header_interpreter_number ; Interpreter number (8 = C64)
 	lda #67 ; "C" = release 3
 	sta story_start + header_interpreter_version ; Interpreter version. Usually ASCII code for a capital letter
-!ifndef ACORN {
-	lda #25
-} else {
-    lda screen_height
-}
+	+lda_screen_height
 	sta story_start + header_screen_height_lines
 !ifdef Z5PLUS {
 	sta story_start + header_screen_height_units + 1

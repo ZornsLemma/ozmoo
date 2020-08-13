@@ -1599,12 +1599,12 @@ restore_game
     ; As described in section 8.4 of the Z-machine standards document, we need
     ; to update the header in case the screen dimensions have changed compared
     ; to when this game was saved.
-    lda screen_height
+    +lda_screen_height
 	sta story_start + header_screen_height_lines
 !ifdef Z5PLUS {
 	sta story_start + header_screen_height_units + 1
 }
-    lda screen_width
+    +lda_screen_width
 	sta story_start + header_screen_width_chars
 !ifdef Z5PLUS {
 	sta story_start + header_screen_width_units + 1

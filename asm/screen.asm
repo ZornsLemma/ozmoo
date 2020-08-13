@@ -79,11 +79,7 @@ erase_window
 -   jsr s_erase_line
     inc zp_screenrow
     lda zp_screenrow
-!ifndef ACORN {
-    cmp #25
-} else {
-    cmp screen_height
-}
+    +cmp_screen_height
     bne -
 	jsr clear_num_rows
     ; set cursor to top left (or, if Z4, bottom left)
@@ -96,11 +92,7 @@ erase_window
 !ifdef Z5PLUS {
     lda window_start_row + 1
 } else {
-!ifndef ACORN {
-    lda #24
-} else {
-    lda screen_height_minus_1
-}
+    +lda_screen_height_minus_1
 }
 	stx cursor_row + 1
     pha
@@ -254,20 +246,6 @@ start_buffering
 	sty last_break_char_buffer_pos
 	rts
 
-!ifdef Z3 {
-!ifndef ACORN {
-.max_lines = 24
-} else {
-.max_lines = screen_height_minus_1
-}
-} else {
-!ifndef ACORN {
-.max_lines = 25
-} else {
-.max_lines = screen_height
-}
-}
-
 z_ins_split_window
     ; split_window lines
     ldx z_operand_value_low_arr
@@ -287,15 +265,9 @@ split_window
 }
     rts
 .split_window
-!ifndef ACORN {
-	cpx #.max_lines
+	+cpx_max_lines
 	bcc +
-	ldx #.max_lines
-} else {
-	cpx .max_lines
-	bcc +
-	ldx .max_lines
-}
+	+ldx_max_lines
 +	txa
 	clc
 	adc window_start_row + 2
@@ -569,11 +541,7 @@ printchar_buffered
     jmp .printchar_done
 .check_break_char
     ldy buffer_index
-!ifndef ACORN {
-	cpy #40
-} else {
-    cpy screen_width
-}
+    +cpy_screen_width
 	bcs .add_char ; Don't register break chars on last position of buffer.
     cmp #$20 ; Space
     beq .break_char
@@ -589,11 +557,7 @@ printchar_buffered
     sta print_buffer2,y
 	iny
     sty buffer_index
-!ifndef ACORN {
-    cpy #41
-} else {
-    cpy screen_width_plus_1
-}
+    +cpy_screen_width_plus_1
     beq +
     jmp .printchar_done
 +
@@ -602,7 +566,7 @@ printchar_buffered
 !ifndef ACORN {
 	ldx #40
 } else {
-    ldx screen_width
+    +ldx_screen_width
 }
 	lda window_start_row
 	sec
@@ -684,11 +648,7 @@ printchar_buffered
     ; more on the same line
     jsr increase_num_rows
 	lda last_break_char_buffer_pos
-!ifndef ACORN {
-	cmp #40
-} else {
-    cmp screen_width
-}
+    +cmp_screen_width
 	bcs +
     lda #$0d
     jsr s_printchar
@@ -811,11 +771,7 @@ draw_status_line
     ; fill the rest of the line with spaces
     ;
 -   lda zp_screencolumn
-!ifndef ACORN {
-	cmp #40
-} else {
-    cmp screen_width
-}
+    +cmp_screen_width
 	bcs +
     lda #$20
     jsr s_printchar
@@ -840,7 +796,7 @@ draw_status_line
     ldy #25
 } else {
     sec
-    lda screen_width
+    +lda_screen_width
     sbc #(40-25)
     tay
 }
@@ -879,7 +835,7 @@ draw_status_line
     ldy #25
 } else {
     sec
-    lda screen_width
+    +lda_screen_width
     sbc #(40-25)
     tay
 }

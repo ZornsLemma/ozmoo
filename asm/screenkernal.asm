@@ -29,6 +29,146 @@
 
 !zone screenkernal {
 
+; The Commodore 64 and one Acorn build have a fixed screen size while other
+; Acorn builds have a variable screen size. We don't want to penalise the
+; former so we use these macros which assemble using either immediate values
+; or memory accesses as appropriate.
+
+!ifndef ACORN {
+    FIXED_SCREEN_SIZE = 1
+} else {
+    !ifdef ACORN_NO_SHADOW {
+        FIXED_SCREEN_SIZE = 1
+    }
+}
+
+!ifdef FIXED_SCREEN_SIZE {
+!ifdef Z3 {
+max_lines = 24
+} else {
+max_lines = 25
+}
+} else {
+!ifdef Z3 {
+max_lines = screen_height_minus_1
+} else {
+max_lines = screen_height
+}
+}
+
+!macro cmp_screen_height {
+    !ifdef FIXED_SCREEN_SIZE {
+        cmp #25
+    } else {
+        cmp screen_height
+    }
+}
+!macro cmp_screen_width {
+    !ifdef FIXED_SCREEN_SIZE {
+        cmp #40
+    } else {
+        cmp screen_width
+    }
+}
+!macro cpx_screen_height {
+    !ifdef FIXED_SCREEN_SIZE {
+        cpx #25
+    } else {
+        cpx screen_height
+    }
+}
+!macro cpx_screen_width {
+    !ifdef FIXED_SCREEN_SIZE {
+        cpx #40
+    } else {
+        cpx screen_width
+    }
+}
+!macro cpx_max_lines {
+    !ifdef FIXED_SCREEN_SIZE {
+        cpx #max_lines
+    } else {
+        cpx max_lines
+    }
+}
+!macro cpy_screen_width {
+    !ifdef FIXED_SCREEN_SIZE {
+        cpy #40
+    } else {
+        cpy screen_width
+    }
+}
+!macro cpy_screen_width_plus_1 {
+    !ifdef FIXED_SCREEN_SIZE {
+        cpy #41
+    } else {
+        cpy screen_width_plus_1
+    }
+}
+!macro lda_screen_height_minus_1 {
+    !ifdef FIXED_SCREEN_SIZE {
+        lda #24
+    } else {
+        lda screen_height_minus_1
+    }
+}
+!macro lda_screen_height {
+    !ifdef FIXED_SCREEN_SIZE {
+        lda #25
+    } else {
+        lda screen_height
+    }
+}
+!macro lda_screen_width_minus_1 {
+    !ifdef FIXED_SCREEN_SIZE {
+        lda #39
+    } else {
+        lda screen_width_minus_1
+    }
+}
+!macro lda_screen_width {
+    !ifdef FIXED_SCREEN_SIZE {
+        lda #40
+    } else {
+        lda screen_width
+    }
+}
+!macro ldx_max_lines {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldx #max_lines
+    } else {
+        ldx max_lines
+    }
+}
+!macro ldx_screen_height_minus_1 {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldx #24
+    } else {
+        ldx screen_height_minus_1
+    }
+}
+!macro ldx_screen_width {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldx #40
+    } else {
+        ldx screen_width
+    }
+}
+!macro ldy_screen_height {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldy #25
+    } else {
+        ldy screen_height
+    }
+}
+!macro ldy_screen_width {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldy #40
+    } else {
+        ldy screen_width
+    }
+}
+
 !ifndef ACORN {
 s_init
     ; init cursor
@@ -46,6 +186,7 @@ s_init
     rts
 } else {
 !macro screenkernal_init_inline {
+!ifndef ACORN_NO_SHADOW {
     ; story_start + header_screen_{width,height}* are only valid for certain
     ; Z-machine versions. We don't want to be querying the OS for these values all
     ; the time, so we keep them here.
@@ -63,6 +204,7 @@ s_init
     sty screen_width
     iny
     sty screen_width_plus_1
+}
 
     ; Pick up the current OS cursor position; this will improve readability if
     ; any errors occuring during initialization, and it doesn't affect the game
@@ -95,9 +237,9 @@ s_plot
 	bcc +
 	ldx #24
 } else {
-+	cpx screen_height
++	+cpx_screen_height
 	bcc +
-	ldx screen_height_minus_1
+	+ldx_screen_height_minus_1
 }
 +	stx zp_screenrow
 	sty zp_screencolumn
@@ -323,7 +465,7 @@ s_printchar
 	cmp window_start_row + 1,y
 	bcc ++
 	dec zp_screenrow
-	lda screen_width_minus_1
+	+lda_screen_width_minus_1
 	sta zp_screencolumn
 ++
 }
@@ -383,11 +525,7 @@ s_printchar
 +
 }
 }
-!ifndef ACORN {
-	cpx #40
-} else {
-    cpx screen_width
-}
+    +cpx_screen_width
 .printchar_end_bcs
 	bcs .printchar_end
 !ifdef ACORN_HW_SCROLL {
@@ -467,19 +605,19 @@ s_printchar
     sty zp_screencolumn
 	ldx current_window
 	bne .printchar_nowrap ; For upper window and statusline (in z3), don't advance to next line.
-    cpy screen_width
+    +cpy_screen_width
     bcc .printchar_nowrap
 	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
     lda #0
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
-	cmp screen_height
+	+cmp_screen_height
 	bcc .printchar_nowrap
 !ifdef ACORN_HW_SCROLL {
     lda use_hw_scroll
     beq .no_hw_scroll0
-    lda screen_height_minus_1
+    +lda_screen_height_minus_1
     sta zp_screenrow ; s_pre_scroll normally does this but we may not call it
     ldx window_start_row + 1 ; how many top lines to protect
     dex
@@ -617,11 +755,7 @@ s_erase_window
 
 .s_scroll
     lda zp_screenrow
-!ifndef ACORN {
-    cmp #25
-} else {
-    cmp screen_height
-}
+    +cmp_screen_height
     bpl +
     rts
 +
@@ -697,7 +831,7 @@ s_erase_line_from_cursor
     jsr oswrch
     lda #0
     jsr oswrch
-    lda screen_height_minus_1
+    +lda_screen_height_minus_1
     sta zp_screenrow
     jsr oswrch
     jsr set_os_normal_video ; new line must not be reverse video
@@ -731,7 +865,7 @@ s_erase_line_from_cursor
     lda #0
     sta .top_line_buffer_reverse,x
     inx
-    cpx screen_width
+    +cpx_screen_width
     bne -
 +
 }
@@ -745,7 +879,7 @@ s_erase_line_from_cursor
     lda zp_screenrow
     pha
     jsr oswrch
-    lda screen_width_minus_1
+    +lda_screen_width_minus_1
     jsr oswrch
     pla
     jsr oswrch
@@ -804,19 +938,19 @@ s_pre_scroll
     lda #0
     sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
     jsr oswrch
-    lda screen_height_minus_1
+    +lda_screen_height_minus_1
     sta zp_screenrow ; leave the ozmoo cursor on the last line
     jsr oswrch
-    lda screen_width_minus_1
+    +lda_screen_width_minus_1
     jsr oswrch
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
     ; Move the cursor to the bottom right of the text window
     lda #vdu_goto_xy
     jsr oswrch
-    lda screen_width_minus_1
+    +lda_screen_width_minus_1
     jsr oswrch
-    lda screen_height_minus_1
+    +lda_screen_height_minus_1
     sec
     sbc window_start_row + 1
     jmp oswrch
@@ -826,7 +960,7 @@ s_pre_scroll
     jsr turn_off_cursor
     lda #vdu_home
     jsr oswrch
-    ldy screen_width
+    +ldy_screen_width
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
     lda screen_mode

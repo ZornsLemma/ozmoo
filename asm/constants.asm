@@ -310,9 +310,11 @@ zp_temp               = $75 ; 5 bytes
 ; matters most of the time.
 cursor_row            = $7a ; 2 bytes
 cursor_column         = $7c ; 2 bytes
+!ifndef ACORN_NO_SHADOW {
 screen_width          = $54 ; 1 byte
 screen_height         = $89 ; 1 byte
 screen_height_minus_1 = $8a ; 1 byte
+}
 
 vmem_temp			  = $00 ; 2 bytes
 alphabet_table		  = $7e ; 2 bytes
@@ -344,8 +346,10 @@ stack = $100
 z_trace_index = $400 ; 1 byte
 s_stored_x = $401 ; !byte 0
 s_stored_y = $402 ; !byte 0
+!ifndef ACORN_NO_SHADOW {
 screen_width_minus_1 = $403 ; 1 byte
 screen_width_plus_1 = $404 ; 1 byte
+}
 game_disc_crc = $405 ; 2 bytes
 num_rows = $407 ; !byte 0
 !ifdef ACORN_RELOCATABLE {
