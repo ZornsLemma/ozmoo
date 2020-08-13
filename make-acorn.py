@@ -207,7 +207,7 @@ run_and_check([
 
 
 # SFTODO: Move these two classes to top of file?
-class DiscFull(object):
+class DiscFull(Exception):
     pass
 
 
@@ -470,7 +470,7 @@ else:
     ssd2.pad(lambda track, sector: track * 10 + sector == ssd.first_free_sector())
     data = [bytearray(), bytearray()]
     for i in range(0, bytes_to_blocks(len(game_data)), 10):
-        data[(i % 20) / 10].extend(game_data[i*256:i*256+10*256])
+        data[(i % 20) // 10].extend(game_data[i*256:i*256+10*256])
     try:
         ssd.add_file("$", "DATA", 0, 0, data[0])
         ssd2.add_file("$", "DATA", 0, 0, data[1])
