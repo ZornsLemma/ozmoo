@@ -1517,7 +1517,8 @@ do_save
     ; SFTODO: We could omit the following message (don't forget all builds would
     ; need the 0!) on a non-VMEM build, where you never need to keep the game disc
     ; in. Arguably it's clearer to say it, and it's harmless except for using
-    ; a few bytes of memory.
+    ; a few bytes of memory. (But as I've said elsewhere, you do need the game
+    ; disc in for RESTART when I support this on non-VMEM.)
     !text "You can safely remove the game disc now.", 13, 0
 .save_prompt
     !text "save>", 0
@@ -1655,10 +1656,6 @@ save_game
 	jsr .swap_pointers_for_save
 
 	; Perform save or load
-    ; SFTODO: Can/should we check if the file already exists on save and ask
-    ; user to confirm? Just use OSFILE 5 to do this, then I believe that's not
-    ; going to cause problems with having PAGE at $1100 if that's otherwise
-    ; possible.
     ldx #1
     ldy #error_print_osasci
     jsr setjmp

@@ -33,8 +33,6 @@
     sta brkv + 1
 
 !ifdef ACORN_CURSOR_PASS_THROUGH {
-    ; SFTODO: ACORN_CURSOR_PASS_THROUGH is completely untested; I need to find
-    ; a game which uses cursor keys.
     lda #osbyte_set_cursor_editing
     ldx #1
     jsr do_osbyte_y_0
