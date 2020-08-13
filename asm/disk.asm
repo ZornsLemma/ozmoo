@@ -1399,7 +1399,8 @@ do_save
 }
 
 .filename_buffer = scratch_page
-.filename_buffer_size = 255
+.osfile_check_buffer = scratch_page + 0x100 - 0x12
+.filename_buffer_size = (.osfile_check_buffer - .filename_buffer) - 1
 ; Returns with Z set iff user wants to abort the save/restore.
 .get_filename
     ; We use raw OS text output here, because * commands will do and their output
@@ -1689,6 +1690,14 @@ save_game
     jsr osnewl
     jmp .save_restore_game_cleanup_full
 .no_osfile_error
+    ; If it's a save, check if we're going to overwrite an existing file and
+    ; ask the user if that's OK.
+    lda .osfile_or_osfind_op
+    cmp #.save_op
+    bne .not_save
+    jsr .check_for_overwrite
+    bne .save_restore_game_cleanup_full
+.not_save
     ; The OSFILE block is updated after the call, so we have to populate these
     ; values via code every time.
 !ifndef ACORN_SAVE_RESTORE_OSFIND {
@@ -1750,6 +1759,48 @@ save_game
     lda #0
     ldx .result ; must be last as caller will check Z flag
 	rts
+
+; On exit, beq will branch if it's OK to save the file.
+.check_for_overwrite
+    ; We don't use .osfile_save_load_block here (even if it's in this build)
+    ; because we don't want to trample over the load address in there.
+    lda #<.filename_buffer
+    sta .osfile_check_buffer
+    lda #>.filename_buffer
+    sta .osfile_check_buffer + 1
+    lda #osfile_read_catalogue_information
+    ldx #<.osfile_check_buffer
+    ldy #>.osfile_check_buffer
+    jsr osfile
+    tax
+    beq .file_doesnt_exist
+    lda #>.overwrite_msg
+    ldx #<.overwrite_msg
+    jsr printstring_os
+    jsr turn_on_cursor
+    lda #osbyte_flush_buffer
+    ldx #buffer_keyboard
+    jsr osbyte
+-   jsr osrdch
+    cmp #'Y'
+    beq +
+    cmp #'y'
+    beq +
+    cmp #'N'
+    beq +
+    cmp #'n'
+    bne -
++   and #!$20 ; force upper case
+    jsr oswrch
+    pha
+    jsr turn_off_cursor
+    jsr osnewl
+    pla
+    cmp #'Y'
+.file_doesnt_exist
+    rts
+.overwrite_msg
+    !text "File exists - overwrite it? (Y/N) ", 0
 
 !ifndef ACORN_SAVE_RESTORE_OSFIND {
 .osfile_save_load_block
