@@ -451,30 +451,31 @@ def make_relocations(alternate, master):
     return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
 # SFTODO: Move this function?
-# SFTODO: WE WANT TO DO THE ACORN_NO_SWR_DYNMEM STUFF FOR THE NO SHADOW BUILD TOO
-def add_swr_shr_executable(ssd):
-    candidate = None
-    extra_args_base = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
-    for start_address in (shr_swr_start_addr, shr_swr_start_addr + 0x100):
-        for nsd in (True, False):
-            version = "swr_shr_vmem%s_START" % ("_nsd" if nsd else "")
-            extra_args = extra_args_base[:]
-            if nsd:
-                extra_args += ["-DACORN_NO_SWR_DYNMEM=1"]
-            e = Executable(version, start_address, extra_args)
-            if nsd and max_game_blocks_main_ram(e) < nonstored_blocks:
-                continue
-            # We don't explicitly favour ACORN_NO_SWR_DYNMEM in the event of a tie;
-            # it should be smaller than an otherwise equivalent build anyway.
-            if candidate is None or len(e.binary) < len(candidate.binary):
-                candidate = e
-    assert candidate is not None
+def make_nsd_executable(version, start_address, extra_args):
+    e = Executable(version.replace("_NSD", "_nsd"), start_address, extra_args + ["-DACORN_NO_SWR_DYNMEM=1"])
+    if nonstored_blocks <= max_game_blocks_main_ram(e):
+        return e
+    return Executable(version.replace("_NSD", ""), start_address, extra_args)
 
-    if "ACORN_NO_SWR_DYNMEM" in candidate.labels:
-        info("Dynamic memory fits in main RAM on sideways+shadow RAM build")
+# SFTODO: MOVE THIS FUNCTION
+def info_no_swr_dynmem(name, labels):
+    if "ACORN_NO_SWR_DYNMEM" in labels:
+        info("Dynamic memory fits in main RAM on " + name)
     else:
         # "may" because it will depend on PAGE at runtime.
-        info("Dynamic memory may overflow into sideways RAM on sideways+shadow RAM build")
+        info("Dynamic memory may overflow into sideways RAM on " + name)
+
+# SFTODO: Move this function?
+def add_swr_shr_executable(ssd):
+    candidate = None
+    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
+    for start_address in (shr_swr_start_addr, shr_swr_start_addr + 0x100):
+        e = make_nsd_executable("swr_shr_vmem_NSD_START", start_address, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"])
+        if candidate is None or len(e.binary) < len(candidate.binary):
+            candidate = e
+    assert candidate is not None
+
+    info_no_swr_dynmem("sideways+shadow RAM build", candidate.labels)
     info("Sideways+shadow RAM build will run at %s address" % ("even" if candidate.start_address % 0x200 == 0 else "odd"))
 
     high_executable = candidate
@@ -492,7 +493,8 @@ def add_swr_shr_executable(ssd):
 
 # SFTODO: Move this function?
 def add_swr_executable(ssd):
-    e = Executable("swr_vmem", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
+    e = make_nsd_executable("swr_vmem_NSD", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
+    info_no_swr_dynmem("sideways RAM build", e.labels)
     ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, e.binary)
 
 
