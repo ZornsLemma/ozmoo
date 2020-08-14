@@ -365,7 +365,7 @@ vmap_max_entries = $40c ; !byte 0
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll = $40d ; !byte 0
 }
-; SFTOD: $40e is currently wasted - move up to fill gap
+; SFTODO: $40e is currently wasted - move up to fill gap
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;

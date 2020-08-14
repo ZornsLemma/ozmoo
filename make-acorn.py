@@ -71,6 +71,93 @@ def bytes_to_blocks(x):
     else:
         return int(x / 256)
 
+
+# SFTODO: MOVE/RENAME
+class Executable(object):
+    def __init__(self, version, start_address, extra_args):
+        self.raw_version = version
+        version = version.replace("START", ourhex(start_address))
+        self.version = version
+        self.start_address = start_address
+        self.extra_args = extra_args[:]
+        if "-DACORN_NO_SHADOW=1" not in self.extra_args:
+            self.extra_args += ["-DACORN_HW_SCROLL=1"]
+        os.chdir("asm")
+        run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(start_address)] + self.extra_args + acme_args2, "VERSION", version))
+        os.chdir("..")
+        self.binary_filename = "temp/ozmoo_" + version
+        self.labels_filename = "temp/acme_labels_" + version + ".txt"
+        self.labels = parse_labels(self.labels_filename)
+
+        with open(self.binary_filename, "rb") as f:
+            self.binary = f.read()
+        if "ACORN_RELOCATABLE" in self.labels:
+            truncate_label = "reloc_count"
+        else:
+            truncate_label = "end_of_routines_in_stack_space"
+        self.binary = self.binary[:self.labels[truncate_label]-self.labels["program_start"]]
+
+        if "VMEM" in self.labels:
+            self.binary = Executable.patch_vmem(self.binary, self.labels)
+
+    @staticmethod
+    def patch_vmem(binary, labels):
+        binary = bytearray(binary)
+        vmem_block_pagecount = labels["vmem_block_pagecount"]
+        vmap_max_size = labels["vmap_max_size"]
+
+        if z_machine_version == 3:
+            vmem_highbyte_mask = 0x01
+        elif z_machine_version == 8:
+            vmem_highbyte_mask = 0x07
+        else:
+            vmem_highbyte_mask = 0x03
+
+        if "ACORN_SWR" in labels:
+            pseudo_ramtop = 0xc000
+        else:
+            pseudo_ramtop = labels["flat_ramtop"]
+        ozmoo_ram_blocks = (pseudo_ramtop - labels["story_start"]) / 256
+        # SFTODO: Ideally these failures would result in us generating a disc which doesn't
+        # support the system type we're currently patching the binary for, but which
+        # does support others.
+        if nonstored_blocks > ozmoo_ram_blocks:
+            die("Not enough free RAM for game's dynamic memory")
+        if game_blocks > nonstored_blocks:
+            min_vmem_blocks = 2 # absolute minimum, one for PC, one for data
+            if nonstored_blocks + min_vmem_blocks * vmem_block_pagecount > ozmoo_ram_blocks:
+                # SFTODO: On an ACORN_SWR build, this is not necessarily a problem, but let's
+                # keep the check in place for now, as if we fail to meet this condition we
+                # would have to require at least two sideways RAM banks in order to run and
+                # right now the loader doesn't check for that.
+                die("Not enough free RAM for any swappable memory")
+
+        # Generate initial virtual memory map. We just populate the entire table; if the
+        # game is smaller than this we will just never use the other entries.
+        vmap_offset = binary.index(b'VVVVVVVVV')
+        vmap_length = 0
+        while chr(binary[vmap_offset + vmap_length]) == 'V':
+            vmap_length += 1
+        if vmap_length & 1 != 0:
+            vmap_length -= 1
+        assert vmap_length >= vmap_max_size * 2
+        min_age = vmem_highbyte_mask + 1
+        max_age = 0xff & ~vmem_highbyte_mask
+        for i in range(vmap_max_size):
+            age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
+            addr = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
+            if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
+                # This vmap entry is useless; the current Z-machine version can't contain
+                # such a block.
+                # SFTODO: Warn? It's harmless but it means we could have clawed back a few
+                # bytes by shrinking vmap_max_size.
+                addr = 0
+            vmap_entry = (age << 8) | addr
+            binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
+            binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
+        return binary
+
+
 parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using Ozmoo.")
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
@@ -106,7 +193,6 @@ game_blocks = bytes_to_blocks(len(game_data))
 acme_args1 = [
     "acme",
     "-DACORN=1",
-    "-DACORN_HW_SCROLL=1",
     "-DACORN_CURSOR_PASS_THROUGH=1",
     "-DSTACK_PAGES=4",
     "-DSMALLBLOCK=1",
@@ -164,40 +250,42 @@ try:
     os.mkdir("temp")
 except OSError:
     pass
-os.chdir("asm")
+
 host = 0xffff0000
 tube_start_addr = 0x600
 swr_start_addr = 0x1900
-run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(tube_start_addr)] + acme_args2, "VERSION", "tube_no_vmem"))
-run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(tube_start_addr), "-DVMEM=1"] + acme_args2, "VERSION", "tube_vmem"))
-# SFTODO: It's worse than this, because we really need to build all of the following code with the
-# two possible versions of the save/restore code, and if the one with the OSFILE version doesn't
-# require SWR for the dynamic memory, use that, otherwise use the OSFIND version.
-# End of SFTODO
+# Shadow RAM builds will load at or just above shr_swr_start_addr and relocate
+# down to PAGE or just above. shr_swr_start_addr must be high enough to
+# acommodate the maximum PAGE the binary will support. It is still better if
+# this isn't too high as it will increase the worst case main RAM free, which
+# may allow ACORN_NO_SWR_DYNMEM to be used.
+shr_swr_start_addr = 0x2000
+
+tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
+
+# We take some constants from the ACME labels to avoid duplicating them both
+# here and in constants.asm. We need to take them from a particular build, but
+# these won't vary.
+common_labels = tube_no_vmem.labels
+header_static_mem = common_labels["header_static_mem"]
+
+vmem_block_pagecount = 2 # SFTODO: This doesn't vary, but ideally we'd take it from labels
+dynamic_size_bytes = get_word(game_data, header_static_mem)
+nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
+while nonstored_blocks % vmem_block_pagecount != 0:
+    nonstored_blocks += 1
+
+# SFTODO: MOVE THIS COMMENT
 # Because VMEM builds require story_start to be double-page aligned, the executable will be quite
 # different depending on whether it starts at an even or odd page and the size of padding required
 # to make that start address work with a double-page alignment for story_start. We pick whichever
 # of an odd or even start address gives the smallest executable, and preserve that alignment
-# (rounding the relocation target address on the system we're running on up if necessary) when
+# (rounding up the relocation target address on the system we're running on necessary) when
 # we relocate down. This avoids wasting a double page, as could happen if we arbitarily picked
 # a start address which needed an extra page of padding and then the system we're running on
 # has an oppositely aligned ideal relocation target.
-run_and_check(substitute(acme_args1 + ["--setpc", "$e00", "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"] + acme_args2, "VERSION", "swr_shr_vmem_e00"))
-run_and_check(substitute(acme_args1 + ["--setpc", "$f00", "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"] + acme_args2, "VERSION", "swr_shr_vmem_f00"))
-even_length = os.stat("../temp/ozmoo_swr_shr_vmem_e00").st_size
-odd_length = os.stat("../temp/ozmoo_swr_shr_vmem_f00").st_size
-assert even_length != odd_length
-assert abs(even_length - odd_length) == 0x100
-if even_length < odd_length:
-    swr_shr_low_start_addr = 0xe00
-    swr_shr_high_start_addr = 0x2000
-else:
-    swr_shr_low_start_addr = 0xf00
-    swr_shr_high_start_addr = 0x2100
-assert (swr_shr_high_start_addr - swr_shr_low_start_addr) % 0x200 == 0
-run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(swr_shr_high_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"] + acme_args2, "VERSION", "swr_shr_vmem_" + ourhex(swr_shr_high_start_addr)))
-run_and_check(substitute([x for x in acme_args1 if "ACORN_HW_SCROLL" not in x] + ["--setpc", "$" + ourhex(swr_start_addr), "-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"] + acme_args2, "VERSION", "swr_vmem"))
-os.chdir("..")
+
+
 
 run_and_check([
     "beebasm",
@@ -295,25 +383,21 @@ class DiscImage(object):
 
     def extend(self):
         self.data += b'\0' * 256 * (80 * 10 - self.first_free_sector())
-            
+
 
 # SFTODO: Move this function?
+def max_game_blocks_main_ram(executable):
+    return (executable.labels["flat_ramtop"] - executable.labels["story_start"]) // 256
+            
+# SFTODO: Move this function?
 def add_tube_executable(ssd):
-    labels_no_vmem = parse_labels("temp/acme_labels_tube_no_vmem.txt")
-    ramtop_no_vmem = labels_no_vmem["flat_ramtop"]
-    assert ramtop_no_vmem == 0xf800
-    max_game_blocks_no_vmem = (ramtop_no_vmem - labels_no_vmem["story_start"]) / 256
-    if game_blocks <= max_game_blocks_no_vmem:
+    if game_blocks <= max_game_blocks_main_ram(tube_no_vmem):
         info("Game is small enough to run without virtual memory on second processor")
-        with open("temp/ozmoo_tube_no_vmem", "rb") as f:
-            executable = truncate_executable(f.read(), labels_no_vmem)
+        e = tube_no_vmem
     else:
         info("Game will be run using virtual memory on second processor")
-        with open("temp/ozmoo_tube_vmem", "rb") as f:
-            labels_vmem = parse_labels("temp/acme_labels_tube_vmem.txt")
-            executable = truncate_executable(f.read(), labels_vmem)
-            executable = patch_vmem(executable, labels_vmem)
-    ssd.add_file("$", "OZMOO2P", tube_start_addr, tube_start_addr, executable)
+        e = Executable("tube_vmem", tube_start_addr, ["-DVMEM=1"])
+    ssd.add_file("$", "OZMOO2P", tube_start_addr, tube_start_addr, e.binary)
 
 # SFTODO: Move this function?
 def make_relocations(alternate, master):
@@ -347,105 +431,49 @@ def make_relocations(alternate, master):
     return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
 # SFTODO: Move this function?
+# SFTODO: WE WANT TO DO THE ACORN_NO_SWR_DYNMEM STUFF FOR THE NO SHADOW BUILD TOO
 def add_swr_shr_executable(ssd):
-    low_labels = parse_labels("temp/acme_labels_swr_shr_vmem_%s.txt" % ourhex(swr_shr_low_start_addr))
-    with open("temp/ozmoo_swr_shr_vmem_%s" % ourhex(swr_shr_low_start_addr), "rb") as f:
-        low_executable = patch_vmem(f.read(), low_labels)
-    high_labels = parse_labels("temp/acme_labels_swr_shr_vmem_%s.txt" % ourhex(swr_shr_high_start_addr))
-    with open("temp/ozmoo_swr_shr_vmem_%s" % ourhex(swr_shr_high_start_addr), "rb") as f:
-        high_executable = patch_vmem(f.read(), high_labels)
-    assert "ACORN_RELOCATABLE" in low_labels
-    assert "ACORN_RELOCATABLE" in high_labels
-    # SFTODO: These assertions are a bit pointless given the executables having stack padding at this point.
-    assert low_executable[-2:] == b'\0\0'
-    assert high_executable[-2:] == b'\0\0'
-    relocations = make_relocations(low_executable, high_executable)
-    executable = truncate_executable(high_executable, high_labels) + relocations
+    candidate = None
+    extra_args_base = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
+    for start_address in (shr_swr_start_addr, shr_swr_start_addr + 0x100):
+        for nsd in (True, False):
+            version = "swr_shr_vmem%s_START" % ("_nsd" if nsd else "")
+            extra_args = extra_args_base[:]
+            if nsd:
+                extra_args += ["-DACORN_NO_SWR_DYNMEM=1"]
+            e = Executable(version, start_address, extra_args)
+            if nsd and max_game_blocks_main_ram(e) < nonstored_blocks:
+                continue
+            # We don't explicitly favour ACORN_NO_SWR_DYNMEM in the event of a tie;
+            # it should be smaller than an otherwise equivalent build anyway.
+            if candidate is None or len(e.binary) < len(candidate.binary):
+                candidate = e
+    assert candidate is not None
+
+    if "ACORN_NO_SWR_DYNMEM" in candidate.labels:
+        info("Dynamic memory fits in main RAM on sideways+shadow RAM build")
+    else:
+        # "may" because it will depend on PAGE at runtime.
+        info("Dynamic memory may overflow into sideways RAM on sideways+shadow RAM build")
+    info("Sideways+shadow RAM build will run at %s address" % ("even" if candidate.start_address % 0x200 == 0 else "odd"))
+
+    high_executable = candidate
+    high_start_address = high_executable.start_address
+    low_start_address = 0xe00 + (high_start_address % 0x200)
+    low_executable = Executable(high_executable.raw_version, low_start_address, high_executable.extra_args)
+    relocations = make_relocations(low_executable.binary, high_executable.binary)
     # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
     # for a double-sided game, this is probably the one to pick - it's going to be at least
     # slightly larger due to the relocations, and the second surface has slightly more free
     # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
     # two Ozmoo executables.
-    ssd.add_file("$", "OZMOOSH", host | swr_shr_high_start_addr, host | swr_shr_high_start_addr, executable)
-    # vmem_block_pagecount is the same for all executables. SFTODO: Bit hacky setting it here all the same
-    global vmem_block_pagecount
-    vmem_block_pagecount = high_labels["vmem_block_pagecount"]
+    ssd.add_file("$", "OZMOOSH", host | high_start_address, host | high_start_address, high_executable.binary + relocations)
+
 
 # SFTODO: Move this function?
-def add_shr_executable(ssd):
-    with open("temp/ozmoo_swr_vmem", "rb") as f:
-        swr_labels = parse_labels("temp/acme_labels_swr_vmem.txt")
-        executable = truncate_executable(f.read(), swr_labels)
-        executable = patch_vmem(executable, swr_labels)
-        ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, executable)
-
-def truncate_executable(executable, labels, truncate_label = None):
-    if "ACORN_RELOCATABLE" in labels:
-        truncate_label = "reloc_count"
-    else:
-        truncate_label = "end_of_routines_in_stack_space"
-    return executable[:labels[truncate_label]-labels["program_start"]]
-
-# SFTODO: Move this function
-def patch_vmem(executable, labels):
-    executable = bytearray(executable)
-    vmem_block_pagecount = labels["vmem_block_pagecount"]
-    vmap_max_size = labels["vmap_max_size"]
-
-    if z_machine_version == 3:
-        vmem_highbyte_mask = 0x01
-    elif z_machine_version == 8:
-        vmem_highbyte_mask = 0x07
-    else:
-        vmem_highbyte_mask = 0x03
-
-    dynamic_size_bytes = get_word(game_data, labels["header_static_mem"])
-    nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
-    while nonstored_blocks % vmem_block_pagecount != 0:
-        nonstored_blocks += 1
-    if "ACORN_SWR" in labels:
-        pseudo_ramtop = 0xc000
-    else:
-        pseudo_ramtop = labels["flat_ramtop"]
-    ozmoo_ram_blocks = (pseudo_ramtop - labels["story_start"]) / 256
-    # SFTODO: Ideally these failures would result in us generating a disc which doesn't
-    # support the system type we're currently patching the executable for, but which
-    # does support others.
-    if nonstored_blocks > ozmoo_ram_blocks:
-        die("Not enough free RAM for game's dynamic memory")
-    if game_blocks > nonstored_blocks:
-        min_vmem_blocks = 2 # absolute minimum, one for PC, one for data
-        if nonstored_blocks + min_vmem_blocks * vmem_block_pagecount > ozmoo_ram_blocks:
-            # SFTODO: On an ACORN_SWR build, this is not necessarily a problem, but let's
-            # keep the check in place for now, as if we fail to meet this condition we
-            # would have to require at least two sideways RAM banks in order to run and
-            # right now the loader doesn't check for that.
-            die("Not enough free RAM for any swappable memory")
-
-    # Generate initial virtual memory map. We just populate the entire table; if the
-    # game is smaller than this we will just never use the other entries.
-    vmap_offset = executable.index(b'VVVVVVVVV')
-    vmap_length = 0
-    while chr(executable[vmap_offset + vmap_length]) == 'V':
-        vmap_length += 1
-    if vmap_length & 1 != 0:
-        vmap_length -= 1
-    assert vmap_length >= vmap_max_size * 2
-    min_age = vmem_highbyte_mask + 1
-    max_age = 0xff & ~vmem_highbyte_mask
-    for i in range(vmap_max_size):
-        age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
-        addr = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
-        if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
-            # This vmap entry is useless; the current Z-machine version can't contain
-            # such a block.
-            # SFTODO: Warn? It's harmless but it means we could have clawed back a few
-            # bytes by shrinking vmap_max_size.
-            addr = 0
-        vmap_entry = (age << 8) | addr
-        executable[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
-        executable[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
-    return executable
+def add_swr_executable(ssd):
+    e = Executable("swr_vmem", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
+    ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, e.binary)
 
 
 # SFTODO: If we're building a double-sided game it might be nice if at least one of the
@@ -457,7 +485,7 @@ if args.double_sided:
 
 add_tube_executable(ssd)
 add_swr_shr_executable(ssd)
-add_shr_executable(ssd)
+add_swr_executable(ssd)
 
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if

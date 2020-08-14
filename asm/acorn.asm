@@ -296,11 +296,14 @@ screenkernal_init
     bne .preload_loop
 
 !ifdef ACORN_SWR {
+; SFTODO: WE SHOULD PERHAPS HAVE A MACRO FOR THE FOLLOWING IFNDEF+SET
+!ifndef ACORN_NO_SWR_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     lda ram_bank_list
     sta romsel_copy
     sta romsel
+}
 }
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later

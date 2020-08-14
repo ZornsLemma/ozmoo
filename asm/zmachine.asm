@@ -655,6 +655,8 @@ dumptovice
 	;lda z_opcode
 }
 	bit z_opcode
+    ; SFTODO: JUST POSSIBLY IF ACORN_NO_SWR_DYNMEM IS SET THE CODE WILL BE SMALL
+    ; ENOUGH WE DON'T NEED THE JMP VARIANT
 !ifndef ACORN_SWR {
 	bpl .top_bits_are_0x
 } else {

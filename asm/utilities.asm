@@ -54,6 +54,7 @@
 }
 
 !ifdef SLOW {
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_sub
 !ifdef ACORN_SWR {
     lda z_pc_mempointer_ram_bank
@@ -63,12 +64,14 @@ read_next_byte_at_z_pc_sub
 	ldy #0
 	lda (z_pc_mempointer),y
 !ifdef ACORN_SWR {
+!ifndef ACORN_NO_SWR_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
-    ldy #0
+    ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
+}
 }
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
@@ -95,12 +98,14 @@ read_next_byte_at_z_pc_sub
 	jsr inc_z_pc_page
 ++
 !ifdef ACORN_SWR {
+!ifndef ACORN_NO_SWR_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
     ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
+}
 }
 }	
 

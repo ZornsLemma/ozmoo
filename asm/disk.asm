@@ -1367,14 +1367,24 @@ do_save
 ; nonstored_blocks rounding up, the true to-the-byte dynmem size from the header
 ; is what counts.)
 !ifdef ACORN_SWR {
-    ACORN_SAVE_RESTORE_OSFIND = 1
+; SFTODO: This is a bit too pessimistic - since we only save precisely the
+; number of bytes in static memory, even if nonstored_blocks has overflowed into
+; sideways RAM due to rounding up to a 512-byte boundary, we can still use
+; OSFILE if the true dynamic data fits into main RAM. It's correct that ACORN_NO_SWR_DYNMEM is *not* set in this case,
+; because various bits of code use nonstored_blocks to decide if we're accessing
+; dynamic memory and they won't do any paging for dynamic memory if
+; ACORN_NO_SWR_DYNMEM is set, but we *could* set ACORN_SAVE_RESTORE_OSFIND
+; directly in make-acorn.py instead of deriving it here.
+; SFTODO: It would be safer to have to set a flag to get the OSFILE versions,
+; so we default to the safe OSFIND versions.
+!ifndef ACORN_NO_SWR_DYNMEM {
+ACORN_SAVE_RESTORE_OSFIND = 1
+}
+}
+!ifdef ACORN_SAVE_RESTORE_OSFIND {
     .save_op = osfind_open_output
     .load_op = osfind_open_input
 } else {
-    !ifdef ACORN_SAVE_RESTORE_OSFIND {
-        !error "ACORN_SAVE_RESTORE_OSFIND is only for ACORN_SWR"
-        ; SFTODO: It would work, but it would be slower than necessary
-    }
     .save_op = osfile_save
     .load_op = osfile_load
 }

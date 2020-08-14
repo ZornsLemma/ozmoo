@@ -473,31 +473,9 @@ read_byte_at_z_address
 -   ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
+!ifndef ACORN_NO_SWR_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
-    ; SFTODO: Conceivably the build script could detect whether this is going
-    ; to happen and tell us via a -DACORN_DYNMEM_IN_SWR=1 flag or
-    ; something like that. We could then avoid doing this page in of the first
-    ; bank every time if we don't have dynmem in SWR. (In a debug build, we
-    ; could page in a ROM instead of just doing nothing, as I did a few commits
-    ; ago with hack_ram_bank.) This wouldn't just be here of course, it would
-    ; be everywhere we currently have to page in the first RAM bank. If we
-    ; had a macro '+page_in_dynmem_swr' we could just call it everywhere, and
-    ; that macro would be a single place to respect the -DACORN_DYNMEM_IN_SWR
-    ; flag. (We might sometimes set it "unnecessarily", e.g. I think B+ and Master
-    ; will share a binary and it will relocate down on Master, so the Master
-    ; might be able to squeeze dynmem in main RAM when B+ couldn't and the Master
-    ; would still be doing the pointless-to-it page in of the first bank, but
-    ; that's a corner case and probably not worth worrying about. The "fix"
-    ; would simply be to have a separate E00 build rather than relocating, but
-    ; I'm probably looking at having three binaries (tube, model B, B+/Master)
-    ; as it is and a fourth might really be overdoing it.
-    ; SFTODO: That ACORN_DYNMEM_IN_SWR flag would also be useful for conditionally
-    ; assembling either the current OSFILE save/restore code or the to-be-written
-    ; OSFIND+OSGBPB code which will handle case when some data is in SWR. Oh,
-    ; and the build system can also benefit from determining this for itself
-    ; because it can then choose to assemble the B/B+ code to run at $1100 not
-    ; $1300.
     ; SFTODO: If we are allowed to corrupt X or Y here we could use one of
     ; them to do the loads and stores and avoid the pha/pla.
     pha
@@ -505,6 +483,7 @@ read_byte_at_z_address
     sta romsel_copy
     sta romsel
     pla
+}
 }
 !if 1 { ; SFTODO: JUST TO PROVE IT'S OK
     ldx #42
@@ -525,15 +504,19 @@ read_byte_at_z_address
 !ifndef ACORN_SWR {
 	bne - ; Always branch
 } else {
+!ifndef ACORN_NO_SWR_DYNMEM {
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
-    ; read_byte_at_z_address don't page in the wrong bank, but because
-    ; the first bank is always left selected by default (so miscellaneous code
-    ; can access dynamic memory directly) we know it's already paged in now,
-    ; hence the '-' label being *after* the page in code. It would be correct
-    ; but slightly slower to page in anyway, of course.
+    ; read_byte_at_z_address don't page in the wrong bank. We keep the first
+    ; bank paged in by default, so we don't need to page it in now and therefore
+    ; the '-' label can be after the page in code, to save a few cycles.
     lda ram_bank_list
     sta mempointer_ram_bank
     bpl - ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
+} else {
+    ; As dynamic memory doesn't overflow into sideways RAM, it doesn't actually
+    ; matter what bank is paged in, so we can leave mempointer_ram_bank alone.
+	bne - ; Always branch
+}
 }
 .non_dynmem
 	sta zp_pc_h
@@ -915,6 +898,7 @@ read_byte_at_z_address
     ldy #0
     lda (mempointer),y
 !ifdef ACORN_SWR {
+!ifndef ACORN_NO_SWR_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it. SFTODO: Can we use X for the
     ; load/store here to avoid the pha/pla?
@@ -923,6 +907,7 @@ read_byte_at_z_address
     sta romsel_copy
     sta romsel
     pla
+}
 }
     rts
 
