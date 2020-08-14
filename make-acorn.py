@@ -188,6 +188,11 @@ group.add_argument("--slow", action="store_true", help="use slow but shorter rou
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
 
+# It's OK to run and given --help etc output if the version.txt file can't be found,
+# but we don't want to generate a disc image with a missing version.
+if version_txt is None:
+    die("Can't find version.txt")
+
 if args.output_file is not None:
     _, user_extension = os.path.splitext(args.output_file)
     if user_extension.lower() == '.dsd':
