@@ -175,11 +175,7 @@ z_ins_print_table
 	ldy .pt_width
 -	jsr read_next_byte
 	ldx .current_col
-!ifndef ACORN {
-	cpx #40
-} else {
-    cpx screen_width
-}
+    +cpx_screen_width
 	bcs +
 	jsr streams_print_output
 +	inc .current_col

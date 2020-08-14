@@ -466,11 +466,7 @@ z_init
 !ifdef Z5PLUS {
 	sta story_start + header_screen_height_units + 1
 }
-!ifndef ACORN {
-	lda #40
-} else {
-    lda screen_width
-}
+    +lda_screen_width
 	sta story_start + header_screen_width_chars
 !ifdef Z5PLUS {
 	sta story_start + header_screen_width_units + 1
