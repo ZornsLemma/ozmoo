@@ -702,6 +702,13 @@ insert_msg_3
 
 
 !ifdef VMEM {
+WANT_RESTART = 1
+} else {
+!ifdef ACORN {
+WANT_RESTART = 1
+}
+}
+!ifdef WANT_RESTART {
 z_ins_restart
 !ifndef ACORN {
 	; Find right device# for boot disk
@@ -774,6 +781,8 @@ z_ins_restart
 .restart_code_end
 
 } else {
+    ; SFTODO: Should we call the code to verify the correct disc is in the drive?
+    ; Will we have it on a non-VMEM build?
 !ifdef ACORN_NO_SHADOW {
     jsr undo_mode_7_3c00
 }

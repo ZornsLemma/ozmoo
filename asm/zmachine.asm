@@ -44,7 +44,8 @@ z_jump_high_arr
 	!byte >z_not_implemented
 	!byte >z_not_implemented
 }
-!ifdef VMEM {
+
+!ifdef WANT_RESTART {
 	!byte >z_ins_restart
 } else {
 	!byte >z_ins_not_supported
@@ -235,7 +236,7 @@ z_jump_low_arr
 	!byte <z_not_implemented
 	!byte <z_not_implemented
 }
-!ifdef VMEM {
+!ifdef WANT_RESTART {
 	!byte <z_ins_restart
 } else {
 	!byte <z_ins_not_supported
