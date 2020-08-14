@@ -463,7 +463,7 @@ def info_no_swr_dynmem(name, labels):
         info("Dynamic memory fits in main RAM on " + name)
     else:
         # "may" because it will depend on PAGE at runtime.
-        info("Dynamic memory may overflow into sideways RAM on " + name)
+        info("Sideways RAM may be used for dynamic memory on " + name)
 
 # SFTODO: Move this function?
 def add_swr_shr_executable(ssd):
