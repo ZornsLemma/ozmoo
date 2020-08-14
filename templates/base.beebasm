@@ -1,2 +1,2 @@
 puttext "templates/boot.txt", "!BOOT", &0000
-putbasic "templates/loader.bas", "LOADER"
+putbasic "temp/loader.bas", "LOADER"

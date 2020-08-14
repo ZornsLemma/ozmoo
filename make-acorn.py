@@ -71,7 +71,6 @@ def bytes_to_blocks(x):
     else:
         return int(x / 256)
 
-
 # SFTODO: MOVE/RENAME
 class Executable(object):
     def __init__(self, version, start_address, extra_args):
@@ -158,7 +157,17 @@ class Executable(object):
         return binary
 
 
-parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using Ozmoo.")
+best_effort_version = "Ozmoo"
+try:
+    with open(os.path.join(os.path.dirname(sys.argv[0]), "version.txt"), "r") as f:
+        version_txt = f.read().strip()
+    best_effort_version += " " + version_txt
+except IOError:
+    version_txt = None
+
+parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
+if version_txt is not None:
+    parser.add_argument("--version", action="version", version=best_effort_version)
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
@@ -287,6 +296,12 @@ while nonstored_blocks % vmem_block_pagecount != 0:
 
 
 
+with open("templates/loader.bas", "r") as loader_template:
+    with open("temp/loader.bas", "w") as loader:
+        for line in loader_template:
+            line = line.replace("${OZMOOVERSION}", best_effort_version)
+            loader.write(line)
+
 run_and_check([
     "beebasm",
     "-i", "templates/base.beebasm",
@@ -322,7 +337,7 @@ class DiscImage(object):
 
     def length(self, file_number):
         o = 0x100 + self.catalogue_offset(file_number)
-        return (self.data[o+5] << 8) + self.data[o+4]
+        return (((self.data[o+6] >> 4) & 0x3) << 16) | (self.data[o+5] << 8) | self.data[o+4]
 
     def start_sector(self, file_number):
         o = 0x100 + self.catalogue_offset(file_number)
