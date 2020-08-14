@@ -75,6 +75,7 @@ parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -291,6 +292,9 @@ class DiscImage(object):
     def lock_all(self):
         for i in range(self.num_files()):
             self.data[0x00f + i*8] |= 128
+
+    def extend(self):
+        self.data += b'\0' * 256 * (80 * 10 - self.first_free_sector())
             
 
 # SFTODO: Move this function?
@@ -497,6 +501,11 @@ else:
         warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
         user_extension = preferred_extension
     output_file = user_prefix + user_extension
+
+if args.pad:
+    ssd.extend()
+    if args.double_sided:
+        ssd2.extend()
 
 with open(output_file, "wb") as f:
     if not args.double_sided:
