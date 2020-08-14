@@ -363,6 +363,7 @@ nonstored_blocks_adjusted
     sta vmem_blocks_in_main_ram
 +
 
+; SFTODO: NEED TO MAKE SURE THIS DOESN'T CONFLICT WITH ACORN_NO_SWR_DYNMEM
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     +adjust_dynamic_memory_inline
 }
