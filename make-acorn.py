@@ -234,7 +234,7 @@ class DiscImage(object):
 
     def length(self, file_number):
         o = 0x100 + self.catalogue_offset(file_number)
-        return (self.data[o+5] << 8) + self.data[o+4]
+        return (((self.data[o+6] >> 4) & 0x3) << 16) | (self.data[o+5] << 8) | self.data[o+4]
 
     def start_sector(self, file_number):
         o = 0x100 + self.catalogue_offset(file_number)
