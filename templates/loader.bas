@@ -31,7 +31,7 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-PRINT "Powered by Ozmoo 3.4 (Acorn alpha 1.4)"'
+PRINT "Powered by Ozmoo 3.4 (Acorn alpha 1.5)"'
 :
 REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408

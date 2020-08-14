@@ -363,6 +363,9 @@ def add_swr_shr_executable(ssd):
     # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
     # two Ozmoo executables.
     ssd.add_file("$", "OZMOOSH", host | swr_shr_high_start_addr, host | swr_shr_high_start_addr, executable)
+    # vmem_block_pagecount is the same for all executables. SFTODO: Bit hacky setting it here all the same
+    global vmem_block_pagecount
+    vmem_block_pagecount = high_labels["vmem_block_pagecount"]
 
 # SFTODO: Move this function?
 def add_shr_executable(ssd):
@@ -457,10 +460,12 @@ add_shr_executable(ssd)
 # necessary, but since this alters the binaries we build it's a bit fiddly and I don't
 # think it's a huge problem.
 if not args.double_sided:
-    # SFTODO: I thought this padding would be necessary, but it seems not to be even if
-    # I deliberately force a "bad" alignment.
-    if False:
-        ssd.pad(lambda track, sector: sector % vmem_block_pagecount == 0)
+    # Because we read multiples of vmem_block_pagecount at a time, the data file must
+    # start at a corresponding sector in order to avoid a read ever straddling a track
+    # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
+    # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
+    # it's good for testing.)
+    ssd.pad(lambda track, sector: sector % vmem_block_pagecount == 0)
     try:
         ssd.add_file("$", "DATA", 0, 0, game_data)
     except DiscFull:
