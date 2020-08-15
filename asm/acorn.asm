@@ -372,8 +372,10 @@ nonstored_blocks_adjusted
 ; result but the performance might be worse on machines with very large amounts
 ; of sideways RAM as they might have to access the disc more than they otherwise
 ; would, in return for a modest performance improvement because they're not
-; constantly switching the first sideways RAM bank bank in so dynamic memory can
-; live there.
+; constantly switching the first sideways RAM bank back in so dynamic memory can
+; live there. Maybe make-acorn.py should take an argument telling it not to
+; use ACORN_NO_SWR_DYNMEM even if the game's dynamic memory is small enough for
+; main RAM.
 !ifndef ACORN_NO_SWR_DYNMEM {
     +adjust_dynamic_memory_inline
 }
