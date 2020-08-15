@@ -363,9 +363,20 @@ nonstored_blocks_adjusted
     sta vmem_blocks_in_main_ram
 +
 
-; SFTODO: NEED TO MAKE SURE THIS DOESN'T CONFLICT WITH ACORN_NO_SWR_DYNMEM
 !ifndef ACORN_NO_DYNMEM_ADJUST {
+; SFTODO: Obviously if we're not supporting dynamic memory in sideways RAM, we
+; can't use +adjust_dynamic_memory_inline, which will forcibly grow dynamic
+; memory into sideways RAM. For now we simply don't try if ACORN_NO_SWR_DYNMEM
+; is defined, but this may not be optimal - if we have a large game with a small
+; dynamic memory requirement make-acorn.py may define ACORN_NO_SWR_DYNMEM as a
+; result but the performance might be worse on machines with very large amounts
+; of sideways RAM as they might have to access the disc more than they otherwise
+; would, in return for a modest performance improvement because they're not
+; constantly switching the first sideways RAM bank bank in so dynamic memory can
+; live there.
+!ifndef ACORN_NO_SWR_DYNMEM {
     +adjust_dynamic_memory_inline
+}
 }
 } ; End of acorn_swr_calculate_vmap_max_entries_inline
 
@@ -381,6 +392,17 @@ nonstored_blocks_adjusted
 ; 512-byte vmap entries already allow us to access 127.5K; given any realistic
 ; game is going to have at least 512 bytes of dynamic memory, we are not
 ; constrained at all by the 255 entry limit.
+;
+; This will also only help on machines with very large amounts of sideways
+; RAM. story_start is going to be $4000 at best, let's say (fairly
+; conservatively) a game needs 12K of actual dynamic memory so the first VM
+; page is going to be at $7000. That means 1K of virtual memory cache fits in
+; main RAM, and with our 255 entries we can have 127.5K of virtual memory cache,
+; so we could use 126.5K or approximately 7.9 banks of sideways RAM without
+; any difficulty. adjust_dynamic_memory_inline would allow an extra 20K of
+; sideways RAM to be used in this case, but unless the machine has >128K of
+; sideways RAM this isn't helpful. (With 128K of sideways RAM the adjustment
+; avoids wasting the last 1.5K of sideways RAM; worth having but not a big win.)
 !macro adjust_dynamic_memory_inline {
 !ifndef Z3 {
     ldx vmap_max_entries
