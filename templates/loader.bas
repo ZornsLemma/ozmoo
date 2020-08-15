@@ -86,13 +86,8 @@ swr_byte_value2=data+&23
 dummy=data+&24
 tmp=data+&25
 
+copyright_offset=&8007
 test_location=&8008:REM binary version number
-paged_rom_table=&2A1
-REM SFTODO: lurkio on stardot points out something like Advanced ROM Manager
-REM may have disabled a ROM in sideways RAM and then Ozmoo will blat that
-REM ROM. I think I should be able to validate the ROM header (check BeebWiki etc
-REM for precise "rules") myself and skip any bank with a valid ROM header
-REM even if it has no entry at &2A1+bank.
 
 FOR N%=0 TO 2 STEP 2
 P%=code
@@ -119,9 +114,22 @@ LDA #&E3: STA swr_byte_value2
 LDY #0
 .bank_lp_y
   JSR set_all
-  LDA paged_rom_table,Y
-  AND #&C0 \ skip banks with a language or service entry
-  BNE cmp_next_y
+  \ Skip banks with a valid ROM header; we check this instead of using the table
+  \ at &2A1 so we don't use banks which contain valid ROM images temporarily
+  \ disabled by a ROM manager.
+  LDX copyright_offset
+  LDA &8000,X
+  BNE invalid_header
+  LDA &8001,X
+  CMP #ASC"("
+  BNE invalid_header
+  LDA &8002,X
+  CMP #ASC"C"
+  BNE invalid_header
+  LDA &8003,X
+  CMP #ASC")"
+  BEQ cmp_next_y
+.invalid_header
   TYA:EOR swr_byte_value1:STA tmp:STA test_location
   LDX #15
 .bank_lp_x
