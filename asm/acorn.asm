@@ -170,6 +170,17 @@ screenkernal_init
     bne +
     inc .length_blocks + 1
 +
+!ifdef ACORN_DSD {
+    ; If this is a double-sided game, there will be *approximately* (definitely
+    ; no more, possibly a track's worth of data less) the same amount of data
+    ; on the second side. We don't look up :2.$.DATA and determine its length,
+    ; we just double .length_blocks. The absolute worst case here is we read a
+    ; track's worth of junk which won't be accessed because it's past the end
+    ; of the game. SFTODO: This is probably OK, it feels a little hacky but I
+    ; I think it is OK, see how I feel about it later.
+    asl .length_blocks
+    rol .length_blocks + 1
+}
 
     ; Preload as much of the game as possible into memory. This will always fill
     ; whole RAM banks (provided there's game data left) even if we can't access
