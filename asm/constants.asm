@@ -74,13 +74,13 @@ stack_tmp			  = $56; ! 5 bytes
 default_properties_ptr = $5b ; 2 bytes
 zchars				  = $5d ; 3 bytes
 
+; SF: I experimented with increasing vmap_quick_index_length to see if it helps
+; on "big" systems with the maximum supported 144K of sideways RAM. Upping it
+; to 12 knocked 0.9% off the run time for the benchmark; given the scarcity of
+; zero page on Acorn non-tube builds, I don't think this is worth having.
 vmap_quick_index_match= $60
 vmap_next_quick_index = $61
 vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
-; SFTODO: It might be worth upping vmap_quick_index_length for SWR, although
-; don't assume this will be beneficial, and as it lives in scarce ZP there is
-; a real cost to increasing it. (As an experiment only, I could steal some ZP
-; belonging to e.g. Econet just as an easy way to test different sizes.)
 vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
 
 z_temp				  = $68 ; 12 bytes
