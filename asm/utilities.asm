@@ -54,35 +54,136 @@
 }
 
 !ifdef SLOW {
-; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
-read_next_byte_at_z_pc_sub
 !ifdef ACORN_SWR {
+; SFTODO: This lot is a bit unreadable, I suspect some reordering and/of fallthrough might improve matters
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+read_next_byte_at_z_pc_unsafe_start_sub
     lda z_pc_mempointer_ram_bank
     sta romsel_copy
     sta romsel
-}
-	ldy #0
-	lda (z_pc_mempointer),y
-!ifdef ACORN_SWR {
+    sta SFTODOHACK
+    ; SFTODO: Next line could fall through, but it's probably awkward to
+    ; be confident given all the conditional assembly and this is the SLOW
+    ; version.
+    jmp read_next_byte_at_z_pc_unsafe_middle_sub
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+read_next_byte_at_z_pc_sub
+    jsr read_next_byte_at_z_pc_unsafe_start_sub
+    ; SFTODO: I should create a fallthrough macro like in STEM and use it everywhere
+    ; fall through to finish_read_next_byte_at_z_pc_unsafe_sub
+
+; This must preserve A and X.
+finish_read_next_byte_at_z_pc_unsafe_sub
 !ifndef ACORN_NO_SWR_DYNMEM {
+    ; SFTODO UNNECESSARY BUT PARANOID SAVE/RESTORE WHILE I FIND BUG...
+    php
+    pha
+    tya
+    pha
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
-    ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
+    pla
+    tay
+    pla
+    plp
+}
+    rts
+
+; This must preserve everything, including flags.
+; SFTODO NEEDING TO PRESERVE FLAGS MAY WELL BE TWEAKABLE BUT LET'S JUST GO WITH THIS FOR NOW
+restart_read_next_byte_at_z_pc_unsafe_sub
+!ifndef ACORN_NO_SWR_DYNMEM {
+    php
+    pha
+    lda z_pc_mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
+    pla
+    plp
+}
+    rts
+}
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+!ifndef ACORN_SWR {
+read_next_byte_at_z_pc_sub
+} else {
+read_next_byte_at_z_pc_unsafe_middle_sub
+!if 1 { ; SFTODO HACK
+    lda romsel_copy
+    cmp z_pc_mempointer_ram_bank
+!if 1 {
+-   bne -
+} else {
+!if 0 { ; SFTODO: THIS HACK FIXES THINGS
+    lda z_pc_mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
 }
 }
+}
+}
+	ldy #0
+	lda (z_pc_mempointer),y
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
 	rts
-++	jmp inc_z_pc_page
+++
+!if 0 { ; SFTODO: THIS IS THE "NORMAL" VERSION, I AM HACKING NOW
+    jmp inc_z_pc_page
+} else {
+    jsr inc_z_pc_page
+!ifdef ACORN_SWR {
+    ; SFTODO: THAT MIGHT HAVE PAGED IN THE FIRST BANK - WE NEED TO UNDO THAT -
+    ; WE ONLY NEED TO DO THIS IF SWR MIGHT BE IN DYNMEM OTHERWISE IT WON'T HAVE
+    ; PAGED IT IN...
+    pha
+    lda z_pc_mempointer_ram_bank
+    sta romsel_copy
+    sta romsel
+    pla
+}
+    rts
+}
 
 !macro read_next_byte_at_z_pc {
 	jsr read_next_byte_at_z_pc_sub
 }
-	
+
+!macro read_next_byte_at_z_pc_unsafe_start {
+!ifndef ACORN_SWR {
+    +read_next_byte_at_z_pc
 } else {
+    jsr read_next_byte_at_z_pc_unsafe_start_sub
+}
+}
+
+!macro read_next_byte_at_z_pc_unsafe_middle {
+!ifndef ACORN_SWR {
+    +read_next_byte_at_z_pc
+} else {
+    jsr read_next_byte_at_z_pc_unsafe_middle_sub
+}
+}
+
+!macro finish_read_next_byte_at_z_pc_unsafe {
+!ifdef ACORN_SWR {
+    jsr finish_read_next_byte_at_z_pc_unsafe_sub
+}
+}
+
+!macro restart_read_next_byte_at_z_pc_unsafe {
+!ifdef ACORN_SWR {
+    jsr restart_read_next_byte_at_z_pc_unsafe_sub
+}
+}
+	
+} else { ; not SLOW
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {

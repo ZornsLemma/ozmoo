@@ -444,7 +444,7 @@ z_exe_mode_exit = $ff
 
 .not_normal_exe_mode
 !ifdef Z4PLUS {
-!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code.
+!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code. SFTODO: DO I NEED TO DO ANYTHING ABOUT THIS NOW I'VE ENABLED RESTART FOR NON-VMEM TUBE?
 	cmp #z_exe_mode_return_from_read_interrupt
 	bne .return_from_z_execute
 }
@@ -639,7 +639,7 @@ dumptovice
 !ifdef Z4PLUS {	
 	sta z_temp + 5 ; Signal to NOT read up to four more operands
 }
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_start
 	sta z_opcode
 	
 !ifdef DEBUG {	
@@ -684,7 +684,7 @@ dumptovice
 }
 	bne .dont_get_4_extra_op_types
 .get_4_extra_op_types
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_middle
 	tax
 	dec z_temp + 5 ; Signal to read up to four more operands, and first four operand types are in x
 .dont_get_4_extra_op_types
@@ -700,7 +700,7 @@ dumptovice
 	; Form = Extended
 	lda #z_opcode_opcount_ext
 	sta z_opcode_opcount ; Set to EXT
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_middle
 	sta z_extended_opcode
 	sta z_opcode_number
 	jmp .get_4_op_types
@@ -753,7 +753,7 @@ dumptovice
 ; If z_temp + 5 = $ff, x holds first byte of arg types and we need to read one more byte and store in z_temp + 4 
 	ldy #4 ; index of last possible operand + 1 (4 or 8) 
 	sty z_temp
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_middle
 !ifdef Z4PLUS {
 	ldy z_temp + 5
 	beq .not_4_extra_args
@@ -812,6 +812,7 @@ dumptovice
 	sta .jsr_perform + 1
 	lda z_jump_high_arr,x
 	sta .jsr_perform + 2
+    +finish_read_next_byte_at_z_pc_unsafe
 .jsr_perform
 	jsr $8000
 	jmp .main_loop
@@ -846,14 +847,14 @@ z_not_implemented
 read_operand
 ; Operand type in x - Zero flag must reflect if X is 0 upon entry
 	bne .operand_is_not_large_constant
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_middle
 	pha
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_middle
 	tax
 	pla
 	jmp .store_operand ; Always branch
 .operand_is_not_large_constant
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc_unsafe_middle
 	cpx #%00000010
 	beq .operand_is_var
 	; Operand is small constant
@@ -905,6 +906,7 @@ read_operand
 .read_global_var
 	; cmp #128
 	; bcs .read_high_global_var
+    +finish_read_next_byte_at_z_pc_unsafe
 !ifdef SLOW {
 	jsr z_get_low_global_variable_value
 } else {
@@ -916,8 +918,10 @@ read_operand
 	dey
 	lda (z_low_global_vars_ptr),y
 }
+    +restart_read_next_byte_at_z_pc_unsafe
 	bcc .store_operand ; Always branch
 .read_high_global_var
+    +finish_read_next_byte_at_z_pc_unsafe
 	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
 	asl ; This sets carry
 	tay
@@ -926,6 +930,7 @@ read_operand
 	tax
 	dey
 	lda (z_high_global_vars_ptr),y
+    +restart_read_next_byte_at_z_pc_unsafe
 	bcs .store_operand ; Always branch
 !ifndef UNSAFE {
 .nonexistent_local
