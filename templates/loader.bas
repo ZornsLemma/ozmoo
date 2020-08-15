@@ -88,6 +88,11 @@ tmp=data+&25
 
 test_location=&8008:REM binary version number
 paged_rom_table=&2A1
+REM SFTODO: lurkio on stardot points out something like Advanced ROM Manager
+REM may have disabled a ROM in sideways RAM and then Ozmoo will blat that
+REM ROM. I think I should be able to validate the ROM header (check BeebWiki etc
+REM for precise "rules") myself and skip any bank with a valid ROM header
+REM even if it has no entry at &2A1+bank.
 
 FOR N%=0 TO 2 STEP 2
 P%=code
