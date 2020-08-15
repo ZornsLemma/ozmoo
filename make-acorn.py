@@ -289,15 +289,6 @@ nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
 
-# SFTODO: MOVE THIS COMMENT
-# Because VMEM builds require story_start to be double-page aligned, the executable will be quite
-# different depending on whether it starts at an even or odd page and the size of padding required
-# to make that start address work with a double-page alignment for story_start. We pick whichever
-# of an odd or even start address gives the smallest executable, and preserve that alignment
-# (rounding up the relocation target address on the system we're running on necessary) when
-# we relocate down. This avoids wasting a double page, as could happen if we arbitarily picked
-# a start address which needed an extra page of padding and then the system we're running on
-# has an oppositely aligned ideal relocation target.
 
 
 
@@ -469,6 +460,14 @@ def info_no_swr_dynmem(name, labels):
 def add_swr_shr_executable(ssd):
     candidate = None
     extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
+    # Because VMEM builds require story_start to be double-page aligned, the executable will be quite
+    # different depending on whether it starts at an even or odd page and the size of padding required
+    # to make that start address work with a double-page alignment for story_start. We pick whichever
+    # of an odd or even start address gives the smallest executable, and preserve that alignment
+    # (rounding up the relocation target address on the system we're running on necessary) when
+    # we relocate down. This avoids wasting a double page, as could happen if we arbitarily picked
+    # a start address which needed an extra page of padding and then the system we're running on
+    # has an oppositely aligned ideal relocation target.
     for start_address in (shr_swr_start_addr, shr_swr_start_addr + 0x100):
         e = make_nsd_executable("swr_shr_vmem_NSD_START", start_address, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"])
         if candidate is None or len(e.binary) < len(candidate.binary):
