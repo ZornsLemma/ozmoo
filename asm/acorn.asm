@@ -7,9 +7,10 @@
 ; A note on Acorn memory models - this affects code in many places, but I have
 ; to write this somewhere.
 ;
-; The second processor build (ifndef ACORN_SWR) has a simple flat memory model.
-; It's rather like the C64 but without even the complication of paging thekernal
-; ROM in and out, so it doesn't need the "cache" which the C64 code code.
+; The second processor build (ifndef ACORN_SWR) has a simple flat memory model
+; with user RAM from $0400-$f7ff inclusive. It's rather like the C64 but without
+; even the complication of paging the kernal ROM in and out, so it doesn't need
+; the cache which the C64 code uses when ALLMEM is defined.
 ;
 ; The sideways RAM build (ifdef ACORN_SWR) is a bit more involved. The hardware
 ; situation here is that we have main RAM (not paged) from $0000-$7fff
@@ -19,12 +20,12 @@
 ;
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
-; (indexed in 512-byte chunks with indexes from 0-255, with chunk 0 starting
+; (indexed in 512-byte chunks with indexes from 0-254, with chunk 0 starting
 ; at story_start+nonstored_blocks). The standard Ozmoo mempointer (data) and 
 ; z_pc_mempointer (Z-machine PC) pointers are extended to each have an associated
 ; RAM bank (mempointer_ram_bank and z_pc_mempointer_ram_bank respectively). (If
-; the relevant byte of Z-machine memory lives in Acorn main RAM, the bank number
-; is irrelevant as main RAM is not affected by paging.)
+; the relevant byte of Z-machine memory lives in main RAM, the bank number is
+; irrelevant as main RAM is not affected by paging.)
 ;
 ; The "big dynamic RAM" model (ifndef ACORN_SWR_SMALL_DYNMEM) allows the game's
 ; dynamic memory (which starts in main RAM at story_start, as on any Ozmoo build)
