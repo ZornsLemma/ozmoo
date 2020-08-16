@@ -141,7 +141,7 @@ get_page_at_z_pc_did_pha
 !ifdef ACORN_SWR {
     ldy mempointer_ram_bank
     sty z_pc_mempointer_ram_bank
-!ifdef ACORN_SWR_READ_ONLY {
+!ifdef ACORN_SWR_SMALL_DYNMEM {
     ; read_byte_at_z_address_for_z_pc will only have selected
     ; mempointer_ram_bank if it has changed. We need it to be the new default
     ; bank now it's z_pc_mempointer_ram_bank, so we must select it now.

@@ -1379,14 +1379,14 @@ do_save
 ; SFTODO: This is a bit too pessimistic - since we only save precisely the
 ; number of bytes in static memory, even if nonstored_blocks has overflowed into
 ; sideways RAM due to rounding up to a 512-byte boundary, we can still use
-; OSFILE if the true dynamic data fits into main RAM. It's correct that ACORN_SWR_READ_ONLY is *not* set in this case,
+; OSFILE if the true dynamic data fits into main RAM. It's correct that ACORN_SWR_SMALL_DYNMEM is *not* set in this case,
 ; because various bits of code use nonstored_blocks to decide if we're accessing
 ; dynamic memory and they won't do any paging for dynamic memory if
-; ACORN_SWR_READ_ONLY is set, but we *could* set ACORN_SAVE_RESTORE_OSFIND
+; ACORN_SWR_SMALL_DYNMEM is set, but we *could* set ACORN_SAVE_RESTORE_OSFIND
 ; directly in make-acorn.py instead of deriving it here.
 ; SFTODO: It would be safer to have to set a flag to get the OSFILE versions,
 ; so we default to the safe OSFIND versions.
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
 ACORN_SAVE_RESTORE_OSFIND = 1
 }
 }

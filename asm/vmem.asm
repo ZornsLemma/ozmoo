@@ -446,7 +446,7 @@ load_blocks_from_index_using_cache
     rts
 }
 
-!ifdef ACORN_SWR_READ_ONLY {
+!ifdef ACORN_SWR_SMALL_DYNMEM {
 ; In this model, we keep the bank containing the Z-machine PC paged in by
 ; default. Here we are accessing data, so we need to temporarily page in
 ; mempointer_ram_bank.
@@ -479,7 +479,7 @@ read_byte_at_z_address
 }
 
 ; SF: Note that this is allowed to corrupt X and Y.
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
 ; In this model, we keep the first bank (which may contain dynamic memory) paged
 ; in by default, so this subroutine pages in mempointer_ram_bank and restores
 ; the first bank afterwards. SFTODO: THIS MIGHT BE DOING UNNCEESASRY PAGING FOR
@@ -498,7 +498,7 @@ read_byte_at_z_address_for_z_pc
     bne .read_new_byte
     ; same 256 byte segment, just return
 !ifdef ACORN_SWR {
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; SFTODO: I believe we're allowed to corrupt X here - e.g. we would if
     ; this called into VM subsystem. We could use X to hold the ram bank both
     ; here and in the path which enters via .read_new_byte and the '-' label,
@@ -515,7 +515,7 @@ read_byte_at_z_address_for_z_pc
 -   ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
@@ -540,7 +540,7 @@ read_byte_at_z_address_for_z_pc
 !ifndef ACORN_SWR {
 	bne - ; Always branch
 } else {
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank. We keep the first
     ; bank paged in by default, so we don't need to page it in now and therefore
@@ -938,7 +938,7 @@ read_byte_at_z_address_for_z_pc
     ldy #0
     lda (mempointer),y
 !ifdef ACORN_SWR {
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ldy ram_bank_list
     sty romsel_copy
     sty romsel

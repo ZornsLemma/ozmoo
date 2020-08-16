@@ -66,7 +66,7 @@ read_next_byte_at_z_pc_sub
 
 ; This must preserve A and X.
 finish_read_next_byte_at_z_pc_unsafe_sub
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     ldy ram_bank_list
@@ -84,7 +84,7 @@ finish_read_next_byte_at_z_pc_unsafe_sub
 
 ; SF: This must preserve A and X.
 restart_read_next_byte_at_z_pc_unsafe_sub
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
@@ -100,7 +100,7 @@ restart_read_next_byte_at_z_pc_unsafe_sub
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_unsafe_start_sub
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     lda z_pc_mempointer_ram_bank
     sta romsel_copy
     sta romsel
@@ -145,10 +145,10 @@ read_next_byte_at_z_pc_unsafe_middle_sub
     jmp inc_z_pc_page
 } else {
     jsr inc_z_pc_page
-    ; SFTODO: ACORN_SWR_READ_ONLY could potentially boost performance quite a
+    ; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
     ; bit, I think. It may be worth not making the relocatable version load
     ; quite so high to maximise the chances of this coming into play.
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; SFTODO: THAT MIGHT HAVE PAGED IN THE FIRST BANK - WE NEED TO UNDO THAT -
     ; WE ONLY NEED TO DO THIS IF SWR MIGHT BE IN DYNMEM OTHERWISE IT WON'T HAVE
     ; PAGED IT IN... - CAN WE JUST SET A FLAG TO TELL IT NOT TO DO THAT? NOTE
@@ -217,7 +217,7 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 	jsr inc_z_pc_page
 ++
 !ifdef ACORN_SWR {
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We must keep the first bank of sideways RAM paged in by default, because
     ; dynamic memory may have overflowed into it.
     ldy ram_bank_list

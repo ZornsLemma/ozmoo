@@ -26,7 +26,7 @@
 ; the relevant byte of Z-machine memory lives in Acorn main RAM, the bank number
 ; is irrelevant as main RAM is not affected by paging.)
 ;
-; The "big dynamic RAM" model (ifndef ACORN_SWR_READ_ONLY) allows the game's
+; The "big dynamic RAM" model (ifndef ACORN_SWR_SMALL_DYNMEM) allows the game's
 ; dynamic memory (which starts in main RAM at story_start, as on any Ozmoo build)
 ; to be larger than main RAM and overflow into the first 16K sideways RAM bank.
 ; The first 16K sideways RAM bank therefore has to be paged in by default, so
@@ -39,7 +39,7 @@
 ; reading a multi-byte instruction. This is possible because only a very limited
 ; set of cases can cause accesses to dynamic memory during instruction decoding.)
 ;
-; The "small dynamic RAM" model (ifdef ACORN_SWR_READ_ONLY) requires the game's
+; The "small dynamic RAM" model (ifdef ACORN_SWR_SMALL_DYNMEM) requires the game's
 ; dynamic memory to fit in main RAM. Since dynamic memory can then be accessed
 ; regardless of the currently paged in bank, Ozmoo instead keeps the bank
 ; containing the Z-machine's PC paged in by default, temporarily paging it out
@@ -370,7 +370,7 @@ screenkernal_init
 ; SFTODO I HAVE A FEELING THIS IS NOT USED TO HANDLE "BOTH" CASES IN PRACTICE AND ISN'T WORTH HAVING
 ; SFTODO COMMENT?
 !macro acorn_swr_page_in_default_bank_corrupt_a {
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     lda ram_bank_list
 } else {
     lda z_pc_mempointer_ram_bank
@@ -428,17 +428,17 @@ nonstored_blocks_adjusted
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 ; SFTODO: Obviously if we're not supporting dynamic memory in sideways RAM, we
 ; can't use +adjust_dynamic_memory_inline, which will forcibly grow dynamic
-; memory into sideways RAM. For now we simply don't try if ACORN_SWR_READ_ONLY
+; memory into sideways RAM. For now we simply don't try if ACORN_SWR_SMALL_DYNMEM
 ; is defined, but this may not be optimal - if we have a large game with a small
-; dynamic memory requirement make-acorn.py may define ACORN_SWR_READ_ONLY as a
+; dynamic memory requirement make-acorn.py may define ACORN_SWR_SMALL_DYNMEM as a
 ; result but the performance might be worse on machines with very large amounts
 ; of sideways RAM as they might have to access the disc more than they otherwise
 ; would, in return for a modest performance improvement because they're not
 ; constantly switching the first sideways RAM bank back in so dynamic memory can
 ; live there. Maybe make-acorn.py should take an argument telling it not to
-; use ACORN_SWR_READ_ONLY even if the game's dynamic memory is small enough for
+; use ACORN_SWR_SMALL_DYNMEM even if the game's dynamic memory is small enough for
 ; main RAM.
-!ifndef ACORN_SWR_READ_ONLY {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
     +adjust_dynamic_memory_inline
 }
 }
