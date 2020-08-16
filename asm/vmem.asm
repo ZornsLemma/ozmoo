@@ -566,6 +566,10 @@ read_byte_at_z_address
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
+    ; SFTODO: This next cpx # is a pretty heavily executed instruction; if we
+    ; can avoid having to do it somehow that would be a small but worthwhile
+    ; saving. Maybe it's essential, but I put it in because it was an "obviously"
+    ; correct way to do the right thing, without too much analysis.
     cpx #255
 	bne -
 	beq .no_such_block ; Always branch

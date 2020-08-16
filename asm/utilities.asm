@@ -106,15 +106,19 @@ read_next_byte_at_z_pc_unsafe_middle_sub
     jmp inc_z_pc_page
 } else {
     jsr inc_z_pc_page
+    ; SFTODO: ACORN_NO_SWR_DYNMEM could potentially boost performance quite a
+    ; bit, I think. It may be worth not making the relocatable version load
+    ; quite so high to maximise the chances of this coming into play.
 !ifndef ACORN_NO_SWR_DYNMEM {
     ; SFTODO: THAT MIGHT HAVE PAGED IN THE FIRST BANK - WE NEED TO UNDO THAT -
     ; WE ONLY NEED TO DO THIS IF SWR MIGHT BE IN DYNMEM OTHERWISE IT WON'T HAVE
-    ; PAGED IT IN... - CAN WE JUST SET A FLAG TO TELL IT NOT TO DO THAT?
-    pha
-    lda z_pc_mempointer_ram_bank
-    sta romsel_copy
-    sta romsel
-    pla
+    ; PAGED IT IN... - CAN WE JUST SET A FLAG TO TELL IT NOT TO DO THAT? NOTE
+    ; HOWEVER THIS IS A VERY RARE CASE, SO IT MAY WE SIMPLEST AND SAFEST (A
+    ; FLAG MAY REMAIN ACCIDENTALLY SET) TO JUST DO THIS, WHICH IS COMPLETELY
+    ; CORRECT.
+    ldy z_pc_mempointer_ram_bank
+    sty romsel_copy
+    sty romsel
 }
     rts
 }
