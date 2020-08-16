@@ -11,6 +11,7 @@ vmem_cache_index !fill cache_pages + 1, 0
 
 !ifndef ALLRAM {
 read_byte_at_z_address
+read_byte_at_z_address_for_z_pc
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; x,y (high, low) contains address.
     ; Returns: value in a
@@ -36,6 +37,7 @@ read_byte_at_z_address
 }
 
 read_byte_at_z_address
+read_byte_at_z_address_for_z_pc
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
@@ -444,8 +446,20 @@ load_blocks_from_index_using_cache
     rts
 }
 
-; SF: Note that this is allowed to corrupt X and Y.
+!ifdef ACORN_NO_SWR_DYNMEM {
 read_byte_at_z_address
+    jsr read_byte_at_z_address_for_z_pc
+    ldy z_pc_mempointer_ram_bank
+    sty romsel_copy
+    sty romsel
+    rts
+}
+
+; SF: Note that this is allowed to corrupt X and Y.
+!ifndef ACORN_NO_SWR_DYNMEM {
+read_byte_at_z_address
+}
+read_byte_at_z_address_for_z_pc
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
@@ -474,15 +488,9 @@ read_byte_at_z_address
 	lda (mempointer),y
 !ifdef ACORN_SWR {
 !ifndef ACORN_NO_SWR_DYNMEM {
-    ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it.
-    ; SFTODO: If we are allowed to corrupt X or Y here we could use one of
-    ; them to do the loads and stores and avoid the pha/pla.
-    pha
-    lda ram_bank_list
-    sta romsel_copy
-    sta romsel
-    pla
+    ldy ram_bank_list
+    sty romsel_copy
+    sty romsel
 }
 }
 !if 1 { ; SFTODO: JUST TO PROVE IT'S OK
@@ -903,14 +911,9 @@ read_byte_at_z_address
     lda (mempointer),y
 !ifdef ACORN_SWR {
 !ifndef ACORN_NO_SWR_DYNMEM {
-    ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it. SFTODO: Can we use X for the
-    ; load/store here to avoid the pha/pla?
-    pha
-    lda ram_bank_list
-    sta romsel_copy
-    sta romsel
-    pla
+    ldy ram_bank_list
+    sty romsel_copy
+    sty romsel
 }
 }
     rts

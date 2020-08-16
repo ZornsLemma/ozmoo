@@ -308,13 +308,12 @@ screenkernal_init
 
 !ifdef ACORN_SWR {
 ; SFTODO: WE SHOULD PERHAPS HAVE A MACRO FOR THE FOLLOWING IFNDEF+SET
-!ifndef ACORN_NO_SWR_DYNMEM {
-    ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it.
-    lda ram_bank_list
-    sta romsel_copy
-    sta romsel
-}
+    ; SFTODO: If we're paging in the Z-machine PC bank by default, this may SFTODO: WILL?
+    ; actually page in an arbitrary bank, because the Z-machine hasn't started
+    ; executing yet, but it won't hurt. We do this here because if we're keeping
+    ; the dynamic memory bank paged in by default it just might be that no other
+    ; code will page it in before it's needed.
+    +acorn_swr_page_in_default_bank_corrupt_a
 }
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
@@ -328,6 +327,18 @@ screenkernal_init
 } ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
+; SFTODO COMMENT?
+!macro acorn_swr_page_in_default_bank_corrupt_a {
+; SFTODO: POSSIBLY RENAME ACORN_NO_SWR_DYNMEM, THE DOUBLE NEGATIVES ARE SCREWING WITH MY HEAD - MAYBE KEEP THE *SENSE* (I WOULD LIKE THE UNDEFINED STATE TO BE "SAFE BUT SLOW") BUT CHANGE THE NAME
+!ifndef ACORN_NO_SWR_DYNMEM {
+    lda ram_bank_list
+} else {
+    lda z_pc_mempointer_ram_bank
+}
+    sta romsel_copy
+    sta romsel
+}
+
 ; SFTODO COMMENT
 !macro acorn_swr_calculate_vmap_max_entries_inline {
     pla ; number of 256 byte blocks we read from disc earlier, low byte

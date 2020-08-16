@@ -273,7 +273,7 @@ swr_start_addr = 0x1900
 # acommodate the maximum PAGE the binary will support. It is still better if
 # this isn't too high as it will increase the worst case main RAM free, which
 # may allow ACORN_NO_SWR_DYNMEM to be used.
-shr_swr_start_addr = 0x2000
+shr_swr_start_addr = 0x1000 # SFTODO TEMP HACK FOR TESTING SHOULD BE 0x2000
 
 tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
 

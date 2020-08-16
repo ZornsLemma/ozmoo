@@ -86,9 +86,14 @@ restart_read_next_byte_at_z_pc_unsafe_sub
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_unsafe_start_sub
+!ifndef ACORN_NO_SWR_DYNMEM {
     lda z_pc_mempointer_ram_bank
     sta romsel_copy
     sta romsel
+} else {
+    ; z_pc_mempointer_ram_bank is kept paged in by default if we don't have to
+    ; keep the first bank paged in all the time for dynamic memory.
+}
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
 }
 
@@ -157,7 +162,7 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 }
 }
 	
-} else { ; not SLOW
+} else { ; not SLOW SFTODO: THIS NEEDS UPDATING FOR NEW MODEL
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {
