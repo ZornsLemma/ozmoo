@@ -918,8 +918,12 @@ read_operand
 	dey
 	lda (z_low_global_vars_ptr),y
 }
-    +restart_read_next_byte_at_z_pc_unsafe
+!ifndef ACORN_SWR {
 	bcc .store_operand ; Always branch
+} else {
+    +restart_read_next_byte_at_z_pc_unsafe
+    jmp .store_operand
+}
 .read_high_global_var
     +finish_read_next_byte_at_z_pc_unsafe
 	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
@@ -930,8 +934,12 @@ read_operand
 	tax
 	dey
 	lda (z_high_global_vars_ptr),y
-    +restart_read_next_byte_at_z_pc_unsafe
+!ifndef ACORN_SWR {
 	bcs .store_operand ; Always branch
+} else {
+    +restart_read_next_byte_at_z_pc_unsafe
+    jmp .store_operand
+}
 !ifndef UNSAFE {
 .nonexistent_local
     lda #ERROR_USED_NONEXISTENT_LOCAL_VAR

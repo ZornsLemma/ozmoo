@@ -73,17 +73,12 @@ finish_read_next_byte_at_z_pc_unsafe_sub
 }
     rts
 
-; This must preserve everything, including flags.
-; SFTODO NEEDING TO PRESERVE FLAGS MAY WELL BE TWEAKABLE BUT LET'S JUST GO WITH THIS FOR NOW
+; SF: This must preserve A and X.
 restart_read_next_byte_at_z_pc_unsafe_sub
 !ifndef ACORN_NO_SWR_DYNMEM {
-    php
-    pha
-    lda z_pc_mempointer_ram_bank
-    sta romsel_copy
-    sta romsel
-    pla
-    plp
+    ldy z_pc_mempointer_ram_bank
+    sty romsel_copy
+    sty romsel
 }
     rts
 
