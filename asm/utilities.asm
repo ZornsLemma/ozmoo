@@ -58,6 +58,8 @@
 ; SFTODO: This lot is a bit unreadable, I suspect some reordering and/of fallthrough might improve matters
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+; SFTODO: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
+; practice it's fine but I'm a bit worried about saying this is OK.
 read_next_byte_at_z_pc_sub
     jsr read_next_byte_at_z_pc_unsafe_start_sub
     ; Fall through to finish_read_next_byte_at_z_pc_unsafe_sub

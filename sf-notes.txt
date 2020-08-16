@@ -1,3 +1,56 @@
+Register use analysis:
+
+read_byte_at_z_address:
+- returns value read in A
+- upstream code looks like X has a pretty arbitrary value on exit
+- upstream code will always (?) return with Y=0 but I don't believe any caller relies on that
+- called by get_page_at_z_pc{,_did_pha}
+- called by .initial_copy_loop in C64 disk code, but that immediately trashes A, X and Y after call
+- called by read_next_byte, which explicitly preserves its caller's Y and doesn't use the Y=0 return
+- called by .copy_table_common, which immediately does ldy #0 after calling it and trashes X a dozen or so instructions later
+- no other callers
+- so I think this is allowed to corrupt X and Y
+
+get_page_at_z_pc{,_did_pha}:
+- contains upstream code to explicitly preserve A and X
+- upstream code explicitly returns with Y=0 and has a comment saying this is important
+- calls read_byte_at_z_address
+- called by C64 restore_game, which immediately does lda and ldx afterwards - there is no clear use of Y in the following code, and I am 99% confident it doesn't matter
+- called by inc_z_pc_page
+- called by z_init, which will trash A, X and Y not longer afterwards
+- so I think this can maybe corrupt Y, provided read_next_byte_at_z_pc takes its own steps to ensure Y=0 (and I'm not sure that's actually necessary)
+
+read_next_byte:
+- returns value in A
+- upstream code explicitly preserves caller's Y
+- calls read_byte_at_z_address
+- upstream code will return with the X value from read_byte_at_z_address, which is pretty arbitrary
+- has many callers, not analysed
+- so I think this is allowed to corrupt X
+
+inc_z_pc_page:
+- upstream code explicitly preserves A
+- X and Y are altered iff get_page_at_z_pc_did_pha is called and alters them; it explicitly preserves X, so inc_z_pc_page will also preserve X, and it may (depending on whether get_page... is called) set Y to 0
+- called only by read_next_byte_at_z_pc
+
+read_next_byte_at_z_pc:
+- returns result in A
+- upstream code will always return with Y=0, because it sets Y=0 and *maybe* calls inc_z_pc_page, which will also set Y=0
+- will preserve X
+- has many callers, some of which rely on it preserving X
+- I can't see any callers obviously depending on Y=0 but I can't be 100% sure there isn't something I'm missing - I am 95% confident having looked at the callers this isn't a problem, and in practice it really doesn't seem to break anything having Y!=0 on exit
+
+
+
+
+
+
+
+
+
+
+
+
 On C64 the game normally keeps I/O+ROM paged in from $D000 upwards; copy_page
 is used to copy RAM around with RAM paged in from $D000 upwards. The vmem_cache
 stuff keeps a copy of high RAM pages currently in use in low RAM. This is
