@@ -73,6 +73,13 @@ finish_read_next_byte_at_z_pc_unsafe_sub
     sty romsel_copy
     sty romsel
 }
+!if 1 { ; SFTODO
+    pha
+    lda z_pc_mempointer_ram_bank
+    cmp romsel_copy
+-   bne -
+    pla
+}
     rts
 
 ; SF: This must preserve A and X.
@@ -81,6 +88,13 @@ restart_read_next_byte_at_z_pc_unsafe_sub
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
+}
+!if 1 { ; SFTODO
+    pha
+    lda z_pc_mempointer_ram_bank
+    cmp romsel_copy
+-   bne -
+    pla
 }
     rts
 
@@ -96,12 +110,30 @@ read_next_byte_at_z_pc_unsafe_start_sub
 }
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
 }
+!ifdef ACORN_SWR {
+!if 1 { ; SFTODO
+    pha
+    lda z_pc_mempointer_ram_bank
+    cmp romsel_copy
+-   bne -
+    pla
+}
+}
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !ifndef ACORN_SWR {
 read_next_byte_at_z_pc_sub
 } else {
 read_next_byte_at_z_pc_unsafe_middle_sub
+}
+!ifdef ACORN_SWR {
+!if 1 { ; SFTODO
+    pha
+    lda z_pc_mempointer_ram_bank
+    cmp romsel_copy
+-   bne -
+    pla
+}
 }
 	ldy #0
 	lda (z_pc_mempointer),y
@@ -126,6 +158,13 @@ read_next_byte_at_z_pc_unsafe_middle_sub
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
+}
+!if 1 { ; SFTODO
+    pha
+    lda z_pc_mempointer_ram_bank
+    cmp romsel_copy
+-   bne -
+    pla
 }
     rts
 }

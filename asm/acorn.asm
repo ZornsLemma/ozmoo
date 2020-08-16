@@ -327,7 +327,7 @@ screenkernal_init
 } ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
-; SFTODO I HAVE A FEELING THIS IS NOT USED TO HANDLE "BOTH" CASES IN PRACTICE
+; SFTODO I HAVE A FEELING THIS IS NOT USED TO HANDLE "BOTH" CASES IN PRACTICE AND ISN'T WORTH HAVING
 ; SFTODO COMMENT?
 !macro acorn_swr_page_in_default_bank_corrupt_a {
 !ifndef ACORN_SWR_READ_ONLY {

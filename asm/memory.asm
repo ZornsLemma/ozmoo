@@ -127,12 +127,31 @@ get_page_at_z_pc_did_pha
 !ifdef ALLRAM {
 	lda z_pc
 }
+!ifdef ACORN_SWR {
+!if 1 { ;SFTODO
+    ldx romsel_copy
+    cpx z_pc_mempointer_ram_bank
+-   bne -
+    stx $700
+}
+}
 	ldx z_pc + 1
 	ldy z_pc + 2
 	jsr read_byte_at_z_address_for_z_pc
 !ifdef ACORN_SWR {
     ldy mempointer_ram_bank
     sty z_pc_mempointer_ram_bank
+!ifdef ACORN_SWR_READ_ONLY {
+    ; read_byte_at_z_address_for_z_pc will only have selected
+    ; mempointer_ram_bank if it has changed. We need it to be the new default
+    ; bank now it's z_pc_mempointer_ram_bank, so we must select it now.
+    sty romsel_copy
+    sty romsel
+}
+!if 1 { ; SFTODO
+    cpy romsel_copy
+-   bne -
+}
 }
 	ldy mempointer + 1
 	sty z_pc_mempointer + 1
