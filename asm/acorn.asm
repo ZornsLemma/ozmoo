@@ -327,10 +327,10 @@ screenkernal_init
 } ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
+; SFTODO I HAVE A FEELING THIS IS NOT USED TO HANDLE "BOTH" CASES IN PRACTICE
 ; SFTODO COMMENT?
 !macro acorn_swr_page_in_default_bank_corrupt_a {
-; SFTODO: POSSIBLY RENAME ACORN_NO_SWR_DYNMEM, THE DOUBLE NEGATIVES ARE SCREWING WITH MY HEAD - MAYBE KEEP THE *SENSE* (I WOULD LIKE THE UNDEFINED STATE TO BE "SAFE BUT SLOW") BUT CHANGE THE NAME
-!ifndef ACORN_NO_SWR_DYNMEM {
+!ifndef ACORN_SWR_READ_ONLY {
     lda ram_bank_list
 } else {
     lda z_pc_mempointer_ram_bank
@@ -388,17 +388,17 @@ nonstored_blocks_adjusted
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 ; SFTODO: Obviously if we're not supporting dynamic memory in sideways RAM, we
 ; can't use +adjust_dynamic_memory_inline, which will forcibly grow dynamic
-; memory into sideways RAM. For now we simply don't try if ACORN_NO_SWR_DYNMEM
+; memory into sideways RAM. For now we simply don't try if ACORN_SWR_READ_ONLY
 ; is defined, but this may not be optimal - if we have a large game with a small
-; dynamic memory requirement make-acorn.py may define ACORN_NO_SWR_DYNMEM as a
+; dynamic memory requirement make-acorn.py may define ACORN_SWR_READ_ONLY as a
 ; result but the performance might be worse on machines with very large amounts
 ; of sideways RAM as they might have to access the disc more than they otherwise
 ; would, in return for a modest performance improvement because they're not
 ; constantly switching the first sideways RAM bank back in so dynamic memory can
 ; live there. Maybe make-acorn.py should take an argument telling it not to
-; use ACORN_NO_SWR_DYNMEM even if the game's dynamic memory is small enough for
+; use ACORN_SWR_READ_ONLY even if the game's dynamic memory is small enough for
 ; main RAM.
-!ifndef ACORN_NO_SWR_DYNMEM {
+!ifndef ACORN_SWR_READ_ONLY {
     +adjust_dynamic_memory_inline
 }
 }

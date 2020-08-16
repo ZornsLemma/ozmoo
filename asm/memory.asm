@@ -131,8 +131,6 @@ get_page_at_z_pc_did_pha
 	ldy z_pc + 2
 	jsr read_byte_at_z_address_for_z_pc
 !ifdef ACORN_SWR {
-    ; SFTODO: If we're going to do this, it would be nice to stop read_byte_at_z_address
-    ; temporarily paging the old z_pc_mempointer_ram_bank in.
     ldy mempointer_ram_bank
     sty z_pc_mempointer_ram_bank
 }

@@ -446,7 +446,7 @@ load_blocks_from_index_using_cache
     rts
 }
 
-!ifdef ACORN_NO_SWR_DYNMEM {
+!ifdef ACORN_SWR_READ_ONLY {
 read_byte_at_z_address
     jsr read_byte_at_z_address_for_z_pc
     ldy z_pc_mempointer_ram_bank
@@ -456,7 +456,7 @@ read_byte_at_z_address
 }
 
 ; SF: Note that this is allowed to corrupt X and Y.
-!ifndef ACORN_NO_SWR_DYNMEM {
+!ifndef ACORN_SWR_READ_ONLY {
 read_byte_at_z_address
 }
 read_byte_at_z_address_for_z_pc
@@ -487,7 +487,7 @@ read_byte_at_z_address_for_z_pc
 -   ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
-!ifndef ACORN_NO_SWR_DYNMEM {
+!ifndef ACORN_SWR_READ_ONLY {
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
@@ -512,7 +512,7 @@ read_byte_at_z_address_for_z_pc
 !ifndef ACORN_SWR {
 	bne - ; Always branch
 } else {
-!ifndef ACORN_NO_SWR_DYNMEM {
+!ifndef ACORN_SWR_READ_ONLY {
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank. We keep the first
     ; bank paged in by default, so we don't need to page it in now and therefore
@@ -910,7 +910,7 @@ read_byte_at_z_address_for_z_pc
     ldy #0
     lda (mempointer),y
 !ifdef ACORN_SWR {
-!ifndef ACORN_NO_SWR_DYNMEM {
+!ifndef ACORN_SWR_READ_ONLY {
     ldy ram_bank_list
     sty romsel_copy
     sty romsel

@@ -272,7 +272,7 @@ swr_start_addr = 0x1900
 # down to PAGE or just above. shr_swr_start_addr must be high enough to
 # acommodate the maximum PAGE the binary will support. It is still better if
 # this isn't too high as it will increase the worst case main RAM free, which
-# may allow ACORN_NO_SWR_DYNMEM to be used.
+# may allow ACORN_SWR_READ_ONLY to be used.
 shr_swr_start_addr = 0x1000 # SFTODO TEMP HACK FOR TESTING SHOULD BE 0x2000
 
 tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
@@ -443,14 +443,14 @@ def make_relocations(alternate, master):
 
 # SFTODO: Move this function?
 def make_nsd_executable(version, start_address, extra_args):
-    e = Executable(version.replace("_NSD", "_nsd"), start_address, extra_args + ["-DACORN_NO_SWR_DYNMEM=1"])
+    e = Executable(version.replace("_NSD", "_nsd"), start_address, extra_args + ["-DACORN_SWR_READ_ONLY=1"])
     if nonstored_blocks <= max_game_blocks_main_ram(e):
         return e
     return Executable(version.replace("_NSD", ""), start_address, extra_args)
 
 # SFTODO: MOVE THIS FUNCTION
 def info_no_swr_dynmem(name, labels):
-    if "ACORN_NO_SWR_DYNMEM" in labels:
+    if "ACORN_SWR_READ_ONLY" in labels:
         info("Dynamic memory fits in main RAM on " + name)
     else:
         # "may" because it will depend on PAGE at runtime.
