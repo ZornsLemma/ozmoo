@@ -387,7 +387,6 @@ jmp_buf = $42f ; "up to" 257 bytes - in reality 64 bytes is probably enough
 scratch_page = $500
 !ifdef ACORN_SWR {
 scratch_double_page = scratch_page
-SFTODOHACK=$700
 ; SFTODO: $700-$800 is currently wasted
 ; SFTODO: There's no advantage for second processor builds, but on ACORN_SWR
 ; builds we could potentially put vmap_z_[hl] somewhere in $400-800 (we'd probably
