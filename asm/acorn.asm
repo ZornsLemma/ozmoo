@@ -16,7 +16,10 @@
 ; situation here is that we have main RAM (not paged) from $0000-$7fff
 ; inclusive, with up to 16 different 16K banks of "sideways" RAM paged in at
 ; $8000-$bfff inclusive by writing to romsel_copy and romsel (in that order).
-; The OS is not paged and lives permanently at $c000-$ffff inclusive.
+; The OS is not paged and lives permanently at $c000-$ffff inclusive. The loader
+; will have located any available sideways RAM banks, verified there's at least
+; one and put the count and a list of bank numbers at ram_bank_{count,list} for
+; us.
 ;
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
@@ -348,13 +351,18 @@ screenkernal_init
     bne .preload_loop
 
 !ifdef ACORN_SWR {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
 ; SFTODO: WE SHOULD PERHAPS HAVE A MACRO FOR THE FOLLOWING IFNDEF+SET
-    ; SFTODO: If we're paging in the Z-machine PC bank by default, this may SFTODO: WILL?
-    ; actually page in an arbitrary bank, because the Z-machine hasn't started
-    ; executing yet, but it won't hurt. We do this here because if we're keeping
-    ; the dynamic memory bank paged in by default it just might be that no other
-    ; code will page it in before it's needed.
-    +acorn_swr_page_in_default_bank_corrupt_a
+    ; We must keep the first bank paged in by default as it may contain dynamic
+    ; memory.
+    ; SFTODO: It *may* be worth keeping a ZP copy of ram_bank_list (i.e. the
+    ; first bank number) so we can use it in these possibly-frequent page ins.
+    lda ram_bank_list
+    sta romsel_copy
+    sta romsel
+} else {
+    ; We don't need to do anything in the small dynamic memory model. SFTODO: SAY WHY - I THINK WE WILL PAGE IN THE RIGHT BANK WHEN WE FIRST FETCH A Z-MACHINE OPCODE, BUT I'D LIKE TO CHECK THE CODE/STEP THROUGH IT IN THE DEBUGGER.
+}
 }
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
@@ -368,18 +376,6 @@ screenkernal_init
 } ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
-; SFTODO I HAVE A FEELING THIS IS NOT USED TO HANDLE "BOTH" CASES IN PRACTICE AND ISN'T WORTH HAVING
-; SFTODO COMMENT?
-!macro acorn_swr_page_in_default_bank_corrupt_a {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-    lda ram_bank_list
-} else {
-    lda z_pc_mempointer_ram_bank
-}
-    sta romsel_copy
-    sta romsel
-}
-
 ; SFTODO COMMENT
 !macro acorn_swr_calculate_vmap_max_entries_inline {
     pla ; number of 256 byte blocks we read from disc earlier, low byte
