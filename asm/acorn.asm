@@ -4,6 +4,46 @@
 ; flows straight through them or "_subroutine" if they end by executing rts (or
 ; equivalent).
 
+; A note on Acorn memory models - this affects code in many places, but I have
+; to write this somewhere.
+;
+; The second processor build (ifndef ACORN_SWR) has a simple flat memory model.
+; It's rather like the C64 but without even the complication of paging thekernal
+; ROM in and out, so it doesn't need the "cache" which the C64 code code.
+;
+; The sideways RAM build (ifdef ACORN_SWR) is a bit more involved. The hardware
+; situation here is that we have main RAM (not paged) from $0000-$7fff
+; inclusive, with up to 16 different 16K banks of "sideways" RAM paged in at
+; $8000-$bfff inclusive by writing to romsel_copy and romsel (in that order).
+; The OS is not paged and lives permanently at $c000-$ffff inclusive.
+;
+; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
+; allow static/high memory to be spread over approximately 9 sideways RAM banks
+; (indexed in 512-byte chunks with indexes from 0-255, with chunk 0 starting
+; at story_start+nonstored_blocks). The standard Ozmoo mempointer (data) and 
+; z_pc_mempointer (Z-machine PC) pointers are extended to each have an associated
+; RAM bank (mempointer_ram_bank and z_pc_mempointer_ram_bank respectively). (If
+; the relevant byte of Z-machine memory lives in Acorn main RAM, the bank number
+; is irrelevant as main RAM is not affected by paging.)
+;
+; The "big dynamic RAM" model (ifndef ACORN_SWR_READ_ONLY) allows the game's
+; dynamic memory (which starts in main RAM at story_start, as on any Ozmoo build)
+; to be larger than main RAM and overflow into the first 16K sideways RAM bank.
+; The first 16K sideways RAM bank therefore has to be paged in by default, so
+; that miscellaneous Ozmoo code which might try to access dynamic memory can do
+; so without any trouble. In this model, accesses to memory via read_next_byte
+; and read_next_byte_at_z_pc temporarily page in the relevant bank to read the
+; byte and then page the first 16K sideways RAM bank back in. (As an
+; optimisation, read_next_byte_at_z_pc_unsafe* and friends are used during
+; instruction decoding to avoid flipping back and forth excessively while
+; reading a multi-byte instruction. This is possible because only a very limited
+; set of cases can cause accesses to dynamic memory during instruction decoding.)
+;
+; The "small dynamic RAM" model (ifdef ACORN_SWR_READ_ONLY) requires the game's
+; dynamic memory to fit in main RAM. Since dynamic memory can then be accessed
+; regardless of the currently paged in bank, Ozmoo instead keeps the bank
+; containing the Z-machine's PC paged in by default, temporarily paging it out
+; only when reading a data byte.
 !zone {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
