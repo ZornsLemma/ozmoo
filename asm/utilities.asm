@@ -63,26 +63,13 @@
 ; flat memory model or the Z-machine PC RAM bank is paged in by default) no
 ; bank switching is needed in read_next_byte_at_z_pc.
 
-; SFTODO: This lot is a bit unreadable, I suspect some reordering and/of fallthrough might improve matters
-
-; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
-; SFTODO: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
-; practice it's fine but I'm a bit worried about saying this is OK.
-; This is the normal "safe" version of the code, which pages in the relevant
-; bank temporarily and pages the first bank back in afterwards.
-read_next_byte_at_z_pc_sub
+; SF: This must preserve A and X.
+restart_read_next_byte_at_z_pc_unsafe_sub
+    ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
-	ldy #0
-	lda (z_pc_mempointer),y
-    ldy ram_bank_list
-    sty romsel_copy
-    sty romsel
-	inc z_pc_mempointer ; Also increases z_pc
-	beq ++
-	rts
-++  jmp inc_z_pc_page
+    rts
 
 ; This must preserve A and X.
 finish_read_next_byte_at_z_pc_unsafe_sub
@@ -94,46 +81,50 @@ finish_read_next_byte_at_z_pc_unsafe_sub
     sty romsel
     rts
 
-; SF: This must preserve A and X.
-restart_read_next_byte_at_z_pc_unsafe_sub
-    ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
-    ldy z_pc_mempointer_ram_bank
-    sty romsel_copy
-    sty romsel
-    rts
-
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_unsafe_start_sub
-    ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
-    lda z_pc_mempointer_ram_bank
-    sta romsel_copy
-    sta romsel
+    jsr restart_read_next_byte_at_z_pc_unsafe_sub
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
-} ; end of !ifdef ACORN_SWR_BIG_DYNMEM
 
-; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
-; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
-; bit, I think. It may be worth not making the relocatable version load
-; quite so high to maximise the chances of this coming into play.
-; SFTODO: IT MAY BE CLEARER JUST TO DUPLICATE THIS CCODE FOR BIG_DNMEM AND OTHER RATHER THAN CONDITIONALLY TWEAKING IT
-!ifndef ACORN_SWR_BIG_DYNMEM {
-read_next_byte_at_z_pc_sub
-} else {
 read_next_byte_at_z_pc_unsafe_middle_sub
-}
 	ldy #0
 	lda (z_pc_mempointer),y
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
 	rts
-++
-!ifndef ACORN_SWR_BIG_DYNMEM {
-    jmp inc_z_pc_page
-} else {
-    ; This code is for the "unsafe" case. inc_z_pc_page would leave the first RAM
+++  ; This code is for the "unsafe" case. inc_z_pc_page would leave the first RAM
     ; bank paged in to respect the default for this model, but that's not
     ; appropriate here, so we use this variant instead.
     jmp inc_z_pc_page_acorn_unsafe
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+; SFTODO: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
+; practice it's fine but I'm a bit worried about saying this is OK.
+; This is the normal "safe" version of the code, which pages in the relevant
+; bank temporarily and pages the first bank back in afterwards.
+read_next_byte_at_z_pc_sub
+    jsr restart_read_next_byte_at_z_pc_unsafe_sub
+	ldy #0
+	lda (z_pc_mempointer),y
+    jsr finish_read_next_byte_at_z_pc_unsafe_sub
+	inc z_pc_mempointer ; Also increases z_pc
+	beq ++
+	rts
+++  jmp inc_z_pc_page
+
+} else { ; not ACORN_SWR_BIG_DYNMEM
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
+; bit, I think. It may be worth not making the relocatable version load
+; quite so high to maximise the chances of this coming into play.
+read_next_byte_at_z_pc_sub
+	ldy #0
+	lda (z_pc_mempointer),y
+	inc z_pc_mempointer ; Also increases z_pc
+	beq ++
+	rts
+++  jmp inc_z_pc_page
 }
 
 !macro read_next_byte_at_z_pc {
@@ -170,6 +161,8 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 	
 } else { ; not SLOW
 !ifdef ACORN_SWR_BIG_DYNMEM {
+; See the SLOW code above for comments on the individual macros.
+
 !macro restart_read_next_byte_at_z_pc_unsafe {
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
@@ -209,7 +202,6 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 	jsr inc_z_pc_page
 ++  ldy #76 ; SFTODO JUST TO PROVE IT'S OK
 }
-
 } else { ; not ACORN_SWR_BIG_DYNMEM
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
