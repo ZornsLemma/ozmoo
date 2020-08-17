@@ -54,52 +54,57 @@
 }
 
 !ifdef SLOW {
-!ifdef ACORN_SWR {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+; In the big dynamic memory model, the first RAM bank (which may hold dynamic
+; memory) is paged in by default. In order to optimise decoding of multi-byte
+; Z-machine instructions, read_next_byte_at_z_pc_unsafe* and friends are used to
+; temporarily switch to leaving the bank containing the Z-machine PC paged in.
+; These are unnecessary on all other builds, where (either because there's a
+; flat memory model or the Z-machine PC RAM bank is paged in by default) no
+; bank switching is needed in read_next_byte_at_z_pc.
+
 ; SFTODO: This lot is a bit unreadable, I suspect some reordering and/of fallthrough might improve matters
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 ; SFTODO: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
 ; practice it's fine but I'm a bit worried about saying this is OK.
+; This is the normal "safe" version of the code, which pages in the relevant
+; bank temporarily and pages the first bank back in afterwards.
 read_next_byte_at_z_pc_sub
-    jsr read_next_byte_at_z_pc_unsafe_start_sub
-    ; Fall through to finish_read_next_byte_at_z_pc_unsafe_sub
+    ldy z_pc_mempointer_ram_bank
+    sty romsel_copy
+    sty romsel
+	ldy #0
+	lda (z_pc_mempointer),y
+	inc z_pc_mempointer ; Also increases z_pc
+	beq ++
+	rts
+++  jmp inc_z_pc_page
 
 ; This must preserve A and X.
 finish_read_next_byte_at_z_pc_unsafe_sub
-!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We are no longer in "unsafe" mode, so we must maintain the usual default
     ; configuration with the first bank of sideways RAM (possibly containing
     ; dynamic memory) paged in.
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
-} else {
-    ; In this model the Z-machine PC ram bank is always paged in by default.
-}
     rts
 
 ; SF: This must preserve A and X.
 restart_read_next_byte_at_z_pc_unsafe_sub
-!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
-} else {
-    ; In this model the Z-machine PC ram bank is already paged in by default.
-}
     rts
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_unsafe_start_sub
-!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
     lda z_pc_mempointer_ram_bank
     sta romsel_copy
     sta romsel
-} else {
-    ; In this model the Z-machine PC ram bank is already paged in by default.
-}
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
 }
 
@@ -107,7 +112,7 @@ read_next_byte_at_z_pc_unsafe_start_sub
 ; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
 ; bit, I think. It may be worth not making the relocatable version load
 ; quite so high to maximise the chances of this coming into play.
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
 read_next_byte_at_z_pc_sub
 } else {
 read_next_byte_at_z_pc_unsafe_middle_sub
@@ -118,21 +123,13 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 	beq ++
 	rts
 ++
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
     jmp inc_z_pc_page
 } else {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-    ; If we're using this for "unsafe" access, we need to use a version of
-    ; inc_z_pc_page which won't restore the normal default of having the first
-    ; RAM bank paged in but will instead leave the Z PC bank paged in. If we're
-    ; actually being called via read_next_byte_at_z_pc_sub, that will switch in
-    ; the first bank again after z_inc_pc_page_acorn_unsafe redundantly switches
-    ; in the Z PC bank! The non-SLOW versions don't share code in this way and
-    ; won't do this redundant switch. SFTODO: MAKE SURE THEY DON'T!
+    ; This code is for the "unsafe" case. inc_z_pc_page would leave the first RAM
+    ; bank paged in to respect the default for this model, but that's not
+    ; appropriate here, so we use this variant instead.
     jmp inc_z_pc_page_acorn_unsafe
-} else {
-    jmp inc_z_pc_page
-}
 }
 
 !macro read_next_byte_at_z_pc {
@@ -140,7 +137,7 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 }
 
 !macro read_next_byte_at_z_pc_unsafe_start {
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
     +read_next_byte_at_z_pc
 } else {
     jsr read_next_byte_at_z_pc_unsafe_start_sub
@@ -148,7 +145,7 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 }
 
 !macro read_next_byte_at_z_pc_unsafe_middle {
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
     +read_next_byte_at_z_pc
 } else {
     jsr read_next_byte_at_z_pc_unsafe_middle_sub
@@ -156,13 +153,13 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 }
 
 !macro finish_read_next_byte_at_z_pc_unsafe {
-!ifdef ACORN_SWR {
+!ifdef ACORN_SWR_BIG_DYNMEM {
     jsr finish_read_next_byte_at_z_pc_unsafe_sub
 }
 }
 
 !macro restart_read_next_byte_at_z_pc_unsafe {
-!ifdef ACORN_SWR {
+!ifdef ACORN_SWR_BIG_DYNMEM {
     jsr restart_read_next_byte_at_z_pc_unsafe_sub
 }
 }

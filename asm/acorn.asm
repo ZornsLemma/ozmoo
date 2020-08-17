@@ -48,6 +48,16 @@
 ; regardless of the currently paged in bank, Ozmoo instead keeps the bank
 ; containing the Z-machine's PC paged in by default, temporarily paging it out
 ; only when reading a data byte.
+;
+; To improve readability of code and avoid double-nesting so we can test for
+; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
+; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this.
+!ifdef ACORN_SWR {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
+ACORN_SWR_BIG_DYNMEM = 1 ; SFTODO USE THIS EVERYWHERE USEFUl
+}
+}
+
 !zone {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
