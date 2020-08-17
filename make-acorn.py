@@ -184,6 +184,7 @@ group.add_argument("--no-hole-check", action="store_true", help="disable screen 
 group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynmem adjustment")
 group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
 group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
+group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -442,11 +443,12 @@ def make_relocations(alternate, master):
     return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
 # SFTODO: Move this function?
-def make_nsd_executable(version, start_address, extra_args):
-    e = Executable(version.replace("_NSD", "_nsd"), start_address, extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
-    if nonstored_blocks <= max_game_blocks_main_ram(e):
-        return e
-    return Executable(version.replace("_NSD", ""), start_address, extra_args)
+def make_small_dynmem_executable(version, start_address, extra_args):
+    if not args.force_big_dynmem:
+        e = Executable(version.replace("_DYNMEMSIZE", "_sdyn"), start_address, extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
+        if nonstored_blocks <= max_game_blocks_main_ram(e):
+            return e
+    return Executable(version.replace("_DYNMEMSIZE", ""), start_address, extra_args)
 
 # SFTODO: MOVE THIS FUNCTION
 def info_no_swr_dynmem(name, labels):
@@ -469,7 +471,7 @@ def add_swr_shr_executable(ssd):
     # a start address which needed an extra page of padding and then the system we're running on
     # has an oppositely aligned ideal relocation target.
     for start_address in (shr_swr_start_addr, shr_swr_start_addr + 0x100):
-        e = make_nsd_executable("swr_shr_vmem_NSD_START", start_address, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"])
+        e = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"])
         if candidate is None or len(e.binary) < len(candidate.binary):
             candidate = e
     assert candidate is not None
@@ -492,7 +494,7 @@ def add_swr_shr_executable(ssd):
 
 # SFTODO: Move this function?
 def add_swr_executable(ssd):
-    e = make_nsd_executable("swr_vmem_NSD", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
+    e = make_small_dynmem_executable("swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
     info_no_swr_dynmem("sideways RAM build", e.labels)
     ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, e.binary)
 
