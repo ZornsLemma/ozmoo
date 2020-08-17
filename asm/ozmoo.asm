@@ -353,6 +353,10 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
+; SFTODO: This shows up some bugs I'd otherwise miss; I should perhaps formalise
+; it (maybe "pad so story_start is at $7000 or something") and put support in
+; build script so I remember to do it more often.
+;!fill 4096 ; SFTODO TEMP FOR DEBUG
 stack_start
 
 deletable_screen_init_1
