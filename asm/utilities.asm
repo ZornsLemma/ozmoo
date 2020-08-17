@@ -109,12 +109,13 @@ read_next_byte_at_z_pc_unsafe_start_sub
     sta romsel_copy
     sta romsel
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
-}
+} ; end of !ifdef ACORN_SWR_BIG_DYNMEM
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 ; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
 ; bit, I think. It may be worth not making the relocatable version load
 ; quite so high to maximise the chances of this coming into play.
+; SFTODO: IT MAY BE CLEARER JUST TO DUPLICATE THIS CCODE FOR BIG_DNMEM AND OTHER RATHER THAN CONDITIONALLY TWEAKING IT
 !ifndef ACORN_SWR_BIG_DYNMEM {
 read_next_byte_at_z_pc_sub
 } else {
@@ -168,34 +169,75 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 }
 	
 } else { ; not SLOW
-!error "SFTODO: NEEDS UPDATING FOR NEW MODEL"
+!ifdef ACORN_SWR_BIG_DYNMEM {
+!macro restart_read_next_byte_at_z_pc_unsafe {
+    ldy z_pc_mempointer_ram_bank
+    sty romsel_copy
+    sty romsel
+}
+
+!macro finish_read_next_byte_at_z_pc_unsafe {
+    ldy ram_bank_list
+    sty romsel_copy
+    sty romsel
+}
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+!macro read_next_byte_at_z_pc_unsafe_middle {
+	ldy #0
+	lda (z_pc_mempointer),y
+	inc z_pc_mempointer ; Also increases z_pc
+	bne ++
+	jsr inc_z_pc_page_acorn_unsafe
+++  ldy #76 ; SFTODO JUST TO PROVE IT'S OK
+}
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+!macro read_next_byte_at_z_pc_unsafe_start {
+    +restart_read_next_byte_at_z_pc_unsafe
+    +read_next_byte_at_z_pc_unsafe_middle
+}
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {
-!ifdef ACORN_SWR {
-    lda z_pc_mempointer_ram_bank
-    sta romsel_copy
-    sta romsel
+    +restart_read_next_byte_at_z_pc_unsafe
+	ldy #0
+	lda (z_pc_mempointer),y
+    +finish_read_next_byte_at_z_pc_unsafe
+	inc z_pc_mempointer ; Also increases z_pc
+	bne ++
+	jsr inc_z_pc_page
+++  ldy #76 ; SFTODO JUST TO PROVE IT'S OK
 }
+
+} else { ; not ACORN_SWR_BIG_DYNMEM
+
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+!macro read_next_byte_at_z_pc {
 	ldy #0
 	lda (z_pc_mempointer),y
 	inc z_pc_mempointer ; Also increases z_pc
 	bne ++
 	jsr inc_z_pc_page
-++
-!ifdef ACORN_SWR {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-    ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it.
-    ldy ram_bank_list
-    sty romsel_copy
-    sty romsel
-    ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
+++  ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
 }
+
+!macro read_next_byte_at_z_pc_unsafe_start {
+    +read_next_byte_at_z_pc
 }
-}	
+
+!macro read_next_byte_at_z_pc_unsafe_middle {
+    +read_next_byte_at_z_pc
+}
+
+!macro finish_read_next_byte_at_z_pc_unsafe {
+}
+
+!macro restart_read_next_byte_at_z_pc_unsafe {
+}
 
 }
+}	
 
 ERROR_UNSUPPORTED_STREAM = 1
 ERROR_CONFIG = 2

@@ -181,10 +181,11 @@ group.add_argument("--print-swaps", action="store_true", help="print virtual mem
 group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
 group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
 group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
-group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynmem adjustment")
+group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
 group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
 group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
 group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
+group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -250,6 +251,8 @@ if args.no_hole_check:
     acme_args1 += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
 if args.no_dynmem_adjust:
     acme_args1 += ["-DACORN_NO_DYNMEM_ADJUST=1"]
+if args.waste_bytes:
+    acme_args1 += ["-DWASTE_BYTES=%s" % (args.waste_bytes,)]
 if args.fake_read_errors:
     acme_args1 += ["-DFAKE_READ_ERRORS=1"]
 if args.slow:

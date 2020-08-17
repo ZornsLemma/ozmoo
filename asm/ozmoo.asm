@@ -308,6 +308,11 @@ clean_up_and_quit
 	
 program_end
 
+; SF: It can be helpful for testing paged RAM builds to burn some non-paged RAM.
+!ifdef WASTE_BYTES {
+    !fill WASTE_BYTES
+}
+
 	!align 255, 0, 0
 z_trace_page
 	!fill z_trace_size, 0
@@ -334,6 +339,7 @@ end_of_routines_in_vmem_cache
 vmem_cache_size = * - vmem_cache_start
 vmem_cache_count = vmem_cache_size / 256
 }
+
 !align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
 !ifdef ACORN {
 !ifdef VMEM {
@@ -353,10 +359,6 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
-; SFTODO: This shows up some bugs I'd otherwise miss; I should perhaps formalise
-; it (maybe "pad so story_start is at $7000 or something") and put support in
-; build script so I remember to do it more often.
-;!fill 4096 ; SFTODO TEMP FOR DEBUG
 stack_start
 
 deletable_screen_init_1
