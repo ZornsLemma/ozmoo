@@ -204,6 +204,8 @@ parser.add_argument("-v", "--verbose", action="count", help="be more verbose abo
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
+parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
+parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
 parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
@@ -337,6 +339,16 @@ if args.custom_title_page is not None:
 else:
     title_page_template = decode_edittf_url("https://edit.tf/#0:DxoM6HZQQaVSTTqSYaCnUqxoyCPPi00EiLSioHS1SgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEElPkQaduHPp3ZUHTRlQaMunPo6IN-ZB00ZUGLDu3ZeSBAgQYsundnQZtmXxpxbMrtB00ZUGzfhyZeSDvp2bEHDr0QaenNBz6dc2ZBp27cuTTh6ZdnlBiy7N_dB00ZUGLDu3ZeSBAgQIEHLD00ZeSDpow7kHXnp3Z0GFBm0-MuRB2y8umnHh2IECBAgQcN_PT0079y5AgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEFDf3y8suRBi8oJ_rbv3oLC6xYQIECBAgQIECBAgQIECBAgQTINOogmSZ0VBPjII0GdDsoINKpJp1JMNBTqVY0ZAgQIECBBMnwYkWkgn1alCrUQU6kGlUpoJEWlFQIECBAgQIECBAgQIAcjDyyd8PLKgyZemXH0y5HSBAgQIECBAgQIECBAgQIECBAgDoEDFo0loOenJl74fPNBSgzUCjFh3a-aBMwYsmbRq2buFKBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIAdPHyy5dyDbvyZXSBRo09EDBezXtF7Ze3QdN6DHow7s-VSgQIEDBSgcMPDNkgQIGilA0YeGbICdDt1KBow8MmqBAgQIECACdDs1KBww8MmqBAcbKUDRh4ZNQJ0OgQIFHTLsy9MvjopQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgBydy3Ph25UGPfu6ct-zm6QIECBAgQIECBAgQIECBAgQIECBAgQQ6lKYtjL4dSlMWwnSDHow7s-VBj37N_XlzQIECBAgQIECBBDqUpi2m6QIECBAgQIMejDuz5UHPHy37NmndnQbd-TKgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAPQ5ZefNBToQYcVB03oOfTDy6IOmjKgz4duVcuXIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECA")
 
+if args.default_mode is not None:
+    default_mode = args.default_mode
+    if default_mode not in (0, 3, 4, 6, 7):
+        die("Invalid default mode specified")
+else:
+    default_mode = 7
+
+print("Q", args.auto_start)
+auto_start = "TRUE" if args.auto_start else "FALSE"
+
 with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "w") as loader:
         for line in loader_template:
@@ -350,6 +362,8 @@ with open("templates/loader.bas", "r") as loader_template:
                     loader.write("PRINT \"%s\";\n" % (escape_basic_string(banner_line),))
             else:
                 line = line.replace("${OZMOOVERSION}", best_effort_version)
+                line = line.replace("${DEFAULTMODE}", str(default_mode))
+                line = line.replace("${AUTOSTART}", auto_start)
                 loader.write(line)
 
 run_and_check([

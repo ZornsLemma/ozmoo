@@ -51,17 +51,18 @@ tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
 IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor"
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
-mode%=7:REM SFTODO: Allow specifying in build script
+mode%=${DEFAULTMODE}
+auto%=${AUTOSTART}
 mode_key$="03467"
-IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE PROCmode_menu(mode%)
+IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu(mode%)
 PRINT'CHR$(title%);"In-game controls:"
 controls_vpos%=VPOS
 PROCupdate_controls(mode%)
 REM SFTODO: We need an option to auto-start the game without waiting for space
-PRINTTAB(0,24);" Press SPACE to start the game...";
+IF NOT auto% THEN PRINTTAB(0,24);" Press SPACE to start the game...";
 REPEAT
 *FX21
-key$=GET$
+IF auto% THEN key$=" " ELSE key$=GET$
 IF INSTR(mode_key$,key$)<>0 THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$):PROCupdate_controls(mode%)
 UNTIL key$=" "
 ?screen_mode=mode%
