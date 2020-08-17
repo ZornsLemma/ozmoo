@@ -474,14 +474,7 @@ read_byte_at_z_address
 -   ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
-; SFTODO: COMMENT
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-    ldy ram_bank_list
-} else {
-    ldy z_pc_mempointer_ram_bank
-}
-    sty romsel_copy
-    sty romsel
+    +acorn_swr_page_in_default_bank_using_y
 }
 !if 1 { ; SFTODO: JUST TO PROVE IT'S OK
     ldx #42
@@ -499,10 +492,12 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
+    ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
+    ; RAM so it doesn't matter what the value of mempointer_ram_bank is or which
+    ; bank is currently paged in.
 	bne - ; Always branch
 } else {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank. We keep the first
     ; bank paged in by default, so we don't need to page it in now and therefore
@@ -510,11 +505,6 @@ read_byte_at_z_address
     lda ram_bank_list
     sta mempointer_ram_bank
     bpl - ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
-} else {
-    ; All dynamic memory is in main RAM, so the value of mempointer_ram_bank is
-    ; irrelevant and it doesn't matter what bank is paged in.
-    bne - ; Always branch
-}
 }
 .non_dynmem
 	sta zp_pc_h
@@ -900,14 +890,7 @@ read_byte_at_z_address
     ldy #0
     lda (mempointer),y
 !ifdef ACORN_SWR {
-; SFTODO: COMMENT - MAYBE HAVE A MACRO FOR THIS FRAGMENT
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-    ldy ram_bank_list
-} else {
-    ldy z_pc_mempointer_ram_bank
-}
-    sty romsel_copy
-    sty romsel
+    +acorn_swr_page_in_default_bank_using_y
 }
     rts
 

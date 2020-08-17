@@ -361,7 +361,7 @@ screenkernal_init
     bne .preload_loop
 
 !ifdef ACORN_SWR {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
+!ifdef ACORN_SWR_BIG_DYNMEM {
 ; SFTODO: WE SHOULD PERHAPS HAVE A MACRO FOR THE FOLLOWING IFNDEF+SET
     ; We must keep the first bank paged in by default as it may contain dynamic
     ; memory.
@@ -386,6 +386,16 @@ screenkernal_init
 } ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
+!macro acorn_swr_page_in_default_bank_using_y {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ldy ram_bank_list
+} else {
+    ldy z_pc_mempointer_ram_bank
+}
+    sty romsel_copy
+    sty romsel
+}
+
 ; SFTODO COMMENT
 !macro acorn_swr_calculate_vmap_max_entries_inline {
     pla ; number of 256 byte blocks we read from disc earlier, low byte
@@ -433,19 +443,14 @@ nonstored_blocks_adjusted
 +
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-; SFTODO: Obviously if we're not supporting dynamic memory in sideways RAM, we
-; can't use +adjust_dynamic_memory_inline, which will forcibly grow dynamic
-; memory into sideways RAM. For now we simply don't try if ACORN_SWR_SMALL_DYNMEM
-; is defined, but this may not be optimal - if we have a large game with a small
-; dynamic memory requirement make-acorn.py may define ACORN_SWR_SMALL_DYNMEM as a
-; result but the performance might be worse on machines with very large amounts
-; of sideways RAM as they might have to access the disc more than they otherwise
-; would, in return for a modest performance improvement because they're not
-; constantly switching the first sideways RAM bank back in so dynamic memory can
-; live there. Maybe make-acorn.py should take an argument telling it not to
-; use ACORN_SWR_SMALL_DYNMEM even if the game's dynamic memory is small enough for
-; main RAM.
-!ifndef ACORN_SWR_SMALL_DYNMEM {
+; SF: ACORN_SWR_SMALL_DYNMEM is obviously incompatible with
+; adjust_dynamic_memory_inline, which deliberately makes dynamic memory big to
+; use more sideways RAM. The defaults used by the build script are probably
+; sensible, but the user can use --force-big-dynmem if they want to allow for
+; the possibility of making full use of large amounts of sideways RAM at the
+; price of not getting the improved bank-switching performance of an
+; ACORN_SWR_SMALL_DYNMEM build.
+!ifdef ACORN_SWR_BIG_DYNMEM {
     +adjust_dynamic_memory_inline
 }
 }

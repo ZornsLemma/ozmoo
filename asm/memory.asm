@@ -21,15 +21,13 @@
 ; }
 ; }
 
-!ifdef ACORN_SWR {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
+!ifdef ACORN_SWR_BIG_DYNMEM {
 inc_z_pc_page_acorn_unsafe
     jsr inc_z_pc_page
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
     rts
-}
 }
 
 ; SF: On Acorn non-VMEM (and, I believe, C64 non-ALLMEM) this just needs to do

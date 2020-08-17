@@ -1368,27 +1368,17 @@ do_save
 
 !ifdef ACORN {
 
-; SFTODO: This may change in future - if the build system can determine dynamic
-; memory will fit in main RAM on all supported machines we can use the OSFILE
-; variants on those machines too, which is faster and probably smaller. (Note
-; that it doesn't matter if we grew "dynamic" memory to help maximise SWR use;
-; all we care about is the truly dynamic bit. We don't even need the
-; nonstored_blocks rounding up, the true to-the-byte dynmem size from the header
-; is what counts.)
-!ifdef ACORN_SWR {
 ; SFTODO: This is a bit too pessimistic - since we only save precisely the
 ; number of bytes in static memory, even if nonstored_blocks has overflowed into
 ; sideways RAM due to rounding up to a 512-byte boundary, we can still use
-; OSFILE if the true dynamic data fits into main RAM. It's correct that ACORN_SWR_SMALL_DYNMEM is *not* set in this case,
-; because various bits of code use nonstored_blocks to decide if we're accessing
-; dynamic memory and they won't do any paging for dynamic memory if
-; ACORN_SWR_SMALL_DYNMEM is set, but we *could* set ACORN_SAVE_RESTORE_OSFIND
-; directly in make-acorn.py instead of deriving it here.
+; OSFILE if the true dynamic data fits into main RAM. At the price of some
+; extra complexity and "trial" builds in the build script, we could have it
+; set ACORN_SAVE_RESTORE_OSFIND instead of tying it to ACORN_SWR_BIG_DYNMEM
+; like this.
 ; SFTODO: It would be safer to have to set a flag to get the OSFILE versions,
 ; so we default to the safe OSFIND versions.
-!ifndef ACORN_SWR_SMALL_DYNMEM {
+!ifdef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFIND = 1
-}
 }
 !ifdef ACORN_SAVE_RESTORE_OSFIND {
     .save_op = osfind_open_output
