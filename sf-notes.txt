@@ -1,3 +1,22 @@
+Benchmarks after reworking sideways RAM paging:
+
+Baseline is 87f85b82608f6072ebeaebd0dfde488931e00c42 acorn-swr branch latest - this always uses "old-style no tweaks bigdyn":
+Using b-em Master 128 mode with 64K sideways RAM in mode 7 for all tests
+Drive noises off: $004d84 (repeat $004d83)
+Drive noises on: $0051c2 (repeat $0051c2)
+
+Comparison is latest acorn-wip 30ebfe64c647828c2716e0e3b49027d80479af11
+bigdyn: 
+Drive noises off: $0049a4 95.0% (repeat $0049a5)
+Drive noises on: $004e0b 95.5% (repeat $004e0b)
+
+smalldyn:
+Drive noises off: $0045c0 90.0% (repeat $0045bf)
+Drive noises on: $004a00 90.5% (repeat $004a00)
+
+
+
+
 Register use analysis:
 
 read_byte_at_z_address:
