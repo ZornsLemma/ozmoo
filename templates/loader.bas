@@ -49,7 +49,7 @@ max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor detected"
+IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor"
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=7:REM SFTODO: Allow specifying in build script
 mode_key$="03467"
@@ -333,7 +333,7 @@ DEF PROCmode_menu(mode%)
 PRINT'CHR$(title%);"Screen mode:";CHR$(135);"(hit 0/3/4/6/7 to change)"
 mode_menu_vpos%=VPOS
 PRINT "   0) 80x32    4) 40x32    7) 40x25"
-PRINT "   3) 80x25    6) 40x24       teletext"
+PRINT "   3) 80x25    6) 40x25       teletext"
 vpos%=VPOS
 PROChighlight_mode_menu(mode%,TRUE)
 PRINTTAB(0,vpos%);
