@@ -67,73 +67,50 @@ read_next_byte_at_z_pc_sub
 ; This must preserve A and X.
 finish_read_next_byte_at_z_pc_unsafe_sub
 !ifndef ACORN_SWR_SMALL_DYNMEM {
-    ; We must keep the first bank of sideways RAM paged in by default, because
-    ; dynamic memory may have overflowed into it.
+    ; We are no longer in "unsafe" mode, so we must maintain the usual default
+    ; configuration with the first bank of sideways RAM (possibly containing
+    ; dynamic memory) paged in.
     ldy ram_bank_list
     sty romsel_copy
     sty romsel
-}
-!if 1 { ; SFTODO
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
+} else {
+    ; In this model the Z-machine PC ram bank is always paged in by default.
 }
     rts
 
 ; SF: This must preserve A and X.
 restart_read_next_byte_at_z_pc_unsafe_sub
 !ifndef ACORN_SWR_SMALL_DYNMEM {
+    ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
     ldy z_pc_mempointer_ram_bank
     sty romsel_copy
     sty romsel
-}
-!if 1 { ; SFTODO
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
+} else {
+    ; In this model the Z-machine PC ram bank is already paged in by default.
 }
     rts
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_unsafe_start_sub
 !ifndef ACORN_SWR_SMALL_DYNMEM {
+    ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
     lda z_pc_mempointer_ram_bank
     sta romsel_copy
     sta romsel
 } else {
-    ; z_pc_mempointer_ram_bank is kept paged in by default if we don't have to
-    ; keep the first bank paged in all the time for dynamic memory.
+    ; In this model the Z-machine PC ram bank is already paged in by default.
 }
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
 }
-!ifdef ACORN_SWR {
-!if 1 { ; SFTODO
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
-}
-}
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
+; bit, I think. It may be worth not making the relocatable version load
+; quite so high to maximise the chances of this coming into play.
 !ifndef ACORN_SWR {
 read_next_byte_at_z_pc_sub
 } else {
 read_next_byte_at_z_pc_unsafe_middle_sub
-}
-!ifdef ACORN_SWR {
-!if 1 { ; SFTODO
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
-}
 }
 	ldy #0
 	lda (z_pc_mempointer),y
@@ -144,29 +121,18 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 !ifndef ACORN_SWR {
     jmp inc_z_pc_page
 } else {
-    jsr inc_z_pc_page
-    ; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
-    ; bit, I think. It may be worth not making the relocatable version load
-    ; quite so high to maximise the chances of this coming into play.
 !ifndef ACORN_SWR_SMALL_DYNMEM {
-    ; SFTODO: THAT MIGHT HAVE PAGED IN THE FIRST BANK - WE NEED TO UNDO THAT -
-    ; WE ONLY NEED TO DO THIS IF SWR MIGHT BE IN DYNMEM OTHERWISE IT WON'T HAVE
-    ; PAGED IT IN... - CAN WE JUST SET A FLAG TO TELL IT NOT TO DO THAT? NOTE
-    ; HOWEVER THIS IS A VERY RARE CASE, SO IT MAY WE SIMPLEST AND SAFEST (A
-    ; FLAG MAY REMAIN ACCIDENTALLY SET) TO JUST DO THIS, WHICH IS COMPLETELY
-    ; CORRECT.
-    ldy z_pc_mempointer_ram_bank
-    sty romsel_copy
-    sty romsel
+    ; If we're using this for "unsafe" access, we need to use a version of
+    ; inc_z_pc_page which won't restore the normal default of having the first
+    ; RAM bank paged in but will instead leave the Z PC bank paged in. If we're
+    ; actually being called via read_next_byte_at_z_pc_sub, that will switch in
+    ; the first bank again after z_inc_pc_page_acorn_unsafe redundantly switches
+    ; in the Z PC bank! The non-SLOW versions don't share code in this way and
+    ; won't do this redundant switch. SFTODO: MAKE SURE THEY DON'T!
+    jmp inc_z_pc_page_acorn_unsafe
+} else {
+    jmp inc_z_pc_page
 }
-!if 1 { ; SFTODO
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
-}
-    rts
 }
 
 !macro read_next_byte_at_z_pc {
@@ -201,7 +167,8 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 }
 }
 	
-} else { ; not SLOW SFTODO: THIS NEEDS UPDATING FOR NEW MODEL
+} else { ; not SLOW
+!error "SFTODO: NEEDS UPDATING FOR NEW MODEL"
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {

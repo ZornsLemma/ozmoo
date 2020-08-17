@@ -21,6 +21,17 @@
 ; }
 ; }
 
+!ifdef ACORN_SWR {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
+inc_z_pc_page_acorn_unsafe
+    jsr inc_z_pc_page
+    ldy z_pc_mempointer_ram_bank
+    sty romsel_copy
+    sty romsel
+    rts
+}
+}
+
 ; SF: On Acorn non-VMEM (and, I believe, C64 non-ALLMEM) this just needs to do
 ; the two inc statements and rts, no need for anything else. Conditionally
 ; assembling this is a real faff so we just accept the small inefficiency.
@@ -127,30 +138,20 @@ get_page_at_z_pc_did_pha
 !ifdef ALLRAM {
 	lda z_pc
 }
-!ifdef ACORN_SWR {
-!if 1 { ;SFTODO
-    ldx romsel_copy
-    cpx z_pc_mempointer_ram_bank
--   bne -
-    stx $700
-}
-}
 	ldx z_pc + 1
 	ldy z_pc + 2
-	jsr read_byte_at_z_address_for_z_pc
+	jsr read_byte_at_z_address
 !ifdef ACORN_SWR {
     ldy mempointer_ram_bank
     sty z_pc_mempointer_ram_bank
 !ifdef ACORN_SWR_SMALL_DYNMEM {
-    ; read_byte_at_z_address_for_z_pc will only have selected
-    ; mempointer_ram_bank if it has changed. We need it to be the new default
-    ; bank now it's z_pc_mempointer_ram_bank, so we must select it now.
+    ; read_byte_at_z_address_for_z_pc will have left the then-current value of
+    ; z_pc_mempointer_ram_bank paged in, so we need to explicitly page in the
+    ; newly set z_pc_mempointer_ram_bank. This is mildly inefficient, but it
+    ; only happens when the Z-machine PC crosses a page boundary and the
+    ; contortions required to avoid it are not worth it. SFTODO VERIFY THAT BY PROFILING
     sty romsel_copy
     sty romsel
-}
-!if 1 { ; SFTODO
-    cpy romsel_copy
--   bne -
 }
 }
 	ldy mempointer + 1

@@ -446,47 +446,8 @@ load_blocks_from_index_using_cache
     rts
 }
 
-!ifdef ACORN_SWR_SMALL_DYNMEM {
-; In this model, we keep the bank containing the Z-machine PC paged in by
-; default. Here we are accessing data, so we need to temporarily page in
-; mempointer_ram_bank.
-read_byte_at_z_address
-!if 1 { ; SFTODO
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
-}
-    ; SFTODO: If we entered a bit deeper in read_byte_at_z_address_for_pc we might avoid need for pha/pla here
-    pha
-    lda mempointer_ram_bank
-    sta romsel_copy
-    sta romsel
-    pla
-    jsr read_byte_at_z_address_for_z_pc
-!if 0 { ; SFTODO - THIS CHECK IS WRONG, WE WILL ALMOST CERTAINLY HAVE PAGED IN A DIFFERENT BANK AND THAT'S WHY THE FOLLOWING NON-DEBUG CODE PAGES Z_PC_MEMPOINTER_RAM_BANK BACK IN
-    pha
-    lda z_pc_mempointer_ram_bank
-    cmp romsel_copy
--   bne -
-    pla
-}
-    ldy z_pc_mempointer_ram_bank
-    sty romsel_copy
-    sty romsel
-    rts
-}
-
 ; SF: Note that this is allowed to corrupt X and Y.
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-; In this model, we keep the first bank (which may contain dynamic memory) paged
-; in by default, so this subroutine pages in mempointer_ram_bank and restores
-; the first bank afterwards. SFTODO: THIS MIGHT BE DOING UNNCEESASRY PAGING FOR
-; Z PC READS ON THIS MODEL, BUT IT'S ALL BROKEN RIGHT NOW.
 read_byte_at_z_address
-}
-read_byte_at_z_address_for_z_pc
     ; Subroutine: Read the contents of a byte address in the Z-machine
     ; a,x,y (high, mid, low) contains address.
     ; Returns: value in a
@@ -498,7 +459,6 @@ read_byte_at_z_address_for_z_pc
     bne .read_new_byte
     ; same 256 byte segment, just return
 !ifdef ACORN_SWR {
-!ifndef ACORN_SWR_SMALL_DYNMEM {
     ; SFTODO: I believe we're allowed to corrupt X here - e.g. we would if
     ; this called into VM subsystem. We could use X to hold the ram bank both
     ; here and in the path which enters via .read_new_byte and the '-' label,
@@ -511,15 +471,17 @@ read_byte_at_z_address_for_z_pc
     sta romsel_copy
     sta romsel
 }
-}
 -   ldy #0
 	lda (mempointer),y
 !ifdef ACORN_SWR {
+; SFTODO: COMMENT
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     ldy ram_bank_list
+} else {
+    ldy z_pc_mempointer_ram_bank
+}
     sty romsel_copy
     sty romsel
-}
 }
 !if 1 { ; SFTODO: JUST TO PROVE IT'S OK
     ldx #42
@@ -549,8 +511,8 @@ read_byte_at_z_address_for_z_pc
     sta mempointer_ram_bank
     bpl - ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
 } else {
-    ; Dynamic memory isn't in sideways RAM on this model, so it doesn't matter
-    ; what mempointer_ram_bank is.
+    ; All dynamic memory is in main RAM, so the value of mempointer_ram_bank is
+    ; irrelevant and it doesn't matter what bank is paged in.
     bne - ; Always branch
 }
 }
@@ -938,11 +900,14 @@ read_byte_at_z_address_for_z_pc
     ldy #0
     lda (mempointer),y
 !ifdef ACORN_SWR {
+; SFTODO: COMMENT - MAYBE HAVE A MACRO FOR THIS FRAGMENT
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     ldy ram_bank_list
+} else {
+    ldy z_pc_mempointer_ram_bank
+}
     sty romsel_copy
     sty romsel
-}
 }
     rts
 
