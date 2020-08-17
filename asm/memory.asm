@@ -147,7 +147,7 @@ get_page_at_z_pc_did_pha
     ; z_pc_mempointer_ram_bank paged in, so we need to explicitly page in the
     ; newly set z_pc_mempointer_ram_bank. This is mildly inefficient, but it
     ; only happens when the Z-machine PC crosses a page boundary and the
-    ; contortions required to avoid it are not worth it. SFTODO VERIFY THAT BY PROFILING
+    ; contortions required to avoid it are not worth it.
     sty romsel_copy
     sty romsel
 }
