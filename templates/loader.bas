@@ -20,8 +20,9 @@ REM mentioning removing game disc for save. It would still need to
 REM request/check for the binary on RESTART, so it would need code
 REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
-MODE 135
 *FX229,1
+MODE 135
+VDU 23,1,0;0;0;0;
 REM ${BANNER} - make-acorn.py will add banner printing code here
 REM SFTODO: Note that for Z3 games, anything shown on the top line of
 REM the screen will remain present occupying the not-yet-displayed
@@ -50,12 +51,26 @@ tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
 IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor detected"'
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
-mode%=FNmode
+mode%=7:REM SFTODO: Allow specifying in build script
+mode_key$="03467"
+IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE PROCmode_menu(mode%)
+PRINT'CHR$(title%);"In-game controls:"
+REM SFTODO: Ideally CTRL-F/CTRL-B would be described differently depending on mode and CTRL-B not mentioned in mode 7, also no CTRL-S if no shadow
+PRINT "   CTRL-F/CTRL-B: change colours"
+PRINT "   CTRL-S:        change scrolling mode"
+PRINT
+space_vpos%=VPOS
+REM SFTODO: We need an option to auto-start the game without waiting for space
+PRINT " Press SPACE to start the game...";
+REPEAT
+*FX21
+key$=GET$
+IF INSTR(mode_key$,key$)<>0 THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$)
+UNTIL key$=" "
 ?screen_mode=mode%
 IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
-VDU 23,1,0;0;0;0;
-PRINT "Loading, please wait..."'
+PRINTTAB(0,space_vpos%);" Loading, please wait...             ";
 *DIR S
 IF tube% THEN */$.OZMOO2P
 IF shadow% THEN */$.OZMOOSH
@@ -317,16 +332,34 @@ REM SFTODO: If the next line is "=PAGE", beebasm seems to tokenise it incorrectl
 dummy%=PAGE
 =dummy%
 :
-DEF FNmode
-LOCAL M$
-IF NOT shadow% THEN =7
-PRINT "Which screen mode do you want to play"'"in, 0, 3, 4, 6 or 7? ";
-*FX21
-REPEAT
-M$=GET$
-UNTIL INSTR("03467",M$)<>0
-PRINT M$'
-=VAL(M$)
+DEF PROCmode_menu(mode%)
+PRINT'CHR$(title%);"Screen mode:";CHR$(135);"(hit 0/3/4/6/7 to change)"
+mode_menu_vpos%=VPOS
+PRINT "   0) 80x32    4) 40x32    7) 40x25"
+PRINT "   3) 80x25    6) 40x24       teletext"
+vpos%=VPOS
+PROChighlight_mode_menu(mode%,TRUE)
+PRINTTAB(0,vpos%);
+ENDPROC
+:
+DEF PROCupdate_mode_menu(old_mode%,new_mode%)
+PROChighlight_mode_menu(old_mode%,FALSE)
+PROChighlight_mode_menu(new_mode%,TRUE)
+ENDPROC
+:
+DEF PROChighlight_mode_menu(mode%,on%)
+LOCAL x%,width%,start_y%,end_y%,y%
+IF mode%=4 OR mode%=6 THEN x%=12 ELSE IF mode%=7 THEN x%=24 ELSE x%=0
+IF mode%=0 OR mode%=4 OR mode%=7 THEN start_y%=mode_menu_vpos% ELSE start_y%=mode_menu_vpos%+1
+IF mode%=7 THEN end_y%=start_y%+1:width%=0 ELSE end_y%=start_y%:width%=13
+FOR y%=start_y% TO end_y%
+PRINTTAB(x%,y%);
+IF on% THEN VDU 129,157,131 ELSE PRINT "   ";
+PRINTTAB(x%+width%,y%);
+IF width%>0 AND on% THEN VDU 156,135
+IF width%>0 AND NOT on% THEN PRINT " ";
+NEXT
+ENDPROC
 :
 DEF PROCdie(message$)
 PRINT message$
