@@ -76,6 +76,7 @@ read_next_byte_at_z_pc_sub
     sty romsel
 	ldy #0
 	lda (z_pc_mempointer),y
+    !error "SFTODO: Doesn't this need to page ram_bank_list back in!? We seem to complete the benchmark wtihout it, but I am suspect it's luck - ah yes, because we are forcing big, and we don't actually use SWR for dynmem - perhaps try this on a B+ before fixing and see if it fails there"
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
 	rts
