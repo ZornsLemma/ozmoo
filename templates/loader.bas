@@ -22,6 +22,7 @@ REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
 MODE 135
 *FX229,1
+REM ${BANNER} - make-acorn.py will add banner printing code here
 REM SFTODO: Note that for Z3 games, anything shown on the top line of
 REM the screen will remain present occupying the not-yet-displayed
 REM status line until the game starts. This means that if any disc

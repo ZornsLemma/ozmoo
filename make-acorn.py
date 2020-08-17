@@ -12,6 +12,7 @@
 
 from __future__ import print_function
 import argparse
+import base64
 import os
 import shutil
 import subprocess
@@ -70,6 +71,37 @@ def bytes_to_blocks(x):
         return int(x / 256) + 1
     else:
         return int(x / 256)
+
+def decode_edittf_url(url):
+    i = url.index("#")
+    s = url[i+1:]
+    i = s.index(":")
+    s = s[i+1:]
+    s += "===="
+    packed_data = bytearray(base64.urlsafe_b64decode(s))
+    unpacked_data = bytearray()
+    buffer = 0
+    buffer_bits = 0
+    while len(packed_data) > 0 or buffer_bits > 0:
+        if buffer_bits < 7:
+            if len(packed_data) > 0:
+                packed_byte = packed_data.pop(0)
+            else:
+                packed_byte = 0
+            buffer = (buffer << 8) | packed_byte
+            buffer_bits += 8
+        byte = buffer >> (buffer_bits - 7)
+        if byte < 32:
+            byte += 128
+        unpacked_data.append(byte)
+        buffer &= ~(0b1111111 << (buffer_bits - 7))
+        buffer_bits -= 7
+    return unpacked_data
+
+def escape_basic_string(s):
+    s = s.replace('"', '";CHR$(34);"')
+    return s
+
 
 # SFTODO: MOVE/RENAME
 class Executable(object):
@@ -172,6 +204,7 @@ parser.add_argument("-v", "--verbose", action="count", help="be more verbose abo
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
+parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -295,12 +328,26 @@ while nonstored_blocks % vmem_block_pagecount != 0:
 
 
 
+if args.custom_title_page is not None:
+    if args.custom_title_page.startswith("http"):
+        title_page_template = decode_edittf_url(args.custom_title_page)
+    else:
+        with open(args.custom_title_page, "rb") as f:
+            title_page_template = f.read()
+else:
+    title_page_template = decode_edittf_url("https://edit.tf/#0:DxoM6HZQQaVSTTqSYaCnUqxoyCPPi00EiLSioHS1SgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEElPkQaduHPp3ZUHTRlQaMunPo6IN-ZB00ZUGLDu3ZeSBAgQYsundnQZtmXxpxbMrtB00ZUGzfhyZeSDvp2bEHDr0QaenNBz6dc2ZBp27cuTTh6ZdnlBiy7N_dB00ZUGLDu3ZeSBAgQIEHLD00ZeSDpow7kHXnp3Z0GFBm0-MuRB2y8umnHh2IECBAgQcN_PT0079y5AgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEFDf3y8suRBi8oJ_rbv3oLC6xYQIECBAgQIECBAgQIECBAgQTINOogmSZ0VBPjII0GdDsoINKpJp1JMNBTqVY0ZAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIAcjDyyd8PLKgyZemXH0y5HSBAgQIECBAgQIECBAgQIECBAgDoEDFo0loOenJl74fPNBSgzUCjFh3a-aBMwYsmbRq2buFKBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIAdPHyy5dyDbvyZXSBRo09EDBezXtF7Ze3QdN6DHow7s-VSgQIEDBSgcMPDNkgQIGilA0YeGbICdDt1KBow8MmqBAgQIECACdDs1KBww8MmqBAcbKUDRh4ZNQJ0OgQIFHTLsy9MvjopQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgBydy3Ph25UGPfu6ct-zm6QIECBAgQIECBAgQIECBAgQIECBAgQQ6lKYtjL4dSlMWwnSDHow7s-VBj37N_XlzQIECBAgQIECBBDqUpi2m6QIECBAgQIMejDuz5UHPHy37NmndnQbd-TKgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAPQ5ZefNBToQYcVB03oOfTDy6IOmjKgz4duVcuXIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECA")
 
 with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "w") as loader:
         for line in loader_template:
-            line = line.replace("${OZMOOVERSION}", best_effort_version)
-            loader.write(line)
+            if line.startswith("REM ${BANNER}"):
+                # SFTODO: Slightly hacky but feeling my way here
+                for i in range(10):
+                    banner_line = title_page_template[i*40:(i+1)*40]
+                    loader.write("PRINT \"%s\";\n" % (escape_basic_string(banner_line),))
+            else:
+                line = line.replace("${OZMOOVERSION}", best_effort_version)
+                loader.write(line)
 
 run_and_check([
     "beebasm",
