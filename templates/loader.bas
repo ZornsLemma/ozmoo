@@ -273,8 +273,8 @@ NEXT
 IF P%-code > 512 PRINT"Too much code":END
 
 CALL swr_check
-IF ?swr_banks=0 THEN PROCdie("Sorry, no free sideways RAM or second"+CHR$(13)+CHR$(10)+"processor detected.")
-IF ?swr_type>2 THEN PROCdie("Sorry, only ROMSEL-controlled sideways"+CHR$(13)+CHR$(10)+"RAM currently supported.")
+IF ?swr_banks=0 THEN PROCdie("   Sorry, no free sideways RAM or second   processor detected.")
+IF ?swr_type>2 THEN PROCdie("   Sorry, only ROMSEL-controlled"+CHR$(13)+CHR$(10)+"   sideways RAM currently supported.")
 REM We don't trust ?swr_banks because ROM write through can make it misleading.
 REM Instead we take the first max_ram_bank_count banks with a non-0 count in
 REM swr_test.
@@ -367,6 +367,7 @@ IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
 DEF PROCdie(message$)
-PRINT message$
+PRINT message$'
+VDU 23,1,1,0;0;0;0;
 *FX229,0
 END
