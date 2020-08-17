@@ -32,7 +32,9 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-PRINT "Powered by ${OZMOOVERSION}"'
+REM PRINT "Powered by ${OZMOOVERSION}"':REM SFTODO SHOULD BE DONE BY TEMPLATE SUBSTITUTION
+title%=131
+PRINT CHR$(title%);"Hardware detected:"
 :
 REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408
@@ -46,8 +48,7 @@ max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF NOT tube% THEN PROCdetect_swr ELSE PRINT "Second processor detected"'
-IF NOT tube% AND shadow% THEN PRINT "Shadow RAM detected"'
+IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor detected"'
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=FNmode
 ?screen_mode=mode%
@@ -271,16 +272,13 @@ IF i%?swr_test>0 AND c%<max_ram_bank_count THEN ram_bank_list?c%=i%:c%=c%+1
 NEXT
 ?ram_bank_count=c%
 REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
-PRINT "Will use ";16*?ram_bank_count;"K of sideways RAM (bank";
+PRINT "   ";16*?ram_bank_count;"K sideways RAM (bank";
 IF c%>1 THEN PRINT "s";
-PRINT " ";
-c$=""
+PRINT " &";
 FOR i%=0 TO c%-1
-IF i%=c%-1 AND c%>1 THEN c$=" and "
-PRINT c$;~(ram_bank_list?i%);
-c$=", "
+PRINT ;~(ram_bank_list?i%);
 NEXT
-PRINT ")"'
+PRINT ")"
 ENDPROC
 REM SFTODO: Delete the following unreachable code eventually.
 

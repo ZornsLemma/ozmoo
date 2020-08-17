@@ -335,15 +335,18 @@ if args.custom_title_page is not None:
         with open(args.custom_title_page, "rb") as f:
             title_page_template = f.read()
 else:
-    title_page_template = decode_edittf_url("https://edit.tf/#0:DxoM6HZQQaVSTTqSYaCnUqxoyCPPi00EiLSioHS1SgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEElPkQaduHPp3ZUHTRlQaMunPo6IN-ZB00ZUGLDu3ZeSBAgQYsundnQZtmXxpxbMrtB00ZUGzfhyZeSDvp2bEHDr0QaenNBz6dc2ZBp27cuTTh6ZdnlBiy7N_dB00ZUGLDu3ZeSBAgQIEHLD00ZeSDpow7kHXnp3Z0GFBm0-MuRB2y8umnHh2IECBAgQcN_PT0079y5AgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEFDf3y8suRBi8oJ_rbv3oLC6xYQIECBAgQIECBAgQIECBAgQTINOogmSZ0VBPjII0GdDsoINKpJp1JMNBTqVY0ZAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIAcjDyyd8PLKgyZemXH0y5HSBAgQIECBAgQIECBAgQIECBAgDoEDFo0loOenJl74fPNBSgzUCjFh3a-aBMwYsmbRq2buFKBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIAdPHyy5dyDbvyZXSBRo09EDBezXtF7Ze3QdN6DHow7s-VSgQIEDBSgcMPDNkgQIGilA0YeGbICdDt1KBow8MmqBAgQIECACdDs1KBww8MmqBAcbKUDRh4ZNQJ0OgQIFHTLsy9MvjopQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgBydy3Ph25UGPfu6ct-zm6QIECBAgQIECBAgQIECBAgQIECBAgQQ6lKYtjL4dSlMWwnSDHow7s-VBj37N_XlzQIECBAgQIECBBDqUpi2m6QIECBAgQIMejDuz5UHPHy37NmndnQbd-TKgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAPQ5ZefNBToQYcVB03oOfTDy6IOmjKgz4duVcuXIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECA")
+    title_page_template = decode_edittf_url("https://edit.tf/#0:DxoM6HZQQaVSTTqSYaCnUqxoyCPPi00EiLSioHS1SgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEElPkQaduHPp3ZUHTRlQaMunPo6IN-ZB00ZUGLDu3ZeSBAgQYsundnQZtmXxpxbMrtB00ZUGzfhyZeSDvp2bEHDr0QaenNBz6dc2ZBp27cuTTh6ZdnlBiy7N_dB00ZUGLDu3ZeSBAgQIEHLD00ZeSDpow7kHXnp3Z0GFBm0-MuRB2y8umnHh2IECBAgQcN_PT0079y5AgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEFDf3y8suRBi8oJ_rbv3oLC6xYQIECBAgQIECBAgQIECBAgQTINOogmSZ0VBPjII0GdDsoINKpJp1JMNBTqVY0ZAgQIECBBMnwYkWkgn1alCrUQU6kGlUpoJEWlFQIECBAgQIECBAgQIAcjDyyd8PLKgyZemXH0y5HSBAgQIECBAgQIECBAgQIECBAgDoEDFo0loOenJl74fPNBSgzUCjFh3a-aBMwYsmbRq2buFKBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIAdPHyy5dyDbvyZXSBRo09EDBezXtF7Ze3QdN6DHow7s-VSgQIEDBSgcMPDNkgQIGilA0YeGbICdDt1KBow8MmqBAgQIECACdDs1KBww8MmqBAcbKUDRh4ZNQJ0OgQIFHTLsy9MvjopQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgBydy3Ph25UGPfu6ct-zm6QIECBAgQIECBAgQIECBAgQIECBAgQQ6lKYtjL4dSlMWwnSDHow7s-VBj37N_XlzQIECBAgQIECBBDqUpi2m6QIECBAgQIMejDuz5UHPHy37NmndnQbd-TKgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAPQ5ZefNBToQYcVB03oOfTDy6IOmjKgz4duVcuXIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECA")
 
 with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "w") as loader:
         for line in loader_template:
             if line.startswith("REM ${BANNER}"):
+                # SFTODO: There should be standard strings in template which are replaced by game name and Ozmoo version
                 # SFTODO: Slightly hacky but feeling my way here
-                for i in range(10):
-                    banner_line = title_page_template[i*40:(i+1)*40]
+                for i in range(0, len(title_page_template), 40):
+                    banner_line = title_page_template[i:i+40]
+                    if "LOADER OUTPUT STARTS HERE" in banner_line:
+                        break
                     loader.write("PRINT \"%s\";\n" % (escape_basic_string(banner_line),))
             else:
                 line = line.replace("${OZMOOVERSION}", best_effort_version)
