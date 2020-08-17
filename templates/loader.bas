@@ -49,28 +49,25 @@ max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor detected"'
+IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor detected"
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=7:REM SFTODO: Allow specifying in build script
 mode_key$="03467"
 IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE PROCmode_menu(mode%)
 PRINT'CHR$(title%);"In-game controls:"
-REM SFTODO: Ideally CTRL-F/CTRL-B would be described differently depending on mode and CTRL-B not mentioned in mode 7, also no CTRL-S if no shadow
-PRINT "   CTRL-F/CTRL-B: change colours"
-PRINT "   CTRL-S:        change scrolling mode"
-PRINT
-space_vpos%=VPOS
+controls_vpos%=VPOS
+PROCupdate_controls(mode%)
 REM SFTODO: We need an option to auto-start the game without waiting for space
-PRINT " Press SPACE to start the game...";
+PRINTTAB(0,24);" Press SPACE to start the game...";
 REPEAT
 *FX21
 key$=GET$
-IF INSTR(mode_key$,key$)<>0 THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$)
+IF INSTR(mode_key$,key$)<>0 THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$):PROCupdate_controls(mode%)
 UNTIL key$=" "
 ?screen_mode=mode%
 IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
-PRINTTAB(0,space_vpos%);" Loading, please wait...             ";
+PRINTTAB(0,24);" Loading, please wait...             ";
 *DIR S
 IF tube% THEN */$.OZMOO2P
 IF shadow% THEN */$.OZMOOSH
@@ -359,6 +356,14 @@ PRINTTAB(x%+width%,y%);
 IF width%>0 AND on% THEN VDU 156,135
 IF width%>0 AND NOT on% THEN PRINT " ";
 NEXT
+ENDPROC
+:
+DEF PROCupdate_controls(mode%)
+REM SFTODO: We shouldn't mention CTRL-F at all if the build script has turned mode 7 colour off
+PRINTTAB(0,controls_vpos%);"   CTRL-F: ";
+IF mode%=7 THEN PRINT "change status line colour" ELSE PRINT "change foreground colour "'"   CTRL-B: change background colour"
+IF shadow% OR tube% THEN PRINT "   CTRL-S: change scrolling mode   "
+IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
 DEF PROCdie(message$)
