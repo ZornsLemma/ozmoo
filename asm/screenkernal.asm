@@ -126,6 +126,13 @@ max_lines = screen_height
         lda screen_width_minus_1
     }
 }
+!macro ldx_screen_width_minus_1 {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldx #39
+    } else {
+        ldx screen_width_minus_1
+    }
+}
 !macro lda_screen_width {
     !ifdef FIXED_SCREEN_SIZE {
         lda #40
@@ -152,6 +159,13 @@ max_lines = screen_height
         ldx #40
     } else {
         ldx screen_width
+    }
+}
+!macro ldy_screen_height_minus_1 {
+    !ifdef FIXED_SCREEN_SIZE {
+        ldy #24
+    } else {
+        ldy screen_height_minus_1
     }
 }
 !macro ldy_screen_height {
@@ -275,6 +289,7 @@ s_delete_cursor
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
 ; Return with Z clear iff the cursor is on a mode 7 status line
+; Preserves A and X.
 .check_if_mode_7_status
     ldy zp_screenrow
     bne .check_if_mode_7_status2_rts
@@ -312,21 +327,17 @@ s_cursor_to_screenrowcolumn
 }
     lda #0
     sta s_cursors_inconsistent
-    lda #vdu_goto_xy
-    jsr oswrch
-    lda zp_screencolumn
+    ldx zp_screencolumn
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
     jsr .check_if_mode_7_status
     bne +
-    clc
-    adc #1
+    inx
 +
 }
 }
-    jsr oswrch
-    lda zp_screenrow
-    jmp oswrch
+    ldy zp_screenrow
+    jmp do_oswrch_vdu_goto_xy
 !ifdef DEBUG_CURSOR {
 .check_cursor
     txa
@@ -826,20 +837,17 @@ s_erase_line_from_cursor
 	jsr .update_screenpos
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
-} else {
+} else { ; ACORN
 !ifdef ACORN_HW_SCROLL {
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     bne .no_hw_scroll2
     lda use_hw_scroll
     beq .no_hw_scroll2
-    lda #vdu_goto_xy
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    +lda_screen_height_minus_1
-    sta zp_screenrow
-    jsr oswrch
+    ldx #0
+    +ldy_screen_height_minus_1
+    sty zp_screenrow
+    jsr do_oswrch_vdu_goto_xy
     jsr set_os_normal_video ; new line must not be reverse video
     lda #vdu_down
     jsr oswrch
@@ -905,7 +913,7 @@ s_erase_line_from_cursor
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
-    ; s_pre_scroll preserves X and Y if C is set on entry.
+    ; s_pre_scroll preserves X and Y if C is set on entry. SFTODO: Not any more it doesn't, but I don't think it needs to anyway.
 s_pre_scroll
     ; Define a text window covering the region to scroll.
     ; If C is set on entry, leave the OS text cursor at the bottom right of the
@@ -928,14 +936,13 @@ s_pre_scroll
     txa
     pha
     jsr .s_pre_scroll_leave_bottom_right
-    lda #vdu_goto_xy
-    jsr oswrch
     pla
-    jsr oswrch
+    tax
     pla
     sec
     sbc window_start_row + 1
-    jmp oswrch
+    tay
+    jmp do_oswrch_vdu_goto_xy
 .s_pre_scroll_leave_bottom_right
     lda #vdu_define_text_window
     jsr oswrch
@@ -952,14 +959,12 @@ s_pre_scroll
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
     ; Move the cursor to the bottom right of the text window
-    lda #vdu_goto_xy
-    jsr oswrch
-    +lda_screen_width_minus_1
-    jsr oswrch
+    +ldx_screen_width_minus_1
     +lda_screen_height_minus_1
     sec
     sbc window_start_row + 1
-    jmp oswrch
+    tay
+    jmp do_oswrch_vdu_goto_xy
 
 !ifdef ACORN_HW_SCROLL {
 .redraw_top_line

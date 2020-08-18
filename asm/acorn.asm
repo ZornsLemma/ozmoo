@@ -927,12 +927,7 @@ acorn_screen_hole_end
     lda #osbyte_read_cursor_position
     jsr osbyte
     +define_mode_7_3c00_text_window_inline
-    lda #vdu_goto_xy
-    jsr oswrch
-    txa
-    jsr oswrch
-    tya
-    jsr oswrch
+    jsr do_oswrch_vdu_goto_xy
 
     ; Install our handlers to fix some problems with the OS's handling of this
     ; unofficial mode.
@@ -1024,14 +1019,7 @@ undo_mode_7_3c00
     jsr oswrch
     lda #7
     jsr oswrch
-    ; SFTODO: Do we do vdu_goto_xy a lot? Can we factor out the code to save
-    ; space?
-    lda #vdu_goto_xy
-    jsr oswrch
-    txa
-    jsr oswrch
-    tya
-    jsr oswrch
+    jsr do_oswrch_vdu_goto_xy
 
     ldx #$3c
     ldy #$7c
@@ -1123,5 +1111,14 @@ do_osbyte_rw_escape_key
 do_osbyte_y_0
     ldy #0
     jmp osbyte
+
+; Move the OS cursor to (X, Y).
+do_oswrch_vdu_goto_xy
+    lda #vdu_goto_xy
+    jsr oswrch
+    txa
+    jsr oswrch
+    tya
+    jmp oswrch
 
 }
