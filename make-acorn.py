@@ -372,6 +372,7 @@ with open("templates/loader.bas", "r") as loader_template:
                 # SFTODO: Slightly hacky but feeling my way here
                 for i in range(0, len(title_page_template), 40):
                     banner_line = title_page_template[i:i+40]
+                    # SFTODO: In order to avoid people spending ages designing custom banners which are too big and not realising because in mode 7 there are fewer in-game control lines, we should check here that there are enough free lines left on the screen.
                     if "LOADER OUTPUT STARTS HERE" in banner_line:
                         break
                     banner_line = banner_line.replace("${TITLE}", title)
