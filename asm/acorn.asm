@@ -54,7 +54,7 @@
 ; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this.
 !ifdef ACORN_SWR {
 !ifndef ACORN_SWR_SMALL_DYNMEM {
-ACORN_SWR_BIG_DYNMEM = 1 ; SFTODO USE THIS EVERYWHERE USEFUl
+ACORN_SWR_BIG_DYNMEM = 1
 }
 }
 

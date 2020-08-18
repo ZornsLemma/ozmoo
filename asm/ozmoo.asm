@@ -730,7 +730,7 @@ deletable_init
 	lda #vmap_max_size
 ++	sta vmap_max_entries
 }
-} else {
+} else { ; ACORN_SWR
     +acorn_swr_calculate_vmap_max_entries_inline
 }
 

@@ -915,7 +915,7 @@ read_operand
 	dey
 	lda (z_low_global_vars_ptr),y
 }
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
 	bcc .store_operand ; Always branch
 } else {
     +restart_read_next_byte_at_z_pc_unsafe
@@ -931,7 +931,7 @@ read_operand
 	tax
 	dey
 	lda (z_high_global_vars_ptr),y
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR_BIG_DYNMEM {
 	bcs .store_operand ; Always branch
 } else {
     +restart_read_next_byte_at_z_pc_unsafe
