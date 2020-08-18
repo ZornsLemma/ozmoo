@@ -240,11 +240,6 @@ screenkernal_init
     ; that game data, but at worst we're making the user wait while we read
     ; about 16K too much, and adjust_dynamic_memory_inline will probably mean
     ; most of the "excess" read isn't wasted after all.
-    ; SFTODO: If we're restarting, we only need to reload the dynamic memory.
-    ; If we set an "only load X sectors" flag in the persistent storage in page
-    ; 4, we could minimise restart time. (On an ACORN_NO_SHADOW build we would
-    ; need to reload enough to restore what we lost through temporarily switching
-    ; to real mode 7 with the screen at $7c00.)
     ; SFTODO: It might be nice to tell the user (how exactly? does the loader
     ; leave us positioned correctly to output a string, and then we say "press
     ; SPACE to start" or something?) if the game has loaded entirely into RAM
