@@ -661,14 +661,7 @@ dumptovice
 	;lda z_opcode
 }
 	bit z_opcode
-    ; SFTODO: JUST POSSIBLY CODE IS SMALL ENOUGH NOW NOT TO NEED THIS SWR SPECIAL CASE
-!ifndef ACORN_SWR {
 	bpl .top_bits_are_0x
-} else {
-	bmi .skip_top_bits_are_0x
-    jmp .top_bits_are_0x
-.skip_top_bits_are_0x
-}
 	bvc .top_bits_are_10
 
 	; Top bits are 11. Form = Variable
