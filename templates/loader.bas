@@ -33,7 +33,6 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-REM PRINT "Powered by ${OZMOOVERSION}"':REM SFTODO SHOULD BE DONE BY TEMPLATE SUBSTITUTION
 title%=131
 PRINT CHR$(title%);"Hardware detected:"
 :
