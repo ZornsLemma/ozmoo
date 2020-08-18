@@ -230,8 +230,7 @@ screenkernal_init
     ; on the second side. We don't look up :2.$.DATA and determine its length,
     ; we just double .length_blocks. The absolute worst case here is we read a
     ; track's worth of junk which won't be accessed because it's past the end
-    ; of the game. SFTODO: This is probably OK, it feels a little hacky but I
-    ; I think it is OK, see how I feel about it later.
+    ; of the game.
     asl .length_blocks
     rol .length_blocks + 1
 }
@@ -362,7 +361,6 @@ screenkernal_init
 
 !ifdef ACORN_SWR {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-; SFTODO: WE SHOULD PERHAPS HAVE A MACRO FOR THE FOLLOWING IFNDEF+SET
     ; We must keep the first bank paged in by default as it may contain dynamic
     ; memory.
     ; SFTODO: It *may* be worth keeping a ZP copy of ram_bank_list (i.e. the
@@ -371,7 +369,8 @@ screenkernal_init
     sta romsel_copy
     sta romsel
 } else {
-    ; We don't need to do anything in the small dynamic memory model. SFTODO: SAY WHY - I THINK WE WILL PAGE IN THE RIGHT BANK WHEN WE FIRST FETCH A Z-MACHINE OPCODE, BUT I'D LIKE TO CHECK THE CODE/STEP THROUGH IT IN THE DEBUGGER.
+    ; We don't need to do anything in the small dynamic memory model. The first
+    ; call to read_byte_at_z_address will page in the appropriate bank.
 }
 }
 
@@ -588,14 +587,19 @@ nonstored_blocks_adjusted
     lda #vdu_cls
     jsr oswrch
 } else {
-    ; SFTODO: Maybe (this is deletable code) if we're already in the right mode
-    ; we should not set it again, to avoid screen flashing temporarily to black
-    ; on RESTART.
+    ; Set the desired mode. If we're already in the right mode we don't reselect
+    ; it, to avoid the screen flashing briefly to black. This is deletable init
+    ; code so we can afford minor luxuries like this.
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    cpy screen_mode
+    beq .already_in_right_mode
     lda #vdu_set_mode
     jsr oswrch
     lda screen_mode
     ora #128 ; force shadow mode on
     jsr oswrch
+.already_in_right_mode
     ; Setting the mode will have turned the cursor back on, so fix that.
     jsr init_cursor_control
     ; We must re-initialise screenkernal to pick up the details of the new mode.

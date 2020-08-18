@@ -220,6 +220,11 @@ s_init
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -
+
+    ; If we didn't change mode after a restart, we may have been left with the
+    ; OS colours set to reverse video. Force the OS settings to normal video so
+    ; they agree with s_os_reverse.
+    jsr force_set_os_normal_video
 }
 }
 
@@ -367,6 +372,7 @@ s_reverse_to_os_reverse
 set_os_normal_video
     lda s_os_reverse
     beq .rts
+force_set_os_normal_video
     lda #0
     sta s_os_reverse
     lda #7
