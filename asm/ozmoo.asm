@@ -708,6 +708,9 @@ deletable_init
 }
 .store_nonstored_blocks
 	sty nonstored_blocks
+!ifdef ACORN {
+    +acorn_set_restart_blocks_to_read
+}
 !ifndef ACORN_SWR {
 	tya
 	clc

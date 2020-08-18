@@ -2008,6 +2008,7 @@ z_ins_random
 
 	jmp z_store_result
 
++make_acorn_screen_hole
 .random_seed_0
 !ifndef BENCHMARK {
 !ifdef DEBUG {

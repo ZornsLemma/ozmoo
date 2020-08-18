@@ -145,7 +145,7 @@ z_ins_get_prop_len
 .sibling_num !byte 0,0        ; won't be used at the same time
 .dest_num = .sibling_num      ; won't be used at the same time
 
-; SFTODO +make_acorn_screen_hole
++make_acorn_screen_hole
 z_ins_remove_obj
     ; remove_obj object
 z_ins_remove_obj_body

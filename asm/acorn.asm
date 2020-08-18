@@ -240,11 +240,6 @@ screenkernal_init
     ; that game data, but at worst we're making the user wait while we read
     ; about 16K too much, and adjust_dynamic_memory_inline will probably mean
     ; most of the "excess" read isn't wasted after all.
-    ; SFTODO: If we're restarting, we only need to reload the dynamic memory.
-    ; If we set an "only load X sectors" flag in the persistent storage in page
-    ; 4, we could minimise restart time. (On an ACORN_NO_SHADOW build we would
-    ; need to reload enough to restore what we lost through temporarily switching
-    ; to real mode 7 with the screen at $7c00.)
     ; SFTODO: It might be nice to tell the user (how exactly? does the loader
     ; leave us positioned correctly to output a string, and then we say "press
     ; SPACE to start" or something?) if the game has loaded entirely into RAM
@@ -320,6 +315,26 @@ screenkernal_init
     sta romsel
 }
 
+    ; If we're restarting, we don't actually need to read all the game data
+    ; again, just enough to a) reset dynamic memory b) replace any data lost by
+    ; the screen memory temporarily jumping back up to $7c00 on an
+    ; ACORN_NO_SHADOW build. If we're not restarting, the loader will have set
+    ; restart_blocks_to_read to $ff.
+    !error "This is a great idea, but I don't think it will work. The read-only data is still modified in the sense we page blocks in and out, so unless we preserve vmap across a restart the read-only data we have won't match. And even if we faffed preserving vmap, it's not clear to me this is really ideal."
+    ldx restart_blocks_to_read
+    inx
+    beq .not_restarting
+    dex
+    lda .blocks_to_read + 1
+    bne +
+    cpx .blocks_to_read
+    bcc +
+    ldx .blocks_to_read
++   stx .blocks_to_read
+    ldx #0
+    stx .blocks_to_read + 1
+.not_restarting
+
 .preload_loop
     ; At the end of the file, we might need to shrink readblocks_numblocks to
     ; avoid reading past the end.
@@ -383,6 +398,21 @@ screenkernal_init
     stx game_disc_crc
     sty game_disc_crc + 1
 } ; End of acorn_deletable_init_inline
+
+!macro acorn_set_restart_blocks_to_read {
+    ; Y is nonstored_blocks on entry.
+!ifndef ACORN_NO_SHADOW {
+    sty restart_blocks_to_read
+} else {
+    tya
+    tax
+    cpx #>(flat_ramtop - story_start)
+    bcs +
+    ldx #>(flat_ramtop - story_start)
++   stx restart_blocks_to_read
+}
+    ; This must exit with nonstored_blocks in Y.
+}
 
 !ifdef ACORN_SWR {
 !macro acorn_swr_page_in_default_bank_using_y {

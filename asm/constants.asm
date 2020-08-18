@@ -359,14 +359,14 @@ relocate_target = $408 ; !byte 0, low byte of B%
 fg_colour = $409 ; !byte 0
 bg_colour = $40a ; !byte 0
 screen_mode = $40b ; !byte 0, high byte of B% SFTODO IF WE KEEP THIS, CAN USE IT INSTEAD OF MAKING OS CALLS
+restart_blocks_to_read = $40c ; !byte 0, low byte of C%
+cursor_status = $40d ; !byte 0
 !ifdef VMEM {
-vmap_max_entries = $40c ; !byte 0
+vmap_max_entries = $40e ; !byte 0
 }
 !ifdef ACORN_HW_SCROLL {
-use_hw_scroll = $40d ; !byte 0
+use_hw_scroll = $40f ; !byte 0
 }
-; SFTODO: $40e is currently wasted - move up to fill gap
-cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
 ; we probably don't need all this.

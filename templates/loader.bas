@@ -41,6 +41,7 @@ relocate_target=&408
 fg_colour=&409
 bg_colour=&40A
 screen_mode=&40B
+restart_blocks_to_read=&40C
 ram_bank_count=&410
 ram_bank_list=&411
 max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
@@ -68,6 +69,7 @@ UNTIL key$=" "
 IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
 PRINTTAB(0,24);" Loading, please wait...             ";
+?restart_blocks_to_read=&FF
 *DIR S
 IF tube% THEN */$.OZMOO2P
 IF shadow% THEN */$.OZMOOSH
