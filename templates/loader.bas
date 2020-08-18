@@ -48,7 +48,7 @@ max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF NOT tube% THEN PROCdetect_swr ELSE PRINT "  Second processor"
+IF NOT tube% THEN PROCdetect_swr ELSE PRINT "   Second processor"
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
