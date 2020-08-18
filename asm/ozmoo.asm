@@ -1145,31 +1145,32 @@ load_suggested_pages
 }
 }
 
+end_of_routines_in_stack_space
+
 !ifdef ACORN_RELOCATABLE {
     ; This must be the last thing in the executable.
     !source "relocate.asm"
 }
 
-end_of_routines_in_stack_space
-
+!ifndef ACORN {
 	!fill stack_size - (* - stack_start),0 ; 4 pages
-
-!if (* - stack_start) > stack_size {
-    !error "Routines in stack space have overflowed stack"
-    ; SF: On Acorn this needn't be a problem, we'd just need to say:
-    ;     story_start = stack_start + stack_size
-    ;     vmem_start = story_start
-    ; instead of defining them via the following labels. The validation code
-    ; would remain the same. This won't work on a C64 build, as there we need to
-    ; attach the preload data to the binary, so this would have to be conditional
-    ; on ACORN being defined; I won't do it unless the error gets triggered.
-}
 story_start
+} else {
+    ; It's fine for code to spill over past story_start *as long as it's going
+    ; to be executed before it gets overwritten*. This is definitely true of the
+    ; relocation code, because that executes before anything else and is only
+    ; used once. We don't have any preload data attached, unlike the C64, so
+    ; this doesn't cause problems.
+!if (end_of_routines_in_stack_space - stack_start) > stack_size {
+    !error "Routines in stack space have overflowed stack"
+}
+story_start = stack_start + stack_size
+}
 !if (story_start & 0xff) != 0 {
     !error "story_start must be page-aligned"
 }
 !ifdef VMEM {
-vmem_start
+vmem_start = story_start
 !if (vmem_start & 0x1ff) != 0 {
     !error "vmem_start must be at a 512-byte boundary"
 }
