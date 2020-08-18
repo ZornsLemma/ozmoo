@@ -785,6 +785,10 @@ z_ins_restart
     ; Will we have it on a non-VMEM build?
 !ifdef ACORN_NO_SHADOW {
     jsr undo_mode_7_3c00
+    ; Turn the cursor off during the restart; switching to proper mode 7 will
+    ; have re-enabled it without updating cursor_status, so we just call
+    ; init_cursor_control and that will turn it off again.
+    jsr init_cursor_control
 }
 
     ; Since we discarded our initialisation code on startup, we have to
