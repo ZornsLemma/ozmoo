@@ -204,9 +204,6 @@ s_init
     ; story_start + header_screen_{width,height}* are only valid for certain
     ; Z-machine versions. We don't want to be querying the OS for these values all
     ; the time, so we keep them here.
-    ; SFTODO: Note that if I ever decide I want the Ozmoo executable to set the
-    ; mode itself rather than letting the loader do it, we will need to be
-    ; careful to call this code again after changing mode.
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
     jsr osbyte
@@ -884,8 +881,6 @@ s_erase_line_from_cursor
 +
 }
     ; Define a text window covering the region to clear
-    ; SFTODO: It may be possible to factor out the sequence of OSWRCH calls for
-    ; the text window definition.
     lda #vdu_define_text_window
     jsr oswrch
     lda zp_screencolumn
@@ -913,7 +908,7 @@ s_erase_line_from_cursor
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
-    ; s_pre_scroll preserves X and Y if C is set on entry. SFTODO: Not any more it doesn't, but I don't think it needs to anyway.
+    ; s_pre_scroll preserves X and Y if C is set on entry. SFTODONOW: Not any more it doesn't, but I don't think it needs to anyway.
 s_pre_scroll
     ; Define a text window covering the region to scroll.
     ; If C is set on entry, leave the OS text cursor at the bottom right of the
@@ -946,7 +941,7 @@ s_pre_scroll
 .s_pre_scroll_leave_bottom_right
     lda #vdu_define_text_window
     jsr oswrch
-    ; SFTODO: I am not sure we need to set zp_screencolumn to 0 (we do need to
+    ; SFTODONOW: I am not sure we need to set zp_screencolumn to 0 (we do need to
     ; set zp_screenrow) - I think all our callers will have already done this
     lda #0
     sta zp_screencolumn ; leave the ozmoo cursor at the start of the line

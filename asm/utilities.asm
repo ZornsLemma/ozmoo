@@ -98,7 +98,7 @@ read_next_byte_at_z_pc_unsafe_middle_sub
     jmp inc_z_pc_page_acorn_unsafe
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
-; SFTODO: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
+; SFTODONOW: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
 ; practice it's fine but I'm a bit worried about saying this is OK.
 ; This is the normal "safe" version of the code, which pages in the relevant
 ; bank temporarily and pages the first bank back in afterwards.
@@ -115,7 +115,7 @@ read_next_byte_at_z_pc_sub
 } else { ; not ACORN_SWR_BIG_DYNMEM
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
-; SFTODO: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
+; SFTODONOW: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
 ; bit, I think. It may be worth not making the relocatable version load
 ; quite so high to maximise the chances of this coming into play.
 read_next_byte_at_z_pc_sub
@@ -248,9 +248,6 @@ ERROR_READ_ABOVE_STATMEM = 14
 ERROR_TOO_MANY_TERMINATORS = 15
 ERROR_NO_VMEM_INDEX = 16
 
-; SFTODO: General point - there's lots of !pet stuff in debug-only code which
-; I haven't ported yet. If ACME allows it, maybe define a !native macro which
-; wraps !pet or !text depending on whether ACORN is defined or not.
 !ifdef DEBUG {
 !ifndef ACORN {
 .error_unsupported_stream !pet "unsupported stream#",0

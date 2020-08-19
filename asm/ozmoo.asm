@@ -679,9 +679,6 @@ deletable_init
 
 ; parse_header section
 
-; SFTODO: WE COULD MAYBE DEFINE UNSAFE ON ACORN, GIVEN THE BUILD SYSTEM IS
-; CHECKING THIS - SEE WHAT ELSE IT DOES, IF IT *ONLY* SAVES THIS IT'S PROBABLY
-; NOT WORTH IT (DELETABLE INIT CODE), AND SOME OF THE OTHER CHECKS MAY BE MORE VALAUBLE
 !ifndef UNSAFE {
     ; check z machine version
     lda story_start + header_version
@@ -731,7 +728,7 @@ deletable_init
 ++	sta vmap_max_entries
 }
 } else { ; ACORN_SWR
-    +acorn_swr_calculate_vmap_max_entries_inline
+    +acorn_swr_calculate_vmem_values_inline
 }
 
 !ifdef VMEM_STRESS {
@@ -1205,13 +1202,6 @@ vmem_start = story_start
 !ifdef ACORN_NO_SHADOW {
     +check_acorn_screen_hole
 }
-
-; SFTODO: In principle we could support bold and underlined text in non-mode 7
-; by generating UDGs on the fly. It would probably not be all that fast given
-; we'd need an OS call to read the character bitmap each time, but might be nice
-; to experiment with at some point. Actually, although I'd probably prefer to
-; do it that way as it would work in any mode, you could also use e.g. mode 1
-; and use (say) yellow for bold, but I'd probably rather not go there.
 
 ; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways
 ; RAM. If we put it last in the list of RAM banks, it probably wouldn't require

@@ -201,6 +201,7 @@ except IOError:
     version_txt = None
 
 parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
+# SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
 if version_txt is not None:
     parser.add_argument("--version", action="version", version=best_effort_version)
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")

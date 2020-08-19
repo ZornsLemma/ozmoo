@@ -235,9 +235,6 @@ vdu_cls = 12
 vdu_set_text_colour = 17
 vdu_redefine_colour = 19
 vdu_set_mode = 22
-; SFTODO: I think (check all OSes just to be safe) it's not actually necessary
-; to use VDU 26 before defining a new text window. It is possible that not
-; having a text window in effect speeds up output though. Maybe do some timings?
 vdu_reset_text_window = 26
 vdu_define_text_window = 28
 vdu_home = 30
@@ -293,12 +290,6 @@ crtc_screen_start_high = 12
 crtc_cursor_start_high = 14
 }
 
-!if 0 { ; SFTODO DELETE
-default_mode_7_status_colour = 6
-default_mode_6_fg_colour = 7
-default_mode_6_bg_colour = 4
-}
-
 ; Acorn memory allocations
 ; SFTODO: It might be worth reordering/reallocating these so the order is a
 ; bit more logical.
@@ -343,12 +334,12 @@ stack = $100
 
 ; $0400-$046B hold the BASIC resident integer variables. We use some of these
 ; addresses to pass information from the loader to the Ozmoo executable.
-z_trace_index = $400 ; 1 byte
+z_trace_index = $400 ; !byte 0
 s_stored_x = $401 ; !byte 0
 s_stored_y = $402 ; !byte 0
 !ifndef ACORN_NO_SHADOW {
-screen_width_minus_1 = $403 ; 1 byte
-screen_width_plus_1 = $404 ; 1 byte
+screen_width_minus_1 = $403 ; !byte 0
+screen_width_plus_1 = $404 ; !byte 0
 }
 game_disc_crc = $405 ; 2 bytes
 num_rows = $407 ; !byte 0
@@ -358,7 +349,7 @@ relocate_target = $408 ; !byte 0, low byte of B%
 ; fg_colour and bg_colour must be adjacent and in this order
 fg_colour = $409 ; !byte 0
 bg_colour = $40a ; !byte 0
-screen_mode = $40b ; !byte 0, high byte of B% SFTODO IF WE KEEP THIS, CAN USE IT INSTEAD OF MAKING OS CALLS
+screen_mode = $40b ; !byte 0, high byte of B%
 !ifdef VMEM {
 vmap_max_entries = $40c ; !byte 0
 }

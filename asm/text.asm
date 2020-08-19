@@ -10,26 +10,6 @@
 .petscii_char_read = zp_temp
 	
 ; SFTODO: Annoying duplication here...
-; SFTODO: b-em, Master Turbo, mode 6, drive noises on: $005aa2
-; SFTODO: b-em, Master Turbo, mode 6, drive noises on: $005563
-; SFTODO: (I'm taking just the final output there; since I start the "kernal"
-; timer at 0 when the machine loads, this means I am including some startup time
-; but that's fine - I am not including any time before the interpreter starts.)
-; SFTODO: New times with latest code and .dsd/.ssd variants:
-; SFTODO: b-em, Master Turbo, mode 6, drive noises on, .dsd: $0049dd
-; SFTODO: b-em, Master Turbo, mode 6, drive noises on, .ssd: $005300
-; SFTODO: New times with latest code:
-; SFTODO: b-em, Master Turbo, mode 6, hw scroll, drive noises on, .ssd: $003e2f
-; SFTODO: b-em, Master Turbo, mode 6, sw scroll, drive noises on, .ssd: $005411
-; SFTODO: With non-40x25 mode support:
-; SFTODO: mode 6, hw scroll: $0041a7
-; SFTODO: mode 0, hw scroll: $00484f
-; SFTODO: Hacky SWR support, Master 128, mode 6, disc drive noises on, hw scroll, .ssd:
-; bit<60K SWR (vmap_max_size = 120): $005bea
-; 80K SWR (vmap_max_size = 255 from now): $0059dd
-; 96K SWR - this holds the entire game in RAM: $0057d2
-; 16K SWR: $00d99c
-; 32K SWR: $006b56
 !ifdef BENCHMARK {
 ; SFTODO +make_acorn_screen_hole
 benchmark_commands
@@ -346,7 +326,7 @@ z_ins_read
 }
 .read_done
 !ifdef ACORN_CURSOR_PASS_THROUGH {
-    ; SFTODO: If this occurs a lot now, can possibly save code with a helper subroutine.
+    ; SFTODONOW: If this occurs a lot now, can possibly save code with a helper subroutine.
     lda #osbyte_set_cursor_editing
     ldx #1
     jsr do_osbyte_y_0

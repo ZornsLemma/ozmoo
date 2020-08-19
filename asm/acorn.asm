@@ -390,8 +390,9 @@ screenkernal_init
     sty romsel
 }
 
-; SFTODO COMMENT
-!macro acorn_swr_calculate_vmap_max_entries_inline {
+; Calculate vmap_max_entries, vmem_blocks_in_main_ram and
+; vmem_blocks_stolen_in_first_bank.
+!macro acorn_swr_calculate_vmem_values_inline {
     pla ; number of 256 byte blocks we read from disc earlier, low byte
     sec
     sbc nonstored_blocks
@@ -448,7 +449,7 @@ nonstored_blocks_adjusted
     +adjust_dynamic_memory_inline
 }
 }
-} ; End of acorn_swr_calculate_vmap_max_entries_inline
+} ; End of acorn_swr_calculate_vmem_values_inline
 
 ; The amount of sideways RAM we can access is limited by having only
 ; vmap_max_size (=255) entries in vmap_z_[hl]. We independently access up to 16K
@@ -1120,5 +1121,17 @@ do_oswrch_vdu_goto_xy
     jsr oswrch
     tya
     jmp oswrch
+
+; SF: ENHANCEMENT: It would potentially be possible to support bold and
+; underlined text in modes other than 7, although we'd either need to do it via
+; OSWORD 10 and UDG redefinition (which is probably quite slow) or install
+; some kind of custom driver around OSWRCH and have that run on the host even if
+; we're using a second processor. As a "cheap" version, it would be possible to
+; use colours in mode 1 for bold, but I'm not particularly keen to support this
+; just for one mode which probably no one would use.
+;
+; SF: ENHANCEMENT: It would also with a bit more effort probably be possible
+; to use a proportionally spaced font in modes other than 7, though this would
+; be a more intrusive code change.
 
 }

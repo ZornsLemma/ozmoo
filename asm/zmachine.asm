@@ -444,7 +444,7 @@ z_exe_mode_exit = $ff
 
 .not_normal_exe_mode
 !ifdef Z4PLUS {
-!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code. SFTODO: DO I NEED TO DO ANYTHING ABOUT THIS NOW I'VE ENABLED RESTART FOR NON-VMEM TUBE?
+!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code. SFTODONOW: DO I NEED TO DO ANYTHING ABOUT THIS NOW I'VE ENABLED RESTART FOR NON-VMEM TUBE?
     ; SFTODO: I am sure this *is* needed or it wouldn't be here, but these two
     ; instructions take a noticeable amount of the total runtime and if they
     ; are *not* necessary on Acorn for some reason it would be good to get rid
