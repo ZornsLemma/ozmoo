@@ -606,7 +606,7 @@ s_printchar
 	jsr .update_screenpos
 	jmp .printchar_end
 +	jsr .s_scroll
-} else {
+} else { ; ACORN
     ; OSWRCH may cause the screen to scroll if we're at the bottom right
     ; character. We therefore don't use .s_scroll to do the scroll, we just
     ; define a text window to tell the OS what to scroll.
@@ -908,7 +908,6 @@ s_erase_line_from_cursor
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
-    ; s_pre_scroll preserves X and Y if C is set on entry. SFTODONOW: Not any more it doesn't, but I don't think it needs to anyway.
 s_pre_scroll
     ; Define a text window covering the region to scroll.
     ; If C is set on entry, leave the OS text cursor at the bottom right of the
@@ -922,7 +921,8 @@ s_pre_scroll
     ; hard to avoid defining the text window in this case, but in reality I
     ; suspect there's nearly always a status bar or similar on the screen and
     ; this case won't occur. If a game where this would be useful turns up I
-    ; can consider it.
+    ; can consider it. (Don't forget ACORN_NO_SHADOW must always use a text
+    ; window though.)
     bcs .s_pre_scroll_leave_bottom_right
     lda #osbyte_read_cursor_position
     jsr osbyte
