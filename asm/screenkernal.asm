@@ -941,10 +941,9 @@ s_pre_scroll
 .s_pre_scroll_leave_bottom_right
     lda #vdu_define_text_window
     jsr oswrch
-    ; SFTODONOW: I am not sure we need to set zp_screencolumn to 0 (we do need to
-    ; set zp_screenrow) - I think all our callers will have already done this
     lda #0
-    sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
+    ; We don't need to update zp_screencolumn, our caller will have done it.
+    ; sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
     jsr oswrch
     +lda_screen_height_minus_1
     sta zp_screenrow ; leave the ozmoo cursor on the last line
