@@ -87,9 +87,8 @@ ACORN_SWR_BIG_DYNMEM = 1
     sta brkv + 1
 
 !ifdef ACORN_CURSOR_PASS_THROUGH {
-    lda #osbyte_set_cursor_editing
     ldx #1
-    jsr do_osbyte_y_0
+    jsr do_osbyte_set_cursor_editing
 }
 
     +init_readtime_inline
@@ -625,9 +624,7 @@ nonstored_blocks_adjusted
     ldx #0
     jsr do_osbyte_rw_escape_key
 !ifdef ACORN_CURSOR_PASS_THROUGH {
-    lda #osbyte_set_cursor_editing
-    ldx #0
-    jsr do_osbyte_y_0
+    jsr do_osbyte_set_cursor_editing_x_0
 }
     ; Re-enter the current language.
 re_enter_language
@@ -1104,6 +1101,14 @@ calculate_crc
     ldy .crc + 1
 .calculate_crc_rts
     rts
+
+; Two wrappers for calling osbyte_set_cursor_editing to reduce code size; we do
+; this is in several places.
+do_osbyte_set_cursor_editing_x_0
+    ldx #0
+do_osbyte_set_cursor_editing
+    lda #osbyte_set_cursor_editing
+    bne do_osbyte_y_0 ; Always branch
 
 ; Two wrappers for calling osbyte_rw_escape_key to reduce code size; we do this
 ; in several places.
