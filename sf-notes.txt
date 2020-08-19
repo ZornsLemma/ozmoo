@@ -34,8 +34,8 @@ get_page_at_z_pc{,_did_pha}:
 - contains upstream code to explicitly preserve A and X
 - upstream code explicitly returns with Y=0 and has a comment saying this is important
 - calls read_byte_at_z_address
-- called by C64 restore_game, which immediately does lda and ldx afterwards - there is no clear use of Y in the following code, and I am 99% confident it doesn't matter
-- called by inc_z_pc_page
+- called by C64 restore_game, which immediately does lda and ldx afterwards - there is no clear use of Y in the following code, and I am 99% confident it doesn't matter - it does an rts after which will go via make_branch_{true,false) and as discussed under read_next_byte_at_z_pc those will return control to the main loop
+- called by inc_z_pc_page - this is used only by read_next_byte_at_z_pc and so I am pretty confident (see notes about that routine) that it is not necessary to have Y=0 for that
 - called by z_init, which will trash A, X and Y not longer afterwards
 - so I think this can maybe corrupt Y, provided read_next_byte_at_z_pc takes its own steps to ensure Y=0 (and I'm not sure that's actually necessary)
 
@@ -57,7 +57,7 @@ read_next_byte_at_z_pc:
 - upstream code will always return with Y=0, because it sets Y=0 and *maybe* calls inc_z_pc_page, which will also set Y=0
 - will preserve X
 - has many callers, some of which rely on it preserving X
-- I can't see any callers obviously depending on Y=0 but I can't be 100% sure there isn't something I'm missing - I am 95% confident having looked at the callers this isn't a problem, and in practice it really doesn't seem to break anything having Y!=0 on exit
+- I can't see any callers obviously depending on Y=0 but I can't be 100% sure there isn't something I'm missing - I am 95% confident having looked at the callers this isn't a problem, and in practice it really doesn't seem to break anything having Y!=0 on exit - OK, I've been over the callers in more detail, I am now 99% confident - the only possibly iffiness is make_branch_{true,false}, but I am pretty sure those return control to the main loop at rts and except vaguely-possibly for the not_normal_exe_mode case the main loop trashes Y fairly early on
 
 
 

@@ -97,11 +97,9 @@ read_next_byte_at_z_pc_unsafe_middle_sub
     ; appropriate here, so we use this variant instead.
     jmp inc_z_pc_page_acorn_unsafe
 
-; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
-; SFTODONOW: I SAY THAT IN A FEW PLACES - I am not longer so sure. I still think it
-; practice it's fine but I'm a bit worried about saying this is OK.
 ; This is the normal "safe" version of the code, which pages in the relevant
 ; bank temporarily and pages the first bank back in afterwards.
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_sub
     jsr restart_read_next_byte_at_z_pc_unsafe_sub
 	ldy #0
@@ -114,10 +112,10 @@ read_next_byte_at_z_pc_sub
 
 } else { ; not ACORN_SWR_BIG_DYNMEM
 
-; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 ; SFTODONOW: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
 ; bit, I think. It may be worth not making the relocatable version load
 ; quite so high to maximise the chances of this coming into play.
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_sub
 	ldy #0
 	lda (z_pc_mempointer),y
