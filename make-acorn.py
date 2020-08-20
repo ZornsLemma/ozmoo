@@ -35,6 +35,13 @@ def substitute(lst, a, b):
 def ourhex(i):
     return hex(i)[2:]
 
+def our_parse_int(s):
+    if s.startswith("$") or s.startswith("&"):
+        return int(s[1:], 16)
+    if s.startswith("0x"):
+        return int(s[2:], 16)
+    return int(s)
+
 def run_and_check(args, output_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
@@ -155,6 +162,9 @@ class Executable(object):
         # SFTODO: Ideally these failures would result in us generating a disc which doesn't
         # support the system type we're currently patching the binary for, but which
         # does support others.
+        # SFTODO: Because we may be doing an "experimental" build as part of the shadow RAM
+        # process, we should probably be capable of returning an error/throwing an exception
+        # which caller can handle rather than dyingi, for both of the following die() calls.
         if nonstored_blocks > ozmoo_ram_blocks:
             die("Not enough free RAM for game's dynamic memory")
         if game_blocks > nonstored_blocks:
@@ -213,6 +223,7 @@ parser.add_argument("--auto-start", action="store_true", help="don't wait for SP
 parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
 parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
 parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
+parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -313,12 +324,23 @@ except OSError:
 host = 0xffff0000
 tube_start_addr = 0x600
 swr_start_addr = 0x1900
-# Shadow RAM builds will load at or just above shr_swr_start_addr and relocate
-# down to PAGE or just above. shr_swr_start_addr must be high enough to
-# acommodate the maximum PAGE the binary will support. It is still better if
-# this isn't too high as it will increase the worst case main RAM free, which
-# may allow ACORN_SWR_SMALL_DYNMEM to be used.
-shr_swr_start_addr = 0x2000
+# Shadow RAM builds will load at or just above some address X and relocate
+# down to PAGE or just above. X must be at or above PAGE on the system the game
+# is running on. Because the code relocates down, it's mostly harmless to have
+# X higher than necessary. However, the decision to build the code for the big
+# or small dynamic memory model must be made at build time and it must be based
+# on the worst case, i.e. a system with PAGE at X where the code can't relocate
+# down. We build a version to run at X=shr_swr_default_start_address *unless*
+# that uses the big dynamic memory model and there's a lower
+# X>=shr_swr_min_start_addr which will allow the small dynamic memory model to
+# be used. One way to look at this is that we're saying "the game must run on
+# any machine where PAGE>=shr_swr_min_start_addr; it would be nice to work on
+# machines where PAGE>=shr_swr_default_start_addr but we're willing to not work
+# on those machines if that enables us to use the small dynamic memory model."
+# SFTODO: This comment may want tweaking, but I'll wait until I've finished
+# fiddling with the code.
+shr_swr_min_start_addr = our_parse_int(args.min_relocate_addr)
+shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
 
 tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
 
@@ -545,7 +567,7 @@ def make_small_dynmem_executable(version, start_address, extra_args):
     return Executable(version.replace("_DYNMEMSIZE", ""), start_address, extra_args)
 
 # SFTODO: MOVE THIS FUNCTION
-def info_no_swr_dynmem(name, labels):
+def info_swr_dynmem(name, labels):
     if "ACORN_SWR_SMALL_DYNMEM" in labels:
         info("Dynamic memory fits in main RAM on " + name)
     else:
@@ -553,43 +575,85 @@ def info_no_swr_dynmem(name, labels):
         info("Sideways RAM may be used for dynamic memory on " + name)
 
 # SFTODO: Move this function?
+# SFTODO: I think this is OK but it could probably do with a review when I can come to it fresh
 def add_swr_shr_executable(ssd):
-    candidate = None
     extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
-    # Because VMEM builds require story_start to be double-page aligned, the executable will be quite
-    # different depending on whether it starts at an even or odd page and the size of padding required
-    # to make that start address work with a double-page alignment for story_start. We pick whichever
-    # of an odd or even start address gives the smallest executable, and preserve that alignment
-    # (rounding up the relocation target address on the system we're running on necessary) when
-    # we relocate down. This avoids wasting a double page, as could happen if we arbitarily picked
-    # a start address which needed an extra page of padding and then the system we're running on
-    # has an oppositely aligned ideal relocation target.
-    for start_address in (shr_swr_start_addr, shr_swr_start_addr + 0x100):
-        e = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"])
-        if candidate is None or len(e.binary) < len(candidate.binary):
-            candidate = e
-    assert candidate is not None
 
-    info_no_swr_dynmem("sideways+shadow RAM build", candidate.labels)
-    info("Sideways+shadow RAM build will run at %s address" % ("even" if candidate.start_address % 0x200 == 0 else "odd"))
+    # We consider two possible start addresses one page apart in a couple of places here;
+    # this is because the requirement that story_start be double page-aligned on VMEM
+    # builds means one alignment will generate a smaller binary than the other as it will
+    # have one less page of padding than the other. We want the smaller one because that
+    # way we won't waste any RAM on machines where PAGE has the same alignment, and on
+    # machines with an oppositely-aligned PAGE the relocation code will waste one page
+    # to maintain the required alignment (which is no worse than having it inserted into
+    # the binary by the build process).
 
-    high_executable = candidate
-    high_start_address = high_executable.start_address
-    low_start_address = 0xe00 + (high_start_address % 0x200)
-    low_executable = Executable(high_executable.raw_version, low_start_address, high_executable.extra_args)
-    relocations = make_relocations(low_executable.binary, high_executable.binary)
+    # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
+    # lower than the high version of the executable - but it's a good choice because it
+    # means we can use the ACME labels/report directly for debugging on a Master.
+    low_start_address_options = (0xe00, 0xe00 + 0x100)
+    low_candidate = None
+    for start_address in low_start_address_options:
+        e = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
+        if low_candidate is None or len(e.binary) < len(low_candidate.binary):
+            low_candidate = e
+    assert low_candidate is not None
+
+    high_candidate = None
+    info_shown = False
+    if "ACORN_SWR_SMALL_DYNMEM" in low_candidate.labels:
+        surplus_nonstored_blocks = max_game_blocks_main_ram(low_candidate) - nonstored_blocks
+        # We already picked the optimally double page-aligned version of the binary, so we don't
+        # want to adjust by an odd number of pages.
+        if surplus_nonstored_blocks % 2 != 0:
+            surplus_nonstored_blocks -= 1
+        adjusted_high_start_address = low_candidate.start_address + surplus_nonstored_blocks * 0x100
+        if adjusted_high_start_address >= shr_swr_min_start_addr:
+            high_candidate = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", adjusted_high_start_address, extra_args)
+            assert "ACORN_SWR_SMALL_DYNMEM" in high_candidate.labels
+            # If the game has very small dynamic memory requirements, we might actually use
+            # an address higher than shr_swr_default_start_addr.
+            # SFTODO: Should we get rid of this != check and just always print a message, perhaps not saying "Adjusting", but saying the same thing otherwise. I could imagine shr_swr_default_start_addr disappearing eventually, and it's a mostly internal constant at this point, not something which should happen to suppress a message if we end up using it precisely.
+            if high_candidate.start_address != shr_swr_default_start_addr:
+                info("Adjusting sideways+shadow RAM build start address to &%s to allow dynamic memory to just fit into main RAM" % (ourhex(high_candidate.start_address),))
+                info_shown = True
+
+    if high_candidate is None:
+        # We can't generate a valid high candidate with the small dynamic memory model;
+        # we may or may not have been able to do so for the low candidate, but since the
+        # two need to agree we must use the large dynamic memory model for both.
+        if "ACORN_SWR_SMALL_DYNMEM" in low_candidate.labels:
+            low_candidate = None
+            for start_address in low_start_address_options:
+                e = Executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
+                if low_candidate is None or len(e.binary) < len(low_candidate.binary):
+                    low_candidate = e
+        assert low_candidate is not None
+
+        # SFTODO: In principle rather than use shr_swr_default_start_addr we could pick an
+        # address which just leaves n (=2?) pages of sideways RAM free in the first bank
+        # for virtual memory. This would be similar to what we do in the small dynmem case
+        # where we load as high as we can.
+        high_start_address = shr_swr_default_start_addr + (low_candidate.start_address % 0x200)
+        high_candidate = Executable("swr_shr_vmem_DYNMEMSIZE_START", high_start_address, extra_args)
+
+    if not info_shown:
+        info_swr_dynmem("sideways+shadow RAM build", high_candidate.labels)
+        info("Sideways+shadow RAM build will run at %s address" % ("even" if high_candidate.start_address % 0x200 == 0 else "odd"))
+
+    relocations = make_relocations(low_candidate.binary, high_candidate.binary)
     # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
     # for a double-sided game, this is probably the one to pick - it's going to be at least
     # slightly larger due to the relocations, and the second surface has slightly more free
     # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
     # two Ozmoo executables.
-    ssd.add_file("$", "OZMOOSH", host | high_start_address, host | high_start_address, high_executable.binary + relocations)
+    ssd.add_file("$", "OZMOOSH", host | high_candidate.start_address, host | high_candidate.start_address, high_candidate.binary + relocations)
 
 
 # SFTODO: Move this function?
 def add_swr_executable(ssd):
     e = make_small_dynmem_executable("swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
-    info_no_swr_dynmem("sideways RAM build", e.labels)
+    info_swr_dynmem("sideways RAM build", e.labels)
     ssd.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, e.binary)
 
 
