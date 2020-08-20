@@ -391,6 +391,7 @@ else:
 
 with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "w") as loader:
+        # SFTODO: Slightly hacky but feeling my way here
         space_line = None
         normal_fg_colour = 135
         header_fg_colour = 135
@@ -398,8 +399,6 @@ with open("templates/loader.bas", "r") as loader_template:
         highlight_bg_colour = 135
         for line in loader_template:
             if line.startswith("REM ${BANNER}"):
-                # SFTODO: There should be standard strings in template which are replaced by game name and Ozmoo version
-                # SFTODO: Slightly hacky but feeling my way here
                 first_loader_line = None
                 last_loader_line = None
                 header = bytearray()
@@ -408,7 +407,8 @@ with open("templates/loader.bas", "r") as loader_template:
                     banner_line = title_page_template[i*40:(i+1)*40]
                     # SFTODO: In order to avoid people spending ages designing custom banners which are too big and not realising because in mode 7 there are fewer in-game control lines, we should check here that there are enough free lines left on the screen.
                     if "LOADER OUTPUT STARTS HERE" in banner_line:
-                        first_loader_line = i
+                        if first_loader_line is None:
+                            first_loader_line = i
                     elif "LOADER OUTPUT ENDS HERE" in banner_line:
                         last_loader_line = i
                         continue
@@ -443,6 +443,10 @@ with open("templates/loader.bas", "r") as loader_template:
                 while len(footer) > 0 and footer.startswith(" "*40):
                     footer = footer[40:]
                     last_loader_line += 1
+                loader_lines = last_loader_line + 1 - first_loader_line
+                min_loader_lines = 11
+                if loader_lines < min_loader_lines:
+                    die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
                 if len(footer) > 0:
                     print_command = "PRINTTAB(0,%d);" % (last_loader_line + 1,)
                     scroll_adjust = False
