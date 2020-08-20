@@ -75,7 +75,7 @@ is used to copy RAM around with RAM paged in from $D000 upwards. The vmem_cache
 stuff keeps a copy of high RAM pages currently in use in low RAM. This is
 accessible RAM caching inaccessible RAM; it has nothing to do with optimising
 disc access. On Acorn second processor builds this is irrelevant as there's no
-paging. SFTODONOW: I suspect this is also irrelevant on Acorn SWR builds, but I
+paging. SF: I suspect this is also irrelevant on Acorn SWR builds, but I
 need to investigate exactly how Z-machine non-dynamic memory is accessed to see
 if we can ensure the correct SWR bank is paged in at all times without using
 this caching mechanisms.

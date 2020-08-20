@@ -112,9 +112,6 @@ read_next_byte_at_z_pc_sub
 
 } else { ; not ACORN_SWR_BIG_DYNMEM
 
-; SFTODONOW: ACORN_SWR_SMALL_DYNMEM could potentially boost performance quite a
-; bit, I think. It may be worth not making the relocatable version load
-; quite so high to maximise the chances of this coming into play.
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_sub
 	ldy #0
