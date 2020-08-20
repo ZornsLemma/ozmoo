@@ -459,14 +459,6 @@ read_byte_at_z_address
     bne .read_new_byte
     ; same 256 byte segment, just return
 !ifdef ACORN_SWR {
-    ; SFTODONOW: I believe we're allowed to corrupt X here - e.g. we would if
-    ; this called into VM subsystem. We could use X to hold the ram bank both
-    ; here and in the path which enters via .read_new_byte and the '-' label,
-    ; then at the page out step just below we could cpx ram_bank_list:beq rts
-    ; to skip over the pha...pla code if the bank is already paged in. This
-    ; might or might not be a performance win; we'd pay 7 cycles for the check+
-    ; branch, but we'd save 18 cycles of redundant paging in *sometimes*.
-    ; May well not be worth it, but have a think, maybe do some timings.
     lda mempointer_ram_bank
     sta romsel_copy
     sta romsel

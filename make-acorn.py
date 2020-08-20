@@ -362,6 +362,9 @@ auto_start = "TRUE" if args.auto_start else "FALSE"
 if args.title is not None:
     title = args.title
 else:
+    # SFTODONOW: I should copy the logic form make.rb for this; at the very least
+    # I should probably convert hyphens to spaces and capitalise each word, not
+    # just the first.
     title = os.path.basename(os.path.splitext(args.input_file)[0])
     title = title[0].upper() + title[1:].lower()
 
