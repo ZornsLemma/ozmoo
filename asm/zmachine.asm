@@ -437,16 +437,20 @@ z_opcode_opcount_ext = 96
 
 z_exe_mode_normal = $0
 z_exe_mode_return_from_read_interrupt = $80
+!ifndef ACORN {
 z_exe_mode_exit = $ff
+}
 
 
 !zone z_execute {
 
 .not_normal_exe_mode
 !ifdef Z4PLUS {
-!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code. SFTODONOW: DO I NEED TO DO ANYTHING ABOUT THIS NOW I'VE ENABLED RESTART FOR NON-VMEM TUBE? I MIGHT GUESS THE TIMED INPUT TEST IN TERPETUDE WILL CURRENTLY FAIL ON NON-VMEM TUBE, TRY IT. - NO, THAT SEEMS TO WORK, WILL NEED TO READ CODE PROPERLY - OK, IT LOOKS LIKE THE Z_EXE_MODE_EXIT CASE CAN'T OCCUR ON ACORN, BECAUSE RESTART JUST DOES *RUN BLAH AND NEVER RETURNS, SO WE PROBABLY NEVER NEED THIS CODE ON ACORN - THINK ABOUT THIS FRESH LATER BEFORE DOING ANYTHING
+!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code.
+!ifndef ACORN { ; ACORN builds never use z_exe_mode_exit and don't need this code.
 	cmp #z_exe_mode_return_from_read_interrupt
 	bne .return_from_z_execute
+}
 }
 	lda #z_exe_mode_normal
 	sta z_exe_mode
