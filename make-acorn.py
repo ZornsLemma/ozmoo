@@ -10,6 +10,8 @@
 
 # SFTODO: Some uses of assert check things which are not internal errors
 
+# SFTODO: It would be good if the loader could check PAGE against what we know the shadow RAM binary will cope with, so we can get a cleaner error in the loader rather than a "PAGE too high / Bad program" error when the loader actually tries to run it.
+
 from __future__ import print_function
 import argparse
 import base64
