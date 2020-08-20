@@ -16,6 +16,7 @@ from __future__ import print_function
 import argparse
 import base64
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -379,15 +380,25 @@ if args.default_mode is not None:
 else:
     default_mode = 7
 
+# SFTODONOW: FIX THE HORRIBLE TEST COLOURS IN THE EMBEDDED DEFAULT BANNER
 auto_start = "TRUE" if args.auto_start else "FALSE"
 if args.title is not None:
     title = args.title
 else:
-    # SFTODONOW: I should copy the logic form make.rb for this; at the very least
-    # I should probably convert hyphens to spaces and capitalise each word, not
-    # just the first.
     title = os.path.basename(os.path.splitext(args.input_file)[0])
-    title = title[0].upper() + title[1:].lower()
+    # This logic has been copied from make.rb.
+    camel_case = re.search("[a-z]", title) and re.search("[A-Z]", title) and not re.search(" |_", title)
+    if camel_case:
+        print("Q", title)
+        title = re.sub("([a-z])([A-Z])", r"\1 \2", title)
+        print("Q", title)
+        title = re.sub("A([A-Z])", r"A \1", title)
+        print("Q", title)
+    title = re.sub("_+", " ", title)
+    title = re.sub("(^ +)|( +)$", "", title)
+    # SFTODO: DO THE "REMOVE THE IF LONGER THAN" BIT - MAY WANT TO VARY THIS FOR TITLE SCRREN VS DISC TITLE
+    if re.search("^[a-z]", title):
+        title = title.capitalize()
 
 with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "w") as loader:
