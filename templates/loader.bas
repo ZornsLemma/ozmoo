@@ -33,8 +33,7 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-title%=131
-PRINT CHR$(title%);"Hardware detected:"
+PRINT CHR$(${HEADERFG});"Hardware detected:"
 :
 REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408
@@ -48,17 +47,17 @@ max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF NOT tube% THEN PROCdetect_swr ELSE PRINT "   Second processor"
+IF NOT tube% THEN PROCdetect_swr ELSE PRINT CHR$(${NORMALFG});"  Second processor"
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
 mode_key$="03467"
 IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu(mode%)
-PRINT'CHR$(title%);"In-game controls:"
+PRINT'CHR$(${HEADERFG});"In-game controls:"
 controls_vpos%=VPOS
 PROCupdate_controls(mode%)
 REM SFTODO: We need an option to auto-start the game without waiting for space
-IF NOT auto% THEN PRINTTAB(0,24);" Press SPACE to start the game...";
+IF NOT auto% THEN PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Press SPACE to start the game...";
 REPEAT
 *FX21
 IF auto% THEN key$=" " ELSE key$=GET$
@@ -67,7 +66,8 @@ UNTIL key$=" "
 ?screen_mode=mode%
 IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
-PRINTTAB(0,24);" Loading, please wait...             ";
+REM Only 39 characters in the next line to avoid scrolling if it's the bottom line.
+PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Loading, please wait...               ";
 *DIR S
 IF tube% THEN */$.OZMOO2P
 IF shadow% THEN */$.OZMOOSH
@@ -284,7 +284,7 @@ IF i%?swr_test>0 AND c%<max_ram_bank_count THEN ram_bank_list?c%=i%:c%=c%+1
 NEXT
 ?ram_bank_count=c%
 REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
-PRINT "   ";16*?ram_bank_count;"K sideways RAM (bank";
+PRINT CHR$(${NORMALFG});"  ";16*?ram_bank_count;"K sideways RAM (bank";
 IF c%>1 THEN PRINT "s";
 PRINT " &";
 FOR i%=0 TO c%-1
@@ -330,10 +330,10 @@ dummy%=PAGE
 =dummy%
 :
 DEF PROCmode_menu(mode%)
-PRINT'CHR$(title%);"Screen mode:";CHR$(135);"(hit 0/3/4/6/7 to change)"
+PRINT'CHR$(${HEADERFG});"Screen mode:";CHR$(${NORMALFG});"(hit 0/3/4/6/7 to change)"
 mode_menu_vpos%=VPOS
-PRINT "   0) 80x32    4) 40x32    7) 40x25"
-PRINT "   3) 80x25    6) 40x25       teletext"
+PRINT CHR$(${NORMALFG});"  0) 80x32    4) 40x32    7) 40x25"
+PRINT CHR$(${NORMALFG});"  3) 80x25    6) 40x25       teletext"
 vpos%=VPOS
 PROChighlight_mode_menu(mode%,TRUE)
 PRINTTAB(0,vpos%);
@@ -351,18 +351,18 @@ IF mode%=0 OR mode%=4 OR mode%=7 THEN start_y%=mode_menu_vpos% ELSE start_y%=mod
 IF mode%=7 THEN end_y%=start_y%+1:width%=0 ELSE end_y%=start_y%:width%=13
 FOR y%=start_y% TO end_y%
 PRINTTAB(x%,y%);
-IF on% THEN VDU 129,157,131 ELSE PRINT "   ";
+IF on% THEN VDU ${HIGHLIGHTBG},157,${HIGHLIGHTFG} ELSE PRINT CHR$(${NORMALFG});"  ";
 PRINTTAB(x%+width%,y%);
-IF width%>0 AND on% THEN VDU 156,135
+IF width%>0 AND on% THEN VDU 156,${NORMALFG}
 IF width%>0 AND NOT on% THEN PRINT " ";
 NEXT
 ENDPROC
 :
 DEF PROCupdate_controls(mode%)
 REM SFTODO: We shouldn't mention CTRL-F at all if the build script has turned mode 7 colour off
-PRINTTAB(0,controls_vpos%);"   CTRL-F: ";
-IF mode%=7 THEN PRINT "change status line colour" ELSE PRINT "change foreground colour "'"   CTRL-B: change background colour"
-IF shadow% OR tube% THEN PRINT "   CTRL-S: change scrolling mode   "
+PRINTTAB(0,controls_vpos%);CHR$(${NORMALFG});"  CTRL-F: ";
+IF mode%=7 THEN PRINT "change status line colour" ELSE PRINT "change foreground colour "'CHR$(${NORMALFG});"  CTRL-B: change background colour"
+IF shadow% OR tube% THEN PRINT CHR$(${NORMALFG});"  CTRL-S: change scrolling mode   "
 IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :

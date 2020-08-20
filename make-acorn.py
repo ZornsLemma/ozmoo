@@ -370,7 +370,7 @@ if args.custom_title_page is not None:
             if c < 32:
                 die("Invalid character found in custom title page")
 else:
-    title_page_template = decode_edittf_url("https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECAHQ398vLLkQYvKBJ7n2ps-f9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTJ8GJFpIJ9WpQq1EFOpBpVKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECA")
+    title_page_template = decode_edittf_url("https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECAGgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgCzt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAUjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
 
 if args.default_mode is not None:
     default_mode = args.default_mode
@@ -391,15 +391,27 @@ else:
 
 with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "w") as loader:
+        space_line = None
+        normal_fg_colour = 135
+        header_fg_colour = 135
+        highlight_fg_colour = 134
+        highlight_bg_colour = 135
         for line in loader_template:
             if line.startswith("REM ${BANNER}"):
                 # SFTODO: There should be standard strings in template which are replaced by game name and Ozmoo version
                 # SFTODO: Slightly hacky but feeling my way here
-                for i in range(0, len(title_page_template), 40):
-                    banner_line = title_page_template[i:i+40]
+                first_loader_line = None
+                last_loader_line = None
+                header = bytearray()
+                footer = bytearray()
+                for i in range(0, len(title_page_template) // 40):
+                    banner_line = title_page_template[i*40:(i+1)*40]
                     # SFTODO: In order to avoid people spending ages designing custom banners which are too big and not realising because in mode 7 there are fewer in-game control lines, we should check here that there are enough free lines left on the screen.
                     if "LOADER OUTPUT STARTS HERE" in banner_line:
-                        break
+                        first_loader_line = i
+                    elif "LOADER OUTPUT ENDS HERE" in banner_line:
+                        last_loader_line = i
+                        continue
                     banner_line = banner_line.replace("${TITLE}", title)
                     if "${SUBTITLE}" in banner_line:
                         if args.subtitle is not None:
@@ -408,10 +420,60 @@ with open("templates/loader.bas", "r") as loader_template:
                             continue
                     banner_line = banner_line.replace("${OZMOO}", best_effort_version)
                     banner_line = (banner_line + " "*40)[:40]
-                    loader.write("PRINT \"%s\";\n" % (escape_basic_string(banner_line),))
+                    # SFTODO: Should set the following four variables to sensible defaults but let's not for now so I check they are all being set by this code
+                    if "Normal foreground" in banner_line:
+                        normal_fg_colour = banner_line[0]
+                    elif "Header foreground" in banner_line:
+                        header_fg_colour = banner_line[0]
+                    elif "Highlight foreground" in banner_line:
+                        highlight_fg_colour = banner_line[0]
+                    elif "Highlight background" in banner_line:
+                        highlight_bg_colour = banner_line[0]
+                    elif "${SPACE}" in banner_line:
+                        space_line = i
+                        banner_line = " "*40
+                    if first_loader_line is None:
+                        header += banner_line
+                    elif last_loader_line is not None:
+                        footer += banner_line
+                if space_line is None:
+                    assert False
+                    space_line = 24
+                # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
+                while len(footer) > 0 and footer.startswith(" "*40):
+                    footer = footer[40:]
+                    last_loader_line += 1
+                if len(footer) > 0:
+                    print_command = "PRINTTAB(0,%d);" % (last_loader_line + 1,)
+                    scroll_adjust = False
+                    for i in range(0, len(footer) // 40):
+                        footer_line = footer[i*40:(i+1)*40]
+                        if last_loader_line + 1 + i == 24:
+                            if footer_line[-1] == ' ':
+                                footer_line = footer_line[:-1]
+                            else:
+                                scroll_adjust = True
+                        loader.write("%s\"%s\";\n" % (print_command, escape_basic_string(footer_line)))
+                        print_command = "PRINT"
+                    if scroll_adjust:
+                        # We printed at the bottom right character of the screen and the OS will
+                        # have automatically scrolled it, so we need to force a scroll down to
+                        # fix this.
+                        loader.write("VDU30,11\n")
+                    else:
+                        loader.write("VDU30\n")
+                    for i in range(0, len(header) // 40):
+                        header_line = header[i*40:(i+1)*40]
+                        loader.write("PRINT\"%s\";\n" % (escape_basic_string(header_line)))
             else:
                 line = line.replace("${DEFAULTMODE}", str(default_mode))
                 line = line.replace("${AUTOSTART}", auto_start)
+                if space_line is not None:
+                    line = line.replace("${SPACELINE}", str(space_line))
+                line = line.replace("${NORMALFG}", str(normal_fg_colour))
+                line = line.replace("${HEADERFG}", str(header_fg_colour))
+                line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
+                line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
                 loader.write(line)
 
 run_and_check([
