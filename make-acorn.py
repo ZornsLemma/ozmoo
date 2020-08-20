@@ -162,9 +162,6 @@ class Executable(object):
         # SFTODO: Ideally these failures would result in us generating a disc which doesn't
         # support the system type we're currently patching the binary for, but which
         # does support others.
-        # SFTODO: Because we may be doing an "experimental" build as part of the shadow RAM
-        # process, we should probably be capable of returning an error/throwing an exception
-        # which caller can handle rather than dyingi, for both of the following die() calls.
         if nonstored_blocks > ozmoo_ram_blocks:
             die("Not enough free RAM for game's dynamic memory")
         if game_blocks > nonstored_blocks:
@@ -634,6 +631,11 @@ def add_swr_shr_executable(ssd):
         # address which just leaves n (=2?) pages of sideways RAM free in the first bank
         # for virtual memory. This would be similar to what we do in the small dynmem case
         # where we load as high as we can.
+        # SFTODO: For games with a very large dynamic memory requirement, we might need to
+        # allow lowering shr_swr_default_start_addr to make them fit at all. Obviously this
+        # could be done simply by editing the constant value in this script, but allowing
+        # an automatic adjustment using shr_swr_min_start_addr would be friendlier. However,
+        # it's probably not worth worrying about this until a problematic game turns up.
         high_start_address = shr_swr_default_start_addr + (low_candidate.start_address % 0x200)
         high_candidate = Executable("swr_shr_vmem_DYNMEMSIZE_START", high_start_address, extra_args)
 
