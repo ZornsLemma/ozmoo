@@ -660,6 +660,7 @@ def info_swr_dynmem(name, labels):
         info("Dynamic memory fits in main RAM on " + name)
     else:
         # "may" because it will depend on PAGE at runtime.
+        # SFTODO: But for the sideways-no-shadow build, we only work with one PAGE, so there's actually no "may" about it.
         info("Sideways RAM may be used for dynamic memory on " + name)
 
 # SFTODO: Move this function?
