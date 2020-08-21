@@ -853,9 +853,6 @@ kernal_readtime
     !error "ACORN_HW_SCROLL is not compatible with ACORN_NO_SHADOW"
 }
 
-; SFTODO: I should perhaps have a variant on this or allow it to take an
-; argument which will cause it to emit a jmp around the hole. This would allow
-; me to minimise wasted space.
 ; SFTODO: !set just might be useful in making this only do anything once -
 ; this actually probably isn't necessary, but let me make this note for reference
 !macro make_acorn_screen_hole {

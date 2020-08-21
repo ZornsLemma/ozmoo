@@ -92,11 +92,11 @@ def bytes_to_blocks(x):
         return int(x / 256)
 
 def decode_edittf_url(url):
-    i = url.index("#")
+    i = url.index(b"#")
     s = url[i+1:]
-    i = s.index(":")
+    i = s.index(b":")
     s = s[i+1:]
-    s += "===="
+    s += b"===="
     packed_data = bytearray(base64.urlsafe_b64decode(s))
     unpacked_data = bytearray()
     buffer = 0
@@ -121,7 +121,7 @@ def decode_edittf_url(url):
     return unpacked_data
 
 def escape_basic_string(s):
-    s = s.replace('"', '";CHR$(34);"')
+    s = s.replace(b'"', b'";CHR$(34);"')
     return s
 
 
@@ -373,7 +373,7 @@ if args.custom_title_page is not None:
     else:
         with open(args.custom_title_page, "rb") as f:
             title_page_template = f.read()
-        if title_page_template.startswith("http"):
+        if title_page_template.startswith(b"http"):
             title_page_template = decode_edittf_url(title_page_template)
         title_page_template = bytearray(title_page_template)
         for c in title_page_template:
@@ -409,7 +409,11 @@ else:
         title = title.capitalize()
 
 with open("templates/loader.bas", "r") as loader_template:
-    with open("temp/loader.bas", "w") as loader:
+    # Python 3 won't allow the output to be a text file, because it contains top-bit-set
+    # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
+    # get the line endings right for the platform we're on.
+    linesep = os.linesep.encode("ascii")
+    with open("temp/loader.bas", "wb") as loader:
         # SFTODO: Slightly hacky but feeling my way here
         space_line = None
         normal_fg_colour = 135
@@ -417,6 +421,8 @@ with open("templates/loader.bas", "r") as loader_template:
         highlight_fg_colour = 134
         highlight_bg_colour = 135
         for line in loader_template:
+            assert line[-1] == '\n'
+            line = line[:-1]
             if line.startswith("REM ${BANNER}"):
                 first_loader_line = None
                 last_loader_line = None
@@ -424,70 +430,68 @@ with open("templates/loader.bas", "r") as loader_template:
                 footer = bytearray()
                 for i in range(0, len(title_page_template) // 40):
                     banner_line = title_page_template[i*40:(i+1)*40]
-                    # SFTODO: In order to avoid people spending ages designing custom banners which are too big and not realising because in mode 7 there are fewer in-game control lines, we should check here that there are enough free lines left on the screen.
-                    if "LOADER OUTPUT STARTS HERE" in banner_line:
+                    if b"LOADER OUTPUT STARTS HERE" in banner_line:
                         if first_loader_line is None:
                             first_loader_line = i
-                    elif "LOADER OUTPUT ENDS HERE" in banner_line:
+                    elif b"LOADER OUTPUT ENDS HERE" in banner_line:
                         last_loader_line = i
                         continue
-                    banner_line = banner_line.replace("${TITLE}", title)
-                    if "${SUBTITLE}" in banner_line:
+                    banner_line = banner_line.replace(b"${TITLE}", title.encode("ascii"))
+                    if b"${SUBTITLE}" in banner_line:
                         if args.subtitle is not None:
-                            banner_line = banner_line.replace("${SUBTITLE}", args.subtitle)
+                            banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
                         else:
                             continue
-                    banner_line = banner_line.replace("${OZMOO}", best_effort_version)
-                    banner_line = (banner_line + " "*40)[:40]
+                    banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
+                    banner_line = (banner_line + b" "*40)[:40]
                     # SFTODO: Should set the following four variables to sensible defaults but let's not for now so I check they are all being set by this code
-                    if "Normal foreground" in banner_line:
+                    if b"Normal foreground" in banner_line:
                         normal_fg_colour = colour(banner_line[0])
-                    elif "Header foreground" in banner_line:
+                    elif b"Header foreground" in banner_line:
                         header_fg_colour = colour(banner_line[0])
-                    elif "Highlight foreground" in banner_line:
+                    elif b"Highlight foreground" in banner_line:
                         highlight_fg_colour = colour(banner_line[0])
-                    elif "Highlight background" in banner_line:
+                    elif b"Highlight background" in banner_line:
                         highlight_bg_colour = colour(banner_line[0])
-                    elif "${SPACE}" in banner_line:
+                    elif b"${SPACE}" in banner_line:
                         space_line = i
-                        banner_line = " "*40
+                        banner_line = b" "*40
                     if first_loader_line is None:
                         header += banner_line
                     elif last_loader_line is not None:
                         footer += banner_line
                 if space_line is None:
-                    assert False
                     space_line = 24
                 # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
-                while len(footer) > 0 and footer.startswith(" "*40):
+                while len(footer) > 0 and footer.startswith(b" "*40):
                     footer = footer[40:]
                     last_loader_line += 1
                 loader_lines = last_loader_line + 1 - first_loader_line
-                min_loader_lines = 11
+                min_loader_lines = 12 # SFTODO: 11 is currently enough, but I want to keep one "spare"
                 if loader_lines < min_loader_lines:
                     die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
                 if len(footer) > 0:
-                    print_command = "PRINTTAB(0,%d);" % (last_loader_line + 1,)
+                    print_command = b"PRINTTAB(0,%d);" % (last_loader_line + 1,)
                     scroll_adjust = False
                     for i in range(0, len(footer) // 40):
                         footer_line = footer[i*40:(i+1)*40]
                         if last_loader_line + 1 + i == 24:
-                            if footer_line[-1] == ' ':
+                            if footer_line[-1] == ord(' '):
                                 footer_line = footer_line[:-1]
                             else:
                                 scroll_adjust = True
-                        loader.write("%s\"%s\";\n" % (print_command, escape_basic_string(footer_line)))
-                        print_command = "PRINT"
+                        loader.write(b"%s\"%s\";%s" % (print_command, escape_basic_string(footer_line), linesep))
+                        print_command = b"PRINT"
                     if scroll_adjust:
                         # We printed at the bottom right character of the screen and the OS will
                         # have automatically scrolled it, so we need to force a scroll down to
                         # fix this.
-                        loader.write("VDU30,11\n")
+                        loader.write(b"VDU30,11" + linesep)
                     else:
-                        loader.write("VDU30\n")
+                        loader.write(b"VDU30" + linesep)
                     for i in range(0, len(header) // 40):
                         header_line = header[i*40:(i+1)*40]
-                        loader.write("PRINT\"%s\";\n" % (escape_basic_string(header_line)))
+                        loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
             else:
                 line = line.replace("${DEFAULTMODE}", str(default_mode))
                 line = line.replace("${AUTOSTART}", auto_start)
@@ -497,7 +501,7 @@ with open("templates/loader.bas", "r") as loader_template:
                 line = line.replace("${HEADERFG}", str(header_fg_colour))
                 line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
                 line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
-                loader.write(line)
+                loader.write(line.encode("ascii") + linesep)
 
 run_and_check([
     "beebasm",
@@ -697,10 +701,8 @@ def add_swr_shr_executable(ssd):
             assert "ACORN_SWR_SMALL_DYNMEM" in high_candidate.labels
             # If the game has very small dynamic memory requirements, we might actually use
             # an address higher than shr_swr_default_start_addr.
-            # SFTODO: Should we get rid of this != check and just always print a message, perhaps not saying "Adjusting", but saying the same thing otherwise. I could imagine shr_swr_default_start_addr disappearing eventually, and it's a mostly internal constant at this point, not something which should happen to suppress a message if we end up using it precisely.
-            if high_candidate.start_address != shr_swr_default_start_addr:
-                info("Adjusting sideways+shadow RAM build start address to &%s to allow dynamic memory to just fit into main RAM" % (ourhex(high_candidate.start_address),))
-                info_shown = True
+            info("Adjusting sideways+shadow RAM build start address to &%s to allow dynamic memory to just fit into main RAM" % (ourhex(high_candidate.start_address),))
+            info_shown = True
 
     if high_candidate is None:
         # We can't generate a valid high candidate with the small dynamic memory model;

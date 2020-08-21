@@ -56,7 +56,6 @@ IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE IF NOT auto% THEN PROCm
 PRINT'CHR$(${HEADERFG});"In-game controls:"
 controls_vpos%=VPOS
 PROCupdate_controls(mode%)
-REM SFTODO: We need an option to auto-start the game without waiting for space
 IF NOT auto% THEN PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Press SPACE to start the game...";
 REPEAT
 *FX21
@@ -283,7 +282,6 @@ FOR i%=0 TO 15
 IF i%?swr_test>0 AND c%<max_ram_bank_count THEN ram_bank_list?c%=i%:c%=c%+1
 NEXT
 ?ram_bank_count=c%
-REM SFTODO: I'm not happy with the visual presentation here but let's get it working first.
 PRINT CHR$(${NORMALFG});"  ";16*?ram_bank_count;"K sideways RAM (bank";
 IF c%>1 THEN PRINT "s";
 PRINT " &";

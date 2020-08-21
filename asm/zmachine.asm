@@ -563,7 +563,6 @@ z_execute
 }
 }
 	
-    ; SFTODO: Any chance we could use BIT to test this and save a few cycles?
 	lda z_exe_mode
 	bne .not_normal_exe_mode
 
