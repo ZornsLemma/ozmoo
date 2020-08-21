@@ -1476,6 +1476,7 @@ make_branch_true
 	bit zp_temp + 1
 +	bpl -
 .choose_jumptype
+    +make_acorn_screen_hole_jmp
 	; We have decided to jump
 	bvc .two_byte_jump
 	; This is a single byte jump
@@ -1528,6 +1529,7 @@ z_jump_to_offset_in_zp_temp
 	lda z_pc + 2
 	clc
 	adc zp_temp + 2
+    +make_acorn_screen_hole_jmp
 	tay
 	lda z_pc + 1
 	adc zp_temp + 1
@@ -1724,6 +1726,7 @@ z_ins_sub
 .mul_product = memory_buffer ; 5 bytes (4 for product + 1 for last bit)
 .mul_inv_multiplicand = memory_buffer + 5 ; 2 bytes
 
++make_acorn_screen_hole
 z_ins_mul
 	lda #0
 	ldy #16

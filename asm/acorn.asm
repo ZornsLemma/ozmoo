@@ -869,6 +869,20 @@ acorn_screen_hole_end
     }
 }
 
+; SFTODO: This may be useful in places I currently just use make_acorn_screen_hole
+!macro make_acorn_screen_hole_jmp {
+.jmp_size = 3
+.tolerance = 256
+    !if * <= ($3c00 - .jmp_size) {
+        !if ($3c00 - *) <= .tolerance {
+            jmp acorn_screen_hole_end
+acorn_screen_hole_start = *
+            !fill $4000 - *, 'X'
+acorn_screen_hole_end
+        }
+    }
+}
+
 !macro check_acorn_screen_hole {
     ; This check is important to ensure the no shadow RAM build doesn't crash,
     ; but when the check fails, we need to be able to disable it in order to
