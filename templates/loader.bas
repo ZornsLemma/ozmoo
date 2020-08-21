@@ -20,6 +20,8 @@ REM mentioning removing game disc for save. It would still need to
 REM request/check for the binary on RESTART, so it would need code
 REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
+REM SFTODONOW: Cursor keys currently give a flashing cursor, make them
+REM change the mode or do nothing if there's no mode menu.
 *FX229,1
 MODE 135
 VDU 23,1,0;0;0;0;
