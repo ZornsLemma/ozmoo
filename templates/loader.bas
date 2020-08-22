@@ -26,11 +26,10 @@ REM mentioning removing game disc for save. It would still need to
 REM request/check for the binary on RESTART, so it would need code
 REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
-REM SFTODONOW: Cursor keys currently give a flashing cursor, make them
-REM change the mode or do nothing if there's no mode menu.
 *FX229,1
 MODE 135
 VDU 23,1,0;0;0;0;
+*FX4,1
 REM ${BANNER} - make-acorn.py will add banner printing code here
 REM SFTODO: Note that for Z3 games, anything shown on the top line of
 REM the screen will remain present occupying the not-yet-displayed
@@ -60,6 +59,7 @@ IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
 mode_key$="03467"
+mode_y%=0
 IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu(mode%)
 PRINT'CHR$(${HEADERFG});"In-game controls:"
 controls_vpos%=VPOS
@@ -68,7 +68,8 @@ IF NOT auto% THEN PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Press SPACE to sta
 REPEAT
 *FX21
 IF auto% THEN key$=" " ELSE key$=GET$
-IF INSTR(mode_key$,key$)<>0 THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$):PROCupdate_controls(mode%)
+IF ASC(key$)>=136 AND ASC(key$)<=139 THEN key$=FNupdate_cursor(ASC(key$))
+IF INSTR(mode_key$,key$)<>0 AND mode%<>VAL(key$) THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$):PROCupdate_controls(mode%)
 UNTIL key$=" "
 ?screen_mode=mode%
 IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
@@ -76,6 +77,7 @@ IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 REM Only 39 characters in the next line to avoid scrolling if it's the bottom line.
 PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Loading, please wait...               ";
 *DIR S
+*FX4,0
 IF tube% THEN */$.OZMOO2P
 IF shadow% THEN */$.OZMOOSH
 REM We must be on a BBC B with no shadow RAM.
@@ -345,6 +347,17 @@ PROChighlight_mode_menu(mode%,TRUE)
 PRINTTAB(0,vpos%);
 ENDPROC
 :
+DEF FNupdate_cursor(key%)
+IF key%=136 AND mode_x%>0 THEN mode_x%=mode_x%-1
+IF key%=137 AND mode_x%<2 THEN mode_x%=mode_x%+1
+IF key%=138 AND mode_y%<1 THEN mode_y%=mode_y%+1
+IF key%=139 AND mode_y%>0 THEN mode_y%=mode_y%-1
+IF mode_x%=0 AND mode_y%=0 THEN ="0"
+IF mode_x%=0 AND mode_y%=1 THEN ="3"
+IF mode_x%=1 AND mode_y%=0 THEN ="4"
+IF mode_x%=1 AND mode_y%=1 THEN ="6"
+="7"
+:
 DEF PROCupdate_mode_menu(old_mode%,new_mode%)
 PROChighlight_mode_menu(old_mode%,FALSE)
 PROChighlight_mode_menu(new_mode%,TRUE)
@@ -352,7 +365,9 @@ ENDPROC
 :
 DEF PROChighlight_mode_menu(mode%,on%)
 LOCAL x%,width%,start_y%,end_y%,y%
-IF mode%=4 OR mode%=6 THEN x%=12 ELSE IF mode%=7 THEN x%=24 ELSE x%=0
+IF mode%=4 OR mode%=6 THEN x%=12:mode_x%=1 ELSE IF mode%=7 THEN x%=24:mode_x%=2 ELSE x%=0:mode_x%=0
+IF mode%=0 OR mode%=4 THEN mode_y%=0
+IF mode%=3 OR mode%=6 THEN mode_y%=1
 IF mode%=0 OR mode%=4 OR mode%=7 THEN start_y%=mode_menu_vpos% ELSE start_y%=mode_menu_vpos%+1
 IF mode%=7 THEN end_y%=start_y%+1:width%=0 ELSE end_y%=start_y%:width%=13
 FOR y%=start_y% TO end_y%
@@ -375,5 +390,6 @@ ENDPROC
 DEF PROCdie(message$)
 PRINT message$'
 VDU 23,1,1,0;0;0;0;
+*FX4,0
 *FX229,0
 END
