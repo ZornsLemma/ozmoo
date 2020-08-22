@@ -91,6 +91,7 @@ def bytes_to_blocks(x):
     else:
         return int(x / 256)
 
+# SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
 def decode_edittf_url(url):
     i = url.index(b"#")
     s = url[i+1:]
