@@ -869,6 +869,7 @@ z_ins_restart
 
     ; We specify the drive and directory in case the user has used *DRIVE/*DIR
     ; commands during save or restore.
+    ; SFTODO: This is going to need some care on ADFS
 .restart_command
 !ifndef ACORN_SWR {
     !text "/:0.$.OZMOO2P", 13
