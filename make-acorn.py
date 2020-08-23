@@ -1,6 +1,8 @@
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
+# SFTODO: With ADFS support, various variables called "ssd" are not really correctly named
+
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
 
@@ -234,8 +236,9 @@ parser.add_argument("--custom-title-page", metavar="P", type=str, help="use cust
 parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
 parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
+parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adl extension)") # SFTODO: THAT "IMPLIED" IS NOT IMPLEMENTED YET
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
-parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)")
+parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)") # SFTODO: MIGHT BE ADFS NOW
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
 group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
 group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
@@ -256,6 +259,10 @@ verbose_level = 0 if args.verbose is None else args.verbose
 # but we don't want to generate a disc image with a missing version.
 if version_txt is None:
     die("Can't find version.txt")
+
+if args.adfs and args.double_sided:
+    warn("--double-sided has no effect if --adfs is specified")
+    args.double_sided = False
 
 if args.output_file is not None:
     _, user_extension = os.path.splitext(args.output_file)
@@ -285,6 +292,10 @@ acme_args2 = [
     "--outfile", "../temp/ozmoo_VERSION",
     "ozmoo.asm"
 ]
+
+# SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
+if args.adfs:
+    acme_args1 += ["-DACORN_ADFS=1"]
 
 z_machine_version = game_data[header_version]
 if z_machine_version == 3:
@@ -333,7 +344,10 @@ except OSError:
 
 host = 0xffff0000
 tube_start_addr = 0x600
-swr_start_addr = 0x1900
+if not args.adfs:
+    swr_start_addr = 0x1900
+else:
+    swr_start_addr = 0x1d00
 # Shadow RAM builds will load at or just above some address X and relocate
 # down to PAGE or just above. X must be at or above PAGE on the system the game
 # is running on. Because the code relocates down, it's mostly harmless to have
@@ -582,6 +596,19 @@ class DiscImage(object):
         pad = (256 - len(self.data) % 256) & 0xff
         self.data += bytearray(pad)
 
+    def get_file(self, directory, name):
+        name = bytearray((name + " "*7)[:7] + directory, "ascii")
+        for i in range(self.num_files()):
+            offset = 8 + i * 8
+            if self.data[offset:offset+8] == name:
+                # SFTODO: PROBABLY NEED TO SIGN EXTEND LOAD/EXEC ADDR
+                load_addr = self.data[0x100+offset] | (self.data[0x101+offset] << 8) | (((self.data[0x106+offset] >> 2) & 0x3) << 16)
+                exec_addr = self.data[0x102+offset] | (self.data[0x103+offset] << 8) | (((self.data[0x106+offset] >> 6) & 0x3) << 16)
+                length = self.data[0x104+offset] | (self.data[0x105+offset] << 8) | (((self.data[0x106+offset] >> 4) & 0x3) << 16)
+                start_sector = self.data[0x107+offset] | ((self.data[0x106+offset] & 0x3) << 8)
+                return (load_addr, exec_addr, self.data[start_sector*256:start_sector*256+length])
+        return None
+
     def pad(self, predicate):
         pad_start_sector = self.first_free_sector()
         pad_length = 0
@@ -601,6 +628,79 @@ class DiscImage(object):
     def extend(self):
         self.data += b'\0' * 256 * (80 * 10 - self.first_free_sector())
 
+
+# SFTODO: Move?
+class AdfsImage(object):
+    def __init__(self):
+        self.catalogue = []
+        self.data = bytearray(256 * 7)
+        total_sectors = 80 * 2 * 16
+        self.data[0xfc] = total_sectors & 0xff
+        self.data[0xfd] = (total_sectors >> 8) & 0xff
+        self.data[0x1fd] = 3 # *EXEC !BOOT
+
+    def add_file(self, directory, name, load_addr, exec_addr, data):
+        # SFTODO: NEED TO THROW DISCFULL IF APPROPRIATE
+        assert directory == "$"
+        start_sector = len(self.data) // 256
+        self.data += data
+        pad = (256 - len(self.data) % 256) & 0xff
+        self.data += bytearray(pad)
+        self.catalogue.append([name, load_addr, exec_addr, len(self.data), start_sector, False])
+
+    def lock_all(self):
+        for entry in self.catalogue:
+            entry[5] = True
+
+    def extend(self):
+        self.data += b'\0' * (80 * 2 * 16 * 256 - len(self.data))
+
+    def finalise(self):
+        first_free_sector = len(self.data) // 256
+        self.data[0] = first_free_sector & 0xff
+        self.data[1] = (first_free_sector >> 8) & 0xff
+        self.data[2] = (first_free_sector >> 16) & 0xff
+        self.data[0xff] = sum(self.data[0:0xff]) & 0xff # SFTODO: PROBABLY WRONG
+        free_space_len = 80 * 2 * 16 - first_free_sector
+        self.data[0x100] = free_space_len & 0xff
+        self.data[0x101] = (free_space_len >> 8) & 0xff
+        self.data[0x102] = (free_space_len >> 16) & 0xff
+        self.data[0x1fe] = 3 * 1 # number of free space map entries
+        self.data[0x1ff] = sum(self.data[0x100:0x1ff]) & 0xff # SFTODO: PROBABLY WRONG
+        self.data[0x201:0x205] = b"Hugo"
+        self.data[0x205] = len(self.catalogue)
+        self.data[0x6cc] = ord("$")
+        self.data[0x6d6] = 2
+        self.data[0x6d9] = ord("$")
+        self.data[0x6fb:0x6ff] = b"Hugo"
+        self.catalogue = sorted(self.catalogue, key=lambda x: x[0])
+        for i, entry in enumerate(self.catalogue):
+            offset = 0x205 + i * 0x1a
+            self.data[offset:offset+10] = (entry[0].encode("ascii") + bytearray(10))[:10]
+            self.data[offset] |= 128 # read
+            self.data[offset+1] |= 128 # write
+            locked = entry[5]
+            if locked:
+                self.data[offset+2] |= 128
+            load_addr = entry[1]
+            self.data[offset+0xa] = load_addr & 0xff
+            self.data[offset+0xb] = (load_addr >> 8) & 0xff
+            self.data[offset+0xc] = (load_addr >> 16) & 0xff
+            self.data[offset+0xd] = (load_addr >> 24) & 0xff
+            exec_addr = entry[2]
+            self.data[offset+0xe] = exec_addr & 0xff
+            self.data[offset+0xf] = (exec_addr >> 8) & 0xff
+            self.data[offset+0x10] = (exec_addr >> 16) & 0xff
+            self.data[offset+0x11] = (exec_addr >> 24) & 0xff
+            length = entry[3]
+            self.data[offset+0x12] = length & 0xff
+            self.data[offset+0x13] = (length >> 8) & 0xff
+            self.data[offset+0x14] = (length >> 16) & 0xff
+            self.data[offset+0x15] = (length >> 24) & 0xff
+            start_sector = entry[4]
+            self.data[offset+0x16] = start_sector & 0xff
+            self.data[offset+0x17] = (start_sector >> 8) & 0xff
+            self.data[offset+0x18] = (start_sector >> 16) & 0xff
 
 # SFTODO: Move this function?
 def max_game_blocks_main_ram(executable):
@@ -753,9 +853,17 @@ def add_swr_executable(ssd):
 # SFTODO: If we're building a double-sided game it might be nice if at least one of the
 # Ozmoo executables could be put on the second surface, using some of the otherwise wasted
 # space for the pad file.
-ssd = DiscImage("temp/base.ssd")
-if args.double_sided:
-    ssd2 = DiscImage()
+if not args.adfs:
+    ssd = DiscImage("temp/base.ssd") # SFTODO: RENAME DfsImage?
+    if args.double_sided:
+        ssd2 = DiscImage()
+else:
+    template_ssd = DiscImage("temp/base.ssd")
+    loader = template_ssd.get_file("$", "LOADER")
+    ssd = AdfsImage() # SFTODO: "ssd" is bad name...
+    # SFTODO: WE NEED TO PUT !BOOT ON - *PROB* CAN SHARE WITH DFS BUT DO THINK ABOUT IT
+    # SFTODO: LOADER PROBABLY SHOULDN'T BE DOING *DIR S ON ADFS...
+    ssd.add_file("$", "LOADER", loader[0], loader[1], loader[2])
 
 add_tube_executable(ssd)
 add_swr_shr_executable(ssd)
@@ -765,58 +873,83 @@ add_swr_executable(ssd)
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if
 # necessary, but since this alters the binaries we build it's a bit fiddly and I don't
 # think it's a huge problem.
-if not args.double_sided:
-    # Because we read multiples of vmem_block_pagecount at a time, the data file must
-    # start at a corresponding sector in order to avoid a read ever straddling a track
-    # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
-    # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
-    # it's good for testing.)
-    ssd.pad(lambda track, sector: sector % vmem_block_pagecount == 0)
-    try:
-        ssd.add_file("$", "DATA", 0, 0, game_data)
-    except DiscFull:
-        die("Game won't fit on a single-sided disc, try specifying --double-sided")
+if not args.adfs:
+    if not args.double_sided:
+        # Because we read multiples of vmem_block_pagecount at a time, the data file must
+        # start at a corresponding sector in order to avoid a read ever straddling a track
+        # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
+        # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
+        # it's good for testing.)
+        ssd.pad(lambda track, sector: sector % vmem_block_pagecount == 0)
+        try:
+            ssd.add_file("$", "DATA", 0, 0, game_data)
+        except DiscFull:
+            die("Game won't fit on a single-sided disc, try specifying --double-sided")
+    else:
+        # The game data must start on a track boundary at the same place on both surfaces.
+        ssd.pad(lambda track, sector: sector == 0)
+        ssd2.pad(lambda track, sector: track * 10 + sector == ssd.first_free_sector())
+        data = [bytearray(), bytearray()]
+        for i in range(0, bytes_to_blocks(len(game_data)), 10):
+            data[(i % 20) // 10].extend(game_data[i*256:i*256+10*256])
+        try:
+            ssd.add_file("$", "DATA", 0, 0, data[0])
+            ssd2.add_file("$", "DATA", 0, 0, data[1])
+        except DiscFull:
+            die("Game won't fit on a double-sided disc")
 else:
-    # The game data must start on a track boundary at the same place on both surfaces.
-    ssd.pad(lambda track, sector: sector == 0)
-    ssd2.pad(lambda track, sector: track * 10 + sector == ssd.first_free_sector())
-    data = [bytearray(), bytearray()]
-    for i in range(0, bytes_to_blocks(len(game_data)), 10):
-        data[(i % 20) // 10].extend(game_data[i*256:i*256+10*256])
-    try:
-        ssd.add_file("$", "DATA", 0, 0, data[0])
-        ssd2.add_file("$", "DATA", 0, 0, data[1])
-    except DiscFull:
-        die("Game won't fit on a double-sided disc")
+    # There are no alignment requirements for ADFS.
+    ssd.add_file("$", "DATA", 0, 0, game_data)
 
 ssd.lock_all()
 if args.double_sided:
     ssd2.lock_all()
 
-preferred_extension = ".dsd" if args.double_sided else ".ssd"
-if args.output_file is None:
-    output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+# SFTODO: This is a bit of a hack, may well be able to simplify/improve
+if not args.adfs:
+    preferred_extension = ".dsd" if args.double_sided else ".ssd"
+    if args.output_file is None:
+        output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+    else:
+        user_prefix, user_extension = os.path.splitext(args.output_file)
+        # If the user wants to call the file .img or something, we'll leave it alone.
+        if user_extension.lower() in (".ssd", ".dsd") and user_extension.lower() != preferred_extension.lower():
+            warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
+            user_extension = preferred_extension
+        output_file = user_prefix + user_extension
 else:
-    user_prefix, user_extension = os.path.splitext(args.output_file)
-    # If the user wants to call the file .img or something, we'll leave it alone.
-    if user_extension.lower() in (".ssd", ".dsd") and user_extension.lower() != preferred_extension.lower():
-        warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
-        user_extension = preferred_extension
-    output_file = user_prefix + user_extension
+    preferred_extension = ".adl"
+    if args.output_file is None:
+        output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+    else:
+        output_file = args.output_file
 
-if args.pad:
+if args.pad: # SFTODO: Make sure to test this for ADFS
     ssd.extend()
     if args.double_sided:
         ssd2.extend()
 
 with open(output_file, "wb") as f:
-    if not args.double_sided:
-        f.write(ssd.data)
+    if not args.adfs:
+        if not args.double_sided:
+            f.write(ssd.data)
+        else:
+            track_size = 256 * 10
+            for track in range(80):
+                i = track * track_size
+                if i >= len(ssd.data) and i >= len(ssd2.data):
+                    break
+                f.write(ssd.data[i:i+track_size])
+                f.write(ssd2.data[i:i+track_size])
     else:
-        track_size = 256 * 10
+        ssd.finalise()
+        # SFTODO: At the moment this will always write a full 640K even if --pad is not specified
+        # SFTODO: It may be unnecessarily slow/complex to be writing out a sector at a time
         for track in range(80):
-            i = track * track_size
-            if i >= len(ssd.data) and i >= len(ssd2.data):
-                break
-            f.write(ssd.data[i:i+track_size])
-            f.write(ssd2.data[i:i+track_size])
+            for surface in range(2):
+                for sector in range(16):
+                    i = ((track + (surface * 80)) * 16 + sector) * 256
+                    if i < len(ssd.data):
+                        f.write(ssd.data[i:i+256])
+                    else:
+                        f.write(bytearray(256))

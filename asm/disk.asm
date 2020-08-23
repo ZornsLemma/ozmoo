@@ -1516,6 +1516,7 @@ ACORN_SAVE_RESTORE_OSFIND = 1
     ; in. Arguably it's clearer to say it, and it's harmless except for using
     ; a few bytes of memory. (But as I've said elsewhere, you do need the game
     ; disc in for RESTART when I support this on non-VMEM.)
+    ; SFTODO: On ADFS I am not quite sure what will happen about removing the game disc. I may need to close the file to allow this. Do I need to make the user do *MOUNT if necessary? Also when it comes to getting the game disc back, can I go and read block 0 of the file or is that just going to fail with a Disc changed error if the user has changed the disc? Do I maybe just do a *MOUNT (what drive number? current drive I guess) before re-opening the file and checking, and catching any errors just as readblock would?
     !text "You can safely remove the game disc now.", 13, 0
 .save_prompt
     !text "save>", 0
