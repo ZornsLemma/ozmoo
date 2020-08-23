@@ -1467,6 +1467,9 @@ ACORN_SAVE_RESTORE_OSFIND = 1
 .osfile_check_buffer = scratch_page + 0x100 - 0x12
 .filename_buffer_size = (.osfile_check_buffer - .filename_buffer) - 1
 ; Returns with Z set iff user wants to abort the save/restore.
+; SFTODO: Should we save the current filesystem number before user enters any
+; * commands and reselect that filesystem afterwards before we access any game
+; data?
 .get_filename
     ; We use raw OS text output here, because * commands will do and their output
     ; will mix with ours.
@@ -1816,6 +1819,8 @@ save_game
     jsr set_default_error_handler
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
+    ; SFTODO: We should probably do get_game_disc_back even for non-VMEM, now
+    ; we always support RESTART.
 !ifdef VMEM {
     jsr .get_game_disc_back
 }
