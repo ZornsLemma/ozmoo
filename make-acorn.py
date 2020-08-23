@@ -1,7 +1,14 @@
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
+# SFTODO: Some of the temp files generated have _DYNMEMSIZE in them, i.e. it has not been substituted
+
 # SFTODO: With ADFS support, various variables called "ssd" are not really correctly named
+
+# SFTODO: It might be nice to support generating non-interleaved .adf ADFS images if the
+# game fits on a medium disc.
+
+# SFTODO: On ADFS at least, to avoid risk of EOF errors we probably need to round the game data up to an even multiple of 512 bytes
 
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
@@ -646,7 +653,7 @@ class AdfsImage(object):
         self.data += data
         pad = (256 - len(self.data) % 256) & 0xff
         self.data += bytearray(pad)
-        self.catalogue.append([name, load_addr, exec_addr, len(self.data), start_sector, False])
+        self.catalogue.append([name, load_addr, exec_addr, len(data), start_sector, False])
 
     def lock_all(self):
         for entry in self.catalogue:

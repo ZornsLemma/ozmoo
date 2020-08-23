@@ -7,6 +7,20 @@ When we're about to resume, we probably need to do *MOUNT, try to open the file 
 [FWIW, *is* (genuine Q) OSARGS A=&FF equivalent to *DISMOUNT? Might be useful, might not.]
 [I don't know if there's an official way to detect a hard drive, *if* I want to go down that route, but reading the capacity - not free space - of the current drive would in practice be a good way to detect this. No hard drive is going to be <=640K.]
 
+How about this?
+- we try very hard not to implement an "ADFS" solution - we might in principle be running on some other filing system like Econet or something more exotic.
+- so we don't go issuing *DISMOUNT or *MOUNT commands if we can possibly help it
+- the loader determines the current path and stashes the full ":0.$.Foo.Bar.Ozmoo.Data" string somewhere in memory - note the drive number (awkward? what if we're on a file system without drive numbers?)
+- the game closes the data file before save/restore so that *if* the user does something like *MOUNT 0 to change the disc, we don't get upset at having the file closed underneath us
+- after the save/restore is complete the game re-opens the data file using that full path - this way if the user has deliberately or accidentally changed the current directory to wherever they want to save (or maybe they hacked the loader to do this, if they have a hard drive installation) we won't get upset or lose their setting for the next time they save/restore
+- what if the user has taken the game disc away? Our open might fail with a Disc changed error or a Not found error, or the CRC check once we open it might reveal the disc isn't the one we want. Ideally we would offer a * prompt to let the user "do stuff" to fix the situation before retrying, we could maybe get away with issuing a *MOUNT 0 command.
+- RESTART is maybe going to be problematic as we need to launch the binary from the right path and if the user's changed it we will fail
+
+Alternative:
+- maybe the loader stashes a command or commands somewhere in memory to do "post save/restore", and the loader tries to set something sensible up and an advanced user (i.e. one installing to hard drive or Econet or whatever) can tweak this if the loader doesn't do the right thing automatically, as the loader is BASIC.
+- the loader might similarly stash a full restart path
+- apart from executing the post save/restore commands, the game would "just" a) close the file before the save/restore b) open the data file using a stashed-by-the-loader path, check its contents via CRC. If b) fails, retry - although ideally we still need a command prompt loop.
+
 
 
 

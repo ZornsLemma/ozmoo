@@ -246,6 +246,7 @@ osfind_close = $00
 osfind_open_input = $40
 osfind_open_output = $80
 osgbpb_write_ignoring_ptr = $02
+osgbpb_read_using_ptr = $03
 osgbpb_read_ignoring_ptr = $04
 osword_input_line = 0
 osword_read_clock = 1

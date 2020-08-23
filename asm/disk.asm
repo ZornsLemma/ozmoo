@@ -38,10 +38,12 @@ readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
 readblocks_base         !byte 0,0
-} else {
+} else { ; ACORN
+!ifndef ACORN_ADFS {
 readblocks_base         !byte 0
 !ifndef ACORN_DSD {
                         !byte 0
+}
 }
 }
 !ifndef ACORN {
@@ -61,6 +63,7 @@ disk_info
 }
 
 !ifdef ACORN {
+; SFTODO: Is this single block read ever used on Acorn?
 readblock
     lda #1
     sta readblocks_numblocks
@@ -399,7 +402,7 @@ uname_len = * - .uname
 .blocks_to_go_tmp !byte 0, 0
 .next_disk_index	!byte 0
 .disk_tracks	!byte 0
-} else {
+} else { ; ACORN
 !ifdef ACORN_SWR {
     ; Our caller is responsible for paging in a suitable RAM bank and setting
     ; readblocks_mempos to the physical address within that bank. All we do
@@ -414,6 +417,7 @@ uname_len = * - .uname
 +
 }
 
+    ; SFTODO: I suspect error handling may need changing for ADFS, for the moment I'm just going to ignore the issue while I get things working
     ; We prefix errors with two newlines, so even if we're part way through a
     ; line there will always be at least one blank line above the error message.
     ; We use s_printchar for output here, as this will be mixed in with the
@@ -431,6 +435,7 @@ uname_len = * - .uname
     jsr s_printchar
 .no_error
 
+!ifndef ACORN_ADFS {
     ; This code is based on the BASIC FNdisk() function here:
     ; http://beebwiki.mdfs.net/OSWORD_%267F#Coding
 
@@ -497,8 +502,8 @@ uname_len = * - .uname
     sta .osword_7f_block_sector
     ; We know the number of blocks is going to be <= vmem_block_pagecount, so
     ; there's no need to loop round in case it's too many to read. (Note also
-    ; that you apparently can't read across a track boundary, except that it
-    ; does seem to work if readblocks_numblocks is exactly 2.)
+    ; that you can't read across a track boundary using OSWORD $7F, but we align
+    ; the data file to avoid needing to do this.)
     lda readblocks_numblocks
     ora #$20
     sta .osword_7f_block_sector_size_and_count
@@ -528,6 +533,45 @@ uname_len = * - .uname
     !text "Disc read error"
     !byte 0
 .read_ok
+} else { ; ACORN_ADFS
+    lda .data_osgbpb_block_handle
+    bne .file_is_open
+    lda #osfind_open_input
+    ldx #<game_data_filename
+    ldy #>game_data_filename
+    jsr osfind
+    bne +
+    ; SFTODO!?
+    brk
+    !byte 0
+    !text "Can't open DATA"
+    !byte 0
++   sta .data_osgbpb_block_handle
+
+.file_is_open
+    ; We could just use .data_osgbpb_block_data_address for readblocks_mempos,
+    ; but OSGBPB would then increment it automatically - this is sort of a good
+    ; thing, but it creates small variations in behaviour compared to DFS which
+    ; then require tweaks elsewhere to compensate.
+    lda readblocks_mempos
+    sta .data_osgbpb_block_data_address + 0
+    lda readblocks_mempos + 1
+    sta .data_osgbpb_block_data_address + 1
+    lda #0
+    sta .data_osgbpb_block_transfer_length + 0
+    sta .data_osgbpb_block_pointer + 0
+    lda readblocks_numblocks
+    sta .data_osgbpb_block_transfer_length + 1
+    lda readblocks_currentblock
+    sta .data_osgbpb_block_pointer + 1
+    lda readblocks_currentblock + 1
+    sta .data_osgbpb_block_pointer + 2
+    lda #osgbpb_read_using_ptr
+    ldx #<.data_osgbpb_block
+    ldy #>.data_osgbpb_block
+    jsr osgbpb
+}
+
     jsr set_default_error_handler
 
 !ifdef ACORN_SWR {
@@ -565,6 +609,7 @@ uname_len = * - .uname
     inc readblocks_currentblock + 1
 +   rts
 
+!ifndef ACORN_ADFS {
 .osword_7f_block
 .osword_7f_block_drive
      !byte 0   ; drive
@@ -581,6 +626,28 @@ readblocks_mempos
      !byte 0   ; sector size and count
 .osword_7f_block_result
      !byte 0   ; result
+} else { ; ACORN_ADFS
+; SFTODO: Can we share this with the sometimes-present OSGBPB block for save/restore?
+.data_osgbpb_block
+.data_osgbpb_block_handle
+    !byte 0
+.data_osgbpb_block_data_address
+    !word 0 ; low word
+    !word 0 ; high word
+.data_osgbpb_block_transfer_length
+    !word 0 ; low word
+    !word 0 ; high word
+.data_osgbpb_block_pointer
+    !word 0 ; low word
+    !word 0 ; high word
+
+readblocks_mempos
+    !word 0
+
+; SFTODO: Move this?
+game_data_filename
+    !text "DATA", 13
+}
 
 wait_for_space
     lda #osbyte_flush_buffer
@@ -1957,6 +2024,7 @@ save_game
     ldy #>.osgbpb_block
     jmp osgbpb
 
+; SFTODO: RENAME THIS TO DISAMBIGUATE IT FROM data_osgbpb_block IF WE RETAIN BOTH
 .osgbpb_block
 .osgbpb_block_handle
     !byte 0

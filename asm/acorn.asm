@@ -126,10 +126,11 @@ screenkernal_init
     lda #>re_enter_language
     sta initial_jmp + 2
 
-    ; Examine the disc catalogue and determine the first sector occupied by the
-    ; DATA file containing the game.
 .dir_ptr = zp_temp ; 2 bytes
 .length_blocks = zp_temp + 2 ; 2 bytes
+!ifndef ACORN_ADFS {
+    ; Examine the disc catalogue and determine the first sector occupied by the
+    ; DATA file containing the game.
     lda #2
     sta readblocks_numblocks
     lda #0
@@ -232,6 +233,31 @@ screenkernal_init
     ; of the game.
     asl .length_blocks
     rol .length_blocks + 1
+}
+} else { ; ACORN_ADFS
+    lda #<game_data_filename
+    sta scratch_page
+    lda #>game_data_filename
+    sta scratch_page + 1
+    lda #osfile_read_catalogue_information
+    ldx #<scratch_page
+    ldy #>scratch_page
+    jsr osfile
+    bne +
+    ; SFTODO: Share this error with disk.asm?
+    brk
+    !byte 0
+    !text "Can't open DATA"
+    !byte 0
++   lda scratch_page + $a
+    beq +
+    inc scratch_page + $b
+    bne +
+    inc scratch_page + $c
++   lda scratch_page + $b
+    sta .length_blocks
+    lda scratch_page + $c
+    sta .length_blocks + 1
 }
 
     ; Preload as much of the game as possible into memory. This will always fill
