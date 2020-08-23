@@ -1,3 +1,15 @@
+ADFS:
+I think we need to do *DISMOUNT before entering the save/restore prompt
+Probably also necessary/a good idea to close the game data file before doing *DISMOUNT
+When we're about to resume, we probably need to do *MOUNT, try to open the file (and if we succeed do the DFS-style CRC check), catch errors (making sure we close the file if we opened it, and do a *DISMOUNT as well) and repeat the whole process after the user presses a key.
+- ****BUT**** *DISMOUNT will lose the current directory - which is not a good thing if we've been installed on a hard drive in some random directory. So maybe we need to detect that case and not fiddle with *DISMOUNT/*MOUNT if so. But what if the user goes and does *MOUNT 4 to save a game to a floppy? Admittedly this is not all that likely, but let's pretend. Will that mean we can't re-open our "DATA" (with no drive/dir prefix) file? I guess on a hard drive installation, if we're going to have to detect that case, we would simply keep the file open during a save/restore.
+- can we detect hard drive? do we really want to? should we maybe instead keep the game data file open, but be ready to experience a "Channel" error when we do the CRC read and if so do *MOUNT and re-open it? But if we haven't done *DISMOUNT (and we're not trying to behave different on hard or floppy drive), the user has to go and do a *MOUNT manually if they've changed the disc, whereas if we *DISMOUNT they don't have to.
+[FWIW, *is* (genuine Q) OSARGS A=&FF equivalent to *DISMOUNT? Might be useful, might not.]
+[I don't know if there's an official way to detect a hard drive, *if* I want to go down that route, but reading the capacity - not free space - of the current drive would in practice be a good way to detect this. No hard drive is going to be <=640K.]
+
+
+
+
 Benchmarks after reworking sideways RAM paging:
 
 Baseline is 87f85b82608f6072ebeaebd0dfde488931e00c42 acorn-swr branch latest - this always uses "old-style no tweaks bigdyn":
