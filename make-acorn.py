@@ -639,6 +639,7 @@ class DiscImage(object):
 # SFTODO: Move?
 class AdfsImage(object):
     def __init__(self):
+        # SFTODO: Should I be assigning a random value for disc ID to help with disc changed detection?
         self.catalogue = []
         self.data = bytearray(256 * 7)
         total_sectors = 80 * 2 * 16

@@ -21,6 +21,33 @@ Alternative:
 - the loader might similarly stash a full restart path
 - apart from executing the post save/restore commands, the game would "just" a) close the file before the save/restore b) open the data file using a stashed-by-the-loader path, check its contents via CRC. If b) fails, retry - although ideally we still need a command prompt loop.
 
+So on save restore:
+- close the file
+- tell the user they can remove the game disc (but ideally don't do that if e.g. we're running from a hard drive)
+
+After save restore:
+- I don't think we can "just try" to see if the game disc is already there, as we can on DFS, because it's got a fair chance of causing some sort of "Disc changed" or "Not mounted" error and the user had no chance to do it - hmm, maybe we can/should *recognise* Disc changed and swallow it but "do something"???
+- perhaps we can "just try" by doing an OPENIN on the game data file - it's always possible no disc is mounted, but probably only if the user did something and semi-invited this
+
+If we *are* on ADFS using floppy:
+- we need to close the game data before saving
+- ideally we would *DISMOUNT too (this may avoid need for user to *MOUNT explicitly)
+- we would tell the user they can remove the game disc
+- they do * commands and save as normal
+- once they've finished, we *ask* them to put the game disc back in and press SPACE - unless we can try to OPENIN the game data file and swallow any error - OK, so we try the OPENIN, if it succeeds we should check the CRC before considering it to be OK, if it fails we swallow the error and the user to put the game disc back in, at which point we do *MOUNT 0 ourselves and retry - I think we need to be opening the data file using a full path, so if the user did *MOUNT 1 we won't get upset
+
+OK, let's look at it this way:
+- if we're on a hard drive or Econet, it's "easy" - we just keep the game data file open (we need to be careful re path on restart, but that's all) and unless the user goes an *DISMOUNTs the hard drive or something we're fine. We may need to *not* do some stuff we would otherwise do for floppy (actual commands, or maybe printing messages about "removing/re-inserting the game disc"), but it's not really a big deal. It might be nice to allow * commands if things go wrong, but this will probably just fall out of stuff we need to do for floppy anyway.
+- conceptually being on a hard drive but saving to a floppy is no different than being on a disc in drive 0 and saving to drive 1 - the user will be using *MOUNT some-other-drive, they may accidentally *DISMOUNT the drive we are on, etc.
+- playing around on emulated master, using OPENIN (at least with a full path) appears to implicitly cause a mount, whereas LOAD "A" after a dismount gives a "No directory" error - the full path does appear to be the magic ingredient, it's not e.g. OPENIN vs LOAD which is important. Hmm, OPENIN does sometimes seem to work when LOAD doesn't, it's really inconsistent. But a full path with a drive number does appear to generate provoke ADFS to "have a go" rather than say "No directory". Also, of course, OPENIN can "fail" quietly by returning a zero channel, which I suspect is a key observation here. Giving the full path does appear to sidestep the whole "disc changed" error in general though, full path with drive number that is. This may well simplify things, if the loader obtains a full path with drive number and stashes it somewhere, we may be able to do open-read-block-0-and-crc without *expecting* to get any OS errors occurring, though we should ideally cope if they do.
+
+For the nth time then:
+- prior to save/restore we close the game data file
+- if we're "on floppy", we *DISMOUNT and print "you can now remove the game disc" - hmm, this *DISMOUNT is nice in that I think it allows the user to swap the disc without needing to *MOUNT, *but* if the user is actually saving onto the game disc but would like to use a non-root directory, the *DISMOUNT will put them back in the root directory every time - so maybe we don't do the *DISMOUNT, at which point printing the "you can now remove the game disc" is a harmless and understandable quirk if the game is on hard drive, and we maybe don't even need to try to distinguish the two cases
+- we let the user enter * commands etc as usual and do the save/restore
+- we then re-open the game data file using a full path including a drive number - this may return a zero file handle, or we may read the data from the file and find the crc doesn't match - in either case we close the file, ask the user to put the game disc in and press space and then we try again - we may need to be careful here because the readblocks code will perhaps want to get in on the act with the retry, but we may want/need to be doing it ourselves - if we made readblock automatically close and re-open the file on error, it may well be we would not have any worries there
+- if this model works, the loader needs to pass a) the full path of the game data file b) the full path of the Ozmoo binary (for restarts) to the Ozmoo binary somewhere in memory - we need this on all builds, not just SWR of course - if these paths are not allowed to be insanely long (the loader could object) we could probably squash them into page 4 and shrink the jmp_buf a bit more - the Ozmoo binary could have code to copy a single path (of the game data file) into the scratch page and hack the last bit after the "." to be its own executable name and do the *RUN from there, rather than the us needing to allocate two bits of memory for duplicate paths - this is a bit fiddly (=> more resident code), but it would also offer flexibility for DFS versions to have the executables on "arbitrary" sides of the disc, as long as the loader knows where they are
+
 
 
 
