@@ -522,6 +522,13 @@ with open("templates/loader.bas", "r") as loader_template:
                 line = line.replace("${HEADERFG}", str(header_fg_colour))
                 line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
                 line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
+                if line.startswith("REM"):
+                    continue
+                rem_index = line.find(":REM")
+                if rem_index != -1:
+                    line = line[:rem_index]
+                if line == "" or line == ":":
+                    continue
                 loader.write(line.encode("ascii") + linesep)
 
 run_and_check([

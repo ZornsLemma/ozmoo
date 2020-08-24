@@ -114,27 +114,6 @@ PRINT ;~(ram_bank_list?i%);
 NEXT
 PRINT ")"
 ENDPROC
-REM SFTODO: Delete the following unreachable code eventually.
-
-IF ?swr_banks=1 PRINT "1 RAM bank";
-IF ?swr_banks > 1 PRINT "";?swr_banks;" RAM banks";
-
-IF ?swr_type=1 AND ?swr_banks < 16 PRINT ", almost always selected for writing"
-IF ?swr_type=1 AND ?swr_banks=16 PRINT ", always selected for writing"
-
-IF ?swr_type > 1 PRINT ", write bank is selected with ";
-IF ?swr_type=2 PRINT "FE30 (ROMSEL)"
-IF ?swr_type=3 PRINT "FE32 (RAMSEL)"
-IF ?swr_type=4 PRINT "FE62/FE60 (Solidisk, user port), only 3 bits decoded (0=8)"
-IF ?swr_type=5 PRINT "FE62/FE60 (Solidisk, user port), all 4 bits properly decoded"
-IF ?swr_type=6 PRINT " a write to {FF30+bank_no} (Watford ROM/RAM board)"
-
-FOR R%=0 TO 15
- U%=?(swr_test+R%)
- IF U%>0 PRINT"RAM: ";R%;" used ";U%;" time";
- IF U%>1 PRINT ;"s" ELSE IF U%=1 PRINT
-NEXT
-END
 :
 DEF FNrelocate_to
 REM SFTODO: We could potentially be more aggressive, relocating down to &1100 or &1300
