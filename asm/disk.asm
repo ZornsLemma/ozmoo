@@ -430,6 +430,12 @@ uname_len = * - .uname
     jsr close_game_data_handle
 }
     jsr error_print_following_string
+    ; SFTODO: It's a bit of a luxury item, but it might be nice to allow * to
+    ; enter * commands here - if you're on ADFS and you accidentally stick a
+    ; DFS floppy in, you can get stuck in an unrecoverable "Bad FS map" retry
+    ; loop, and if you had a * prompt you could do a *MOUNT and (I think) fix
+    ; things. In reality no one is really likely to get caught by this, but
+    ; all else being equal it might be nice to allow a way out.
     !text 13, "Press SPACE to retry...", 0
     jsr wait_for_space
     lda #13
