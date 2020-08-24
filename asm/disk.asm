@@ -62,13 +62,6 @@ disk_info
 }
 }
 
-!ifdef ACORN {
-; SFTODO: Is this single block read ever used on Acorn?
-readblock
-    lda #1
-    sta readblocks_numblocks
-    ; fall through to readblocks
-}
 readblocks
     ; read <n> blocks (each 256 bytes) from disc to memory
     ; set values in readblocks_* before calling this function
