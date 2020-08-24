@@ -373,7 +373,11 @@ jmp_buf_ram_bank = $422 ; 1 byte
 }
 initial_clock = $423 ; 5 bytes
 memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
-jmp_buf = $42f ; "up to" 257 bytes - in reality 64 bytes is probably enough
+!ifdef ACORN_ADFS {
+game_data_filename = $42f ; SFTODO HOW MANY BYTES?
+}
+game_data_filename_size = 32 ; SFTODO TEMP, NOT THOUGHT THROUGH
+jmp_buf = $42f+game_data_filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
 scratch_page = $500

@@ -426,6 +426,9 @@ uname_len = * - .uname
     ldy #error_print_s_printchar
     jsr setjmp
     beq .no_error
+!ifdef ACORN_ADFS {
+    jsr close_game_data_handle
+}
     jsr error_print_following_string
     !text 13, "Press SPACE to retry...", 0
     jsr wait_for_space
@@ -534,7 +537,7 @@ uname_len = * - .uname
     !byte 0
 .read_ok
 } else { ; ACORN_ADFS
-    lda .data_osgbpb_block_handle
+    lda data_osgbpb_block_handle
     bne .file_is_open
     lda #osfind_open_input
     ldx #<game_data_filename
@@ -546,7 +549,7 @@ uname_len = * - .uname
     !byte 0
     !text "Can't open DATA"
     !byte 0
-+   sta .data_osgbpb_block_handle
++   sta data_osgbpb_block_handle
 
 .file_is_open
     ; We could just use .data_osgbpb_block_data_address for readblocks_mempos,
@@ -607,7 +610,17 @@ uname_len = * - .uname
     sta readblocks_currentblock
     bcc +
     inc readblocks_currentblock + 1
+.readblocks_rts
 +   rts
+
+!ifdef ACORN_ADFS {
+close_game_data_handle
+    ldy data_osgbpb_block_handle
+    beq .readblocks_rts
+    lda #osfind_close ; 0
+    sta data_osgbpb_block_handle
+    jmp osfind
+}
 
 !ifndef ACORN_ADFS {
 .osword_7f_block
@@ -628,8 +641,9 @@ readblocks_mempos
      !byte 0   ; result
 } else { ; ACORN_ADFS
 ; SFTODO: Can we share this with the sometimes-present OSGBPB block for save/restore?
+; SFTODO: If this remains distinct, it should be called game_data_osgbpb_block - a save game is data too!
 .data_osgbpb_block
-.data_osgbpb_block_handle
+data_osgbpb_block_handle
     !byte 0
 .data_osgbpb_block_data_address
     !word 0 ; low word
@@ -643,10 +657,6 @@ readblocks_mempos
 
 readblocks_mempos
     !word 0
-
-; SFTODO: Move this?
-game_data_filename
-    !text "DATA", 13
 }
 
 wait_for_space
@@ -1632,6 +1642,9 @@ ACORN_SAVE_RESTORE_OSFIND = 1
     cpy game_disc_crc + 1
     beq .crc_ok
 .crc_bad
+!ifdef ACORN_ADFS {
+    jsr close_game_data_handle
+}
     lda #>.reinsert_prompt
     ldx #<.reinsert_prompt
     jsr printstring_raw
@@ -1695,6 +1708,11 @@ save_game
     .start_ptr = zp_temp + 2 ; 2 bytes
 }
     sta .osfile_or_osfind_op
+
+!ifdef ACORN_ADFS {
+    jsr close_game_data_handle
+}
+
     ; We default the result to failure and only set it to success after actually
     ; loading/saving something. If the user aborts the operation, that counts
     ; as failure. See discussion at
@@ -2010,12 +2028,14 @@ save_game
 ; Close .osgbpb_block_handle iff it's non-0. If it's non-0 we set it to 0
 ; before doing anything, so we don't get into an infinite loop if the close
 ; operation fails.
+; SFTODO: Prob unavoidable (unless we share the block, which may well work given
+; we never have both files open simultaneously, with the one used by ACORN_ADFS
+; for game data reading) but this is very similar to close_game_data_handle.
 .close_osgbpb_block_handle
     ldy .osgbpb_block_handle
     beq +
-    lda #0
+    lda #osfind_close ; 0
     sta .osgbpb_block_handle
-    ; lda #osfind_close ; osfind_close is 0
     jmp osfind
 +   rts
 

@@ -50,6 +50,8 @@ screen_mode=&40B
 ram_bank_count=&410
 ram_bank_list=&411
 max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
+game_data_filename=&42F
+game_data_filename_size=32
 :
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
@@ -76,6 +78,7 @@ IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
 REM Only 39 characters in the next line to avoid scrolling if it's the bottom line.
 PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Loading, please wait...               ";
+$game_data_filename=":4.$.DATA":REM SFTODO need to derive this from full path of current dir
 *DIR S
 *FX4,0
 IF tube% THEN */$.OZMOO2P
