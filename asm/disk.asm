@@ -1,4 +1,3 @@
-; SFTODONOW: In hitchhik.z5, if you turn light on, save, wait until you die and restore that save at the you-are-dead prompt, game crashes with a fatal error.
 ; SFTODO: I half wonder if disk.asm should be pure C64 code and we should
 ; just have a disk-acorn.asm for Acorn stuff
 !ifndef ACORN {
@@ -1857,6 +1856,9 @@ save_game
     adc #>stack_start
     sta stack_ptr + 1
     jsr set_default_error_handler
+    ; If we just restored we have updated z_pc and need to take that into
+    ; account. This is unnecessary but harmless if we just saved.
+	jsr get_page_at_z_pc
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
     ; SFTODO: We should probably do get_game_disc_back even for non-VMEM, now
