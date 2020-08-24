@@ -754,6 +754,15 @@ class AdfsImage(object):
 # SFTODO: Move this function?
 def max_game_blocks_main_ram(executable):
     return (executable.labels["flat_ramtop"] - executable.labels["story_start"]) // 256
+
+# SFTODO: Move this function?
+def add_findswr_executable(disc):
+    load_address = 0x900
+    os.chdir("asm")
+    run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_findswr.txt", "-r", "../temp/acme_report_findswr.txt", "--outfile", "../temp/findswr", "acorn-findswr.asm"])
+    os.chdir("..")
+    with open("temp/findswr", "rb") as f:
+        disc.add_file("$", "FINDSWR", host | load_address, host | load_address, f.read())
             
 # SFTODO: Move this function?
 def add_tube_executable(disc):
@@ -914,6 +923,7 @@ else:
     disc.add_file("$", "!BOOT", boot[0], boot[1], boot[2])
     disc.add_file("$", "LOADER", loader[0], loader[1], loader[2])
 
+add_findswr_executable(disc)
 add_tube_executable(disc)
 add_swr_shr_executable(disc)
 add_swr_executable(disc)
