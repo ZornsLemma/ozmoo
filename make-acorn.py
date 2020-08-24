@@ -24,6 +24,7 @@
 from __future__ import print_function
 import argparse
 import base64
+import hashlib
 import os
 import re
 import shutil
@@ -639,13 +640,13 @@ class DiscImage(object):
 # SFTODO: Move?
 class AdfsImage(object):
     def __init__(self):
-        # SFTODO: Should I be assigning a random value for disc ID to help with disc changed detection?
         self.catalogue = []
         self.data = bytearray(256 * 7)
         total_sectors = 80 * 2 * 16
         self.data[0xfc] = total_sectors & 0xff
         self.data[0xfd] = (total_sectors >> 8) & 0xff
         self.data[0x1fd] = 3 # *EXEC !BOOT
+        self.md5 = hashlib.md5()
 
     def add_file(self, directory, name, load_addr, exec_addr, data):
         # SFTODO: NEED TO THROW DISCFULL IF APPROPRIATE
@@ -655,6 +656,7 @@ class AdfsImage(object):
         pad = (256 - len(self.data) % 256) & 0xff
         self.data += bytearray(pad)
         self.catalogue.append([name, load_addr, exec_addr, len(data), start_sector, False])
+        self.md5.update(data)
 
     def lock_all(self):
         for entry in self.catalogue:
@@ -668,13 +670,11 @@ class AdfsImage(object):
         self.data[0] = first_free_sector & 0xff
         self.data[1] = (first_free_sector >> 8) & 0xff
         self.data[2] = (first_free_sector >> 16) & 0xff
-        self.data[0xff] = sum(self.data[0:0xff]) & 0xff # SFTODO: PROBABLY WRONG
         free_space_len = 80 * 2 * 16 - first_free_sector
         self.data[0x100] = free_space_len & 0xff
         self.data[0x101] = (free_space_len >> 8) & 0xff
         self.data[0x102] = (free_space_len >> 16) & 0xff
         self.data[0x1fe] = 3 * 1 # number of free space map entries
-        self.data[0x1ff] = sum(self.data[0x100:0x1ff]) & 0xff # SFTODO: PROBABLY WRONG
         self.data[0x201:0x205] = b"Hugo"
         self.data[0x205] = len(self.catalogue)
         self.data[0x6cc] = ord("$")
@@ -709,6 +709,12 @@ class AdfsImage(object):
             self.data[offset+0x16] = start_sector & 0xff
             self.data[offset+0x17] = (start_sector >> 8) & 0xff
             self.data[offset+0x18] = (start_sector >> 16) & 0xff
+        self.md5.update(self.data[0:0x700])
+        # Use a "random" disc ID which won't vary gratuitously from run to run.
+        self.data[0x1fb] = self.md5.digest()[0]
+        self.data[0x1fc] = self.md5.digest()[1]
+        self.data[0xff] = sum(self.data[0:0xff]) & 0xff # SFTODO: PROBABLY WRONG
+        self.data[0x1ff] = sum(self.data[0x100:0x1ff]) & 0xff # SFTODO: PROBABLY WRONG
 
 # SFTODO: Move this function?
 def max_game_blocks_main_ram(executable):
