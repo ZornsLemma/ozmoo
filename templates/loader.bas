@@ -30,6 +30,7 @@ REM user shouldn't be told here in the first place.
 MODE 135
 VDU 23,1,0;0;0;0;
 *FX4,1
+DIM block% 256
 REM ${BANNER} - make-acorn.py will add banner printing code here
 REM SFTODO: Note that for Z3 games, anything shown on the top line of
 REM the screen will remain present occupying the not-yet-displayed
@@ -76,15 +77,19 @@ UNTIL key$=" "
 ?screen_mode=mode%
 IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
-REM Only 39 characters in the next line to avoid scrolling if it's the bottom line.
-PRINTTAB(0,${SPACELINE});CHR$(${NORMALFG});"Loading, please wait...               ";
-$game_data_filename=":4.$.DATA":REM SFTODO need to derive this from full path of current dir
-*DIR S
+VDU 28,0,${SPACELINE},39,${SPACELINE},12,26,31,0,${SPACELINE},${NORMALFG}
+PRINT "Loading, please wait...";
+IF FNfs<>4 THEN path$=FNpath:PROCoscli("DIR SAVES") ELSE path$=":0.$":*DIR S
+game_data_path$=path$+".DATA"
+IF LEN(game_data_path$)>(game_data_filename_size-1) THEN PROCdie("Game data path too long")
+REM We do this last, as it uses a lot of resident integer variable space and this reduces
+REM the chances of it accidentally getting corrupted.
+$game_data_filename=game_data_path$
 *FX4,0
-IF tube% THEN */$.OZMOO2P
-IF shadow% THEN */$.OZMOOSH
-REM We must be on a BBC B with no shadow RAM.
-*/$.OZMOOSW
+IF tube% THEN binary$="OZMOO2P"
+IF shadow% THEN binary$="OZMOOSH"
+IF NOT (tube% OR shadow%) THEN binary$="OZMOOSW"
+PROCoscli("/"+path$+"."+binary$)
 END
 :
 DEF PROCdetect_swr
@@ -390,9 +395,45 @@ IF shadow% OR tube% THEN PRINT CHR$(${NORMALFG});"  CTRL-S: change scrolling mod
 IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
+REM SFTODO: This should probably clear the whole loader area and print in a consistent place
 DEF PROCdie(message$)
 PRINT message$'
 VDU 23,1,1,0;0;0;0;
 *FX4,0
 *FX229,0
 END
+:
+DEF PROCoscli($block%)
+LOCAL X%,Y%
+X%=block%:Y%=block% DIV 256:CALL &FFF7
+ENDPROC
+:
+REM SFTODO: WE DON'T NEED THIS ON DFS
+DEF FNpath
+LOCAL path$,A%,X%,Y%,name%,name$,drive$
+DIM data% 256
+path$=""
+REPEAT
+block%!1=data%
+A%=6:X%=block%:Y%=block% DIV 256:CALL &FFD1
+name%=data%+1+?data%
+name%?(1+?name%)=13
+name$=FNstrip($(name%+1))
+path$=name$+"."+path$
+*DIR ^
+UNTIL name$="$" OR name$="&"
+path$=LEFT$(path$,LEN(path$)-1)
+?name%=13
+drive$=FNstrip($(data%+1))
+IF drive$<>"" THEN path$=":"+drive$+"."+path$
+PROCoscli("DIR "+path$)
+=path$
+:
+DEF FNstrip(s$)
+s$=s$+" "
+REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
+=s$
+:
+DEF FNfs
+LOCAL A%,Y%
+A%=0:Y%=0:=USR(&FFDA) AND &FF

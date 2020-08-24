@@ -639,13 +639,18 @@ class DiscImage(object):
 
 # SFTODO: Move?
 class AdfsImage(object):
+    UNLOCKED = 0
+    LOCKED = 1
+    SUBDIRECTORY = 2
+
     def __init__(self):
         self.catalogue = []
-        self.data = bytearray(256 * 7)
+        self.data = bytearray(256 * 2)
         total_sectors = 80 * 2 * 16
         self.data[0xfc] = total_sectors & 0xff
         self.data[0xfd] = (total_sectors >> 8) & 0xff
         self.data[0x1fd] = 3 # *EXEC !BOOT
+        self.data += self.make_directory("$")
         self.md5 = hashlib.md5()
 
     def add_file(self, directory, name, load_addr, exec_addr, data):
@@ -655,12 +660,33 @@ class AdfsImage(object):
         self.data += data
         pad = (256 - len(self.data) % 256) & 0xff
         self.data += bytearray(pad)
-        self.catalogue.append([name, load_addr, exec_addr, len(data), start_sector, False])
+        self.catalogue.append([name, load_addr, exec_addr, len(data), start_sector, self.UNLOCKED])
         self.md5.update(data)
+
+    def add_directory(self, directory, name):
+        assert directory == "$"
+        start_sector = len(self.data) // 256
+        self.data += self.make_directory(name)
+        self.catalogue.append([name, 0, 0, 0x500, start_sector, self.SUBDIRECTORY | self.LOCKED])
+
+    @classmethod
+    def make_directory(cls, name):
+        data = bytearray(5 * 256)
+        data[0x001:0x005] = b"Hugo"
+        data[0x005] = 0 # number of catalogue entries
+        if name == "$":
+            data[0x4cc] = ord("$")
+            data[0x4d9] = ord("$")
+        else:
+            data[0x4cc:0x4d6] = (name.encode("ascii") + b"\r" + b"\0"*10)[:10]
+            data[0x4d9:0x4ec] = (name.encode("ascii") + b"\r" + b"\0"*19)[:19]
+        data[0x4d6] = 2 # parent is always $ in this code
+        data[0x4fb:0x4ff] = b"Hugo"
+        return data
 
     def lock_all(self):
         for entry in self.catalogue:
-            entry[5] = True
+            entry[5] |= self.LOCKED
 
     def extend(self):
         self.data += b'\0' * (80 * 2 * 16 * 256 - len(self.data))
@@ -675,21 +701,19 @@ class AdfsImage(object):
         self.data[0x101] = (free_space_len >> 8) & 0xff
         self.data[0x102] = (free_space_len >> 16) & 0xff
         self.data[0x1fe] = 3 * 1 # number of free space map entries
-        self.data[0x201:0x205] = b"Hugo"
         self.data[0x205] = len(self.catalogue)
-        self.data[0x6cc] = ord("$")
-        self.data[0x6d6] = 2
-        self.data[0x6d9] = ord("$")
-        self.data[0x6fb:0x6ff] = b"Hugo"
         self.catalogue = sorted(self.catalogue, key=lambda x: x[0])
         for i, entry in enumerate(self.catalogue):
             offset = 0x205 + i * 0x1a
             self.data[offset:offset+10] = (entry[0].encode("ascii") + bytearray(10))[:10]
+            attributes = entry[5]
             self.data[offset] |= 128 # read
-            self.data[offset+1] |= 128 # write
-            locked = entry[5]
-            if locked:
+            if not (attributes & self.SUBDIRECTORY):
+                self.data[offset+1] |= 128 # write
+            if attributes & self.LOCKED:
                 self.data[offset+2] |= 128
+            if attributes & self.SUBDIRECTORY:
+                self.data[offset+3] |= 128
             load_addr = entry[1]
             self.data[offset+0xa] = load_addr & 0xff
             self.data[offset+0xb] = (load_addr >> 8) & 0xff
@@ -713,8 +737,18 @@ class AdfsImage(object):
         # Use a "random" disc ID which won't vary gratuitously from run to run.
         self.data[0x1fb] = self.md5.digest()[0]
         self.data[0x1fc] = self.md5.digest()[1]
-        self.data[0xff] = sum(self.data[0:0xff]) & 0xff # SFTODO: PROBABLY WRONG
-        self.data[0x1ff] = sum(self.data[0x100:0x1ff]) & 0xff # SFTODO: PROBABLY WRONG
+        self.data[0xff] = self.checksum(self.data[0:0xff])
+        self.data[0x1ff] = self.checksum(self.data[0x100:0x1ff])
+
+    @classmethod
+    def checksum(cls, data):
+        c = 0
+        s = 0
+        for b in data[::-1]:
+            s += b + c
+            c = (s & 0x100) >> 8
+            s = s & 0xff
+        return s
 
 # SFTODO: Move this function?
 def max_game_blocks_main_ram(executable):
@@ -873,10 +907,10 @@ if not args.adfs:
         ssd2 = DiscImage()
 else:
     template_ssd = DiscImage("temp/base.ssd")
+    boot = template_ssd.get_file("$", "!BOOT")
     loader = template_ssd.get_file("$", "LOADER")
     ssd = AdfsImage() # SFTODO: "ssd" is bad name...
-    # SFTODO: WE NEED TO PUT !BOOT ON - *PROB* CAN SHARE WITH DFS BUT DO THINK ABOUT IT
-    # SFTODO: LOADER PROBABLY SHOULDN'T BE DOING *DIR S ON ADFS...
+    ssd.add_file("$", "!BOOT", boot[0], boot[1], boot[2])
     ssd.add_file("$", "LOADER", loader[0], loader[1], loader[2])
 
 add_tube_executable(ssd)
@@ -956,6 +990,10 @@ with open(output_file, "wb") as f:
                 f.write(ssd.data[i:i+track_size])
                 f.write(ssd2.data[i:i+track_size])
     else:
+        if args.adfs:
+            # We could put this on right at the start, but it feels a bit neater to have it
+            # after all the game data on the disc.
+            ssd.add_directory("$", "SAVES")
         ssd.finalise()
         # SFTODO: At the moment this will always write a full 640K even if --pad is not specified
         # SFTODO: It may be unnecessarily slow/complex to be writing out a sector at a time
