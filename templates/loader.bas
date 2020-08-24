@@ -86,8 +86,7 @@ REM We do this last, as it uses a lot of resident integer variable space and thi
 REM the chances of it accidentally getting corrupted.
 $game_data_filename=game_data_path$
 *FX4,0
-IF tube% THEN binary$="OZMOO2P"
-IF shadow% THEN binary$="OZMOOSH"
+IF tube% THEN binary$="OZMOO2P" ELSE IF shadow% THEN binary$="OZMOOSH"
 IF NOT (tube% OR shadow%) THEN binary$="OZMOOSW"
 PROCoscli("/"+path$+"."+binary$)
 END
