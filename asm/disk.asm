@@ -427,7 +427,7 @@ uname_len = * - .uname
     jsr setjmp
     beq .no_error
 !ifdef ACORN_ADFS {
-    jsr close_game_data_handle
+    jsr close_osgbpb_block_handle
 }
     jsr error_print_following_string
     ; SFTODO: It's a bit of a luxury item, but it might be nice to allow * to
@@ -543,7 +543,7 @@ uname_len = * - .uname
     !byte 0
 .read_ok
 } else { ; ACORN_ADFS
-    lda data_osgbpb_block_handle
+    lda osgbpb_block_handle
     bne .file_is_open
     lda #osfind_open_input
     ldx #<game_data_filename
@@ -555,29 +555,29 @@ uname_len = * - .uname
     !byte 0
     !text "Can't open DATA"
     !byte 0
-+   sta data_osgbpb_block_handle
++   sta osgbpb_block_handle
 
 .file_is_open
-    ; We could just use .data_osgbpb_block_data_address for readblocks_mempos,
+    ; We could just use osgbpb_block_data_address for readblocks_mempos,
     ; but OSGBPB would then increment it automatically - this is sort of a good
     ; thing, but it creates small variations in behaviour compared to DFS which
     ; then require tweaks elsewhere to compensate.
     lda readblocks_mempos
-    sta .data_osgbpb_block_data_address + 0
+    sta osgbpb_block_data_address + 0
     lda readblocks_mempos + 1
-    sta .data_osgbpb_block_data_address + 1
+    sta osgbpb_block_data_address + 1
     lda #0
-    sta .data_osgbpb_block_transfer_length + 0
-    sta .data_osgbpb_block_pointer + 0
+    sta osgbpb_block_transfer_length + 0
+    sta osgbpb_block_pointer + 0
     lda readblocks_numblocks
-    sta .data_osgbpb_block_transfer_length + 1
+    sta osgbpb_block_transfer_length + 1
     lda readblocks_currentblock
-    sta .data_osgbpb_block_pointer + 1
+    sta osgbpb_block_pointer + 1
     lda readblocks_currentblock + 1
-    sta .data_osgbpb_block_pointer + 2
+    sta osgbpb_block_pointer + 2
     lda #osgbpb_read_using_ptr
-    ldx #<.data_osgbpb_block
-    ldy #>.data_osgbpb_block
+    ldx #<osgbpb_block
+    ldy #>osgbpb_block
     jsr osgbpb
 }
 
@@ -619,15 +619,6 @@ uname_len = * - .uname
 .readblocks_rts
 +   rts
 
-!ifdef ACORN_ADFS {
-close_game_data_handle
-    ldy data_osgbpb_block_handle
-    beq .readblocks_rts
-    lda #osfind_close ; 0
-    sta data_osgbpb_block_handle
-    jmp osfind
-}
-
 !ifndef ACORN_ADFS {
 .osword_7f_block
 .osword_7f_block_drive
@@ -646,21 +637,6 @@ readblocks_mempos
 .osword_7f_block_result
      !byte 0   ; result
 } else { ; ACORN_ADFS
-; SFTODO: Can we share this with the sometimes-present OSGBPB block for save/restore?
-; SFTODO: If this remains distinct, it should be called game_data_osgbpb_block - a save game is data too!
-.data_osgbpb_block
-data_osgbpb_block_handle
-    !byte 0
-.data_osgbpb_block_data_address
-    !word 0 ; low word
-    !word 0 ; high word
-.data_osgbpb_block_transfer_length
-    !word 0 ; low word
-    !word 0 ; high word
-.data_osgbpb_block_pointer
-    !word 0 ; low word
-    !word 0 ; high word
-
 readblocks_mempos
     !word 0
 }
@@ -1649,7 +1625,7 @@ ACORN_SAVE_RESTORE_OSFIND = 1
     beq .crc_ok
 .crc_bad
 !ifdef ACORN_ADFS {
-    jsr close_game_data_handle
+    jsr close_osgbpb_block_handle
 }
     lda #>.reinsert_prompt
     ldx #<.reinsert_prompt
@@ -1716,7 +1692,7 @@ save_game
     sta .osfile_or_osfind_op
 
 !ifdef ACORN_ADFS {
-    jsr close_game_data_handle
+    jsr close_osgbpb_block_handle
 }
 
     ; We default the result to failure and only set it to success after actually
@@ -1754,7 +1730,7 @@ save_game
     jsr setjmp
     beq .no_osfile_error
 !ifdef ACORN_SAVE_RESTORE_OSFIND {
-    jsr .close_osgbpb_block_handle
+    jsr close_osgbpb_block_handle
 }
     ; If this is a load and a disc error occurred partway through, the game is
     ; probably in an inconsistent or otherwise corrupt state. There really isn't
@@ -1908,7 +1884,18 @@ save_game
 .osfile_save_load_block_end_address
     !word 0 ; end address low
     !word 0 ; end address high
-} else {
+} else { ; ACORN_SAVE_RESTORE_OSFIND
+.osgbpb_wrapper
+    ; These values in the OSGBPB block keep getting updated, so we have to
+    ; set them every time.
+    ldx #<scratch_page
+    stx osgbpb_block_data_address
+    ldx #>scratch_page
+    stx osgbpb_block_data_address + 1
+    ldx #<osgbpb_block
+    ldy #>osgbpb_block
+    jmp osgbpb
+
 ; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
 ; it can handle data located in sideways RAM. A contains the OSFIND operation
 ; code on entry.
@@ -1924,7 +1911,7 @@ save_game
     !byte err_not_found
     !text "Not found"
     !byte 0
-+   sta .osgbpb_block_handle
++   sta osgbpb_block_handle
 
     ; Is this a load or save?
     lda .osfile_or_osfind_op
@@ -1943,16 +1930,16 @@ save_game
     tay
     ldx .osgbpb_save_length
     beq .osgbpb_save_done
-+   stx .osgbpb_block_transfer_length
-    sty .osgbpb_block_transfer_length + 1
++   stx osgbpb_block_transfer_length
+    sty osgbpb_block_transfer_length + 1
 
     ; Subtract the number of bytes to save from .osgbpb_save_length.
     sec
     lda .osgbpb_save_length
-    sbc .osgbpb_block_transfer_length
+    sbc osgbpb_block_transfer_length
     sta .osgbpb_save_length
     lda .osgbpb_save_length + 1
-    sbc .osgbpb_block_transfer_length + 1
+    sbc osgbpb_block_transfer_length + 1
     sta .osgbpb_save_length + 1
 
     ; Copy the data into the bounce buffer.
@@ -1960,16 +1947,16 @@ save_game
 -   lda (.start_ptr),y
     sta scratch_page,y
     iny
-    cpy .osgbpb_block_transfer_length
+    cpy osgbpb_block_transfer_length
     bne -
 
     ; Advance .start_ptr.
     clc
     lda .start_ptr
-    adc .osgbpb_block_transfer_length
+    adc osgbpb_block_transfer_length
     sta .start_ptr
     lda .start_ptr + 1
-    adc .osgbpb_block_transfer_length + 1
+    adc osgbpb_block_transfer_length + 1
     sta .start_ptr + 1
 
     ; Write the bounce buffer out.
@@ -1980,7 +1967,7 @@ save_game
     jmp .osgbpb_save_loop
 
 .osgbpb_save_done
-    jmp .close_osgbpb_block_handle
+    jmp close_osgbpb_block_handle
 
     ; It's a load.
 .osfile_pseudo_emulation_load
@@ -1989,17 +1976,17 @@ save_game
     ; Read some data into the bounce buffer and work out how much we read; if we
     ; read nothing, it's EOF and we're done.
     ldx #<.chunk_size
-    stx .osgbpb_block_transfer_length
+    stx osgbpb_block_transfer_length
     ldx #>.chunk_size
-    stx .osgbpb_block_transfer_length + 1
+    stx osgbpb_block_transfer_length + 1
     lda #osgbpb_read_ignoring_ptr
     jsr .osgbpb_wrapper
     sec
     lda #<.chunk_size
-    sbc .osgbpb_block_transfer_length
+    sbc osgbpb_block_transfer_length
     sta .bytes_read
     lda #>.chunk_size
-    sbc .osgbpb_block_transfer_length + 1
+    sbc osgbpb_block_transfer_length + 1
     sta .bytes_read + 1
     ora .bytes_read
     beq .osgbpb_load_done
@@ -2030,44 +2017,42 @@ save_game
 
 .osgbpb_load_done
     ; fall through to .close_osgbpb_block_handle
+}
 
+!ifdef ACORN_ADFS {
+    ACORN_WANT_OSGBPB_BLOCK = 1
+} else {
+    !ifdef ACORN_SAVE_RESTORE_OSFIND {
+        ACORN_WANT_OSGBPB_BLOCK = 1
+    }
+}
+!ifdef ACORN_WANT_OSGBPB_BLOCK {
 ; Close .osgbpb_block_handle iff it's non-0. If it's non-0 we set it to 0
 ; before doing anything, so we don't get into an infinite loop if the close
 ; operation fails.
-; SFTODO: Prob unavoidable (unless we share the block, which may well work given
-; we never have both files open simultaneously, with the one used by ACORN_ADFS
-; for game data reading) but this is very similar to close_game_data_handle.
-.close_osgbpb_block_handle
-    ldy .osgbpb_block_handle
+close_osgbpb_block_handle
+    ldy osgbpb_block_handle
     beq +
     lda #osfind_close ; 0
-    sta .osgbpb_block_handle
+    sta osgbpb_block_handle
     jmp osfind
-+   rts
++   rts ; SFTODO: Can we move this and share a nearby rts?
 
-.osgbpb_wrapper
-    ; These values in the OSGBPB block keep getting updated, so we have to
-    ; set them every time.
-    ldx #<scratch_page
-    stx .osgbpb_block_data_address
-    ldx #>scratch_page
-    stx .osgbpb_block_data_address + 1
-    ldx #<.osgbpb_block
-    ldy #>.osgbpb_block
-    jmp osgbpb
-
-; SFTODO: RENAME THIS TO DISAMBIGUATE IT FROM data_osgbpb_block IF WE RETAIN BOTH
-.osgbpb_block
-.osgbpb_block_handle
+; This block may be shared by both ADFS readblocks and OSFIND+OSGBPB save/
+; restore. This isn't a problem, because we don't *want* to keep the game data
+; file open across a save/restore anyway as the disc may be removed/dismounted.
+osgbpb_block
+osgbpb_block_handle
     !byte 0
-.osgbpb_block_data_address
+osgbpb_block_data_address
     !word 0 ; low word
     !word 0 ; high word
-.osgbpb_block_transfer_length
+osgbpb_block_transfer_length
     !word 0 ; low word
     !word 0 ; high word
-    !word 0 ; pointer low word (ignored)
-    !word 0 ; pointer high word (ignored)
+osgbpb_block_pointer
+    !word 0 ; pointer low word
+    !word 0 ; pointer high word
 }
 }
 }
