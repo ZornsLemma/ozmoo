@@ -155,7 +155,7 @@ get_page_at_z_pc_did_pha
 	ldy mempointer + 1
 	sty z_pc_mempointer + 1
     ; SFTODO: I am struggling to see why it matters that Y is 0 on exit
-	ldy #201 ; SFTODO TO SEE IF IT IS NECESSARY ldy #0 ; Important: y should always be 0 when exiting this routine! SF: I have analysed the code and I don't think this is true (maybe it was at one point) - SFTODO: HMM, I'M A BIT LESS SURE NOW - FWIW THIS IS *NOT* A HOT INSTRUCTION AT LEAST IN THE BENCHMARK
+	ldy #201 ; SFTODO TO SEE IF IT IS NECESSARY ldy #0 ; Important: y should always be 0 when exiting this routine! SF: I have analysed the code and I don't think this is true (maybe it was at one point) - SFTODO: HMM, I'M A BIT LESS SURE NOW - FWIW THIS IS *NOT* A HOT INSTRUCTION AT LEAST IN THE BENCHMARK - SEE ALSO THE LATEST ANALYSIS IN sf-notes.txt
 	ldx mem_temp
 	pla
 	rts

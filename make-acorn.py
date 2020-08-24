@@ -3,7 +3,10 @@
 
 # SFTODO: It might be nice to support generating non-interleaved .adf ADFS images if the
 # game fits on a medium disc. Even if I don't, it might be nice to warn we're generating
-# a DFS image if the user gives an output file with a .adf extension.
+# a DFS image if the user gives an output file with a .adf extension. [A 640K image is
+# nicer, though, as it has loads of space free for saves, and unlike DFS where it's
+# trivial to format side 2 of a .ssd, expanding a 320K ADFS M to a 640K ADFS L is not
+# quite so easy. Not rocket science, but a minor faff.]
 
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
@@ -241,7 +244,7 @@ parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtit
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adl extension)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
-parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS disc image filename (output)") # SFTODO: MIGHT BE ADFS NOW
+parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
 group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
 group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")

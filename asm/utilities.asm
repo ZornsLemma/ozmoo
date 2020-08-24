@@ -827,7 +827,7 @@ rotate_r
     dex
     bne shift_r 
     rts
-    ;SFTODODATA
+    ;SFTODODATA 8
 multiplier
 divisor
 	!byte 0, 0

@@ -167,7 +167,7 @@ vmap_blocks_preloaded !byte 0
 vmap_z_h = datasette_buffer_start
 vmap_z_l = vmap_z_h + vmap_max_size
 
-;SFTODODATA
+;SFTODODATA 1
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
 !ifndef ACORN_SWR {

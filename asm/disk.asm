@@ -9,7 +9,7 @@ ask_for_save_device !byte $ff
 
 ; SFTODO: readblock could be part of discardable init code on a non-VMEM build;
 ; maybe make it a macro so ozmoo.asm can put it in discardable init or not as
-; appropriate? (If we support restart on non-VMEM builds for Acorn, we'd
+; appropriate? (If we support restart on non-VMEM builds for Acorn, we'd maybe
 ; need readblock to do the check for having the game disc in the drive.)
 !ifdef ACORN {
     WANT_READBLOCK = 1
@@ -30,7 +30,7 @@ disk_info
 device_map !byte 0,0,0,0
 }
 
-; SFTODODATA
+; SFTODODATA 6
 nonstored_blocks		!byte 0
 readblocks_numblocks	!byte 0 
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
@@ -410,7 +410,6 @@ uname_len = * - .uname
 +
 }
 
-    ; SFTODO: I suspect error handling may need changing for ADFS, for the moment I'm just going to ignore the issue while I get things working
     ; We prefix errors with two newlines, so even if we're part way through a
     ; line there will always be at least one blank line above the error message.
     ; We use s_printchar for output here, as this will be mixed in with the
@@ -543,8 +542,8 @@ uname_len = * - .uname
     ldy #>game_data_filename
     jsr osfind
     bne +
-    ; SFTODO!?
     brk
+cant_open_data_error
     !byte 0
     !text "Can't open DATA"
     !byte 0
@@ -1615,7 +1614,6 @@ ACORN_SAVE_RESTORE_OSFIND = 1
     ; in. Arguably it's clearer to say it, and it's harmless except for using
     ; a few bytes of memory. (But as I've said elsewhere, you do need the game
     ; disc in for RESTART when I support this on non-VMEM.)
-    ; SFTODO: On ADFS I am not quite sure what will happen about removing the game disc. I may need to close the file to allow this. Do I need to make the user do *MOUNT if necessary? Also when it comes to getting the game disc back, can I go and read block 0 of the file or is that just going to fail with a Disc changed error if the user has changed the disc? Do I maybe just do a *MOUNT (what drive number? current drive I guess) before re-opening the file and checking, and catching any errors just as readblock would?
     !text "You can safely remove the game disc now.", 13, 0
 .save_prompt
     !text "save>", 0

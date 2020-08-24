@@ -2,14 +2,6 @@ REM The loader uses some of the resident integer variables (or at least the
 REM corresponding memory) to communicate with the Ozmoo executable. This
 REM means it's probably least error prone to avoid using resident integer
 REM variables gratuitously in this code.
-REM SFTODO: The loader should probably check the file system is DFS/ADFS as
-REM appropriate, though be careful - it's possible some DFS-like filing
-REM systems return their own code, and as long as a) the catalogue is DFS-like
-REM and b) OSWORD &7F works we won't have any problems. If I start parsing
-REM raw ADFS catalogues, checking the filing system is ADFS is probably not
-REM unreasonable though.
-REM SFTODO: This file should be crunched (if only a pass through sed
-REM to strip REM and \ comments out), it eats loads of disc space.
 REM SFTODO: It would be nice if the loader and build system could work
 REM together to allow the user to *optionally* specify a high-res title
 REM screen and/or a nice mode 7 banner to display at the top of the

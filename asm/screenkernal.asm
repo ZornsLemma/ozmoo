@@ -1213,7 +1213,7 @@ z_ins_set_colour
 }
 }
 
-; SFTODODATA
+; SFTODODATA 160 (BUT NOT IN ALL BUILDS)
 !ifdef ACORN_HW_SCROLL {
 .top_line_buffer
     !fill max_screen_width

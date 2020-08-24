@@ -244,11 +244,10 @@ screenkernal_init
     ldy #>scratch_page
     jsr osfile
     bne +
-    ; SFTODO: Share this error with disk.asm?
-    brk
-    !byte 0
-    !text "Can't open DATA"
-    !byte 0
+    ; The wording of this error is technically incorrect - we're trying to read
+    ; information about the file, not open it - but I don't think it's a big
+    ; deal. It shouldn't be happening at all, of course.
+    jmp cant_open_data_error
 +   lda scratch_page + $a
     beq +
     inc scratch_page + $b
