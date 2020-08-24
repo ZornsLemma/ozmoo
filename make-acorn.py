@@ -1,8 +1,6 @@
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
-# SFTODO: Some of the temp files generated have _DYNMEMSIZE in them, i.e. it has not been substituted
-
 # SFTODO: With ADFS support, various variables called "ssd" are not really correctly named
 
 # SFTODO: It might be nice to support generating non-interleaved .adf ADFS images if the
@@ -861,7 +859,7 @@ def add_swr_shr_executable(ssd):
         if "ACORN_SWR_SMALL_DYNMEM" in low_candidate.labels:
             low_candidate = None
             for start_address in low_start_address_options:
-                e = Executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
+                e = Executable("swr_shr_vmem_START", start_address, extra_args)
                 if low_candidate is None or len(e.binary) < len(low_candidate.binary):
                     low_candidate = e
         assert low_candidate is not None
@@ -876,7 +874,7 @@ def add_swr_shr_executable(ssd):
         # an automatic adjustment using shr_swr_min_start_addr would be friendlier. However,
         # it's probably not worth worrying about this until a problematic game turns up.
         high_start_address = shr_swr_default_start_addr + (low_candidate.start_address % 0x200)
-        high_candidate = Executable("swr_shr_vmem_DYNMEMSIZE_START", high_start_address, extra_args)
+        high_candidate = Executable("swr_shr_vmem_START", high_start_address, extra_args)
 
     if not info_shown:
         info_swr_dynmem("sideways+shadow RAM build", high_candidate.labels)
