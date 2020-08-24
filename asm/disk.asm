@@ -1,3 +1,4 @@
+; SFTODONOW: In hitchhik.z5, if you turn light on, save, wait until you die and restore that save at the you-are-dead prompt, game crashes with a fatal error.
 ; SFTODO: I half wonder if disk.asm should be pure C64 code and we should
 ; just have a disk-acorn.asm for Acorn stuff
 !ifndef ACORN {
@@ -839,7 +840,7 @@ z_ins_restart
 	; !pet 131,0
 .restart_code_end
 
-} else {
+} else { ; ACORN
 !ifdef ACORN_NO_SHADOW {
     jsr undo_mode_7_3c00
     ; Turn the cursor off during the restart; switching to proper mode 7 will
@@ -855,13 +856,40 @@ z_ins_restart
 
     ; Since we discarded our initialisation code on startup, we have to
     ; re-execute the Ozmoo binary from disc to restart.
+!ifndef ACORN_ADFS {
     ldx #<.restart_command
     ldy #>.restart_command
+} else {
+    ; Build up the restart command at scratch_page by copying game_data_filename
+    ; and replacing the last component by the executable leafname.
+.last_dot = zp_temp
+    lda #'/'
+    sta scratch_page
+    ldx #0
+-   inx
+    lda game_data_filename - 1,x
+    sta scratch_page,x
+    cmp #'.'
+    bne +
+    stx .last_dot
++   cmp #13
+    bne -
+    ldx .last_dot
+    ldy #255
+-   inx
+    iny
+    lda .executable_leafname,y
+    sta scratch_page,x
+    cmp #13
+    bne -
+    ldx #<scratch_page
+    ldy #>scratch_page
+}
     jmp oscli
 
+!ifndef ACORN_ADFS {
     ; We specify the drive and directory in case the user has used *DRIVE/*DIR
     ; commands during save or restore.
-    ; SFTODO: This is going to need some care on ADFS
 .restart_command
 !ifndef ACORN_SWR {
     !text "/:0.$.OZMOO2P", 13
@@ -871,6 +899,18 @@ z_ins_restart
     } else {
         !text "/:0.$.OZMOOSW", 13
     }
+}
+} else { ; ACORN_ADFS
+.executable_leafname
+!ifndef ACORN_SWR {
+    !text "OZMOO2P", 13
+} else {
+    !ifndef ACORN_NO_SHADOW {
+        !text "OZMOOSH", 13
+    } else {
+        !text "OZMOOSW", 13
+    }
+}
 }
 }
 }
