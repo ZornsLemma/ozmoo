@@ -1912,8 +1912,8 @@ save_game
 .osgbpb_save_loop
     ; Save the smaller of .chunk_size and .osgbpb_save_length bytes. If
     ; .osgbpb_save_length is 0, we're done.
-    ldx #>.chunk_size
-    ldy #<.chunk_size
+    ldx #<.chunk_size
+    ldy #>.chunk_size
     lda .osgbpb_save_length + 1
     bne +
     tay
