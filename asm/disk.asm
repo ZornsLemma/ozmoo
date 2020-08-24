@@ -562,6 +562,10 @@ uname_len = * - .uname
     ; but OSGBPB would then increment it automatically - this is sort of a good
     ; thing, but it creates small variations in behaviour compared to DFS which
     ; then require tweaks elsewhere to compensate.
+    ;
+    ; If the game isn't an exact multiple of 512 bytes long, reads of the last
+    ; 512-byte block will return fewer bytes, but that's fine - there's no need
+    ; to pad the game data on disc.
     lda readblocks_mempos
     sta osgbpb_block_data_address + 0
     lda readblocks_mempos + 1
