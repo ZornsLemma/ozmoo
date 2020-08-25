@@ -78,8 +78,9 @@ REM We do this last, as it uses a lot of resident integer variable space and thi
 REM the chances of it accidentally getting corrupted.
 $game_data_filename=game_data_path$
 *FX4,0
+binary$="OZMOOSW"
 IF tube% THEN binary$="OZMOO2P" ELSE IF shadow% THEN binary$="OZMOOSH"
-IF NOT (tube% OR shadow%) THEN binary$="OZMOOSW"
+REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
 PROCoscli("/"+path$+"."+binary$)
 END
 :
