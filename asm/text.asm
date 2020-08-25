@@ -5,8 +5,10 @@
 ;TRACE_SHOW_DICT_ENTRIES = 1
 ;TRACE_PRINT_ARRAYS = 1
 ;SFTODODATA 2
+!ifndef ACORN { ; SFTODO!?
 .text_tmp	!byte 0
 .current_character !byte 0
+}
 .petscii_char_read = zp_temp
 	
 ; SFTODO: Annoying duplication here...
