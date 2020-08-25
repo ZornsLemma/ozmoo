@@ -619,7 +619,14 @@ nonstored_blocks_adjusted
     lda screen_mode
     ora #128 ; force shadow mode on
     jsr oswrch
+    jmp .mode_set
 .already_in_right_mode
+    ; Clear the screen; this is mostly unnecessary, but for Z3 games which are
+    ; loading from the loader in mode 7 it clears any leftover text on the top
+    ; line of the screen.
+    lda #vdu_cls
+    jsr oswrch
+.mode_set
     ; Setting the mode will have turned the cursor back on, so fix that.
     jsr init_cursor_control
     ; We must re-initialise screenkernal to pick up the details of the new mode.
