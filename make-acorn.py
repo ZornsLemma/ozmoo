@@ -144,7 +144,7 @@ class Executable(object):
         self.extra_args = extra_args[:]
         if "-DACORN_NO_SHADOW=1" not in self.extra_args:
             self.extra_args += ["-DACORN_HW_SCROLL=1"]
-        if "-DCMOS=1" in self.extra_args:
+        if "-DCMOS=1" in acme_args1 + self.extra_args:
             cpu = "65c02"
         else:
             cpu = "6502"
@@ -261,6 +261,7 @@ group.add_argument("--fake-read-errors", action="store_true", help="fake intermi
 group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
 group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
 group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
+group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -346,6 +347,8 @@ if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:
     acme_args1 += ["-DMODE_7_STATUS=1"]
+if args.force_65c02:
+    acme_args1 += ["-DCMOS=1"]
 if debug:
     acme_args1 += ["-DDEBUG=1"]
 

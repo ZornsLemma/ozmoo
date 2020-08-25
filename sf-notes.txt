@@ -3,6 +3,7 @@
 - non-2P builds have page 7 completely free
 - we have scratch page on 2P and double scratch page on non-2P, we do need these but we could maybe use a bit more
 - if necessary to free up "big" chunks of non-initialised low memory, we could of course move stuff out of there into the main Ozmoo binary
+- there is also the up-to-511 bytes of padding to ensure the stack starts with the right alignment, though of course this is hard to use flexibly since it may disappear and we always need (even if it's just manual fiddling) some sort of fallback, and if we have somewhere to fall back to why would we not just use it all the time anyway?
 
 Possible uses of free memory:
 - extend game_data_filename space from 32 bytes

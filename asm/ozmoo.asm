@@ -1212,5 +1212,3 @@ vmem_start = story_start
 ; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
 ; because they could be using the more common SWMMFS in a regular sideways RAM
 ; bank and have the 12K private RAM free.)
-
-; SFTODO: It might be worth looking at some profile output and FOR HOT INSTRUCTIONS ONLY, conditionally using the 65C02 instructions where they'd help. This would benefit the second processor build; the Master could also use them, of course, but unless they offer a big gain or it's near-trivial to patch them in a run time it's probably not that attractive an option. (make-acorn.py could take a "use CMOS" instruction so people can force this on, if they don't care about having generic disc images.)
