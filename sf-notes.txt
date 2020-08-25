@@ -1,3 +1,17 @@
+"Free memory":
+- on all builds "a lot of" page 4 is really free (~113 bytes)
+- non-2P builds have page 7 completely free
+- we have scratch page on 2P and double scratch page on non-2P, we do need these but we could maybe use a bit more
+- if necessary to free up "big" chunks of non-initialised low memory, we could of course move stuff out of there into the main Ozmoo binary
+
+Possible uses of free memory:
+- extend game_data_filename space from 32 bytes
+- maybe relocate part of vmem map into it - this needs to be initialised though
+- maybe relocate some/all of 160 bytes of ACORN_HW_SCROLL buffer into it
+- there's about 57 bytes of misc data scattered round the code which might be relocatable into this space, but that creates a bit of a gratuitous difference from C64 as it's mostly "upstream" data
+
+
+
 ADFS:
 I think we need to do *DISMOUNT before entering the save/restore prompt
 Probably also necessary/a good idea to close the game data file before doing *DISMOUNT

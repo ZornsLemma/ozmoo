@@ -368,6 +368,7 @@ mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp?
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
 z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp?
+; SFTODO: We could probably use memory_buffer instead of osfile_emulation_workspace; it's generally available for temp workspace
 osfile_emulation_workspace = $420 ; 2 bytes
 jmp_buf_ram_bank = $422 ; 1 byte
 }

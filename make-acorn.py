@@ -144,8 +144,12 @@ class Executable(object):
         self.extra_args = extra_args[:]
         if "-DACORN_NO_SHADOW=1" not in self.extra_args:
             self.extra_args += ["-DACORN_HW_SCROLL=1"]
+        if "-DCMOS=1" in self.extra_args:
+            cpu = "65c02"
+        else:
+            cpu = "6502"
         os.chdir("asm")
-        run_and_check(substitute(acme_args1 + ["--setpc", "$" + ourhex(start_address)] + self.extra_args + acme_args2, "VERSION", version))
+        run_and_check(substitute(acme_args1 + ["--cpu", cpu, "--setpc", "$" + ourhex(start_address)] + self.extra_args + acme_args2, "VERSION", version))
         os.chdir("..")
         self.binary_filename = "temp/ozmoo_" + version
         self.labels_filename = "temp/acme_labels_" + version + ".txt"
@@ -293,7 +297,6 @@ acme_args1 = [
     "-DSPLASHWAIT=0"
 ]
 acme_args2 = [
-    "--cpu", "6502",
     "--format", "plain",
     # SFTODO: Should really use the OS-local path join character in next three lines, not '/'
     "-l", "../temp/acme_labels_VERSION.txt",
@@ -781,7 +784,7 @@ def add_tube_executable(disc):
         e = tube_no_vmem
     else:
         info("Game will be run using virtual memory on second processor")
-        e = Executable("tube_vmem", tube_start_addr, ["-DVMEM=1"])
+        e = Executable("tube_vmem", tube_start_addr, ["-DVMEM=1", "-DCMOS=1"])
     disc.add_file("$", "OZMOO2P", tube_start_addr, tube_start_addr, e.binary)
 
 # SFTODO: Move this function?

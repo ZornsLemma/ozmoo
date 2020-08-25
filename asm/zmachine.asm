@@ -638,10 +638,18 @@ dumptovice
 	sty z_trace_index
 }
 
+!ifndef CMOS {
 	lda #0
 	sta z_operand_count
+} else {
+    stz z_operand_count
+}
 !ifdef Z4PLUS {	
+!ifndef CMOS {
 	sta z_temp + 5 ; Signal to NOT read up to four more operands
+} else {
+	stz z_temp + 5 ; Signal to NOT read up to four more operands
+}
 }
 	+read_next_byte_at_z_pc_unsafe_start
 	sta z_opcode

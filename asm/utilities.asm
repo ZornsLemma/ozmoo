@@ -87,8 +87,14 @@ read_next_byte_at_z_pc_unsafe_start_sub
     ; Fall through to read_next_byte_at_z_pc_unsafe_middle_sub
 
 read_next_byte_at_z_pc_unsafe_middle_sub
+!ifndef CMOS {
 	ldy #0
 	lda (z_pc_mempointer),y
+    ldy #76 ; SFTODO TO SEE IF IT MATTERS
+} else {
+    lda (z_pc_mempointer)
+    ldy #76 ; SFTODO TO SEE IF IT MATTERS
+}
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
 	rts
@@ -102,8 +108,14 @@ read_next_byte_at_z_pc_unsafe_middle_sub
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_sub
     jsr restart_read_next_byte_at_z_pc_unsafe_sub
+!ifndef CMOS {
 	ldy #0
 	lda (z_pc_mempointer),y
+    ldy #76 ; SFTODO TO SEE IF IT MATTERS
+} else {
+    lda (z_pc_mempointer)
+    ldy #76 ; SFTODO TO SEE IF IT MATTERS
+}
     jsr finish_read_next_byte_at_z_pc_unsafe_sub
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
@@ -114,8 +126,14 @@ read_next_byte_at_z_pc_sub
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 read_next_byte_at_z_pc_sub
+!ifndef CMOS {
 	ldy #0
 	lda (z_pc_mempointer),y
+    ldy #76 ; SFTODO TO SEE IF IT MATTERS
+} else {
+    lda (z_pc_mempointer)
+    ldy #76 ; SFTODO TO SEE IF IT MATTERS
+}
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
 	rts
@@ -172,8 +190,12 @@ read_next_byte_at_z_pc_sub
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc_unsafe_middle {
+!ifndef CMOS {
 	ldy #0
 	lda (z_pc_mempointer),y
+} else {
+    lda (z_pc_mempointer)
+}
 	inc z_pc_mempointer ; Also increases z_pc
 	bne ++
 	jsr inc_z_pc_page_acorn_unsafe
@@ -189,8 +211,12 @@ read_next_byte_at_z_pc_sub
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {
     +restart_read_next_byte_at_z_pc_unsafe
+!ifndef CMOS {
 	ldy #0
 	lda (z_pc_mempointer),y
+} else {
+    lda (z_pc_mempointer)
+}
     +finish_read_next_byte_at_z_pc_unsafe
 	inc z_pc_mempointer ; Also increases z_pc
 	bne ++
@@ -201,8 +227,12 @@ read_next_byte_at_z_pc_sub
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
 !macro read_next_byte_at_z_pc {
+!ifndef CMOS {
 	ldy #0
 	lda (z_pc_mempointer),y
+} else {
+    lda (z_pc_mempointer)
+}
 	inc z_pc_mempointer ; Also increases z_pc
 	bne ++
 	jsr inc_z_pc_page
