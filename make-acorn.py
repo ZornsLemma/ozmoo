@@ -993,10 +993,20 @@ else:
     else:
         output_file = args.output_file
 
-if args.pad: # SFTODO: Make sure to test this for ADFS
+if args.adfs:
+    # We could put this on right at the start, but it feels a bit neater to have it
+    # after all the game data on the disc.
+    disc.add_directory("$", "SAVES")
+    disc.finalise()
+
+if args.pad:
     disc.extend()
     if args.double_sided:
         disc2.extend()
+
+# SFTODO: Move this
+def get_track(data, start, size):
+    return (data[start:start+size] + bytearray(size))[:size]
 
 with open(output_file, "wb") as f:
     if not args.adfs:
@@ -1008,20 +1018,11 @@ with open(output_file, "wb") as f:
                 i = track * track_size
                 if i >= len(disc.data) and i >= len(disc2.data):
                     break
-                f.write(disc.data[i:i+track_size])
-                f.write(disc2.data[i:i+track_size])
+                f.write(get_track(disc.data, i, track_size))
+                f.write(get_track(disc2.data, i, track_size))
     else:
-        # We could put this on right at the start, but it feels a bit neater to have it
-        # after all the game data on the disc.
-        disc.add_directory("$", "SAVES")
-        disc.finalise()
-        # SFTODO: At the moment this will always write a full 640K even if --pad is not specified
-        # SFTODO: It may be unnecessarily slow/complex to be writing out a sector at a time
-        for track in range(80):
+        max_track = min(len(disc.data) // (16 * 256), 80)
+        track_size = 256 * 16
+        for track in range(max_track):
             for surface in range(2):
-                for sector in range(16):
-                    i = ((track + (surface * 80)) * 16 + sector) * 256
-                    if i < len(disc.data):
-                        f.write(disc.data[i:i+256])
-                    else:
-                        f.write(bytearray(256))
+                f.write(get_track(disc.data, (surface*80 + track) * track_size, track_size))
