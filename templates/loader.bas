@@ -4,8 +4,7 @@ REM means it's probably least error prone to avoid using resident integer
 REM variables gratuitously in this code.
 REM SFTODO: It would be nice if the loader and build system could work
 REM together to allow the user to *optionally* specify a high-res title
-REM screen and/or a nice mode 7 banner to display at the top of the
-REM "options" screen before we launch the game proper.
+REM screen before we go into the mode 7 loader.
 REM SFTODO: In principle the build system could communicate size of
 REM "nonstored_blocks" to this code (it's hard for it to modify it
 REM directly, but it could set a resident integer variable in !BOOT)
