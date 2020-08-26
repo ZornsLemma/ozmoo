@@ -93,11 +93,14 @@ def parse_labels(filename):
 def get_word(data, i):
     return data[i]*256 + data[i+1]
 
-def bytes_to_blocks(x):
-    if x & 0xff != 0:
-        return int(x / 256) + 1
+def divide_round_up(x, y):
+    if x % y == 0:
+        return x // y
     else:
-        return int(x / 256)
+        return (x // y) + 1
+
+def bytes_to_blocks(x):
+    return divide_round_up(x, 256)
 
 # SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
 def decode_edittf_url(url):
@@ -449,9 +452,9 @@ with open("templates/loader.bas", "r") as loader_template:
         first_loader_line = None
         last_loader_line = None
         normal_fg_colour = 135
-        header_fg_colour = 135
-        highlight_fg_colour = 134
-        highlight_bg_colour = 135
+        header_fg_colour = 131
+        highlight_fg_colour = 131
+        highlight_bg_colour = 129
         start_adjust = 0
         for line in loader_template:
             assert line[-1] == '\n'
@@ -476,7 +479,6 @@ with open("templates/loader.bas", "r") as loader_template:
                             continue
                     banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
                     banner_line = (banner_line + b" "*40)[:40]
-                    # SFTODO: Should set the following four variables to sensible defaults but let's not for now so I check they are all being set by this code
                     if b"Normal foreground" in banner_line:
                         normal_fg_colour = colour(banner_line[0])
                     elif b"Header foreground" in banner_line:
@@ -632,9 +634,13 @@ class DiscImage(object):
         for i in range(self.num_files()):
             offset = 8 + i * 8
             if self.data[offset:offset+8] == name:
-                # SFTODO: PROBABLY NEED TO SIGN EXTEND LOAD/EXEC ADDR
-                load_addr = self.data[0x100+offset] | (self.data[0x101+offset] << 8) | (((self.data[0x106+offset] >> 2) & 0x3) << 16)
-                exec_addr = self.data[0x102+offset] | (self.data[0x103+offset] << 8) | (((self.data[0x106+offset] >> 6) & 0x3) << 16)
+                def extend_address(addr):
+                    if ((addr >> 16) & 3) == 3:
+                        return addr | 0xffff0000
+                    else:
+                        return addr
+                load_addr = extend_address(self.data[0x100+offset] | (self.data[0x101+offset] << 8) | (((self.data[0x106+offset] >> 2) & 0x3) << 16))
+                exec_addr = extend_address(self.data[0x102+offset] | (self.data[0x103+offset] << 8) | (((self.data[0x106+offset] >> 6) & 0x3) << 16))
                 length = self.data[0x104+offset] | (self.data[0x105+offset] << 8) | (((self.data[0x106+offset] >> 4) & 0x3) << 16)
                 start_sector = self.data[0x107+offset] | ((self.data[0x106+offset] & 0x3) << 8)
                 return (load_addr, exec_addr, self.data[start_sector*256:start_sector*256+length])
@@ -708,6 +714,7 @@ class AdfsImage(object):
             data[0x4d9:0x4ec] = (name.encode("ascii") + b"\r" + b"\0"*19)[:19]
         data[0x4d6] = 2 # parent is always $ in this code
         data[0x4fb:0x4ff] = b"Hugo"
+        assert data[0] == data[0x4fa]
         return data
 
     def lock_all(self):
@@ -1036,7 +1043,7 @@ with open(output_file, "wb") as f:
                 f.write(get_track(disc.data, i, track_size))
                 f.write(get_track(disc2.data, i, track_size))
     else:
-        max_track = min(len(disc.data) // (16 * 256), 80)
+        max_track = min(divide_round_up(len(disc.data), 16 * 256), 80)
         track_size = 256 * 16
         for track in range(max_track):
             for surface in range(2):
