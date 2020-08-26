@@ -1,3 +1,20 @@
+Vmem notes (mostly looking at block aging stuff):
+- I'll assume Z3 in these notes, where vmem_tick_increment == 2 and vmem_highbyte_mask = $01, but except for reduced resolution I don't think other versions are significantly different
+- vmem_blockmask is always $fe=254 - this is used to allow for the fact a VM block contains two pages
+- vmem_tick starts off at $e0
+- vmem_tick doesn't move unless we need access to a block of data and it isn't in our VM cache, i.e. we need to read a block from disc and we therefore need a slot in our VM cache to store it in.
+     - by this point we have already picked out the "oldest" entry so we can re-use that slot
+        - in terms of picking out the oldest, we start looking at vmem_clock_index and entries have to be strictly older to replace the previous oldest candidate
+        - vmem_clock_index is set to the index following the oldest candidate ready for the next search - I think doing this rather than always starting at index 0 might have some kind of effect on tie-breaking when multiple entries share exactly the same time stamp, but TODO: I really need to think this through
+    - vmem_tick is incremented by vmem_tick_increment
+    - if vmem_tick wraps round, it gets set to $80 and the vmap entries are adjusted - the adjustment subtracts $80, if the result is negative the value is set to 0 (with an adjustment to preserve the non-tick-related high byte using vmem_highbyte_mask)
+    - the newly read block is given the new value of vmem_tick (although debugging code will print the older value)
+- if we need a block of data and it's already in the VM cache, vmem_tick does *not* change but that block's vmap entry is set to the current value of vmem_tick
+
+
+
+
+
 Preopt and related stuff:
 - I think the basics of this are not a big deal - start with an empty vmap, populate it and dump the contents when it's full
 - the build system then needs to pass (presumably in order of first use) this into the binary so it can load the relevant blocks - the binary should probably sort these itself so as to seek efficiently across the disc, we can't sort them in the build system because only the binary knows how much RAM it actually has to work with, it may end up truncating the list of suggested blocks (e.g. suppose the preload blocks are 5, 6, 130, 4 in that order - if we have >=4 blocks of VM cache we want to load 4, 5, 6, 130, but if we have 3 blocks of VM cache we want to load 5, 6, 130 not 4, 5, 6 which we would do if the list were pre-sorted before truncation - note also depending on exactly how the setting of the initial age works, we may need to be careful not to lose information by doing this sort in order to do efficient loading)
