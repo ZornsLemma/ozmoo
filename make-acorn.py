@@ -446,23 +446,24 @@ with open("templates/loader.bas", "r") as loader_template:
     with open("temp/loader.bas", "wb") as loader:
         # SFTODO: Slightly hacky but feeling my way here
         space_line = None
+        first_loader_line = None
+        last_loader_line = None
         normal_fg_colour = 135
         header_fg_colour = 135
         highlight_fg_colour = 134
         highlight_bg_colour = 135
+        start_adjust = 0
         for line in loader_template:
             assert line[-1] == '\n'
             line = line[:-1]
             if line.startswith("REM ${BANNER}"):
-                first_loader_line = None
-                last_loader_line = None
                 header = bytearray()
                 footer = bytearray()
                 for i in range(0, len(title_page_template) // 40):
                     banner_line = title_page_template[i*40:(i+1)*40]
                     if b"LOADER OUTPUT STARTS HERE" in banner_line:
                         if first_loader_line is None:
-                            first_loader_line = i
+                            first_loader_line = i + start_adjust
                     elif b"LOADER OUTPUT ENDS HERE" in banner_line:
                         last_loader_line = i
                         continue
@@ -471,6 +472,7 @@ with open("templates/loader.bas", "r") as loader_template:
                         if args.subtitle is not None:
                             banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
                         else:
+                            start_adjust = -1
                             continue
                     banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
                     banner_line = (banner_line + b" "*40)[:40]
@@ -528,6 +530,10 @@ with open("templates/loader.bas", "r") as loader_template:
             else:
                 line = line.replace("${DEFAULTMODE}", str(default_mode))
                 line = line.replace("${AUTOSTART}", auto_start)
+                if first_loader_line is not None:
+                    line = line.replace("${FIRSTLOADERLINE}", str(first_loader_line))
+                if last_loader_line is not None:
+                    line = line.replace("${LASTLOADERLINE}", str(last_loader_line))
                 if space_line is not None:
                     line = line.replace("${SPACELINE}", str(space_line))
                 line = line.replace("${NORMALFG}", str(normal_fg_colour))
