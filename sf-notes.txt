@@ -1,3 +1,15 @@
+Preopt and related stuff:
+- I think the basics of this are not a big deal - start with an empty vmap, populate it and dump the contents when it's full
+- the build system then needs to pass (presumably in order of first use) this into the binary so it can load the relevant blocks - the binary should probably sort these itself so as to seek efficiently across the disc, we can't sort them in the build system because only the binary knows how much RAM it actually has to work with, it may end up truncating the list of suggested blocks (e.g. suppose the preload blocks are 5, 6, 130, 4 in that order - if we have >=4 blocks of VM cache we want to load 4, 5, 6, 130, but if we have 3 blocks of VM cache we want to load 5, 6, 130 not 4, 5, 6 which we would do if the list were pre-sorted before truncation - note also depending on exactly how the setting of the initial age works, we may need to be careful not to lose information by doing this sort in order to do efficient loading)
+- this may mean the binary needs to be capable of generating its own vmap, including doing linear interpolation or similar of the age for the entries it is generating
+- I have had a bit of a poke at the C64 code but I haven't studied it all that thoroughly and I may be missing something
+- if the binary is now generating its own vmap, it may well be useful for the vmap to live in non-initialised RAM in 400-800 (something else can move out of there to compensate)
+- if the vmap is going to live in non-initialised RAM, it may be a good idea to pick up the aborted "restart only reloads dynamic memory" change and preserve the vmap across restarts - although this is a bit debatable, as if you're restarting you might well want all the "start of game" blocks loaded in one go rather than what you happened to have - then again maybe you're restarting just to do a restore, but usually you would just do a restore of course
+- it's possible an Electron implementation would affect generation of the vmap, as it may want to generate one with a "hole" in it for the 8K screen (to allow the ~4K below the screen to be used as VM cache), so I may want to postpone any implementation of any of this until I've decided if/how I am going to support the Electron.
+
+
+
+
 "Free memory":
 - on all builds "a lot of" page 4 is really free (~113 bytes)
 - non-2P builds have page 7 completely free
