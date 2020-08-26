@@ -509,6 +509,17 @@ read_byte_at_z_address
     sta vmem_offset_in_block
 	txa
 	and #vmem_blockmask
+    ; SFTODO: The fact vmem_temp will always be even means it may be possible
+    ; to block out unusable areas of memory above vmem_start by giving them
+    ; vmap_z_[hl] entries with odd addresses which could never be matched. This
+    ; just might be helpful on an Electron port where dynamic memory starts at
+    ; $8000 to avoid contiguous-dynmem problems with the 8K screen at the top of
+    ; main RAM; we could use the ~4K of main RAM below the screen as virtual
+    ; memory cache by putting vmem_start down there and blocking out the screen
+    ; and the actual dynamic memory with unmatchable vmap_z_[h] entries. I
+    ; suppose it's not actually quite that good, as we'd need to prevent those
+    ; unmatched entries aging out, but it might not be too hard/inefficient to
+    ; tweak the code to leave them alone.
 	sta vmem_temp
 	; Check quick index first
 	ldx #vmap_quick_index_length - 1
