@@ -363,11 +363,11 @@ cursor_status = $40f ; !byte 0
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
 ; we probably don't need all this.
 ram_bank_count = $410
-ram_bank_list = $411 ; 11 bytes, we only use 9
-mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp?
+ram_bank_list = $411 ; 11 bytes, we only use 9 SFTODO AS PER COMMENT ELSEWHERE, keeping a zp copy of first byte of this in zp would be a modest win for bigdynmem, one hot instruction (0.36% total run time) reads from this - not huge, but not totally worthless for one byte of zp
+mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
-z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp?
+z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
 ; SFTODO: We could probably use memory_buffer instead of osfile_emulation_workspace; it's generally available for temp workspace
 osfile_emulation_workspace = $420 ; 2 bytes
 jmp_buf_ram_bank = $422 ; 1 byte
