@@ -53,6 +53,7 @@ IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 binary$="OZMOOSW":max_page%=${SWRMAXPAGE}
 IF tube% THEN binary$="OZMOO2P":max_page%=&800 ELSE IF shadow% THEN binary$="OZMOOSH":max_page%=${SHRMAXPAGE}
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
+binary$="OZMOOSH":REM SFTODO HACK FOR ELECTRON
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
 mode_key$="03467"

@@ -19,7 +19,7 @@
 ; The OS is not paged and lives permanently at $c000-$ffff inclusive. The loader
 ; will have located any available sideways RAM banks, verified there's at least
 ; one and put the count and a list of bank numbers at ram_bank_{count,list} for
-; us.
+; us. SFTODO: Acorn Electron paging is a bit different, may want to tweak this comment
 ;
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
@@ -59,6 +59,50 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 
 !zone {
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Sideways RAM paging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+!ifdef ACORN_SWR {
+!ifndef ACORN_ELECTRON {
+romsel = $fe30
+
+!macro acorn_page_in_bank_a {
+    sta romsel_copy
+    sta romsel
+}
+
+!macro acorn_page_in_bank_y {
+    sty romsel_copy
+    sty romsel
+}
+} else { ; ACORN_ELECTRON
+; We don't use the name "romsel" because I don't want any code which accidentally
+; refers to romsel, meaning the BBC-style one, to assemble correctly.
+electron_romsel = $fe05
+
+!macro acorn_page_in_bank_a {
+    sei
+    sta romsel_copy
+    lda #12
+    sta electron_romsel
+    lda romsel_copy
+    sta electron_romsel
+    cli
+}
+
+!macro acorn_page_in_bank_y {
+    sei
+    sty romsel_copy
+    ldy #12
+    sty electron_romsel
+    ldy romsel_copy
+    sty electron_romsel
+    cli
+}
+}
+}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Initialization and finalization
@@ -335,8 +379,7 @@ screenkernal_init
     lda #0
     sta .current_ram_bank_index
     lda ram_bank_list
-    sta romsel_copy
-    sta romsel
+    +acorn_page_in_bank_a
 }
 
 .preload_loop
@@ -358,8 +401,7 @@ screenkernal_init
     inc .current_ram_bank_index
     ldx .current_ram_bank_index
     lda ram_bank_list,x
-    sta romsel_copy
-    sta romsel
+    +acorn_page_in_bank_a
     lda #>flat_ramtop
     sta readblocks_mempos + 1
 +
@@ -385,8 +427,7 @@ screenkernal_init
     ; SFTODO: It *may* be worth keeping a ZP copy of ram_bank_list (i.e. the
     ; first bank number) so we can use it in these possibly-frequent page ins.
     lda ram_bank_list
-    sta romsel_copy
-    sta romsel
+    +acorn_page_in_bank_a
 } else {
     ; We don't need to do anything in the small dynamic memory model. The first
     ; call to read_byte_at_z_address will page in the appropriate bank.
@@ -410,8 +451,7 @@ screenkernal_init
 } else {
     ldy z_pc_mempointer_ram_bank
 }
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
 }
 
 ; Calculate vmap_max_entries, vmem_blocks_in_main_ram and
@@ -586,8 +626,7 @@ nonstored_blocks_adjusted
     ; convert_index_x_to_ram_bank_and_address will have left the last bank
     ; paged in, and we need the first bank paged in by default.
     lda ram_bank_list
-    sta romsel_copy
-    sta romsel
+    +acorn_page_in_bank_a
 }
 } ; End of adjust_dynamic_memory_inline
 }
@@ -802,8 +841,7 @@ setjmp
 +   
 !ifdef ACORN_SWR {
     lda jmp_buf_ram_bank
-    sta romsel_copy
-    sta romsel
+    +acorn_page_in_bank_a
 }
     lda #1 ; Z flag is clear
     rts

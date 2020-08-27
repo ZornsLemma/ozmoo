@@ -25,8 +25,7 @@
 inc_z_pc_page_acorn_unsafe
     jsr inc_z_pc_page
     ldy z_pc_mempointer_ram_bank
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
     rts
 }
 
@@ -148,8 +147,7 @@ get_page_at_z_pc_did_pha
     ; newly set z_pc_mempointer_ram_bank. This is mildly inefficient, but it
     ; only happens when the Z-machine PC crosses a page boundary and the
     ; contortions required to avoid it are not worth it.
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
 }
 }
 	ldy mempointer + 1

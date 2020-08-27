@@ -2,6 +2,9 @@
 ; part of the Ozmoo binary itself. This is derived from Wouter Scholten's public
 ; domain swrtype-0.7. (http://wouter.bbcmicro.net/bbc/software-whs.html)
 
+; SFTODO: MAKE-ACORN.PY NEEDS TO PASS -DACORN_ELECTRON=1 DOWN TO THIS, FOR NOW JUST HACK IT
+ACORN_ELECTRON=1
+
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
 
@@ -27,7 +30,13 @@ start
     ; save original contents
     LDY #0
 lp
+!ifndef ACORN_ELECTRON {
     STY $FE30 ; set rom -> #Y
+} else {
+    LDA #12
+    STA $FE05
+    STY $FE05
+}
     LDA test_location
     STA swr_backup,Y
     INY
@@ -81,7 +90,13 @@ invalid_header
 bank_lp_x
     LDA #0
     STA dummy
+!ifndef ACORN_ELECTRON {
     STX $FE30
+} else {
+    LDA #12
+    STA $FE05
+    STX $FE05
+}
     LDA test_location
     CMP tmp
     BNE cmp_next_x
@@ -106,7 +121,13 @@ bank_lp_x
     LDA #0
     STA dummy
 
+!ifndef ACORN_ELECTRON {
     STX $FE30
+} else {
+    LDA #12
+    STA $FE05
+    STX $FE05
+}
     LDA test_location
     CMP tmp
     BNE cmp_next_x
@@ -126,7 +147,13 @@ cmp_next_x
 cmp_next_y
     INY
     CPY #16
+!if 0 { ; SFTODO!?!?!?!
     BCC bank_lp_y
+} else {
+    BCS .SFTODO
+    JMP bank_lp_y
+.SFTODO
+}
     LDA swr_banks
     BNE continue
     STA swr_type ; no SWR found
@@ -157,7 +184,15 @@ find_type_lp
     EOR swr_byte_value1
     EOR #$22
     STA test_location
+!ifndef ACORN_ELECTRON {
     STY $FE30
+} else {
+    PHA
+    LDA #12
+    STA $FE05
+    PLA
+    STY $FE30
+}
     CMP test_location
     BEQ found_soli
     JSR set_only_ramsel
@@ -165,7 +200,15 @@ find_type_lp
     EOR swr_byte_value2
     EOR #$23
     STA test_location
+!ifndef ACORN_ELECTRON {
     STY $FE30
+} else {
+    PHA
+    LDA #12
+    STA $FE05
+    PLA
+    STY $FE05
+}
     CMP test_location
     BEQ found_ram_sel
     JSR set_only_romsel
@@ -173,7 +216,15 @@ find_type_lp
     EOR swr_byte_value2
     EOR #$34
     STA test_location
+!ifndef ACORN_ELECTRON {
     STY $FE30
+} else {
+    PHA
+    LDA #12
+    STA $FE05
+    PLA
+    STY $FE05
+}
     CMP test_location
     BEQ found_rom_sel
     ; which leaves the watford rom/ram method
@@ -221,7 +272,13 @@ restore_lp
     BCC restore_lp
 end2
     LDA $F4
+!ifndef ACORN_ELECTRON {
     STA $FE30
+} else {
+    LDY #8 ; SFTODO!?!?!?
+    STY $FE05
+    STA $FE05
+}
     CLI
     RTS
 
@@ -238,7 +295,15 @@ set_solidisk ; for old solidisk swr
 set_only_romsel
     JSR set_all_to_wrong_bank
 set_romsel
+!ifndef ACORN_ELECTRON {
     STY $FE30
+} else {
+    PHA
+    LDA #12
+    STA $FE05
+    PLA
+    STY $FE05
+}
     RTS
 
 ; RAMSEL may not exist, in which case it is equivalent to ROMSEL

@@ -263,6 +263,7 @@ parser.add_argument("--title", metavar="TITLE", type=str, help="set title for us
 parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adl extension)")
+parser.add_argument("-e", "--electron", action="store_true", help="generate a disc image for use with the Acorn Electron")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -363,6 +364,9 @@ if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:
     acme_args1 += ["-DMODE_7_STATUS=1"]
+if args.electron:
+    acme_args1 += ["-DACORN_ELECTRON=1"]
+    args.force_big_dynmem = True # SFTODO: BIT OF A HACK
 if args.force_65c02:
     acme_args1 += ["-DCMOS=1"]
 if debug:
@@ -399,7 +403,14 @@ else:
 # SFTODO: This comment may want tweaking, but I'll wait until I've finished
 # fiddling with the code.
 shr_swr_min_start_addr = our_parse_int(args.min_relocate_addr)
-shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
+if not args.electron:
+    shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
+else:
+    # SFTODO: Bit of a hack, need to think how to do this properly, but the
+    # binary overlaps mode 6 screen if we load at 2000. This is actually
+    # looking pretty tight if we have to support $1d00 for Plus 3, but let's
+    # not worry about that for now.
+    shr_swr_default_start_addr = max(0x1c00, shr_swr_min_start_addr)
 
 tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
 

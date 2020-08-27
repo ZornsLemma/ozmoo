@@ -67,8 +67,7 @@
 restart_read_next_byte_at_z_pc_unsafe_sub
     ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
     ldy z_pc_mempointer_ram_bank
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
     rts
 
 ; This must preserve A and X.
@@ -77,8 +76,7 @@ finish_read_next_byte_at_z_pc_unsafe_sub
     ; configuration with the first bank of sideways RAM (possibly containing
     ; dynamic memory) paged in.
     ldy ram_bank_list
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
     rts
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
@@ -178,14 +176,12 @@ read_next_byte_at_z_pc_sub
 
 !macro restart_read_next_byte_at_z_pc_unsafe {
     ldy z_pc_mempointer_ram_bank
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
 }
 
 !macro finish_read_next_byte_at_z_pc_unsafe {
     ldy ram_bank_list
-    sty romsel_copy
-    sty romsel
+    +acorn_page_in_bank_y
 }
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.

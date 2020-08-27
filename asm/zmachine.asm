@@ -1436,8 +1436,13 @@ z_ins_jg
 	sbc z_operand_value_high_arr
 	bvc +
 	eor #$80
+!ifndef ACORN_ELECTRON { ; SFTODO!?
 +	bmi make_branch_true
 	bpl make_branch_false ; Always branch
+} else {
++   bpl make_branch_false
+    jmp make_branch_true
+}
 
 z_ins_dec_chk
 	ldx z_operand_value_low_arr
