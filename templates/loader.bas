@@ -1,3 +1,7 @@
+REM SFTODONOW: Really should be checking PAGE - the HH benchmark fails
+REM on a model B with ADFS and DFS with PAGE at &1F00, but it works if
+REM there's no DFS and PAGE is at &1D00, because that's what the build
+REM expects.
 REM The loader uses some of the resident integer variables (or at least the
 REM corresponding memory) to communicate with the Ozmoo executable. This
 REM means it's probably least error prone to avoid using resident integer

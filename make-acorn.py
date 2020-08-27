@@ -365,6 +365,8 @@ tube_start_addr = 0x600
 if not args.adfs:
     swr_start_addr = 0x1900
 else:
+    # SFTODONOW: Should I be using 0x1f00? That's what a model B with DFS+ADFS
+    # has PAGE at.
     swr_start_addr = 0x1d00
 # Shadow RAM builds will load at or just above some address X and relocate
 # down to PAGE or just above. X must be at or above PAGE on the system the game
