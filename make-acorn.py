@@ -1,3 +1,9 @@
+# SFTODO: Add an option to optionally disable use of CMOS instructions even on second processor
+
+# SFTODO: Probably add a trivial "pre-loader" (probably renaming LOADER to LOAD2 or similar)
+# which just does MODE 135 and CHAINs the main loader, then can remove MODE 135 from !BOOT
+# and this will avoid some minor awkwardness with Integra-B installations on hard drive.
+
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
