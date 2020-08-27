@@ -46,6 +46,9 @@ def substitute(lst, a, b):
 def ourhex(i):
     return hex(i)[2:]
 
+def basichex(i):
+    return "&" + hex(i)[2:].upper()
+
 def our_parse_int(s):
     if s.startswith("$") or s.startswith("&"):
         return int(s[1:], 16)
@@ -225,6 +228,10 @@ class Executable(object):
             binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
             binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
         return binary
+
+    def add_to_disc(self, disc, directory, name):
+        high_order = 0 if self.start_address <= 0x800 else host
+        disc.add_file(directory, name, high_order | self.start_address, high_order | self.start_address, self.binary)
 
 
 best_effort_version = "Ozmoo"
@@ -443,122 +450,6 @@ else:
     if re.search("^[a-z]", title):
         title = title.capitalize()
 
-with open("templates/loader.bas", "r") as loader_template:
-    # Python 3 won't allow the output to be a text file, because it contains top-bit-set
-    # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
-    # get the line endings right for the platform we're on.
-    linesep = os.linesep.encode("ascii")
-    with open("temp/loader.bas", "wb") as loader:
-        # SFTODO: Slightly hacky but feeling my way here
-        space_line = None
-        first_loader_line = None
-        last_loader_line = None
-        normal_fg_colour = 135
-        header_fg_colour = 131
-        highlight_fg_colour = 131
-        highlight_bg_colour = 129
-        start_adjust = 0
-        for line in loader_template:
-            assert line[-1] == '\n'
-            line = line[:-1]
-            if line.startswith("REM ${BANNER}"):
-                header = bytearray()
-                footer = bytearray()
-                for i in range(0, len(title_page_template) // 40):
-                    banner_line = title_page_template[i*40:(i+1)*40]
-                    if b"LOADER OUTPUT STARTS HERE" in banner_line:
-                        if first_loader_line is None:
-                            first_loader_line = i + start_adjust
-                    elif b"LOADER OUTPUT ENDS HERE" in banner_line:
-                        last_loader_line = i
-                        continue
-                    banner_line = banner_line.replace(b"${TITLE}", title.encode("ascii"))
-                    if b"${SUBTITLE}" in banner_line:
-                        if args.subtitle is not None:
-                            banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
-                        else:
-                            start_adjust = -1
-                            continue
-                    banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
-                    banner_line = (banner_line + b" "*40)[:40]
-                    if b"Normal foreground" in banner_line:
-                        normal_fg_colour = colour(banner_line[0])
-                    elif b"Header foreground" in banner_line:
-                        header_fg_colour = colour(banner_line[0])
-                    elif b"Highlight foreground" in banner_line:
-                        highlight_fg_colour = colour(banner_line[0])
-                    elif b"Highlight background" in banner_line:
-                        highlight_bg_colour = colour(banner_line[0])
-                    elif b"${SPACE}" in banner_line:
-                        space_line = i
-                        banner_line = b" "*40
-                    if first_loader_line is None:
-                        header += banner_line
-                    elif last_loader_line is not None:
-                        footer += banner_line
-                if space_line is None:
-                    space_line = 24
-                # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
-                while len(footer) > 0 and footer.startswith(b" "*40):
-                    footer = footer[40:]
-                    last_loader_line += 1
-                loader_lines = last_loader_line + 1 - first_loader_line
-                min_loader_lines = 12 # SFTODO: 11 is currently enough, but I want to keep one "spare"
-                if loader_lines < min_loader_lines:
-                    die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
-                if len(footer) > 0:
-                    print_command = b"PRINTTAB(0,%d);" % (last_loader_line + 1,)
-                    scroll_adjust = False
-                    for i in range(0, len(footer) // 40):
-                        footer_line = footer[i*40:(i+1)*40]
-                        if last_loader_line + 1 + i == 24:
-                            if footer_line[-1] == ord(' '):
-                                footer_line = footer_line[:-1]
-                            else:
-                                scroll_adjust = True
-                        loader.write(b"%s\"%s\";%s" % (print_command, escape_basic_string(footer_line), linesep))
-                        print_command = b"PRINT"
-                    if scroll_adjust:
-                        # We printed at the bottom right character of the screen and the OS will
-                        # have automatically scrolled it, so we need to force a scroll down to
-                        # fix this.
-                        loader.write(b"VDU30,11" + linesep)
-                    else:
-                        loader.write(b"VDU30" + linesep)
-                    for i in range(0, len(header) // 40):
-                        header_line = header[i*40:(i+1)*40]
-                        if header_line == b" "*40:
-                            loader.write(b"PRINT" + linesep)
-                        else:
-                            loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
-            else:
-                line = line.replace("${DEFAULTMODE}", str(default_mode))
-                line = line.replace("${AUTOSTART}", auto_start)
-                if first_loader_line is not None:
-                    line = line.replace("${FIRSTLOADERLINE}", str(first_loader_line))
-                if last_loader_line is not None:
-                    line = line.replace("${LASTLOADERLINE}", str(last_loader_line))
-                if space_line is not None:
-                    line = line.replace("${SPACELINE}", str(space_line))
-                line = line.replace("${NORMALFG}", str(normal_fg_colour))
-                line = line.replace("${HEADERFG}", str(header_fg_colour))
-                line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
-                line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
-                if line.startswith("REM"):
-                    continue
-                rem_index = line.find(":REM")
-                if rem_index != -1:
-                    line = line[:rem_index]
-                if line == "" or line == ":":
-                    continue
-                loader.write(line.encode("ascii") + linesep)
-
-run_and_check([
-    "beebasm",
-    "-i", "templates/base.beebasm",
-    "-do", "temp/base.ssd",
-    "-opt", "3"
-], lambda x: b"no SAVE command" not in x)
 
 
 # SFTODO: Move these two classes to top of file?
@@ -799,14 +690,14 @@ def add_findswr_executable(disc):
         disc.add_file("$", "FINDSWR", host | load_address, host | load_address, f.read())
             
 # SFTODO: Move this function?
-def add_tube_executable(disc):
+def make_tube_executable():
     if game_blocks <= max_game_blocks_main_ram(tube_no_vmem):
         info("Game is small enough to run without virtual memory on second processor")
         e = tube_no_vmem
     else:
         info("Game will be run using virtual memory on second processor")
         e = Executable("tube_vmem", tube_start_addr, ["-DVMEM=1", "-DCMOS=1"])
-    disc.add_file("$", "OZMOO2P", tube_start_addr, tube_start_addr, e.binary)
+    return e
 
 # SFTODO: Move this function?
 def make_relocations(alternate, master):
@@ -858,7 +749,7 @@ def info_swr_dynmem(name, labels):
 
 # SFTODO: Move this function?
 # SFTODO: I think this is OK but it could probably do with a review when I can come to it fresh
-def add_swr_shr_executable(disc):
+def make_swr_shr_executable():
     extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
 
     # We consider two possible start addresses one page apart in a couple of places here;
@@ -927,20 +818,141 @@ def add_swr_shr_executable(disc):
         info("Sideways+shadow RAM build will run at %s address" % ("even" if high_candidate.start_address % 0x200 == 0 else "odd"))
 
     relocations = make_relocations(low_candidate.binary, high_candidate.binary)
-    # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
-    # for a double-sided game, this is probably the one to pick - it's going to be at least
-    # slightly larger due to the relocations, and the second surface has slightly more free
-    # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
-    # two Ozmoo executables.
-    disc.add_file("$", "OZMOOSH", host | high_candidate.start_address, host | high_candidate.start_address, high_candidate.binary + relocations)
+    high_candidate.binary += relocations
+    return high_candidate
 
 
 # SFTODO: Move this function?
-def add_swr_executable(disc):
+def make_swr_executable():
     e = make_small_dynmem_executable("swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
     info_swr_dynmem("sideways RAM build", e.labels)
-    disc.add_file("$", "OZMOOSW", host | swr_start_addr, host | swr_start_addr, e.binary)
+    return e
 
+
+tube_executable = make_tube_executable()
+swr_shr_executable = make_swr_shr_executable()
+swr_executable = make_swr_executable()
+
+
+# SFTODO: Move this into a function, probably some of the title parsing stuff above too
+with open("templates/loader.bas", "r") as loader_template:
+    # Python 3 won't allow the output to be a text file, because it contains top-bit-set
+    # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
+    # get the line endings right for the platform we're on.
+    linesep = os.linesep.encode("ascii")
+    with open("temp/loader.bas", "wb") as loader:
+        # SFTODO: Slightly hacky but feeling my way here
+        space_line = None
+        first_loader_line = None
+        last_loader_line = None
+        normal_fg_colour = 135
+        header_fg_colour = 131
+        highlight_fg_colour = 131
+        highlight_bg_colour = 129
+        start_adjust = 0
+        for line in loader_template:
+            assert line[-1] == '\n'
+            line = line[:-1]
+            if line.startswith("REM ${BANNER}"):
+                header = bytearray()
+                footer = bytearray()
+                for i in range(0, len(title_page_template) // 40):
+                    banner_line = title_page_template[i*40:(i+1)*40]
+                    if b"LOADER OUTPUT STARTS HERE" in banner_line:
+                        if first_loader_line is None:
+                            first_loader_line = i + start_adjust
+                    elif b"LOADER OUTPUT ENDS HERE" in banner_line:
+                        last_loader_line = i
+                        continue
+                    banner_line = banner_line.replace(b"${TITLE}", title.encode("ascii"))
+                    if b"${SUBTITLE}" in banner_line:
+                        if args.subtitle is not None:
+                            banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
+                        else:
+                            start_adjust = -1
+                            continue
+                    banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
+                    banner_line = (banner_line + b" "*40)[:40]
+                    if b"Normal foreground" in banner_line:
+                        normal_fg_colour = colour(banner_line[0])
+                    elif b"Header foreground" in banner_line:
+                        header_fg_colour = colour(banner_line[0])
+                    elif b"Highlight foreground" in banner_line:
+                        highlight_fg_colour = colour(banner_line[0])
+                    elif b"Highlight background" in banner_line:
+                        highlight_bg_colour = colour(banner_line[0])
+                    elif b"${SPACE}" in banner_line:
+                        space_line = i
+                        banner_line = b" "*40
+                    if first_loader_line is None:
+                        header += banner_line
+                    elif last_loader_line is not None:
+                        footer += banner_line
+                if space_line is None:
+                    space_line = 24
+                # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
+                while len(footer) > 0 and footer.startswith(b" "*40):
+                    footer = footer[40:]
+                    last_loader_line += 1
+                loader_lines = last_loader_line + 1 - first_loader_line
+                min_loader_lines = 12 # SFTODO: 11 is currently enough, but I want to keep one "spare"
+                if loader_lines < min_loader_lines:
+                    die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
+                if len(footer) > 0:
+                    print_command = b"PRINTTAB(0,%d);" % (last_loader_line + 1,)
+                    scroll_adjust = False
+                    for i in range(0, len(footer) // 40):
+                        footer_line = footer[i*40:(i+1)*40]
+                        if last_loader_line + 1 + i == 24:
+                            if footer_line[-1] == ord(' '):
+                                footer_line = footer_line[:-1]
+                            else:
+                                scroll_adjust = True
+                        loader.write(b"%s\"%s\";%s" % (print_command, escape_basic_string(footer_line), linesep))
+                        print_command = b"PRINT"
+                    if scroll_adjust:
+                        # We printed at the bottom right character of the screen and the OS will
+                        # have automatically scrolled it, so we need to force a scroll down to
+                        # fix this.
+                        loader.write(b"VDU30,11" + linesep)
+                    else:
+                        loader.write(b"VDU30" + linesep)
+                    for i in range(0, len(header) // 40):
+                        header_line = header[i*40:(i+1)*40]
+                        if header_line == b" "*40:
+                            loader.write(b"PRINT" + linesep)
+                        else:
+                            loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
+            else:
+                line = line.replace("${DEFAULTMODE}", str(default_mode))
+                line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
+                line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
+                line = line.replace("${AUTOSTART}", auto_start)
+                if first_loader_line is not None:
+                    line = line.replace("${FIRSTLOADERLINE}", str(first_loader_line))
+                if last_loader_line is not None:
+                    line = line.replace("${LASTLOADERLINE}", str(last_loader_line))
+                if space_line is not None:
+                    line = line.replace("${SPACELINE}", str(space_line))
+                line = line.replace("${NORMALFG}", str(normal_fg_colour))
+                line = line.replace("${HEADERFG}", str(header_fg_colour))
+                line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
+                line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
+                if line.startswith("REM"):
+                    continue
+                rem_index = line.find(":REM")
+                if rem_index != -1:
+                    line = line[:rem_index]
+                if line == "" or line == ":":
+                    continue
+                loader.write(line.encode("ascii") + linesep)
+
+run_and_check([
+    "beebasm",
+    "-i", "templates/base.beebasm",
+    "-do", "temp/base.ssd",
+    "-opt", "3"
+], lambda x: b"no SAVE command" not in x)
 
 # SFTODO: If we're building a double-sided game it might be nice if at least one of the
 # Ozmoo executables could be put on the second surface, using some of the otherwise wasted
@@ -958,9 +970,14 @@ else:
     disc.add_file("$", "LOADER", loader[0], loader[1], loader[2])
 
 add_findswr_executable(disc)
-add_tube_executable(disc)
-add_swr_shr_executable(disc)
-add_swr_executable(disc)
+tube_executable.add_to_disc(disc, "$", "OZMOO2P")
+# SFTODO: If we do start putting one of the Ozmoo executables on the second surface
+# for a double-sided game, this is probably the one to pick - it's going to be at least
+# slightly larger due to the relocations, and the second surface has slightly more free
+# space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
+# two Ozmoo executables.
+swr_shr_executable.add_to_disc(disc, "$", "OZMOOSH")
+swr_executable.add_to_disc(disc, "$", "OZMOOSW")
 
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if

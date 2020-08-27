@@ -54,6 +54,9 @@ tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
 IF NOT tube% THEN PROCdetect_swr ELSE PRINT CHR$${NORMALFG};"  Second processor"
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
+binary$="OZMOOSW":max_page%=${SWRMAXPAGE}
+IF tube% THEN binary$="OZMOO2P":max_page%=&800 ELSE IF shadow% THEN binary$="OZMOOSH":max_page%=${SHRMAXPAGE}
+IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
 mode_key$="03467"
@@ -81,8 +84,6 @@ REM We do this last, as it uses a lot of resident integer variable space and thi
 REM the chances of it accidentally getting corrupted.
 $game_data_filename=game_data_path$
 *FX4,0
-binary$="OZMOOSW"
-IF tube% THEN binary$="OZMOO2P" ELSE IF shadow% THEN binary$="OZMOOSH"
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
 PROCoscli("/"+path$+"."+binary$)
 END
@@ -177,7 +178,7 @@ IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
 DEF PROCdie(message$)
-VDU 28,0,${LASTLOADERLINE},39,${FIRSTLOADERLINE},12
+VDU 28,0,${LASTLOADERLINE},39,${FIRSTLOADERLINE}+3,12
 PRINT CHR$${NORMALFG};message$'
 VDU 23,1,1,0;0;0;0;
 *FX4,0
