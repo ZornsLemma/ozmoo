@@ -174,6 +174,7 @@ IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
 DEF PROCdie(message$)
+REM SFTODO: If we don't detect SWR/2P, this gives slightly ugly output. But I would like to leave the HW detected line present if we die for some other reason, as it's informative (e.g. max_page varies with build chosen).
 VDU 28,0,${LASTLOADERLINE},39,${FIRSTLOADERLINE}+3,12
 PRINT CHR$${NORMALFG};message$'
 VDU 23,1,1,0;0;0;0;
