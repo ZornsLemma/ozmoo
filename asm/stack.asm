@@ -497,11 +497,11 @@ stack_return_from_routine
 	sec
 	sbc stack_tmp + 2
 	sta z_local_vars_ptr
+    +make_acorn_screen_hole_jmp
 	lda zp_temp + 3
 	sbc #0
 	sta z_local_vars_ptr + 1
 
-    +make_acorn_screen_hole_jmp
 !ifdef Z4PLUS {	
 	; Set interrupt return value, if this was a return from an interrupt
 	lda z_exe_mode
