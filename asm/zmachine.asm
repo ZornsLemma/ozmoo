@@ -1094,6 +1094,7 @@ z_ins_not_supported
 	rts
 }
 
++make_acorn_screen_hole
 !zone z_division {
 z_divide
 	; input: Dividend in arg 0, divisor in arg 1, y = signed? 0 = unsigned, $ff = signed
@@ -1318,7 +1319,8 @@ z_ins_inc
 	; adc #0
 	; sta (foo),y
 ; +	rts
-
+ 
+    +make_acorn_screen_hole_jmp
 .inc_store_ref	
 	stx .ins_inc + 1
 	sta .ins_inc + 2

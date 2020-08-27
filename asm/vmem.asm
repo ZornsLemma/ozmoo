@@ -543,6 +543,7 @@ read_byte_at_z_address
 	jmp .correct_vmap_index_found ; Always branch
 	
 .no_quick_index_match
+    +make_acorn_screen_hole_jmp
 	lda vmem_temp
 
     ; is there a block with this address in map?
@@ -608,6 +609,7 @@ read_byte_at_z_address
 ; SFTODO: I am not sure the bcs case can ever occur on Acorn, since we always
 ; pre-populate vmap. If this is true we can probably ifdef this out for both SWR
 ; and 2P builds. (But it's only one instruction, so hardly worth it?)
+    +make_acorn_screen_hole_jmp
 +	ldx vmap_clock_index
 -	cpx vmap_used_entries
 	bcs .block_chosen

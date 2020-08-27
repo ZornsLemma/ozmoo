@@ -397,6 +397,7 @@ clear_num_rows
     sta num_rows
     rts
 
++make_acorn_screen_hole
 increase_num_rows
 	lda current_window
 	bne .increase_num_rows_done ; Upper window is never buffered
@@ -638,6 +639,7 @@ printchar_buffered
     inx
     bne .copy_loop ; Always branch
 .after_copy_loop
+    +make_acorn_screen_hole_jmp
 	sty buffer_index
 	lda #0
 	sta first_buffered_column

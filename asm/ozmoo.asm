@@ -217,13 +217,18 @@ game_id		!byte 0,0,0,0
 !source "reu.asm"
 }
 }
+!ifdef ACORN {
+!source "zmachine.asm"
+}
 !source "screen.asm"
 !source "memory.asm"
 !source "stack.asm"
 ;##!ifdef VMEM {
 !source "vmem.asm"
 ;##}
+!ifndef ACORN {
 !source "zmachine.asm"
+}
 !source "zaddress.asm"
 !ifndef ACORN {
 !source "text.asm"

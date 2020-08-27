@@ -1878,6 +1878,7 @@ save_game
     ldy #>.osfile_check_buffer
     jsr osfile
     tax
+    +make_acorn_screen_hole_jmp
     beq .file_doesnt_exist
     lda #>.overwrite_msg
     ldx #<.overwrite_msg
