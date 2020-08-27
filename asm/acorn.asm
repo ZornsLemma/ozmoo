@@ -172,6 +172,17 @@ screenkernal_init
 
 .dir_ptr = zp_temp ; 2 bytes
 .length_blocks = zp_temp + 2 ; 2 bytes
+!ifndef ACORN_ELECTRON {
+; SF: It's never going to be a problem, but note that this assumes we have
+; at least two pages of memory at story_start.
+.catalogue = story_start
+} else {
+!ifndef ACORN_SWR {
+.catalogue = story_start
+} else {
+.catalogue = scratch_double_page
+}
+}
 !ifndef ACORN_ADFS {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game.
@@ -180,10 +191,8 @@ screenkernal_init
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    ; SF: It's never going to be a problem, but note that this assumes we have
-    ; at least two pages of memory at story_start.
-    sta readblocks_mempos ; story_start is page-aligned
-    lda #>story_start
+    sta readblocks_mempos ; .catalogue is page-aligned
+    lda #>.catalogue
     sta .dir_ptr + 1
     sta readblocks_mempos + 1
     lda #0
