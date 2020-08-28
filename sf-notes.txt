@@ -1,3 +1,9 @@
+Electron:
+- as per git commit notes, "64k" auto-detected SWR build hangs on move 382 of benchmark
+- forcing LOADER to only recognise one bank of SWR a) it is much slower (which is good, as it suggests we are "correctly" using multiple banks on the whole) b) the benchmark completes (FWIW showing time $019b41)
+
+
+
 Vmem notes (mostly looking at block aging stuff):
 - I'll assume Z3 in these notes, where vmem_tick_increment == 2 and vmem_highbyte_mask = $01, but except for reduced resolution I don't think other versions are significantly different
 - vmem_blockmask is always $fe=254 - this is used to allow for the fact a VM block contains two pages
