@@ -82,24 +82,26 @@ romsel = $fe30
 ; refers to romsel, meaning the BBC-style one, to assemble correctly.
 electron_romsel = $fe05
 
+; SFTODO: We might be able to use self-modifying code in these macros to avoid pha/pla stuff
+
 !macro acorn_page_in_bank_a {
-    sei
-    sta romsel_copy
+    pha
     lda #12
+    sta romsel_copy
     sta electron_romsel
-    lda romsel_copy
+    pla
+    sta romsel_copy
     sta electron_romsel
-    cli
 }
 
 !macro acorn_page_in_bank_y {
-    sei
+    pha
+    lda #12
+    sta romsel_copy
+    sta electron_romsel
+    pla
     sty romsel_copy
-    ldy #12
     sty electron_romsel
-    ldy romsel_copy
-    sty electron_romsel
-    cli
 }
 }
 }
