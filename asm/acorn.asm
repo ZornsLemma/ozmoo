@@ -172,6 +172,10 @@ screenkernal_init
 
 .dir_ptr = zp_temp ; 2 bytes
 .length_blocks = zp_temp + 2 ; 2 bytes
+; SFTODO: It might be easier just to use "ifdef scratch_double_page" to control
+; this. Leave a comment of course that we can't always do that because on
+; Electron SWR build story_start is in SWR and we don't want to faff paging it
+; in here.
 !ifndef ACORN_ELECTRON {
 ; SF: It's never going to be a problem, but note that this assumes we have
 ; at least two pages of memory at story_start.
