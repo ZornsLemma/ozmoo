@@ -1,6 +1,8 @@
 Electron:
 - as per git commit notes, "64k" auto-detected SWR build hangs on move 382 of benchmark
 - forcing LOADER to only recognise one bank of SWR a) it is much slower (which is good, as it suggests we are "correctly" using multiple banks on the whole) b) the benchmark completes (FWIW showing time $019b41)
+- forcing LOADER to take the first two banks of SWR identified (I think 3 & 5, but not sure) it hangs *much* earleir
+- forcing LOADER to use just banks 3 and 7 - OK, I think that hangs in the same place as with 3 & 5, much earlier, at move 50
 
 
 
