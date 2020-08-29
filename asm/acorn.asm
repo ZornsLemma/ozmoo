@@ -65,37 +65,70 @@ ACORN_SWR_BIG_DYNMEM = 1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 !ifdef ACORN_SWR {
+
+; These macros must leave the selected bank number in A or Y as appropriate.
+
 !ifndef ACORN_ELECTRON {
 bbc_romsel = $fe30
 
-!macro acorn_page_in_bank_a {
+!macro acorn_page_in_bank_using_a .operand {
+    lda .operand
     sta romsel_copy
     sta bbc_romsel
 }
 
-!macro acorn_page_in_bank_y {
+!macro acorn_page_in_bank_using_a_comma_x .operand {
+    lda .operand,x
+    sta romsel_copy
+    sta bbc_romsel
+}
+
+!macro acorn_page_in_bank_using_a_comma_y .operand {
+    lda .operand,y
+    sta romsel_copy
+    sta bbc_romsel
+}
+
+!macro acorn_page_in_bank_using_y .operand {
+    ldy .operand
     sty romsel_copy
     sty bbc_romsel
 }
 } else { ; ACORN_ELECTRON
 electron_romsel = $fe05
 
-!macro acorn_page_in_bank_a {
-    pha
+!macro acorn_page_in_bank_using_a .operand {
     lda #12
     sta romsel_copy
     sta electron_romsel
-    pla
+    lda .operand
     sta romsel_copy
     sta electron_romsel
 }
 
-!macro acorn_page_in_bank_y {
-    pha
+!macro acorn_page_in_bank_using_a_comma_x .operand {
     lda #12
     sta romsel_copy
     sta electron_romsel
-    pla
+    lda .operand,x
+    sta romsel_copy
+    sta electron_romsel
+}
+
+!macro acorn_page_in_bank_using_a_comma_y .operand {
+    lda #12
+    sta romsel_copy
+    sta electron_romsel
+    lda .operand,y
+    sta romsel_copy
+    sta electron_romsel
+}
+
+!macro acorn_page_in_bank_using_y .operand {
+    ldy #12
+    sty romsel_copy
+    sty electron_romsel
+    ldy .operand
     sty romsel_copy
     sty electron_romsel
 }
@@ -389,8 +422,7 @@ screenkernal_init
     ; Page in the first bank.
     lda #0
     sta .current_ram_bank_index
-    lda ram_bank_list
-    +acorn_page_in_bank_a
+    +acorn_page_in_bank_using_a ram_bank_list
 }
 
 .preload_loop
@@ -411,8 +443,7 @@ screenkernal_init
     bcc +
     inc .current_ram_bank_index
     ldx .current_ram_bank_index
-    lda ram_bank_list,x
-    +acorn_page_in_bank_a
+    +acorn_page_in_bank_using_a_comma_x ram_bank_list
     lda #>flat_ramtop
     sta readblocks_mempos + 1
 +
@@ -437,8 +468,7 @@ screenkernal_init
     ; memory.
     ; SFTODO: It *may* be worth keeping a ZP copy of ram_bank_list (i.e. the
     ; first bank number) so we can use it in these possibly-frequent page ins.
-    lda ram_bank_list
-    +acorn_page_in_bank_a
+    +acorn_page_in_bank_using_a ram_bank_list
 } else {
     ; We don't need to do anything in the small dynamic memory model. The first
     ; call to read_byte_at_z_address will page in the appropriate bank.
@@ -458,11 +488,10 @@ screenkernal_init
 !ifdef ACORN_SWR {
 !macro acorn_swr_page_in_default_bank_using_y {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    ldy ram_bank_list
+    +acorn_page_in_bank_using_y ram_bank_list
 } else {
-    ldy z_pc_mempointer_ram_bank
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
-    +acorn_page_in_bank_y
 }
 
 ; Calculate vmap_max_entries, vmem_blocks_in_main_ram and
@@ -636,8 +665,7 @@ nonstored_blocks_adjusted
 .no_wasted_swr
     ; convert_index_x_to_ram_bank_and_address will have left the last bank
     ; paged in, and we need the first bank paged in by default.
-    lda ram_bank_list
-    +acorn_page_in_bank_a
+    +acorn_page_in_bank_using_a ram_bank_list
 }
 } ; End of adjust_dynamic_memory_inline
 }
@@ -851,8 +879,7 @@ setjmp
     bne -
 +   
 !ifdef ACORN_SWR {
-    lda jmp_buf_ram_bank
-    +acorn_page_in_bank_a
+    +acorn_page_in_bank_using_a jmp_buf_ram_bank
 }
     lda #1 ; Z flag is clear
     rts

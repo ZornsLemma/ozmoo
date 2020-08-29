@@ -459,8 +459,7 @@ read_byte_at_z_address
     bne .read_new_byte
     ; same 256 byte segment, just return
 !ifdef ACORN_SWR {
-    lda mempointer_ram_bank
-    +acorn_page_in_bank_a
+    +acorn_page_in_bank_using_a mempointer_ram_bank
 }
 -   ldy #0
 	lda (mempointer),y
@@ -924,9 +923,8 @@ convert_index_x_to_ram_bank_and_address
     lsr
     lsr
     tay
-    lda ram_bank_list,y
+    +acorn_page_in_bank_using_a_comma_y ram_bank_list ; leaves bank in A
     sta mempointer_ram_bank
-    +acorn_page_in_bank_a
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla

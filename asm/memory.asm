@@ -24,8 +24,7 @@
 !ifdef ACORN_SWR_BIG_DYNMEM {
 inc_z_pc_page_acorn_unsafe
     jsr inc_z_pc_page
-    ldy z_pc_mempointer_ram_bank
-    +acorn_page_in_bank_y
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
     rts
 }
 
@@ -139,16 +138,17 @@ get_page_at_z_pc_did_pha
 	ldy z_pc + 2
 	jsr read_byte_at_z_address
 !ifdef ACORN_SWR {
-    ldy mempointer_ram_bank
-    sty z_pc_mempointer_ram_bank
 !ifdef ACORN_SWR_SMALL_DYNMEM {
     ; read_byte_at_z_address_for_z_pc will have left the then-current value of
     ; z_pc_mempointer_ram_bank paged in, so we need to explicitly page in the
     ; newly set z_pc_mempointer_ram_bank. This is mildly inefficient, but it
     ; only happens when the Z-machine PC crosses a page boundary and the
     ; contortions required to avoid it are not worth it.
-    +acorn_page_in_bank_y
+    +acorn_page_in_bank_using_y mempointer_ram_bank ; leaves bank in Y
+} else {
+    ldy mempointer_ram_bank
 }
+    sty z_pc_mempointer_ram_bank
 }
 	ldy mempointer + 1
 	sty z_pc_mempointer + 1

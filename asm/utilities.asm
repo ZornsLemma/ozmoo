@@ -66,8 +66,7 @@
 ; SF: This must preserve A and X.
 restart_read_next_byte_at_z_pc_unsafe_sub
     ; We must keep the Z-machine PC bank paged in during these "unsafe" reads.
-    ldy z_pc_mempointer_ram_bank
-    +acorn_page_in_bank_y
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
     rts
 
 ; This must preserve A and X.
@@ -75,8 +74,7 @@ finish_read_next_byte_at_z_pc_unsafe_sub
     ; We are no longer in "unsafe" mode, so we must maintain the usual default
     ; configuration with the first bank of sideways RAM (possibly containing
     ; dynamic memory) paged in.
-    ldy ram_bank_list
-    +acorn_page_in_bank_y
+    +acorn_page_in_bank_using_y ram_bank_list
     rts
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
@@ -175,13 +173,11 @@ read_next_byte_at_z_pc_sub
 ; See the SLOW code above for comments on the individual macros.
 
 !macro restart_read_next_byte_at_z_pc_unsafe {
-    ldy z_pc_mempointer_ram_bank
-    +acorn_page_in_bank_y
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
 
 !macro finish_read_next_byte_at_z_pc_unsafe {
-    ldy ram_bank_list
-    +acorn_page_in_bank_y
+    +acorn_page_in_bank_using_y ram_bank_list
 }
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
