@@ -67,6 +67,10 @@ ACORN_SWR_BIG_DYNMEM = 1
 !ifdef ACORN_SWR {
 
 ; These macros must leave the selected bank number in A or Y as appropriate.
+; SFTODO: It would probably be possible to use AQR cartridge for all sideways RAM
+; on a Master or Electron; it has its own special paging register though and
+; I don't know if we can or should auto-detect it (there's also some unlock
+; stuff) or if we'd have to ask the user for permission.
 
 !ifndef ACORN_ELECTRON {
 bbc_romsel = $fe30
