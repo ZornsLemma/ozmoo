@@ -1,3 +1,13 @@
+Benchmarking:
+- THIS IS BIGDYN BECAUSE NOT TAKEN ANY STEPS TO AVOID IT
+- Master 128, mode 7, 64K sideways RAM, b-em, drive noises *off* $004988
+- ditto but model B with 144K sideways RAM (so no drive access and maximum paging) $004a4e conf
+- now adding jsr-to-rts in paging code
+- M128 $004e69 1.0664
+- model B 144K $004f12 $004f11 1.0641
+
+
+
 Electron:
 - as per git commit notes, "64k" auto-detected SWR build hangs on move 382 of benchmark
 - forcing LOADER to only recognise one bank of SWR a) it is much slower (which is good, as it suggests we are "correctly" using multiple banks on the whole) b) the benchmark completes (FWIW showing time $019b41)
