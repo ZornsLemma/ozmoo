@@ -66,20 +66,18 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 !ifdef ACORN_SWR {
 !ifndef ACORN_ELECTRON {
-romsel = $fe30
+bbc_romsel = $fe30
 
 !macro acorn_page_in_bank_a {
     sta romsel_copy
-    sta romsel
+    sta bbc_romsel
 }
 
 !macro acorn_page_in_bank_y {
     sty romsel_copy
-    sty romsel
+    sty bbc_romsel
 }
 } else { ; ACORN_ELECTRON
-; We don't use the name "romsel" because I don't want any code which accidentally
-; refers to romsel, meaning the BBC-style one, to assemble correctly.
 electron_romsel = $fe05
 
 ; SFTODO: We might be able to use self-modifying code in these macros to avoid pha/pla stuff
