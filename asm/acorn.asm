@@ -80,8 +80,6 @@ bbc_romsel = $fe30
 } else { ; ACORN_ELECTRON
 electron_romsel = $fe05
 
-; SFTODO: We might be able to use self-modifying code in these macros to avoid pha/pla stuff
-
 !macro acorn_page_in_bank_a {
     pha
     lda #12
