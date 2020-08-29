@@ -2,9 +2,6 @@
 ; part of the Ozmoo binary itself. This is derived from Wouter Scholten's public
 ; domain swrtype-0.7. (http://wouter.bbcmicro.net/bbc/software-whs.html)
 
-; SFTODO: MAKE-ACORN.PY NEEDS TO PASS -DACORN_ELECTRON=1 DOWN TO THIS, FOR NOW JUST HACK IT
-ACORN_ELECTRON=1
-
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
 
