@@ -53,12 +53,13 @@ IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 binary$="OZMOOSW":max_page%=${SWRMAXPAGE}
 IF tube% THEN binary$="OZMOO2P":max_page%=&800 ELSE IF shadow% THEN binary$="OZMOOSH":max_page%=${SHRMAXPAGE}
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
-binary$="OZMOOSH":REM SFTODO HACK FOR ELECTRON
+IF host_os%=0 THEN binary$="OZMOOSH":REM SFTODO HACK FOR ELECTRON
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
 mode_key$="03467"
 mode_y%=0
 IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu(mode%)
+IF host_os%=0 AND mode%=7 THEN mode%=6:REM SFTODO HACK FOR ELECTRON
 PRINT'CHR$${HEADERFG};"In-game controls:"
 controls_vpos%=VPOS
 PROCupdate_controls(mode%)

@@ -350,6 +350,11 @@ if args.speed:
 if args.print_swaps:
     debug = True
     acme_args1 += ["-DPRINT_SWAPS=1"]
+if args.electron:
+    acme_args1 += ["-DACORN_ELECTRON=1"]
+    args.force_big_dynmem = True # SFTODO: BIT OF A HACK
+    args.default_mode = 6 # SFTODO: BIT OF A HACK
+    args.no_hole_check = True # SFTODO: BIT OF A HACK
 if args.no_hole_check:
     acme_args1 += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
 if args.no_dynmem_adjust:
@@ -364,9 +369,6 @@ if args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:
     acme_args1 += ["-DMODE_7_STATUS=1"]
-if args.electron:
-    acme_args1 += ["-DACORN_ELECTRON=1"]
-    args.force_big_dynmem = True # SFTODO: BIT OF A HACK
 if args.force_65c02:
     acme_args1 += ["-DCMOS=1"]
 if debug:
