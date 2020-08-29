@@ -212,7 +212,7 @@ class Executable(object):
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
-        vmap_offset = binary.index(b'VVVVVVVVV')
+        vmap_offset = binary.index(b'VVVVVVVVVVVV')
         vmap_length = 0
         while chr(binary[vmap_offset + vmap_length]) == 'V':
             vmap_length += 1
