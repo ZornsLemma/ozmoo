@@ -201,7 +201,8 @@ name%=data%+1+?data%
 name%?(1+?name%)=13
 name$=FNstrip($(name%+1))
 path$=name$+"."+path$
-*DIR ^
+REM On Econet, you can't do *DIR ^ when in the root.
+IF name$<>"$" AND name$<>"&" THEN *DIR ^
 UNTIL name$="$" OR name$="&"
 path$=LEFT$(path$,LEN(path$)-1)
 ?name%=13
