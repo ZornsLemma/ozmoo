@@ -20,6 +20,7 @@ REM user shouldn't be told here in the first place.
 *FX229,1
 MODE 135
 VDU 23,1,0;0;0;0;
+ON ERROR PROCerror
 *FX4,1
 DIM block% 256
 REM ${BANNER} - make-acorn.py will add banner printing code here
@@ -75,7 +76,14 @@ IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
 VDU 28,0,${SPACELINE},39,${SPACELINE},12,26,31,0,${SPACELINE},${NORMALFG}
 PRINT "Loading, please wait...";
-IF FNfs<>4 THEN path$=FNpath:PROCoscli("DIR SAVES") ELSE path$=":0.$":*DIR S
+fs%=FNfs
+IF fs%=4 THEN path$=":0.$" ELSE path$=FNpath
+REM Select user's home directory on NFS
+IF fs%=5 THEN *DIR
+REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
+ON ERROR GOTO 1000
+IF fs%=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
+1000ON ERROR PROCerror
 game_data_path$=path$+".DATA"
 IF LEN(game_data_path$)>(game_data_filename_size-1) THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
@@ -175,14 +183,28 @@ IF shadow% OR tube% THEN PRINT CHR$${NORMALFG};"  CTRL-S: change scrolling mode 
 IF mode%=7 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
+DEF PROCerror
+PROCclear
+REPORT:PRINT " at line ";ERL
+PROCcleanup
+END
+:
 DEF PROCdie(message$)
+PROCclear
+PRINT CHR$${NORMALFG};message$'
+PROCcleanup
+END
+:
+DEF PROCclear
 REM SFTODO: If we don't detect SWR/2P, this gives slightly ugly output. But I would like to leave the HW detected line present if we die for some other reason, as it's informative (e.g. max_page varies with build chosen).
 VDU 28,0,${LASTLOADERLINE},39,${FIRSTLOADERLINE}+3,12
-PRINT CHR$${NORMALFG};message$'
+ENDPROC
+:
+DEF PROCcleanup
 VDU 23,1,1,0;0;0;0;
 *FX4,0
 *FX229,0
-END
+ENDPROC
 :
 DEF PROCoscli($block%)
 LOCAL X%,Y%
