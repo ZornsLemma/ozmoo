@@ -60,24 +60,24 @@ REM SFTODO: I'm assuming the mode selection and default colour code below knows 
 1000PRINT CHR$${HEADERFG};"Hardware detected:"'CHR$${NORMALFG};"  ";hw$
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
-mode%=${DEFAULTMODE}
+start_mode%=${DEFAULTMODE}
+IF host_os%=0 AND start_mode%=7 THEN start_mode%=6
 auto%=${AUTOSTART}
-mode_key$="03467"
-mode_y%=0
-IF NOT (tube% OR shadow%) THEN mode%=7:mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu(mode%)
-IF host_os%=0 AND mode%=7 THEN mode%=6:REM SFTODO HACK FOR ELECTRON
+IF host_os%=0 THEN mode_key$="0346" ELSE mode_key$="03467"
+mode_x%=FNmode_x(start_mode%)
+mode_y%=FNmode_y(start_mode%)
+IF NOT any_mode% THEN mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu
 PRINT'CHR$${HEADERFG};"In-game controls:"
 controls_vpos%=VPOS
-PROCupdate_controls(mode%)
+PROCupdate_controls
 IF NOT auto% THEN PRINTTAB(0,${SPACELINE});CHR$${NORMALFG};"Press SPACE to start the game...";
 REPEAT
 *FX21
 IF auto% THEN key$=" " ELSE key$=GET$
-IF ASC(key$)>=136 AND ASC(key$)<=139 THEN key$=FNupdate_cursor(ASC(key$))
-IF INSTR(mode_key$,key$)<>0 AND mode%<>VAL(key$) THEN PROCupdate_mode_menu(mode%,VAL(key$)):mode%=VAL(key$):PROCupdate_controls(mode%)
+IF INSTR(mode_key$,key$)<>0 THEN PROCmenu_to_mode(VAL(key$)) ELSE IF ASC(key$)>=136 AND ASC(key$)<=139 THEN PROCmenu_cursor(ASC(key$))
 UNTIL key$=" "
-?screen_mode=mode%
-IF mode%=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
+?screen_mode=FNmode_from_menu
+IF ?screen_mode=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 ?bg_colour=4
 VDU 28,0,${SPACELINE},39,${SPACELINE},12,26,31,0,${SPACELINE},${NORMALFG}
 PRINT "Loading, please wait...";
@@ -138,54 +138,88 @@ REM SFTODO: If the next line is "=PAGE", beebasm seems to tokenise it incorrectl
 dummy%=PAGE
 =dummy%
 :
-DEF PROCmode_menu(mode%)
-PRINT'CHR$${HEADERFG};"Screen mode:";CHR$${NORMALFG};"(hit 0/3/4/6/7 to change)"
+DEF PROCmode_menu
+DIM m$(1,1)
+m$(0,0)="0) 80x32"
+m$(1,0)="4) 40x32"
+m$(0,1)="3) 80x25"
+m$(1,1)="6) 40x25"
+REM SFTODO: Could/should we increase horizontal spacing if we don't have mode 7 option?
+PRINT'CHR$${HEADERFG};"Screen mode:";CHR$${NORMALFG};"(hit 0/3/4/6";
+IF host_os%<>0 THEN PRINT "/7";
+PRINT " to change)"
 mode_menu_vpos%=VPOS
-PRINT CHR$${NORMALFG};"  0) 80x32    4) 40x32    7) 40x25"
-PRINT CHR$${NORMALFG};"  3) 80x25    6) 40x25       teletext"
+IF host_os%<>0 THEN PRINT CHR$${NORMALFG};"  0) 80x32    4) 40x32    7) 40x25"'CHR$${NORMALFG};"  3) 80x25    6) 40x25       teletext" ELSE FOR y%=0 TO 1:FOR x%=0 TO 1:PRINTTAB(3+x%*20,mode_menu_vpos%+y%);m$(x%,y%):NEXT:NEXT
 vpos%=VPOS
-PROChighlight_mode_menu(mode%,TRUE)
+PROChighlight_mode_menu(mode_x%,mode_y%,TRUE)
 PRINTTAB(0,vpos%);
+old_mode_x%=mode_x%:old_mode_y%=mode_y%
 ENDPROC
 :
-DEF FNupdate_cursor(key%)
+DEF PROCmenu_cursor(key%)
+IF host_os%=0 THEN max_x%=1 ELSE max_x%=2
 IF key%=136 AND mode_x%>0 THEN mode_x%=mode_x%-1
-IF key%=137 AND mode_x%<2 THEN mode_x%=mode_x%+1
+IF key%=137 AND mode_x%<max_x% THEN mode_x%=mode_x%+1
 IF key%=138 AND mode_y%<1 THEN mode_y%=mode_y%+1
 IF key%=139 AND mode_y%>0 THEN mode_y%=mode_y%-1
-IF mode_x%=0 AND mode_y%=0 THEN ="0"
-IF mode_x%=0 AND mode_y%=1 THEN ="3"
-IF mode_x%=1 AND mode_y%=0 THEN ="4"
-IF mode_x%=1 AND mode_y%=1 THEN ="6"
-="7"
-:
-DEF PROCupdate_mode_menu(old_mode%,new_mode%)
-PROChighlight_mode_menu(old_mode%,FALSE)
-PROChighlight_mode_menu(new_mode%,TRUE)
+PROCupdate_mode_menu
 ENDPROC
 :
-DEF PROChighlight_mode_menu(mode%,on%)
-LOCAL x%,width%,start_y%,end_y%,y%
-IF mode%=4 OR mode%=6 THEN x%=12:mode_x%=1 ELSE IF mode%=7 THEN x%=24:mode_x%=2 ELSE x%=0:mode_x%=0
-IF mode%=0 OR mode%=4 THEN mode_y%=0
-IF mode%=3 OR mode%=6 THEN mode_y%=1
-IF mode%=0 OR mode%=4 OR mode%=7 THEN start_y%=mode_menu_vpos% ELSE start_y%=mode_menu_vpos%+1
-IF mode%=7 THEN end_y%=start_y%+1:width%=0 ELSE end_y%=start_y%:width%=13
+DEF PROCmenu_to_mode(mode%)
+mode_x%=FNmode_x(mode%)
+mode_y%=FNmode_y(mode%)
+PROCupdate_mode_menu
+ENDPROC
+:
+DEF PROCupdate_mode_menu
+IF mode_x%=old_mode_x% AND mode_y%=old_mode_y% THEN ENDPROC
+IF mode_x%=2 AND old_mode_x%=2 THEN ENDPROC
+PROChighlight_mode_menu(old_mode_x%,old_mode_y%,FALSE)
+PROChighlight_mode_menu(mode_x%,mode_y%,TRUE)
+old_mode_x%=mode_x%:old_mode_y%=mode_y%
+PROCupdate_controls
+ENDPROC
+:
+DEF PROChighlight_mode_menu(mode_x%,mode_y%,on%)
+LOCAL x%,width%,start_y%,end_y%,y%:REM SFTODO OUT OF DATE
+IF host_os%=0 THEN PROChighlight_mode_menu_electron(mode_x%,mode_y%,on%):ENDPROC
+IF mode_x%=2 THEN start_y%=0:end_y%=1:width%=0 ELSE start_y%=mode_y%:end_y%=mode_y%:width%=13
+x%=mode_x%*12
 FOR y%=start_y% TO end_y%
-PRINTTAB(x%,y%);
+PRINTTAB(x%,mode_menu_vpos%+y%);
 IF on% THEN VDU ${HIGHLIGHTBG},157,${HIGHLIGHTFG} ELSE PRINT CHR$${NORMALFG};"  ";
-PRINTTAB(x%+width%,y%);
+PRINTTAB(x%+width%,mode_menu_vpos%+y%);
 IF width%>0 AND on% THEN VDU 156,${NORMALFG}
 IF width%>0 AND NOT on% THEN PRINT " ";
 NEXT
 ENDPROC
 :
-DEF PROCupdate_controls(mode%)
-REM SFTODO: We shouldn't mention CTRL-F at all if the build script has turned mode 7 colour off
+DEF PROChighlight_mode_menu_electron(mode_x%,mode_y%,on%)
+IF on% THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
+PRINTTAB(1+mode_x%*20,mode_menu_vpos%+mode_y%);"  ";m$(mode_x%,mode_y%);"  ";
+COLOUR 128:COLOUR 7
+ENDPROC
+:
+DEF FNmode_x(mode%)
+IF mode%=0 OR mode%=3 THEN =0
+IF mode%=4 OR mode%=6 THEN =1
+=2
+:
+DEF FNmode_y(mode%)
+IF mode%=0 OR mode%=4 OR mode%=7 THEN =0
+=1
+:
+DEF FNmode_from_menu
+IF mode_x%=2 THEN =7
+IF mode_x%=1 THEN =4+2*mode_y%
+=0+3*mode_y%
+:
+DEF PROCupdate_controls
+REM SFTODO: We shouldn't mention CTRL-F at all in mode 7 if the build script has turned mode 7 colour off
 PRINTTAB(0,controls_vpos%);CHR$${NORMALFG};"  CTRL-F: ";
-IF mode%=7 THEN PRINT "change status line colour" ELSE PRINT "change foreground colour "'CHR$${NORMALFG};"  CTRL-B: change background colour"
-IF shadow% OR tube% THEN PRINT CHR$${NORMALFG};"  CTRL-S: change scrolling mode   "
-IF mode%=7 THEN PRINT STRING$(40, " ");
+IF mode_x%=2 THEN PRINT "change status line colour" ELSE PRINT "change foreground colour "'CHR$${NORMALFG};"  CTRL-B: change background colour"
+IF binary$<>"OZMOOB" THEN PRINT CHR$${NORMALFG};"  CTRL-S: change scrolling mode   "
+IF mode_x%=2 THEN PRINT STRING$(40, " ");
 ENDPROC
 :
 DEF PROCerror
