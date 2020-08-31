@@ -263,7 +263,6 @@ parser.add_argument("--title", metavar="TITLE", type=str, help="set title for us
 parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adl extension)")
-parser.add_argument("-e", "--electron", action="store_true", help="generate a disc image for use with the Acorn Electron")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -350,11 +349,6 @@ if args.speed:
 if args.print_swaps:
     debug = True
     acme_args1 += ["-DPRINT_SWAPS=1"]
-if args.electron:
-    acme_args1 += ["-DACORN_ELECTRON=1"]
-    args.force_big_dynmem = True # SFTODO: BIT OF A HACK
-    args.default_mode = 6 # SFTODO: BIT OF A HACK
-    args.no_hole_check = True # SFTODO: BIT OF A HACK
 if args.no_hole_check:
     acme_args1 += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
 if args.no_dynmem_adjust:
@@ -405,14 +399,7 @@ else:
 # SFTODO: This comment may want tweaking, but I'll wait until I've finished
 # fiddling with the code.
 shr_swr_min_start_addr = our_parse_int(args.min_relocate_addr)
-if not args.electron:
-    shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
-else:
-    # SFTODO: Bit of a hack, need to think how to do this properly, but the
-    # binary overlaps mode 6 screen if we load at 2000. This is actually
-    # looking pretty tight if we have to support $1d00 for Plus 3, but let's
-    # not worry about that for now.
-    shr_swr_default_start_addr = max(0x1c00, shr_swr_min_start_addr)
+shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
 
 tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
 
@@ -845,15 +832,54 @@ def make_swr_shr_executable():
 
 
 # SFTODO: Move this function?
-def make_swr_executable():
+def make_bbc_swr_executable():
     e = make_small_dynmem_executable("swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
-    info_swr_dynmem("sideways RAM build", e.labels)
+    info_swr_dynmem("BBC sideways RAM build", e.labels)
     return e
 
 
+# SFTODO: Move this function?
+# SFTODO: Use debugger to make sure Electron binary does relocate itself down
+# SFTODO: Some code duplication with make_swr_shr_executable?
+def make_electron_swr_executable():
+    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON=1"]
+
+    # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
+    # lower than the high version of the executable - but it's a good choice because it
+    # means we can use the ACME labels/report directly for debugging with an E00 DFS.
+    low_start_address_options = (0xe00, 0xe00 + 0x100)
+    low_candidate = None
+    for start_address in low_start_address_options:
+        e = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
+        if low_candidate is None or len(e.binary) < len(low_candidate.binary):
+            low_candidate = e
+    assert low_candidate is not None
+
+    # SFTODO: HARD-CODED VALUE
+    high_start_address = 0x1d00
+    if (high_start_address - low_candidate.start_address) % 0x200 != 0:
+        high_start_address == 0x100
+    assert (high_start_address - low_candidate.start_address) % 0x200 == 0
+    high_candidate = Executable("electron_swr_vmem", high_start_address, extra_args)
+    info_swr_dynmem("Electron sideways RAM build", high_candidate.labels)
+    relocations = make_relocations(low_candidate.binary, high_candidate.binary)
+    high_candidate.binary += relocations
+    return high_candidate
+
+# SFTODO: We now have the possibility to disable certain builds by command line, or to allow the generated game to simply not support certain builds if they failed. (Care with the latter; we probably do want to require --no-hole-check to explicitly push on with that, but if a game is simply too big for some configurations we should disable them. Probably wait until such a game turns up before implementing this.0
+
 tube_executable = make_tube_executable()
+# SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
+tube_detected = 'hw$="Second processor":binary$="OZMOO2P":max_page%=&800:any_mode%=TRUE:GOTO 1000'
+
 swr_shr_executable = make_swr_shr_executable()
-swr_executable = make_swr_executable()
+swr_shr_detected = 'binary$="OZMOOSH":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (basichex(swr_shr_executable.start_address),)
+
+bbc_swr_executable = make_bbc_swr_executable()
+bbc_swr_detected = 'binary$="OZMOOB":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (basichex(bbc_swr_executable.start_address),)
+
+electron_swr_executable = make_electron_swr_executable()
+electron_swr_detected = 'binary$="OZMOOE":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (basichex(electron_swr_executable.start_address),)
 
 
 # SFTODO: Move this into a function, probably some of the title parsing stuff above too
@@ -946,9 +972,13 @@ with open("templates/loader.bas", "r") as loader_template:
                         else:
                             loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
             else:
+                line = line.replace("${TUBEDETECTED}", tube_detected)
+                line = line.replace("${BBCSHRSWRDETECTED}", swr_shr_detected)
+                line = line.replace("${BBCSWRDETECTED}", bbc_swr_detected)
+                line = line.replace("${ELECTRONSWRDETECTED}", electron_swr_detected)
                 line = line.replace("${DEFAULTMODE}", str(default_mode))
-                line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
-                line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
+                # SFTODO DELETE line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
+                # SFTODO DELETE line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
                 line = line.replace("${AUTOSTART}", auto_start)
                 if first_loader_line is not None:
                     line = line.replace("${FIRSTLOADERLINE}", str(first_loader_line))
@@ -999,7 +1029,8 @@ tube_executable.add_to_disc(disc, "$", "OZMOO2P")
 # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
 # two Ozmoo executables.
 swr_shr_executable.add_to_disc(disc, "$", "OZMOOSH")
-swr_executable.add_to_disc(disc, "$", "OZMOOSW")
+bbc_swr_executable.add_to_disc(disc, "$", "OZMOOB")
+electron_swr_executable.add_to_disc(disc, "$", "OZMOOE")
 
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if

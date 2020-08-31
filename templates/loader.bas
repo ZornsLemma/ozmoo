@@ -33,7 +33,6 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-PRINT CHR$${HEADERFG};"Hardware detected:"
 :
 REM The following need to be kept consistent with asm/constants.asm
 relocate_target=&408
@@ -49,12 +48,17 @@ game_data_filename_size=32
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF NOT tube% THEN PROCdetect_swr ELSE PRINT CHR$${NORMALFG};"  Second processor"
+IF tube% THEN ${TUBEDETECTED}
+*/FINDSWR
+PROCdetect_swr:REM will die if 0 banks found
+REM SFTODO: Hypothetical AQR support might kick in here and if found (maybe we ask the user for permission) we'd select the relevant binary and GOTO 1000, otherwise we'd carry on
+IF shadow% AND host_os%<>0 THEN ${BBCSHRSWRDETECTED}
+IF host_os%<>0 THEN ${BBCSWRDETECTED}
+IF host_os%=0 THEN ${ELECTRONSWRDETECTED}
+REM SFTODO: I'm assuming the mode selection and default colour code below knows how to handle the Electron (no mode 7) rather than us having extra options here
+1000PRINT CHR$${HEADERFG};"Hardware detected:"'CHR$${NORMALFG};"  ";hw$
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
-binary$="OZMOOSW":max_page%=${SWRMAXPAGE}
-IF tube% THEN binary$="OZMOO2P":max_page%=&800 ELSE IF shadow% THEN binary$="OZMOOSH":max_page%=${SHRMAXPAGE}
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
-IF host_os%=0 THEN binary$="OZMOOSH":REM SFTODO HACK FOR ELECTRON
 mode%=${DEFAULTMODE}
 auto%=${AUTOSTART}
 mode_key$="03467"
@@ -81,9 +85,9 @@ IF fs%=4 THEN path$=":0.$" ELSE path$=FNpath
 REM Select user's home directory on NFS
 IF fs%=5 THEN *DIR
 REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
-ON ERROR GOTO 1000
+ON ERROR GOTO 2000
 IF fs%=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
-1000ON ERROR PROCerror
+2000ON ERROR PROCerror
 game_data_path$=path$+".DATA"
 IF LEN(game_data_path$)>(game_data_filename_size-1) THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
@@ -109,13 +113,13 @@ FOR i%=0 TO 15
 IF i%?swr_test>0 AND c%<max_ram_bank_count THEN ram_bank_list?c%=i%:c%=c%+1
 NEXT
 ?ram_bank_count=c%
-PRINT CHR$${NORMALFG};"  ";16*?ram_bank_count;"K sideways RAM (bank";
-IF c%>1 THEN PRINT "s";
-PRINT " &";
+hw$=STR$(16*?ram_bank_count)+"K sideways RAM (bank"
+IF c%>1 THEN hw$=hw$+"s"
+hw$=hw$+" &"
 FOR i%=0 TO c%-1
-PRINT ;~(ram_bank_list?i%);
+hw$=hw$+STR$~(ram_bank_list?i%)
 NEXT
-PRINT ")"
+hw$=hw$+")"
 ENDPROC
 :
 DEF FNrelocate_to
