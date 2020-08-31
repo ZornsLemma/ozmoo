@@ -45,6 +45,7 @@ max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 game_data_filename=&42F
 game_data_filename_size=32
 :
+REM SFTODO: This prints teletext control codes even in mode 6 on Electron. We can potentially get away with this reliably if we VDU 23 them all to 0. In practice I am always testing on a freshly powered on emulated machine, but in the real world this may not be the case.
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
