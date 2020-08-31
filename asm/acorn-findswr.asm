@@ -4,6 +4,8 @@
 
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
+osbyte           = $fff4
+osbyte_read_host = 0
 
 ; We arrange for the output to be near the start of this binary so the loader
 ; can access it at fixed addresses.
@@ -21,19 +23,22 @@ swr_byte_value1 !byte 0
 swr_byte_value2 !byte 0
 dummy           !byte 0
 tmp             !byte 0
+bbc             !byte 0
 
 start
+    LDA #osbyte_read_host
+    LDX #1
+    JSR osbyte
+    TXA
+    BEQ +
+    LDX #$FF
++   STX bbc ; $FF for BBC, 0 for Electron
+    
     SEI
     ; save original contents
     LDY #0
 lp
-!ifndef ACORN_ELECTRON {
-    STY $FE30 ; set rom -> #Y
-} else {
-    LDA #12
-    STA $FE05
-    STY $FE05
-}
+    JSR page_in_y_corrupt_a
     LDA test_location
     STA swr_backup,Y
     INY
@@ -87,13 +92,7 @@ invalid_header
 bank_lp_x
     LDA #0
     STA dummy
-!ifndef ACORN_ELECTRON {
-    STX $FE30
-} else {
-    LDA #12
-    STA $FE05
-    STX $FE05
-}
+    JSR page_in_x_corrupt_a
     LDA test_location
     CMP tmp
     BNE cmp_next_x
@@ -118,13 +117,7 @@ bank_lp_x
     LDA #0
     STA dummy
 
-!ifndef ACORN_ELECTRON {
-    STX $FE30
-} else {
-    LDA #12
-    STA $FE05
-    STX $FE05
-}
+    JSR page_in_x_corrupt_a
     LDA test_location
     CMP tmp
     BNE cmp_next_x
@@ -144,13 +137,7 @@ cmp_next_x
 cmp_next_y
     INY
     CPY #16
-!if 0 { ; SFTODO!?!?!?!
     BCC bank_lp_y
-} else {
-    BCS .SFTODO
-    JMP bank_lp_y
-.SFTODO
-}
     LDA swr_banks
     BNE continue
     STA swr_type ; no SWR found
@@ -181,15 +168,7 @@ find_type_lp
     EOR swr_byte_value1
     EOR #$22
     STA test_location
-!ifndef ACORN_ELECTRON {
-    STY $FE30
-} else {
-    PHA
-    LDA #12
-    STA $FE05
-    PLA
-    STY $FE30
-}
+    JSR page_in_y_preserve_a
     CMP test_location
     BEQ found_soli
     JSR set_only_ramsel
@@ -197,15 +176,7 @@ find_type_lp
     EOR swr_byte_value2
     EOR #$23
     STA test_location
-!ifndef ACORN_ELECTRON {
-    STY $FE30
-} else {
-    PHA
-    LDA #12
-    STA $FE05
-    PLA
-    STY $FE05
-}
+    JSR page_in_y_preserve_a
     CMP test_location
     BEQ found_ram_sel
     JSR set_only_romsel
@@ -213,15 +184,7 @@ find_type_lp
     EOR swr_byte_value2
     EOR #$34
     STA test_location
-!ifndef ACORN_ELECTRON {
-    STY $FE30
-} else {
-    PHA
-    LDA #12
-    STA $FE05
-    PLA
-    STY $FE05
-}
+    JSR page_in_y_preserve_a
     CMP test_location
     BEQ found_rom_sel
     ; which leaves the watford rom/ram method
@@ -269,13 +232,7 @@ restore_lp
     BCC restore_lp
 end2
     LDA $F4
-!ifndef ACORN_ELECTRON {
-    STA $FE30
-} else {
-    LDY #8 ; SFTODO!?!?!?
-    STY $FE05
-    STA $FE05
-}
+    JSR page_in_a
     CLI
     RTS
 
@@ -292,15 +249,7 @@ set_solidisk ; for old solidisk swr
 set_only_romsel
     JSR set_all_to_wrong_bank
 set_romsel
-!ifndef ACORN_ELECTRON {
-    STY $FE30
-} else {
-    PHA
-    LDA #12
-    STA $FE05
-    PLA
-    STY $FE05
-}
+    JSR page_in_y_preserve_a
     RTS
 
 ; RAMSEL may not exist, in which case it is equivalent to ROMSEL
@@ -343,3 +292,29 @@ set_all_to_wrong_bank
     EOR #1
     TAY
     RTS
+
+; This paging is inefficient, but performance isn't really significant here;
+; code readability and size are more important.
+page_in_y_preserve_a
+    PHA
+    JSR page_in_y_corrupt_a
+    PLA
+    RTS
+page_in_x_corrupt_a
+    TXA
+    JMP page_in_a
+page_in_y_corrupt_a
+    TYA
+page_in_a
+    BIT bbc
+    BPL page_in_a_electron
+    STA $FE30
+    RTS
+page_in_a_electron
+    PHA
+    LDA #12
+    STA $FE05
+    PLA
+    STA $FE05
+    RTS
+

@@ -706,9 +706,7 @@ def add_findswr_executable(disc):
     load_address = 0x900
     os.chdir("asm")
     extra_args = []
-    if args.electron:
-        extra_args += ["-DACORN_ELECTRON=1"]
-    run_and_check(["acme"] + extra_args + ["--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_findswr.txt", "-r", "../temp/acme_report_findswr.txt", "--outfile", "../temp/findswr", "acorn-findswr.asm"])
+    run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_findswr.txt", "-r", "../temp/acme_report_findswr.txt", "--outfile", "../temp/findswr", "acorn-findswr.asm"])
     os.chdir("..")
     with open("temp/findswr", "rb") as f:
         disc.add_file("$", "FINDSWR", host | load_address, host | load_address, f.read())
