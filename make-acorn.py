@@ -902,6 +902,7 @@ with open("templates/loader.bas", "r") as loader_template:
             assert line[-1] == '\n'
             line = line[:-1]
             if line.startswith("REM ${BANNER}"):
+                loader.write("IF host_os%=0 THEN GOTO 500" + linesep)
                 header = bytearray()
                 footer = bytearray()
                 for i in range(0, len(title_page_template) // 40):
@@ -971,6 +972,26 @@ with open("templates/loader.bas", "r") as loader_template:
                             loader.write(b"PRINT" + linesep)
                         else:
                             loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
+                loader.write("first_loader_line=%d%s" % (first_loader_line, linesep))
+                loader.write("last_loader_line=%d%s" % (last_loader_line, linesep))
+                loader.write("space_line=%d%s" % (space_line, linesep))
+                loader.write("GOTO 600" + linesep)
+                # SFTODO: Some of this code could probably just be written inline in the template rather than emitted here
+                loader.write("500")
+                loader.write("VDU 23,128,0;0,255,255,0,0;" + linesep)
+                loader.write("FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
+                loader.write('PRINTTAB(1,23);STRING$(39,CHR$128);" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
+                loader.write("VDU 30" + linesep)
+                loader.write('PRINT " %s"%s' % (title.encode("ascii"), linesep))
+                loader.write('PRINT " ";STRING$(39,CHR$128);' + linesep)
+                if args.subtitle is not None:
+                    loader.write('PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
+                    loader.write("first_loader_line=4" + linesep)
+                else:
+                    loader.write("first_loader_line=3" + linesep)
+                loader.write("last_loader_line=22" + linesep)
+                loader.write("space_line=22" + linesep)
+                loader.write("600")
             else:
                 line = line.replace("${TUBEDETECTED}", tube_detected)
                 line = line.replace("${BBCSHRSWRDETECTED}", swr_shr_detected)
@@ -980,12 +1001,6 @@ with open("templates/loader.bas", "r") as loader_template:
                 # SFTODO DELETE line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
                 # SFTODO DELETE line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
                 line = line.replace("${AUTOSTART}", auto_start)
-                if first_loader_line is not None:
-                    line = line.replace("${FIRSTLOADERLINE}", str(first_loader_line))
-                if last_loader_line is not None:
-                    line = line.replace("${LASTLOADERLINE}", str(last_loader_line))
-                if space_line is not None:
-                    line = line.replace("${SPACELINE}", str(space_line))
                 line = line.replace("${NORMALFG}", str(normal_fg_colour))
                 line = line.replace("${HEADERFG}", str(header_fg_colour))
                 line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
