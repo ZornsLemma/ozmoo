@@ -885,6 +885,11 @@ z_ins_restart
 !ifndef ACORN_ADFS {
     ; We specify the drive and directory in case the user has used *DRIVE/*DIR
     ; commands during save or restore.
+    ; SFTODONOW: This needs updating for the new OZMOOB and OZMOOE binary names.
+    ; SFTODONOW: Should I make the loader poke "/binary_full_name" at game_data_path
+    ; (perhaps aliasing that name as something else) on DFS, and then we can just
+    ; use that, and if/when the loader starts putting some binaries on side 2 it
+    ; will "just work"?
 .restart_command
 !ifndef ACORN_SWR {
     !text "/:0.$.OZMOO2P", 13
