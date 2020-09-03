@@ -148,7 +148,9 @@ def escape_basic_string(s):
 
 # SFTODO: MOVE/RENAME
 class Executable(object):
-    def __init__(self, version, start_address, extra_args):
+    def __init__(self, base_filename, version, start_address, extra_args):
+        self.base_filename = base_filename
+        self.surface = 0
         self.raw_version = version
         version = version.replace("START", ourhex(start_address))
         self.version = version
@@ -235,9 +237,15 @@ class Executable(object):
             binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
         return binary
 
-    def add_to_disc(self, disc, directory, name):
+    def add_to_disc(self, disc):
         high_order = 0 if self.start_address <= 0x800 else host
-        disc.add_file(directory, name, high_order | self.start_address, high_order | self.start_address, self.binary)
+        disc.add_file("$", self.base_filename, high_order | self.start_address, high_order | self.start_address, self.binary)
+
+    def filename(self):
+        if not args.adfs:
+            return ":%d.$.%s" % (self.surface, self.base_filename)
+        else:
+            return self.base_filename
 
 
 best_effort_version = "Ozmoo"
@@ -403,7 +411,7 @@ else:
 shr_swr_min_start_addr = our_parse_int(args.min_relocate_addr)
 shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
 
-tube_no_vmem = Executable("tube_no_vmem", tube_start_addr, [])
+tube_no_vmem = Executable("OZMOO2P", "tube_no_vmem", tube_start_addr, [])
 
 # We take some constants from the ACME labels to avoid duplicating them both
 # here and in constants.asm. We need to take them from a particular build, but
@@ -418,28 +426,160 @@ while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
 
 
-
-if args.custom_title_page is not None:
-    if args.custom_title_page.startswith("http"):
-        title_page_template = decode_edittf_url(args.custom_title_page)
+def make_loader():
+    if args.custom_title_page is not None:
+        if args.custom_title_page.startswith("http"):
+            title_page_template = decode_edittf_url(args.custom_title_page)
+        else:
+            with open(args.custom_title_page, "rb") as f:
+                title_page_template = f.read()
+            if title_page_template.startswith(b"http"):
+                title_page_template = decode_edittf_url(title_page_template)
+            title_page_template = bytearray(title_page_template)
+            for c in title_page_template:
+                if c < 32:
+                    die("Invalid character found in custom title page")
     else:
-        with open(args.custom_title_page, "rb") as f:
-            title_page_template = f.read()
-        if title_page_template.startswith(b"http"):
-            title_page_template = decode_edittf_url(title_page_template)
-        title_page_template = bytearray(title_page_template)
-        for c in title_page_template:
-            if c < 32:
-                die("Invalid character found in custom title page")
-else:
-    title_page_template = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
+        title_page_template = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
 
-if args.default_mode is not None:
-    default_mode = args.default_mode
-    if default_mode not in (0, 3, 4, 6, 7):
-        die("Invalid default mode specified")
-else:
-    default_mode = 7
+    if args.default_mode is not None:
+        default_mode = args.default_mode
+        if default_mode not in (0, 3, 4, 6, 7):
+            die("Invalid default mode specified")
+    else:
+        default_mode = 7
+
+    with open("templates/loader.bas", "r") as loader_template:
+        # Python 3 won't allow the output to be a text file, because it contains top-bit-set
+        # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
+        # get the line endings right for the platform we're on.
+        linesep = os.linesep.encode("ascii")
+        with open("temp/loader.bas", "wb") as loader:
+            # SFTODO: Slightly hacky but feeling my way here
+            space_line = None
+            first_loader_line = None
+            last_loader_line = None
+            normal_fg_colour = 135
+            header_fg_colour = 131
+            highlight_fg_colour = 131
+            highlight_bg_colour = 129
+            start_adjust = 0
+            for line in loader_template:
+                assert line[-1] == '\n'
+                line = line[:-1]
+                if line.startswith("REM ${BANNER}"):
+                    loader.write("IF host_os%=0 THEN GOTO 500" + linesep)
+                    header = bytearray()
+                    footer = bytearray()
+                    for i in range(0, len(title_page_template) // 40):
+                        banner_line = title_page_template[i*40:(i+1)*40]
+                        if b"LOADER OUTPUT STARTS HERE" in banner_line:
+                            if first_loader_line is None:
+                                first_loader_line = i + start_adjust
+                        elif b"LOADER OUTPUT ENDS HERE" in banner_line:
+                            last_loader_line = i
+                            continue
+                        banner_line = banner_line.replace(b"${TITLE}", title.encode("ascii"))
+                        if b"${SUBTITLE}" in banner_line:
+                            if args.subtitle is not None:
+                                banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
+                            else:
+                                start_adjust = -1
+                                continue
+                        banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
+                        banner_line = (banner_line + b" "*40)[:40]
+                        if b"Normal foreground" in banner_line:
+                            normal_fg_colour = colour(banner_line[0])
+                        elif b"Header foreground" in banner_line:
+                            header_fg_colour = colour(banner_line[0])
+                        elif b"Highlight foreground" in banner_line:
+                            highlight_fg_colour = colour(banner_line[0])
+                        elif b"Highlight background" in banner_line:
+                            highlight_bg_colour = colour(banner_line[0])
+                        elif b"${SPACE}" in banner_line:
+                            space_line = i
+                            banner_line = b" "*40
+                        if first_loader_line is None:
+                            header += banner_line
+                        elif last_loader_line is not None:
+                            footer += banner_line
+                    if space_line is None:
+                        space_line = 24
+                    # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
+                    while len(footer) > 0 and footer.startswith(b" "*40):
+                        footer = footer[40:]
+                        last_loader_line += 1
+                    loader_lines = last_loader_line + 1 - first_loader_line
+                    min_loader_lines = 12 # SFTODO: 11 is currently enough, but I want to keep one "spare"
+                    if loader_lines < min_loader_lines:
+                        die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
+                    if len(footer) > 0:
+                        print_command = b"PRINTTAB(0,%d);" % (last_loader_line + 1,)
+                        scroll_adjust = False
+                        for i in range(0, len(footer) // 40):
+                            footer_line = footer[i*40:(i+1)*40]
+                            if last_loader_line + 1 + i == 24:
+                                if footer_line[-1] == ord(' '):
+                                    footer_line = footer_line[:-1]
+                                else:
+                                    scroll_adjust = True
+                            loader.write(b"%s\"%s\";%s" % (print_command, escape_basic_string(footer_line), linesep))
+                            print_command = b"PRINT"
+                        if scroll_adjust:
+                            # We printed at the bottom right character of the screen and the OS will
+                            # have automatically scrolled it, so we need to force a scroll down to
+                            # fix this.
+                            loader.write(b"VDU30,11" + linesep)
+                        else:
+                            loader.write(b"VDU30" + linesep)
+                        for i in range(0, len(header) // 40):
+                            header_line = header[i*40:(i+1)*40]
+                            if header_line == b" "*40:
+                                loader.write(b"PRINT" + linesep)
+                            else:
+                                loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
+                    loader.write("first_loader_line=%d%s" % (first_loader_line, linesep))
+                    loader.write("last_loader_line=%d%s" % (last_loader_line, linesep))
+                    loader.write("space_line=%d%s" % (space_line, linesep))
+                    loader.write("GOTO 600" + linesep)
+                    # SFTODO: Some of this code could probably just be written inline in the template rather than emitted here
+                    loader.write("500")
+                    loader.write("VDU 23,128,0;0,255,255,0,0;" + linesep)
+                    loader.write("FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
+                    loader.write('PRINTTAB(1,23);STRING$(39,CHR$128);" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
+                    loader.write("VDU 30" + linesep)
+                    loader.write('PRINT " %s"%s' % (title.encode("ascii"), linesep))
+                    loader.write('PRINT " ";STRING$(39,CHR$128);' + linesep)
+                    if args.subtitle is not None:
+                        loader.write('PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
+                        loader.write("first_loader_line=4" + linesep)
+                    else:
+                        loader.write("first_loader_line=3" + linesep)
+                    loader.write("last_loader_line=22" + linesep)
+                    loader.write("space_line=22" + linesep)
+                    loader.write("600")
+                else:
+                    line = line.replace("${TUBEDETECTED}", tube_detected)
+                    line = line.replace("${BBCSHRSWRDETECTED}", swr_shr_detected)
+                    line = line.replace("${BBCSWRDETECTED}", bbc_swr_detected)
+                    line = line.replace("${ELECTRONSWRDETECTED}", electron_swr_detected)
+                    line = line.replace("${DEFAULTMODE}", str(default_mode))
+                    # SFTODO DELETE line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
+                    # SFTODO DELETE line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
+                    line = line.replace("${AUTOSTART}", auto_start)
+                    line = line.replace("${NORMALFG}", str(normal_fg_colour))
+                    line = line.replace("${HEADERFG}", str(header_fg_colour))
+                    line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
+                    line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
+                    if line.startswith("REM"):
+                        continue
+                    rem_index = line.find(":REM")
+                    if rem_index != -1:
+                        line = line[:rem_index]
+                    if line == "" or line == ":":
+                        continue
+                    loader.write(line.encode("ascii") + linesep)
+
 
 auto_start = "TRUE" if args.auto_start else "FALSE"
 if args.title is not None:
@@ -707,7 +847,7 @@ def make_tube_executable():
         e = tube_no_vmem
     else:
         info("Game will be run using virtual memory on second processor")
-        e = Executable("tube_vmem", tube_start_addr, ["-DVMEM=1", "-DCMOS=1"])
+        e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, ["-DVMEM=1", "-DCMOS=1"])
     return e
 
 # SFTODO: Move this function?
@@ -742,12 +882,12 @@ def make_relocations(alternate, master):
     return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
 # SFTODO: Move this function?
-def make_small_dynmem_executable(version, start_address, extra_args):
+def make_small_dynmem_executable(base_filename, version, start_address, extra_args):
     if not args.force_big_dynmem:
-        e = Executable(version.replace("_DYNMEMSIZE", "_sdyn"), start_address, extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
+        e = Executable(base_filename, version.replace("_DYNMEMSIZE", "_sdyn"), start_address, extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
         if nonstored_blocks <= max_game_blocks_main_ram(e):
             return e
-    return Executable(version.replace("_DYNMEMSIZE", ""), start_address, extra_args)
+    return Executable(base_filename, version.replace("_DYNMEMSIZE", ""), start_address, extra_args)
 
 # SFTODO: MOVE THIS FUNCTION
 def info_swr_dynmem(name, labels):
@@ -761,6 +901,7 @@ def info_swr_dynmem(name, labels):
 # SFTODO: Move this function?
 # SFTODO: I think this is OK but it could probably do with a review when I can come to it fresh
 def make_swr_shr_executable():
+    base_filename = "OZMOOSH"
     extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
 
     # We consider two possible start addresses one page apart in a couple of places here;
@@ -778,7 +919,7 @@ def make_swr_shr_executable():
     low_start_address_options = (0xe00, 0xe00 + 0x100)
     low_candidate = None
     for start_address in low_start_address_options:
-        e = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
+        e = make_small_dynmem_executable(base_filename, "swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
         if low_candidate is None or len(e.binary) < len(low_candidate.binary):
             low_candidate = e
     assert low_candidate is not None
@@ -793,7 +934,7 @@ def make_swr_shr_executable():
             surplus_nonstored_blocks -= 1
         adjusted_high_start_address = low_candidate.start_address + surplus_nonstored_blocks * 0x100
         if adjusted_high_start_address >= shr_swr_min_start_addr:
-            high_candidate = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", adjusted_high_start_address, extra_args)
+            high_candidate = make_small_dynmem_executable(base_filename, "swr_shr_vmem_DYNMEMSIZE_START", adjusted_high_start_address, extra_args)
             assert "ACORN_SWR_SMALL_DYNMEM" in high_candidate.labels
             # If the game has very small dynamic memory requirements, we might actually use
             # an address higher than shr_swr_default_start_addr.
@@ -807,7 +948,7 @@ def make_swr_shr_executable():
         if "ACORN_SWR_SMALL_DYNMEM" in low_candidate.labels:
             low_candidate = None
             for start_address in low_start_address_options:
-                e = Executable("swr_shr_vmem_START", start_address, extra_args)
+                e = Executable(base_filename, "swr_shr_vmem_START", start_address, extra_args)
                 if low_candidate is None or len(e.binary) < len(low_candidate.binary):
                     low_candidate = e
         assert low_candidate is not None
@@ -822,7 +963,7 @@ def make_swr_shr_executable():
         # an automatic adjustment using shr_swr_min_start_addr would be friendlier. However,
         # it's probably not worth worrying about this until a problematic game turns up.
         high_start_address = shr_swr_default_start_addr + (low_candidate.start_address % 0x200)
-        high_candidate = Executable("swr_shr_vmem_START", high_start_address, extra_args)
+        high_candidate = Executable(base_filename, "swr_shr_vmem_START", high_start_address, extra_args)
 
     if not info_shown:
         info_swr_dynmem("sideways+shadow RAM build", high_candidate.labels)
@@ -835,7 +976,7 @@ def make_swr_shr_executable():
 
 # SFTODO: Move this function?
 def make_bbc_swr_executable():
-    e = make_small_dynmem_executable("swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
+    e = make_small_dynmem_executable("OZMOOB", "swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
     info_swr_dynmem("BBC sideways RAM build", e.labels)
     return e
 
@@ -844,6 +985,7 @@ def make_bbc_swr_executable():
 # SFTODO: Use debugger to make sure Electron binary does relocate itself down
 # SFTODO: Some code duplication with make_swr_shr_executable?
 def make_electron_swr_executable():
+    base_filename = "OZMOOE"
     extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON=1", "-DACORN_SAVE_RESTORE_OSFIND=1"]
 
     # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
@@ -852,7 +994,7 @@ def make_electron_swr_executable():
     low_start_address_options = (0xe00, 0xe00 + 0x100)
     low_candidate = None
     for start_address in low_start_address_options:
-        e = Executable("electron_swr_vmem_START", start_address, extra_args)
+        e = Executable(base_filename, "electron_swr_vmem_START", start_address, extra_args)
         if low_candidate is None or len(e.binary) < len(low_candidate.binary):
             low_candidate = e
     assert low_candidate is not None
@@ -862,7 +1004,7 @@ def make_electron_swr_executable():
     if (high_start_address - low_candidate.start_address) % 0x200 != 0:
         high_start_address += 0x100
     assert (high_start_address - low_candidate.start_address) % 0x200 == 0
-    high_candidate = Executable("electron_swr_vmem_START", high_start_address, extra_args)
+    high_candidate = Executable(base_filename, "electron_swr_vmem_START", high_start_address, extra_args)
     info_swr_dynmem("Electron sideways RAM build", high_candidate.labels)
     relocations = make_relocations(low_candidate.binary, high_candidate.binary)
     high_candidate.binary += relocations
@@ -870,27 +1012,42 @@ def make_electron_swr_executable():
 
 # SFTODO: We now have the possibility to disable certain builds by command line, or to allow the generated game to simply not support certain builds if they failed. (Care with the latter; we probably do want to require --no-hole-check to explicitly push on with that, but if a game is simply too big for some configurations we should disable them. Probably wait until such a game turns up before implementing this.
 
-if not args.adfs:
-    # SFTODO: This would need to take into account files being put on side 2
-    binary_prefix = ":0.$."
-else:
-    binary_prefix = ""
-tube_binary_prefix = binary_prefix
-swr_shr_binary_prefix = binary_prefix
-bbc_swr_binary_prefix = binary_prefix
-electron_swr_binary_prefix = binary_prefix
+if False: # SFTODO: DELETE
+    if not args.adfs:
+        # SFTODO: This would need to take into account files being put on side 2
+        binary_prefix = ":0.$."
+    else:
+        binary_prefix = ""
+    tube_binary_prefix = binary_prefix
+    swr_shr_binary_prefix = binary_prefix
+    bbc_swr_binary_prefix = binary_prefix
+    electron_swr_binary_prefix = binary_prefix
+    if not args.adfs and args.double_sided:
+        # These binaries are relatively large - in part because they're relocatable - and
+        # they also happen to spread the binaries over the two surfaces fairly well whether
+        # or not we're doing an all machine, BBC-only or Electron-only build.
+        electron_swr_binary_prefix = ":2.$."
+        swr_shr_binary_prefix = ":2.$."
 
 # BBC and Electron both support tube, so this is built regardless.
 # SFTODO: We might want to offer additional finer control over what is and isn't built.
 tube_executable = make_tube_executable()
 # SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
-tube_detected = 'hw$="Second processor":binary$="%sOZMOO2P":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_binary_prefix,)
+tube_detected = 'hw$="Second processor":binary$="%s":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_executable.filename(),)
+
+# SFTODO: We could potentially be smarter about allocating binaries between the
+# two surfaces of a double-sided DFS disc. A BBC-only build would benefit from having
+# two of the three binaries on surface 2. If I try to get clever, do note that the
+# pad-to-track-boundary code may need to allow for the possibility that surface 2
+# is the fullest, not surface 0 as it currently assumes.
 
 if not args.electron_only:
     swr_shr_executable = make_swr_shr_executable()
-    swr_shr_detected = 'binary$="%sOZMOOSH":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (swr_shr_binary_prefix, basichex(swr_shr_executable.start_address),)
+    if not args.adfs and args.double_sided:
+        swr_shr_executable.surface = 2
+    swr_shr_detected = 'binary$="%s":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (swr_shr_executable.filename(), basichex(swr_shr_executable.start_address),)
     bbc_swr_executable = make_bbc_swr_executable()
-    bbc_swr_detected = 'binary$="%sOZMOOB":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (bbc_swr_binary_prefix, basichex(bbc_swr_executable.start_address),)
+    bbc_swr_detected = 'binary$="%s":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (bbc_swr_executable.filename(), basichex(bbc_swr_executable.start_address),)
 else:
     swr_shr_executable = None
     bbc_swr_executable = None
@@ -899,143 +1056,14 @@ else:
 
 if not args.bbc_only:
     electron_swr_executable = make_electron_swr_executable()
-    electron_swr_detected = 'binary$="%sOZMOOE":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (electron_swr_binary_prefix, basichex(electron_swr_executable.start_address),)
+    if not args.adfs and args.double_sided:
+        electron_swr_executable.surface = 2
+    electron_swr_detected = 'binary$="%s":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (electron_swr_executable.filename(), basichex(electron_swr_executable.start_address),)
 else:
     electron_swr_executable = None
     electron_swr_detected = 'PROCdie("Sorry, Electron not supported by this  "+CHR$${NORMALFG}+"version.")'
 
-
-# SFTODO: Move this into a function, probably some of the title parsing stuff above too
-with open("templates/loader.bas", "r") as loader_template:
-    # Python 3 won't allow the output to be a text file, because it contains top-bit-set
-    # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
-    # get the line endings right for the platform we're on.
-    linesep = os.linesep.encode("ascii")
-    with open("temp/loader.bas", "wb") as loader:
-        # SFTODO: Slightly hacky but feeling my way here
-        space_line = None
-        first_loader_line = None
-        last_loader_line = None
-        normal_fg_colour = 135
-        header_fg_colour = 131
-        highlight_fg_colour = 131
-        highlight_bg_colour = 129
-        start_adjust = 0
-        for line in loader_template:
-            assert line[-1] == '\n'
-            line = line[:-1]
-            if line.startswith("REM ${BANNER}"):
-                loader.write("IF host_os%=0 THEN GOTO 500" + linesep)
-                header = bytearray()
-                footer = bytearray()
-                for i in range(0, len(title_page_template) // 40):
-                    banner_line = title_page_template[i*40:(i+1)*40]
-                    if b"LOADER OUTPUT STARTS HERE" in banner_line:
-                        if first_loader_line is None:
-                            first_loader_line = i + start_adjust
-                    elif b"LOADER OUTPUT ENDS HERE" in banner_line:
-                        last_loader_line = i
-                        continue
-                    banner_line = banner_line.replace(b"${TITLE}", title.encode("ascii"))
-                    if b"${SUBTITLE}" in banner_line:
-                        if args.subtitle is not None:
-                            banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
-                        else:
-                            start_adjust = -1
-                            continue
-                    banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
-                    banner_line = (banner_line + b" "*40)[:40]
-                    if b"Normal foreground" in banner_line:
-                        normal_fg_colour = colour(banner_line[0])
-                    elif b"Header foreground" in banner_line:
-                        header_fg_colour = colour(banner_line[0])
-                    elif b"Highlight foreground" in banner_line:
-                        highlight_fg_colour = colour(banner_line[0])
-                    elif b"Highlight background" in banner_line:
-                        highlight_bg_colour = colour(banner_line[0])
-                    elif b"${SPACE}" in banner_line:
-                        space_line = i
-                        banner_line = b" "*40
-                    if first_loader_line is None:
-                        header += banner_line
-                    elif last_loader_line is not None:
-                        footer += banner_line
-                if space_line is None:
-                    space_line = 24
-                # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
-                while len(footer) > 0 and footer.startswith(b" "*40):
-                    footer = footer[40:]
-                    last_loader_line += 1
-                loader_lines = last_loader_line + 1 - first_loader_line
-                min_loader_lines = 12 # SFTODO: 11 is currently enough, but I want to keep one "spare"
-                if loader_lines < min_loader_lines:
-                    die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
-                if len(footer) > 0:
-                    print_command = b"PRINTTAB(0,%d);" % (last_loader_line + 1,)
-                    scroll_adjust = False
-                    for i in range(0, len(footer) // 40):
-                        footer_line = footer[i*40:(i+1)*40]
-                        if last_loader_line + 1 + i == 24:
-                            if footer_line[-1] == ord(' '):
-                                footer_line = footer_line[:-1]
-                            else:
-                                scroll_adjust = True
-                        loader.write(b"%s\"%s\";%s" % (print_command, escape_basic_string(footer_line), linesep))
-                        print_command = b"PRINT"
-                    if scroll_adjust:
-                        # We printed at the bottom right character of the screen and the OS will
-                        # have automatically scrolled it, so we need to force a scroll down to
-                        # fix this.
-                        loader.write(b"VDU30,11" + linesep)
-                    else:
-                        loader.write(b"VDU30" + linesep)
-                    for i in range(0, len(header) // 40):
-                        header_line = header[i*40:(i+1)*40]
-                        if header_line == b" "*40:
-                            loader.write(b"PRINT" + linesep)
-                        else:
-                            loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
-                loader.write("first_loader_line=%d%s" % (first_loader_line, linesep))
-                loader.write("last_loader_line=%d%s" % (last_loader_line, linesep))
-                loader.write("space_line=%d%s" % (space_line, linesep))
-                loader.write("GOTO 600" + linesep)
-                # SFTODO: Some of this code could probably just be written inline in the template rather than emitted here
-                loader.write("500")
-                loader.write("VDU 23,128,0;0,255,255,0,0;" + linesep)
-                loader.write("FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
-                loader.write('PRINTTAB(1,23);STRING$(39,CHR$128);" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
-                loader.write("VDU 30" + linesep)
-                loader.write('PRINT " %s"%s' % (title.encode("ascii"), linesep))
-                loader.write('PRINT " ";STRING$(39,CHR$128);' + linesep)
-                if args.subtitle is not None:
-                    loader.write('PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
-                    loader.write("first_loader_line=4" + linesep)
-                else:
-                    loader.write("first_loader_line=3" + linesep)
-                loader.write("last_loader_line=22" + linesep)
-                loader.write("space_line=22" + linesep)
-                loader.write("600")
-            else:
-                line = line.replace("${TUBEDETECTED}", tube_detected)
-                line = line.replace("${BBCSHRSWRDETECTED}", swr_shr_detected)
-                line = line.replace("${BBCSWRDETECTED}", bbc_swr_detected)
-                line = line.replace("${ELECTRONSWRDETECTED}", electron_swr_detected)
-                line = line.replace("${DEFAULTMODE}", str(default_mode))
-                # SFTODO DELETE line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
-                # SFTODO DELETE line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
-                line = line.replace("${AUTOSTART}", auto_start)
-                line = line.replace("${NORMALFG}", str(normal_fg_colour))
-                line = line.replace("${HEADERFG}", str(header_fg_colour))
-                line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
-                line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
-                if line.startswith("REM"):
-                    continue
-                rem_index = line.find(":REM")
-                if rem_index != -1:
-                    line = line[:rem_index]
-                if line == "" or line == ":":
-                    continue
-                loader.write(line.encode("ascii") + linesep)
+make_loader()
 
 run_and_check([
     "beebasm",
@@ -1059,21 +1087,23 @@ else:
     disc.add_file("$", "!BOOT", boot[0], boot[1], boot[2])
     disc.add_file("$", "LOADER", loader[0], loader[1], loader[2])
 
-add_findswr_executable(disc)
-if tube_executable is not None:
-    tube_executable.add_to_disc(disc, "$", "OZMOO2P")
-# SFTODO: If we do start putting one of the Ozmoo executables on the second surface
-# for a double-sided game, this is probably the one to pick - it's going to be at least
-# slightly larger due to the relocations, and the second surface has slightly more free
-# space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
-# two Ozmoo executables.
-if swr_shr_executable is not None:
-    swr_shr_executable.add_to_disc(disc, "$", "OZMOOSH")
-if bbc_swr_executable is not None:
-    bbc_swr_executable.add_to_disc(disc, "$", "OZMOOB")
-if electron_swr_executable is not None:
-    electron_swr_executable.add_to_disc(disc, "$", "OZMOOE")
+# SFTODO: Move this function?
+def add_executable_to_disc(e):
+    if e is None:
+        return
+    if e.surface == 0:
+        d = disc
+    else:
+        assert not args.adfs
+        assert args.double_sided
+        d = disc2
+    e.add_to_disc(d)
 
+add_findswr_executable(disc) # SFTODO: Can/should this be like the following?
+add_executable_to_disc(tube_executable)
+add_executable_to_disc(swr_shr_executable)
+add_executable_to_disc(bbc_swr_executable)
+add_executable_to_disc(electron_swr_executable)
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if
 # necessary, but since this alters the binaries we build it's a bit fiddly and I don't
