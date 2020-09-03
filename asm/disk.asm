@@ -852,8 +852,11 @@ z_ins_restart
     ; Since we discarded our initialisation code on startup, we have to
     ; re-execute the Ozmoo binary from disc to restart.
 !ifndef ACORN_ADFS {
-    ldx #<.restart_command
-    ldy #>.restart_command
+    ; On DFS, the loader puts the restart command at this address; this saves a
+    ; tiny bit of space in the binary and (more importantly) means the binary
+    ; doesn't need to know at build time whether it's on drive 0 or drive 2.
+    ldx #<restart_command
+    ldy #>restart_command
 } else {
     ; Build up the restart command at scratch_page by copying game_data_filename
     ; and replacing the last component by the executable leafname.
@@ -882,34 +885,19 @@ z_ins_restart
 }
     jmp oscli
 
-!ifndef ACORN_ADFS {
-    ; We specify the drive and directory in case the user has used *DRIVE/*DIR
-    ; commands during save or restore.
-    ; SFTODONOW: This needs updating for the new OZMOOB and OZMOOE binary names.
-    ; SFTODONOW: Should I make the loader poke "/binary_full_name" at game_data_path
-    ; (perhaps aliasing that name as something else) on DFS, and then we can just
-    ; use that, and if/when the loader starts putting some binaries on side 2 it
-    ; will "just work"? Be very careful because ADFS still has different executable
-    ; names and that needs to work too.
-.restart_command
-!ifndef ACORN_SWR {
-    !text "/:0.$.OZMOO2P", 13
-} else {
-    !ifndef ACORN_NO_SHADOW {
-        !text "/:0.$.OZMOOSH", 13
-    } else {
-        !text "/:0.$.OZMOOSW", 13
-    }
-}
-} else { ; ACORN_ADFS
+!ifdef ACORN_ADFS {
 .executable_leafname
 !ifndef ACORN_SWR {
     !text "OZMOO2P", 13
 } else {
-    !ifndef ACORN_NO_SHADOW {
-        !text "OZMOOSH", 13
-    } else {
-        !text "OZMOOSW", 13
+    !ifndef ACORN_ELECTRON {
+        !ifndef ACORN_NO_SHADOW {
+            !text "OZMOOSH", 13
+        } else {
+            !text "OZMOOB", 13
+        }
+    } else { ; ACORN_ELECTRON
+        !text "OZMOOE", 13
     }
 }
 }

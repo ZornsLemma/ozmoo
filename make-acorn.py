@@ -866,20 +866,30 @@ def make_electron_swr_executable():
     high_candidate.binary += relocations
     return high_candidate
 
-# SFTODO: We now have the possibility to disable certain builds by command line, or to allow the generated game to simply not support certain builds if they failed. (Care with the latter; we probably do want to require --no-hole-check to explicitly push on with that, but if a game is simply too big for some configurations we should disable them. Probably wait until such a game turns up before implementing this.0
+# SFTODO: We now have the possibility to disable certain builds by command line, or to allow the generated game to simply not support certain builds if they failed. (Care with the latter; we probably do want to require --no-hole-check to explicitly push on with that, but if a game is simply too big for some configurations we should disable them. Probably wait until such a game turns up before implementing this.
+
+if not args.adfs:
+    # SFTODO: This would need to take into account files being put on side 2
+    binary_prefix = ":0.$."
+else:
+    binary_prefix = ""
+tube_binary_prefix = binary_prefix
+swr_shr_binary_prefix = binary_prefix
+bbc_swr_binary_prefix = binary_prefix
+electron_swr_binary_prefix = binary_prefix
 
 tube_executable = make_tube_executable()
 # SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
-tube_detected = 'hw$="Second processor":binary$="OZMOO2P":max_page%=&800:any_mode%=TRUE:GOTO 1000'
+tube_detected = 'hw$="Second processor":binary$="%sOZMOO2P":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_binary_prefix,)
 
 swr_shr_executable = make_swr_shr_executable()
-swr_shr_detected = 'binary$="OZMOOSH":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (basichex(swr_shr_executable.start_address),)
+swr_shr_detected = 'binary$="%sOZMOOSH":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (swr_shr_binary_prefix, basichex(swr_shr_executable.start_address),)
 
 bbc_swr_executable = make_bbc_swr_executable()
-bbc_swr_detected = 'binary$="OZMOOB":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (basichex(bbc_swr_executable.start_address),)
+bbc_swr_detected = 'binary$="%sOZMOOB":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (bbc_swr_binary_prefix, basichex(bbc_swr_executable.start_address),)
 
 electron_swr_executable = make_electron_swr_executable()
-electron_swr_detected = 'binary$="OZMOOE":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (basichex(electron_swr_executable.start_address),)
+electron_swr_detected = 'binary$="%sOZMOOE":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (electron_swr_binary_prefix, basichex(electron_swr_executable.start_address),)
 
 
 # SFTODO: Move this into a function, probably some of the title parsing stuff above too

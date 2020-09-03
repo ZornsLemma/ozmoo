@@ -46,8 +46,8 @@ screen_mode=&40B
 ram_bank_count=&410
 ram_bank_list=&411
 max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
-game_data_filename=&42F
-game_data_filename_size=32
+filename_data=&42F
+filename_size=32
 :
 REM SFTODO: This prints teletext control codes even in mode 6 on Electron. We can potentially get away with this reliably if we VDU 23 them all to 0. In practice I am always testing on a freshly powered on emulated machine, but in the real world this may not be the case.
 shadow%=(HIMEM>=&8000)
@@ -84,21 +84,21 @@ IF ?screen_mode=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
 VDU 28,0,space_line,39,space_line,12,26,31,0,space_line,${NORMALFG}
 PRINT "Loading, please wait...";
 fs%=FNfs
-IF fs%=4 THEN path$=":0.$" ELSE path$=FNpath
+IF fs%<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
 IF fs%=5 THEN *DIR
 REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
 ON ERROR GOTO 2000
 IF fs%=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
 2000ON ERROR PROCerror
-game_data_path$=path$+".DATA"
-IF LEN(game_data_path$)>(game_data_filename_size-1) THEN PROCdie("Game data path too long")
+IF fs%=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
+IF LEN(filename$)>(filename_size-1) THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
 REM the chances of it accidentally getting corrupted.
-$game_data_filename=game_data_path$
+$filename_data=filename$
 *FX4,0
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
-PROCoscli("/"+path$+"."+binary$)
+IF fs%=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
 END
 :
 DEF PROCdetect_swr

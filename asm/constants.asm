@@ -376,9 +376,11 @@ initial_clock = $423 ; 5 bytes
 memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 !ifdef ACORN_ADFS {
 game_data_filename = $42f ; SFTODO HOW MANY BYTES? - CAREFUL IF GROWING THIS, IF BASIC LOADER IS TO WRITE TO THIS IT NEEDS TO LIVE ENTIRELY IN RESIDENT INT VAR SPACE TO AVOID CLASHING WITH OTHER BASIC USES, SO MAY NEED TO SHUFFLE THIS DOWN AND SOME OTHER RUNTIME-ONLY PAGE 4 ALLOCATIONS UP
+} else {
+restart_command = $42f
 }
-game_data_filename_size = 32 ; SFTODO TEMP, NOT THOUGHT THROUGH
-jmp_buf = $42f+game_data_filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
+filename_size = 32 ; SFTODO TEMP, NOT THOUGHT THROUGH
+jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
 scratch_page = $500
