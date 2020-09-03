@@ -263,6 +263,8 @@ parser.add_argument("--title", metavar="TITLE", type=str, help="set title for us
 parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adl extension)")
+parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
+parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -878,18 +880,29 @@ swr_shr_binary_prefix = binary_prefix
 bbc_swr_binary_prefix = binary_prefix
 electron_swr_binary_prefix = binary_prefix
 
+# BBC and Electron both support tube, so this is built regardless.
+# SFTODO: We might want to offer additional finer control over what is and isn't built.
 tube_executable = make_tube_executable()
 # SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
 tube_detected = 'hw$="Second processor":binary$="%sOZMOO2P":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_binary_prefix,)
 
-swr_shr_executable = make_swr_shr_executable()
-swr_shr_detected = 'binary$="%sOZMOOSH":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (swr_shr_binary_prefix, basichex(swr_shr_executable.start_address),)
+if not args.electron_only:
+    swr_shr_executable = make_swr_shr_executable()
+    swr_shr_detected = 'binary$="%sOZMOOSH":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (swr_shr_binary_prefix, basichex(swr_shr_executable.start_address),)
+    bbc_swr_executable = make_bbc_swr_executable()
+    bbc_swr_detected = 'binary$="%sOZMOOB":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (bbc_swr_binary_prefix, basichex(bbc_swr_executable.start_address),)
+else:
+    swr_shr_executable = None
+    bbc_swr_executable = None
+    swr_shr_detected = 'PROCdie("Sorry, BBC not supported by this       "+CHR$${NORMALFG}+"version.")'
+    bbc_swr_detected = swr_shr_detected
 
-bbc_swr_executable = make_bbc_swr_executable()
-bbc_swr_detected = 'binary$="%sOZMOOB":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (bbc_swr_binary_prefix, basichex(bbc_swr_executable.start_address),)
-
-electron_swr_executable = make_electron_swr_executable()
-electron_swr_detected = 'binary$="%sOZMOOE":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (electron_swr_binary_prefix, basichex(electron_swr_executable.start_address),)
+if not args.bbc_only:
+    electron_swr_executable = make_electron_swr_executable()
+    electron_swr_detected = 'binary$="%sOZMOOE":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (electron_swr_binary_prefix, basichex(electron_swr_executable.start_address),)
+else:
+    electron_swr_executable = None
+    electron_swr_detected = 'PROCdie("Sorry, Electron not supported by this  "+CHR$${NORMALFG}+"version.")'
 
 
 # SFTODO: Move this into a function, probably some of the title parsing stuff above too
@@ -1047,15 +1060,19 @@ else:
     disc.add_file("$", "LOADER", loader[0], loader[1], loader[2])
 
 add_findswr_executable(disc)
-tube_executable.add_to_disc(disc, "$", "OZMOO2P")
+if tube_executable is not None:
+    tube_executable.add_to_disc(disc, "$", "OZMOO2P")
 # SFTODO: If we do start putting one of the Ozmoo executables on the second surface
 # for a double-sided game, this is probably the one to pick - it's going to be at least
 # slightly larger due to the relocations, and the second surface has slightly more free
 # space as it doesn't have !BOOT and LOADER on, never mind the fact it has the other
 # two Ozmoo executables.
-swr_shr_executable.add_to_disc(disc, "$", "OZMOOSH")
-bbc_swr_executable.add_to_disc(disc, "$", "OZMOOB")
-electron_swr_executable.add_to_disc(disc, "$", "OZMOOE")
+if swr_shr_executable is not None:
+    swr_shr_executable.add_to_disc(disc, "$", "OZMOOSH")
+if bbc_swr_executable is not None:
+    bbc_swr_executable.add_to_disc(disc, "$", "OZMOOB")
+if electron_swr_executable is not None:
+    electron_swr_executable.add_to_disc(disc, "$", "OZMOOE")
 
 
 # SFTODO: It would be nice if we automatically expanded to a double-sided disc if
