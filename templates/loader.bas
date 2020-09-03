@@ -21,9 +21,25 @@ REM request/check for the binary on RESTART, so it would need code
 REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
 *FX229,1
+:
+REM The following need to be kept consistent with asm/constants.asm
+REM SFTODO: Should we make make-acorn.py substitute them in?
+relocate_target=&408
+fg_colour=&409
+bg_colour=&40A
+screen_mode=&40B
+ram_bank_count=&410
+ram_bank_list=&411
+max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
+filename_data=&42F
+filename_size=32
+:
 MODE 135
 VDU 23,1,0;0;0;0;
+?fg_colour=7
+?bg_colour=4
 A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
+IF host_os%=0 THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 *FX4,1
 DIM block% 256
 REM ${BANNER} - make-acorn.py will add banner printing code here
@@ -37,17 +53,6 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-:
-REM The following need to be kept consistent with asm/constants.asm
-relocate_target=&408
-fg_colour=&409
-bg_colour=&40A
-screen_mode=&40B
-ram_bank_count=&410
-ram_bank_list=&411
-max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
-filename_data=&42F
-filename_size=32
 :
 REM SFTODO: This prints teletext control codes even in mode 6 on Electron. We can potentially get away with this reliably if we VDU 23 them all to 0. In practice I am always testing on a freshly powered on emulated machine, but in the real world this may not be the case.
 shadow%=(HIMEM>=&8000)
@@ -76,11 +81,12 @@ IF NOT auto% THEN PRINTTAB(0,space_line);CHR$${NORMALFG};"Press SPACE to start t
 REPEAT
 *FX21
 IF auto% THEN key$=" " ELSE key$=GET$
+IF host_os%=0 AND key$=CHR$(2) THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
+IF host_os%=0 AND key$=CHR$(6) THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
 IF INSTR(mode_key$,key$)<>0 THEN PROCmenu_to_mode(VAL(key$)) ELSE IF ASC(key$)>=136 AND ASC(key$)<=139 THEN PROCmenu_cursor(ASC(key$))
 UNTIL key$=" "
 ?screen_mode=FNmode_from_menu
-IF ?screen_mode=7 THEN ?fg_colour=6 ELSE ?fg_colour=7
-?bg_colour=4
+IF ?screen_mode=7 THEN ?fg_colour=6
 VDU 28,0,space_line,39,space_line,12,26,31,0,space_line,${NORMALFG}
 PRINT "Loading, please wait...";
 fs%=FNfs
