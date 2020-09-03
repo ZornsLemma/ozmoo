@@ -19,6 +19,14 @@ REM for that and maybe RESTART counts as "playing" the game, so the
 REM user shouldn't be told here in the first place.
 *FX229,1
 :
+REM On an Integra-B, we may have problems selecting shadow mode from this
+REM large program which may be using memory above &3000 if we're currently
+REM in a non-shadow mode. Normally !BOOT selects a shadow mode to avoid
+REM this problem, but we do this as a fallback (e.g. if we've been copied
+REM to a hard drive and our !BOOT isn't in use any more).
+A%=&85:X%=135:potential_himem%=(USR&FFF4 AND &FFFF00) DIV &100
+IF potential_himem%=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
+:
 REM The following need to be kept consistent with asm/constants.asm
 REM SFTODO: Should we make make-acorn.py substitute them in?
 relocate_target=&408
