@@ -7,14 +7,6 @@
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
-# SFTODONOW: It might be nice to support generating non-interleaved .adf ADFS images if the
-# game fits on a medium disc. Even if I don't, it might be nice to warn we're generating
-# a DFS image if the user gives an output file with a .adf extension. [A 640K image is
-# nicer, though, as it has loads of space free for saves, and unlike DFS where it's
-# trivial to format side 2 of a .ssd, expanding a 320K ADFS M to a 640K ADFS L is not
-# quite so easy. Not rocket science, but a minor faff.] Also, be good to support Electron
-# Plus 3 which IIRC is 80T single-sided.
-
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
 
@@ -262,7 +254,7 @@ parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a
 if version_txt is not None:
     parser.add_argument("--version", action="version", version=best_effort_version)
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
-parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd extension)")
+parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
 parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
@@ -271,7 +263,7 @@ parser.add_argument("--custom-title-page", metavar="P", type=str, help="use cust
 parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
 parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
-parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adl extension)")
+parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
 parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
 parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
@@ -305,11 +297,9 @@ if args.output_file is not None:
         args.double_sided = True
     elif user_extension.lower() == '.adl':
         args.adfs = True
-
-if args.adfs and args.double_sided:
-    # SFTODONOW: This might not continue to be true if I support ADFS M .adf images.
-    warn("--double-sided has no effect for ADFS images")
-    args.double_sided = False
+        args.double_sided = True
+    elif user_extension.lower() == '.adf':
+        args.adfs = True
 
 header_version = 0
 
@@ -371,7 +361,7 @@ if args.fake_read_errors:
     acme_args1 += ["-DFAKE_READ_ERRORS=1"]
 if args.slow:
     acme_args1 += ["-DSLOW=1"]
-if args.double_sided:
+if not args.adfs and args.double_sided:
     acme_args1 += ["-DACORN_DSD=1"]
 if not args.no_mode_7_colour:
     acme_args1 += ["-DMODE_7_STATUS=1"]
@@ -718,7 +708,10 @@ class AdfsImage(object):
     def __init__(self):
         self.catalogue = []
         self.data = bytearray(256 * 2)
-        self.total_sectors = 80 * 2 * 16
+        if args.double_sided:
+            self.total_sectors = 80 * 2 * 16
+        else:
+            self.total_sectors = 80 * 16
         self.data[0xfc] = self.total_sectors & 0xff
         self.data[0xfd] = (self.total_sectors >> 8) & 0xff
         self.data[0x1fd] = 3 # *EXEC !BOOT
@@ -765,14 +758,14 @@ class AdfsImage(object):
             entry[5] |= self.LOCKED
 
     def extend(self):
-        self.data += b'\0' * (80 * 2 * 16 * 256 - len(self.data))
+        self.data += b'\0' * (self.total_sectors * 256 - len(self.data))
 
     def finalise(self):
         first_free_sector = len(self.data) // 256
         self.data[0] = first_free_sector & 0xff
         self.data[1] = (first_free_sector >> 8) & 0xff
         self.data[2] = (first_free_sector >> 16) & 0xff
-        free_space_len = 80 * 2 * 16 - first_free_sector
+        free_space_len = self.total_sectors - first_free_sector
         self.data[0x100] = free_space_len & 0xff
         self.data[0x101] = (free_space_len >> 8) & 0xff
         self.data[0x102] = (free_space_len >> 16) & 0xff
@@ -1118,27 +1111,25 @@ else:
     disc.add_file("$", "DATA", 0, 0, game_data)
 
 disc.lock_all()
-if args.double_sided:
+if not args.adfs and args.double_sided:
     disc2.lock_all()
 
 # SFTODO: This is a bit of a hack, may well be able to simplify/improve
 if not args.adfs:
+    user_extensions = (".ssd", ".dsd")
     preferred_extension = ".dsd" if args.double_sided else ".ssd"
-    if args.output_file is None:
-        output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
-    else:
-        user_prefix, user_extension = os.path.splitext(args.output_file)
-        # If the user wants to call the file .img or something, we'll leave it alone.
-        if user_extension.lower() in (".ssd", ".dsd") and user_extension.lower() != preferred_extension.lower():
-            warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
-            user_extension = preferred_extension
-        output_file = user_prefix + user_extension
 else:
-    preferred_extension = ".adl"
-    if args.output_file is None:
-        output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
-    else:
-        output_file = args.output_file
+    user_extensions = (".adf", ".adl")
+    preferred_extension = ".adl" if args.double_sided else ".adf"
+if args.output_file is None:
+    output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+else:
+    user_prefix, user_extension = os.path.splitext(args.output_file)
+    # If the user wants to call the file .img or something, we'll leave it alone.
+    if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
+        warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
+        user_extension = preferred_extension
+    output_file = user_prefix + user_extension
 
 if args.adfs:
     # We could put this on right at the start, but it feels a bit neater to have it
@@ -1148,7 +1139,7 @@ if args.adfs:
 
 if args.pad:
     disc.extend()
-    if args.double_sided:
+    if not args.adfs and args.double_sided:
         disc2.extend()
 
 # SFTODO: Move this
@@ -1168,8 +1159,11 @@ with open(output_file, "wb") as f:
                 f.write(get_track(disc.data, i, track_size))
                 f.write(get_track(disc2.data, i, track_size))
     else:
-        max_track = min(divide_round_up(len(disc.data), 16 * 256), 80)
-        track_size = 256 * 16
-        for track in range(max_track):
-            for surface in range(2):
-                f.write(get_track(disc.data, (surface*80 + track) * track_size, track_size))
+        if not args.double_sided:
+            f.write(disc.data)
+        else:
+            max_track = min(divide_round_up(len(disc.data), 16 * 256), 80)
+            track_size = 256 * 16
+            for track in range(max_track):
+                for surface in range(2):
+                    f.write(get_track(disc.data, (surface*80 + track) * track_size, track_size))
