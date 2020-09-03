@@ -1436,10 +1436,12 @@ z_ins_jg
 	sbc z_operand_value_high_arr
 	bvc +
 	eor #$80
-!ifndef ACORN_ELECTRON { ; SFTODO!?
+!ifndef ACORN_ELECTRON {
 +	bmi make_branch_true
 	bpl make_branch_false ; Always branch
 } else {
+    ; Unfortunately the Electron's more verbose ROM paging code means
+    ; make_branch_true is out of range of a branch instruction.
 +   bpl make_branch_false
     jmp make_branch_true
 }

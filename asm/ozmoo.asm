@@ -1169,7 +1169,8 @@ story_start
 !ifndef ACORN_ELECTRON {
 story_start = stack_start + stack_size
 } else {
-story_start = $8000 ; SFTODO: WILL NEED TO HANDLE SAVE/RESTORE DIFFERENTLY AS STACK PLUS DYNMEM NO LONGER CONTIGUOUS
+; SFTODO: Should update memory map comment in acorn.asm with Electron layout
+story_start = $8000
 }
 }
 !if (story_start & 0xff) != 0 {

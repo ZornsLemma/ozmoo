@@ -273,7 +273,6 @@ ctrl_key_adjust = 64
 buffer_keyboard = 0
 max_screen_width = 80
 !ifdef ACORN_SWR {
-; SFTODO: delete? romsel = $fe30
 romsel_copy = $f4
 flat_ramtop = $8000
 swr_ramtop = $c000

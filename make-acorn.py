@@ -1,18 +1,19 @@
 # SFTODO: Add an option to optionally disable use of CMOS instructions even on second processor
 
-# SFTODO: Probably add a trivial "pre-loader" (probably renaming LOADER to LOAD2 or similar)
+# SFTODONOW: Probably add a trivial "pre-loader" (probably renaming LOADER to LOAD2 or similar)
 # which just does MODE 135 and CHAINs the main loader, then can remove MODE 135 from !BOOT
 # and this will avoid some minor awkwardness with Integra-B installations on hard drive.
 
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
-# SFTODO: It might be nice to support generating non-interleaved .adf ADFS images if the
+# SFTODONOW: It might be nice to support generating non-interleaved .adf ADFS images if the
 # game fits on a medium disc. Even if I don't, it might be nice to warn we're generating
 # a DFS image if the user gives an output file with a .adf extension. [A 640K image is
 # nicer, though, as it has loads of space free for saves, and unlike DFS where it's
 # trivial to format side 2 of a .ssd, expanding a 320K ADFS M to a 640K ADFS L is not
-# quite so easy. Not rocket science, but a minor faff.]
+# quite so easy. Not rocket science, but a minor faff.] Also, be good to support Electron
+# Plus 3 which IIRC is 80T single-sided.
 
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
@@ -288,6 +289,7 @@ group.add_argument("--slow", action="store_true", help="use slow but shorter rou
 group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
 group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
 group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
+# SFTODO: Add a --force-6502 option to disable CMOS instructions in all cases
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -305,7 +307,7 @@ if args.output_file is not None:
         args.adfs = True
 
 if args.adfs and args.double_sided:
-    # SFTODO: This might not continue to be true if I support ADFS M .adf images.
+    # SFTODONOW: This might not continue to be true if I support ADFS M .adf images.
     warn("--double-sided has no effect for ADFS images")
     args.double_sided = False
 
@@ -564,8 +566,6 @@ def make_loader():
                     line = line.replace("${BBCSWRDETECTED}", bbc_swr_detected)
                     line = line.replace("${ELECTRONSWRDETECTED}", electron_swr_detected)
                     line = line.replace("${DEFAULTMODE}", str(default_mode))
-                    # SFTODO DELETE line = line.replace("${SWRMAXPAGE}", basichex(swr_executable.start_address))
-                    # SFTODO DELETE line = line.replace("${SHRMAXPAGE}", basichex(swr_shr_executable.start_address))
                     line = line.replace("${AUTOSTART}", auto_start)
                     line = line.replace("${NORMALFG}", str(normal_fg_colour))
                     line = line.replace("${HEADERFG}", str(header_fg_colour))
@@ -982,7 +982,7 @@ def make_bbc_swr_executable():
 
 
 # SFTODO: Move this function?
-# SFTODO: Use debugger to make sure Electron binary does relocate itself down
+# SFTODONOW: Use debugger to make sure Electron binary does relocate itself down
 # SFTODO: Some code duplication with make_swr_shr_executable?
 def make_electron_swr_executable():
     base_filename = "OZMOOE"
@@ -1009,25 +1009,6 @@ def make_electron_swr_executable():
     relocations = make_relocations(low_candidate.binary, high_candidate.binary)
     high_candidate.binary += relocations
     return high_candidate
-
-# SFTODO: We now have the possibility to disable certain builds by command line, or to allow the generated game to simply not support certain builds if they failed. (Care with the latter; we probably do want to require --no-hole-check to explicitly push on with that, but if a game is simply too big for some configurations we should disable them. Probably wait until such a game turns up before implementing this.
-
-if False: # SFTODO: DELETE
-    if not args.adfs:
-        # SFTODO: This would need to take into account files being put on side 2
-        binary_prefix = ":0.$."
-    else:
-        binary_prefix = ""
-    tube_binary_prefix = binary_prefix
-    swr_shr_binary_prefix = binary_prefix
-    bbc_swr_binary_prefix = binary_prefix
-    electron_swr_binary_prefix = binary_prefix
-    if not args.adfs and args.double_sided:
-        # These binaries are relatively large - in part because they're relocatable - and
-        # they also happen to spread the binaries over the two surfaces fairly well whether
-        # or not we're doing an all machine, BBC-only or Electron-only build.
-        electron_swr_binary_prefix = ":2.$."
-        swr_shr_binary_prefix = ":2.$."
 
 # BBC and Electron both support tube, so this is built regardless.
 # SFTODO: We might want to offer additional finer control over what is and isn't built.

@@ -5,9 +5,6 @@ REM variables gratuitously in this code.
 REM SFTODO: It would be nice if the loader and build system could work
 REM together to allow the user to *optionally* specify a high-res title
 REM screen before we go into the mode 7 loader.
-REM SFTODO: If we're on an Electron, we should probably use the default white
-REM on blue colour scheme for our mode 6 title screen, and allow CTRL-F/B to
-REM change them before we enter the game as well as at the game prompt.
 REM SFTODO: In principle the build system could communicate size of
 REM "nonstored_blocks" to this code (it's hard for it to modify it
 REM directly, but it could set a resident integer variable in !BOOT)
@@ -54,7 +51,6 @@ REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
 :
-REM SFTODO: This prints teletext control codes even in mode 6 on Electron. We can potentially get away with this reliably if we VDU 23 them all to 0. In practice I am always testing on a freshly powered on emulated machine, but in the real world this may not be the case.
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
 IF tube% THEN ${TUBEDETECTED}
@@ -63,7 +59,6 @@ REM SFTODO: Hypothetical AQR support might kick in here and if found (maybe we a
 IF shadow% AND host_os%<>0 THEN ${BBCSHRSWRDETECTED}
 IF host_os%<>0 THEN ${BBCSWRDETECTED}
 IF host_os%=0 THEN ${ELECTRONSWRDETECTED}
-REM SFTODO: I'm assuming the mode selection and default colour code below knows how to handle the Electron (no mode 7) rather than us having extra options here
 1000PRINTTAB(0,first_loader_line);CHR$${HEADERFG};"Hardware detected:"'CHR$${NORMALFG};"  ";hw$
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
@@ -152,7 +147,6 @@ m$(0,0)="0) 80x32"
 m$(1,0)="4) 40x32"
 m$(0,1)="3) 80x25"
 m$(1,1)="6) 40x25"
-REM SFTODO: Could/should we increase horizontal spacing if we don't have mode 7 option?
 PRINT'CHR$${HEADERFG};"Screen mode:";CHR$${NORMALFG};"(hit 0/3/4/6";
 IF host_os%<>0 THEN PRINT "/7";
 PRINT " to change)"
