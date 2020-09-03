@@ -971,7 +971,6 @@ def make_bbc_swr_executable():
 
 
 # SFTODO: Move this function?
-# SFTODONOW: Use debugger to make sure Electron binary does relocate itself down
 # SFTODO: Some code duplication with make_swr_shr_executable?
 def make_electron_swr_executable():
     base_filename = "OZMOOE"
