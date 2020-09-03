@@ -842,7 +842,7 @@ def make_bbc_swr_executable():
 # SFTODO: Use debugger to make sure Electron binary does relocate itself down
 # SFTODO: Some code duplication with make_swr_shr_executable?
 def make_electron_swr_executable():
-    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON=1"]
+    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON=1", "-DACORN_SAVE_RESTORE_OSFIND=1"]
 
     # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
     # lower than the high version of the executable - but it's a good choice because it
@@ -850,7 +850,7 @@ def make_electron_swr_executable():
     low_start_address_options = (0xe00, 0xe00 + 0x100)
     low_candidate = None
     for start_address in low_start_address_options:
-        e = make_small_dynmem_executable("swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
+        e = Executable("electron_swr_vmem_START", start_address, extra_args)
         if low_candidate is None or len(e.binary) < len(low_candidate.binary):
             low_candidate = e
     assert low_candidate is not None
@@ -858,9 +858,9 @@ def make_electron_swr_executable():
     # SFTODO: HARD-CODED VALUE
     high_start_address = 0x1d00
     if (high_start_address - low_candidate.start_address) % 0x200 != 0:
-        high_start_address == 0x100
+        high_start_address += 0x100
     assert (high_start_address - low_candidate.start_address) % 0x200 == 0
-    high_candidate = Executable("electron_swr_vmem", high_start_address, extra_args)
+    high_candidate = Executable("electron_swr_vmem_START", high_start_address, extra_args)
     info_swr_dynmem("Electron sideways RAM build", high_candidate.labels)
     relocations = make_relocations(low_candidate.binary, high_candidate.binary)
     high_candidate.binary += relocations
