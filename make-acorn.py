@@ -277,10 +277,13 @@ group.add_argument("--slow", action="store_true", help="use slow but shorter rou
 group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
 group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
 group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
-# SFTODO: Add a --force-6502 option to disable CMOS instructions in all cases
+group.add_argument("--force-6502", action="store_true", help="only use 6502 instructions on all machines")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
+
+if args.force_65c02 and args.force_6502:
+    die("--force-65c02 and --force-6502 are incompatible")
 
 # It's OK to run and given --help etc output if the version.txt file can't be found,
 # but we don't want to generate a disc image with a missing version.
@@ -399,7 +402,10 @@ else:
 shr_swr_min_start_addr = our_parse_int(args.min_relocate_addr)
 shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
 
-tube_no_vmem = Executable("OZMOO2P", "tube_no_vmem", tube_start_addr, [])
+tube_extra_args = []
+if not args.force_6502:
+    tube_extra_args += ["-DCMOS=1"]
+tube_no_vmem = Executable("OZMOO2P", "tube_no_vmem", tube_start_addr, tube_extra_args)
 
 # We take some constants from the ACME labels to avoid duplicating them both
 # here and in constants.asm. We need to take them from a particular build, but
@@ -836,7 +842,7 @@ def make_tube_executable():
         e = tube_no_vmem
     else:
         info("Game will be run using virtual memory on second processor")
-        e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, ["-DVMEM=1", "-DCMOS=1"])
+        e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, tube_extra_args + ["-DVMEM=1"])
     return e
 
 # SFTODO: Move this function?
