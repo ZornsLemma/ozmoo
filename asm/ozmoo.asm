@@ -1222,3 +1222,6 @@ vmem_start = story_start
 ; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
 ; because they could be using the more common SWMMFS in a regular sideways RAM
 ; bank and have the 12K private RAM free.)
+
+; SFTODO: It would probably not be that hard to use spare main RAM and sideways
+; RAM on the host as cache on the second processor - we'd put a (slightly simplified, as it has no need to lock the page containing z_pc into memory) copy of the Ozmoo vmem code into the host, hook onto some vector and implement a custom OSWORD which says "give me 512 byte block n", and the host code would send a copy over from its host-side cache, loading the block from disc into its host-side cache if necessary. Note that this is useful (especially in e.g. mode 7) even if the host has no sideways or shadow RAM; we'd get 19K+ (there may be some main RAM below &3000 reliably usable on the host, I don't know) of extra cache. This would also mean there'd no longer be a trade-off - at the moment the second processor is faster to execute, but it might be a worse choice in some cases as it may swap more than if the second processor were turned off. With this change using a second processor would always be a good idea, if you have one.
