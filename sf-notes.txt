@@ -1,3 +1,9 @@
+Testing checklist:
+- ADFS vs DFS
+- single vs double-sided
+- all four executables
+- Python 2 vs Python 3
+
 Benchmarking:
 - THIS IS BIGDYN BECAUSE NOT TAKEN ANY STEPS TO AVOID IT
 - Master 128, mode 7, 64K sideways RAM, b-em, drive noises *off* $004988
