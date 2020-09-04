@@ -462,7 +462,7 @@ def make_loader():
                 assert line[-1] == '\n'
                 line = line[:-1]
                 if line.startswith("REM ${BANNER}"):
-                    loader.write("IF host_os%=0 THEN GOTO 500" + linesep)
+                    loader.write(b"IF host_os%=0 THEN GOTO 500" + linesep)
                     header = bytearray()
                     footer = bytearray()
                     for i in range(0, len(title_page_template) // 40):
@@ -532,26 +532,26 @@ def make_loader():
                                 loader.write(b"PRINT" + linesep)
                             else:
                                 loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
-                    loader.write("first_loader_line=%d%s" % (first_loader_line, linesep))
-                    loader.write("last_loader_line=%d%s" % (last_loader_line, linesep))
-                    loader.write("space_line=%d%s" % (space_line, linesep))
-                    loader.write("GOTO 600" + linesep)
+                    loader.write(b"first_loader_line=%d%s" % (first_loader_line, linesep))
+                    loader.write(b"last_loader_line=%d%s" % (last_loader_line, linesep))
+                    loader.write(b"space_line=%d%s" % (space_line, linesep))
+                    loader.write(b"GOTO 600" + linesep)
                     # SFTODO: Some of this code could probably just be written inline in the template rather than emitted here
-                    loader.write("500")
-                    loader.write("VDU 23,128,0;0,255,255,0,0;" + linesep)
-                    loader.write("FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
-                    loader.write('PRINTTAB(1,23);STRING$(39,CHR$128);" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
-                    loader.write("VDU 30" + linesep)
-                    loader.write('PRINT " %s"%s' % (title.encode("ascii"), linesep))
-                    loader.write('PRINT " ";STRING$(39,CHR$128);' + linesep)
+                    loader.write(b"500")
+                    loader.write(b"VDU 23,128,0;0,255,255,0,0;" + linesep)
+                    loader.write(b"FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
+                    loader.write(b'PRINTTAB(1,23);STRING$(39,CHR$128);" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
+                    loader.write(b"VDU 30" + linesep)
+                    loader.write(b'PRINT " %s"%s' % (title.encode("ascii"), linesep))
+                    loader.write(b'PRINT " ";STRING$(39,CHR$128);' + linesep)
                     if args.subtitle is not None:
-                        loader.write('PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
-                        loader.write("first_loader_line=4" + linesep)
+                        loader.write(b'PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
+                        loader.write(b"first_loader_line=4" + linesep)
                     else:
-                        loader.write("first_loader_line=3" + linesep)
-                    loader.write("last_loader_line=22" + linesep)
-                    loader.write("space_line=22" + linesep)
-                    loader.write("600")
+                        loader.write(b"first_loader_line=3" + linesep)
+                    loader.write(b"last_loader_line=22" + linesep)
+                    loader.write(b"space_line=22" + linesep)
+                    loader.write(b"600")
                 else:
                     line = line.replace("${TUBEDETECTED}", tube_detected)
                     line = line.replace("${BBCSHRSWRDETECTED}", swr_shr_detected)
