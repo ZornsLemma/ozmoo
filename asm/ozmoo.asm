@@ -1121,7 +1121,7 @@ load_suggested_pages
 	bcs +
 	; jsr dollar
 	sta vmap_index
-	tax
+	tax ; SFTODO: AFAICS this is redundant
 	jsr load_blocks_from_index
 ++	inc vmap_blocks_preloaded
 	bne - ; Always branch

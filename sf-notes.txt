@@ -48,6 +48,12 @@ Preopt and related stuff:
 - if the binary is now generating its own vmap, it may well be useful for the vmap to live in non-initialised RAM in 400-800 (something else can move out of there to compensate)
 - if the vmap is going to live in non-initialised RAM, it may be a good idea to pick up the aborted "restart only reloads dynamic memory" change and preserve the vmap across restarts - although this is a bit debatable, as if you're restarting you might well want all the "start of game" blocks loaded in one go rather than what you happened to have - then again maybe you're restarting just to do a restore, but usually you would just do a restore of course
 - it's possible an Electron implementation would affect generation of the vmap, as it may want to generate one with a "hole" in it for the 8K screen (to allow the ~4K below the screen to be used as VM cache), so I may want to postpone any implementation of any of this until I've decided if/how I am going to support the Electron.
+- so sketching out (and ignoring Electron, which is probably not a big deal but let's keep it simple) how this would work:
+	- the loader puts the suggestions into the vmap in the standard format (most "important" with newest ages, i.e. the ones loaded first during the preopt generation run which were *oldest* in that run and youngest in the vmap created by loader) - the list of suggestions is padded up to the full vmap size with missing and/or linear blocks (not too important, but they should probably be useful-ish entries as Acorn code doesn't I think like/want to grow vmap table, it starts off full)
+	- the Ozmoo binary needs to count up how many blocks of vmem cache it can actually support - it probably does this already actually, as we need to set vmap_max_entries accordingly
+	- the Ozmoo binary truncates the list of suggestions - this may happen implicitly as we set vmap_max_entries
+	- the Ozmoo binary sorts the truncated list *using the raw game block address, not the address-with-timestamp* - this can't be done in the loader, because where the list gets truncated will affect the result - this isn't a big deal, but just note that the sort key is the value in vmap with the timestamp masked off, but of course we want to retain the full vmap entry with timestamp as we swap the blocks into order
+	- the Ozmoo binary uses something like load_blocks_from_index to pull each vmap entry into memory, instead of just using readblocks to read from story_start up to the end of SWR (not needing to care about what's dynmem and what's vmem preload)
 
 
 
