@@ -430,6 +430,10 @@ screenkernal_init
     ; ACORN_INITIAL_NONSTORED_BLOCKS to avoid confusion, because it won't
     ; necessarily be the *actual* value of "nonstored_blocks".
     lda #ACORN_NONSTORED_BLOCKS
+!if 0 { ; SFTODO: TOTAL HACK TO PROVE IT "WORKS" - IT DOES - THIS HELPS SET THE SCENE FOR THE REWORK OF  adjust_dynamic_memory_inline
+    clc
+    adc #6
+}
     sta nonstored_blocks
 
 !ifdef VMEM {
