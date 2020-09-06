@@ -775,7 +775,17 @@ printinteger
 	pla
 	sta z_operand_value_high_arr
 	stx z_operand_value_low_arr
+    ldy #11
+-   lda z_temp,y
+    sta .temp2,y
+    dey
+    bpl -
 	jsr print_num_unsigned
+    ldy #11
+-   lda .temp2,y
+    sta z_temp,y
+    dey
+    bpl -
 	ldy #1
 -	lda .temp,y
 	sta z_operand_value_high_arr,y
@@ -786,6 +796,8 @@ printinteger
 	rts
 .temp
 	!byte 0,0,0,0
+.temp2
+    !fill 12 ; for saving z_temp
 }
 
 printstring
