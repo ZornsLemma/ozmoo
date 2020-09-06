@@ -269,6 +269,7 @@ group.add_argument("-d", "--debug", action="store_true", help="build a debug ver
 group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
 group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
 group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
+group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
 group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
 group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
 group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
@@ -352,6 +353,9 @@ if args.benchmark:
 if args.trace:
     debug = True
     acme_args1 += ["-DTRACE=1"]
+if args.trace_floppy:
+    debug = True
+    acme_args1 += ["-DTRACE_FLOPPY=1"]
 if args.speed:
     debug = True
     acme_args1 += ["-DPRINTSPEED=1"]

@@ -182,6 +182,12 @@ screenkernal_init
 ; acorn_deletable_init_start. (The distinction is not that important on Acorn
 ; as the Ozmoo executable itself doesn't generate a splash screen.)
 !macro acorn_deletable_init_inline {
+!ifdef TRACE_FLOPPY {
+    ; Call streams_init so the tracing is able to show the readblocks calls
+    ; performed here.
+	jsr streams_init
+}
+
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
