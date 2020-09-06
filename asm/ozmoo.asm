@@ -696,6 +696,7 @@ deletable_init
 
 	; Check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
 !ifdef VMEM {
+!ifndef ACORN {
 	ldy story_start + header_static_mem
 	lda story_start + header_static_mem + 1
 	beq .maybe_inc_nonstored_blocks
@@ -710,16 +711,11 @@ deletable_init
 }
 .store_nonstored_blocks
 	sty nonstored_blocks
-!ifndef ACORN_SWR {
 	tya
 	clc
 	adc #>story_start
 	sta vmap_first_ram_page
-!ifndef ACORN {
 	lda #0
-} else {
-    lda #>flat_ramtop
-}
 	sec
 	sbc vmap_first_ram_page
 	lsr
@@ -730,10 +726,9 @@ deletable_init
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
 	lda #vmap_max_size
+    !error "SFTODO: IS THIS RIGHT NOW? WE SET vmap_max_entries IN DEL INIT"
 ++	sta vmap_max_entries
 }
-} else { ; ACORN_SWR
-    +acorn_swr_calculate_vmem_values_inline
 }
 
 !ifdef VMEM_STRESS {
@@ -750,6 +745,8 @@ deletable_init
 	bne .dont_preload
 	jsr load_suggested_pages
 .dont_preload
+} else {
+    jsr load_suggested_pages
 }
 
 } ; End of !ifdef VMEM
@@ -1096,12 +1093,15 @@ prepare_static_high_memory
 	bpl -
 .no_entries
 } else {
+    ; SFTODO: WE MAY WANT TO GET RID OF THIS WHOLE ELSE BLOCK NOW LOAD_SUGGESTED_PAGES INITIALISES VMAP_USED_ENTRIES
     ; vmap_z_[lh] is pre-populated by the Acorn build system with the full
     ; vmap_max_size entries, even though there may not been enough RAM for all
     ; those. vmap_max_entries takes RAM size into account, so we use that for
     ; initialisation here. If the game is smaller than this, it's harmless as
     ; there will just be table entries for addresses in the Z-machine we will
-    ; never use.
+    ; never use. SFTODO: GAMES SMALLER THAN RAM MAY BE A LITTLE DIFFERENT WITH
+    ; THE NEW "LOAD SUGGESTED" CODE, NOT LIKELY TO BE A BIG DEAL BUT THIS CODE/COMMENT
+    ; MAY WANT TWEAKING
     lda vmap_max_entries
     ; sta vmap_blocks_preloaded
     sta vmap_used_entries
@@ -1135,6 +1135,20 @@ load_suggested_pages
 !ifdef TRACE_VM {
     jsr print_vm_map
 }
+    rts
+} else { ; ACORN
+load_suggested_pages
+    ; SFTODO: This (or something before it) will probably want to sort (ignoring
+    ; but preserving the timestamp part) the vmap before doing the load, in
+    ; order to avoid inefficient head movement.
+    lda #0
+    sta vmap_index
+-   jsr load_blocks_from_index
+    inc vmap_index
+    lda vmap_index
+    cmp vmap_max_entries
+    bne -
+    sta vmap_used_entries ; SFTODO: MAY BE REDUNDANT, IF I DO THIS ELSEWHERE TOO
     rts
 }
 } 

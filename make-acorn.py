@@ -301,10 +301,17 @@ if args.output_file is not None:
         args.adfs = True
 
 header_version = 0
+header_static_mem = 0xe
+vmem_block_pagecount = 2
 
 with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
 game_blocks = bytes_to_blocks(len(game_data))
+dynamic_size_bytes = get_word(game_data, header_static_mem)
+nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
+while nonstored_blocks % vmem_block_pagecount != 0:
+    nonstored_blocks += 1
+
 
 acme_args1 = [
     "acme",
@@ -312,7 +319,8 @@ acme_args1 = [
     "-DACORN_CURSOR_PASS_THROUGH=1",
     "-DSTACK_PAGES=4",
     "-DSMALLBLOCK=1",
-    "-DSPLASHWAIT=0"
+    "-DSPLASHWAIT=0",
+    "-DACORN_NONSTORED_BLOCKS=%d" % nonstored_blocks,
 ]
 acme_args2 = [
     "--format", "plain",
@@ -407,17 +415,6 @@ if not args.force_6502:
     tube_extra_args += ["-DCMOS=1"]
 tube_no_vmem = Executable("OZMOO2P", "tube_no_vmem", tube_start_addr, tube_extra_args)
 
-# We take some constants from the ACME labels to avoid duplicating them both
-# here and in constants.asm. We need to take them from a particular build, but
-# these won't vary.
-common_labels = tube_no_vmem.labels
-header_static_mem = common_labels["header_static_mem"]
-
-vmem_block_pagecount = 2 # SFTODO: This doesn't vary, but ideally we'd take it from labels
-dynamic_size_bytes = get_word(game_data, header_static_mem)
-nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
-while nonstored_blocks % vmem_block_pagecount != 0:
-    nonstored_blocks += 1
 
 
 def make_loader():

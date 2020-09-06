@@ -208,7 +208,7 @@ screenkernal_init
 .dir_ptr = zp_temp ; 2 bytes
 .length_blocks = zp_temp + 2 ; 2 bytes
 ; We can't always use story_start to store the catalogue sectors because on an
-; ACORN_ELECTRON build that is in sideways RAM, and we can't always use
+; ACORN_ELECTRON build that's in sideways RAM, and we can't always use
 ; scratch_double_page because second processor builds don't have it.
 !ifdef scratch_double_page {
 .catalogue = scratch_double_page
@@ -344,45 +344,41 @@ screenkernal_init
     sta .length_blocks + 1
 }
 
-    ; Preload as much of the game as possible into memory. This will always fill
-    ; whole RAM banks (provided there's game data left) even if we can't access
-    ; that game data, but at worst we're making the user wait while we read
-    ; about 16K too much, and adjust_dynamic_memory_inline will probably mean
-    ; most of the "excess" read isn't wasted after all.
-    ; SFTODO: It might be nice to tell the user (how exactly? does the loader
-    ; leave us positioned correctly to output a string, and then we say "press
-    ; SPACE to start" or something?) if the game has loaded entirely into RAM
-    ; and they can remove the disc, and then we'd also want to remove the
-    ; check for the game disc being in the drive after a save/restore. (But
-    ; they would still need the disc in the drive to do a RESTART, so this is
-    ; maybe not a good idea.)
-.blocks_to_read = .dir_ptr ; 2 bytes
-.current_ram_bank_index = zp_temp + 4 ; 1 byte
-    lda #2
-    sta readblocks_numblocks
-    lda #0
-    sta .blocks_to_read + 1
-!ifndef ACORN_SWR {
-    sta .blocks_to_read
-}
-    sta readblocks_currentblock
-    sta readblocks_currentblock + 1
-    sta readblocks_mempos ; story_start is page-aligned
-    lda #>story_start
-    sta readblocks_mempos + 1
-    ; We read 64 256-byte blocks per sideways RAM bank, if we have any.
+    ; If .length_blocks is odd, increment it by one so the game data is always
+    ; considered to be a multiple of 512 bytes. This avoids having to worry
+    ; about some corner cases and doesn't cause any problems; on DFS we're doing
+    ; raw sector reads and the extra sector will always exist, on ADFS we may try
+    ; to do a 512-byte read when only 256 bytes are available but that's fine.
+    ; SFTODO: RENAME .length_blocks TO .game_blocks?
+    lda .length_blocks
+    and #1
+    beq +
+    inc .length_blocks
+    bne +
+    inc .length_blocks + 1
++
+
+.blocks_to_read = zp_temp + 4 ; 1 byte
+!ifdef VMEM {
+.ram_blocks = .dir_ptr ; 2 bytes
+
+    ; How much RAM do we have available for game data?
+    ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
 !ifdef ACORN_SWR {
-    lda #0
     lda ram_bank_count
     ldx #6
 -   asl
-    rol .blocks_to_read + 1
+    rol .ram_blocks + 1
     dex
     bne -
-    sta .blocks_to_read
+    sta .ram_blocks
+} else {
+    lda #0
+    sta .ram_blocks
+    sta .ram_blocks + 1
 }
-    ; We read an additional number of 256-byte blocks between story_start and
-    ; flat_ramtop.
+
+    ; We also have some blocks between flat_ramtop and story_start.
     ; SF: We're doing a constant subtraction in code here, but a) this is
     ; deletable init code so it doesn't really cost anything b) if we don't,
     ; the relocation code fails because we have a variation which doesn't follow
@@ -391,86 +387,108 @@ screenkernal_init
     sec
     sbc #>story_start
     clc
-    adc .blocks_to_read
-    sta .blocks_to_read
+    adc .ram_blocks
+    sta .ram_blocks
     bcc +
-    inc .blocks_to_read + 1
+    inc .ram_blocks + 1
 +
 
-    ; But of course we don't want to read more blocks than there are in the game.
-    lda .length_blocks + 1
+    ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
+    ; available, including RAM which will be used for dynamic memory. If the
+    ; game is smaller than this, shrink .ram_blocks now so we won't feel the
+    ; temptation to (e.g.) access "dummy" vmap entries for nonexistent game data
+    ; and read past the end of the data file.
+    ; SFTODO: It might be nice to tell the user (how exactly? does the loader
+    ; leave us positioned correctly to output a string, and then we say "press
+    ; SPACE to start" or something?) if the game has loaded entirely into RAM
+    ; and they can remove the disc, and then we'd also want to remove the
+    ; check for the game disc being in the drive after a save/restore. (But
+    ; they would still need the disc in the drive to do a RESTART, so this is
+    ; maybe not a good idea.)
     ldy .length_blocks
-    cmp .blocks_to_read + 1
+    lda .length_blocks + 1
+    cmp .ram_blocks + 1
     bne +
-    cpy .blocks_to_read
-+   bcs +
-    sta .blocks_to_read + 1
-    sty .blocks_to_read
+    cpy .ram_blocks
++   bcs .game_larger_than_ram
+    sty .ram_blocks
+    sta .ram_blocks + 1
+.game_larger_than_ram
+}
+
+    ; SFTODO: I suspect this would be a natural point to populate nonstored_blocks
+    ; (not where it's currently done) and to increase it if desired to bring more
+    ; SWR into play on systems with very large amounts.
+    ; SFTODO: I suspect once the "enlarge dynmem if it helps use more SWR" change
+    ; gets implemented, ACORN_NONSTORED_BLOCKS should be renamed something like
+    ; ACORN_INITIAL_NONSTORED_BLOCKS to avoid confusion, because it won't
+    ; necessarily be the *actual* value of "nonstored_blocks".
+    lda #ACORN_NONSTORED_BLOCKS
+    sta nonstored_blocks
+
+!ifdef VMEM {
+!ifndef ACORN_SWR {
+    clc
+    lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE NOW
+    adc #>story_start
+    sta vmap_first_ram_page
+}
+
+    sec
+    lda .ram_blocks
+    sbc nonstored_blocks
+    sta .ram_blocks
+    bcs +
+    dec .ram_blocks + 1
 +
 
-!ifdef ACORN_SWR {
-    ; Stash a copy of .blocks_to_read so we can use it later to help initialize
-    ; vmap_max_entries.
-    lda .blocks_to_read + 1
-    pha
-    lda .blocks_to_read
-    pha
+    ldx #vmap_max_size
+    lda .ram_blocks ; SFTODO PROB REDUNDANT BUT LET'S NOT OPTIMISE JUST YET...
+    lsr .ram_blocks + 1
+    ; SFTODO: At this point if Z is not set we have more blocks than we can
+    ; use; this may or may not be useful in deciding whether to do this dynmem
+    ; growth thing.
+    bne .cap_at_vmap_max_size
+    ror
+    tax
+.cap_at_vmap_max_size
+    stx vmap_max_entries
+}
 
-    ; Page in the first bank.
+    ; Load the nonstored blocks. We don't need to worry about reading past the
+    ; end of the game data here, because at worst we will read a final 512-byte
+    ; block when we don't have a full block and that's fine. In reality there
+    ; will always be a big chunk of non-dynamic memory following the nonstored
+    ; blocks anyway.
+    lda #2
+    sta readblocks_numblocks
     lda #0
-    sta .current_ram_bank_index
+    sta readblocks_currentblock
+    sta readblocks_currentblock + 1
+    sta readblocks_mempos ; story_start is page-aligned
+    lda #>story_start
+    sta readblocks_mempos + 1
+    lda nonstored_blocks
+    sta .blocks_to_read
+
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ; Page in the first bank.
+    lda ram_bank_list
     +acorn_page_in_bank_using_a ram_bank_list
 }
 
-.preload_loop
-    ; At the end of the file, we might need to shrink readblocks_numblocks to
-    ; avoid reading past the end.
-    lda .blocks_to_read + 1
-    bne +
-    lda .blocks_to_read
-    cmp readblocks_numblocks
-    bcs +
-    sta readblocks_numblocks
-+   
-
-!ifdef ACORN_SWR {
-    ; Switch to the next bank if necessary
-    lda readblocks_mempos + 1
-    cmp #>swr_ramtop
-    bcc +
-    inc .current_ram_bank_index
-    ldx .current_ram_bank_index
-    +acorn_page_in_bank_using_a_comma_x ram_bank_list
-    lda #>flat_ramtop
-    sta readblocks_mempos + 1
-+
-}
-
-    ; Actually do the read
+.dynmem_load_loop
     jsr readblocks
-
-    ; Decrement .blocks_to_read and loop round if it's not zero.
     lda .blocks_to_read
     sec
     sbc readblocks_numblocks
     sta .blocks_to_read
-    bcs +
-    dec .blocks_to_read + 1
-+   ora .blocks_to_read + 1
-    bne .preload_loop
+    bne .dynmem_load_loop
 
-!ifdef ACORN_SWR {
-!ifdef ACORN_SWR_BIG_DYNMEM {
-    ; We must keep the first bank paged in by default as it may contain dynamic
-    ; memory.
-    ; SFTODO: It *may* be worth keeping a ZP copy of ram_bank_list (i.e. the
-    ; first bank number) so we can use it in these possibly-frequent page ins.
-    +acorn_page_in_bank_using_a ram_bank_list
-} else {
-    ; We don't need to do anything in the small dynamic memory model. The first
-    ; call to read_byte_at_z_address will page in the appropriate bank.
-}
-}
+    ; SFTODO: Now we're not just reading until we fill all our sideways RAM, the
+    ; "grow dynmem to make use of more sideways RAM" code I have won't work. The
+    ; idea is almost certainly fine but we'd need to do the adjustment before we
+    ; start calculating vmap_max_entries and loading the "suggested" pages in the vmap.
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
@@ -480,44 +498,9 @@ screenkernal_init
     jsr calculate_crc
     stx game_disc_crc
     sty game_disc_crc + 1
-} ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
-!macro acorn_swr_page_in_default_bank_using_y {
-!ifdef ACORN_SWR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_y ram_bank_list
-} else {
-    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
-}
-}
-
-; Calculate vmap_max_entries, vmem_blocks_in_main_ram and
-; vmem_blocks_stolen_in_first_bank.
-!macro acorn_swr_calculate_vmem_values_inline {
-    pla ; number of 256 byte blocks we read from disc earlier, low byte
-    sec
-    sbc nonstored_blocks
-    tax
-    pla ; high byte
-    sbc #0
-    ; Convert from 256 byte blocks to 512 byte VM bloocks.
-    lsr
-    bne .cap_at_vmap_max_size
-    txa
-    ror
-    bcc +
-+   ; We loaded a half VM block at the end of the game. Bump A up by 1, unless
-    ; it would wrap round in which case we stick at 255.
-    adc #0
-    bne +
-    lda #255
-+   cmp #vmap_max_size
-    bcc +
-.cap_at_vmap_max_size
-    lda #vmap_max_size
-+   sta vmap_max_entries
-
-nonstored_blocks_adjusted
+    ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
     lda nonstored_blocks
     clc
     adc #>story_start
@@ -537,20 +520,17 @@ nonstored_blocks_adjusted
     lsr
     sta vmem_blocks_in_main_ram
 +
+}
+} ; End of acorn_deletable_init_inline
 
-!ifndef ACORN_NO_DYNMEM_ADJUST {
-; SF: ACORN_SWR_SMALL_DYNMEM is obviously incompatible with
-; adjust_dynamic_memory_inline, which deliberately makes dynamic memory big to
-; use more sideways RAM. The defaults used by the build script are probably
-; sensible, but the user can use --force-big-dynmem if they want to allow for
-; the possibility of making full use of large amounts of sideways RAM at the
-; price of not getting the improved bank-switching performance of an
-; ACORN_SWR_SMALL_DYNMEM build.
+!ifdef ACORN_SWR {
+!macro acorn_swr_page_in_default_bank_using_y {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    +adjust_dynamic_memory_inline
+    +acorn_page_in_bank_using_y ram_bank_list
+} else {
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
 }
-} ; End of acorn_swr_calculate_vmem_values_inline
 
 ; The amount of sideways RAM we can access is limited by having only
 ; vmap_max_size (=255) entries in vmap_z_[hl]. We independently access up to 16K
@@ -575,6 +555,7 @@ nonstored_blocks_adjusted
 ; sideways RAM to be used in this case, but unless the machine has >128K of
 ; sideways RAM this isn't helpful. (With 128K of sideways RAM the adjustment
 ; avoids wasting the last 1.5K of sideways RAM; worth having but not a big win.)
+; SFTODO: THIS IS NOT GOING TO WORK NOW, I NEED TO TWEAK IT (PROBABLY MUCH SIMPLIFIED ACTUALLY) FOR THE NEW "LOAD SUGGESTED" CODE MODEL
 !macro adjust_dynamic_memory_inline {
 !ifndef Z3 {
     ldx vmap_max_entries
