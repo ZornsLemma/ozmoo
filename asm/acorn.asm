@@ -364,6 +364,8 @@ screenkernal_init
 
     ; How much RAM do we have available for game data?
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
+    lda #0
+    sta .ram_blocks + 1
 !ifdef ACORN_SWR {
     lda ram_bank_count
     ldx #6
@@ -373,9 +375,7 @@ screenkernal_init
     bne -
     sta .ram_blocks
 } else {
-    lda #0
     sta .ram_blocks
-    sta .ram_blocks + 1
 }
 
     ; We also have some blocks between flat_ramtop and story_start.
