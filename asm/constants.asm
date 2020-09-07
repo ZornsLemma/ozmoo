@@ -222,6 +222,7 @@ keyv = $228
 error_ptr = $fd
 osfind = $ffce
 osgbpb = $ffd1
+osbput = $ffd4
 osfile = $ffdd
 osrdch = $ffe0
 osasci = $ffe3

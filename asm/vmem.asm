@@ -208,10 +208,32 @@ vmem_swap_count !byte 0,0
 
 !ifdef DEBUG {
 !ifdef PREOPT {
-; SFTODO: Will need porting to Acorn, but I may end up implementing this as a
-; *SAVE rather than a print so won't tinker with it yet.
 print_optimized_vm_map
 	stx zp_temp ; Nonzero means premature exit
+!ifdef ACORN {
+.handle = zp_temp + 1
+    lda #0
+    sta .handle
+    ldx #2
+    ldy #error_print_s_printchar
+    jsr setjmp
+    beq .print_optimized_vm_map_no_error
+    ldy .handle
+    beq .not_open
+    lda #osfind_close ; 0
+    sta .handle
+    jsr osfind
+.not_open
+    jsr error_print_following_string
+    !text 13, "Press SPACE to retry...", 0
+    jsr wait_for_space
+.print_optimized_vm_map_no_error
+    lda #osfind_open_output
+    ldx #<.preopt_filename
+    ldy #>.preopt_filename
+    jsr osfind
+    sta .handle
+}
 	jsr printchar_flush
 	lda #0
 	sta streams_output_selected + 2
@@ -221,11 +243,19 @@ print_optimized_vm_map
 	jsr dollar
 	jsr dollar
 	jsr print_following_string
-	!pet "clock",13,0 ; SFTODO: USE !text ON ACORN IF KEEP THIS
+	!pet "clock",13,0
 	ldx #0
 -	lda vmap_z_h,x
+!ifdef ACORN {
+    ldy .handle
+    jsr osbput
+}
 	jsr print_byte_as_hex
 	lda vmap_z_l,x
+!ifdef ACORN {
+    ldy .handle
+    jsr osbput
+}
 	jsr print_byte_as_hex
 	jsr colon
 	inx
@@ -236,9 +266,17 @@ print_optimized_vm_map
 	bne +++
 	; Print block that was just to be read
 	lda zp_pc_h
+!ifdef ACORN {
+    ldy .handle
+    jsr osbput
+}
 	jsr print_byte_as_hex
 	lda zp_pc_l
 	and #vmem_blockmask
+!ifdef ACORN {
+    ldy .handle
+    jsr osbput
+}
 	jsr print_byte_as_hex
 	jsr colon
 	
@@ -251,7 +289,15 @@ print_optimized_vm_map
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
 } else {
+    lda #osfind_close
+    ldy .handle
+    jsr osfind
+	jsr print_following_string
+    !text "Saved PREOPT - press BREAK", 0
 -   jmp -
+
+.preopt_filename
+    !text "PREOPT", 13
 }
 }
 
