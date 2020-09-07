@@ -1,3 +1,12 @@
+load_suggested_pages performance:
+- no drive noises (which would in reality dilute any overhead further, as a percentage)
+- B+ 128K DFS mode 7
+- current load_suggested_pages code has $2b0 at start of benchmark (confirmed)
+- alpha 2.4 tag has $2af (confirmed)
+- so there's no real difference, which is what I'd expected/hoped but good to confirm the bit of extra work being done between each readblocks call is not a significant overhead
+
+
+
 Testing checklist:
 - ADFS vs DFS
 - single vs double-sided
