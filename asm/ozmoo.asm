@@ -1136,8 +1136,76 @@ load_suggested_pages
     jsr print_vm_map
 }
     rts
-} else { ; ACORN
+} else { ; ACORN - SFTODO: Move this into acorn.asm???
 load_suggested_pages
+!if 1 { ; SFTODO EXPERIMENTAL CODE
+    ; Sort vmap into ascending order, preserving the ages but using just the
+    ; addresses as keys. This avoids the drive head jumping around during the
+    ; initial load. The build system can't do this sort, because we're sorting
+    ; the truncated list with just vmap_max_entries not the full list of
+    ; vmap_max_size entries.
+    ;
+    ; This only happens once and it's not a huge list so while we don't want it
+    ; to be really slow, compactness and simplicity of code is more important.
+    ; This is an insertion sort, implemented based on the pseudocode from
+    ; https://en.m.wikipedia.org/wiki/Insertion_sort, which I've relabelled here
+    ; to match the register use in the following code:
+    ;
+    ;     x = 1
+    ;     while x < length(A)
+    ;         temp = A[x]
+    ;         y = x - 1
+    ;         while y >= 0 and A[y] > temp 
+    ;             A[y+1] = A[y]
+    ;             y = y - 1
+    ;         end while
+    ;         A[y+1] = temp
+    ;         x = x + 1
+    ;     end while
+    ;
+    ; Invariants:
+    ;       1 <= x < length(A) <= vmap_max_size <= 255
+    ;      -1 <= y < x, so -1 <= y < 254
+    ldx #1
+.outer_loop
+    lda vmap_z_l,x
+    sta zp_temp
+    lda vmap_z_h,x
+    sta zp_temp + 1
+    and #vmem_highbyte_mask
+    sta zp_temp + 2
+    txa
+    tay
+.inner_loop
+    dey
+    lda vmap_z_h,y
+    and #vmem_highbyte_mask
+    cmp zp_temp + 2
+    bne +
+    lda vmap_z_l,y
+    cmp zp_temp
+    beq .exit_inner_loop
++   bcc .exit_inner_loop
+    lda vmap_z_l,y
+    sta vmap_z_l + 1,y
+    lda vmap_z_h,y
+    sta vmap_z_h + 1,y
+    tya
+    bne .inner_loop
+    dey
+.exit_inner_loop    
+    ; We can't omit this iny and use vmap_z_[lh] + 1,y below to compensate
+    ; because Y may be -1 (255) and so they're not equivalent.
+    iny
+    lda zp_temp
+    sta vmap_z_l,y
+    lda zp_temp + 1
+    sta vmap_z_h,y
+    inx
+    cpx vmap_max_entries
+    bne .outer_loop
+}
+
     ; SFTODONOW: This (or something before it - but probably this) will probably want to sort (ignoring
     ; but preserving the timestamp part) the vmap before doing the load, in
     ; order to avoid inefficient head movement.
@@ -1149,6 +1217,7 @@ load_suggested_pages
     cmp vmap_max_entries
     bne -
     sta vmap_used_entries ; SFTODO: MAY BE REDUNDANT, IF I DO THIS ELSEWHERE TOO
+    jsr osrdch ; SFTODO TEMP
     rts
 }
 } 
