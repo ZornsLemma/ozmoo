@@ -1,6 +1,7 @@
 ; Code to relocate the Ozmoo executable down in memory. This is used on some
 ; Acorn builds to allow the executable to load high and then move itself down
 ; to an optimal address for the machine it's running on.
+; SFTODO: SHOULD THIS FILE BE RENAMED acorn-relocate.asm?
 
 !zone {
 
