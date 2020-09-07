@@ -212,7 +212,29 @@ class Executable(object):
         assert vmap_length >= vmap_max_size * 2
         min_age = vmem_highbyte_mask + 1
         max_age = 0xff & ~vmem_highbyte_mask
-        blocks = list(range(vmap_max_size))
+        blocks = []
+        # SFTODO: We will do this work for every single executable; it's not in practice a
+        # big deal but it's a bit inelegant.
+        if args.preload_config is not None:
+            with open(args.preload_config, "rb") as f:
+                preload_config = bytearray(f.read())
+            for i in range(len(preload_config) // 2):
+                # We don't care about the age on the entries in preload_config; they are in
+                # order of insertion and that's equivalent.
+                addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
+                if addr & 1 == 1:
+                    # This is an odd address so it's invalid; we expect to see one of these
+                    # as the first block and we just ignore it.
+                    assert i == 0
+                    continue
+                block_index = (addr - nonstored_blocks) // vmem_block_pagecount
+                assert block_index >= 0
+                blocks.append(block_index)
+        for i in range(vmap_max_size):
+            if i not in blocks:
+                blocks.append(i)
+        blocks = blocks[:vmap_max_size]
+        #print("Q", blocks) SFTODO TEMP
         #import random # SFTODO TEMP
         #random.seed(42) # SFTODO TEMP
         #random.shuffle(blocks) # SFTODO TEMP
@@ -228,6 +250,7 @@ class Executable(object):
                 # any "suggested" blocks.
                 addr = invalid_address
             else:
+                # SFTODO: Simplify this to "nonstored_blocks + block_index * vmem_block_pagecount"?
                 addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
@@ -276,7 +299,8 @@ parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtit
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
 parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
-parser.add_argument("-o", "--preload-opt",action="store_true", help="build in preload optimisation mode (implies -d)")
+parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
+parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -300,6 +324,9 @@ verbose_level = 0 if args.verbose is None else args.verbose
 
 if args.force_65c02 and args.force_6502:
     die("--force-65c02 and --force-6502 are incompatible")
+
+if args.preload_opt and args.preload_config:
+    die("--preload-opt and --preload-config are incompatible")
 
 # It's OK to run and given --help etc output if the version.txt file can't be found,
 # but we don't want to generate a disc image with a missing version.
