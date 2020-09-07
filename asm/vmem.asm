@@ -948,6 +948,9 @@ convert_index_x_to_ram_bank_and_address
 ; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
+; SFTODO: Is there any value in page-aligning this? Although since the two halves
+; are not exactly page-aligned we'd end up having to waste a couple of bytes so
+; each half was page-aligned. Profile this before doing anything.
 !ifdef ACORN {
 !ifdef VMEM {
 datasette_buffer_start

@@ -223,6 +223,7 @@ z_jump_high_arr
 
 ; =========================================== Lowbytes of jump table
 	
++make_acorn_screen_hole
 z_jump_low_arr
 	!byte <z_ins_rtrue
 	!byte <z_ins_rfalse
@@ -953,6 +954,7 @@ read_operand
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
 
++make_acorn_screen_hole
 !zone {
 z_get_variable_reference
 	; input: Variable in x
