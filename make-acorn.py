@@ -212,9 +212,14 @@ class Executable(object):
         assert vmap_length >= vmap_max_size * 2
         min_age = vmem_highbyte_mask + 1
         max_age = 0xff & ~vmem_highbyte_mask
-        for i in range(vmap_max_size):
+        blocks = list(range(vmap_max_size))
+        import random # SFTODO TEMP
+        random.seed(42) # SFTODO TEMP
+        random.shuffle(blocks) # SFTODO TEMP
+        print("Q", blocks)
+        for i, block_index in enumerate(blocks):
             age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
-            addr = ((nonstored_blocks // vmem_block_pagecount) + i) * vmem_block_pagecount
+            addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
                 # such a block.
