@@ -423,7 +423,11 @@ z_init
 ; will probably want to do so later.
 !ifdef PREOPT {
 	jsr print_following_string
+!ifndef ACORN {
 	!pet "*** vmem optimization mode ***",13,13,0
+} else {
+	!text "*** vmem optimization mode ***",13,13,0
+}
 }	
 }
 
@@ -746,7 +750,9 @@ deletable_init
 	jsr load_suggested_pages
 .dont_preload
 } else {
+!ifndef PREOPT {
     jsr load_suggested_pages
+}
 }
 
 } ; End of !ifdef VMEM
@@ -1093,6 +1099,7 @@ prepare_static_high_memory
 	bpl -
 .no_entries
 } else {
+!if 0 { ; SFTODO!?
     ; SFTODO: WE MAY WANT TO GET RID OF THIS WHOLE ELSE BLOCK NOW LOAD_SUGGESTED_PAGES INITIALISES VMAP_USED_ENTRIES
     ; vmap_z_[lh] is pre-populated by the Acorn build system with the full
     ; vmap_max_size entries, even though there may not been enough RAM for all
@@ -1105,6 +1112,16 @@ prepare_static_high_memory
     lda vmap_max_entries
     ; sta vmap_blocks_preloaded
     sta vmap_used_entries
+} else {
+!ifdef PREOPT {
+    ; vmap_used_entries can't be 0. SFTODO: I think?
+    lda #1
+    sta vmap_used_entries
+    sta vmap_clock_index
+} else {
+    ; load_suggested_pages will initialise vmap_used_entries.
+}
+}
 }
 !ifdef TRACE_VM {
     jsr print_vm_map

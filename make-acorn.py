@@ -6,8 +6,6 @@
 # SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
 # helpful function in make.rb I can copy.
 
-# SFTODO: No support for PREOPT yet
-
 # SFTODO: Lots of magic constants around sector size and track size and so forth here
 
 # SFTODO: Some uses of assert check things which are not internal errors
@@ -147,6 +145,8 @@ class Executable(object):
         self.extra_args = extra_args[:]
         if "-DACORN_NO_SHADOW=1" not in self.extra_args:
             self.extra_args += ["-DACORN_HW_SCROLL=1"]
+        if "-DVMEM=1" in self.extra_args and args.preload_opt:
+            self.extra_args += ["-DPREOPT=1", "-DDEBUG=1"]
         if "-DCMOS=1" in acme_args1 + self.extra_args:
             cpu = "65c02"
         else:
@@ -213,13 +213,22 @@ class Executable(object):
         min_age = vmem_highbyte_mask + 1
         max_age = 0xff & ~vmem_highbyte_mask
         blocks = list(range(vmap_max_size))
-        import random # SFTODO TEMP
-        random.seed(42) # SFTODO TEMP
-        random.shuffle(blocks) # SFTODO TEMP
-        print("Q", blocks)
+        #import random # SFTODO TEMP
+        #random.seed(42) # SFTODO TEMP
+        #random.shuffle(blocks) # SFTODO TEMP
+        #print("Q", blocks) # SFTODO TEMP
+        # vmap entries should normally address a 512-byte aligned block; invalid_address
+        # is odd so it won't ever match when the virtual memory code is searching the map.
+        invalid_address = 0x1
         for i, block_index in enumerate(blocks):
             age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
-            addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
+            if args.preload_opt:
+                # Most of the vmap will be ignored, but we have to have at least one entry
+                # and by making it an invalid address we don't need to worry about loading
+                # any "suggested" blocks.
+                addr = invalid_address
+            else:
+                addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
                 # such a block.
@@ -267,6 +276,7 @@ parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtit
 parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
 parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
 parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
+parser.add_argument("-o", "--preload-opt",action="store_true", help="build in preload optimisation mode (implies -d)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")

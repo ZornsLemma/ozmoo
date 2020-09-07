@@ -208,6 +208,8 @@ vmem_swap_count !byte 0,0
 
 !ifdef DEBUG {
 !ifdef PREOPT {
+; SFTODO: Will need porting to Acorn, but I may end up implementing this as a
+; *SAVE rather than a print so won't tinker with it yet.
 print_optimized_vm_map
 	stx zp_temp ; Nonzero means premature exit
 	jsr printchar_flush
@@ -219,7 +221,7 @@ print_optimized_vm_map
 	jsr dollar
 	jsr dollar
 	jsr print_following_string
-	!pet "clock",13,0
+	!pet "clock",13,0 ; SFTODO: USE !text ON ACORN IF KEEP THIS
 	ldx #0
 -	lda vmap_z_h,x
 	jsr print_byte_as_hex
@@ -245,8 +247,12 @@ print_optimized_vm_map
 	jsr dollar
 	jsr dollar
 	jsr newline
+!ifndef ACORN { ; SFTODO TEMP HACK
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
+} else {
+-   jmp -
+}
 }
 
 ; SFTODO: This might need tweaking to print SWR stuff correctly
@@ -667,12 +673,8 @@ read_byte_at_z_address
 ++
 }
 	
-    ; SFTODO: The bcc here may always occur on Acorn?
 	cpx vmap_used_entries
 	bcc +
-!if 1 { ; SFTODO TEMP CODE FOR DEBUG
--   jmp -
-}
 	inc vmap_used_entries
 +	txa
 	tay
