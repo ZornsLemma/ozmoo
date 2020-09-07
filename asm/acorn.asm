@@ -535,6 +535,14 @@ screenkernal_init
     ; new blocks from disc. Their initial ages may well be quite young, since
     ; they are potentially desirable in the early game - it's just that our
     ; dynmem growth has meant we've pulled them into memory permanently anyway.
+    ; Actually it would probably not be hard to just set these "dead" blocks to
+    ; have "odd" addresses and very old ages, and tweak load_suggested to skip
+    ; blocks with "odd" addresses. We wouldn't need the Electron extra twist
+    ; where the VM code doesn't consider odd addresses - we *want* these to be
+    ; reused, the odd address is just there to stop them matching when we're
+    ; looking for data. Doing this would avoid wasting time loading data into
+    ; them during the initial load and make them immediately available for use
+    ; the first time we need to load anything during play.
 .no_wasted_ram
 }
 }
