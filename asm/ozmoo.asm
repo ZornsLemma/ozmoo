@@ -1166,6 +1166,16 @@ load_suggested_pages
     ; Invariants:
     ;       1 <= x < length(A) <= vmap_max_size <= 255
     ;      -1 <= y < x, so -1 <= y < 254
+    ;
+    ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
+    ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
+    ; shuffled entries, which is probably a more typical case.
+!if 0 { ; SFTODO: DELETE
+    jsr kernal_readtime ; SFTODO TEMP HACK
+    sta $600
+    stx $601
+    sty $602
+}
     ldx #1
 .outer_loop
     lda vmap_z_l,x
@@ -1204,6 +1214,13 @@ load_suggested_pages
     inx
     cpx vmap_max_entries
     bne .outer_loop
+!if 0 { ; SFTODO: DELETE
+    jsr kernal_readtime ; SFTODO TEMP HACK
+    sta $603
+    stx $604
+    sty $605
+-   jmp -
+}
 }
 
     ; SFTODONOW: This (or something before it - but probably this) will probably want to sort (ignoring
@@ -1217,7 +1234,7 @@ load_suggested_pages
     cmp vmap_max_entries
     bne -
     sta vmap_used_entries ; SFTODO: MAY BE REDUNDANT, IF I DO THIS ELSEWHERE TOO
-    jsr osrdch ; SFTODO TEMP
+    ; jsr osrdch ; SFTODO TEMP
     rts
 }
 } 
