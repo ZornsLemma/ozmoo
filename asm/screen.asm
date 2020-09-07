@@ -348,6 +348,7 @@ z_ins_set_text_style
 }
 
 
++make_acorn_screen_hole
 z_ins_get_cursor
     ; get_cursor array
     ldx z_operand_value_low_arr
@@ -506,6 +507,7 @@ printchar_flush
 	; We have re-selected the upper window, restore cursor position
 	jmp restore_cursor
 
++make_acorn_screen_hole
 printchar_buffered
     ; a is PETSCII character to print
     sta .buffer_char

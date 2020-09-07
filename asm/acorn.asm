@@ -364,7 +364,6 @@ screenkernal_init
     inc .length_blocks + 1
 +
 
-.blocks_to_read = zp_temp + 4 ; 1 byte
 !ifdef VMEM {
 .ram_blocks = .dir_ptr ; 2 bytes
 
@@ -430,10 +429,6 @@ screenkernal_init
     ; ACORN_INITIAL_NONSTORED_BLOCKS to avoid confusion, because it won't
     ; necessarily be the *actual* value of "nonstored_blocks".
     lda #ACORN_NONSTORED_BLOCKS
-!if 0 { ; SFTODO: TOTAL HACK TO PROVE IT "WORKS" - IT DOES - THIS HELPS SET THE SCENE FOR THE REWORK OF  adjust_dynamic_memory_inline
-    clc
-    adc #6
-}
     sta nonstored_blocks
 
 !ifdef VMEM {
@@ -452,12 +447,105 @@ screenkernal_init
     dec .ram_blocks + 1
 +
 
+!ifndef ACORN_NO_DYNMEM_ADJUST {
+    ; SFTODO: In theory this optimisation is perfectly valid for the small
+    ; dynamic memory model, except that we can't grow nonstored_blocks past
+    ; flat_ramtop instead of swr_ramtop. It would be near trivial to support this,
+    ; but since it's an extra case to test (or not test and perhaps be broken)
+    ; and I suspect it offers little benefit (a big game is quite likely to be
+    ; using the big dynamic memory model anyway), I won't do so unless/until a
+    ; game which would benefit turns up.
+!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef Z4PLUS {
+    ; If we have more RAM for virtual memory than we can support with the
+    ; vmap_max_size entries at our disposal, we may be able to use more RAM by
+    ; bumping up nonstored_blocks. This will lock some non-dynamic parts of the
+    ; game into memory but free up some vmap entries to represent RAM we'd
+    ; otherwise be unable to use, so we're never worse off as a result and in
+    ; practice we are likely to be better off.
+    ;
+    ; This is only useful for Z4+ games; a Z3 game is limited to 128K and the 255
+    ; 512-byte vmap entries already allow us to access 127.5K; given any realistic
+    ; game is going to have at least 512 bytes of dynamic memory, we are not
+    ; constrained at all by the 255 entry limit. For similar reasons, only a
+    ; machine with a lot of sideways RAM is ever going to need this optimisation.
+    ; To take an extreme example, if a game had no dynamic memory at all and we
+    ; had 16K of main RAM free, we could use 255*0.5-16=111.5K of sideways RAM
+    ; even without this optimisation; in practice we can probably use ~120K+ of
+    ; sideways RAM without needing this optimisation.
+
+    ; Do we have any wasted RAM in the first place?
+.wasted_ram_blocks = zp_temp + 4 ; 1 byte
+    sec
+    lda .ram_blocks
+    sbc #<(vmap_max_size * vmem_block_pagecount)
+    sta .wasted_ram_blocks
+    lda .ram_blocks + 1
+    sbc #>(vmap_max_size * vmem_block_pagecount)
+    bmi .no_wasted_ram
+    ; A is zero; we can't have vastly more RAM than vmap_max_size. The loader
+    ; (for not unrelated reasons) maxes out at detecting nine banks of sideways
+    ; RAM, say we have 16K of main RAM too, that means .ram_blocks is at most
+    ; 4*(16+9*16)=640 and vmap_max_size*vmem_block_pagecount will in practice
+    ; be 510, so the difference is at most 130, which will fit in a single byte.
+    ; (There'd be no point with the current code detecting way more sideways
+    ; RAM even if fitted; given vmap_max_size=255, we can't possibly use more
+    ; than (just under) eight 16K banks of sideways RAM for virtual memory, and
+    ; one more bank for dynamic memory.)
+-   bne - ; SFTODO: Temporary code to verify that
+    ; We could profitably increment nonstored_blocks by .wasted_ram_blocks.
+.candidate_nonstored_blocks = .wasted_ram_blocks
+    clc
+    lda .wasted_ram_blocks
+    adc nonstored_blocks
+    sta .candidate_nonstored_blocks
+    ; However, we must not make dynamic RAM overflow the first sideways RAM bank. SFTODO: OR MAIN RAM, IF/WHEN WE EXTEND THIS TO HANDLE SMALL DYNMEM MODEL.
+    ; We're doing a constant subtraction here; this is OK/necessary as noted in
+    ; a different case above.
+    sec
+    lda #>swr_ramtop ; this would be flat_ramtop for ACORN_SWR_SMALL_DYNMEM
+    sbc #>story_start
+    ; A now contains the maximum nonstored_blocks we can have without breaking
+    ; the memory model. So we want nonstored_blocks=min(A,
+    ; .candidate_nonstored_blocks).
+    cmp .candidate_nonstored_blocks
+    bcc +
+    lda .candidate_nonstored_blocks
++   ; A contains the new value for nonstored_blocks. We need to adjust
+    ; .ram_blocks (which already had the old value of nonstored_blocks
+    ; subtracted from it) before updating nonstored_blocks.
+    tax
+    clc
+    lda .ram_blocks
+    adc nonstored_blocks
+    sta .ram_blocks
+    bcc +
+    inc .ram_blocks + 1
++   stx nonstored_blocks
+    sec
+    lda .ram_blocks
+    sbc nonstored_blocks
+    sta .ram_blocks
+    bcs +
+    dec .ram_blocks + 1
++
+    ; SFTODONOW: Not necessarily right here - but probably (why not? keep it all in one place) - it would be good to
+    ; set the age of vmap blocks which are <=nonstored_blocks to very old, so 
+    ; that those now-useless blocks will be the first to be used when loading
+    ; new blocks from disc. Their initial ages may well be quite young, since
+    ; they are potentially desirable in the early game - it's just that our
+    ; dynmem growth has meant we've pulled them into memory permanently anyway.
+.no_wasted_ram
+}
+}
+}
+
+    ; At this point, .ram_blocks is the number of RAM blocks we have to use as
+    ; backing RAM for the virtual memory subsystem, because we've subtracted
+    ; off nonstored_blocks.
     ldx #vmap_max_size
-    lda .ram_blocks ; SFTODO PROB REDUNDANT BUT LET'S NOT OPTIMISE JUST YET...
+    lda .ram_blocks
     lsr .ram_blocks + 1
-    ; SFTODO: At this point if Z is not set we have more blocks than we can
-    ; use; this may or may not be useful in deciding whether to do this dynmem
-    ; growth thing.
     bne .cap_at_vmap_max_size
     ror
     tax
@@ -470,6 +558,7 @@ screenkernal_init
     ; block when we don't have a full block and that's fine. In reality there
     ; will always be a big chunk of non-dynamic memory following the nonstored
     ; blocks anyway.
+.blocks_to_read = zp_temp + 4 ; 1 byte
     lda #2
     sta readblocks_numblocks
     lda #0
@@ -541,121 +630,6 @@ screenkernal_init
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
 }
-
-; The amount of sideways RAM we can access is limited by having only
-; vmap_max_size (=255) entries in vmap_z_[hl]. We independently access up to 16K
-; of sideways RAM where dynamic memory spills over into sideways RAM. We can
-; therefore make use of a bit more sideways RAM by bumping up nonstored_blocks
-; (in multiples of vmap_block_pagecount (=2), of course) until either
-; story_start+nonstored_blocks hits the top of the first 16K RAM bank ($c000)
-; or the last vmap entry hits the top of the last RAM bank.
-;
-; This is only useful for Z4+ games; a Z3 game is limited to 128K and the 255
-; 512-byte vmap entries already allow us to access 127.5K; given any realistic
-; game is going to have at least 512 bytes of dynamic memory, we are not
-; constrained at all by the 255 entry limit.
-;
-; This will also only help on machines with very large amounts of sideways
-; RAM. story_start is going to be $4000 at best, let's say (fairly
-; conservatively) a game needs 12K of actual dynamic memory so the first VM
-; page is going to be at $7000. That means 1K of virtual memory cache fits in
-; main RAM, and with our 255 entries we can have 127.5K of virtual memory cache,
-; so we could use 126.5K or approximately 7.9 banks of sideways RAM without
-; any difficulty. adjust_dynamic_memory_inline would allow an extra 20K of
-; sideways RAM to be used in this case, but unless the machine has >128K of
-; sideways RAM this isn't helpful. (With 128K of sideways RAM the adjustment
-; avoids wasting the last 1.5K of sideways RAM; worth having but not a big win.)
-; SFTODO: THIS IS NOT GOING TO WORK NOW, I NEED TO TWEAK IT (PROBABLY MUCH SIMPLIFIED ACTUALLY) FOR THE NEW "LOAD SUGGESTED" CODE MODEL
-!macro adjust_dynamic_memory_inline {
-!ifndef Z3 {
-    ldx vmap_max_entries
-    cpx #vmap_max_size
-    bcc .no_wasted_swr
-    dex
-    jsr convert_index_x_to_ram_bank_and_address
-    iny
-    cpy ram_bank_count
-    php
-    sta zp_temp
-    lda #(>swr_ramtop) - vmem_block_pagecount
-    sec
-    sbc zp_temp
-    plp
-    bcs .last_bank_partly_used
-    ; We have at least one bank completely unused
-    ; Carry is clear
-    adc #>(swr_ramtop - flat_ramtop) ; SFTODO: ASSUMES 16K BANK
-.last_bank_partly_used
-    tax
-    beq .no_wasted_swr
-    ; A now contains the number of 256-byte blocks wasted at the end of the
-    ; final bank(s); they contain game data but can't be accessed. We therefore
-    ; bump nonstored_blocks up by up to this amount; this locks some of the low
-    ; could-have-been-swappable static memory into place, but brings into play
-    ; some more swappable static memory in the otherwise wasted sideways RAM.
-    ; It's "up to" this amount because we can't have nonstored_blocks overrunning
-    ; the first bank of sideways RAM.
-    ; (If the game isn't long enough, all this is harmless; we'll just have some
-    ; vmap entries for too-high Z addresses pointing to uninitialised data, and
-    ; those will never be used.)
-    !if vmem_block_pagecount <> 2 {
-        !error "Only SMALLBLOCK supported"
-    }
-    sta zp_temp
-    lda #>story_start
-    clc
-    adc nonstored_blocks
-    sta zp_temp + 1
-    adc zp_temp
-    cmp #>swr_ramtop
-    bcc +
-    lda #>swr_ramtop
-+   sec
-    sbc zp_temp + 1
-    beq .no_wasted_swr
-    sta zp_temp
-.wasted_pages_reclaimable = zp_temp
-    clc
-    adc nonstored_blocks
-    sta nonstored_blocks
-    ; We now need to adjust vmap_[lh] to take account of the modified value of
-    ; nonstored_blocks, since the build script pre-populated it based on the
-    ; pre-modification value.
-    ldx vmap_max_entries
-    dex
-.vmap_fixup_loop
-    lda vmap_z_l,x
-    clc
-    adc .wasted_pages_reclaimable
-    sta vmap_z_l,x
-    bcc .no_carry
-    ; There's a carry into vmap_z_h,x. This can't cause a problem, because this
-    ; is a Z4+ game and so the address space is large enough that we can
-    ; never overflow the vmem_highbyte_mask bits. SFTODO: If we supported
-    ; PRELOAD and didn't have a linear sequence of low addresses in the initial
-    ; vmap that might not be true.
-    lda vmap_z_h,x
-    and #vmem_highbyte_mask
-    adc #0
-    sta zp_temp + 1
-    lda vmap_z_h,x
-    and #($ff xor vmem_highbyte_mask)
-    ora zp_temp + 1
-    sta vmap_z_h,x
-.no_carry
-    dex
-    cpx #255
-    bne .vmap_fixup_loop
-    ; Now loop back round to fix up vmem_blocks_stolen_in_first_bank and
-    ; vmem_blocks_in_main_ram.
-    jmp nonstored_blocks_adjusted
-
-.no_wasted_swr
-    ; convert_index_x_to_ram_bank_and_address will have left the last bank
-    ; paged in, and we need the first bank paged in by default.
-    +acorn_page_in_bank_using_a ram_bank_list
-}
-} ; End of adjust_dynamic_memory_inline
 }
 
 ; Acorn-specific initialization to carry out in deletable_screen_init_2. This is
