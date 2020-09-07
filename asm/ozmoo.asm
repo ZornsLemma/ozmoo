@@ -1138,7 +1138,7 @@ load_suggested_pages
     rts
 } else { ; ACORN
 load_suggested_pages
-    ; SFTODO: This (or something before it) will probably want to sort (ignoring
+    ; SFTODONOW: This (or something before it - but probably this) will probably want to sort (ignoring
     ; but preserving the timestamp part) the vmap before doing the load, in
     ; order to avoid inefficient head movement.
     lda #0
