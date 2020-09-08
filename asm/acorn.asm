@@ -580,7 +580,6 @@ screenkernal_init
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
     ; Page in the first bank.
-    lda ram_bank_list ; SFTODONOW: THIS LINE IS REDUNDANT, DELETE IT
     +acorn_page_in_bank_using_a ram_bank_list
 }
 
