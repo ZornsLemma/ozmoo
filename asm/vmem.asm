@@ -991,7 +991,7 @@ convert_index_x_to_ram_bank_and_address
 !ifndef ACORN_ELECTRON {
     adc #(>flat_ramtop)-1
 } else {
-    adc #($60-1) ; SFTODO: HARD-CODED MODE 6 SCREEN RAM ADDRESS - NOTE -1
+    adc screen_ram_start_minus_1
 }
     rts
 }

@@ -402,9 +402,12 @@ screenkernal_init
     ; also for the Electron, it just doesn't need any special case code.
 !ifdef ACORN_ELECTRON {
     ; We also have some blocks free between extra_vmem_start and the screen RAM.
-    ; SFTODO: HARD CODED MODE 6 SCREEN START, SHOULD QUERY FROM OS
+    lda #osbyte_read_screen_address
+    jsr osbyte
     sec
-    lda #$60
+    tya
+    dey
+    sty screen_ram_start_minus_1
     sbc #>extra_vmem_start
     tax
     clc

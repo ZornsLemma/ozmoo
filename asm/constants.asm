@@ -258,6 +258,7 @@ osbyte_flush_buffer = $15
 osbyte_reflect_keyboard_status = $76
 osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
+osbyte_read_screen_address = $84
 osbyte_read_cursor_position = $86
 osbyte_read_screen_mode = $87
 osbyte_enter_language = $8e
@@ -357,7 +358,9 @@ vmap_max_entries = $40c ; !byte 0
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll = $40d ; !byte 0
 }
-; SFTODO: $40e is currently wasted - move up to fill gap
+!ifdef ACORN_ELECTRON {
+screen_ram_start_minus_1 = $40e ; !byte 0
+}
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
 ; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
