@@ -580,7 +580,7 @@ screenkernal_init
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
     ; Page in the first bank.
-    lda ram_bank_list
+    lda ram_bank_list ; SFTODONOW: THIS LINE IS REDUNDANT, DELETE IT
     +acorn_page_in_bank_using_a ram_bank_list
 }
 
@@ -591,11 +591,6 @@ screenkernal_init
     sbc readblocks_numblocks
     sta .blocks_to_read
     bne .dynmem_load_loop
-
-    ; SFTODO: Now we're not just reading until we fill all our sideways RAM, the
-    ; "grow dynmem to make use of more sideways RAM" code I have won't work. The
-    ; idea is almost certainly fine but we'd need to do the adjustment before we
-    ; start calculating vmap_max_entries and loading the "suggested" pages in the vmap.
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.

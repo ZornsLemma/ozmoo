@@ -730,7 +730,6 @@ deletable_init
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
 	lda #vmap_max_size
-    !error "SFTODO: IS THIS RIGHT NOW? WE SET vmap_max_entries IN DEL INIT"
 ++	sta vmap_max_entries
 }
 }
@@ -1251,6 +1250,9 @@ load_suggested_pages
     cmp vmap_max_entries
     bne -
     sta vmap_used_entries ; SFTODO: MAY BE REDUNDANT, IF I DO THIS ELSEWHERE TOO
+!ifdef ACORN_SWR {
+    +acorn_swr_page_in_default_bank_using_y
+}
     ; jsr osrdch ; SFTODO TEMP
     rts
 }
