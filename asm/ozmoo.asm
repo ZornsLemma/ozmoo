@@ -1170,9 +1170,10 @@ load_suggested_pages
     ;
     ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
     ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
-    ; shuffled entries, which is probably a more typical case.
-    ; SFTODONOW: Maybe add a timing comment about performance when the list is
-    ; already sorted, as it will be if no preopt is used.
+    ; shuffled entries, which is probably a more typical case. Given a sorted
+    ; list - as will happen if the preopt mode has not been used - it takes
+    ; about 0.02 seconds, so there's no significant performance penalty when
+    ; this is not doing anything useful.
     ldx #1
 .outer_loop
     lda vmap_z_l,x
