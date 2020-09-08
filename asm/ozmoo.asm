@@ -748,10 +748,6 @@ deletable_init
 	bne .dont_preload
 	jsr load_suggested_pages
 .dont_preload
-} else {
-!ifndef PREOPT {
-    jsr load_suggested_pages
-}
 }
 
 } ; End of !ifdef VMEM
@@ -1104,8 +1100,8 @@ prepare_static_high_memory
     sta vmap_used_entries
     sta vmap_clock_index
 } else {
-    ; load_suggested_pages will initialise vmap_used_entries and we can just
-    ; leave vmap_clock_index at its default value of 0.
+    ; +acorn_deletable_init_inline will initialise vmap_used_entries and we can
+    ; just leave vmap_clock_index at its default value of 0.
 }
 }
 !ifdef TRACE_VM {
@@ -1136,97 +1132,6 @@ load_suggested_pages
 
 !ifdef TRACE_VM {
     jsr print_vm_map
-}
-    rts
-} else { ; ACORN - SFTODO: Move this into acorn.asm???
-load_suggested_pages
-    ; Sort vmap into ascending order, preserving the ages but using just the
-    ; addresses as keys. This avoids the drive head jumping around during the
-    ; initial load. The build system can't do this sort, because we're sorting
-    ; the truncated list with just vmap_max_entries not the full list of
-    ; vmap_max_size entries.
-    ;
-    ; This only happens once and it's not a huge list so while we don't want it
-    ; to be really slow, compactness and simplicity of code is more important.
-    ; This is an insertion sort, implemented based on the pseudocode from
-    ; https://en.m.wikipedia.org/wiki/Insertion_sort, which I've relabelled here
-    ; to match the register use in the following code:
-    ;
-    ;     x = 1
-    ;     while x < length(vmap_z)
-    ;         temp = vmap_z[x]
-    ;         y = x - 1
-    ;         while y >= 0 and vmap_z[y] > temp 
-    ;             vmap_z[y+1] = vmap_z[y]
-    ;             y = y - 1
-    ;         end while
-    ;         vmap_z[y+1] = temp
-    ;         x = x + 1
-    ;     end while
-    ;
-    ; Invariants:
-    ;       1 <= x <= length(vmap_z) <= vmap_max_size <= 255
-    ;      -1 <= y < x, so -1 <= y <= 254
-    ;
-    ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
-    ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
-    ; shuffled entries, which is probably a more typical case. Given a sorted
-    ; list - as will happen if the preopt mode has not been used - it takes
-    ; about 0.02 seconds, so there's no significant performance penalty when
-    ; this is not doing anything useful.
-    ldx #1
-.outer_loop
-    lda vmap_z_l,x
-    sta zp_temp
-    lda vmap_z_h,x
-    sta zp_temp + 1
-    and #vmem_highbyte_mask
-    sta zp_temp + 2
-    txa
-    tay
-.inner_loop
-    dey
-    lda vmap_z_h,y
-    and #vmem_highbyte_mask
-    cmp zp_temp + 2
-    bne +
-    lda vmap_z_l,y
-    cmp zp_temp
-    beq .exit_inner_loop
-+   bcc .exit_inner_loop
-    lda vmap_z_l,y
-    sta vmap_z_l + 1,y
-    lda vmap_z_h,y
-    sta vmap_z_h + 1,y
-    tya
-    bne .inner_loop
-    dey
-.exit_inner_loop    
-    ; We can't omit this iny and use vmap_z_[lh] + 1,y below to compensate
-    ; because Y may be -1 (255) and so they're not equivalent.
-    iny
-    lda zp_temp
-    sta vmap_z_l,y
-    lda zp_temp + 1
-    sta vmap_z_h,y
-    inx
-    cpx vmap_max_entries
-    bne .outer_loop
-
-    ; Now we've sorted vmap, load the corresponding blocks into memory and
-    ; initialise vmap_used_entries.
-    lda #0
-    sta vmap_index
--   jsr load_blocks_from_index
-    inc vmap_index
-    lda vmap_index
-    cmp vmap_max_entries
-    bne -
-    sta vmap_used_entries
-!ifdef ACORN_SWR {
-    ; The previous loop will have left the last bank of sideways RAM paged in;
-    ; we need to page the default bank back in.
-    +acorn_swr_page_in_default_bank_using_y
 }
     rts
 }
