@@ -404,10 +404,10 @@ screenkernal_init
     ; We also have some blocks free between extra_vmem_start and the screen RAM.
     lda #osbyte_read_screen_address
     jsr osbyte
-    sec
     tya
     dey
     sty screen_ram_start_minus_1
+    sec
     sbc #>extra_vmem_start
     tax
     clc
