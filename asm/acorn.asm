@@ -398,6 +398,31 @@ screenkernal_init
     inc .ram_blocks + 1
 +
 
+    ; SFTODO: Rename ACORN_ELECTRON to ACORN_ELECTRON_SWR? The tube build is
+    ; also for the Electron, it just doesn't need any special case code.
+!ifdef ACORN_ELECTRON {
+    ; We also have some blocks free between extra_vmem_start and the screen RAM.
+    ; SFTODO: HARD CODED MODE 6 SCREEN START, SHOULD QUERY FROM OS
+    sec
+    lda #$60
+    sbc #>extra_vmem_start
+    tax
+    clc
+    adc .ram_blocks
+    sta .ram_blocks
+    bcc +
+    inc .ram_blocks + 1
++   txa
+    lsr
+    sta vmem_blocks_in_main_ram
+} else {
+!ifdef ACORN_SWR {
+    ; This value might be changed below.
+    lda #0
+    sta vmem_blocks_in_main_ram
+}
+}
+
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. If the
     ; game is smaller than this, shrink .ram_blocks now so we won't feel the
@@ -447,6 +472,7 @@ screenkernal_init
     dec .ram_blocks + 1
 +
 
+!ifndef ACORN_ELECTRON { ; SFTODO: RIGHT NOW I HAVE NO IDEA IF THIS IS COMPATIBLE WITH ELECTRON SWR, LET'S JUST RRULE IT OUT WHILE I GET SOMETHING WORKING THEN I CAN THINK ABOUT IT LATER
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; SFTODO: In theory this optimisation is perfectly valid for the small
     ; dynamic memory model, except that we can't grow nonstored_blocks past
@@ -547,6 +573,7 @@ screenkernal_init
 }
 }
 }
+}
 
     ; At this point, .ram_blocks is the number of RAM blocks we have to use as
     ; backing RAM for the virtual memory subsystem, because we've subtracted
@@ -606,7 +633,6 @@ screenkernal_init
     clc
     adc #>story_start
     ldx #0
-    stx vmem_blocks_in_main_ram
     stx vmem_blocks_stolen_in_first_bank
     sec
     sbc #>flat_ramtop

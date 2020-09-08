@@ -1262,6 +1262,7 @@ story_start
 story_start = stack_start + stack_size
 } else {
 ; SFTODO: Should update memory map comment in acorn.asm with Electron layout
+extra_vmem_start = stack_start + stack_size
 story_start = $8000
 }
 }

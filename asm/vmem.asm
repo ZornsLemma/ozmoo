@@ -982,11 +982,17 @@ convert_index_x_to_ram_bank_and_address
     adc #$80
     rts
 .in_main_ram
-    ; A contains a negative block offset from the top of main RAM. Multiply by
-    ; two to get a page offset and add it to flat_ramtop to get the actual start.
+    ; A contains a negative block offset from the top of main RAM (BBC sideways
+    ; RAM version) or the bottom of screen RAM (Electron sideways RAM version).
+    ; Multiply by two to get a page offset and add it to the base to get the
+    ; actual start.
     asl
     ; Carry is set
+!ifndef ACORN_ELECTRON {
     adc #(>flat_ramtop)-1
+} else {
+    adc #($60-1) ; SFTODO: HARD-CODED MODE 6 SCREEN RAM ADDRESS - NOTE -1
+}
     rts
 }
 }

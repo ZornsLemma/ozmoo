@@ -1,3 +1,25 @@
+Electron timing notes before and after change to allow the "wasted" main RAM to be used:
+32K sideways RAM, no main RAM used - benchmark $00beca 
+Experimental "use main RAM" code + 32K sideways RAM $00bb45 second try $00bb0f
+- virtually no difference but I suspect interrupts get disabled a lot and the self-timing can't be trusted
+Experimental - $1ae shown early on - I started a stopwatch when the screen cleared and intro started to scroll 
+- move 95 at 4:05 approx
+- move 228 at 9:36 approx
+- move 340 at 12:42 approx
+- new game prompt at 17:34 (move 449) - showed $00bb3c
+Back to pure 32K sideways RAM, no main RAM used, stopwatch
+- $1a3 shown early on
+- at 4:05 on move 79
+- move 95 at 4:43 approx
+- at 9:36 on move 196
+- at 14:15 on move 340
+- new game prompt showed $00bec7 at 19:37
+Conclusion
+- so internal timings show <2% reduction in time from the extra ~5K (remember the benchmark text takes up a couple of K), while the stopwatch timings show a nearly 10.5% reduction (from a 15% increase in RAM)
+
+
+
+
 load_suggested_pages performance:
 - no drive noises (which would in reality dilute any overhead further, as a percentage)
 - B+ 128K DFS mode 7
