@@ -1097,29 +1097,15 @@ prepare_static_high_memory
 	dey
 	bpl -
 .no_entries
-} else {
-!if 0 { ; SFTODO!?
-    ; SFTODO: WE MAY WANT TO GET RID OF THIS WHOLE ELSE BLOCK NOW LOAD_SUGGESTED_PAGES INITIALISES VMAP_USED_ENTRIES
-    ; vmap_z_[lh] is pre-populated by the Acorn build system with the full
-    ; vmap_max_size entries, even though there may not been enough RAM for all
-    ; those. vmap_max_entries takes RAM size into account, so we use that for
-    ; initialisation here. If the game is smaller than this, it's harmless as
-    ; there will just be table entries for addresses in the Z-machine we will
-    ; never use. SFTODO: GAMES SMALLER THAN RAM MAY BE A LITTLE DIFFERENT WITH
-    ; THE NEW "LOAD SUGGESTED" CODE, NOT LIKELY TO BE A BIG DEAL BUT THIS CODE/COMMENT
-    ; MAY WANT TWEAKING
-    lda vmap_max_entries
-    ; sta vmap_blocks_preloaded
-    sta vmap_used_entries
-} else {
+} else { ; ACORN
 !ifdef PREOPT {
     ; vmap_used_entries can't be 0. SFTODO: I think?
     lda #1
     sta vmap_used_entries
     sta vmap_clock_index
 } else {
-    ; load_suggested_pages will initialise vmap_used_entries.
-}
+    ; load_suggested_pages will initialise vmap_used_entries and we can just
+    ; leave vmap_clock_index at its default value of 0.
 }
 }
 !ifdef TRACE_VM {
@@ -1154,7 +1140,6 @@ load_suggested_pages
     rts
 } else { ; ACORN - SFTODO: Move this into acorn.asm???
 load_suggested_pages
-!if 1 { ; SFTODO EXPERIMENTAL CODE
     ; Sort vmap into ascending order, preserving the ages but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
     ; initial load. The build system can't do this sort, because we're sorting
@@ -1168,30 +1153,26 @@ load_suggested_pages
     ; to match the register use in the following code:
     ;
     ;     x = 1
-    ;     while x < length(A)
-    ;         temp = A[x]
+    ;     while x < length(vmap_z)
+    ;         temp = vmap_z[x]
     ;         y = x - 1
-    ;         while y >= 0 and A[y] > temp 
-    ;             A[y+1] = A[y]
+    ;         while y >= 0 and vmap_z[y] > temp 
+    ;             vmap_z[y+1] = vmap_z[y]
     ;             y = y - 1
     ;         end while
-    ;         A[y+1] = temp
+    ;         vmap_z[y+1] = temp
     ;         x = x + 1
     ;     end while
     ;
     ; Invariants:
-    ;       1 <= x < length(A) <= vmap_max_size <= 255
-    ;      -1 <= y < x, so -1 <= y < 254
+    ;       1 <= x <= length(vmap_z) <= vmap_max_size <= 255
+    ;      -1 <= y < x, so -1 <= y <= 254
     ;
     ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
     ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
     ; shuffled entries, which is probably a more typical case.
-!if 0 { ; SFTODO: DELETE
-    jsr kernal_readtime ; SFTODO TEMP HACK
-    sta $600
-    stx $601
-    sty $602
-}
+    ; SFTODONOW: Maybe add a timing comment about performance when the list is
+    ; already sorted, as it will be if no preopt is used.
     ldx #1
 .outer_loop
     lda vmap_z_l,x
@@ -1230,18 +1211,9 @@ load_suggested_pages
     inx
     cpx vmap_max_entries
     bne .outer_loop
-!if 0 { ; SFTODO: DELETE
-    jsr kernal_readtime ; SFTODO TEMP HACK
-    sta $603
-    stx $604
-    sty $605
--   jmp -
-}
-}
 
-    ; SFTODONOW: This (or something before it - but probably this) will probably want to sort (ignoring
-    ; but preserving the timestamp part) the vmap before doing the load, in
-    ; order to avoid inefficient head movement.
+    ; Now we've sorted vmap, load the corresponding blocks into memory and
+    ; initialise vmap_used_entries.
     lda #0
     sta vmap_index
 -   jsr load_blocks_from_index
@@ -1249,11 +1221,12 @@ load_suggested_pages
     lda vmap_index
     cmp vmap_max_entries
     bne -
-    sta vmap_used_entries ; SFTODO: MAY BE REDUNDANT, IF I DO THIS ELSEWHERE TOO
+    sta vmap_used_entries
 !ifdef ACORN_SWR {
+    ; The previous loop will have left the last bank of sideways RAM paged in;
+    ; we need to page the default bank back in.
     +acorn_swr_page_in_default_bank_using_y
 }
-    ; jsr osrdch ; SFTODO TEMP
     rts
 }
 } 
