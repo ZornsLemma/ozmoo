@@ -475,7 +475,6 @@ screenkernal_init
     dec .ram_blocks + 1
 +
 
-!ifndef ACORN_ELECTRON { ; SFTODO: RIGHT NOW I HAVE NO IDEA IF THIS IS COMPATIBLE WITH ELECTRON SWR, LET'S JUST RRULE IT OUT WHILE I GET SOMETHING WORKING THEN I CAN THINK ABOUT IT LATER
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; SFTODO: In theory this optimisation is perfectly valid for the small
     ; dynamic memory model, except that we can't grow nonstored_blocks past
@@ -573,7 +572,6 @@ screenkernal_init
     ; them during the initial load and make them immediately available for use
     ; the first time we need to load anything during play.
 .no_wasted_ram
-}
 }
 }
 }
