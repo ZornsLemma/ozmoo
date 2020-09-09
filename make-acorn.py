@@ -1023,7 +1023,7 @@ def make_bbc_swr_executable():
 # SFTODO: Some code duplication with make_swr_shr_executable?
 def make_electron_swr_executable():
     base_filename = "OZMOOE"
-    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1", "-DACORN_SAVE_RESTORE_OSFIND=1"]
+    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
 
     # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
     # lower than the high version of the executable - but it's a good choice because it

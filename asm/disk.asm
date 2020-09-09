@@ -1464,6 +1464,8 @@ do_save
 
 !ifdef ACORN {
 
+; It's faster and simpler to save/restore using OSFILE, but it can't access
+; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
 ; SFTODO: This is a bit too pessimistic - since we only save precisely the
 ; number of bytes in static memory, even if nonstored_blocks has overflowed into
 ; sideways RAM due to rounding up to a 512-byte boundary, we can still use
@@ -1471,17 +1473,16 @@ do_save
 ; extra complexity and "trial" builds in the build script, we could have it
 ; set ACORN_SAVE_RESTORE_OSFIND instead of tying it to ACORN_SWR_BIG_DYNMEM
 ; like this.
-; SFTODONOW: It would be safer to have to set a flag to get the OSFILE versions,
-; so we default to the safe OSFIND versions.
-!ifdef ACORN_SWR_BIG_DYNMEM {
-ACORN_SAVE_RESTORE_OSFIND = 1
+!ifndef ACORN_SWR_BIG_DYNMEM {
+ACORN_SAVE_RESTORE_OSFILE = 1
 }
-!ifdef ACORN_SAVE_RESTORE_OSFIND {
-    .save_op = osfind_open_output
-    .load_op = osfind_open_input
+
+!ifndef ACORN_SAVE_RESTORE_OSFILE {
+.save_op = osfind_open_output
+.load_op = osfind_open_input
 } else {
-    .save_op = osfile_save
-    .load_op = osfile_load
+.save_op = osfile_save
+.load_op = osfile_load
 }
 
 .filename_buffer = scratch_page
@@ -1714,7 +1715,7 @@ save_game
 .save_restore_game
 .osfile_or_osfind_op = zp_temp ; 1 byte
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
-!ifdef ACORN_SAVE_RESTORE_OSFIND {
+!ifndef ACORN_SAVE_RESTORE_OSFILE {
     .start_ptr = zp_temp + 2 ; 2 bytes
 !ifdef ACORN_ELECTRON_SWR {
     .bytes_to_read = zp_temp + 4 ; 2 bytes
@@ -1760,7 +1761,7 @@ save_game
     ldy #error_print_osasci
     jsr setjmp
     beq .no_osfile_error
-!ifdef ACORN_SAVE_RESTORE_OSFIND {
+!ifndef ACORN_SAVE_RESTORE_OSFILE {
     jsr close_osgbpb_block_handle
 }
     ; If this is a load and a disc error occurred partway through, the game is
@@ -1797,7 +1798,7 @@ save_game
 .not_save
     ; The OSFILE block is updated after the call, so we have to populate these
     ; values via code every time.
-!ifndef ACORN_SAVE_RESTORE_OSFIND {
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
     lda #<.filename_buffer
     sta .osfile_save_load_block_filename_ptr
     lda #>.filename_buffer
@@ -1808,7 +1809,7 @@ save_game
     sta .start_ptr
     lda #>(stack_start - zp_bytes_to_save)
     sta .start_ptr + 1
-!ifndef ACORN_SAVE_RESTORE_OSFIND {
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
     lda story_start + header_static_mem + 1
     sta .osfile_save_load_block_end_address
     lda story_start + header_static_mem
@@ -1829,7 +1830,7 @@ save_game
 }
 }
     lda .osfile_or_osfind_op
-!ifndef ACORN_SAVE_RESTORE_OSFIND {
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
     jsr osfile
@@ -1909,11 +1910,7 @@ save_game
 .overwrite_msg
     !text "File exists - overwrite it? (Y/N) ", 0
 
-!ifndef ACORN_SAVE_RESTORE_OSFIND {
-!ifdef ACORN_ELECTRON_SWR {
-    !error "ACORN_ELECTRON_SWR is only compatible with ACORN_SAVE_RESTORE_OSFIND"
-}
-
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
 .osfile_save_load_block
 .osfile_save_load_block_filename_ptr
     !word 0 ; filename
@@ -1927,7 +1924,7 @@ save_game
 .osfile_save_load_block_end_address
     !word 0 ; end address low
     !word 0 ; end address high
-} else { ; ACORN_SAVE_RESTORE_OSFIND
+} else { ; !ACORN_SAVE_RESTORE_OSFILE
 .osgbpb_wrapper
     ; These values in the OSGBPB block keep getting updated, so we have to
     ; set them every time.
@@ -2142,7 +2139,7 @@ save_game
 !ifdef ACORN_ADFS {
     ACORN_WANT_OSGBPB_BLOCK = 1
 } else {
-    !ifdef ACORN_SAVE_RESTORE_OSFIND {
+    !ifndef ACORN_SAVE_RESTORE_OSFILE {
         ACORN_WANT_OSGBPB_BLOCK = 1
     }
 }

@@ -71,7 +71,9 @@
 ; and the screen RAM as additional virtual memory cache so it isn't wasted. An
 ; Electron is therefore about 7K worse off than a BBC B with the same amount of
 ; sideways RAM as a result of its larger screen memory, in addition to not
-; supporting games needing more than 16K of dynamic memory.
+; supporting games needing more than 16K of dynamic memory. The Electron save/
+; restore code has to be slightly different because the data we need to save/
+; restore is no longer contiguous in memory.
 
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
@@ -79,6 +81,10 @@
 !ifdef ACORN_SWR {
 !ifndef ACORN_SWR_SMALL_DYNMEM {
 ACORN_SWR_BIG_DYNMEM = 1
+} else { ; ACORN_SWR_SMALL_DYNMEM
+!ifdef ACORN_ELECTRON_SWR {
+!error "ACORN_ELECTRON_SWR is not compatible with ACORN_SWR_SMALL_DYNMEM"
+}
 }
 }
 
