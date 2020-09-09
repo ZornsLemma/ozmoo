@@ -285,7 +285,7 @@ print_optimized_vm_map
 	jsr dollar
 	jsr dollar
 	jsr newline
-!ifndef ACORN { ; SFTODO TEMP HACK
+!ifndef ACORN {
     jsr kernal_readchar   ; read keyboard
     jmp kernal_reset      ; reset
 } else {
@@ -658,7 +658,9 @@ read_byte_at_z_address
 
 ; SFTODO: I am not sure the bcs case can ever occur on Acorn, since we always
 ; pre-populate vmap. If this is true we can probably ifdef this out for both SWR
-; and 2P builds. (But it's only one instruction, so hardly worth it?)
+; and 2P builds. (But it's only one instruction, so hardly worth it?) (OK, it
+; *can* occur with PREOPT, but it still can't occur "normally" on Acorn. But it
+; is still just one byte and I should probably just get rid of this comment...)
     +make_acorn_screen_hole_jmp
 +	ldx vmap_clock_index
 -	cpx vmap_used_entries

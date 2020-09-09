@@ -1095,7 +1095,7 @@ prepare_static_high_memory
 .no_entries
 } else { ; ACORN
 !ifdef PREOPT {
-    ; vmap_used_entries can't be 0. SFTODO: I think?
+    ; vmap_used_entries can't be 0. SFTODONOW: I think?
     lda #1
     sta vmap_used_entries
     sta vmap_clock_index
@@ -1110,7 +1110,6 @@ prepare_static_high_memory
 	rts
 	
 !ifndef ACORN {
-; SFTODO: This may be useful if I support PREOPT
 load_suggested_pages
 ; Load all suggested pages which have not been pre-loaded
 -	lda vmap_blocks_preloaded ; First index which has not been loaded
@@ -1119,7 +1118,7 @@ load_suggested_pages
 	bcs +
 	; jsr dollar
 	sta vmap_index
-	tax ; SFTODO: AFAICS this is redundant
+	tax ; SF: I think this is redundant
 	jsr load_blocks_from_index
 ++	inc vmap_blocks_preloaded
 	bne - ; Always branch
@@ -1167,7 +1166,6 @@ story_start
 !ifndef ACORN_ELECTRON_SWR {
 story_start = stack_start + stack_size
 } else {
-; SFTODO: Should update memory map comment in acorn.asm with Electron layout
 extra_vmem_start = stack_start + stack_size
 story_start = $8000
 }

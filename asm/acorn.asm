@@ -470,14 +470,7 @@ screenkernal_init
 .game_larger_than_ram
 }
 
-    ; SFTODO: I suspect this would be a natural point to populate nonstored_blocks
-    ; (not where it's currently done) and to increase it if desired to bring more
-    ; SWR into play on systems with very large amounts.
-    ; SFTODO: I suspect once the "enlarge dynmem if it helps use more SWR" change
-    ; gets implemented, ACORN_NONSTORED_BLOCKS should be renamed something like
-    ; ACORN_INITIAL_NONSTORED_BLOCKS to avoid confusion, because it won't
-    ; necessarily be the *actual* value of "nonstored_blocks".
-    lda #ACORN_NONSTORED_BLOCKS
+    lda #ACORN_INITIAL_NONSTORED_BLOCKS
     sta nonstored_blocks
 
 !ifdef VMEM {
@@ -1067,8 +1060,6 @@ kernal_readtime
     !error "ACORN_HW_SCROLL is not compatible with ACORN_NO_SHADOW"
 }
 
-; SFTODO: !set just might be useful in making this only do anything once -
-; this actually probably isn't necessary, but let me make this note for reference
 !macro make_acorn_screen_hole {
 .tolerance = 256
     !if * <= $3c00 {

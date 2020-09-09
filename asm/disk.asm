@@ -2116,7 +2116,7 @@ save_game
     lda .bytes_read + 1
     beq .osgbpb_load_done
 
-    ; SFTODO: Both of the following chunks of code (electron and general) could
+    ; SFTODONOW: Both of the following chunks of code (electron and general) could
     ; be simplified, because we know we read .chunk_size == 0x100 bytes - we
     ; don't need to do a general subtraction or addition.
 

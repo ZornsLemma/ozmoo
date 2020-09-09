@@ -363,7 +363,7 @@ acme_args1 = [
     "-DSTACK_PAGES=4",
     "-DSMALLBLOCK=1",
     "-DSPLASHWAIT=0",
-    "-DACORN_NONSTORED_BLOCKS=%d" % nonstored_blocks,
+    "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
 ]
 acme_args2 = [
     "--format", "plain",
