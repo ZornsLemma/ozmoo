@@ -419,8 +419,6 @@ z_init
 !zone z_init {
 
 !ifdef DEBUG {
-; SFTODO: For the record, not going to port *any* of the PREOPT stuff yet, but
-; will probably want to do so later.
 !ifdef PREOPT {
 	jsr print_following_string
 !ifndef ACORN {

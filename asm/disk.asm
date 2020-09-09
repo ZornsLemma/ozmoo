@@ -1471,7 +1471,7 @@ do_save
 ; extra complexity and "trial" builds in the build script, we could have it
 ; set ACORN_SAVE_RESTORE_OSFIND instead of tying it to ACORN_SWR_BIG_DYNMEM
 ; like this.
-; SFTODO: It would be safer to have to set a flag to get the OSFILE versions,
+; SFTODONOW: It would be safer to have to set a flag to get the OSFILE versions,
 ; so we default to the safe OSFIND versions.
 !ifdef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFIND = 1
@@ -2082,21 +2082,21 @@ save_game
     ldx .bytes_to_read
 .read_full_chunk
     stx osgbpb_block_transfer_length
-    stx .lda_imm_chunk_size_low + 1
+    stx .lda_imm_this_chunk_size_low + 1
     sty osgbpb_block_transfer_length + 1
-    sty .lda_imm_chunk_size_high + 1
+    sty .lda_imm_this_chunk_size_high + 1
 }
     lda #osgbpb_read_ignoring_ptr
     jsr .osgbpb_wrapper
     sec
 !ifdef ACORN_ELECTRON_SWR {
-.lda_imm_chunk_size_low
+.lda_imm_this_chunk_size_low
 }
     lda #<.chunk_size
     sbc osgbpb_block_transfer_length
     sta .bytes_read
 !ifdef ACORN_ELECTRON_SWR {
-.lda_imm_chunk_size_high
+.lda_imm_this_chunk_size_high
 }
     lda #>.chunk_size
     sbc osgbpb_block_transfer_length + 1
@@ -2112,33 +2112,21 @@ save_game
     cpy .bytes_read
     bne -
 
-    ; If we read less than .chunk_size bytes, we've hit EOF and we're done.
+    ; If we read fewer than .chunk_size bytes, we've hit EOF and we're done.
+    ; (On ACORN_ELECTRON_SWR builds we may have tried to read fewer than
+    ; .chunk_size bytes, but it's still true that reading fewer than .chunk_size
+    ; bytes means we're done - it's either EOF, or we've read exactly as many
+    ; bytes as we requested.)
     lda .bytes_read + 1
     beq .osgbpb_load_done
 
-    ; SFTODONOW: Both of the following chunks of code (electron and general) could
-    ; be simplified, because we know we read .chunk_size == 0x100 bytes - we
-    ; don't need to do a general subtraction or addition.
-
 !ifdef ACORN_ELECTRON_SWR {
-    ; Decrement .bytes_to_read
-    sec
-    lda .bytes_to_read
-    sbc .bytes_read
-    sta .bytes_to_read
-    lda .bytes_to_read + 1
-    sbc .bytes_read + 1
-    sta .bytes_to_read + 1
+    ; Decrement .bytes_to_read by .chunk_size.
+    dec .bytes_to_read + 1
 }
 
-    ; Advance .start_ptr
-    clc
-    lda .start_ptr
-    adc .bytes_read
-    sta .start_ptr
-    lda .start_ptr + 1
-    adc .bytes_read + 1
-    sta .start_ptr + 1
+    ; Advance .start_ptr by .chunk_size.
+    inc .start_ptr + 1
 
     ; Loop round until we're done.
     bne .osgbpb_load_loop ; Always branch

@@ -399,7 +399,11 @@ scratch_double_page = scratch_page
 ; SFTODO: There's no advantage for second processor builds, but on ACORN_SWR
 ; builds we could potentially put vmap_z_[hl] somewhere in $400-800 (we'd probably
 ; have the VVVVVV identifier in the discardable init code for the build script
-; to patch and copy that down to $400-800 in the discardable init code).
+; to patch and copy that down to $400-800 in the discardable init code). Perhaps
+; easiest (not competing for discardable init code space) would be to have it
+; right at the end of the binary, and first thing (perhaps even before relocating
+; if we're in a reloctable build) copy it down to somewhere in $400-800. That's
+; if I think this is a good thing to do, not saying it is.
 }
 
 }
