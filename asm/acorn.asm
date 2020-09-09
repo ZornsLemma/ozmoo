@@ -236,7 +236,7 @@ screenkernal_init
     sta initial_jmp + 2
 
 .dir_ptr = zp_temp ; 2 bytes
-.length_blocks = zp_temp + 2 ; 2 bytes
+.game_blocks = zp_temp + 2 ; 2 bytes
 ; We can't always use story_start to store the catalogue sectors because on an
 ; ACORN_ELECTRON build that's in sideways RAM, and we can't always use
 ; scratch_double_page because second processor builds don't have it.
@@ -328,26 +328,26 @@ screenkernal_init
     lsr
     lsr
     lsr
-    sta .length_blocks + 1 ; high byte of length in blocks
+    sta .game_blocks + 1 ; high byte of length in blocks
     dey
     lda (.dir_ptr),y
-    sta .length_blocks ; low byte of length in blocks
+    sta .game_blocks ; low byte of length in blocks
     dey
     lda (.dir_ptr),y ; low byte of length in bytes
     beq +
-    inc .length_blocks
+    inc .game_blocks
     bne +
-    inc .length_blocks + 1
+    inc .game_blocks + 1
 +
 !ifdef ACORN_DSD {
     ; If this is a double-sided game, there will be *approximately* (definitely
     ; no more, possibly a track's worth of data less) the same amount of data
     ; on the second side. We don't look up :2.$.DATA and determine its length,
-    ; we just double .length_blocks. The absolute worst case here is we read a
+    ; we just double .game_blocks. The absolute worst case here is we read a
     ; track's worth of junk which won't be accessed because it's past the end
     ; of the game.
-    asl .length_blocks
-    rol .length_blocks + 1
+    asl .game_blocks
+    rol .game_blocks + 1
 }
 } else { ; ACORN_ADFS
     lda #<game_data_filename
@@ -369,23 +369,22 @@ screenkernal_init
     bne +
     inc scratch_page + $c
 +   lda scratch_page + $b
-    sta .length_blocks
+    sta .game_blocks
     lda scratch_page + $c
-    sta .length_blocks + 1
+    sta .game_blocks + 1
 }
 
-    ; If .length_blocks is odd, increment it by one so the game data is always
+    ; If .game_blocks is odd, increment it by one so the game data is always
     ; considered to be a multiple of 512 bytes. This avoids having to worry
     ; about some corner cases and doesn't cause any problems; on DFS we're doing
     ; raw sector reads and the extra sector will always exist, on ADFS we may try
     ; to do a 512-byte read when only 256 bytes are available but that's fine.
-    ; SFTODO: RENAME .length_blocks TO .game_blocks?
-    lda .length_blocks
+    lda .game_blocks
     and #1
     beq +
-    inc .length_blocks
+    inc .game_blocks
     bne +
-    inc .length_blocks + 1
+    inc .game_blocks + 1
 +
 
 !ifdef VMEM {
@@ -462,8 +461,8 @@ screenkernal_init
     ; check for the game disc being in the drive after a save/restore. (But
     ; they would still need the disc in the drive to do a RESTART, so this is
     ; maybe not a good idea.)
-    ldy .length_blocks
-    lda .length_blocks + 1
+    ldy .game_blocks
+    lda .game_blocks + 1
     cmp .ram_blocks + 1
     bne +
     cpy .ram_blocks
