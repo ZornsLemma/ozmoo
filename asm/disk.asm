@@ -657,9 +657,7 @@ close_io
     jsr kernal_close ; call CLOSE
 
     jmp kernal_clrchn ; call CLRCHN
-}
 
-!ifndef ACORN {
 !zone disk_messages {
 prepare_for_disk_msgs
 	rts
