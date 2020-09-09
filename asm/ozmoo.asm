@@ -211,7 +211,11 @@ game_id		!byte 0,0,0,0
 !source "utilities.asm"
 !source "screenkernal.asm"
 !source "streams.asm"
+!ifndef ACORN {
 !source "disk.asm"
+} else {
+!source "acorn-disk.asm"
+}
 !ifdef VMEM {
 !ifndef ACORN {
 !source "reu.asm"
