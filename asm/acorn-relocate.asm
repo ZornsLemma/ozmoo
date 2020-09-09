@@ -1,7 +1,15 @@
 ; Code to relocate the Ozmoo executable down in memory. This is used on some
 ; Acorn builds to allow the executable to load high and then move itself down
 ; to an optimal address for the machine it's running on.
-; SFTODO: SHOULD THIS FILE BE RENAMED acorn-relocate.asm?
+;
+; The relocation model is very simple and relies on building two versions of the
+; code starting at different page-aligned addresses, then comparing them to see
+; which bytes need to be offset to compensate for the relocation at runtime.
+; This works pretty well in practice, but it means that code can't vary in
+; "complex" ways depending on where it's being assembled - e.g. it's OK to do
+; "lda #>.story_start" but "lda #($80->.story-start)" will cause an error when
+; generating the relocations as the two versions will differ but in an unexpected
+; way.
 
 !zone {
 
