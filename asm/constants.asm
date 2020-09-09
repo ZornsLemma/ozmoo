@@ -371,18 +371,24 @@ mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at pr
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
 z_pc_mempointer_ram_bank = $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
-; SFTODO: We could probably use memory_buffer instead of osfile_emulation_workspace; it's generally available for temp workspace
-osfile_emulation_workspace = $420 ; 2 bytes
+; SFTODO: 2 bytes at $420 currently wasted, shuffle up
 jmp_buf_ram_bank = $422 ; 1 byte
 }
 initial_clock = $423 ; 5 bytes
 memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
+; The following two strings have filename_size bytes allocated. We're not short
+; on storage in low memory in general, but as the BASIC loader needs to write
+; these strings we must use memory which won't clash with BASIC's own use, so
+; this has to fit inside the resident integer variable workspace and that is
+; relatively scarce. We could probably increase filename_size but it might mean
+; some reshuffling of other data which happens to live in the resident integer
+; variable workspace but doesn't need to.
+filename_size = 32
 !ifdef ACORN_ADFS {
-game_data_filename = $42f ; SFTODO HOW MANY BYTES? - CAREFUL IF GROWING THIS, IF BASIC LOADER IS TO WRITE TO THIS IT NEEDS TO LIVE ENTIRELY IN RESIDENT INT VAR SPACE TO AVOID CLASHING WITH OTHER BASIC USES, SO MAY NEED TO SHUFFLE THIS DOWN AND SOME OTHER RUNTIME-ONLY PAGE 4 ALLOCATIONS UP
+game_data_filename = $42f
 } else {
 restart_command = $42f
 }
-filename_size = 32 ; SFTODO TEMP, NOT THOUGHT THROUGH
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 

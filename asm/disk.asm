@@ -1985,7 +1985,7 @@ save_game
 .osfile_pseudo_emulation_save_internal
 }
 
-.osgbpb_save_length = osfile_emulation_workspace
+.osgbpb_save_length = memory_buffer ; 2 bytes
 .osgbpb_save_loop
     ; Save the smaller of .chunk_size and .osgbpb_save_length bytes. If
     ; .osgbpb_save_length is 0, we're done.
@@ -2063,7 +2063,7 @@ save_game
 .osfile_pseudo_emulation_load_internal
 }
 
-.bytes_read = osfile_emulation_workspace
+.bytes_read = memory_buffer ; 2 bytes
 .osgbpb_load_loop
     ; Read some data into the bounce buffer and work out how much we read; if we
     ; read nothing, it's EOF and we're done. On the Electron we read a maximum

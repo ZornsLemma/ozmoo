@@ -220,6 +220,7 @@ screenkernal_init
     jsr osbyte
     stx re_enter_language_ldx_imm + 1
 
+!ifndef ACORN_SWR {
     ; On a second processor, a soft break will transfer control back to our
     ; execution address. We will have thrown away our initialization code by
     ; that point and can't restart properly. In order to avoid random behaviour
@@ -227,13 +228,12 @@ screenkernal_init
     ; transfer control to re_enter_language. This means that although the
     ; language name gets printed twice, a soft break otherwise gives a clean
     ; result similar to that on a non-second processor. This code is harmless
-    ; if we're not running on a second processor. SFTODO: But we could possibly
-    ; conditionally compile it out anyway, even if this is deletable init code
-    ; we might need the space for something else deletable.
+    ; if we're not running on a second processor, but it's not necessary either.
     lda #<re_enter_language
     sta initial_jmp + 1
     lda #>re_enter_language
     sta initial_jmp + 2
+}
 
 .dir_ptr = zp_temp ; 2 bytes
 .game_blocks = zp_temp + 2 ; 2 bytes
@@ -534,7 +534,7 @@ screenkernal_init
     ; RAM even if fitted; given vmap_max_size=255, we can't possibly use more
     ; than (just under) eight 16K banks of sideways RAM for virtual memory, and
     ; one more bank for dynamic memory.)
--   bne - ; SFTODO: Temporary code to verify that
+
     ; We could profitably increment nonstored_blocks by .wasted_ram_blocks.
 .candidate_nonstored_blocks = .wasted_ram_blocks
     clc
