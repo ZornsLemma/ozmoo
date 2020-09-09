@@ -182,11 +182,6 @@ vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
-; SFTODO: I suspect with large amounts of RAM backing the virtual memory, the
-; tick resolution may not really be high enough. We'll probably mostly get
-; away with it, but maybe come back to this later. It might be OK actually given
-; the way vmap_clock_index moves round rather than us always starting at 0;
-; anyway, I can see how this works in practice later.
 !ifdef Z8 {
 	vmem_tick_increment = 8
 	vmem_highbyte_mask = $07
@@ -200,8 +195,6 @@ vmem_oldest_index	!byte 0
 }
 }
 
-; SFTODO: Might be a useful statistic for benchmarking with different builds/
-; amounts of SWR (not just benchmarking, checking more RAM is reducing swaps)
 !ifdef COUNT_SWAPS {
 vmem_swap_count !byte 0,0
 }
@@ -301,7 +294,6 @@ print_optimized_vm_map
 }
 }
 
-; SFTODO: This might need tweaking to print SWR stuff correctly
 !ifdef TRACE_VM {
 print_vm_map
 !zone {
@@ -333,6 +325,11 @@ print_vm_map
     jsr newline
     ldy #0
 -	; print
+!ifdef ACORN_SWR {
+    cpy #100
+    bcs +
+    jsr space ; alignment when <100
+}
     cpy #10
     bcs +
     jsr space ; alignment when <10
@@ -352,6 +349,9 @@ print_vm_map
     jsr print_byte_as_hex
     lda #0 ; add 00
     jsr print_byte_as_hex
+    ; SF: For ACORN_SWR we don't try to calculate the physical address of the
+    ; VM block as it's moderately involved.
+!ifndef ACORN_SWR {
     jsr space
 	tya
 	asl
@@ -364,6 +364,7 @@ print_vm_map
     jsr streams_print_output
     lda #$30
     jsr streams_print_output
+}
     jsr newline
 .next_entry
     iny 
@@ -753,7 +754,6 @@ read_byte_at_z_address
 }
 
 	; We have now decided on a map position where we will store the requested block. Position is held in x.
-    ; SFTODO: Will need tweaking for SWR
 !ifdef DEBUG {
 !ifdef PRINT_SWAPS {
 	lda streams_output_selected + 2
@@ -770,10 +770,14 @@ read_byte_at_z_address
 	txa
 	jsr print_byte_as_hex
 	jsr colon
+    ; SF: For ACORN_SWR we don't try to calculate the physical address of the
+    ; VM block as it's moderately involved.
+!ifndef ACORN_SWR {
 	lda vmap_c64_offset
 	jsr dollar
 	jsr print_byte_as_hex
 	jsr colon
+}
 	cpx vmap_used_entries
 	bcs .printswaps_part_2
     lda vmap_z_h,x
