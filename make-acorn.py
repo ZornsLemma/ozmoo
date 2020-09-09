@@ -583,10 +583,10 @@ def make_loader():
                     loader.write(b"500")
                     loader.write(b"VDU 23,128,0;0,255,255,0,0;" + linesep)
                     loader.write(b"FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
-                    loader.write(b'PRINTTAB(1,23);STRING$(39,CHR$128);" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
+                    loader.write(b'PRINTTAB(1,23);STRING$(38,CHR$128)\'" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
                     loader.write(b"VDU 30" + linesep)
                     loader.write(b'PRINT " %s"%s' % (title.encode("ascii"), linesep))
-                    loader.write(b'PRINT " ";STRING$(39,CHR$128);' + linesep)
+                    loader.write(b'PRINT " ";STRING$(38,CHR$128)' + linesep)
                     if args.subtitle is not None:
                         loader.write(b'PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
                         loader.write(b"first_loader_line=4" + linesep)
