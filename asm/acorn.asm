@@ -96,7 +96,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; I don't know if we can or should auto-detect it (there's also some unlock
 ; stuff) or if we'd have to ask the user for permission.
 
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
 bbc_romsel = $fe30
 
 !macro acorn_page_in_bank_using_a .operand {
@@ -122,7 +122,7 @@ bbc_romsel = $fe30
     sty romsel_copy
     sty bbc_romsel
 }
-} else { ; ACORN_ELECTRON
+} else { ; ACORN_ELECTRON_SWR
 electron_romsel = $fe05
 
 !macro acorn_page_in_bank_using_a .operand {
@@ -238,7 +238,7 @@ screenkernal_init
 .dir_ptr = zp_temp ; 2 bytes
 .game_blocks = zp_temp + 2 ; 2 bytes
 ; We can't always use story_start to store the catalogue sectors because on an
-; ACORN_ELECTRON build that's in sideways RAM, and we can't always use
+; ACORN_ELECTRON_SWR build that's in sideways RAM, and we can't always use
 ; scratch_double_page because second processor builds don't have it.
 !ifdef scratch_double_page {
 .catalogue = scratch_double_page
@@ -421,9 +421,7 @@ screenkernal_init
     inc .ram_blocks + 1
 +
 
-    ; SFTODO: Rename ACORN_ELECTRON to ACORN_ELECTRON_SWR? The tube build is
-    ; also for the Electron, it just doesn't need any special case code.
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
     ; We also have some blocks free between extra_vmem_start and the screen RAM.
     lda #osbyte_read_screen_address
     jsr osbyte

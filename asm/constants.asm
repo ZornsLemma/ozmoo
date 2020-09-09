@@ -358,7 +358,7 @@ vmap_max_entries = $40c ; !byte 0
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll = $40d ; !byte 0
 }
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
 screen_ram_start_minus_1 = $40e ; !byte 0
 }
 cursor_status = $40f ; !byte 0

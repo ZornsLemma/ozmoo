@@ -890,13 +890,13 @@ z_ins_restart
 !ifndef ACORN_SWR {
     !text "OZMOO2P", 13
 } else {
-    !ifndef ACORN_ELECTRON {
+    !ifndef ACORN_ELECTRON_SWR {
         !ifndef ACORN_NO_SHADOW {
             !text "OZMOOSH", 13
         } else {
             !text "OZMOOB", 13
         }
-    } else { ; ACORN_ELECTRON
+    } else { ; ACORN_ELECTRON_SWR
         !text "OZMOOE", 13
     }
 }
@@ -1716,7 +1716,7 @@ save_game
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
 !ifdef ACORN_SAVE_RESTORE_OSFIND {
     .start_ptr = zp_temp + 2 ; 2 bytes
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
     .bytes_to_read = zp_temp + 4 ; 2 bytes
 }
 }
@@ -1816,7 +1816,7 @@ save_game
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
 } else {
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
     lda story_start + header_static_mem + 1
     clc
     adc #<(stack_size + zp_bytes_to_save)
@@ -1910,8 +1910,8 @@ save_game
     !text "File exists - overwrite it? (Y/N) ", 0
 
 !ifndef ACORN_SAVE_RESTORE_OSFIND {
-!ifdef ACORN_ELECTRON {
-    !error "ACORN_ELECTRON is only compatible with ACORN_SAVE_RESTORE_OSFIND"
+!ifdef ACORN_ELECTRON_SWR {
+    !error "ACORN_ELECTRON_SWR is only compatible with ACORN_SAVE_RESTORE_OSFIND"
 }
 
 .osfile_save_load_block
@@ -1962,7 +1962,7 @@ save_game
     beq .osfile_pseudo_emulation_load
 
     ; It's a save.
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
     ; On this build the "zero page"+stack area isn't contiguous with dynamic
     ; memory, so we need to do two separate invocations of
     ; .osfile_pseudo_emulation_save_internal.
@@ -2033,7 +2033,7 @@ save_game
     jmp .osgbpb_save_loop
 
 .osgbpb_save_done
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
     jmp close_osgbpb_block_handle
 } else {
     rts
@@ -2041,7 +2041,7 @@ save_game
 
     ; It's a load.
 .osfile_pseudo_emulation_load
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
     ; On this build the "zero page"+stack area isn't contiguous with dynamic
     ; memory, so we need to do two separate invocations of
     ; .osfile_pseudo_emulation_load_internal.
@@ -2068,7 +2068,7 @@ save_game
     ; Read some data into the bounce buffer and work out how much we read; if we
     ; read nothing, it's EOF and we're done. On the Electron we read a maximum
     ; of .bytes_to_read bytes; on other builds we just read until EOF.
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
     ldx #<.chunk_size
     stx osgbpb_block_transfer_length
     ldx #>.chunk_size
@@ -2089,13 +2089,13 @@ save_game
     lda #osgbpb_read_ignoring_ptr
     jsr .osgbpb_wrapper
     sec
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
 .lda_imm_chunk_size_low
 }
     lda #<.chunk_size
     sbc osgbpb_block_transfer_length
     sta .bytes_read
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
 .lda_imm_chunk_size_high
 }
     lda #>.chunk_size
@@ -2120,7 +2120,7 @@ save_game
     ; be simplified, because we know we read .chunk_size == 0x100 bytes - we
     ; don't need to do a general subtraction or addition.
 
-!ifdef ACORN_ELECTRON {
+!ifdef ACORN_ELECTRON_SWR {
     ; Decrement .bytes_to_read
     sec
     lda .bytes_to_read
@@ -2144,7 +2144,7 @@ save_game
     bne .osgbpb_load_loop ; Always branch
 
 .osgbpb_load_done
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
     ; fall through to close_osgbpb_block_handle
 } else {
     rts

@@ -988,7 +988,7 @@ convert_index_x_to_ram_bank_and_address
     ; actual start.
     asl
     ; Carry is set
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
     adc #(>flat_ramtop)-1
 } else {
     adc screen_ram_start_minus_1

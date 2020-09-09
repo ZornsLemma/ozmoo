@@ -1164,7 +1164,7 @@ story_start
 !if (end_of_routines_in_stack_space - stack_start) > stack_size {
     !error "Routines in stack space have overflowed stack"
 }
-!ifndef ACORN_ELECTRON {
+!ifndef ACORN_ELECTRON_SWR {
 story_start = stack_start + stack_size
 } else {
 ; SFTODO: Should update memory map comment in acorn.asm with Electron layout
