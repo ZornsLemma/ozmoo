@@ -14,12 +14,15 @@
 ;
 ; The sideways RAM build (ifdef ACORN_SWR) is a bit more involved. The hardware
 ; situation here is that we have main RAM (not paged) from $0000-$7fff
-; inclusive, with up to 16 different 16K banks of "sideways" RAM paged in at
-; $8000-$bfff inclusive by writing to romsel_copy and romsel (in that order).
-; The OS is not paged and lives permanently at $c000-$ffff inclusive. The loader
-; will have located any available sideways RAM banks, verified there's at least
-; one and put the count and a list of bank numbers at ram_bank_{count,list} for
-; us. SFTODO: Acorn Electron paging is a bit different, may want to tweak this comment
+; inclusive, with user RAM starting at OSHWM/PAGE, which varies between machines
+; but will typically be in the range $e00-$1f00. Some builds hard-code a certain
+; address, others use acorn-relocate.asm to accommodate this variation. We also
+; have up to 16 different 16K banks of "sideways" RAM paged in at $8000-$bfff
+; inclusive. (The BBC series and Electron have different ways to control paging;
+; see the acorn_page_in_bank_* macros.) The OS is not paged and lives
+; permanently at $c000-$ffff inclusive. The loader will have located any
+; available sideways RAM banks, verified there's at least one and put the count
+; and a list of bank numbers at ram_bank_{count,list} for us.
 ;
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
@@ -49,6 +52,27 @@
 ; containing the Z-machine's PC paged in by default, temporarily paging it out
 ; only when reading a data byte.
 ;
+; On a second processor or BBC series machine with shadow RAM, screen RAM is
+; separate from user RAM and doesn't get in the way. On a BBC B with no shadow
+; RAM, we use a trick (see ACORN_NO_SHADOW) to relocate the 1K screen RAM to
+; $3c00, leave a gap in the Ozmoo binary to accommodate that and we can then
+; mostly forget about screen RAM. Dynamic memory starts at story_start just
+; after the Ozmoo stack (as on the C64) and is followed (with suitable paging
+; for ACORN_SWR) directly by the virtual memory cache.
+;
+; On the Electron shadow RAM is rare and we can't use the ACORN_NO_SHADOW trick
+; to get the screen memory (8K, from $6000-$8000) out of the way. Ozmoo really
+; wants dynamic memory to be contiguous, and there isn't really enough RAM free
+; between the Ozmoo stack and the screen memory to run all the games we'd like
+; to. We therefore compromise by forcing the use of the big dynamic RAM model
+; and making dynamic RAM start at $8000 instead of following the Ozmoo stack.
+; This limits us to 16K of dynamic memory, which isn't too bad (and is more than
+; we'd have free below screen RAM). We use the main RAM between the Ozmoo stack
+; and the screen RAM as additional virtual memory cache so it isn't wasted. An
+; Electron is therefore about 7K worse off than a BBC B with the same amount of
+; sideways RAM as a result of its larger screen memory, in addition to not
+; supporting games needing more than 16K of dynamic memory.
+
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
 ; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this.

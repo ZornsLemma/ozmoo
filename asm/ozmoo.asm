@@ -1149,7 +1149,7 @@ end_of_routines_in_stack_space
 
 !ifdef ACORN_RELOCATABLE {
     ; This must be the last thing in the executable.
-    !source "relocate.asm"
+    !source "acorn-relocate.asm"
 }
 
 !ifndef ACORN {
