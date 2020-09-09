@@ -673,7 +673,7 @@ screenkernal_init
     ; vmap_max_size entries.
     ;
     ; This only happens once and it's not a huge list so while we don't want it
-    ; to be really slow, compactness and simplicity of code is more important.
+    ; to be really slow, compactness and simplicity of code is also important.
     ; This is an insertion sort, implemented based on the pseudocode from
     ; https://en.m.wikipedia.org/wiki/Insertion_sort, which I've relabelled here
     ; to match the register use in the following code:
