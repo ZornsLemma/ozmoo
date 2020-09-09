@@ -150,8 +150,10 @@ vmem_block_pagecount = vmem_blocksize / 256
 vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
 !ifndef ACORN_SWR {
-; SFTODO: DOES vmap_max_size NEED TWEAKING FOR ACORN NON-SWR? NO POINT MAKING IT BIGGER THAN THE 2P CAN ACCOMMODATE
-vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+; If a game had no dynamic memory we'd have room for about 100 512-byte VM
+; blocks on the second processor. Let's say every game will have at least 6K of
+; dynamic memory, so we've got room for about 88 512-byte VM blocks.
+vmap_max_size = 88 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
 ; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
 ; too large. Not necessarily a problem, but think about it - will there be a
