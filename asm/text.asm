@@ -1122,7 +1122,6 @@ reset_cursor_blink
 }
 
 ; SFTODO +make_acorn_screen_hole
-
 read_text
     ; read line from keyboard into an array (address: a/x)
     ; See also: http://inform-fiction.org/manual/html/s2.html#p54

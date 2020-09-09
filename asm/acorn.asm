@@ -1077,7 +1077,6 @@ acorn_screen_hole_end
     }
 }
 
-; SFTODO: This may be useful in places I currently just use make_acorn_screen_hole
 !macro make_acorn_screen_hole_jmp {
 .jmp_size = 3
 .tolerance = 256

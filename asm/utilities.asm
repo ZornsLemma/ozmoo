@@ -906,11 +906,10 @@ divide16
 	rts
 }
 
-; This macro is called at strategically chosen points where it might be
+; These macros are called at strategically chosen points where it might be
 ; appropriate to insert the screen hole for ACORN_NO_SHADOW builds. To minimise
-; clutter it isn't protected by !ifndef everywhere it occurs; on all other
-; builds (including non-Acorn builds) we just define it here as a no-op.
-; it a no-op. (The ACORN_NO_SHADOW implementation is in acorn.asm.)
+; clutter they aren't protected by !ifndef everywhere they occur; on all other
+; builds (including non-Acorn builds) they are just defined here as no-ops.
 !ifndef ACORN_NO_SHADOW {
 !macro make_acorn_screen_hole {
     ; no-op
