@@ -1,3 +1,16 @@
+restart and checking for game disc:
+- you're not "supposed" to not have the game disc in (at the moment)
+- at least on DFS, if you take the game disc out except when you're told you can during a save, the game is likely to crash as DFS reads a block of game data from your non-game disc
+- in some ways restart is no different, if you have sneakily left the wrong disc in you will get a crash then too (plus this is a pretty benign crash, as you wanted to restart *anyway*)
+- I have some sympathy with the idea that a "knowldgeable" user (or just possibly we might *tell* the user if this is true) knows the game fits entirely into RAM and decides they can leave their save game disc in the drive all the time
+- but as it stands the game will currently be checking for re-insertion of the game disc after a save, thwarting their attempt to be clever
+- so I am thinking *either* we say "the game disc is meant to be in the drive except during saves" *or* we explicitly support a "you have enough RAM, you can remove the game disc after loading" feature and that disables the check for the game disc after a save
+- if we expect the game disc to be in the drive all the time except when saving, restart doesn't really need a check for the game disc to be in
+- if we sometimes allow the user to remove the game disc with our permission due to having lots of RAM, we should then do a check for the game disc on restart
+- not saying I won't do any (modest) amount of work to support "game fits entirely in RAM" case, but I don't believe anyone who's given me feedback on stardot has that much RAM - short of AQR support (which I don't have yet), you'd probably need approximately 96K of sideways RAM (because there's maybe 16K of main RAM as well) to be having a chance of this occurring, although I suppose smaller games like Calypso do make this a bit more likely. "Game fits entirely in RAM" on SWR is kind of equivalent to "no vmem needed" on tube (except you can detect the latter at build time), so whatever I do I should make those behave equivalently.
+
+
+
 Electron timing notes before and after change to allow the "wasted" main RAM to be used:
 32K sideways RAM, no main RAM used - benchmark $00beca 
 Experimental "use main RAM" code + 32K sideways RAM $00bb45 second try $00bb0f

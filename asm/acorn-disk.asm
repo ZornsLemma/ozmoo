@@ -406,15 +406,15 @@ z_ins_save
 .swap_pointers_for_save_rts
 	rts
 
-; It's faster and simpler to save/restore using OSFILE, but it can't access
+; It's faster and simpler to save/restore using OSFILE but it can't access
 ; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
-; SFTODO: This is a bit too pessimistic - since we only save precisely the
-; number of bytes in static memory, even if nonstored_blocks has overflowed into
-; sideways RAM due to rounding up to a 512-byte boundary, we can still use
-; OSFILE if the true dynamic data fits into main RAM. At the price of some
-; extra complexity and "trial" builds in the build script, we could have it
-; set ACORN_SAVE_RESTORE_OSFIND instead of tying it to ACORN_SWR_BIG_DYNMEM
-; like this.
+; SF: ENHANCEMENT: This is bit too pessimistic - since we only save precisely
+; the number of bytes in dynamic memory as specified by the game's header, even
+; if nonstored_blocks has overflowed into sideways RAM due to rounding up of
+; some kind, we can still use OSFILE if the actual dynamic memory fits into main
+; RAM. At the price of some extra complexity and trial builds in the build
+; script, we could have it set ACORN_SAVE_RESTORE_OSFIND instead of tying it to
+; ACORN_SWR_BIG_DYNMEM like this.
 !ifndef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
 }
