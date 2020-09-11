@@ -532,6 +532,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     jmp .oscli_done
 .oscli_error
     jsr osnewl
+    +make_acorn_screen_hole_jmp
 .oscli_done
     ldx #1
     jsr do_osbyte_rw_escape_key
@@ -647,6 +648,7 @@ restore_game
 .restore_game_rts
     rts
     
++make_acorn_screen_hole
 save_game
     lda #>.save_prompt
     sta .filename_prompt_loads + 1

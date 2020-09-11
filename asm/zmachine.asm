@@ -445,6 +445,7 @@ z_exe_mode_exit = $ff
 
 !zone z_execute {
 
++make_acorn_screen_hole
 .not_normal_exe_mode
 !ifdef Z4PLUS {
 !ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code.
