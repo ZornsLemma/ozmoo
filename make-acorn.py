@@ -189,7 +189,10 @@ class Executable(object):
         ozmoo_ram_blocks = (pseudo_ramtop - labels["story_start"]) / 256
         # SFTODO: Ideally these failures would result in us generating a disc which doesn't
         # support the system type we're currently patching the binary for, but which
-        # does support others.
+        # does support others. (A real example of this has now emerged: Advent.z5, Graham
+        # Nelson's re-implementation of Adventure, is too big for the Electron. You can
+        # work round this by specifying --bbc-only, but it would be nicer not to require the
+        # user to do this.)
         if nonstored_blocks > ozmoo_ram_blocks:
             die("Not enough free RAM for game's dynamic memory")
         if game_blocks > nonstored_blocks:
@@ -630,11 +633,11 @@ else:
     # This logic has been copied from make.rb.
     camel_case = re.search("[a-z]", title) and re.search("[A-Z]", title) and not re.search(" |_", title)
     if camel_case:
-        print("Q", title)
+        #print("Q", title)
         title = re.sub("([a-z])([A-Z])", r"\1 \2", title)
-        print("Q", title)
+        #print("Q", title)
         title = re.sub("A([A-Z])", r"A \1", title)
-        print("Q", title)
+        #print("Q", title)
     title = re.sub("_+", " ", title)
     title = re.sub("(^ +)|( +)$", "", title)
     # SFTODO: DO THE "REMOVE THE IF LONGER THAN" BIT - MAY WANT TO VARY THIS FOR TITLE SCRREN VS DISC TITLE
