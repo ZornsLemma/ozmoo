@@ -365,6 +365,7 @@ acme_args1 = [
     "-DSMALLBLOCK=1",
     "-DSPLASHWAIT=0",
     "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
+    "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
 ]
 acme_args2 = [
     "--format", "plain",

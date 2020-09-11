@@ -744,35 +744,21 @@ save_game
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
     ; The OSFILE block is updated after the call, so we have to reset it via code
     ; every time.
-    ldx #(.osfile_save_load_block_master_end - .osfile_save_load_block_master) - 1
+    ldx #.osfile_save_load_block_length - 1
 -   lda .osfile_save_load_block_master,x
     sta .osfile_save_load_block,x
     dex
     bpl -
-    ; SFTODO: The values we're setting in the block here are known at build time and the
-    ; build script could pass the header_static_mem value in, then we could just bake
-    ; it into .osfile_save_load_block_master.
-    lda story_start + header_static_mem + 1
-    sta .osfile_save_load_block_end_address
-    lda story_start + header_static_mem
-    clc
-    adc #>story_start
-    sta .osfile_save_load_block_end_address + 1
 } else {
     lda #<(stack_start - zp_bytes_to_save)
     sta .start_ptr
     lda #>(stack_start - zp_bytes_to_save)
     sta .start_ptr + 1
 !ifndef ACORN_ELECTRON_SWR {
-    ; SFTODO: The values we're setting in the block here are known at build time and the
-    ; build script could pass the header_static_mem value in, then we could just bake
-    ; it into a couple of lda # instructions.
-    lda story_start + header_static_mem + 1
-    clc
-    adc #<(stack_size + zp_bytes_to_save)
+.save_length = ACORN_DYNAMIC_SIZE_BYTES + stack_size + zp_bytes_to_save
+    lda #<.save_length
     sta .osgbpb_save_length
-    lda story_start + header_static_mem
-    adc #>(stack_size + zp_bytes_to_save)
+    lda #>.save_length
     sta .osgbpb_save_length + 1
 } else {
     ; On the Electron build, .osfile_pseudo_emulation sets .osgbpb_save_length.
@@ -866,17 +852,6 @@ save_game
     !text "File exists - overwrite it? (Y/N) ", 0
 
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
-.osfile_save_load_block
-    !word 0 ; filename
-    !word 0 ; load address low
-    !word 0 ; load address high
-    !word 0 ; exec address low: 0 => use specified load address (on load)
-    !word 0 ; exec address high
-    !word 0 ; start address low
-    !word 0 ; start address high
-.osfile_save_load_block_end_address
-    !word 0 ; end address low
-    !word 0 ; end address high
 .osfile_save_load_block_master
     !word .filename_buffer ; filename
     !word stack_start - zp_bytes_to_save ; load address low
@@ -885,9 +860,12 @@ save_game
     !word 0 ; exec address high
     !word stack_start - zp_bytes_to_save ; start address low
     !word 0 ; start address high
-    !word 0 ; end address low
+    !word story_start + ACORN_DYNAMIC_SIZE_BYTES ; end address low
     !word 0 ; end address high
 .osfile_save_load_block_master_end
+.osfile_save_load_block_length = .osfile_save_load_block_master_end - .osfile_save_load_block_master
+.osfile_save_load_block
+    !fill .osfile_save_load_block_length
 } else { ; !ACORN_SAVE_RESTORE_OSFILE
 .osgbpb_wrapper
     ; These values in the OSGBPB block keep getting updated, so we have to
@@ -939,9 +917,9 @@ save_game
     ; SFTODO: The values we're setting in the block here are known at build time and the
     ; build script could pass the header_static_mem value in, then we could just bake
     ; it into a couple of lda # instructions.
-    lda story_start + header_static_mem + 1
+    lda #<ACORN_DYNAMIC_SIZE_BYTES
     sta .osgbpb_save_length
-    lda story_start + header_static_mem
+    lda #>ACORN_DYNAMIC_SIZE_BYTES
     sta .osgbpb_save_length + 1
     jsr .osfile_pseudo_emulation_save_internal
     jmp close_osgbpb_block_handle
