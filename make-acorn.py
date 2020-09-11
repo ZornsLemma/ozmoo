@@ -230,7 +230,7 @@ class Executable(object):
                 block_index = (addr - nonstored_blocks) // vmem_block_pagecount
                 assert block_index >= 0
                 blocks.append(block_index)
-        # SFTODONOW: SHOULDN'T THIS RANGE START AT nonstored_blocks NOT 0??? IT SHOULD STILL HAVE vmap_max_size *ENTRIES*.
+        # SFTODONOW: SHOULDN'T THIS RANGE START AT nonstored_blocks NOT 0??? IT SHOULD STILL HAVE vmap_max_size *ENTRIES*. - NO, THINK ABOUT IT FRESH BUT THIS IS PROBABLY CORRECT - WE ADD NONSTORED_BLOCKS WHEN CALCULATING ADDR, AND WE SUBTRACT IT WHEN EXTRACING BLOCK INDEX FROM ADDR ABOVE
         for i in range(vmap_max_size):
             if i not in blocks:
                 blocks.append(i)
