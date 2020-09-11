@@ -486,6 +486,7 @@ stack_return_from_routine
 	ldy #0
 	lda (zp_temp + 2),y
 	
+    +make_acorn_screen_hole_jmp
 	; Skip past locals on stack
 	and #$0f
 	sta z_local_var_count
@@ -497,7 +498,6 @@ stack_return_from_routine
 	sec
 	sbc stack_tmp + 2
 	sta z_local_vars_ptr
-    +make_acorn_screen_hole_jmp
 	lda zp_temp + 3
 	sbc #0
 	sta z_local_vars_ptr + 1

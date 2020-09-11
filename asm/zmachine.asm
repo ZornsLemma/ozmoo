@@ -1937,6 +1937,7 @@ z_ins_set_true_colour
 }
 	rts
 
++make_acorn_screen_hole
 z_ins_random	
 	lda z_operand_value_high_arr
 	beq .random_highbyte_empty
@@ -2168,6 +2169,7 @@ sound_high_pitched_beep
     !word 1   ; duration (twentieths of a second) - C64 bleep is ~(1/20) sec
 }
 
++make_acorn_screen_hole
 !ifdef Z4PLUS {
 z_ins_scan_table
 	lda #$82

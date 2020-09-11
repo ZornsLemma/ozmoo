@@ -201,6 +201,7 @@ vmem_oldest_index	!byte 0
 vmem_swap_count !byte 0,0
 }
 
++make_acorn_screen_hole
 !ifdef DEBUG {
 !ifdef PREOPT {
 print_optimized_vm_map
@@ -501,6 +502,7 @@ load_blocks_from_index_using_cache
     rts
 }
 
++make_acorn_screen_hole
 ; SF: Note that this is allowed to corrupt X and Y.
 read_byte_at_z_address
     ; Subroutine: Read the contents of a byte address in the Z-machine
