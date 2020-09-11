@@ -37,7 +37,7 @@ ram_bank_count=&410
 ram_bank_list=&411
 max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
 filename_data=&42F
-filename_size=32
+filename_size=49
 :
 MODE 135
 VDU 23,1,0;0;0;0;

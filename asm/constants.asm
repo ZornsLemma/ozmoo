@@ -383,7 +383,7 @@ memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 ; relatively scarce. We could probably increase filename_size but it might mean
 ; some reshuffling of other data which happens to live in the resident integer
 ; variable workspace but doesn't need to.
-filename_size = 32
+filename_size = 49 ; this takes us from inside K% to end of W%
 !ifdef ACORN_ADFS {
 game_data_filename = $42f
 } else {
