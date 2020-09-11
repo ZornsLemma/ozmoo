@@ -740,19 +740,22 @@ save_game
     jsr .check_for_overwrite
     bne .save_restore_game_cleanup_full
 .not_save
-    ; The OSFILE block is updated after the call, so we have to populate these
-    ; values via code every time.
+    ; SFTODO: This code has changed and !ifdef/!ifndef blocks can be combined/made into elses
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
-    lda #<.filename_buffer
-    sta .osfile_save_load_block_filename_ptr
-    lda #>.filename_buffer
-    sta .osfile_save_load_block_filename_ptr + 1
-    .start_ptr = .osfile_save_load_block_start_address
+    ; The OSFILE block is updated after the call, so we have to reset it via code
+    ; every time.
+    ldx #(.osfile_save_load_block_master_end - .osfile_save_load_block_master) - 1
+-   lda .osfile_save_load_block_master,x
+    sta .osfile_save_load_block,x
+    dex
+    bpl -
 }
+!ifndef ACORN_SAVE_RESTORE_OSFILE {
     lda #<(stack_start - zp_bytes_to_save)
     sta .start_ptr
     lda #>(stack_start - zp_bytes_to_save)
     sta .start_ptr + 1
+}
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
     lda story_start + header_static_mem + 1
     sta .osfile_save_load_block_end_address
@@ -799,6 +802,12 @@ save_game
     jsr set_default_error_handler
     ; If we just restored we have updated z_pc and need to take that into
     ; account. This is unnecessary but harmless if we just saved.
+!ifdef ACORN_SWR {
+    ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
+    ; outdated value in mempointer_ram_bank.
+    lda #$ff
+    sta zp_pc_h
+}
 	jsr get_page_at_z_pc
 .save_restore_game_cleanup_partial
  	jsr .io_restore_output
@@ -856,18 +865,27 @@ save_game
 
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
 .osfile_save_load_block
-.osfile_save_load_block_filename_ptr
     !word 0 ; filename
-    !word stack_start - zp_bytes_to_save ; load address low
+    !word 0 ; load address low
     !word 0 ; load address high
     !word 0 ; exec address low: 0 => use specified load address (on load)
     !word 0 ; exec address high
-.osfile_save_load_block_start_address
     !word 0 ; start address low
     !word 0 ; start address high
 .osfile_save_load_block_end_address
     !word 0 ; end address low
     !word 0 ; end address high
+.osfile_save_load_block_master
+    !word .filename_buffer ; filename
+    !word stack_start - zp_bytes_to_save ; load address low
+    !word 0 ; load address high
+    !word 0 ; exec address low: 0 => use specified load address (on load)
+    !word 0 ; exec address high
+    !word stack_start - zp_bytes_to_save ; start address low
+    !word 0 ; start address high
+    !word 0 ; end address low
+    !word 0 ; end address high
+.osfile_save_load_block_master_end
 } else { ; !ACORN_SAVE_RESTORE_OSFILE
 .osgbpb_wrapper
     ; These values in the OSGBPB block keep getting updated, so we have to
