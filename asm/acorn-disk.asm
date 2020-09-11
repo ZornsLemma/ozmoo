@@ -749,14 +749,9 @@ save_game
     sta .osfile_save_load_block,x
     dex
     bpl -
-}
-!ifndef ACORN_SAVE_RESTORE_OSFILE {
-    lda #<(stack_start - zp_bytes_to_save)
-    sta .start_ptr
-    lda #>(stack_start - zp_bytes_to_save)
-    sta .start_ptr + 1
-}
-!ifdef ACORN_SAVE_RESTORE_OSFILE {
+    ; SFTODO: The values we're setting in the block here are known at build time and the
+    ; build script could pass the header_static_mem value in, then we could just bake
+    ; it into .osfile_save_load_block_master.
     lda story_start + header_static_mem + 1
     sta .osfile_save_load_block_end_address
     lda story_start + header_static_mem
@@ -764,7 +759,14 @@ save_game
     adc #>story_start
     sta .osfile_save_load_block_end_address + 1
 } else {
+    lda #<(stack_start - zp_bytes_to_save)
+    sta .start_ptr
+    lda #>(stack_start - zp_bytes_to_save)
+    sta .start_ptr + 1
 !ifndef ACORN_ELECTRON_SWR {
+    ; SFTODO: The values we're setting in the block here are known at build time and the
+    ; build script could pass the header_static_mem value in, then we could just bake
+    ; it into a couple of lda # instructions.
     lda story_start + header_static_mem + 1
     clc
     adc #<(stack_size + zp_bytes_to_save)
@@ -934,6 +936,9 @@ save_game
     sta .start_ptr
     lda #>story_start
     sta .start_ptr + 1
+    ; SFTODO: The values we're setting in the block here are known at build time and the
+    ; build script could pass the header_static_mem value in, then we could just bake
+    ; it into a couple of lda # instructions.
     lda story_start + header_static_mem + 1
     sta .osgbpb_save_length
     lda story_start + header_static_mem
