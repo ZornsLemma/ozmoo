@@ -6,6 +6,9 @@ vmem_cache_index !fill cache_pages + 1, 0
 }
 }
 
+!ifndef ACORN_SWR {
+ACORN_TUBE_CACHE = 1 ; SFTODO TEMP HACK!
+}
 !ifndef VMEM {
 ; Non-virtual memory
 
@@ -403,7 +406,30 @@ load_blocks_from_index
 }
 	; Carry is already clear
 	adc vmap_first_ram_page
-} else {
+
+; SFTODO: Maybe add some tracing for this
+!ifdef ACORN_TUBE_CACHE {
+    ; Offer the cache on the host a chance to save the block we're about to
+    ; evict from our cache, and ask it if it has the block we want before we
+    ; go to disk for it.
+    sta .osword_cache_data_ptr + 1 ; other bytes at .osword_cache_data_ptr always stay 0
+    lda vmap_z_l,x
+    sta .osword_cache_index_requested
+    lda vmap_z_h,x
+    and #vmem_highbyte_mask
+    sta .osword_cache_index_requested + 1
+    lda #$e0 ; SFTODO MAGIC NUMBER
+    ldx #<.osword_cache_block
+    ldy #>.osword_cache_block
+    jsr osword
+    lda .osword_cache_result
+    beq load_blocks_from_index_done ; Host cache has provided the block
+    ; The host cache didn't have the block we want. Restore A and X and fall
+    ; through to the following code to get it from disk.
+    lda .osword_cache_data_ptr + 1
+    ldx vmap_index
+}
+} else { ; ACORN_SWR
     ldx vmap_index
     jsr convert_index_x_to_ram_bank_and_address
 }
@@ -430,6 +456,7 @@ load_blocks_from_index
 	and #vmem_highbyte_mask
 	sta readblocks_currentblock + 1
 	jsr readblocks
+load_blocks_from_index_done ; except for any tracing
 !ifdef TRACE_VM {
     jsr print_following_string
 !ifndef ACORN {
@@ -440,6 +467,21 @@ load_blocks_from_index
     jsr print_vm_map
 }
     rts
+
+!ifdef ACORN_TUBE_CACHE {
+.osword_cache_block
+    !byte 11 ; send block length
+    !byte 11 ; receive block length
+.osword_cache_data_ptr
+    !word 0 ; data address low
+    !word 0 ; data address high
+.osword_cache_index_offered
+    !word 0 ; block index offered
+.osword_cache_index_requested
+    !word 0 ; block index requested
+.osword_cache_result
+    !byte 0 ; result
+}
 
 !ifndef ACORN {
 load_blocks_from_index_using_cache
@@ -852,6 +894,15 @@ read_byte_at_z_address
 	tax
 	lda #$80
 +	sta vmem_tick
+
+!ifdef ACORN_TUBE_CACHE {
+    ; Save the Z-address of the block we're about to evict before we overwrite it.
+    lda vmap_z_l,x
+    sta .osword_cache_index_offered
+    lda vmap_z_h,x
+    and #vmem_blockmask
+    sta .osword_cache_index_offered + 1
+}
 
 	; Store address of 512 byte block to load, then load it
 	lda zp_pc_h
