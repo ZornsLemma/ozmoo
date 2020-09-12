@@ -475,7 +475,7 @@ load_blocks_from_index_done ; except for any tracing
 .osword_cache_data_ptr
     !word 0 ; data address low
     !word 0 ; data address high
-.osword_cache_index_offered
+osword_cache_index_offered
     !word 0 ; block index offered
 .osword_cache_index_requested
     !word 0 ; block index requested
@@ -898,10 +898,10 @@ read_byte_at_z_address
 !ifdef ACORN_TUBE_CACHE {
     ; Save the Z-address of the block we're about to evict before we overwrite it.
     lda vmap_z_l,x
-    sta .osword_cache_index_offered
+    sta osword_cache_index_offered
     lda vmap_z_h,x
     and #vmem_blockmask
-    sta .osword_cache_index_offered + 1
+    sta osword_cache_index_offered + 1
 }
 
 	; Store address of 512 byte block to load, then load it

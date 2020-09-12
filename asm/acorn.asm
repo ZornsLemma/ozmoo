@@ -756,6 +756,11 @@ screenkernal_init
     ; load_suggested_pages subroutine.)
     lda #0
     sta vmap_index
+!ifdef ACORN_TUBE_CACHE {
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
+}
 -   jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
