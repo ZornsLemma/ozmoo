@@ -611,11 +611,11 @@ screenkernal_init
     stx vmap_max_entries
 }
 
-    ; Load the nonstored blocks. We don't need to worry about reading past the
-    ; end of the game data here, because at worst we will read a final 512-byte
-    ; block when we don't have a full block and that's fine. In reality there
-    ; will always be a big chunk of non-dynamic memory following the nonstored
-    ; blocks anyway.
+    ; Load the nonstored blocks, or all the blocks if we're not using virtual
+    ; memory. We don't need to worry about reading past the end of the game data
+    ; here, because at worst we will read a final 512-byte block when we don't
+    ; have a full block and that's fine. In reality there will always be a big
+    ; chunk of non-dynamic memory following the nonstored blocks anyway.
 .blocks_to_read = zp_temp + 4 ; 1 byte
     lda #2
     sta readblocks_numblocks
@@ -625,7 +625,11 @@ screenkernal_init
     sta readblocks_mempos ; story_start is page-aligned
     lda #>story_start
     sta readblocks_mempos + 1
+!ifdef VMEM {
     lda nonstored_blocks
+} else {
+    lda .game_blocks
+}
     sta .blocks_to_read
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
