@@ -47,6 +47,7 @@ Testing checklist:
 - single vs double-sided
 - all four executables
 - Python 2 vs Python 3
+- small non-VMEM games on second processor as well as large VMEM games
 
 Benchmarking:
 - THIS IS BIGDYN BECAUSE NOT TAKEN ANY STEPS TO AVOID IT
