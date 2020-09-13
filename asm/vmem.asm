@@ -900,7 +900,7 @@ read_byte_at_z_address
     lda vmap_z_l,x
     sta osword_cache_index_offered
     lda vmap_z_h,x
-    and #vmem_blockmask
+    and #vmem_highbyte_mask
     sta osword_cache_index_offered + 1
 }
 
