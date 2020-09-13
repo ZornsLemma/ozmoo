@@ -1,3 +1,8 @@
+Timings with initial crude tube host cache prototype:
+- with &2B blocks of host cache, b-em, mode 7, 3MHz copro, Master 128 host, drive noises on $003131
+- with non-caching code (current acorn-wip branch, as released to stardot) $003f25
+
+
 restart and checking for game disc:
 - you're not "supposed" to not have the game disc in (at the moment)
 - at least on DFS, if you take the game disc out except when you're told you can during a save, the game is likely to crash as DFS reads a block of game data from your non-game disc
