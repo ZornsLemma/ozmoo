@@ -222,8 +222,12 @@ class Executable(object):
             with open(args.preload_config, "rb") as f:
                 preload_config = bytearray(f.read())
             for i in range(len(preload_config) // 2):
-                # We don't care about the age on the entries in preload_config; they are in
-                # order of insertion and that's equivalent.
+                # We don't care about the timestamp on the entries in preload_config; they are in
+                # order of insertion and that's what we're really interested in. (This isn't
+                # the *same* as the order based on timestamp; a block loaded early may of course
+                # be used again later and therefore have a newer timestamp than another block
+                # loaded after it but never used again.)
+                #SFTODOAGE = preload_config[i*2] & ~vmem_highbyte_mask
                 addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
                 if addr & 1 == 1:
                     # This is an odd address so it's invalid; we expect to see one of these
