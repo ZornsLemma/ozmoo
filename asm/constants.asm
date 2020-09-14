@@ -261,6 +261,7 @@ osbyte_read_key = $81
 osbyte_read_screen_address = $84
 osbyte_read_cursor_position = $86
 osbyte_read_screen_mode = $87
+osbyte_initialise_cache = $88 ; "USERV" osbyte/*CODE
 osbyte_enter_language = $8e
 osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5

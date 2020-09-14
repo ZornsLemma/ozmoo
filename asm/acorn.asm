@@ -411,7 +411,23 @@ screenkernal_init
     bne -
     sta .ram_blocks
 } else {
+!ifndef ACORN_TUBE_CACHE {
     sta .ram_blocks
+} else {
+    ; We have some blocks of cache in the host, which aren't directly accessible
+    ; but are almost as good as our own RAM and which will benefit from
+    ; preloading.
+    lda screen_mode
+    ora #128 ; force shadow mode on
+    tax
+    lda #osbyte_initialise_cache
+    jsr osbyte
+    ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
+    txa
+    asl
+    rol .ram_blocks + 1
+    sta .ram_blocks
+}
 }
 
     ; We also have some blocks between flat_ramtop and story_start.
@@ -484,6 +500,7 @@ screenkernal_init
 !ifdef VMEM {
 !ifndef ACORN_SWR {
     clc
+    ; SFTODO: WE CAN POSS JUST WRITE LDA #ACORN_INITIAL_NONSTORED_BLOCKS+>STORY_START WITHOUT BREAKING RELOCATION CODE
     lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE NOW
     adc #>story_start
     sta vmap_first_ram_page
@@ -600,12 +617,17 @@ screenkernal_init
 
     ; At this point, .ram_blocks is the number of RAM blocks we have to use as
     ; backing RAM for the virtual memory subsystem, because we've subtracted
-    ; off nonstored_blocks.
+    ; off nonstored_blocks. (If we're in the ACORN_TUBE_CACHE case, we don't
+    ; exactly have that number of RAM blocks, but it's convenient to pretend
+    ; we do. vmap_max_entries is fixed up later after we've used the inflated
+    ; value to do the preload.)
     ldx #vmap_max_size
     lda .ram_blocks
     lsr .ram_blocks + 1
     bne .cap_at_vmap_max_size
     ror
+    cmp #vmap_max_size
+    bcs .cap_at_vmap_max_size
     tax
 .cap_at_vmap_max_size
     stx vmap_max_entries
@@ -757,9 +779,24 @@ screenkernal_init
     lda #0
     sta vmap_index
 !ifdef ACORN_TUBE_CACHE {
+    ; We're not offering any pages to the cache when load_blocks_from_index
+    ; calls it in the following loop.
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
+    ; vmap_max_entries was deliberately artificially high up to this point
+    ; so we'd retain and sort more of the initial vmap. We will load those
+    ; blocks into the cache later; for now we need to set vmap_max_entries
+    ; to reflect the actual RAM on hand for virtual memory.
+inflated_vmap_max_entries = zp_temp
+SFTODOXXX
+    lda vmap_max_entries
+    sta inflated_vmap_max_entries
+    sec
+    lda #>flat_ramtop
+    sbc vmap_first_ram_page
+    lsr
+    sta vmap_max_entries
 }
 -   jsr load_blocks_from_index
     inc vmap_index
@@ -771,6 +808,40 @@ screenkernal_init
     ; The load loop will have left the last bank of sideways RAM paged in; we
     ; need to page the default bank back in.
     +acorn_swr_page_in_default_bank_using_y
+}
+
+!ifdef ACORN_TUBE_CACHE {
+    ; Populate the host cache with as many of the remaining blocks in vmap as will
+    ; fit. (It's possible the host cache will still have some free space left, if
+    ; it's very large, but we don't go out of our way to preload extra blocks in
+    ; that case. The free host cache will still be used for any blocks read during
+    ; gameplay.) We do this by repeatedly offering the last entry in the vmap to the host
+    ; cache and updating that vmap entry to refer to the block we want to load. This will mean the last vmap entry is in the host cache instead of our local memory and the last block we load will be in our local memory instead of in the host cache, so we're slightly breaching the order of priority expressed by the initial vmap, but this isn't a big deal in practice.
+    ; This loop allows for the possibility the host cache has no blocks at all,
+    ; and therefore we may not want to execute the loop body at all. SFTODO: TEST!
+working_index = zp_temp + 1
+    ; A == vmap_max_entries == vmap_index
+    sta working_index
+    dec vmap_index ; set vmap_index = vmap_max_entries - 1, i.e. last entry
+-   lda working_index
+    cmp inflated_vmap_max_entries
+    bcs .tube_cache_populated
+    ; SFTODO: Annoying duplication of code in vmem.asm
+    ldy vmap_index
+    lda vmap_z_l,y
+    sta osword_cache_index_offered
+    lda vmap_z_h,y
+    and #vmem_highbyte_mask
+    sta osword_cache_index_offered + 1
+    ldx working_index
+    lda vmap_z_l,x
+    sta vmap_z_l,y
+    lda vmap_z_h,x
+    sta vmap_z_h,y
+    jsr load_blocks_from_index
+    inc working_index
+    jmp -
+.tube_cache_populated
 }
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
