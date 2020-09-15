@@ -422,6 +422,9 @@ screenkernal_init
     tax
     lda #osbyte_initialise_cache
     jsr osbyte
+!if 1 {
+    dex ; SFTODO SEMI-TEMP HACK, TO SEE IF IT FIXES THE "SPURIOUS DISK ACCESS DURING SUPPOSEDLY PREOPTED PART" ISSUE, AS I SUSPECT IT WILL - YES, IT DOES - WANT TO THINK ABOUT ALL THE VARIOUS SFTODOS IN THIS AREA, I MAY WELL RETAIN THIS(WITH A PERM COMMENT OF COURSE)
+}
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
@@ -620,7 +623,7 @@ screenkernal_init
     ; off nonstored_blocks. (If we're in the ACORN_TUBE_CACHE case, we don't
     ; exactly have that number of RAM blocks, but it's convenient to pretend
     ; we do. vmap_max_entries is fixed up later after we've used the inflated
-    ; value to do the preload.)
+    ; value to do the preload sort.)
     ldx #vmap_max_size
     lda .ram_blocks
     lsr .ram_blocks + 1
@@ -734,6 +737,10 @@ screenkernal_init
     ; list - as will happen if the preopt mode has not been used - it takes
     ; about 0.02 seconds to "sort" 255 entries, so there's no significant
     ; performance penalty when this is not doing anything useful.
+    ; (We could simply not include this code if we don't have any preopt data,
+    ; but it's discardable init code so it's not really harmful and it seems
+    ; best for support purposes to keep the code identical whether or not preopt
+    ; data is supplied or not.)
     ldx #1
 .outer_loop
     lda vmap_z_l,x
@@ -828,6 +835,10 @@ working_index = zp_temp + 1
     ; A == vmap_max_entries == vmap_index
     sta working_index
     dec vmap_index ; set vmap_index = vmap_max_entries - 1, i.e. last entry
+!if 0 { ; SFTODO DOING THIS SEEMS TO ADD AN EXTRA "SPURIOUS" DISC ACCESS DURING INITIAL CACHED BIT - AH, BUT WE HADN'T ADJUSTED BEFORE WE DID THE SORT
+    dec inflated_vmap_max_entries ; SFTODO TEMP HACK
+    dec inflated_vmap_max_entries ; SFTODO TEMP HACK
+}
 -   lda working_index
     cmp inflated_vmap_max_entries
     bcs .tube_cache_populated
