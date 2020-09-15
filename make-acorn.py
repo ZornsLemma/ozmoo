@@ -213,8 +213,8 @@ class Executable(object):
         if vmap_length & 1 != 0:
             vmap_length -= 1
         assert vmap_length >= vmap_max_size * 2
-        min_age = vmem_highbyte_mask + 1
-        max_age = 0xff & ~vmem_highbyte_mask
+        min_timestamp = 0
+        max_timestamp = 0xe0 # initial tick value
         blocks = []
         # SFTODO: We will do this work for every single executable; it's not in practice a
         # big deal but it's a bit inelegant.
@@ -226,12 +226,9 @@ class Executable(object):
                 # order of insertion and that's what we're really interested in. (This isn't
                 # the *same* as the order based on timestamp; a block loaded early may of course
                 # be used again later and therefore have a newer timestamp than another block
-                # loaded after it but never used again.)
-                # SFTODO: *But* the runtime vmap we generate will destroy this order by sorting
-                # based on block number, and only the timestamp will remain - should we regenerate
-                # the timestamps to reflect the order in preload_config, so the runtime sort
-                # preserves that order?
-                #SFTODOAGE = preload_config[i*2] & ~vmem_highbyte_mask
+                # loaded after it but never used again.) Note that just as when we don't use
+                # preload_config, the initial vmap entries will be assigned timestamps based
+                # on their order; the timestamp in preload_config are ignored.
                 addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
                 if addr & 1 == 1:
                     # This is an odd address so it's invalid; we expect to see one of these
@@ -255,7 +252,7 @@ class Executable(object):
         # is odd so it won't ever match when the virtual memory code is searching the map.
         invalid_address = 0x1
         for i, block_index in enumerate(blocks):
-            age = int(max_age + ((float(i) / vmap_max_size) * (min_age - max_age))) & ~vmem_highbyte_mask
+            timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
             if args.preload_opt:
                 # Most of the vmap will be ignored, but we have to have at least one entry
                 # and by making it an invalid address we don't need to worry about loading
@@ -270,7 +267,7 @@ class Executable(object):
                 # SFTODO: Warn? It's harmless but it means we could have clawed back a few
                 # bytes by shrinking vmap_max_size.
                 addr = 0
-            vmap_entry = (age << 8) | addr
+            vmap_entry = (timestamp << 8) | addr
             binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
             binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
         return binary
