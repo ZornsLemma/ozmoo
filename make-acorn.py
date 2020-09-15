@@ -227,6 +227,10 @@ class Executable(object):
                 # the *same* as the order based on timestamp; a block loaded early may of course
                 # be used again later and therefore have a newer timestamp than another block
                 # loaded after it but never used again.)
+                # SFTODO: *But* the runtime vmap we generate will destroy this order by sorting
+                # based on block number, and only the timestamp will remain - should we regenerate
+                # the timestamps to reflect the order in preload_config, so the runtime sort
+                # preserves that order?
                 #SFTODOAGE = preload_config[i*2] & ~vmem_highbyte_mask
                 addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
                 if addr & 1 == 1:

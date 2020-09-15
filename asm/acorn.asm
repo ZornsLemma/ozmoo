@@ -826,7 +826,7 @@ SFTODOXXX
     ; cache and updating that vmap entry to refer to the block we want to load. This will mean the last vmap entry is in the host cache instead of our local memory and the last block we load will be in our local memory instead of in the host cache, so we're slightly breaching the order of priority expressed by the initial vmap, but this isn't a big deal in practice.
     ; This loop allows for the possibility the host cache has no blocks at all,
     ; and therefore we may not want to execute the loop body at all. SFTODO: TEST!
-    ; SFTODO: THERE IS A WEIRD ONE-oFF DISC ACCESS DURING PREOPT-ED BENCHMARK WHICH ISN'T TERRIBLE BUT FEELS WRONG
+    ; SFTODO: THERE IS A WEIRD ONE-oFF DISC ACCESS DURING PREOPT-ED BENCHMARK WHICH ISN'T TERRIBLE BUT FEELS WRONG - OK, HAVE FIGURED THAT OUT NOW, BUT STILL DECIDING WHAT TWEAKS I MAY WANT TO MAKE RE SEQUENCING AND TIMESTAMPS HERE
     ; SFTODO: NOTE THAT DOING THIS WILL MEAN THE "HIGHER" PRIORITY BLOCKS WE LOAD FIRST WILL
     ; HAVE *OLDER* TIMESTAMPS IN THE HOST CACHE. UNLESS I WANT TO GO AND LOAD THEM IN
     ; REVERSE I AM NOT SURE THERE IS THAT MUICH I CAN DO ABOUT THIS. IT'S NOT A HUGE DEAL
@@ -835,10 +835,6 @@ working_index = zp_temp + 1
     ; A == vmap_max_entries == vmap_index
     sta working_index
     dec vmap_index ; set vmap_index = vmap_max_entries - 1, i.e. last entry
-!if 0 { ; SFTODO DOING THIS SEEMS TO ADD AN EXTRA "SPURIOUS" DISC ACCESS DURING INITIAL CACHED BIT - AH, BUT WE HADN'T ADJUSTED BEFORE WE DID THE SORT
-    dec inflated_vmap_max_entries ; SFTODO TEMP HACK
-    dec inflated_vmap_max_entries ; SFTODO TEMP HACK
-}
 -   lda working_index
     cmp inflated_vmap_max_entries
     bcs .tube_cache_populated
