@@ -478,17 +478,19 @@ load_blocks_from_index_done ; except for any tracing
 
 !ifdef ACORN_TUBE_CACHE {
 .osword_cache_block
-    !byte 11 ; send block length
-    !byte 11 ; receive block length
+    !byte 12  ; send block length
+    !byte 12  ; receive block length
 .osword_cache_data_ptr
-    !word 0 ; data address low
-    !word 0 ; data address high
+    !word 0   ; data address low
+    !word 0   ; data address high
 osword_cache_index_offered
-    !word 0 ; block index offered
+    !word 0   ; block index offered
+osword_cache_index_offered_timestamp_hint
+    !byte $ff ; block offered timestamp hint
 .osword_cache_index_requested
-    !word 0 ; block index requested
+    !word 0   ; block index requested
 .osword_cache_result
-    !byte 0 ; result
+    !byte 0   ; result
 }
 
 !ifndef ACORN {
