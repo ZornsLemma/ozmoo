@@ -420,21 +420,23 @@ load_blocks_from_index
     ; Offer the cache on the host a chance to save the block we're about to
     ; evict from our cache, and ask it if it has the block we want before we
     ; go to disk for it.
-    sta .osword_cache_data_ptr + 1 ; other bytes at .osword_cache_data_ptr always stay 0
+    sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0
+    lda #$ff ; no timestamp hint SFTODO: USE NAMED CONSTANT?
+    sta osword_cache_index_offered_timestamp_hint
     lda vmap_z_l,x
-    sta .osword_cache_index_requested
+    sta osword_cache_index_requested
     lda vmap_z_h,x
     and #vmem_highbyte_mask
-    sta .osword_cache_index_requested + 1
+    sta osword_cache_index_requested + 1
     lda #$e0 ; SFTODO MAGIC NUMBER
-    ldx #<.osword_cache_block
-    ldy #>.osword_cache_block
+    ldx #<osword_cache_block
+    ldy #>osword_cache_block
     jsr osword
-    lda .osword_cache_result
+    lda osword_cache_result
     beq load_blocks_from_index_done ; Host cache has provided the block
     ; The host cache didn't have the block we want. Restore A and X and fall
     ; through to the following code to get it from disk.
-    lda .osword_cache_data_ptr + 1
+    lda osword_cache_data_ptr + 1
     ldx vmap_index
 }
 } else { ; ACORN_SWR
@@ -477,20 +479,20 @@ load_blocks_from_index_done ; except for any tracing
     rts
 
 !ifdef ACORN_TUBE_CACHE {
-.osword_cache_block
-    !byte 12  ; send block length
-    !byte 12  ; receive block length
-.osword_cache_data_ptr
-    !word 0   ; data address low
-    !word 0   ; data address high
+osword_cache_block
+    !byte 12 ; send block length
+    !byte 12 ; receive block length
+osword_cache_data_ptr
+    !word 0  ; data address low
+    !word 0  ; data address high
 osword_cache_index_offered
-    !word 0   ; block index offered
+    !word 0  ; block index offered
 osword_cache_index_offered_timestamp_hint
-    !byte $ff ; block offered timestamp hint
-.osword_cache_index_requested
-    !word 0   ; block index requested
-.osword_cache_result
-    !byte 0   ; result
+    !byte 0  ; block offered timestamp hint
+osword_cache_index_requested
+    !word 0  ; block index requested
+osword_cache_result
+    !byte 0  ; result
 }
 
 !ifndef ACORN {

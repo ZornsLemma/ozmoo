@@ -783,19 +783,18 @@ screenkernal_init
     ; Now we've sorted vmap, load the corresponding blocks into memory and
     ; initialise vmap_used_entries. (This roughly corresponds to the C64
     ; load_suggested_pages subroutine.)
-    lda #0
-    sta vmap_index
+
 !ifdef ACORN_TUBE_CACHE {
-    ; We're not offering any pages to the cache when load_blocks_from_index
-    ; calls it in the following loop.
-    lda #$ff
-    sta osword_cache_index_offered
-    sta osword_cache_index_offered + 1
-    ; vmap_max_entries was deliberately artificially high up to this point
-    ; so we'd retain and sort more of the initial vmap. We will load those
-    ; blocks into the cache later; for now we need to set vmap_max_entries
-    ; to reflect the actual RAM on hand for virtual memory.
+    ; vmap_max_entries was deliberately artificially high up to this point so
+    ; we'd retain and sort more of the initial vmap. We need to reset
+    ; vmap_max_entries to the correct value and load the extra blocks into the
+    ; host cache. (It's possible the host cache will still have some free space
+    ; left, if it's very large, but we don't go out of our way to preload extra
+    ; blocks in that case. The free host cache will still be used for any more
+    ; blocks read during gameplay.)
 inflated_vmap_max_entries = zp_temp
+working_index = zp_temp + 1
+load_scratch_space = flat_ramtop - 512
 SFTODOXXX
     lda vmap_max_entries
     sta inflated_vmap_max_entries
@@ -804,7 +803,74 @@ SFTODOXXX
     sbc vmap_first_ram_page
     lsr
     sta vmap_max_entries
+
+    ; SFTODO: Unfortunately this will cause the disk head to move *past* the
+    ; first vmap_max_entries blocks and it will then have to move back to them
+    ; when we use load_blocks_from_index to load them below. This isn't a big
+    ; deal but it's annoying as everything else is arranged so all the initial
+    ; drive head movements are monotonic. We could load the earlier blocks
+    ; into the host cache and use the local memory for the later blocks, but
+    ; that would mean shuffling entries down in vmap and that's extra code for
+    ; no real benefit. We can't load these blocks after the load_blocks_from_index
+    ; loop below, because we'd need a 512 byte buffer to use with readblocks and
+    ; once we've loaded the vmap entries proper we just don't have that much free.
+    ; SFTODO: I suppose we could sort into descending order, iterate in reverse
+    ; in both of these lists, then we would have monotonic drive head movement.
+    ; Maybe. I'm not sure right now, maybe this would be completely wrong.
+    sta working_index
+    lda #>load_scratch_space
+    sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0
+    lda #0
+    sta readblocks_mempos
+    ; Request block 0 from the cache, which we know will never succeed.
+    sta osword_cache_index_requested
+    sta osword_cache_index_requested + 1
+    lda #vmem_block_pagecount
+    sta readblocks_numblocks
+    ; This loop allows for the possibility the host cache has no blocks at all,
+    ; and therefore we may not want to execute the loop body at all. SFTODO: TEST!
+host_cache_load_loop
+    ldx working_index
+    cpx inflated_vmap_max_entries
+    beq host_cache_load_loop_done
+    lda #>load_scratch_space
+    sta readblocks_mempos + 1
+    lda vmap_z_l,x
+    sta readblocks_currentblock
+    sta osword_cache_index_offered
+    lda vmap_z_h,x
+    and #vmem_highbyte_mask
+    sta readblocks_currentblock + 1
+    sta osword_cache_index_offered + 1
+    lda vmap_z_h,x
+    and #$ff xor vmem_highbyte_mask
+    ; Shift the timestamp down into the low bits to preserve maximum resolution
+    ; in the host cache.
+    !set mask = vmem_highbyte_mask
+    !do while mask <> 0 {
+        lsr
+        !set mask = mask >> 1
+    }
+    sta osword_cache_index_offered_timestamp_hint
+    jsr readblocks
+    lda #$e0 ; SFTODO MAGIC NUMBER
+    ldx #<osword_cache_block
+    ldy #>osword_cache_block
+    jsr osword
+    inc working_index
+    jmp host_cache_load_loop ; SFTODO: CAN PROB USE BNE
+host_cache_load_loop_done
+
+    ; We are not offering any blocks to the cache in the following loop when
+    ; load_blocks_from_index calls the cache OSWORD.
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
 }
+
+    ; Load the regular blocks in vmap.
+    lda #0
+    sta vmap_index
 -   jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
@@ -812,50 +878,9 @@ SFTODOXXX
     bne -
     sta vmap_used_entries
 !ifdef ACORN_SWR {
-    ; The load loop will have left the last bank of sideways RAM paged in; we
+    ; The load loop may have left the last bank of sideways RAM paged in; we
     ; need to page the default bank back in.
     +acorn_swr_page_in_default_bank_using_y
-}
-
-!ifdef ACORN_TUBE_CACHE {
-    ; Populate the host cache with as many of the remaining blocks in vmap as will
-    ; fit. (It's possible the host cache will still have some free space left, if
-    ; it's very large, but we don't go out of our way to preload extra blocks in
-    ; that case. The free host cache will still be used for any blocks read during
-    ; gameplay.) We do this by repeatedly offering the last entry in the vmap to the host
-    ; cache and updating that vmap entry to refer to the block we want to load. This will mean the last vmap entry is in the host cache instead of our local memory and the last block we load will be in our local memory instead of in the host cache, so we're slightly breaching the order of priority expressed by the initial vmap, but this isn't a big deal in practice.
-    ; This loop allows for the possibility the host cache has no blocks at all,
-    ; and therefore we may not want to execute the loop body at all. SFTODO: TEST!
-    ; SFTODO: THERE IS A WEIRD ONE-oFF DISC ACCESS DURING PREOPT-ED BENCHMARK WHICH ISN'T TERRIBLE BUT FEELS WRONG - OK, HAVE FIGURED THAT OUT NOW, BUT STILL DECIDING WHAT TWEAKS I MAY WANT TO MAKE RE SEQUENCING AND TIMESTAMPS HERE
-    ; SFTODO: NOTE THAT DOING THIS WILL MEAN THE "HIGHER" PRIORITY BLOCKS WE LOAD FIRST WILL
-    ; HAVE *OLDER* TIMESTAMPS IN THE HOST CACHE. UNLESS I WANT TO GO AND LOAD THEM IN
-    ; REVERSE I AM NOT SURE THERE IS THAT MUICH I CAN DO ABOUT THIS. IT'S NOT A HUGE DEAL
-    ; BUT NOT IDEAL.
-    ; SFTODO: WHAT WOULD BE "IDEAL" WOULD BE FOR US TO LOAD THE HOST CACHE *BEFORE* THE LOCAL CACHE - THAT WAY WE COULD USE RAM AT STORY_START AS A TEMP BUFFER AND AVOID THE ORDER-CONTAMINATING STUFF THIS INVOLVES - AND TO DO THE LOAD IN REVERSE ORDER (WHICH WOULD MEAN AN EXTRA HEAD SEEK, BUT WE WOULD THEN BE SEEKING BACKWARDS IN AN EFFICIENT ORDER, WELL, ASSUMING THE FACT WE'RE READING THE SECTORS IN REVERSE ORDER DOESN'T HURT) BECAUSE THE FIRST BLOCK WE HAND OVER TO THE HOST CACHE WILL END UP WITH THE OLDEST TIMESTAMP ON, AND WE WANT THE EARLIER BLOCKS IN THE VMAP LIST TO HAVE MORE RECENT TIMESTAMPS ON - OR (THOUGH IT FEELS SOMEHOW OTT) WE COULD DO THE LOAD IN ASCENDING ORDER AND INVOKE (PROB VIA OUR OSBYTE CALL WITH Y!=0 OR SOMETHING) A "FLIP THE TIMESTAMPS" OPERATION ON THE HOST CACHE TO RECTIFY THIS - OR OF COURSE WE COULD JUST NOT WORRY ABOUT IT
-    ; SFTODO *AH* ACTUALLY IT'S MORE COMPLEX THAN THAT, BECAUSE THE SORT IS ON BLOCK ADDRESS, BUT THE VMAP ENTRIES HAVE A TIMESTAMP WHICH ACTUALLY REFLECTS THEIR TRUE ORDERING - I MAY WANT TO TWEAK HOW THAT TIMESTAMP IS PROVIDED, BUT THE POINT IS THAT IT IS THERE - BUT THAT TIMESTAMP IS LOST WHEN WE POPULATE THE HOST CACHE (AND THIS IS TRUE WHETHER WE LOAD IN ORDER OR REVERSE ORDER OR WHATEVER) - WE *COULD* SIMPLY IGNORE THIS ISSUE - SINCE WE NEED TO DO THE LOADS IN BLOCK ORDER FOR EFFICIENCY I DON'T THINK WE CAN PASS THEM THROUGH TO HOST CACHE IN THE "RIGHT" ORDER (HOST CACHE MAY BE VASTLY LARGER THAN THE RAM WE HAVE LOCALLY, EVEN BEFORE WE LOAD ANY DATA INTO OUR LOCAL RAM) - SO I THINK WE EITHER IGNORE IT OR WE PASS SOME KIND OF TIMESTAMP HINT OVER IN THE CACHE OSWORD CALL - THOUGH WE WOULD NEED TO BE ABLE TO INDICATE "NO TIMESTAMP HINT" AND USE THAT DURING NORMAL GAMEPLAY, SINCE TIMESTAMP HINTS ONLY MAKE SENSE DURING INITIAL LOAD
-working_index = zp_temp + 1
-    ; A == vmap_max_entries == vmap_index
-    sta working_index
-    dec vmap_index ; set vmap_index = vmap_max_entries - 1, i.e. last entry
--   lda working_index
-    cmp inflated_vmap_max_entries
-    bcs .tube_cache_populated
-    ; SFTODO: Annoying duplication of code in vmem.asm
-    ldy vmap_index
-    lda vmap_z_l,y
-    sta osword_cache_index_offered
-    lda vmap_z_h,y
-    and #vmem_highbyte_mask
-    sta osword_cache_index_offered + 1
-    ldx working_index
-    lda vmap_z_l,x
-    sta vmap_z_l,y
-    lda vmap_z_h,x
-    sta vmap_z_h,y
-    jsr load_blocks_from_index
-    inc working_index
-    jmp -
-.tube_cache_populated
 }
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
