@@ -421,14 +421,14 @@ load_blocks_from_index
     ; evict from our cache, and ask it if it has the block we want before we
     ; go to disk for it.
     sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0
-    lda #$ff ; no timestamp hint SFTODO: USE NAMED CONSTANT?
+    lda #osword_cache_no_timestamp_hint
     sta osword_cache_index_offered_timestamp_hint
     lda vmap_z_l,x
     sta osword_cache_index_requested
     lda vmap_z_h,x
     and #vmem_highbyte_mask
     sta osword_cache_index_requested + 1
-    lda #$e0 ; SFTODO MAGIC NUMBER
+    lda #osword_cache_op
     ldx #<osword_cache_block
     ldy #>osword_cache_block
     jsr osword

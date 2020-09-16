@@ -416,15 +416,13 @@ screenkernal_init
 } else {
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
-    ; preloading.
+    ; preloading. We count them for now so we process more of the initial vmap and
+    ; fix up the inflated value of vmap_max_entries later.
     lda screen_mode
     ora #128 ; force shadow mode on
     tax
     lda #osbyte_initialise_cache
     jsr osbyte
-!if 1 {
-    dex ; SFTODO SEMI-TEMP HACK, TO SEE IF IT FIXES THE "SPURIOUS DISK ACCESS DURING SUPPOSEDLY PREOPTED PART" ISSUE, AS I SUSPECT IT WILL - YES, IT DOES - WANT TO THINK ABOUT ALL THE VARIOUS SFTODOS IN THIS AREA, I MAY WELL RETAIN THIS(WITH A PERM COMMENT OF COURSE)
-}
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
@@ -703,7 +701,7 @@ screenkernal_init
 
 !ifdef VMEM {
 !ifndef PREOPT {
-    ; Sort vmap into ascending order, preserving the ages but using just the
+    ; Sort vmap into ascending order, preserving the timestamps but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
     ; initial load. The build system can't do this sort, because we're sorting
     ; the truncated list with just vmap_max_entries not the full list of
@@ -798,6 +796,7 @@ load_scratch_space = flat_ramtop - 512
 SFTODOXXX
     lda vmap_max_entries
     sta inflated_vmap_max_entries
+    ; SFTODONOW: COULD THIS CALCULATE A TOO-HIGH VALUE OF VMAP MAX ENTRIES IF GAME IS SMALLER THAN VMAP_MAX_ENTRIES?
     sec
     lda #>flat_ramtop
     sbc vmap_first_ram_page
@@ -842,6 +841,9 @@ host_cache_load_loop
     and #vmem_highbyte_mask
     sta readblocks_currentblock + 1
     sta osword_cache_index_offered + 1
+    ; Because we're initialising the host cache here and the order the blocks are
+    ; being handed to it reflects sequence on disk rather than time, we pass the
+    ; vmap timestamp down to the host cache.
     lda vmap_z_h,x
     and #$ff xor vmem_highbyte_mask
     ; Shift the timestamp down into the low bits to preserve maximum resolution
@@ -853,16 +855,16 @@ host_cache_load_loop
     }
     sta osword_cache_index_offered_timestamp_hint
     jsr readblocks
-    lda #$e0 ; SFTODO MAGIC NUMBER
+    lda #osword_cache_op
     ldx #<osword_cache_block
     ldy #>osword_cache_block
     jsr osword
     inc working_index
-    jmp host_cache_load_loop ; SFTODO: CAN PROB USE BNE
+    bne host_cache_load_loop ; Always branch
 host_cache_load_loop_done
 
     ; We are not offering any blocks to the cache in the following loop when
-    ; load_blocks_from_index calls the cache OSWORD.
+    ; load_blocks_from_index calls osword_cache_op.
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
