@@ -782,6 +782,18 @@ screenkernal_init
     ; load_suggested_pages subroutine.)
 
 !ifdef ACORN_TUBE_CACHE {
+    ; Note that we make no attempt at all to put the "high priority" (most
+    ; recent timestamp, once they've been massaged by the build system)
+    ; preopt-identified blocks in the local RAM and the older ones in the host
+    ; cache. The sort above was done solely based on the disk block number, so
+    ; position in vmap has no relationship to priority. This isn't really a
+    ; problem, because moving blocks back and forth between the local RAM and
+    ; the host cache is pretty quick. It's not as if the preopt is gospel
+    ; either; in practice a user may do *similar* things to the preopt run, but
+    ; we won't be using the blocks in exactly the same order (e.g. suppose the
+    ; preopt did "examine a" then "examine b", but the user does those same
+    ; things in the opposite order).
+
     ; vmap_max_entries was deliberately artificially high up to this point so
     ; we'd retain and sort more of the initial vmap. We need to reset
     ; vmap_max_entries to the correct value and load the extra blocks into the
@@ -791,8 +803,7 @@ screenkernal_init
     ; blocks read during gameplay.)
 inflated_vmap_max_entries = zp_temp
 working_index = zp_temp + 1
-load_scratch_space = flat_ramtop - 512
-SFTODOXXX
+load_scratch_space = flat_ramtop - vmem_blocksize
     lda vmap_max_entries
     sta inflated_vmap_max_entries
     ; Re-calculate the correct value of vmap_max_entries.
