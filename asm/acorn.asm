@@ -637,8 +637,7 @@ screenkernal_init
     ; Load the nonstored blocks, or all the blocks if we're not using virtual
     ; memory. We don't need to worry about reading past the end of the game data
     ; here, because at worst we will read a final 512-byte block when we don't
-    ; have a full block and that's fine. In reality there will always be a big
-    ; chunk of non-dynamic memory following the nonstored blocks anyway.
+    ; have a full block and that's fine.
 .blocks_to_read = zp_temp + 4 ; 1 byte
     lda #2
     sta readblocks_numblocks
@@ -656,7 +655,7 @@ screenkernal_init
     sta .blocks_to_read
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    ; Page in the first bank.
+    ; Page in the first bank as dynamic memory may overflow into it.
     +acorn_page_in_bank_using_a ram_bank_list
 }
 
@@ -708,7 +707,7 @@ screenkernal_init
     ; vmap_max_size entries.
     ;
     ; This only happens once and it's not a huge list so while we don't want it
-    ; to be really slow, compactness and simplicity of code is also important.
+    ; to be really slow, compactness and simplicity of code are also important.
     ; This is an insertion sort, implemented based on the pseudocode from
     ; https://en.m.wikipedia.org/wiki/Insertion_sort, which I've relabelled here
     ; to match the register use in the following code:
@@ -796,10 +795,21 @@ load_scratch_space = flat_ramtop - 512
 SFTODOXXX
     lda vmap_max_entries
     sta inflated_vmap_max_entries
-    ; SFTODONOW: COULD THIS CALCULATE A TOO-HIGH VALUE OF VMAP MAX ENTRIES IF GAME IS SMALLER THAN VMAP_MAX_ENTRIES?
-    sec
-    lda #>flat_ramtop
-    sbc vmap_first_ram_page
+    ; Re-calculate the correct value of vmap_max_entries.
+    ; SFTODO: Worth noting that here - and might be useful in some other code too -
+    ; we are calculating using known-at-build-time values. I could potentially
+    ; simplify/shorten the code in a few places by not treating this dynamically,
+    ; e.g. we wouldn't need the code to populate .game_blocks in the first place.
+    ; (on SWR builds the dynmem growth optimisation means nonstored_blocks is not
+    ; precisely known at build time, but that's not an issue for a tube build)
+    lda #>(flat_ramtop - story_start)
+    ldx .game_blocks + 1
+    bne +
+    cmp .game_blocks
+    bcc +
+    lda .game_blocks
++   sec
+    sbc nonstored_blocks
     lsr
     sta vmap_max_entries
 
