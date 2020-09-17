@@ -848,6 +848,31 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; is truly trivial code (does it matter if the list is odd or even in length?)
     ; it is maybe getting fiddlier than necessary in order to avoid a couple of
     ; long head movements during the one-off preload on one hardware config.
+!if 0 { ; SFTODO TEMP SKETCH OF CODE, DOESN'T NECESSARILY BELONG RIGHT HERE... - WE'D BE DOING THIS BEFORE WE GET RID OF THE INFLATED VMAP MAX ENTRIES, SO ABOVE
+    ; SFTODO: THIS IS THE REVERSE, IT'S REALLY NOT A BIG DEAL
+    lda vmap_max_entries
+    tay
+    dey
+    lsr
+    sta SFTODOSWAPCOUNT
+    ldx #0
+-   lda vmap_z_l,x
+    pha
+    lda vmap_z_l,y
+    sta vmap_z_l,x
+    pla
+    sta vmap_z_l,y
+    lda vmap_z_h,x
+    pha
+    lda vmap_z_h,y
+    sta vmap_z_h,x
+    pla
+    sta vmap_z_h,y
+    inx
+    dey
+    dec SFTODOSWAPCOUNT
+    bne -
+ }
     sta working_index
     lda #>load_scratch_space
     sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0
