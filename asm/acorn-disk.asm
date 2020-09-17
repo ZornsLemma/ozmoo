@@ -570,7 +570,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     ; game file into scratch memory and comparing its CRC it with the one we
     ; calculated on startup. Although save games could include this data,
     ; thanks to the small number of zp bytes included at the beginning of a
-    ; save, no sector on as save game disc will have a copy of block 0. It's
+    ; save, no sector on a save game disc will have a copy of block 0. It's
     ; also likely something in that block has been modified between startup and
     ; saving the game. Of course it's possible to contrive situations where this
     ; check will allow a non-game disc to be left in the drive, but this is

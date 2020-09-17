@@ -253,8 +253,10 @@ osword_input_line = 0
 osword_read_clock = 1
 osword_sound = 7
 osword_floppy_op = $7f
+!ifdef ACORN_TUBE_CACHE {
 osword_cache_op = $e0 ; USERV OSWORD
 osword_cache_no_timestamp_hint = $ff
+}
 osbyte_set_cursor_editing = $04
 osbyte_flush_buffer = $15
 osbyte_reflect_keyboard_status = $76
@@ -263,7 +265,9 @@ osbyte_read_key = $81
 osbyte_read_screen_address = $84
 osbyte_read_cursor_position = $86
 osbyte_read_screen_mode = $87
+!ifdef ACORN_TUBE_CACHE {
 osbyte_initialise_cache = $88 ; USERV *CODE/OSBYTE
+}
 osbyte_enter_language = $8e
 osbyte_read_vdu_variable = $a0
 osbyte_rw_escape_key = $e5
