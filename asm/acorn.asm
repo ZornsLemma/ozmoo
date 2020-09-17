@@ -836,7 +836,18 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; once we've loaded the vmap entries proper we just don't have that much free.
     ; SFTODO: I suppose we could sort into descending order, iterate in reverse
     ; in both of these lists, then we would have monotonic drive head movement.
-    ; Maybe. I'm not sure right now, maybe this would be completely wrong.
+    ; Maybe. I'm not sure right now, maybe this would be completely wrong. I think
+    ; it would be *valid* to do that, the problem is that in the non-preopt case
+    ; we'd end up doing an insertion sort to reverse 1-vmap_max_entries, which
+    ; would be slow. We *could* insert 255-1 (descending) into the vmap in the
+    ; non-optimised case, but that would be saying "prefer to load from the end
+    ; of the file if not preoptimised", and I do feel in the absence of any
+    ; information the early part of the file is probably more sensible to load
+    ; than the end, so we really don't want to be doing that. We could do the
+    ; sort into ascending order and have a separate reverse step, but unless that
+    ; is truly trivial code (does it matter if the list is odd or even in length?)
+    ; it is maybe getting fiddlier than necessary in order to avoid a couple of
+    ; long head movements during the one-off preload on one hardware config.
     sta working_index
     lda #>load_scratch_space
     sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0
