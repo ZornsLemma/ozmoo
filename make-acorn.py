@@ -1,5 +1,3 @@
-# SFTODO: Add an option to optionally disable use of CMOS instructions even on second processor
-
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
@@ -326,6 +324,7 @@ group.add_argument("--force-big-dynmem", action="store_true", help="disable auto
 group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
 group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
 group.add_argument("--force-6502", action="store_true", help="only use 6502 instructions on all machines")
+group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -616,6 +615,7 @@ def make_loader():
                     line = line.replace("${ELECTRONSWRDETECTED}", electron_swr_detected)
                     line = line.replace("${DEFAULTMODE}", str(default_mode))
                     line = line.replace("${AUTOSTART}", auto_start)
+                    line = line.replace("${TUBECACHE}", tube_cache)
                     line = line.replace("${NORMALFG}", str(normal_fg_colour))
                     line = line.replace("${HEADERFG}", str(header_fg_colour))
                     line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
@@ -911,8 +911,8 @@ def make_tube_executable():
     else:
         info("Game will be run using virtual memory on second processor")
         extra_args = tube_extra_args + ["-DVMEM=1"]
-        # SFTODO: Should only add this if we're not disabling tube host cache, but this will do for now
-        if True:
+        if not args.no_tube_cache:
+            extra_args += ["-DACORN_TUBE_CACHE=1"]
             extra_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
             extra_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
         e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, extra_args)
@@ -1082,6 +1082,10 @@ def make_electron_swr_executable():
 tube_executable = make_tube_executable()
 # SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
 tube_detected = 'hw$="Second processor":binary$="%s":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_executable.filename(),)
+if not args.no_tube_cache:
+    tube_cache = "*/CACHE2P"
+else:
+    tube_cache = ""
 
 # SFTODO: We could potentially be smarter about allocating binaries between the
 # two surfaces of a double-sided DFS disc. A BBC-only build would benefit from having
@@ -1148,7 +1152,7 @@ def add_executable_to_disc(e):
     e.add_to_disc(d)
 
 add_findswr_executable(disc) # SFTODO: Can/should this be like the following?
-if True and tube_executable is not None: # SFTODO TRUE -> NEED DEV OPTION TO DISABLE THIS
+if not args.no_tube_cache and tube_executable is not None:
     add_cache_executable(disc) # SFTODO: Should this use add_executable_to_disc()?
 add_executable_to_disc(tube_executable)
 add_executable_to_disc(swr_shr_executable)

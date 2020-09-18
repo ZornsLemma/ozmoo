@@ -6,9 +6,6 @@ vmem_cache_index !fill cache_pages + 1, 0
 }
 }
 
-!ifndef ACORN_SWR {
-ACORN_TUBE_CACHE = 1 ; SFTODO TEMP HACK!
-}
 !ifndef VMEM {
 ; Non-virtual memory
 

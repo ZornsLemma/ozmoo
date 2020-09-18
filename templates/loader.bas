@@ -92,6 +92,7 @@ UNTIL key$=" "
 IF ?screen_mode=7 THEN ?fg_colour=6
 VDU 28,0,space_line,39,space_line,12,26,31,0,space_line,${NORMALFG}
 PRINT "Loading, please wait...";
+${TUBECACHE}
 fs%=FNfs
 IF fs%<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
