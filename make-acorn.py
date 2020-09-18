@@ -891,6 +891,17 @@ def add_findswr_executable(disc):
     os.chdir("..")
     with open("temp/findswr", "rb") as f:
         disc.add_file("$", "FINDSWR", host | load_address, host | load_address, f.read())
+
+# SFTODO: Move this function?
+def add_cache_executable(disc):
+    load_address = 0x2000 # SFTODO: Ideally needs to load just below mode 0 screen RAM
+    os.chdir("asm")
+    extra_args = []
+    # SFTODO: THIS EXECUTABLE NEEDS TO RELOCATE ITSELF DOWN TO HOST OSHWM
+    run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_cache.txt", "-r", "../temp/acme_report_cache.txt", "--outfile", "../temp/cache2p", "acorn-cache.asm"])
+    os.chdir("..")
+    with open("temp/cache2p", "rb") as f:
+        disc.add_file("$", "CACHE2P", host | load_address, host | load_address, f.read())
             
 # SFTODO: Move this function?
 def make_tube_executable():
@@ -1137,6 +1148,8 @@ def add_executable_to_disc(e):
     e.add_to_disc(d)
 
 add_findswr_executable(disc) # SFTODO: Can/should this be like the following?
+if True and tube_executable is not None: # SFTODO TRUE -> NEED DEV OPTION TO DISABLE THIS
+    add_cache_executable(disc) # SFTODO: Should this use add_executable_to_disc()?
 add_executable_to_disc(tube_executable)
 add_executable_to_disc(swr_shr_executable)
 add_executable_to_disc(bbc_swr_executable)
