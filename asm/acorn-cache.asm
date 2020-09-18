@@ -11,6 +11,7 @@ tube_reason_claim = $c0
 tube_reason_release = $80
 tube_reason_256_byte_to_io = 6
 tube_reason_256_byte_from_io = 7
+osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 osbyte = $fff4
 
@@ -26,13 +27,14 @@ our_tube_reason_claim_id = $25 ; a six bit value
 ; timestamps, but at the cost of having to do the adjustment more often.
 timestamp_adjustment = $40 ; SFTODO: $80?
 
-code_start
+program_start
+    jmp relocate_setup
 
 ; SFTODO: It might be worth putting this initialisation code at the end where
 ; it can be overwritten, but let's not worry about that for now. (If we do overwrite
 ; it *and* we want to support being re-run, we'd need to ensure this reset all the
 ; cache state appropriately.)
-claim
+initialize
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
     ; we're executed twice, although this isn't expected to happen.
     ; SFTODO: AND IF ANY "STATE" IS STORED IN THE AREA COVERED BY THE EXECUTABLE
@@ -40,10 +42,10 @@ claim
     lda #<our_userv
     ldx #>our_userv
     cmp userv
-    bne claim_needed
+    bne initialize_needed
     cpx userv + 1
-    beq claim_done
-claim_needed
+    beq initialize_done
+initialize_needed
     ; Install ourselves on USERV, saving any previous claimant so we can forward
     ; calls we're not handling.
     ldy userv
@@ -52,7 +54,7 @@ claim_needed
     sty old_userv + 1
     sta userv
     stx userv + 1
-claim_done
+initialize_done
     rts
 
 our_userv
@@ -60,7 +62,6 @@ our_userv
     beq our_osword
     cmp #0
     beq our_osbyte ; *CODE/OSBYTE $88
-    ; SFTODO: I think one OSBYTE goes via USERV as well, and it may be useful to use that to allow Ozmoo initialisation code to query how much cache is available in the host, so it can pre-populate the cache with the appropriate data during the initial load (I imagine the loader is going to peek some memory set by a to-be-created variant of FINDSWR so it can show the actual sideways RAM banks we detect, but Ozmoo binary wants something nice and simple)
     ; SFTODO: We might be able to use that OSBYTE to trigger initialisation of the cache size as well - at that point we'll still be in mode 7 on the loader screen but Ozmoo knows what mode it will select, so it could pass that over in the OSBYTE and receive in return the available cache size
     jmp (old_userv)
 
@@ -77,8 +78,9 @@ our_osbyte
     ; SFTODO: Need to use SWR as well, of course
     lda #osbyte_read_screen_address_for_mode
     jsr osbyte
+    ; The following calculation will correctly discard any odd pages, so we
+    ; don't need to be double-page aligned in order to make things work nicely.
     tya
-    ; SFTODO: Note that this will (correctly) lose any odd 256-byte block, so I don't think there's any need for low_cache_start to be double-paged aligned. (Any SWR cache will start indexing independently from $8000 in first bank, because on a model B with no shadow RAM there will be screen memory in the way, of course.)
     sec
     sbc #>low_cache_start
     lsr
@@ -91,14 +93,14 @@ our_osbyte
     ; lookup.
     ; SFTODO: We need to determine free memory (and SWR later), for now this will do.
     ldy cache_entries
-initialise_loop
+our_osbyte_initialize_loop
     lda #0
     sta cache_timestamp - 1,y
     lda #$ff
     sta cache_id_low - 1,y
     sta cache_id_high - 1,y
     dey
-    bne initialise_loop
+    bne our_osbyte_initialize_loop
 
     ; All the blocks are free, so let's set free_block_index to 0.
     sty free_block_index
@@ -470,3 +472,12 @@ low_cache_start = cache_timestamp + max_cache_entries
 !if low_cache_start & $ff <> 0 {
     !error "low_cache_start must be page-aligned"
 }
+
+relocate_target
+    !byte 0
+relocate_setup
+    lda #osbyte_read_oshwm
+    jsr osbyte
+    sty relocate_target
+    ; This must be the last thing in the executable.
+    !source "acorn-relocate.asm"

@@ -11,7 +11,7 @@ Timings with initial crude tube host cache prototype:
 - with non-caching code (current acorn-wip branch, as released to stardot) $003f25
 - OK, with &2D blocks of host cache and preloading implemented to use the host cache (the preload time *is* included in the final benchmark time, remember I am not subtracting off the initial time) $002ef8
 - currently (with probably-good preloading) getting $2ef6
-
+- with relocating cache, a B with DFS+ADFS completes in $2e8e and Master 128 in $2e28
 
 restart and checking for game disc:
 - you're not "supposed" to not have the game disc in (at the moment)

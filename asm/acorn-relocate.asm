@@ -17,6 +17,10 @@ reloc_start = program_start
 !if <reloc_start != 0 {
     !error "reloc_start must be on a page boundary"
 }
+; When relocating acorn-cache.asm on the host we will use these zero page
+; locations. I can't find any official documentation to say what zero page we
+; can and can't use, but looking at the different versions of the tube host code
+; on mdfs.net I can't see any problem with transient use of these in practice.
 .delta = $70
 .codep = $71 ; 2 bytes
 .deltap = $73 ; 2 bytes
@@ -25,6 +29,7 @@ reloc_start = program_start
 .dst = $79 ; 2 bytes
 
 relocate
+!ifdef ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT {
     lda relocate_target
     eor #>reloc_start
     lsr
@@ -35,6 +40,7 @@ relocate
     ; already have the right alignment.
     inc relocate_target
 +
+}
 
     lda relocate_target
     cmp #(>reloc_start) + 1

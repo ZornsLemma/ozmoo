@@ -894,14 +894,22 @@ def add_findswr_executable(disc):
 
 # SFTODO: Move this function?
 def add_cache_executable(disc):
-    load_address = 0x2000 # SFTODO: Ideally needs to load just below mode 0 screen RAM
+    # SFTODO: Relocation here feels ugly because we're not using the same machinery as when we make the relocatable Ozmoo binary
+    # In practice the cache executable will only be run in mode 7, but we'll position it
+    # to load just below the mode 0 screen RAM.
+    high_address = 0x2c00
+    binaries = []
     os.chdir("asm")
-    extra_args = []
-    # SFTODO: THIS EXECUTABLE NEEDS TO RELOCATE ITSELF DOWN TO HOST OSHWM
-    run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_cache.txt", "-r", "../temp/acme_report_cache.txt", "--outfile", "../temp/cache2p", "acorn-cache.asm"])
+    for load_address in (high_address - 0x100, high_address):
+        extra_args = []
+        # SFTODO: THIS EXECUTABLE NEEDS TO RELOCATE ITSELF DOWN TO HOST OSHWM
+        run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_cache_%s.txt" % ourhex(load_address), "-r", "../temp/acme_report_cache_%s.txt" % ourhex(load_address), "--outfile", "../temp/cache2p_%s" % ourhex(load_address), "acorn-cache.asm"])
+        with open("../temp/cache2p_%s" % ourhex(load_address), "rb") as f:
+            binaries.append(bytearray(f.read()))
+    relocations = make_relocations(binaries[0], binaries[1])
+    binaries[1] = binaries[1][0:-2] + relocations # - 2 to strip off "0" relocation count
     os.chdir("..")
-    with open("temp/cache2p", "rb") as f:
-        disc.add_file("$", "CACHE2P", host | load_address, host | load_address, f.read())
+    disc.add_file("$", "CACHE2P", host | high_address, host | high_address, binaries[1])
             
 # SFTODO: Move this function?
 def make_tube_executable():

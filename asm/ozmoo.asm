@@ -1150,6 +1150,7 @@ end_of_routines_in_stack_space
 
 !ifdef ACORN_RELOCATABLE {
     ; This must be the last thing in the executable.
+	ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT = 1
     !source "acorn-relocate.asm"
 }
 
