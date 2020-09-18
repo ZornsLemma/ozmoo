@@ -791,7 +791,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
 
     ; vmap_max_entries was deliberately artificially high up to this point so
     ; we'd retain and sort more of the initial vmap; set it to the correct value
-    ; reflecting the size of the vmap Ozmoo has to work with.
+    ; reflecting the size of the vmap Ozmoo's virtual memory has to work with.
     ; SFTODO: Worth noting that here - and might be useful in some other code too -
     ; we are calculating using known-at-build-time values. I could potentially
     ; simplify/shorten the code in a few places by not treating this dynamically,
@@ -810,6 +810,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     sbc nonstored_blocks
     lsr
     sta vmap_max_entries
+    sta vmap_used_entries
 
     ; We now need to load the inflated_vmap_max_entries blocks in the vmap from
     ; disk; vmap_max_entries blocks will go into our local memory as normal, the
