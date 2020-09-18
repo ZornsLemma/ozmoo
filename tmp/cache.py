@@ -6,9 +6,10 @@ vmap_total_entries = vmap_local_entries + vmap_cache_entries
 
 # vmap here doesn't simulate the "low" bits containing address. Note that
 # the same timestamp can appear more than once.
-vmap = [x // 2 for x in range(vmap_total_entries)]
-original_vmap = vmap[:]
+vmap = [x // 2 for x in range(255)]
 random.shuffle(vmap)
+vmap = vmap[0:vmap_total_entries]
+original_vmap = vmap[:]
 
 # cutover is supplied by build script in reality, to avoid doing this
 # sort in Ozmoo code.
@@ -49,8 +50,12 @@ assert len(cache) <= vmap_cache_entries
 assert len(local_vmap) + len(cache) == len(original_vmap)
 assert sorted(local_vmap + cache) == sorted(original_vmap)
 
-cache_set = set(cache)
-local_vmap_set = set(local_vmap)
-intersection = cache_set.intersection(local_vmap_set)
-if len(intersection) > 0:
-    print "intersection", intersection
+cache_sorted = sorted(cache)
+local_vmap_sorted = sorted(local_vmap)
+out_of_order = []
+while cache_sorted[-1] > local_vmap_sorted[0]:
+    out_of_order.extend([cache_sorted[-1], local_vmap_sorted[0]])
+    cache_sorted = cache_sorted[:-1]
+    local_vmap_sorted = local_vmap_sorted[1:]
+if len(out_of_order) > 0:
+    print "out of order", out_of_order
