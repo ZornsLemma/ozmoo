@@ -2,6 +2,7 @@ Timings with initial crude tube host cache prototype:
 - with &2B blocks of host cache, b-em, mode 7, 3MHz copro, Master 128 host, drive noises on $003131
 - with non-caching code (current acorn-wip branch, as released to stardot) $003f25
 - OK, with &2D blocks of host cache and preloading implemented to use the host cache (the preload time *is* included in the final benchmark time, remember I am not subtracting off the initial time) $002ef8
+- currently (with probably-good preloading) getting $2ef6
 
 
 restart and checking for game disc:

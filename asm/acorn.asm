@@ -790,21 +790,16 @@ to_index = vmap_index
 load_scratch_space = flat_ramtop - vmem_blocksize
 
     ; vmap_max_entries was deliberately artificially high up to this point so
-    ; we'd retain and sort more of the initial vmap. We need to reset
-    ; vmap_max_entries to the correct value and load the extra blocks into the
-    ; host cache. (It's possible the host cache will still have some free space
-    ; left, if it's very large, but we don't go out of our way to preload extra
-    ; blocks in that case. The free host cache will still be used for any more
-    ; blocks read during gameplay.)
-    lda vmap_max_entries
-    sta inflated_vmap_max_entries
-    ; Re-calculate the correct value of vmap_max_entries.
+    ; we'd retain and sort more of the initial vmap; set it to the correct value
+    ; reflecting the size of the vmap Ozmoo has to work with.
     ; SFTODO: Worth noting that here - and might be useful in some other code too -
     ; we are calculating using known-at-build-time values. I could potentially
     ; simplify/shorten the code in a few places by not treating this dynamically,
     ; e.g. we wouldn't need the code to populate .game_blocks in the first place.
     ; (on SWR builds the dynmem growth optimisation means nonstored_blocks is not
     ; precisely known at build time, but that's not an issue for a tube build)
+    lda vmap_max_entries
+    sta inflated_vmap_max_entries
     lda #>(flat_ramtop - story_start)
     ldx .game_blocks + 1
     bne +
@@ -816,27 +811,26 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     lsr
     sta vmap_max_entries
 
-    ; Calculate cutover_timestamp using knowledge of how the build system generates
-    ; the timestamps. It is chosen so that if we assign blocks with timestamps <=
-    ; cutover_timestamp to the host cache (assuming it's not full) and keep other
-    ; blocks in the local memory, all the blocks with older timestamps will be put
-    ; in the host cache and all the blocks with newer timestamps will be put in the
-    ; local memory and the local memory will be filled perfectly. We don't quite
-    ; achieve this perfection because if the local memory fills up before we've
-    ; finished loading all the blocks up to inflated_vmap_max_entries, we have to
-    ; re-use the final normal vmap entry (suitable for calling load_blocks_from_index with)
-    ; for loading the remaining blocks from disk. However, at most one block in each
-    ; cache should end up in the wrong place, and the block in the host cache will
-    ; be the youngest block in the host cache so should have a long life in which it
-    ; can get pulled into the local memory during play before it is pushed out of
-    ; the host cache by other blocks.
+    ; We now need to load the inflated_vmap_max_entries blocks in the vmap from
+    ; disk; vmap_max_entries blocks will go into our local memory as normal, the
+    ; remainder need to be handed over to the host cache. We want the newer
+    ; (higher timestamp) blocks in local memory, but remember vmap is sorted by
+    ; block address to avoid the disk head jumping around. We use knowledge of
+    ; how the build system generates the timestamps on vmap to identify a
+    ; timestamp cutover point which will (except for the fact that the same
+    ; timestamp can occur on multiple entries) separate the vmap into two chunks
+    ; of the required sizes. (If the cutover timestamp is calculated
+    ; incorrectly, we will still load everything we should, but newer blocks
+    ; will tend to be in the host cache when we'd prefer them to be in local
+    ; memory.)
 .vmem_blocks = ((>(flat_ramtop - story_start)) - ACORN_INITIAL_NONSTORED_BLOCKS) / vmem_block_pagecount
 .cutover_timestamp = int(ACORN_TUBE_CACHE_MAX_TIMESTAMP + ((float(.vmem_blocks) / vmap_max_size) * (ACORN_TUBE_CACHE_MIN_TIMESTAMP - ACORN_TUBE_CACHE_MAX_TIMESTAMP))) and ($ff xor vmem_highbyte_mask)
 SFTODOPPP = .cutover_timestamp
 
     ; Work through the blocks in vmap, loading each in turn and offering it to the
     ; host cache if it's old and there's room, and keeping it loaded into local memory
-    ; otherwise.
+    ; otherwise. We keep doing this until we've loaded vmap_max_entries blocks into
+    ; local memory; blocks offered to the host cache don't count.
     lda #0
     sta from_index
     sta to_index
@@ -877,11 +871,15 @@ SFTODOPPP = .cutover_timestamp
     bne .first_load_loop
 
     ; We may have already loaded all the blocks, but if we haven't we now need
-    ; to start re-using vmap[vmap_max_entries - 1] to load the rest. We no
-    ; longer have the luxury of (easily) putting the blocks with older
-    ; timestamps into the host cache and keeping the younger ones in local
-    ; memory, but as noted above, if we chose the cutover timestamp correctly we
-    ; should end up with at most one misplaced block in each cache.
+    ; to start re-using vmap[vmap_max_entries - 1] to load the rest. (We can
+    ; only load into local memory and we've used it all.) We no longer have the
+    ; luxury of (easily) putting the blocks with older timestamps into the host
+    ; cache and keeping the younger ones in local memory, but if we chose the
+    ; cutover timestamp correctly we should end up with at most one misplaced
+    ; block in each cache. The misplaced block in the host cache will be the
+    ; newest block in the host cache so it will spend a long time in there
+    ; before being discarded, which should give plenty of opportunity for it to
+    ; be requested during gameplay and moved into local memory before it's lost.
     dec vmap_index ; set vmap_index = vmap_max_entries - 1
 .second_load_loop
     ldx from_index
