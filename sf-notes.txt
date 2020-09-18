@@ -1,3 +1,11 @@
+Extending tube host cache to use SWR:
+- I will move the "what SWR banks do we have" logic from the loader into findswr machine code
+- as part of that, I will make the count/list of banks output from the loader at $900-ish at a fixed address (I can get rid of the current fixed address output of course)
+- I hope all this doesn't cause loader to no longer fit in $900-aff, if it does I may need to take some steps of some kind
+- loader (in a cache-enabled build) will use an OS call to read those fixed addresses to show SWR details even if a second processor is detected
+- cache2p binary will use those fixed addresses (on the host, where it is anyway of course) to control its own SWR use
+
+
 Timings with initial crude tube host cache prototype:
 - with &2B blocks of host cache, b-em, mode 7, 3MHz copro, Master 128 host, drive noises on $003131
 - with non-caching code (current acorn-wip branch, as released to stardot) $003f25
