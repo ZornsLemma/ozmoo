@@ -782,6 +782,7 @@ screenkernal_init
     ; load_suggested_pages subroutine.)
 
 !ifdef ACORN_TUBE_CACHE {
+!error "SFTODO OLD"
     ; Note that we make no attempt at all to put the "high priority" (most
     ; recent timestamp, once they've been massaged by the build system)
     ; preopt-identified blocks in the local RAM and the older ones in the host
@@ -927,7 +928,135 @@ host_cache_load_loop_done
     sta osword_cache_index_offered + 1
 }
 
-    ; Load the regular blocks in vmap.
+!ifdef ACORN_TUBE_CACHE {
+    !error "SFTODO NEW VERSION, WIP, COPY COMMENTS RELEVANT FROM OLD ONE"
+inflated_vmap_max_entries = zp_temp
+from_index = zp_temp + 1
+to_index = vmap_index
+load_scratch_space = flat_ramtop - vmem_blocksize
+
+    ; vmap_max_entries was deliberately artificially high up to this point so
+    ; we'd retain and sort more of the initial vmap. We need to reset
+    ; vmap_max_entries to the correct value and load the extra blocks into the
+    ; host cache. (It's possible the host cache will still have some free space
+    ; left, if it's very large, but we don't go out of our way to preload extra
+    ; blocks in that case. The free host cache will still be used for any more
+    ; blocks read during gameplay.)
+    lda vmap_max_entries
+    sta inflated_vmap_max_entries
+    ; Re-calculate the correct value of vmap_max_entries.
+    ; SFTODO: Worth noting that here - and might be useful in some other code too -
+    ; we are calculating using known-at-build-time values. I could potentially
+    ; simplify/shorten the code in a few places by not treating this dynamically,
+    ; e.g. we wouldn't need the code to populate .game_blocks in the first place.
+    ; (on SWR builds the dynmem growth optimisation means nonstored_blocks is not
+    ; precisely known at build time, but that's not an issue for a tube build)
+    lda #>(flat_ramtop - story_start)
+    ldx .game_blocks + 1
+    bne +
+    cmp .game_blocks
+    bcc +
+    lda .game_blocks
++   sec
+    sbc nonstored_blocks
+    lsr
+    sta vmap_max_entries
+
+    ; Calculate cutover_timestamp using knowledge of how the build system generates
+    ; the timestamps. It is chosen so that if we assign blocks with timestamps <=
+    ; cutover_timestamp to the host cache (assuming it's not full) and keep other
+    ; blocks in the local memory, all the blocks with older timestamps will be put
+    ; in the host cache and all the blocks with newer timestamps will be put in the
+    ; local memory and the local memory will be filled perfectly. We don't quite
+    ; achieve this perfection because if the local memory fills up before we've
+    ; finished loading all the blocks up to inflated_vmap_max_entries, we have to
+    ; re-use the final normal vmap entry (suitable for calling load_blocks_from_index with)
+    ; for loading the remaining blocks from disk. However, at most one block in each
+    ; cache should end up in the wrong place, and the block in the host cache will
+    ; be the youngest block in the host cache so should have a long life in which it
+    ; can get pulled into the local memory during play before it is pushed out of
+    ; the host cache by other blocks.
+vmem_blocks = ((>(flat_ramtop - story_start)) - ACORN_INITIAL_NONSTORED_BLOCKS) / vmem_block_pagecount
+cutover_timestamp = int(ACORN_TUBE_CACHE_MAX_TIMESTAMP + ((float(vmem_blocks) / vmap_max_size) * (ACORN_TUBE_CACHE_MIN_TIMESTAMP - ACORN_TUBE_CACHE_MAX_TIMESTAMP))) and ($ff xor vmem_highbyte_mask)
+
+    ; Work through the blocks in vmap, loading each in turn and offering it to the
+    ; host cache if it's old and there's room, and keeping it loaded into local memory
+    ; otherwise.
+    lda #0
+    sta from_index
+    sta to_index
+.first_load_loop
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
+    ldx from_index
+    ldy to_index
+    lda vmap_z_l,x
+    sta vmap_z_l,y
+    lda vmap_z_h,x
+    sta vmap_z_h,y
+    jsr load_blocks_from_index
+    ldy to_index
+    lda vmap_z_h,y
+    ; and #$ff xor vmem_highbyte_mask ; not necessary as we're doing a >= test
+    cmp #cutover_timestamp + 1
+    bcs .dont_put_in_cache
++   lda SFTODOCACHESLOTSFREE
+    beq .dont_put_in_cache
+    dec SFTODOCACHESLOTSFREE
+    ; load_blocks_from_index will have set osword_cache_block up for vmap[to_index]
+    lda osword_cache_index_requested
+    sta osword_cache_index_offered
+    lda osword_cache_index_requested + 1
+    sta osword_cache_index_offered + 1
+    lda #0
+    sta osword_cache_index_requested
+    sta osword_cache_index_requested + 1
+    lda #osword_cache_op
+    ldx #<osword_cache_block
+    ldy #>osword_cache_block
+    jsr osword
+    jmp .SFTODOXXX
+.dont_put_in_cache
+    inc to_index
+.SFTODOXXX
+    inc from_index
+    lda to_index
+    cmp vmap_max_entries
+    bne .first_load_loop
+
+    ; We may have already loaded all the blocks, but if we haven't we now need
+    ; to start re-using vmap[vmap_max_entries - 1] to load the rest. We no
+    ; longer have the luxury of (easily) putting the blocks with older
+    ; timestamps into the host cache and keeping the younger ones in local
+    ; memory, but as noted above, if we chose the cutover timestamp correctly we
+    ; should end up with at most one misplaced block in each cache.
+    dec vmap_index ; set vmap_index = vmap_max_entries - 1
+.second_load_loop
+    ldx from_index
+    cpx inflated_vmap_max_entries
+    beq .second_load_loop_done
+    ldy vmap_index
+    lda vmap_z_l,y
+    sta osword_cache_index_offered
+    lda vmap_z_h,y
+    and #vmem_highbyte_mask
+    sta osword_cache_index_offered + 1
+    lda vmap_z_l,x
+    sta vmap_z_l,y
+    lda vmap_z_h,x
+    sta vmap_z_h,y
+    jsr load_blocks_from_index
+    inc from_index
+    jmp .second_load_loop
+.second_load_loop_done
+} else { ; not ACORN_TUBE_CACHE
+    ; Load the blocks in vmap.
+    ; We are not offering any blocks to the cache in the following loop when
+    ; load_blocks_from_index calls osword_cache_op.
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
     lda #0
     sta vmap_index
 -   jsr load_blocks_from_index
@@ -936,6 +1065,8 @@ host_cache_load_loop_done
     cmp vmap_max_entries
     bne -
     sta vmap_used_entries
+}
+
 !ifdef ACORN_SWR {
     ; The load loop may have left the last bank of sideways RAM paged in; we
     ; need to page the default bank back in.

@@ -213,8 +213,6 @@ class Executable(object):
         if vmap_length & 1 != 0:
             vmap_length -= 1
         assert vmap_length >= vmap_max_size * 2
-        min_timestamp = 0
-        max_timestamp = 0xe0 # initial tick value
         blocks = []
         # SFTODO: We will do this work for every single executable; it's not in practice a
         # big deal but it's a bit inelegant.
@@ -356,6 +354,8 @@ if args.output_file is not None:
 header_version = 0
 header_static_mem = 0xe
 vmem_block_pagecount = 2
+min_timestamp = 0
+max_timestamp = 0xe0 # initial tick value
 
 with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
@@ -899,7 +899,12 @@ def make_tube_executable():
         e = tube_no_vmem
     else:
         info("Game will be run using virtual memory on second processor")
-        e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, tube_extra_args + ["-DVMEM=1"])
+        extra_args = tube_extra_args + ["-DVMEM=1"]
+        # SFTODO: Should only add this if we're not disabling tube host cache, but this will do for now
+        if True:
+            extra_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
+            extra_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
+        e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, extra_args)
     return e
 
 # SFTODO: Move this function?
