@@ -1091,7 +1091,7 @@ tube_executable = make_tube_executable()
 # SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
 tube_detected = 'hw$="Second processor":binary$="%s":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_executable.filename(),)
 if not args.no_tube_cache:
-    tube_cache = "*/CACHE2P"
+    tube_cache = "IF tube% THEN */CACHE2P"
 else:
     tube_cache = ""
 
