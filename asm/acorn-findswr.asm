@@ -19,9 +19,9 @@ ram_bank_count  !byte 0
 ram_bank_list   !fill max_ram_bank_count
 
 ; Storage used by this routine which the loader doesn't care about
-swr_test        !fill $10
+swr_test   = $100 ; !fill $10
+swr_backup = $110 ; !fill $10
 swr_banks       !byte 0
-swr_backup      !fill $10
 swr_byte_value1 !byte 0
 swr_byte_value2 !byte 0
 dummy           !byte 0
@@ -339,5 +339,6 @@ page_in_a_electron
     STA $FE05
     RTS
 
-
-    ; SFTODO: THIS IS SPILLING OVER INTO PAGE $B
+!if * >= $b00 {
+    !error "findswr has overflowed available memory"
+}
