@@ -50,6 +50,9 @@
 }
 
 !source "constants.asm"
+!ifdef ACORN {
+!source "acorn-constants.asm"
+}
 
 !ifdef TRACE {
 	z_trace_size = 256

@@ -282,7 +282,6 @@ ctrl_key_adjust = 64
 buffer_keyboard = 0
 max_screen_width = 80
 !ifdef ACORN_SWR {
-romsel_copy = $f4
 flat_ramtop = $8000
 swr_ramtop = $c000
 } else {
@@ -408,10 +407,6 @@ scratch_double_page = scratch_page
 ; right at the end of the binary, and first thing (perhaps even before relocating
 ; if we're in a reloctable build) copy it down to somewhere in $400-800. That's
 ; if I think this is a good thing to do, not saying it is.
-
-; These are populated by and need to be kept consistent with acorn-findswr.asm.
-ram_bank_count = $904
-ram_bank_list = $905
 }
 
 }

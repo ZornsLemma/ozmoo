@@ -1,5 +1,7 @@
 ; SFTODO: WITH ACME I CAN'T USE "BYTE GENERATING" THINGS TO ALLOCATE UNINITIALISED DATA AS THEY GET INCLUDED IN THE BINARY
 
+!source "acorn-constants.asm"
+
 userv = $200
 osword_a = $ef
 osword_x = $f0
@@ -13,13 +15,6 @@ tube_reason_256_byte_to_io = 6
 tube_reason_256_byte_from_io = 7
 osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
-osbyte = $fff4
-
-; SFTODO: I don't want to include constants.asm here as it has loads of extra stuff, but
-; maybe an acorn-constants.asm would be worth it to share some common stuff - these are duplicated in a few places.
-; These are populated by and need to be kept consistent with acorn-findswr.asm.
-ram_bank_count = $904
-ram_bank_list = $905
 
 zp_temp = $f5 ; 3 bytes
 
