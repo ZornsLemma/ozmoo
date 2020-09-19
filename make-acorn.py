@@ -951,9 +951,10 @@ def add_cache_executable(disc):
     # In practice the cache executable will only be run in mode 7, but we'll position it
     # to load just below the mode 0 screen RAM.
     high_address = 0x2c00
+    low_address = 0xe00 # arbitrary, but useful for debugging on a Master
     binaries = []
     os.chdir("asm")
-    for load_address in (high_address - 0x100, high_address):
+    for load_address in (low_address, high_address):
         extra_args = []
         # SFTODO: THIS EXECUTABLE NEEDS TO RELOCATE ITSELF DOWN TO HOST OSHWM
         run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_cache_%s.txt" % ourhex(load_address), "-r", "../temp/acme_report_cache_%s.txt" % ourhex(load_address), "--outfile", "../temp/cache2p_%s" % ourhex(load_address), "acorn-cache.asm"])

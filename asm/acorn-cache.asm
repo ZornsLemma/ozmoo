@@ -15,6 +15,12 @@ osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 osbyte = $fff4
 
+; SFTODO: I don't want to include constants.asm here as it has loads of extra stuff, but
+; maybe an acorn-constants.asm would be worth it to share some common stuff - these are duplicated in a few places.
+; These are populated by and need to be kept consistent with acorn-findswr.asm.
+ram_bank_count = $904
+ram_bank_list = $905
+
 zp_temp = $f5 ; 3 bytes
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
@@ -75,7 +81,8 @@ our_userv
 ; On exit:
 ;   X contains the number of 512-byte blocks the cache holds
 our_osbyte
-    ; SFTODO: Need to use SWR as well, of course
+cache_entries_high = zp_temp ; 1 byte
+    ; We have RAM available between low_cache_start and the screen in mode X.
     lda #osbyte_read_screen_address_for_mode
     jsr osbyte
     ; The following calculation will correctly discard any odd pages, so we
@@ -84,23 +91,42 @@ our_osbyte
     sec
     sbc #>low_cache_start
     lsr
+    sta low_cache_entries
+
+    ; Each 16K sideways RAM bank holds 32*512-byte blocks.
+    lda #0
+    sta cache_entries_high
+    lda ram_bank_count
+    ldx #5 ; 32 == 2^5
+-   asl
+    rol cache_entries_high
+    dex
+    bne -
+    adc low_cache_entries
     sta cache_entries
+    bcc +
+    inc cache_entries_high
++
+
+    ; We don't support more than 255 cache entries.
+    ldy cache_entries
+    lda cache_entries_high
+    beq +
+    ldy #255
++   sty cache_entries
 
     ; The cache size doesn't change at runtime, it's always full with
     ; cache_entries entries, but it starts full of very old entries with the
     ; invalid block ID. This means those entries will be evicted in preference
     ; to any real entries and will never be returned in response to a cache
     ; lookup.
-    ; SFTODO: We need to determine free memory (and SWR later), for now this will do.
-    ldy cache_entries
-our_osbyte_initialize_loop
-    lda #0
+-   lda #0
     sta cache_timestamp - 1,y
     lda #$ff
     sta cache_id_low - 1,y
     sta cache_id_high - 1,y
     dey
-    bne our_osbyte_initialize_loop
+    bne -
 
     ; All the blocks are free, so let's set free_block_index to 0.
     sty free_block_index
@@ -180,6 +206,10 @@ our_osword_result_offset = 11
 our_osword
 our_cache_ptr = zp_temp ; 2 bytes
 count = zp_temp + 2 ; 1 byte
+
+    lda $f4 ; SFTODO MAGIC
+    pha
+
     ; Is a block being offered to us by the caller?
     ldy #our_osword_block_offered_offset + 1
     lda (osword_block_ptr),y
@@ -275,7 +305,6 @@ timestamp_updated
     txa
     tay
     jsr set_our_cache_ptr_to_index_y
-
 
     ; Copy the 512-byte block offered to the cache into the block pointed to by
     ; our_cache_ptr.
@@ -386,6 +415,10 @@ tube_write_loop
     jsr reset_osword_block_data_offset
 
 our_osword_done
+    pla
+    ; SFTODO: MAGIC NUMBERS/ELECTRON DIFFERENT
+    sta $f4
+    sta $fe30
     ; We don't need to preserve A, X or Y.
     rts
 
@@ -439,11 +472,37 @@ set_our_cache_ptr_to_index_y
     lda #0
     sta our_cache_ptr
     tya
+    sec
+    sbc low_cache_entries
+    bcs index_in_high_cache
+    tya
     asl
     clc
     adc #>low_cache_start
     sta our_cache_ptr + 1
     rts
+index_in_high_cache
+    ; A now contains the 512-byte block offset from the start of our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so we need to divide by 32=2^5 to get the bank index.
+    pha
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    tay
+    lda ram_bank_list,y
+    sta $f4 ; SFTODO MAGIC NUMBER
+    sta $fe30 ; SFTODO MAGIC NUMBER, DIFFERENT ON ELECTRON
+    ; Now get the low 5 bits of the block offset, multiply by two to convert to
+    ; 256 byte pages and that gives us the page offset within the bank.
+    pla
+    and #31
+    asl
+    ; Carry is already clear
+    adc #$80
+    sta our_cache_ptr + 1
+    rts
+
 
 code_end
 
@@ -451,6 +510,7 @@ max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
 old_userv = code_end ; 2 bytes
+cache_entries = old_userv + 2 ; 1 byte
 
 ; We use cache_id_low - 1,y addressing in the hot find_cache_entry_by_id_loop,
 ; so it's good to have that page-aligned to avoid incurring an extra cycle
@@ -458,12 +518,12 @@ old_userv = code_end ; 2 bytes
 ; similar if not so hot use. Since max_cache_entries is 255 we can easily get
 ; the desired alignment by slotting some single-byte variables into the spare
 ; bytes at the start of each page without wasting any memory.
-!if (old_userv + 2) & $100 <> 0 {
-    cache_entries = ((old_userv + 2) & !$ff) + $100 ; 1 byte
+!if (cache_entries + 1) & $100 <> 0 {
+    low_cache_entries = ((cache_entries + 1) & !$ff) + $100 ; 1 byte
 } else {
-    cache_entries = old_userv + 2 ; 1 byte
+    low_cache_entries = cache_entries + 1 ; 1 byte
 }
-cache_id_low = cache_entries + 1 ; max_cache_entries bytes
+cache_id_low = low_cache_entries + 1 ; max_cache_entries bytes
 free_block_index = cache_id_low + max_cache_entries ; 1 byte
 cache_id_high = free_block_index + 1 ; max_cache_entries bytes
 current_tick = cache_id_high + max_cache_entries ; 1 byte
