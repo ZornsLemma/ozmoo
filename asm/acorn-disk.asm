@@ -914,9 +914,6 @@ save_game
     sta .start_ptr
     lda #>story_start
     sta .start_ptr + 1
-    ; SFTODO: The values we're setting in the block here are known at build time and the
-    ; build script could pass the header_static_mem value in, then we could just bake
-    ; it into a couple of lda # instructions.
     lda #<ACORN_DYNAMIC_SIZE_BYTES
     sta .osgbpb_save_length
     lda #>ACORN_DYNAMIC_SIZE_BYTES

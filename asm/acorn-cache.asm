@@ -40,6 +40,12 @@ timestamp_adjustment = $40 ; SFTODO: $80?
 
 page_in_swr_bank_a_electron_size = 13
 
+!macro assert_no_page_crossing .target {
+    !if (>*) <> (>.target) {
+        !error "Unacceptable page crossing"
+    }
+}
+
 program_start
     jmp relocate_setup
 
@@ -130,6 +136,9 @@ cache_entries_high = zp_temp ; 1 byte
     ldx cache_entries
     dex
     rts
+
+    ; Waste some space so we avoid unwanted page crossing in time-critical loops.
+    !fill 3
 
 ; OSWORD &E0 - host cache access
 ;
@@ -258,7 +267,7 @@ no_timestamp_hint
     ; Increment current_tick.
     inc current_tick
     bne tick_not_wrapped
-    ; SFTODO: FWIW in the benchmark this tick adjust case only occurs once
+    ; SFTODO: FWIW in the benchmark this tick adjust case only occurs once (rather dated comment, may no longer be true)
     ldy cache_entries
 tick_adjust_loop
     lda cache_timestamp - 1,y
@@ -295,13 +304,12 @@ copy_offered_block_loop
     jsr tube_entry
     ; We now need a 19 microsecond/38 cycle delay.
     ldx #7     ; 2 cycles
-; SFTODO: ENSURE NOT PAGE CROSSING
 wait_x
     dex        ; 2*7=14 cycles
     bne wait_x ; 3*6+2=20 cycles
+    +assert_no_page_crossing wait_x
     ldy #0     ; 2 cycles
     ; SFTODO: Kind of stating the obvious, but the tube loops obviously burn loads of CPU time, so even if it feels inefficient to be iterating over 255 cache entries once or twice per call to check timestamps or whatever, remember we have to do 512 iterations of this loop and/or the other similar tube loop, so that other code isn't negligible but is diluted. Plus of course we are saving a trip to disc.
-    ; SFTODO: Ensure no page crossing in following loop
 tube_read_loop
 lda_abs_tube_data
     lda bbc_tube_data
@@ -311,6 +319,7 @@ lda_abs_tube_data
     lda our_cache_ptr,x   ; 4 cycles (dummy)
     iny                   ; 2 cycles
     bne tube_read_loop    ; 3 cycles if we branch
+    +assert_no_page_crossing tube_read_loop
     jsr do_loop_tail_common
     bne copy_offered_block_loop
     jsr release_tube
@@ -329,13 +338,13 @@ no_block_offered
     ; cycles outside the tube copy loops. We therefore save a cycle in the
     ; common case where the low bytes don't match by making that the straight
     ; line case.
-    ; SFTODO: Make sure this loop has no page crossing
 find_cache_entry_by_id_loop
     cmp cache_id_low - 1,y
     beq possible_match
 not_match
     dey
     bne find_cache_entry_by_id_loop
+    +assert_no_page_crossing find_cache_entry_by_id_loop
     ; We don't have the requested block.
     lda #1
     ldy #our_osword_result_offset
@@ -377,7 +386,6 @@ copy_requested_block_loop
     lda #tube_reason_256_byte_from_io
     jsr tube_entry
     ; We don't need an initial delay with this reason code.
-    ; SFTODO: Ensure no page crossing in following loop
     ldy #0
 tube_write_loop
     lda (our_cache_ptr),y    ; 5 cycles (dummy, cache is page-aligned so not 6)
@@ -389,6 +397,7 @@ sta_abs_tube_data
     ; before the store to tube_data also form part of this delay.
     iny                      ; 2 cycles
     bne tube_write_loop      ; 3 cycles if we branch
+    +assert_no_page_crossing tube_write_loop
     jsr do_loop_tail_common
     bne copy_requested_block_loop
     jsr release_tube
@@ -452,7 +461,6 @@ adjust_osword_block_data_offset
     rts
 
 ; Set our_cache_ptr to point to the block with index Y.
-; SFTODO: THIS WILL PRESUMABLY HANDLE PAGING IN SWR ONCE WE SUPPORT IT - BUT WE'LL NEED TO TAKE CARE TO PAGE WHATEVER WAS IN BEFOREHAND BACK IN BEFORE WE RETURN FROM OSWORD
 set_our_cache_ptr_to_index_y
     lda #0
     sta our_cache_ptr

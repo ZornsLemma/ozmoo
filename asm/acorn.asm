@@ -824,7 +824,6 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; memory.)
 .vmem_blocks = ((>(flat_ramtop - story_start)) - ACORN_INITIAL_NONSTORED_BLOCKS) / vmem_block_pagecount
 .cutover_timestamp = int(ACORN_TUBE_CACHE_MAX_TIMESTAMP + ((float(.vmem_blocks) / vmap_max_size) * (ACORN_TUBE_CACHE_MIN_TIMESTAMP - ACORN_TUBE_CACHE_MAX_TIMESTAMP))) and ($ff xor vmem_highbyte_mask)
-SFTODOPPP = .cutover_timestamp
 
     ; Work through the blocks in vmap, loading each in turn and offering it to the
     ; host cache if it's old and there's room, and keeping it loaded into local memory
@@ -857,13 +856,13 @@ SFTODOPPP = .cutover_timestamp
     sta osword_cache_index_offered
     lda osword_cache_index_requested + 1
     sta osword_cache_index_offered + 1
-    jmp .SFTODOXXX
+    jmp .continue
 .dont_put_in_cache
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
     inc to_index
-.SFTODOXXX
+.continue
     inc from_index
     lda to_index
     cmp vmap_max_entries

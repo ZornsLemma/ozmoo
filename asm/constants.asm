@@ -369,7 +369,7 @@ screen_ram_start_minus_1 = $40e ; !byte 0
 }
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
-; SFTODO: There's a gap here in page 4 now we've stoppde storing RAM bank list there; move things up.
+; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.
 mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
