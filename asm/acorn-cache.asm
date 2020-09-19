@@ -519,7 +519,7 @@ cache_entries = * ; 1 byte
 ; similar if not so hot use. Since max_cache_entries is 255 we can easily get
 ; the desired alignment by slotting some single-byte variables into the spare
 ; bytes at the start of each page without wasting any memory.
-!if (cache_entries + 1) & $100 <> 0 {
+!if ((cache_entries + 1) & $100) <> 0 {
     low_cache_entries = ((cache_entries + 1) & !$ff) + $100 ; 1 byte
 } else {
     low_cache_entries = cache_entries + 1 ; 1 byte
