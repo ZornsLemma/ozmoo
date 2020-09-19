@@ -60,13 +60,15 @@ REM *not* the top half of some double-height text.)
 :
 shadow%=(HIMEM>=&8000)
 tube%=(PAGE<&E00)
-IF tube% THEN ${TUBEDETECTED}
 PROCdetect_swr:REM will die if 0 banks found
+IF tube% THEN ${TUBEDETECTED}
 REM SFTODO: Hypothetical AQR support might kick in here and if found (maybe we ask the user for permission) we'd select the relevant binary and GOTO 1000, otherwise we'd carry on
 IF shadow% AND host_os%<>0 THEN ${BBCSHRSWRDETECTED}
 IF host_os%<>0 THEN ${BBCSWRDETECTED}
 IF host_os%=0 THEN ${ELECTRONSWRDETECTED}
-1000PRINTTAB(0,first_loader_line);CHR$${HEADERFG};"Hardware detected:"'CHR$${NORMALFG};"  ";hw$
+1000PRINTTAB(0,first_loader_line);CHR$${HEADERFG};"Hardware detected:"
+IF tube% THEN PRINT CHR$${NORMALFG};"  Second processor"
+IF swr% THEN PRINT CHR$${NORMALFG};"  ";swr$
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
 start_mode%=${DEFAULTMODE}
@@ -111,18 +113,21 @@ IF fs%=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
 END
 :
 DEF PROCdetect_swr
+swr%=FALSE
 */FINDSWR
 swr_type=&903
-c%=?ram_bank_count
-IF c%=0 THEN PROCdie("Sorry, no free sideways RAM or second  "+CHR$${NORMALFG}+"processor detected.")
-IF ?swr_type>2 THEN  PROCdie("Sorry, only ROMSEL-controlled sideways "+CHR$${NORMALFG}+"RAM currently supported.")
-hw$=STR$(16*?ram_bank_count)+"K sideways RAM (bank"
-IF c%>1 THEN hw$=hw$+"s"
-hw$=hw$+" &"
+c%=FNpeek(ram_bank_count)
+IF c%=0 AND NOT tube% THEN PROCdie("Sorry, no free sideways RAM or second  "+CHR$${NORMALFG}+"processor detected.")
+IF c%=0 THEN ENDPROC
+IF FNpeek(swr_type)>2 THEN  PROCdie("Sorry, only ROMSEL-controlled sideways "+CHR$${NORMALFG}+"RAM currently supported.")
+swr$=STR$(16*c%)+"K sideways RAM (bank"
+IF c%>1 THEN swr$=swr$+"s"
+swr$=swr$+" &"
 FOR i%=0 TO c%-1
-hw$=hw$+STR$~(ram_bank_list?i%)
+swr$=swr$+STR$~FNpeek(ram_bank_list+i%)
 NEXT
-hw$=hw$+")"
+swr$=swr$+")"
+swr%=TRUE
 ENDPROC
 :
 DEF FNrelocate_to
@@ -281,3 +286,8 @@ REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 DEF FNfs
 LOCAL A%,Y%
 A%=0:Y%=0:=USR(&FFDA) AND &FF
+:
+DEF FNpeek(addr%)
+!block%=&FFFF0000 OR addr%
+A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1
+=block%?4
