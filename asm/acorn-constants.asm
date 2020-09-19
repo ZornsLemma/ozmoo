@@ -2,6 +2,7 @@
 ; to the main Ozmoo executable are in constants.asm
 
 osbyte = $fff4
+osbyte_read_host = 0
 
 romsel_copy = $f4
 bbc_romsel = $fe30

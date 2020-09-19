@@ -1,3 +1,5 @@
+; Cache to use memory on the host in Acorn second processor builds.
+
 ; SFTODO: WITH ACME I CAN'T USE "BYTE GENERATING" THINGS TO ALLOCATE UNINITIALISED DATA AS THEY GET INCLUDED IN THE BINARY
 
 !source "acorn-constants.asm"
@@ -30,33 +32,6 @@ timestamp_adjustment = $40 ; SFTODO: $80?
 
 program_start
     jmp relocate_setup
-
-; SFTODO: It might be worth putting this initialisation code at the end where
-; it can be overwritten, but let's not worry about that for now. (If we do overwrite
-; it *and* we want to support being re-run, we'd need to ensure this reset all the
-; cache state appropriately.)
-initialize
-    ; We claim iff we haven't already claimed USERV; this avoids crashes if
-    ; we're executed twice, although this isn't expected to happen.
-    ; SFTODO: AND IF ANY "STATE" IS STORED IN THE AREA COVERED BY THE EXECUTABLE
-    ; THEN RE-RUNNING THE EXECUTABLE COULD CAUSE US TO CRASH IN OTHER WAYS
-    lda #<our_userv
-    ldx #>our_userv
-    cmp userv
-    bne initialize_needed
-    cpx userv + 1
-    beq initialize_done
-initialize_needed
-    ; Install ourselves on USERV, saving any previous claimant so we can forward
-    ; calls we're not handling.
-    ldy userv
-    sty old_userv
-    ldy userv + 1
-    sty old_userv + 1
-    sta userv
-    stx userv + 1
-initialize_done
-    rts
 
 our_userv
     cmp #$E0
@@ -498,14 +473,23 @@ index_in_high_cache
     sta our_cache_ptr + 1
     rts
 
+    ; If this executable is re-loaded, old_userv will be overwritten by 0 as
+    ; part of the re-load and things will break. In reality this isn't going to
+    ; happen and I don't think there's any great solution to it. We can't easily
+    ; put this just before the binary because the relocation likes to work on
+    ; page boundaries, and since we have discardable init code at the end of the
+    ; binary we can't put it there either.
+old_userv
+    !word 0
 
+    ; Permanent code ends here; the following memory contains some one-off
+    ; initialization code and some overlapping data allocations.
 code_end
 
 max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
-old_userv = code_end ; 2 bytes
-cache_entries = old_userv + 2 ; 1 byte
+cache_entries = * ; 1 byte
 
 ; We use cache_id_low - 1,y addressing in the hot find_cache_entry_by_id_loop,
 ; so it's good to have that page-aligned to avoid incurring an extra cycle
@@ -527,6 +511,32 @@ low_cache_start = cache_timestamp + max_cache_entries
 !if low_cache_start & $ff <> 0 {
     !error "low_cache_start must be page-aligned"
 }
+
+initialize
+!if 0 { ; This is pointless, as old_userv will be lost on a second execution.
+    ; We claim iff we haven't already claimed USERV; this avoids crashes if
+    ; we're executed twice, although this isn't expected to happen.
+    ; SFTODO: AND IF ANY "STATE" IS STORED IN THE AREA COVERED BY THE EXECUTABLE
+    ; THEN RE-RUNNING THE EXECUTABLE COULD CAUSE US TO CRASH IN OTHER WAYS
+    lda #<our_userv
+    ldx #>our_userv
+    cmp userv
+    bne initialize_needed
+    cpx userv + 1
+    beq initialize_done
+initialize_needed
+}
+    ; Install ourselves on USERV, saving any previous claimant so we can forward
+    ; calls we're not handling.
+    ldy userv
+    sty old_userv
+    ldy userv + 1
+    sty old_userv + 1
+    sta userv
+    stx userv + 1
+initialize_done
+    rts
+
 
 relocate_target
     !byte 0

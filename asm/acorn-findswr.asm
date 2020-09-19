@@ -6,8 +6,6 @@
 
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
-osbyte           = $fff4
-osbyte_read_host = 0
 max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 
 ; We arrange for the output to be near the start of this binary so the loader
