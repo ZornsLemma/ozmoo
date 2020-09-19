@@ -653,11 +653,15 @@ def make_loader():
                         global new_short_token
                         changed_token = new_short_token[:]
                         changes[bytes(token)] = changed_token
-                        if new_short_token[0] < ord("z"):
-                            new_short_token[0] += 1
-                        else:
-                            new_short_token[0] = ord("a")
-                            new_short_token = bytearray([ord("a")]) + new_short_token
+                        for i in range(len(new_short_token) + 1):
+                            if i < len(new_short_token):
+                                if new_short_token[i] < ord("z"):
+                                    new_short_token[i] += 1
+                                    break
+                                else:
+                                    new_short_token[i] = ord("a")
+                            else:
+                                new_short_token += bytearray([ord("a")])
                     loader_file.write(changed_token)
                 return bytearray()
             for b in loader.getvalue():
