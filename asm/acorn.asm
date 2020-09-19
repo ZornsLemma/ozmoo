@@ -105,7 +105,6 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; These macros must leave the selected bank number in A or Y as appropriate.
 
 !ifndef ACORN_ELECTRON_SWR {
-bbc_romsel = $fe30
 
 !macro acorn_page_in_bank_using_a .operand {
     lda .operand
@@ -131,7 +130,6 @@ bbc_romsel = $fe30
     sty bbc_romsel
 }
 } else { ; ACORN_ELECTRON_SWR
-electron_romsel = $fe05
 
 !macro acorn_page_in_bank_using_a .operand {
     lda #12

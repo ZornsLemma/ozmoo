@@ -1,7 +1,5 @@
 ; Cache to use memory on the host in Acorn second processor builds.
 
-; SFTODO: WITH ACME I CAN'T USE "BYTE GENERATING" THINGS TO ALLOCATE UNINITIALISED DATA AS THEY GET INCLUDED IN THE BINARY
-
 !source "acorn-constants.asm"
 
 userv = $200
@@ -9,7 +7,8 @@ osword_a = $ef
 osword_x = $f0
 osword_y = $f1
 osword_block_ptr = $f0
-tube_data = $fee5 ; SFTODO: possibly different on Electron
+bbc_tube_data = $fee5
+electron_tube_data = $fce5
 tube_entry = $406
 tube_reason_claim = $c0
 tube_reason_release = $80
@@ -19,6 +18,15 @@ osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 
 zp_temp = $f5 ; 3 bytes
+
+; SFTODO: Electron support in here is not tested properly. It appears to lock up
+; inside the tube host code trying to release the tube after copying a block
+; from host to parasite, at $69e, where we have "bit $fce6 / bvc $69e". I
+; suspect/hope that what's happening is the MAME timing is a bit off, as
+; mentioned in passing at
+; https://stardot.org.uk/forums/viewtopic.php?f=4&t=13351&p=287831&#p287831 and
+; some of the data I'm sending is getting lost. I am using MAME 0.224 on Windows
+; to test, and that predates that stardot comment.
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
@@ -30,6 +38,8 @@ our_tube_reason_claim_id = $25 ; a six bit value
 ; timestamps, but at the cost of having to do the adjustment more often.
 timestamp_adjustment = $40 ; SFTODO: $80?
 
+page_in_swr_bank_a_electron_size = 13
+
 program_start
     jmp relocate_setup
 
@@ -38,10 +48,8 @@ our_userv
     beq our_osword
     cmp #0
     beq our_osbyte ; *CODE/OSBYTE $88
-    ; SFTODO: We might be able to use that OSBYTE to trigger initialisation of the cache size as well - at that point we'll still be in mode 7 on the loader screen but Ozmoo knows what mode it will select, so it could pass that over in the OSBYTE and receive in return the available cache size
     jmp (old_userv)
 
-    ; SFTODO: EXPERIMENTAL
     ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED WITH "SAME" X OR ON A SUBSEQUENT CALL OR SOMETHING? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART.
 ; OSBYTE $88 - host cache initialisation
 ;
@@ -177,7 +185,7 @@ our_osword
 our_cache_ptr = zp_temp ; 2 bytes
 count = zp_temp + 2 ; 1 byte
 
-    lda $f4 ; SFTODO MAGIC
+    lda romsel_copy
     pha
 
     ; Is a block being offered to us by the caller?
@@ -295,7 +303,8 @@ wait_x
     ; SFTODO: Kind of stating the obvious, but the tube loops obviously burn loads of CPU time, so even if it feels inefficient to be iterating over 255 cache entries once or twice per call to check timestamps or whatever, remember we have to do 512 iterations of this loop and/or the other similar tube loop, so that other code isn't negligible but is diluted. Plus of course we are saving a trip to disc.
     ; SFTODO: Ensure no page crossing in following loop
 tube_read_loop
-    lda tube_data
+lda_abs_tube_data
+    lda bbc_tube_data
     ; We now need a 10 microsecond/20 cycle delay.
     sta (our_cache_ptr),y ; 6 cycles
     lda (our_cache_ptr),y ; 5 cycles (dummy, cache is page-aligned so not 6)
@@ -374,7 +383,8 @@ tube_write_loop
     lda (our_cache_ptr),y    ; 5 cycles (dummy, cache is page-aligned so not 6)
     lda (our_cache_ptr),y    ; 5 cycles (dummy)
     lda (our_cache_ptr),y    ; 5 cycles
-    sta tube_data
+sta_abs_tube_data
+    sta bbc_tube_data
     ; We now need a 10 microsecond/20 cycle delay; the instructions in the loop
     ; before the store to tube_data also form part of this delay.
     iny                      ; 2 cycles
@@ -385,12 +395,17 @@ tube_write_loop
     jsr reset_osword_block_data_offset
 
 our_osword_done
+    ; We don't need to preserve A, X or Y. We just need to leave the same sideways
+    ; ROM paged as as when we were entered.
     pla
-    ; SFTODO: MAGIC NUMBERS/ELECTRON DIFFERENT
-    sta $f4
-    sta $fe30
-    ; We don't need to preserve A, X or Y.
+    ; fall through to page_in_swr_bank_a
+page_in_swr_bank_a
+    sta romsel_copy
+    sta bbc_romsel
     rts
+    ; Leave room for the larger Electron version of page_in_swr_bank_a to be copied
+    ; over the BBC version.
+!fill page_in_swr_bank_a_electron_size - (* - page_in_swr_bank_a)
 
 claim_tube
     lda #tube_reason_claim + our_tube_reason_claim_id
@@ -461,8 +476,7 @@ index_in_high_cache
     lsr
     tay
     lda ram_bank_list,y
-    sta $f4 ; SFTODO MAGIC NUMBER
-    sta $fe30 ; SFTODO MAGIC NUMBER, DIFFERENT ON ELECTRON
+    jsr page_in_swr_bank_a
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
@@ -513,13 +527,11 @@ low_cache_start = cache_timestamp + max_cache_entries
 }
 
 initialize
-!if 0 { ; This is pointless, as old_userv will be lost on a second execution.
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
     ; we're executed twice, although this isn't expected to happen.
-    ; SFTODO: AND IF ANY "STATE" IS STORED IN THE AREA COVERED BY THE EXECUTABLE
-    ; THEN RE-RUNNING THE EXECUTABLE COULD CAUSE US TO CRASH IN OTHER WAYS
     lda #<our_userv
     ldx #>our_userv
+!if 0 { ; This is pointless, as old_userv will be lost on a second execution.
     cmp userv
     bne initialize_needed
     cpx userv + 1
@@ -534,9 +546,43 @@ initialize_needed
     sty old_userv + 1
     sta userv
     stx userv + 1
+
+    ; If we're running on an Electron, patch the code accordingly.
+    lda #osbyte_read_host
+    ldx #1
+    jsr osbyte
+    txa
+    bne not_electron
+
+    ; Patch the tube_data accesses.
+    lda #<electron_tube_data
+    sta lda_abs_tube_data + 1
+    sta sta_abs_tube_data + 1
+    lda #>electron_tube_data
+    sta lda_abs_tube_data + 2
+    sta sta_abs_tube_data + 2
+
+    ; Patch page_in_swr_bank_a
+    ldx #page_in_swr_bank_a_electron_size - 1
+-   lda page_in_swr_bank_a_electron,x
+    sta page_in_swr_bank_a,x
+    dex
+    bpl -
+not_electron
 initialize_done
     rts
 
+    ; This is copied over page_in_swr_bank_a, so must not contain absolute
+    ; addresses within this executable.
+page_in_swr_bank_a_electron
+    ldx #12
+    stx romsel_copy
+    stx electron_romsel
+    sta romsel_copy
+    sta electron_romsel
+    rts
+page_in_swr_bank_a_electron_end
++assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
 
 relocate_target
     !byte 0
