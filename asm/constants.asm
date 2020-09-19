@@ -370,10 +370,7 @@ screen_ram_start_minus_1 = $40e ; !byte 0
 }
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
-; We use the space for D%, E% and F% (12 bytes) for the ram bank count and list;
-; we probably don't need all this.
-ram_bank_count = $410
-ram_bank_list = $411 ; 11 bytes, we only use 9 SFTODO AS PER COMMENT ELSEWHERE, keeping a zp copy of first byte of this in zp would be a modest win for bigdynmem, one hot instruction (0.36% total run time) reads from this - not huge, but not totally worthless for one byte of zp
+; SFTODO: There's a gap here in page 4 now we've stoppde storing RAM bank list there; move things up.
 mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
@@ -411,6 +408,10 @@ scratch_double_page = scratch_page
 ; right at the end of the binary, and first thing (perhaps even before relocating
 ; if we're in a reloctable build) copy it down to somewhere in $400-800. That's
 ; if I think this is a good thing to do, not saying it is.
+
+; These are populated by and need to be kept consistent with acorn-findswr.asm.
+ram_bank_count = $904
+ram_bank_list = $905
 }
 
 }

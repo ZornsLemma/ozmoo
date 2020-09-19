@@ -6,18 +6,21 @@ copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
 osbyte           = $fff4
 osbyte_read_host = 0
+max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 
 ; We arrange for the output to be near the start of this binary so the loader
 ; can access it at fixed addresses.
 
     jmp start
 
-; Output for the loader
-swr_banks       !byte 0
+; Output for Ozmoo
 swr_type        !byte 0
-swr_test        !fill $10
+ram_bank_count  !byte 0
+ram_bank_list   !fill max_ram_bank_count
 
 ; Storage used by this routine which the loader doesn't care about
+swr_test        !fill $10
+swr_banks       !byte 0
 swr_backup      !fill $10
 swr_byte_value1 !byte 0
 swr_byte_value2 !byte 0
@@ -234,6 +237,24 @@ end2
     LDA $F4
     JSR page_in_a
     CLI
+    ; Now derive a list of banks which have usable sideways RAM.
+    ; We don't trust swr_banks because ROM write through can make it misleading.
+    LDX #0
+    LDY #0
+derive_loop
+    LDA swr_test,Y
+    BEQ not_usable
+    TYA
+    STA ram_bank_list,X
+    INX
+    CPX #max_ram_bank_count
+    BEQ derive_done
+not_usable
+    INY
+    CPY #16
+    BNE derive_loop
+derive_done
+    STX ram_bank_count
     RTS
 
 ; Utilities
@@ -318,3 +339,5 @@ page_in_a_electron
     STA $FE05
     RTS
 
+
+    ; SFTODO: THIS IS SPILLING OVER INTO PAGE $B

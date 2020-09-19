@@ -33,9 +33,8 @@ relocate_target=&408
 fg_colour=&409
 bg_colour=&40A
 screen_mode=&40B
-ram_bank_count=&410
-ram_bank_list=&411
-max_ram_bank_count=9:REM 255*0.5K for VM plus 16K for dynamic memory
+ram_bank_count=&904
+ram_bank_list=&905
 filename_data=&42F
 filename_size=49
 :
@@ -113,19 +112,10 @@ END
 :
 DEF PROCdetect_swr
 */FINDSWR
-swr_banks=&903
-swr_type=&904
-swr_test=&905
-IF ?swr_banks=0 THEN PROCdie("Sorry, no free sideways RAM or second  "+CHR$${NORMALFG}+"processor detected.")
+swr_type=&903
+c%=?ram_bank_count
+IF c%=0 THEN PROCdie("Sorry, no free sideways RAM or second  "+CHR$${NORMALFG}+"processor detected.")
 IF ?swr_type>2 THEN  PROCdie("Sorry, only ROMSEL-controlled sideways "+CHR$${NORMALFG}+"RAM currently supported.")
-REM We don't trust ?swr_banks because ROM write through can make it misleading.
-REM Instead we take the first max_ram_bank_count banks with a non-0 count in
-REM swr_test.
-c%=0
-FOR i%=0 TO 15
-IF i%?swr_test>0 AND c%<max_ram_bank_count THEN ram_bank_list?c%=i%:c%=c%+1
-NEXT
-?ram_bank_count=c%
 hw$=STR$(16*?ram_bank_count)+"K sideways RAM (bank"
 IF c%>1 THEN hw$=hw$+"s"
 hw$=hw$+" &"
