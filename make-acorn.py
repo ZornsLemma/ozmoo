@@ -14,6 +14,7 @@ from __future__ import print_function
 import argparse
 import base64
 import hashlib
+import io
 import os
 import re
 import shutil
@@ -325,6 +326,7 @@ group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes o
 group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
 group.add_argument("--force-6502", action="store_true", help="only use 6502 instructions on all machines")
 group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
+group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
 # SFTODO: MORE
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -503,8 +505,13 @@ def make_loader():
         # Python 3 won't allow the output to be a text file, because it contains top-bit-set
         # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
         # get the line endings right for the platform we're on.
+        loader_file = open("temp/loader.bas", "wb")
         linesep = os.linesep.encode("ascii")
-        with open("temp/loader.bas", "wb") as loader:
+        if not args.no_loader_crunch:
+            loader = io.BytesIO()
+        else:
+            loader = loader_file
+        if True: # SFTODO: JUST TO AVOID CHANGING ALL THE FOLLOWING INDENT RIGHT NOW!
             # SFTODO: Slightly hacky but feeling my way here
             space_line = None
             first_loader_line = None
@@ -628,6 +635,48 @@ def make_loader():
                     if line == "" or line == ":":
                         continue
                     loader.write(line.encode("ascii") + linesep)
+        if not args.no_loader_crunch:
+            # As a crude but reasonably effective way to crunch BASIC code
+            # without being too clever, we assume anything not inside quotes
+            # which is a sequence of lowercase characters and underscores is a
+            # variable name which we can safely shorten.
+            # SFTODO: This code is particularly foul, I really didn't have a clue about how to make it work on Python 2 and 3 and just hacked, new_short_token being global sucks, as does the way emit_token has to take token as an argument and return a value for it
+            changes = {}
+            in_quote = False
+            token = bytearray()
+            global new_short_token
+            new_short_token = bytearray([ord("a")])
+            def emit_token(token):
+                if len(token) > 0:
+                    changed_token = changes.get(bytes(token), None)
+                    if changed_token is None:
+                        global new_short_token
+                        changed_token = new_short_token[:]
+                        changes[bytes(token)] = changed_token
+                        if new_short_token[0] < ord("z"):
+                            new_short_token[0] += 1
+                        else:
+                            new_short_token[0] = ord("a")
+                            new_short_token = bytearray([ord("a")]) + new_short_token
+                    loader_file.write(changed_token)
+                return bytearray()
+            for b in loader.getvalue():
+                b = bytearray([b])
+                if b[0] == ord('"'):
+                    token = emit_token(token)
+                    in_quote = not in_quote
+                    loader_file.write(b)
+                    continue
+                if in_quote:
+                    token = emit_token(token)
+                    loader_file.write(b)
+                    continue
+                if (b[0] >= ord("a") and b[0] <= ord("z")) or b[0] == ord("_"):
+                    token += bytes(b)
+                else:
+                    token = emit_token(token)
+                    loader_file.write(b)
+
 
 
 auto_start = "TRUE" if args.auto_start else "FALSE"
