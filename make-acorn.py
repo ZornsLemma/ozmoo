@@ -569,7 +569,7 @@ def make_loader():
                         footer = footer[40:]
                         last_loader_line += 1
                     loader_lines = last_loader_line + 1 - first_loader_line
-                    min_loader_lines = 12 # SFTODO: 11 is currently enough, but I want to keep one "spare" - OK, now with SWR+2P both being possible 12 is needed sometimes
+                    min_loader_lines = 13 # SFTODO: 11 is currently enough, but I want to keep one "spare" - OK, now with SWR+2P both being possible 12 is needed sometimes - 13 now we show shadow RAM explicitly
                     if loader_lines < min_loader_lines:
                         die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
                     if len(footer) > 0:

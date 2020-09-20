@@ -58,7 +58,7 @@ REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
 :
-shadow%=(HIMEM>=&8000)
+shadow%=(potential_himem%=&8000)
 tube%=(PAGE<&E00)
 PROCdetect_swr:REM will die if 0 banks found
 IF tube% THEN ${TUBEDETECTED}
@@ -68,6 +68,7 @@ IF host_os%<>0 THEN ${BBCSWRDETECTED}
 IF host_os%=0 THEN ${ELECTRONSWRDETECTED}
 1000PRINTTAB(0,first_loader_line);CHR$${HEADERFG};"Hardware detected:"
 IF tube% THEN PRINT CHR$${NORMALFG};"  Second processor"
+IF shadow% THEN PRINT CHR$${NORMALFG};"  Shadow RAM"
 IF swr% THEN PRINT CHR$${NORMALFG};"  ";swr$
 IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
 IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
