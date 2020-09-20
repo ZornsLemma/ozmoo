@@ -1,3 +1,5 @@
+# SFTODO: Allow RETURN to start the game instead of/as well as SPACE
+
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 

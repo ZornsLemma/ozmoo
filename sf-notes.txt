@@ -13,6 +13,7 @@ Timings with initial crude tube host cache prototype:
 - currently (with probably-good preloading) getting $2ef6
 - with relocating cache, a B with DFS+ADFS completes in $2e8e and Master 128 in $2e28
 - now with sideways RAM support, Master 128 does no disc access during game and completes in $2ae8
+- with alpha 2.8 on dev MAME, an Electron with a 3MHz copro and 48K SWR completed benchmark in (approx; I started timing a few seconds in) 4:35-4:45, as measured by stopwatch (mode 6)
 
 
 restart and checking for game disc:
