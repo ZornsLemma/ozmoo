@@ -81,14 +81,14 @@ IF NOT any_mode% THEN mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu
 PRINT'CHR$${HEADERFG};"In-game controls:"
 controls_vpos%=VPOS
 PROCupdate_controls
-IF NOT auto% THEN PRINTTAB(0,space_line);CHR$${NORMALFG};"Press SPACE to start the game...";
+IF NOT auto% THEN PRINTTAB(0,space_line);CHR$${NORMALFG};"Press SPACE/RETURN to start the game...";
 REPEAT
 *FX21
 IF auto% THEN key$=" " ELSE key$=GET$
 IF host_os%=0 AND key$=CHR$(2) THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
 IF host_os%=0 AND key$=CHR$(6) THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
 IF INSTR(mode_key$,key$)<>0 THEN PROCmenu_to_mode(VAL(key$)) ELSE IF ASC(key$)>=136 AND ASC(key$)<=139 THEN PROCmenu_cursor(ASC(key$))
-UNTIL key$=" "
+UNTIL key$=" " OR key$=CHR$(13)
 ?screen_mode=FNmode_from_menu
 IF ?screen_mode=7 THEN ?fg_colour=6
 VDU 28,0,space_line,39,space_line,12,26,31,0,space_line,${NORMALFG}
