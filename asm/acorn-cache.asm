@@ -377,7 +377,8 @@ match
     lda #0
     sta (osword_block_ptr),y
 
-    ; Copy the requested block back to the caller.
+    ; Copy the 512-byte block in our cache pointed to by our_cache_ptr back to
+    ; the caller.
     jsr claim_tube
     lda #2
     sta count
@@ -405,7 +406,7 @@ sta_abs_tube_data
 
 our_osword_done
     ; We don't need to preserve A, X or Y. We just need to leave the same sideways
-    ; ROM paged as as when we were entered.
+    ; ROM paged in as when we were entered.
     pla
     ; fall through to page_in_swr_bank_a
 page_in_swr_bank_a
