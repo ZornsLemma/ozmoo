@@ -1,5 +1,7 @@
 # SFTODO: Allow RETURN to start the game instead of/as well as SPACE
 
+# SFTODO: Is there any chance of "Beyond Zork" working? Does it work on C64?
+
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
 # on startup and generate a clear error if they're not found.
 
