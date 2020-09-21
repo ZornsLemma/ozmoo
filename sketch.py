@@ -43,6 +43,7 @@ class Executable(object):
         self.relocations = None
         pass # SFTODO
 
+    # SFTODO: Can/should we just automatically do the "other" build to make the relocations when we're asked for the binary?
     def add_relocations(self, other):
         assert "ACORN_RELOCATABLE" in self.labels
         assert self.asm_filename == other.asm_filename
@@ -59,7 +60,7 @@ class Executable(object):
             return self.acme_output
 
 
-# SFTODO: PATCH_VMEM IS A BIG SOURCE OF NOT-NECESSARILY-FATAL ERRORS, WHAT IS GOING TO CALL THAT AND HOW WILL I HANDLE THIS FAILING?
+# SFTODO: PATCH_VMEM IS A BIG SOURCE OF NOT-NECESSARILY-FATAL ERRORS, WHAT IS GOING TO CALL THAT AND HOW WILL I HANDLE THIS FAILING? I THINK THIS IS THE ONLY LEGIT REASON FOR FAILING TO BUILD AN EXECUTABLE, THOUGH DO NOTE THAT IN SOME CASES (NOT SURE JUST NOW) IT MAY BE LEGIT FOR A BUILD DOING EXPERIMENTALLY TO FAIL ON THESE GROUPS, WE WOULD THEN JUST TWEAK PARAMS TO DO ANOTHER BUILD FOR THAT TARGET MACHINE
 def make_executable(asm_filename, start_address, extra_args):
     assert isinstance(start_address, int)
 
@@ -79,13 +80,70 @@ def make_executable(asm_filename, start_address, extra_args):
         assert cache_entry[0] == definition
         return cache_entry[1]
 
+    # SFTODO: THIS NEEDS TO END UP RETURNING "NONE" IF IT'S A SMALLDYN BUILD AND GAME WON'T FIT IN MAIN RAM
     try:
         e = Executable(asm_filename, output_basename, start_address, extra_args)
-    except: # SFTODO: catch specific exception types
+    except GameWontFit:
         e = None
     make_executable.cache[output_basename] = (definition, e)
     return e
 make_executable.cache = {}
+
+
+
+def SFTODOEXPERIMENTALMAKERTHING():
+    # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
+    big_dyn_extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
+    small_dyn_extra_args = big_dyn_extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"]
+
+    SFTODO
+
+block_size_bytes = 256 # SFTODO MOVE
+# SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
+def SFTODOANOTHEREXPERIMENTALMAKERTHING():
+    # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
+    # - max_game_blocks_main_ram() can only return even values
+    # - There are two possible start addresses 256 bytes apart which will generate the same
+    #   value of max_game_blocks_main_ram(), as one will waste an extra 256 bytes on aligning
+    #   story_start to a 512-byte boundary.
+    # - We want to use the higher of those two possible start addresses, because it means we
+    #   won't need to waste 256 bytes before the start of the code if PAGE happens to have the
+    #   right alignment.
+    small_dyn_e00 = make_executable("ozmoo.asm", 0xe00, small_dyn_extra_args)
+    # If we can't fit dynamic memory into main RAM with a start of 0xe00 we
+    # can't ever manage it.
+    if small_dyn_e00 is None:
+        return None
+    surplus_nonstored_blocks = max_game_blocks_main_ram(small_dyn_e00) - nonstored_blocks
+    assert surplus_nonstored_blocks >= 0
+    # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
+    surplus_nonstored_blocks &= ~0x1
+    approx_max_start_address = 0xe00 + surplus_nonstored_blocks * block_size_bytes
+    # If the alignment works out appropriately, we may have the same amount of available RAM
+    # with less wasted alignment by building one page past approx_max_start_address.
+    small_dyn = make_executable("ozmoo.asm", approx_max_start_address + 0x100, small_dyn_extra_args)
+    if small_dyn is not None:
+        assert small_dyn.size() != small_dyn_e00.size()
+        if small_dyn.size() < small_dyn_e00.size():
+            return small_dyn
+    small_dyn = make_executable("ozmoo.asm", approx_max_start_adress, small_dyn_extra_args)
+    assert small_dyn is not None
+    assert small_dyn.size() == small_dyn_e00.size()
+    return small_dyn
+
+
+
+
+    XXX
+    small_dyn_f00 = make_executable("ozmoo.asm", 0xf00, small_dyn_extra_args)
+    if small_dyn_f00 is None:
+        return small_dyn_e00
+    assert max_game_blocks_main_ram(small_dyn_e00) == max_game_blocks_main_ram(small_dyn_f00) SFTODO NOT SURE THIS IS TRUE
+    preferred_alignment = 0 if small_dyn_e00.size() < small_dyn_f00.size() else 0x100
+
+    SFTODO
+    
+    
 
     
 
