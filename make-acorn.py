@@ -341,7 +341,7 @@ if args.force_65c02 and args.force_6502:
 if args.preload_opt and args.preload_config:
     die("--preload-opt and --preload-config are incompatible")
 
-# It's OK to run and given --help etc output if the version.txt file can't be found,
+# It's OK to run and give --help etc output if the version.txt file can't be found,
 # but we don't want to generate a disc image with a missing version.
 if version_txt is None:
     die("Can't find version.txt")
