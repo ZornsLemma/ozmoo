@@ -61,6 +61,7 @@ def colour(n):
     else:
         return 135
 
+# SFTODO: If a command fails (and it's not one we've done "experimentally" accepting it may fail), this should probably always show the command and it's output regardless of verbose_level
 def run_and_check(args, output_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
