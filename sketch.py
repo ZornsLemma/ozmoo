@@ -36,6 +36,7 @@ def template_substitute(template, args):
         
             
 # SFTODO: In a few places I am doing set(extra_args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
+# SFTODO: I think an Executable object should have a min_swr property which would be 0 for tube builds or (maybe) small games which can run without SWR on a non-2P, 16 for most games and 32 for games which use all of first bank for dynmem. using K not bank count to ease things if I do ever support using e.g. private 12K on B+ where things aren't a multiple of 16.
 class Executable(object):
     def __init__(self, asm_filename, output_basename, start_address, extra_args):
         self.output_basename = output_basename

@@ -1,5 +1,7 @@
 # SFTODO: Allow RETURN to start the game instead of/as well as SPACE
 
+# SFTODO: For games with small enough dynmem it would be nice if the SWR builds would run with no SWR (perhaps painfully)
+
 # SFTODO: Is there any chance of "Beyond Zork" working? Does it work on C64?
 
 # SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
