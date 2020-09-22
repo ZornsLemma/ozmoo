@@ -222,7 +222,7 @@ class Executable(object):
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
-        # SFTODO: Switch to using a safer distinctive string with a clear start and end
+        # SFTODO: Switch to using a safer distinctive string with a clear start and end - OR TBH WE SHOULD BE ABLE TO DETERMINE THE LOCATION FROM OUR LABELS, AND JUST DOUBLE-CHECK FOR THESE VS
         vmap_offset = self._binary.index(b'VVVVVVVVVVVV')
         vmap_length = 0
         while chr(self._binary[vmap_offset + vmap_length]) == 'V':
