@@ -342,10 +342,12 @@ def make_highest_possible_executable(extra_args):
     #   won't need to waste 256 bytes before the start of the code if PAGE happens to have the
     #   right alignment.
     e_e00 = make_executable("ozmoo.asm", 0xe00, extra_args)
-    # If we can't fit dynamic memory into main RAM with a start of 0xe00 we
-    # can't ever manage it.
+    # If we can't fit build successfully with a start of 0xe00 we can't ever
+    # manage it.
     if e_e00 is None:
         return None
+    # SFTODO: NOW WE ARE USING THIS FOR BIGDYN TOO, WE NEED TO TAKE MIN_VMEM_BLOCKS INTO ACCOUNT - WE ARE GOING TO BE USING SUCH HIGH LOAD ADDRESSES THERE IS NO REAL "WASTE" IN DOING THAT - REALLY IT'S A BIT SILLY EVEN BOTHERING - AH, IT'S NOT COMPLETELY SILLY, BECAUSE THIS WILL MATTER IF DYNMEM IS *REALLY* BIG (EG 30K-ISH)
+    # SFTODO: WE ALSO MUST NOT LOAD SO HIGH THAT THE BINARY (AND DON'T FORGET IT WILL HAVE AN AS-YET-UNDETERMINED NUMBER OF BYTES OF RELOC DATA APPENDED TOO) DOESN'T FIT BELOW $8000!
     surplus_nonstored_blocks = max_nonstored_blocks(e_e00) - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
