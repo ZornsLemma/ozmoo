@@ -113,17 +113,35 @@ def make_small_dynmem():
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
     surplus_nonstored_blocks &= ~0x1
     approx_max_start_address = 0xe00 + surplus_nonstored_blocks * block_size_bytes
-    # If the alignment works out appropriately, we may have the same amount of available RAM
-    # with less wasted alignment by building one page past approx_max_start_address.
-    small_dyn = make_executable("ozmoo.asm", approx_max_start_address + 0x100, small_dyn_extra_args)
-    if small_dyn is not None:
-        assert small_dyn.size() != small_dyn_e00.size()
-        if small_dyn.size() < small_dyn_e00.size():
-            return small_dyn
-    small_dyn = make_executable("ozmoo.asm", approx_max_start_adress, small_dyn_extra_args)
+    small_dyn = make_optimally_aligned_executable("ozmoo.asm", approx_max_start_address, small_dyn_extra_args, small_dyn_e00)
     assert small_dyn is not None
-    assert small_dyn.size() == small_dyn_e00.size()
+    if (small_dyn.start_address & 0x100) == (0xe00 & 0x100):
+        assert small_dyn.size() == small_dyn_e00.size()
+    else:
+        assert small_dyn.size() < small_dyn_e00.size()
+    assert 0 <= max_game_ram_blocks_main_ram(small_dyn) - nonstored_blocks <= 1
     return small_dyn
+
+
+
+
+def make_optimally_aligned_executable(asm_filename, initial_start_address, extra_args, base_executable = None):
+    if base_executable is None:
+        base_executable = make_executable(asm_filename, initial_start_address, extra_args)
+    else:
+        assert base_executable.asm_filename == asm_filename
+        assert (base_executable.start_address & 0x1ff) == (initial_start_address & 0x1ff)
+        assert base_executable.extra_args == extra_args
+    # If the alignment works out appropriately, we may have the same amount of available RAM
+    # with less wasted alignment by building one page past initial_start_address.
+    alternate_executable = make_executable(asm_filename, initial_start_address + 0x100, extra_args)
+    if alternate_executable.size() < base_executable.size():
+        return alternate_executable
+    else:
+        if base_executable.start_address == initial_start_address:
+            return base_executable
+        else:
+            return make_executable(asm_filename, initial_start_address, extra_args)
 
 
 
@@ -136,7 +154,14 @@ def make_shr_swr_executable():
         small_dyn_executable = None
     if small_dyn_executable is not None:
         return small_dyn_executable
-    return make_executable("ozmoo.asm", 0x2500, extra_args)
+    # SFTODO: This is too simplistic - on BBC bigdyn model, the size of game we can handle is still affected by our PAGE, so we want to do something similar to the above
+    return make_executable("ozmoo.asm", 0x2500, extra_args) # SFTODO: HARD-CODED ADDRESS
+
+
+def make_electron_swr_executable():
+    # SFTODO: Duplication here with make_shr_swr_executable() extra_args
+    extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
+    return make_optimally_aligned_executable("ozmoo.asm", 0x1d00, extra_args) # SFTODO: HARD-CODED ADDRESS
     
 
     
