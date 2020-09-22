@@ -130,9 +130,9 @@ class Executable(object):
             truncate_label = "end_of_routines_in_stack_space"
         self._binary = self._binary[:self.labels[truncate_label]-self.labels["program_start"]]
 
-        # SFTODO
-        #if "VMEM" in self.labels:
-        #    self._binary = Executable.patch_vmem(self._binary, self.labels)
+        self.min_swr = 0
+        if "VMEM" in self.labels:
+            self.patch_vmem()
 
     # Return the size of the binary, ignoring any relocation data (which isn't
     # important for the limited use we make of the return value).
@@ -181,6 +181,109 @@ class Executable(object):
         count = len(delta_relocations)
         return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
+    def patch_vmem(self):
+        vmem_block_pagecount = self.labels["vmem_block_pagecount"]
+        bytes_per_vmem_block = vmem_block_pagecount * 256
+        assert bytes_per_vmem_block == 512
+        vmap_max_size = self.labels["vmap_max_size"]
+
+        if z_machine_version == 3:
+            vmem_highbyte_mask = 0x01
+        elif z_machine_version == 8:
+            vmem_highbyte_mask = 0x07
+        else:
+            vmem_highbyte_mask = 0x03
+
+        # Can we fit the nonstored blocks into memory?
+        nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
+        if "ACORN_SWR" in self.labels:
+            pseudo_ramtop = 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
+        else:
+            pseudo_ramtop = self.labels["flat_ramtop"]
+        if nonstored_blocks_up_to > pseudo_ramtop:
+            raise GameWontFit("Not enough free RAM for game's dynamic memory")
+
+        # We also need memory for at least min_vmem_blocks 512-byte blocks. Tube
+        # builds must have enough RAM free for these in main RAM. Sideways RAM
+        # builds can always accommodate this, given enough sideways RAM.
+        min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
+        if "ACORN_ELECTRON_SWR" in self.labels:
+            electron_main_ram_vmem_blocks = (0x6000 - self.labels["extra_vmem_start"]) / bytes_per_vmem_block # SFTODO MAGIC CONST (START OF MODE 6 SCREEN)
+        else:
+            electron_main_ram_vmem_blocks = 0
+        nsmv_up_to = nonstored_blocks_up_to + min(min_vmem_blocks - electron_main_ram_vmem_blocks, 0) * bytes_per_vmem_block
+        if "ACORN_SWR" in self.labels:
+            self.min_swr = min(nsmv_up_to - 0x8000, 0)
+        else:
+            if nsmv_up_to > pseudo_ramtop:
+                raise GameWontFit("Not enough free RAM for any swappable memory")
+
+        # Generate initial virtual memory map. We just populate the entire table; if the
+        # game is smaller than this we will just never use the other entries.
+        # SFTODO: Switch to using a safer distinctive string with a clear start and end
+        vmap_offset = self._binary.index(b'VVVVVVVVVVVV')
+        vmap_length = 0
+        while chr(self._binary[vmap_offset + vmap_length]) == 'V':
+            vmap_length += 1
+        if vmap_length & 1 != 0:
+            vmap_length -= 1
+        assert vmap_length >= vmap_max_size * 2
+        blocks = []
+        # SFTODO: We will do this work for every single executable; it's not in practice a
+        # big deal but it's a bit inelegant.
+        if False: # SFTODO if args.preload_config is not None:
+            with open(args.preload_config, "rb") as f:
+                preload_config = bytearray(f.read())
+            for i in range(len(preload_config) // 2):
+                # We don't care about the timestamp on the entries in preload_config; they are in
+                # order of insertion and that's what we're really interested in. (This isn't
+                # the *same* as the order based on timestamp; a block loaded early may of course
+                # be used again later and therefore have a newer timestamp than another block
+                # loaded after it but never used again.) Note that just as when we don't use
+                # preload_config, the initial vmap entries will be assigned timestamps based
+                # on their order; the timestamp in preload_config are ignored.
+                addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
+                if addr & 1 == 1:
+                    # This is an odd address so it's invalid; we expect to see one of these
+                    # as the first block and we just ignore it.
+                    assert i == 0
+                    continue
+                block_index = (addr - nonstored_blocks) // vmem_block_pagecount
+                assert block_index >= 0
+                blocks.append(block_index)
+        # SFTODONOW: SHOULDN'T THIS RANGE START AT nonstored_blocks NOT 0??? IT SHOULD STILL HAVE vmap_max_size *ENTRIES*. - NO, THINK ABOUT IT FRESH BUT THIS IS PROBABLY CORRECT - WE ADD NONSTORED_BLOCKS WHEN CALCULATING ADDR, AND WE SUBTRACT IT WHEN EXTRACING BLOCK INDEX FROM ADDR ABOVE
+        for i in range(vmap_max_size):
+            if i not in blocks:
+                blocks.append(i)
+        blocks = blocks[:vmap_max_size]
+        #print("Q", blocks) SFTODO TEMP
+        #import random # SFTODO TEMP
+        #random.seed(42) # SFTODO TEMP
+        #random.shuffle(blocks) # SFTODO TEMP
+        #print("Q", blocks) # SFTODO TEMP
+        # vmap entries should normally address a 512-byte aligned block; invalid_address
+        # is odd so it won't ever match when the virtual memory code is searching the map.
+        invalid_address = 0x1
+        for i, block_index in enumerate(blocks):
+            timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
+            if False: # SFTODO args.preload_opt:
+                # Most of the vmap will be ignored, but we have to have at least one entry
+                # and by making it an invalid address we don't need to worry about loading
+                # any "suggested" blocks.
+                addr = invalid_address
+            else:
+                # SFTODO: Simplify this to "nonstored_blocks + block_index * vmem_block_pagecount"?
+                addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
+            if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
+                # This vmap entry is useless; the current Z-machine version can't contain
+                # such a block.
+                # SFTODO: Warn? It's harmless but it means we could have clawed back a few
+                # bytes by shrinking vmap_max_size.
+                addr = 0
+            vmap_entry = (timestamp << 8) | addr
+            self._binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
+            self._binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
+
     def binary(self):
         if "ACORN_RELOCATABLE" in self.labels:
             if self._relocations is None:
@@ -225,7 +328,7 @@ make_executable.cache = {}
 
 
 
-block_size_bytes = 256 # SFTODO MOVE
+bytes_per_block = 256 # SFTODO MOVE
 # SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
 def make_highest_possible_executable(extra_args):
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
@@ -245,7 +348,7 @@ def make_highest_possible_executable(extra_args):
     assert surplus_nonstored_blocks >= 0
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
     surplus_nonstored_blocks &= ~0x1
-    approx_max_start_address = 0xe00 + surplus_nonstored_blocks * block_size_bytes
+    approx_max_start_address = 0xe00 + surplus_nonstored_blocks * bytes_per_block
     e = make_optimally_aligned_executable(approx_max_start_address, extra_args, e_e00)
     assert e is not None
     if (e.start_address & 0x100) == (0xe00 & 0x100):
@@ -261,6 +364,8 @@ def make_highest_possible_executable(extra_args):
 def make_optimally_aligned_executable(initial_start_address, extra_args, base_executable = None):
     if base_executable is None:
         base_executable = make_executable("ozmoo.asm", initial_start_address, extra_args)
+        if base_executable is None:
+            return None
     else:
         assert base_executable.asm_filename == "ozmoo.asm"
         assert (base_executable.start_address & 0x1ff) == (initial_start_address & 0x1ff)
@@ -268,7 +373,7 @@ def make_optimally_aligned_executable(initial_start_address, extra_args, base_ex
     # If the alignment works out appropriately, we may have the same amount of available RAM
     # with less wasted alignment by building one page past initial_start_address.
     alternate_executable = make_executable("ozmoo.asm", initial_start_address + 0x100, extra_args)
-    if alternate_executable.size() < base_executable.size():
+    if alternate_executable is not None and alternate_executable.size() < base_executable.size():
         return alternate_executable
     else:
         if base_executable.start_address == initial_start_address:
