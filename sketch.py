@@ -117,12 +117,13 @@ class Executable(object):
         os.chdir("asm")
         # SFTODO: Should really use the OS-local path join character in next few lines, not '/'
         output_prefix = "../"
-        run_and_check(["acme", "--cpu", "6502", "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename, asm_filename])
+        cpu = "65c02" if "-DCMOS=1" in extra_args else "6502"
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename, asm_filename])
         os.chdir("..")
         self.labels = parse_labels(self._labels_filename)
 
         with open(self._binary_filename, "rb") as f:
-            self._binary = f.read()
+            self._binary = bytearray(f.read())
         if "ACORN_RELOCATABLE" in self.labels:
             truncate_label = "reloc_count"
         else:
@@ -138,23 +139,59 @@ class Executable(object):
     def size(self):
         return len(self._binary)
 
-    # SFTODO: Can/should we just automatically do the "other" build to make the relocations when we're asked for the binary?
-    def add_relocations(self, other):
+    def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
-        assert self.asm_filename == other.asm_filename
-        assert self.start_address != other.start_address
-        assert set(self.extra_args) == set(other.extra_args)
-        return bytearray([]) # SFTODO! self._relocations = SFTODO
+        other_start_address = 0xe00
+        if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
+            other_start_address += (self.start_address - other_start_address) % 0x200
+        # SFTODO: If the two addresses are the same the relocation is pointless, can we avoid it?
+        assert other_start_address <= self.start_address
+        other = make_executable(self.asm_filename, other_start_address, self.extra_args)
+        assert other is not None
+        return Executable._binary_diff(other._binary, self._binary)
+
+    @staticmethod
+    def _binary_diff(alternate, master):
+        assert len(alternate) == len(master)
+        expected_delta = None
+        relocations = []
+        for i in range(len(master)):
+            if master[i] != alternate[i]:
+                this_delta = alternate[i] - master[i]
+                if expected_delta is None:
+                    expected_delta = this_delta
+                else:
+                    assert this_delta == expected_delta
+                relocations.append(i)
+        assert len(relocations) > 0
+        assert relocations[0] != 0 # we can't encode this
+        delta_relocations = []
+        last_relocation = 0
+        for relocation in relocations:
+            delta_relocation = relocation - last_relocation
+            last_relocation = relocation
+            assert delta_relocation > 0
+            # We need to encode the delta_relocation as an 8-bit byte. We use 0 to mean
+            # 'move 255 bytes along but don't perform a relocation'.
+            while delta_relocation >= 256:
+                delta_relocations.append(0)
+                delta_relocation -= 255
+            assert delta_relocation > 0
+            delta_relocations.append(delta_relocation)
+        count = len(delta_relocations)
+        return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
     def binary(self):
         if "ACORN_RELOCATABLE" in self.labels:
-            assert self._relocations is not None
+            if self._relocations is None:
+                self._relocations = self._make_relocations()
             return self._binary + self._relocations
         else:
             return self._binary
 
 
 # SFTODO: PATCH_VMEM IS A BIG SOURCE OF NOT-NECESSARILY-FATAL ERRORS, WHAT IS GOING TO CALL THAT AND HOW WILL I HANDLE THIS FAILING? I THINK THIS IS THE ONLY LEGIT REASON FOR FAILING TO BUILD AN EXECUTABLE, THOUGH DO NOTE THAT IN SOME CASES (NOT SURE JUST NOW) IT MAY BE LEGIT FOR A BUILD DOING EXPERIMENTALLY TO FAIL ON THESE GROUPS, WE WOULD THEN JUST TWEAK PARAMS TO DO ANOTHER BUILD FOR THAT TARGET MACHINE
+# SFTODO: RENAME make_ozmoo_executable AND ONLY USE FOR OZMOO EXECUTABLES?
 def make_executable(asm_filename, start_address, extra_args):
     assert isinstance(start_address, int)
 
@@ -297,7 +334,23 @@ def make_electron_swr_executable():
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
     # relatively low address which should be >=PAGE on nearly all systems.
     return make_optimally_aligned_executable(0x1d00, extra_args)
-    
+
+def make_tube_executable():
+    tube_args = ozmoo_base_args
+    if True: # SFTODO: IF CMOS NOT DISABLED ENTIRELY BY CMD LINE ARG
+        tube_args += ["-DCMOS=1"]
+    tube_no_vmem = make_executable("ozmoo.asm", tube_start_addr, tube_args)
+    if game_blocks <= max_game_blocks_main_ram(tube_no_vmem):
+        info("Game is small enough to run without virtual memory on second processor")
+        return tube_no_vmem
+    info("Game will be run using virtual memory on second processor")
+    tube_args += ["-DVMEM=1"]
+    if True: # SFTODO not args.no_tube_cache:
+        tube_args += ["-DACORN_TUBE_CACHE=1"]
+        tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
+        tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
+    return make_executable("ozmoo.asm", tube_start_addr, tube_args)
+
 
 header_version = 0
 header_static_mem = 0xe
@@ -310,6 +363,9 @@ highest_expected_page = 0x2000 # SFTODO: BEST VALUE? MAKE USER CONFIGURABLE ANYW
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
+
+host = 0xffff0000
+tube_start_addr = 0x600
 
 with open(sys.argv[1], "rb") as f : # SFTODO with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
@@ -344,4 +400,6 @@ print(ourhex(e.start_address))
 e = make_bbc_swr_executable()
 print(ourhex(e.start_address))
 e = make_shr_swr_executable()
+print(ourhex(e.start_address), len(e.binary()))
+e = make_tube_executable()
 print(ourhex(e.start_address))
