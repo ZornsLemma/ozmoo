@@ -93,8 +93,7 @@ make_executable.cache = {}
 
 block_size_bytes = 256 # SFTODO MOVE
 # SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
-def make_small_dynmem():
-    extra_args = extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"]
+def make_highest_possible_executable():
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
     # - max_game_blocks_main_ram() can only return even values
     # - There are two possible start addresses 256 bytes apart which will generate the same
@@ -103,24 +102,24 @@ def make_small_dynmem():
     # - We want to use the higher of those two possible start addresses, because it means we
     #   won't need to waste 256 bytes before the start of the code if PAGE happens to have the
     #   right alignment.
-    small_dyn_e00 = make_executable("ozmoo.asm", 0xe00, small_dyn_extra_args)
+    e_e00 = make_executable("ozmoo.asm", 0xe00, extra_args)
     # If we can't fit dynamic memory into main RAM with a start of 0xe00 we
     # can't ever manage it.
-    if small_dyn_e00 is None:
+    if e_e00 is None:
         return None
-    surplus_nonstored_blocks = max_game_blocks_main_ram(small_dyn_e00) - nonstored_blocks
+    surplus_nonstored_blocks = max_game_blocks_main_ram(e_e00) - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
     surplus_nonstored_blocks &= ~0x1
     approx_max_start_address = 0xe00 + surplus_nonstored_blocks * block_size_bytes
-    small_dyn = make_optimally_aligned_executable("ozmoo.asm", approx_max_start_address, small_dyn_extra_args, small_dyn_e00)
-    assert small_dyn is not None
-    if (small_dyn.start_address & 0x100) == (0xe00 & 0x100):
-        assert small_dyn.size() == small_dyn_e00.size()
+    e = make_optimally_aligned_executable("ozmoo.asm", approx_max_start_address, extra_args, e_e00)
+    assert e is not None
+    if (e.start_address & 0x100) == (0xe00 & 0x100):
+        assert e.size() == e_e00.size()
     else:
-        assert small_dyn.size() < small_dyn_e00.size()
-    assert 0 <= max_game_ram_blocks_main_ram(small_dyn) - nonstored_blocks <= 1
-    return small_dyn
+        assert e.size() < e_e00.size()
+    assert 0 <= max_game_ram_blocks_main_ram(e) - nonstored_blocks <= 1
+    return e
 
 
 
@@ -148,20 +147,43 @@ def make_optimally_aligned_executable(asm_filename, initial_start_address, extra
 def make_shr_swr_executable():
     # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
     extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
-    small_dyn_executable = make_small_dynmem_executable(extra_args)
-    if small_dyn_executable is not None and small_dyn_executable.start_address < max_supported_page:
-        info("Shadow+sideways RAM executable can't use small dynamic memory model as it would require PAGE<=%s" % ourhex2(small_dyn_executable.start_address))
-        small_dyn_executable = None
-    if small_dyn_executable is not None:
-        return small_dyn_executable
-    # SFTODO: This is too simplistic - on BBC bigdyn model, the size of game we can handle is still affected by our PAGE, so we want to do something similar to the above
-    return make_executable("ozmoo.asm", 0x2500, extra_args) # SFTODO: HARD-CODED ADDRESS
+
+    small_e = make_highest_possible_executable("ozmoo.asm", extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
+    # Some systems may have PAGE too high to run small_e, but those systems
+    # would be able to run the game if built with the big dynamic memory model.
+    # highest_expected_page determines whether we're willing to prevent a system
+    # running the game in order to get the benefits of the small dynamic memory
+    # model.
+    if small_e is not None:
+        if small_e.start_address >= highest_expected_page:
+            info("Shadow+sideways RAM executable uses small dynamic memory model")
+            return small_e
+
+    # Note that we don't respect highest_expected_page when generating a big
+    # dynamic memory executable; unlike the above decision about whether or not
+    # to use the small dynamic memory model, we're not trading off performance
+    # against available main RAM - if a system has PAGE too high to run the big
+    # dynamic memory executable we generate, it just can't run the game at all
+    # and there's nothing we can do about it.
+    big_e = make_highest_possible_executable("ozmoo.asm", extra_args)
+    if big_e is not None:
+        if small_e is not None and small_e.start_address < highest_expected_page:
+            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=" + ourhex2(small_e.start_address))
+        else:
+            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity")
+    return big_e
 
 
 def make_electron_swr_executable():
     # SFTODO: Duplication here with make_shr_swr_executable() extra_args
     extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
-    return make_optimally_aligned_executable("ozmoo.asm", 0x1d00, extra_args) # SFTODO: HARD-CODED ADDRESS
+    # On the Electron, no main RAM is used for dynamic RAM so there's no
+    # disadvantage to loading high in memory as far as the game itself is
+    # concerned. However, we'd like to avoid the executable overwriting the mode
+    # 6 screen RAM and corrupting the loading screen if we can, so we pick a
+    # relatively low address which should be
+    # >=PAGE on nearly all systems.
+    return make_optimally_aligned_executable("ozmoo.asm", 0x1d00, extra_args)
     
 
     
