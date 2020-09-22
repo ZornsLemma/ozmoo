@@ -32,6 +32,9 @@ def divide_round_up(x, y):
 def bytes_to_blocks(x):
     return divide_round_up(x, 256)
 
+def max_game_blocks_main_ram(executable):
+    return (executable.labels["flat_ramtop"] - executable.labels["story_start"]) // 256
+
 def run_and_check(args, output_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
@@ -116,19 +119,19 @@ class Executable(object):
         output_prefix = "../"
         run_and_check(["acme", "--cpu", "6502", "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename, asm_filename])
         os.chdir("..")
-        self._labels = parse_labels(self._labels_filename)
+        self.labels = parse_labels(self._labels_filename)
 
         with open(self._binary_filename, "rb") as f:
             self._binary = f.read()
-        if "ACORN_RELOCATABLE" in self._labels:
+        if "ACORN_RELOCATABLE" in self.labels:
             truncate_label = "reloc_count"
         else:
             truncate_label = "end_of_routines_in_stack_space"
-        self._binary = self._binary[:self._labels[truncate_label]-self._labels["program_start"]]
+        self._binary = self._binary[:self.labels[truncate_label]-self.labels["program_start"]]
 
         # SFTODO
-        #if "VMEM" in self._labels:
-        #    self._binary = Executable.patch_vmem(self._binary, self._labels)
+        #if "VMEM" in self.labels:
+        #    self._binary = Executable.patch_vmem(self._binary, self.labels)
 
     # Return the size of the binary, ignoring any relocation data (which isn't
     # important for the limited use we make of the return value).
@@ -137,14 +140,14 @@ class Executable(object):
 
     # SFTODO: Can/should we just automatically do the "other" build to make the relocations when we're asked for the binary?
     def add_relocations(self, other):
-        assert "ACORN_RELOCATABLE" in self._labels
+        assert "ACORN_RELOCATABLE" in self.labels
         assert self.asm_filename == other.asm_filename
         assert self.start_address != other.start_address
         assert set(self.extra_args) == set(other.extra_args)
         return bytearray([]) # SFTODO! self._relocations = SFTODO
 
     def binary(self):
-        if "ACORN_RELOCATABLE" in self._labels:
+        if "ACORN_RELOCATABLE" in self.labels:
             assert self._relocations is not None
             return self._binary + self._relocations
         else:
@@ -187,7 +190,7 @@ make_executable.cache = {}
 
 block_size_bytes = 256 # SFTODO MOVE
 # SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
-def make_highest_possible_executable():
+def make_highest_possible_executable(extra_args):
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
     # - max_game_blocks_main_ram() can only return even values
     # - There are two possible start addresses 256 bytes apart which will generate the same
@@ -206,13 +209,13 @@ def make_highest_possible_executable():
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
     surplus_nonstored_blocks &= ~0x1
     approx_max_start_address = 0xe00 + surplus_nonstored_blocks * block_size_bytes
-    e = make_optimally_aligned_executable("ozmoo.asm", approx_max_start_address, extra_args, e_e00)
+    e = make_optimally_aligned_executable(approx_max_start_address, extra_args, e_e00)
     assert e is not None
     if (e.start_address & 0x100) == (0xe00 & 0x100):
         assert e.size() == e_e00.size()
     else:
         assert e.size() < e_e00.size()
-    assert 0 <= max_game_ram_blocks_main_ram(e) - nonstored_blocks <= 1
+    assert 0 <= max_game_blocks_main_ram(e) - nonstored_blocks <= 1
     return e
 
 
@@ -302,6 +305,7 @@ vmem_block_pagecount = 2
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
 verbose_level = 2 # SFTODO TEMP HACK SHOULD BE PARSED FROM ARGS
+highest_expected_page = 0x2000 # SFTODO: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
 
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
@@ -336,4 +340,8 @@ else:
     die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
 e = make_electron_swr_executable()
+print(ourhex(e.start_address))
+e = make_bbc_swr_executable()
+print(ourhex(e.start_address))
+e = make_shr_swr_executable()
 print(ourhex(e.start_address))
