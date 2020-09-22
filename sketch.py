@@ -184,6 +184,11 @@ def make_bbc_swr_executable():
     # strategy as the Electron and generate a relocatable executable with no
     # screen hole, but that would limit dynamic memory to 16K, whereas using
     # ACORN_NO_SHADOW allows dynamic memory comparable to other BBC versions.)
+    # SFTODO: We *could* potentially switch between the two strategies - if
+    # dynmem required is <=16K, use an Electron-style approach with no screen
+    # hole and relocatable code. OTOH, that would force use of at least 16K
+    # SWR and I think there's some prospect that we could make a stab at
+    # running small games with no SWR and I don't really like ruling that out.
     extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
     small_e = make_executable("ozmoo.asm", 0x1900, extra_args + small_dynmem_args) # SFTODO: CONSTANT ADDRESS
     if small_e is not None:
