@@ -1,5 +1,9 @@
 import os
 
+ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
+relocatable_args = ["-DACORN_RELOCATABLE=1"]
+small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
+
 def ourhex(i):
     return hex(i)[2:]
 
@@ -144,12 +148,11 @@ def make_optimally_aligned_executable(asm_filename, initial_start_address, extra
 
 
 
-ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"] # SFTODO: MOVE
 def make_shr_swr_executable():
     # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
-    extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_RELOCATABLE=1"]
+    extra_args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
 
-    small_e = make_highest_possible_executable(extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
+    small_e = make_highest_possible_executable(extra_args + small_dynmem_args)
     # Some systems may have PAGE too high to run small_e, but those systems
     # would be able to run the game if built with the big dynamic memory model.
     # highest_expected_page determines whether we're willing to prevent a system
@@ -175,15 +178,26 @@ def make_shr_swr_executable():
     return big_e
 
 
+def make_bbc_swr_executable():
+    # Because of the screen hole needed to work around not having shadow RAM,
+    # this executable is not relocatable. (It would be possible to use the same
+    # strategy as the Electron and generate a relocatable executable with no
+    # screen hole, but that would limit dynamic memory to 16K, whereas using
+    # ACORN_NO_SHADOW allows dynamic memory comparable to other BBC versions.)
+    extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
+    small_e = make_executable("ozmoo.asm", 0x1900, extra_args + small_dynmem_args) # SFTODO: CONSTANT ADDRESS
+    if small_e is not None:
+        return small_e
+    return make_executable("ozmoo.asm", 0x1900, extra_args) # SFTODO: CONSTANT ADDRESS
+
 def make_electron_swr_executable():
     # SFTODO: Duplication here with make_shr_swr_executable() extra_args
-    extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
+    extra_args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
     # On the Electron, no main RAM is used for dynamic RAM so there's no
     # disadvantage to loading high in memory as far as the game itself is
     # concerned. However, we'd like to avoid the executable overwriting the mode
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
-    # relatively low address which should be
-    # >=PAGE on nearly all systems.
+    # relatively low address which should be >=PAGE on nearly all systems.
     return make_optimally_aligned_executable(0x1d00, extra_args)
     
 
