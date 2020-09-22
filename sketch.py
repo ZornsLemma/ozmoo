@@ -32,8 +32,8 @@ def divide_round_up(x, y):
 def bytes_to_blocks(x):
     return divide_round_up(x, 256)
 
-def max_game_blocks_main_ram(executable):
-    return (executable.labels["flat_ramtop"] - executable.labels["story_start"]) // 256
+def max_nonstored_blocks(executable):
+    return (executable.pseudo_ramtop() - executable.labels["story_start"]) // 256
 
 def run_and_check(args, output_filter=None):
     if output_filter is None:
@@ -139,6 +139,12 @@ class Executable(object):
     def size(self):
         return len(self._binary)
 
+    def pseudo_ramtop(self):
+        if "ACORN_SWR" in self.labels:
+            return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
+        else:
+            return self.labels["flat_ramtop"]
+
     def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
         other_start_address = 0xe00
@@ -196,11 +202,7 @@ class Executable(object):
 
         # Can we fit the nonstored blocks into memory?
         nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
-        if "ACORN_SWR" in self.labels:
-            pseudo_ramtop = 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
-        else:
-            pseudo_ramtop = self.labels["flat_ramtop"]
-        if nonstored_blocks_up_to > pseudo_ramtop:
+        if nonstored_blocks_up_to > self.pseudo_ramtop():
             raise GameWontFit("Not enough free RAM for game's dynamic memory")
 
         # We also need memory for at least min_vmem_blocks 512-byte blocks. Tube
@@ -215,7 +217,7 @@ class Executable(object):
         if "ACORN_SWR" in self.labels:
             self.min_swr = max(nsmv_up_to - 0x8000, 0)
         else:
-            if nsmv_up_to > pseudo_ramtop:
+            if nsmv_up_to > self.pseudo_ramtop():
                 raise GameWontFit("Not enough free RAM for any swappable memory")
 
         # Generate initial virtual memory map. We just populate the entire table; if the
@@ -332,9 +334,9 @@ bytes_per_block = 256 # SFTODO MOVE
 # SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
 def make_highest_possible_executable(extra_args):
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
-    # - max_game_blocks_main_ram() can only return even values
+    # - max_nonstored_blocks() can only return even values
     # - There are two possible start addresses 256 bytes apart which will generate the same
-    #   value of max_game_blocks_main_ram(), as one will waste an extra 256 bytes on aligning
+    #   value of max_nonstored_blocks(), as one will waste an extra 256 bytes on aligning
     #   story_start to a 512-byte boundary.
     # - We want to use the higher of those two possible start addresses, because it means we
     #   won't need to waste 256 bytes before the start of the code if PAGE happens to have the
@@ -344,7 +346,7 @@ def make_highest_possible_executable(extra_args):
     # can't ever manage it.
     if e_e00 is None:
         return None
-    surplus_nonstored_blocks = max_game_blocks_main_ram(e_e00) - nonstored_blocks
+    surplus_nonstored_blocks = max_nonstored_blocks(e_e00) - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
     surplus_nonstored_blocks &= ~0x1
@@ -355,7 +357,7 @@ def make_highest_possible_executable(extra_args):
         assert e.size() == e_e00.size()
     else:
         assert e.size() < e_e00.size()
-    assert 0 <= max_game_blocks_main_ram(e) - nonstored_blocks <= 1
+    assert 0 <= max_nonstored_blocks(e) - nonstored_blocks <= 1
     return e
 
 
@@ -445,7 +447,7 @@ def make_tube_executable():
     if True: # SFTODO: IF CMOS NOT DISABLED ENTIRELY BY CMD LINE ARG
         tube_args += ["-DCMOS=1"]
     tube_no_vmem = make_executable("ozmoo.asm", tube_start_addr, tube_args)
-    if game_blocks <= max_game_blocks_main_ram(tube_no_vmem):
+    if game_blocks <= max_nonstored_blocks(tube_no_vmem):
         info("Game is small enough to run without virtual memory on second processor")
         return tube_no_vmem
     info("Game will be run using virtual memory on second processor")
@@ -491,6 +493,7 @@ ozmoo_base_args = [ # SFTODO: MOVE THIS?
 ]
 
 z_machine_version = game_data[header_version]
+# SFTODO: This is wrong/incomplete - fairly sure we support 4 and 7 too
 if z_machine_version == 3:
     ozmoo_base_args += ["-DZ3=1"]
 elif z_machine_version == 5:
@@ -501,7 +504,10 @@ else:
     die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
 e = make_electron_swr_executable()
-print(ourhex(e.start_address))
+if e is not None:
+    print(ourhex(e.start_address))
+else:
+    print(None)
 e = make_bbc_swr_executable()
 print(ourhex(e.start_address), e.min_swr)
 e = make_shr_swr_executable()
