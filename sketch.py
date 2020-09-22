@@ -151,7 +151,7 @@ def make_executable(asm_filename, start_address, extra_args):
     assert isinstance(start_address, int)
 
     version_templates = {
-        "ozmoo": "${ACORN_ELECTRON:_electron:_bbc}${ACORN_SWR:_swr:_tube}${ACORN_NO_SHADOW:_noshadow:}${VMEM::_novmem}${ACORN_SWR_SMALL_DYNMEM:_smalldyn:}_${STARTADDRESS}"
+        "ozmoo": "${ACORN_ELECTRON_SWR:electron:bbc}${ACORN_SWR:_swr:_tube}${ACORN_NO_SHADOW:_noshadow:}${VMEM::_novmem}${ACORN_SWR_SMALL_DYNMEM:_smalldyn:}_${STARTADDRESS}"
     }
 
     basename = os.path.splitext(asm_filename)[0]
