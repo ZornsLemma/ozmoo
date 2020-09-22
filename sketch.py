@@ -211,9 +211,9 @@ class Executable(object):
             electron_main_ram_vmem_blocks = (0x6000 - self.labels["extra_vmem_start"]) / bytes_per_vmem_block # SFTODO MAGIC CONST (START OF MODE 6 SCREEN)
         else:
             electron_main_ram_vmem_blocks = 0
-        nsmv_up_to = nonstored_blocks_up_to + min(min_vmem_blocks - electron_main_ram_vmem_blocks, 0) * bytes_per_vmem_block
+        nsmv_up_to = nonstored_blocks_up_to + max(min_vmem_blocks - electron_main_ram_vmem_blocks, 0) * bytes_per_vmem_block
         if "ACORN_SWR" in self.labels:
-            self.min_swr = min(nsmv_up_to - 0x8000, 0)
+            self.min_swr = max(nsmv_up_to - 0x8000, 0)
         else:
             if nsmv_up_to > pseudo_ramtop:
                 raise GameWontFit("Not enough free RAM for any swappable memory")
@@ -503,7 +503,7 @@ else:
 e = make_electron_swr_executable()
 print(ourhex(e.start_address))
 e = make_bbc_swr_executable()
-print(ourhex(e.start_address))
+print(ourhex(e.start_address), e.min_swr)
 e = make_shr_swr_executable()
 print(ourhex(e.start_address), len(e.binary()))
 e = make_tube_executable()
