@@ -91,16 +91,10 @@ make_executable.cache = {}
 
 
 
-def SFTODOEXPERIMENTALMAKERTHING():
-    # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
-    big_dyn_extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
-    small_dyn_extra_args = big_dyn_extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"]
-
-    SFTODO
-
 block_size_bytes = 256 # SFTODO MOVE
 # SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
-def SFTODOANOTHEREXPERIMENTALMAKERTHING():
+def make_small_dynmem():
+    extra_args = extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"]
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
     # - max_game_blocks_main_ram() can only return even values
     # - There are two possible start addresses 256 bytes apart which will generate the same
@@ -133,16 +127,16 @@ def SFTODOANOTHEREXPERIMENTALMAKERTHING():
 
 
 
-
-    XXX
-    small_dyn_f00 = make_executable("ozmoo.asm", 0xf00, small_dyn_extra_args)
-    if small_dyn_f00 is None:
-        return small_dyn_e00
-    assert max_game_blocks_main_ram(small_dyn_e00) == max_game_blocks_main_ram(small_dyn_f00) SFTODO NOT SURE THIS IS TRUE
-    preferred_alignment = 0 if small_dyn_e00.size() < small_dyn_f00.size() else 0x100
-
-    SFTODO
-    
+def make_shr_swr_executable():
+    # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
+    extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
+    small_dyn_executable = make_small_dynmem_executable(extra_args)
+    if small_dyn_executable is not None and small_dyn_executable.start_address < max_supported_page:
+        info("Shadow+sideways RAM executable can't use small dynamic memory model as it would require PAGE<=%s" % ourhex2(small_dyn_executable.start_address))
+        small_dyn_executable = None
+    if small_dyn_executable is not None:
+        return small_dyn_executable
+    return make_executable("ozmoo.asm", 0x2500, extra_args)
     
 
     
