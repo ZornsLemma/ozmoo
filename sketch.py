@@ -1,5 +1,6 @@
 from __future__ import print_function
 import os
+import subprocess
 import sys
 
 def die(s):
@@ -89,6 +90,10 @@ def template_substitute(template, args):
             result += d[s]
         result += tail
     return result
+
+
+class GameWontFit(Exception):
+    pass
         
             
 # SFTODO: In a few places I am doing set(extra_args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
@@ -109,7 +114,7 @@ class Executable(object):
         os.chdir("asm")
         # SFTODO: Should really use the OS-local path join character in next few lines, not '/'
         output_prefix = "../"
-        run_and_check(["acme", "--cpu", "6502", "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename])
+        run_and_check(["acme", "--cpu", "6502", "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename, asm_filename])
         os.chdir("..")
         self._labels = parse_labels(self._labels_filename)
 
@@ -207,23 +212,23 @@ def make_highest_possible_executable():
 
 
 
-def make_optimally_aligned_executable(asm_filename, initial_start_address, extra_args, base_executable = None):
+def make_optimally_aligned_executable(initial_start_address, extra_args, base_executable = None):
     if base_executable is None:
-        base_executable = make_executable(asm_filename, initial_start_address, extra_args)
+        base_executable = make_executable("ozmoo.asm", initial_start_address, extra_args)
     else:
-        assert base_executable.asm_filename == asm_filename
+        assert base_executable.asm_filename == "ozmoo.asm"
         assert (base_executable.start_address & 0x1ff) == (initial_start_address & 0x1ff)
         assert base_executable.extra_args == extra_args
     # If the alignment works out appropriately, we may have the same amount of available RAM
     # with less wasted alignment by building one page past initial_start_address.
-    alternate_executable = make_executable(asm_filename, initial_start_address + 0x100, extra_args)
+    alternate_executable = make_executable("ozmoo.asm", initial_start_address + 0x100, extra_args)
     if alternate_executable.size() < base_executable.size():
         return alternate_executable
     else:
         if base_executable.start_address == initial_start_address:
             return base_executable
         else:
-            return make_executable(asm_filename, initial_start_address, extra_args)
+            return make_executable("ozmoo.asm", initial_start_address, extra_args)
 
 
 
@@ -313,3 +318,5 @@ ozmoo_base_args = [ # SFTODO: MOVE THIS?
     "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
     "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
 ]
+
+e = make_electron_swr_executable()
