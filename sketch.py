@@ -130,6 +130,11 @@ class Executable(object):
         #if "VMEM" in self._labels:
         #    self._binary = Executable.patch_vmem(self._binary, self._labels)
 
+    # Return the size of the binary, ignoring any relocation data (which isn't
+    # important for the limited use we make of the return value).
+    def size(self):
+        return len(self._binary)
+
     # SFTODO: Can/should we just automatically do the "other" build to make the relocations when we're asked for the binary?
     def add_relocations(self, other):
         assert "ACORN_RELOCATABLE" in self._labels
@@ -150,6 +155,7 @@ class Executable(object):
 def make_executable(asm_filename, start_address, extra_args):
     assert isinstance(start_address, int)
 
+    # SFTODO: If there's only one "complex" template, it might be best just to generate the template in Python code instead of via substitution
     version_templates = {
         "ozmoo": "${ACORN_ELECTRON_SWR:electron:bbc}${ACORN_SWR:_swr:_tube}${ACORN_NO_SHADOW:_noshadow:}${VMEM::_novmem}${ACORN_SWR_SMALL_DYNMEM:_smalldyn:}_${STARTADDRESS}"
     }
@@ -319,4 +325,15 @@ ozmoo_base_args = [ # SFTODO: MOVE THIS?
     "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
 ]
 
+z_machine_version = game_data[header_version]
+if z_machine_version == 3:
+    ozmoo_base_args += ["-DZ3=1"]
+elif z_machine_version == 5:
+    ozmoo_base_args += ["-DZ5=1"]
+elif z_machine_version == 8:
+    ozmoo_base_args += ["-DZ8=1"]
+else:
+    die("Unsupported Z-machine version: %d" % (z_machine_version,))
+
 e = make_electron_swr_executable()
+print(ourhex(e.start_address))
