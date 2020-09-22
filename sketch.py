@@ -144,11 +144,12 @@ def make_optimally_aligned_executable(asm_filename, initial_start_address, extra
 
 
 
+ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"] # SFTODO: MOVE
 def make_shr_swr_executable():
     # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
-    extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
+    extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_RELOCATABLE=1"]
 
-    small_e = make_highest_possible_executable("ozmoo.asm", extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
+    small_e = make_highest_possible_executable(extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
     # Some systems may have PAGE too high to run small_e, but those systems
     # would be able to run the game if built with the big dynamic memory model.
     # highest_expected_page determines whether we're willing to prevent a system
@@ -165,7 +166,7 @@ def make_shr_swr_executable():
     # against available main RAM - if a system has PAGE too high to run the big
     # dynamic memory executable we generate, it just can't run the game at all
     # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable("ozmoo.asm", extra_args)
+    big_e = make_highest_possible_executable(extra_args)
     if big_e is not None:
         if small_e is not None and small_e.start_address < highest_expected_page:
             info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=" + ourhex2(small_e.start_address))
@@ -176,14 +177,14 @@ def make_shr_swr_executable():
 
 def make_electron_swr_executable():
     # SFTODO: Duplication here with make_shr_swr_executable() extra_args
-    extra_args = ozmoo_base_args + ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
+    extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
     # On the Electron, no main RAM is used for dynamic RAM so there's no
     # disadvantage to loading high in memory as far as the game itself is
     # concerned. However, we'd like to avoid the executable overwriting the mode
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
     # relatively low address which should be
     # >=PAGE on nearly all systems.
-    return make_optimally_aligned_executable("ozmoo.asm", 0x1d00, extra_args)
+    return make_optimally_aligned_executable(0x1d00, extra_args)
     
 
     
