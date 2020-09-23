@@ -601,10 +601,31 @@ def make_loader(symbols):
             elif if_condition is None or if_condition:
                 # SFTODO: NEED TO DO CRUNCHING UNLESS DISABLED BY CMDLINE ARG
                 loader.append(substitute(line, symbols))
-    return loader
+    return "\n".join(loader)
 
 def make_tokenised_loader(loader_symbols):
-    return File("LOADER", 0, bytearray()) # SFTODO!
+    loader_bas = os.path.join("temp", "loader.bas")
+    with open(loader_bas, "w") as f:
+        f.write(make_loader(loader_symbols))
+    loader_beebasm = os.path.join("temp", "loader.beebasm")
+    loader_ssd = os.path.join("temp", "loader.ssd")
+    with open(loader_beebasm, "w") as f:
+        f.write('putbasic "%s", "LOADER"\n' % loader_bas)
+    run_and_check([
+        "beebasm",
+        "-i", loader_beebasm,
+        "-do", loader_ssd
+    ], lambda x: b"no SAVE command" not in x)
+    # Since it's the only file on the .ssd, we can get the tokenised BASIC
+    # simply by chopping off the first two sectors. We peek the length out
+    # of one of those sectors first.
+    with open(loader_ssd, "rb") as f:
+        tokenised_loader = f.read()
+        length = ((((tokenised_loader[0x10e] >> 4) & 0x3) << 16) |
+                  (tokenised_loader[0x10d] << 8) | tokenised_loader[0x10c])
+        tokenised_loader = tokenised_loader[512:512+length]
+        # SFTODO: CHECK A GENERATED DISC IMAGE DOESN'T HAVE ANY JUNK AT END OF LOADER
+    return File("LOADER", 0, tokenised_loader)
 
 
 best_effort_version = "Ozmoo"
@@ -743,8 +764,6 @@ loader_symbols = {}
 for executable_list in ozmoo_variants:
     e = executable_list[-1]
     e.add_loader_symbols(loader_symbols)
-print("Q", loader_symbols)
-print("\n".join(make_loader(loader_symbols)))
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
 disc_contents = [make_boot(), make_tokenised_loader(loader_symbols), make_findswr_executable()]
