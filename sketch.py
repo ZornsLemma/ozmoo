@@ -81,8 +81,9 @@ class GameWontFit(Exception):
 class Executable(object):
     cache = {}
 
-    def __init__(self, asm_filename, version_maker, start_address, args):
+    def __init__(self, asm_filename, leafname, version_maker, start_address, args):
         self.asm_filename = asm_filename
+        self.leafname = leafname
         self.version_maker = version_maker
         self.start_address = start_address
         self.args = args
@@ -140,7 +141,7 @@ class Executable(object):
         return labels
 
     def rebuild_at(self, start_address):
-        return Executable(self.asm_filename, self.version_maker, start_address, self.args)
+        return Executable(self.asm_filename, self.leafname, self.version_maker, start_address, self.args)
 
     def truncate_at(self, label):
         self._binary = self._binary[:self.labels[label]-self.labels["program_start"]]
@@ -201,7 +202,7 @@ class Executable(object):
 
 
 class OzmooExecutable(Executable):
-    def __init__(self, start_address, args):
+    def __init__(self, leafname, start_address, args):
         def version_maker(start_address, args):
             if "-DACORN_ELECTRON_SWR=1" in args:
                 s = "electron_swr"
@@ -221,7 +222,7 @@ class OzmooExecutable(Executable):
 
         if "-DACORN_NO_SHADOW=1" not in args:
             args += ["-DACORN_HW_SCROLL=1"]
-        Executable.__init__(self, "ozmoo.asm", version_maker, start_address, args)
+        Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_address, args)
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines_in_stack_space")
         self.swr_dynmem = 0
@@ -338,9 +339,9 @@ class OzmooExecutable(Executable):
         return OzmooExecutable(start_address, self.args)
 
 
-def make_ozmoo_executable(start_address, args):
+def make_ozmoo_executable(leafname, start_address, args):
     try:
-        return OzmooExecutable(start_address, args)
+        return OzmooExecutable(leafname, start_address, args)
     except GameWontFit:
         return None
 
@@ -349,7 +350,7 @@ def make_ozmoo_executable(start_address, args):
 # an address which means it will work on machines with relatively high values of
 # PAGE if possible. The executable will relocate itself down if PAGE isn't as
 # high as the worst case we assume here.
-def make_highest_possible_executable(args):
+def make_highest_possible_executable(leafname, args):
     assert "-DACORN_RELOCATABLE=1" in args
 
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte
@@ -362,7 +363,7 @@ def make_highest_possible_executable(args):
     # - We want to use the higher of those two possible start addresses, because
     #   it means we won't need to waste 256 bytes before the start of the code
     #   if PAGE happens to have the right alignment.
-    e_e00 = make_ozmoo_executable(0xe00, args)
+    e_e00 = make_ozmoo_executable(leafname, 0xe00, args)
     # If we can't fit build successfully with a start of 0xe00 we can't ever
     # manage it.
     if e_e00 is None:
@@ -375,7 +376,7 @@ def make_highest_possible_executable(args):
     # relocation data before &8000, so we never load higher than
     # max_start_address.
     approx_max_start_address = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_address)
-    e = make_optimally_aligned_executable(approx_max_start_address, args, e_e00)
+    e = make_optimally_aligned_executable(leafname, approx_max_start_address, args, e_e00)
     assert e is not None
     if same_double_page_alignment(e.start_address, 0xe00):
         assert e.size() == e_e00.size()
@@ -389,29 +390,30 @@ def make_highest_possible_executable(args):
 # and initial_start_address+256 gives the least wasted space. If provided
 # base_executable is a pre-built executable whcih shares the same double-page
 # alignment as initial_start_address; this may help avoid an unnecessary build.
-def make_optimally_aligned_executable(initial_start_address, args, base_executable = None):
+def make_optimally_aligned_executable(leafname, initial_start_address, args, base_executable = None):
     if base_executable is None:
-        base_executable = make_ozmoo_executable(initial_start_address, args)
+        base_executable = make_ozmoo_executable(leafname, initial_start_address, args)
         if base_executable is None:
             return None
     else:
         assert base_executable.asm_filename == "ozmoo.asm"
         assert same_double_page_alignment(base_executable.start_address, initial_start_address)
         assert base_executable.args == args
-    alternate_executable = make_ozmoo_executable(initial_start_address + 256, args)
+    alternate_executable = make_ozmoo_executable(leafname, initial_start_address + 256, args)
     if alternate_executable is not None and alternate_executable.size() < base_executable.size():
         return alternate_executable
     else:
         if base_executable.start_address == initial_start_address:
             return base_executable
         else:
-            return make_ozmoo_executable(initial_start_address, args)
+            return make_ozmoo_executable(leafname, initial_start_address, args)
 
 
 def make_shr_swr_executable():
+    leafname = "OZMOOSH"
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
 
-    small_e = make_highest_possible_executable(args + small_dynmem_args)
+    small_e = make_highest_possible_executable(leafname, args + small_dynmem_args)
     # Some systems may have PAGE too high to run small_e, but those systems
     # would be able to run the game if built with the big dynamic memory model.
     # highest_expected_page determines whether we're willing to prevent a system
@@ -428,7 +430,7 @@ def make_shr_swr_executable():
     # against available main RAM - if a system has PAGE too high to run the big
     # dynamic memory executable we generate, it just can't run the game at all
     # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable(args)
+    big_e = make_highest_possible_executable(leafname, args)
     if big_e is not None:
         if small_e is not None and small_e.start_address < highest_expected_page:
             info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=" + ourhex2(small_e.start_address))
@@ -448,11 +450,12 @@ def make_bbc_swr_executable():
     # hole and relocatable code. OTOH, that would force use of at least 16K
     # SWR and I think there's some prospect that we could make a stab at
     # running small games with no SWR and I don't really like ruling that out.
+    leafname = "OZMOOB"
     args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
-    small_e = make_ozmoo_executable(bbc_swr_start_address, args + small_dynmem_args)
+    small_e = make_ozmoo_executable(leafname, bbc_swr_start_address, args + small_dynmem_args)
     if small_e is not None:
         return small_e
-    return make_ozmoo_executable(bbc_swr_start_address, args)
+    return make_ozmoo_executable(leafname, bbc_swr_start_address, args)
 
 
 def make_electron_swr_executable():
@@ -462,14 +465,15 @@ def make_electron_swr_executable():
     # concerned. However, we'd like to avoid the executable overwriting the mode
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
     # relatively low address which should be >=PAGE on nearly all systems.
-    return make_optimally_aligned_executable(0x1d00, args)
+    return make_optimally_aligned_executable("OZMOOE", 0x1d00, args)
 
 
 def make_tube_executable():
+    leafname = "OZMOO2P"
     tube_args = ozmoo_base_args
     if not args.force_6502:
         tube_args += ["-DCMOS=1"]
-    tube_no_vmem = make_ozmoo_executable(tube_start_address, tube_args)
+    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
         return tube_no_vmem
@@ -478,19 +482,19 @@ def make_tube_executable():
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-    tube_vmem = make_ozmoo_executable(tube_start_address, tube_args)
+    tube_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
     # Don't call info() until we've successfully built an excecutable; the game
     # may be too big.
     info("Game will be run using virtual memory on second processor")
     return tube_vmem
 
 def make_findswr_executable():
-    return Executable("acorn-findswr.asm", None, 0x900, [])
+    return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
 
 def make_cache_executable():
     # In practice the cache executable will only be run in mode 7, but we'll
     # position it to load just below the mode 0 screen RAM.
-    return Executable("acorn-cache.asm", None, 0x2c00, relocatable_args)
+    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args)
 
 def substitute(s, d):
     c = re.split("(\$\{|\})", s)
@@ -673,13 +677,18 @@ elif z_machine_version == 8:
 else:
     die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
+ozmoo_variants = []
+e = make_electron_swr_executable()
+if e is not None:
+    ozmoo_variants.append(e)
+
 e = make_electron_swr_executable()
 if e is not None:
     print(ourhex(e.start_address))
 else:
     print(None)
 e = make_bbc_swr_executable()
-print(ourhex(e.start_address), e.swr_dynmem)
+print(ourhex(e.start_address), e.swr_dynmem, e.leafname)
 e = make_shr_swr_executable()
 print(ourhex(e.start_address), e.swr_dynmem)
 e = make_tube_executable()
@@ -690,4 +699,4 @@ e = make_cache_executable()
 print(ourhex(e.start_address))
 print(len(e.binary()))
 
-print("\n".join(make_loader()))
+#print("\n".join(make_loader()))
