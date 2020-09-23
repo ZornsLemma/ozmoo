@@ -492,6 +492,61 @@ def make_cache_executable():
     # position it to load just below the mode 0 screen RAM.
     return Executable("acorn-cache.asm", None, 0x2c00, relocatable_args)
 
+def make_loader():
+    # This isn't all that user-friendly and it makes some assumptions about what
+    # the BASIC code will look like. I think this is OK, as it's not a general
+    # tool - it's specifically designed to work with the Ozmoo loader.
+
+    def convert(value):
+        if isinstance(value, int):
+            return "&" + ourhex(value)
+        return value
+    symbols = {k: convert(v) for k, v in common_labels.items()}
+    # SFTODO: This needs to take account of what binaries we were able to build, this is just a hack
+    symbols["BBC_SHR_SWR_BINARY"] = "OZMOOSH"
+    symbols["BBC_SHR_SWR_MAX_PAGE"] = "&2000"
+    symbols["BBC_SHR_SWR_RELOCATABLE"] = "TRUE"
+    symbols["BBC_SHR_SWR_SWR_DYNMEM"] = "&400"
+    with open("templates/loader-sketch.bas", "r") as f:
+        # SFTODO: For now I won't support nested !ifdef; if I need it I can
+        # implement it.
+        if_condition = None
+        loader = []
+        for line in f.readlines():
+            line = line[:-1].strip()
+            print(line)
+            i = line.find(":REM ")
+            if i == -1:
+                i = line.find("REM ")
+            if i != -1:
+                line = line[:i]
+            if line in ("", ":"):
+                pass
+            elif line.startswith("!ifdef"):
+                assert if_condition is None
+                c = line.split(" ")
+                assert len(c) == 3
+                assert c[2] == "{"
+                if_condition = c[1] in symbols
+            elif line.startswith("}"):
+                assert if_condition is not None
+                c = line.split(" ")
+                if len(c) == 1:
+                    if_condition = None
+                elif len(c) == 3:
+                    assert c[1] == "else" and c[2] == "{"
+                    if_condition = not if_condition
+                else:
+                    assert False
+            elif if_condition is None or if_condition:
+                # SFTODO: NEED TO DO VARIABLE SUBSTITUTION
+                loader.append(line)
+    return loader
+
+
+
+
+
 
 best_effort_version = "Ozmoo"
 try:
@@ -525,6 +580,11 @@ if args.force_65c02 and args.force_6502:
 # but we don't want to generate a disc image with a missing version.
 if version_txt is None:
     die("Can't find version.txt")
+
+# Generate a relatively clear error message if we can't fine one of our tools,
+# rather than failing with a complex build command.
+test_executable("acme")
+test_executable("beebasm")
 
 if args.output_file is not None:
     _, user_extension = os.path.splitext(args.output_file)
@@ -611,5 +671,4 @@ e = make_cache_executable()
 print(ourhex(e.start_address))
 print(len(e.binary()))
 
-test_executable("acme")
-test_executable("beebasm")
+print(make_loader())

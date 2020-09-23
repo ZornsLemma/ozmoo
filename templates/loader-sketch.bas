@@ -45,6 +45,8 @@ PROCdetect_swr
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef TUBE_BINARY {
 IF tube THEN binary$="${TUBE_BINARY}":GOTO 2000
+} else {
+IF tube THEN PROCunsupported_machine("second processor")
 }
 !ifdef ELECTRON_SWR_BINARY {
 IF electron THEN binary$="${ELECTRON_SWR_BINARY}":max_page=${ELECTRON_SWR_PAGE}:relocatable=${ELECTRON_SWR_RELOCATABLE}:swr_needed=${ELECTRON_SWR_SWR_DYNMEM}:GOTO 1000
@@ -76,15 +78,16 @@ IF relocatable THEN extra_main_ram=max_page-PAGE:?${relocate_to}=PAGE DIV 256 EL
 swr_needed=swr_needed-&4000*?${ram_bank_count}
 REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
 REM memory, but on the Electron it is used as swappable memory only.
-IF electron AND swr_needed>0 THEN PROCdie_ram(swr_needed, "sideways RAM")
+IF electron AND swr_needed>0 THEN PROCdie_ram(swr_needed,"sideways RAM")
 mem_needed=swr_needed+${MIN_VMEM_BYTES}-extra_main_ram
-IF mem_needed>0 THEN PROCdie_ram(mem_needed, "main or sideways RAM")
+IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
 2000REM SFTODO ALL THE MENU STUFF (IF NOT AUTO START)
 REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS
 
 REM SFTODO: SHOW "LOADING, PLEASE WAIT"
+SFTODO=7
 ?screen_mode=SFTODO:IF screen_mode=7 THEN ?fg_colour=6
 !ifdef TUBE_CACHE_BINARY {
 IF tube THEN */${TUBE_CACHE_BINARY}
@@ -105,6 +108,7 @@ REM the chances of it accidentally getting corrupted.
 $${filename_data}=filename$
 *FX4,0
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
+VDU 26:REM GET RID OF THIS IF I NEVER DO VDU 28
 IF fs=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
 END
 
@@ -115,6 +119,7 @@ REM SFTODO: This needs to print nicely on screen preserving any hardware detecte
 PRINT message$
 REM Fall through to PROCfinalise
 DEF PROCfinalise
+VDU 26:REM SFTODO GET RID OF THIS IF I NEVER DO VDU 28
 *FX229,0
 *FX4,0
 END
