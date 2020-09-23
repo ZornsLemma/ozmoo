@@ -501,11 +501,14 @@ try:
 except IOError:
     version_txt = None
 
+# SFTODO: MAKE SURE I COPY ALL (USEFUL) ARGS FROM OLD VERSION
 parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
 # SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
 if version_txt is not None:
     parser.add_argument("--version", action="version", version=best_effort_version)
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
+parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
+parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("developer-only arguments (not normally needed)")
@@ -522,6 +525,16 @@ if args.force_65c02 and args.force_6502:
 # but we don't want to generate a disc image with a missing version.
 if version_txt is None:
     die("Can't find version.txt")
+
+if args.output_file is not None:
+    _, user_extension = os.path.splitext(args.output_file)
+    if user_extension.lower() == '.dsd':
+        args.double_sided = True
+    elif user_extension.lower() == '.adl':
+        args.adfs = True
+        args.double_sided = True
+    elif user_extension.lower() == '.adf':
+        args.adfs = True
 
 header_version = 0
 header_static_mem = 0xe
@@ -550,7 +563,7 @@ nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
 
-ozmoo_base_args = [ # SFTODO: MOVE THIS?
+ozmoo_base_args = [
     "-DACORN=1",
     "-DACORN_CURSOR_PASS_THROUGH=1",
     "-DSTACK_PAGES=4",
