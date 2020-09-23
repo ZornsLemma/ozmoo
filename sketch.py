@@ -435,8 +435,8 @@ def make_bbc_swr_executable():
         return small_e
     return make_ozmoo_executable(0x1900, args) # SFTODO: CONSTANT ADDRESS
 
+
 def make_electron_swr_executable():
-    # SFTODO: Duplication here with make_shr_swr_executable() args
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
     # On the Electron, no main RAM is used for dynamic RAM so there's no
     # disadvantage to loading high in memory as far as the game itself is
@@ -444,6 +444,7 @@ def make_electron_swr_executable():
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
     # relatively low address which should be >=PAGE on nearly all systems.
     return make_optimally_aligned_executable(0x1d00, args)
+
 
 def make_tube_executable():
     tube_args = ozmoo_base_args
@@ -453,13 +454,16 @@ def make_tube_executable():
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
         return tube_no_vmem
-    info("Game will be run using virtual memory on second processor")
     tube_args += ["-DVMEM=1"]
     if True: # SFTODO not args.no_tube_cache:
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-    return make_ozmoo_executable(tube_start_address, tube_args)
+    tube_vmem = make_ozmoo_executable(tube_start_address, tube_args)
+    # Don't call info() until we've successfully built an excecutable; the game
+    # may be too big.
+    info("Game will be run using virtual memory on second processor")
+    return tube_vmem
 
 def make_findswr_executable():
     return Executable("acorn-findswr.asm", None, 0x900, [])
