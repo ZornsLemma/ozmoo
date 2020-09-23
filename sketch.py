@@ -1,5 +1,3 @@
-# SFTODO: I am thinking that for SWR builds the build script is not directly responsible for ensuring free memory for vmem paging - a) *if* the build is relocatable a lower PAGE counts towards making this available b) having more SWR than the nominal bare minimum avoids the problem. So the build script needs to communicate a) if the build is reloctable b) the min SWR *excluding* swappable memory required at the "default"/maximum PAGE for that executable to the loader, and it will be responsible for deciding if the game can run or not.
-
 from __future__ import print_function
 import argparse
 import copy
