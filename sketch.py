@@ -339,6 +339,14 @@ class OzmooExecutable(Executable):
         return OzmooExecutable(start_address, self.args)
 
 
+    def add_loader_symbols(self, symbols):
+        # SFTODO: NEXT LINE IS WRONG, WE NEED TO BE DOING THIS AFTER WE'VE DONE DISC SURFACE ASSIGNMENT SO ON DFS WE CAN SAY :0.$.LEAFNAME OR :2.$.LEAFNAME
+        symbols[self.leafname + "_BINARY"] = self.leafname
+        symbols[self.leafname + "_MAX_PAGE"] = "&" + ourhex(self.start_address)
+        symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
+        symbols[self.leafname + "_SWR_DYNMEM"] = "&" + ourhex(self.swr_dynmem)
+
+
 def make_ozmoo_executable(leafname, start_address, args):
     try:
         return OzmooExecutable(leafname, start_address, args)
@@ -513,7 +521,7 @@ def substitute(s, d):
             i += 1
     return result
 
-def make_loader():
+def make_loader(symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
     # tool - it's specifically designed to work with the Ozmoo loader.
@@ -523,13 +531,8 @@ def make_loader():
             as_hex = "&" + ourhex(value).upper()
             return as_decimal if len(as_decimal) < len(as_hex) else as_hex
         return value
-    symbols = {k: convert(v) for k, v in common_labels.items()}
+    symbols.update({k: convert(v) for k, v in common_labels.items()})
     symbols["MIN_VMEM_BYTES"] = "&" + ourhex(min_vmem_blocks * bytes_per_vmem_block)
-    # SFTODO: This needs to take account of what binaries we were able to build, this is just a hack
-    symbols["BBC_SHR_SWR_BINARY"] = "OZMOOSH"
-    symbols["BBC_SHR_SWR_MAX_PAGE"] = "&2000"
-    symbols["BBC_SHR_SWR_RELOCATABLE"] = "TRUE"
-    symbols["BBC_SHR_SWR_SWR_DYNMEM"] = "&400"
     with open("templates/loader-sketch.bas", "r") as f:
         # SFTODO: For now I won't support nested !ifdef; if I need it I can
         # implement it.
@@ -677,26 +680,31 @@ elif z_machine_version == 8:
 else:
     die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
+# SFTODO: WE NEED TO CONTROL WHAT WE TRY TO BUILD USING CMDLINE OPTIONS
 ozmoo_variants = []
 e = make_electron_swr_executable()
 if e is not None:
-    ozmoo_variants.append(e)
-
-e = make_electron_swr_executable()
-if e is not None:
-    print(ourhex(e.start_address))
-else:
-    print(None)
+    ozmoo_variants.append([e])
 e = make_bbc_swr_executable()
-print(ourhex(e.start_address), e.swr_dynmem, e.leafname)
+if e is not None:
+    ozmoo_variants.append([e])
 e = make_shr_swr_executable()
-print(ourhex(e.start_address), e.swr_dynmem)
+if e is not None:
+    ozmoo_variants.append([e])
 e = make_tube_executable()
-print(ourhex(e.start_address))
-e = make_findswr_executable()
-print(ourhex(e.start_address))
-e = make_cache_executable()
-print(ourhex(e.start_address))
-print(len(e.binary()))
+if e is not None:
+    if True: # SFTODO NOT DISABLED
+        cache = make_cache_executable()
+        assert cache is not None
+        ozmoo_variants.append([cache, e])
+    else:
+        ozmoo_variants.append([e])
 
-#print("\n".join(make_loader()))
+findswr_executable = make_findswr_executable()
+
+loader_symbols = {}
+for ozmoo_executable_list in ozmoo_variants:
+    e = ozmoo_executable_list[-1]
+    e.add_loader_symbols(loader_symbols)
+print("Q", loader_symbols)
+print("\n".join(make_loader(loader_symbols)))

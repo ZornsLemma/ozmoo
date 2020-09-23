@@ -43,27 +43,27 @@ REM SFTODO: If the build *only* supports tube with no cache, we don't need detec
 PROCdetect_swr
 
 REM The tube build works on both the BBC and Electron, so we check that first.
-!ifdef TUBE_BINARY {
-IF tube THEN binary$="${TUBE_BINARY}":GOTO 2000
+!ifdef OZMOO2P_BINARY {
+IF tube THEN binary$="${OZMOO2P_BINARY}":GOTO 2000
 } else {
 IF tube THEN PROCunsupported_machine("a second processor")
 }
-!ifdef ELECTRON_SWR_BINARY {
-IF electron THEN binary$="${ELECTRON_SWR_BINARY}":max_page=${ELECTRON_SWR_PAGE}:relocatable=${ELECTRON_SWR_RELOCATABLE}:swr_needed=${ELECTRON_SWR_SWR_DYNMEM}:GOTO 1000
+!ifdef OZMOOE_BINARY {
+IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
 } else {
 IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Not just here - if I am able to run some games with no SWR, I should probably take SWR out of the "plain B" and "shadow+sideways RAM" build names (which would affect the new make-acorn.py script too, just as an internal naming thing)
-!ifdef BBC_SHR_SWR_BINARY {
-IF shadow THEN binary$="${BBC_SHR_SWR_BINARY}":max_page=${BBC_SHR_SWR_MAX_PAGE}:relocatable=${BBC_SHR_SWR_RELOCATABLE}:swr_needed=${BBC_SHR_SWR_SWR_DYNMEM}:GOTO 1000
+!ifdef OZMOOSH_BINARY {
+IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_needed=${OZMOOSH_SWR_DYNMEM}:GOTO 1000
 } else {
-REM BBC_SWR_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
-REM so if we don't have BBC_SHR_SWR_BINARY we must refuse to work on anything
+REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
+REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
 REM else.
 IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 }
-!ifdef BBC_SWR_BINARY {
-binary$="${BBC_SWR_BINARY}":max_page=${BBC_SWR_MAX_PAGE}:relocatable=${BBC_SWR_RELOCATABLE}:swr_needed=${BBC_SWR_SWR_DYNMEM}:GOTO 1000
+!ifdef OZMOOB_BINARY {
+binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_needed=${OZMOOB_SWR_DYNMEM}:GOTO 1000
 } else {
 REM SFTODO: Next line is misleading, depending on the other build options we may mean "a BBC B without shadow RAM", but it will depend on options.
 PROCunsupported_machine("a BBC B")
