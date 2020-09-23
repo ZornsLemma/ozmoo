@@ -467,7 +467,7 @@ def make_electron_swr_executable():
 
 def make_tube_executable():
     tube_args = ozmoo_base_args
-    if True: # SFTODO: IF CMOS NOT DISABLED ENTIRELY BY CMD LINE ARG
+    if not args.force_6502:
         tube_args += ["-DCMOS=1"]
     tube_no_vmem = make_ozmoo_executable(tube_start_address, tube_args)
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
@@ -508,9 +508,15 @@ if version_txt is not None:
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
+group = parser.add_argument_group("developer-only arguments (not normally needed)")
+group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
+group.add_argument("--force-6502", action="store_true", help="only use 6502 instructions on all machines")
 
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
+
+if args.force_65c02 and args.force_6502:
+    die("--force-65c02 and --force-6502 are incompatible")
 
 # It's OK to run and give --help etc output if the version.txt file can't be found,
 # but we don't want to generate a disc image with a missing version.
@@ -553,6 +559,8 @@ ozmoo_base_args = [ # SFTODO: MOVE THIS?
     "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
     "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
 ]
+if args.force_65c02:
+    ozmoo_base_args += ["-DCMOS=1"]
 
 z_machine_version = game_data[header_version]
 # SFTODO: This is wrong/incomplete - fairly sure we support 4 and 7 too
