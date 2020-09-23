@@ -88,9 +88,12 @@ class GameWontFit(Exception):
 class Executable(object):
     cache = {}
 
+    # SFTODO: Not here specifically - I have args as a global and also args as a parameter in
+    # many functions, this seems crappy. Rename one or both of these?
     def __init__(self, asm_filename, leafname, version_maker, start_address, args):
         self.asm_filename = asm_filename
         self.leafname = leafname
+        self.surface = 0 # may be overridden later if we're building double-sided DFS
         self.version_maker = version_maker
         self.start_address = start_address
         self.args = args
@@ -347,8 +350,10 @@ class OzmooExecutable(Executable):
 
 
     def add_loader_symbols(self, symbols):
-        # SFTODO: NEXT LINE IS WRONG, WE NEED TO BE DOING THIS AFTER WE'VE DONE DISC SURFACE ASSIGNMENT SO ON DFS WE CAN SAY :0.$.LEAFNAME OR :2.$.LEAFNAME
-        symbols[self.leafname + "_BINARY"] = self.leafname
+        if args.adfs:
+            symbols[self.leafname + "_BINARY"] = self.leafname
+        else:
+            symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
         symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_address)
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
@@ -596,9 +601,9 @@ parser.add_argument("-2", "--double-sided", action="store_true", help="generate 
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
-group = parser.add_argument_group("developer-only arguments (not normally needed)")
+group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
 group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
-group.add_argument("--force-6502", action="store_true", help="only use 6502 instructions on all machines")
+group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
 
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
@@ -611,8 +616,8 @@ if args.force_65c02 and args.force_6502:
 if version_txt is None:
     die("Can't find version.txt")
 
-# Generate a relatively clear error message if we can't fine one of our tools,
-# rather than failing with a complex build command.
+# Generate a relatively clear error message if we can't find one of our tools,
+# rather than failing on a complex build command.
 test_executable("acme")
 test_executable("beebasm")
 
