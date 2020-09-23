@@ -88,10 +88,11 @@ class GameWontFit(Exception):
 
 
 class File(object):
-    def __init__(self, leafname, start_address, contents):
+    def __init__(self, leafname, load_address, exec_address, contents):
         self.leafname = leafname
         self.surface = 0
-        self.start_address = start_address
+        self.load_address = load_address
+        self.exec_address = exec_address
         self.contents = contents
 
     # This is called binary() so we have the same interface as Executable.
@@ -111,6 +112,10 @@ class Executable(object):
         self.surface = 0 # may be overridden later if we're building double-sided DFS
         self.version_maker = version_maker
         self.start_address = start_address
+        self.load_address = start_address
+        if leafname != "OZMOO2P":
+            self.load_address |= host
+        self.exec_address = self.load_address
         self.args = args
         self._relocations = None
         output_name = os.path.splitext(os.path.basename(asm_filename))[0].replace("-", "_")
@@ -538,7 +543,7 @@ def make_boot():
         'MODE 135',
         'CHAIN "LOADER"',
     ]
-    return File("!BOOT", 0, "\r".join(boot))
+    return File("!BOOT", 0, 0, "\r".join(boot))
 
 def substitute(s, d):
     c = re.split("(\$\{|\})", s)
@@ -620,12 +625,12 @@ def make_tokenised_loader(loader_symbols):
     # simply by chopping off the first two sectors. We peek the length out
     # of one of those sectors first.
     with open(loader_ssd, "rb") as f:
-        tokenised_loader = f.read()
+        tokenised_loader = bytearray(f.read())
         length = ((((tokenised_loader[0x10e] >> 4) & 0x3) << 16) |
                   (tokenised_loader[0x10d] << 8) | tokenised_loader[0x10c])
         tokenised_loader = tokenised_loader[512:512+length]
         # SFTODO: CHECK A GENERATED DISC IMAGE DOESN'T HAVE ANY JUNK AT END OF LOADER
-    return File("LOADER", 0, tokenised_loader)
+    return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
 
 
 best_effort_version = "Ozmoo"
