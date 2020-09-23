@@ -41,6 +41,9 @@ def divide_round_up(x, y):
 def bytes_to_blocks(x):
     return divide_round_up(x, bytes_per_block)
 
+def disc_size(contents):
+    return sum(bytes_to_blocks(len(f.binary())) for f in contents)
+
 def same_double_page_alignment(lhs, rhs):
     return lhs % 512 == rhs % 512
 
@@ -82,6 +85,18 @@ def update_common_labels(labels):
 
 class GameWontFit(Exception):
     pass
+
+
+class File(object):
+    def __init__(self, leafname, start_address, contents):
+        self.leafname = leafname
+        self.surface = 0
+        self.start_address = start_address
+        self.contents = contents
+
+    # This is called binary() so we have the same interface as Executable.
+    def binary(self):
+        return self.contents
         
             
 # SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
@@ -346,7 +361,7 @@ class OzmooExecutable(Executable):
         return len(self._binary)
 
     def rebuild_at(self, start_address):
-        return OzmooExecutable(start_address, self.args)
+        return OzmooExecutable(self.leafname, start_address, self.args)
 
 
     def add_loader_symbols(self, symbols):
@@ -516,6 +531,15 @@ def make_cache_executable():
     # position it to load just below the mode 0 screen RAM.
     return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args)
 
+def make_boot():
+    boot = [
+        '*BASIC',
+        '*DIR $',
+        'MODE 135',
+        'CHAIN "LOADER"',
+    ]
+    return File("!BOOT", 0, "\r".join(boot))
+
 def substitute(s, d):
     c = re.split("(\$\{|\})", s)
     result = ""
@@ -578,9 +602,8 @@ def make_loader(symbols):
                 loader.append(substitute(line, symbols))
     return loader
 
-
-
-
+def make_tokenised_loader():
+    return File("LOADER", 0, bytearray()) # SFTODO!
 
 
 best_effort_version = "Ozmoo"
@@ -710,11 +733,35 @@ if e is not None:
     else:
         ozmoo_variants.append([e])
 
-findswr_executable = make_findswr_executable()
+# We sort the executable lists by descending order of size; this isn't really
+# important unless we're doing a double-sided DFS build (where we want to
+# distribute larger things first), but it doesn't hurt to do it in all cases.
+ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
 loader_symbols = {}
-for ozmoo_executable_list in ozmoo_variants:
-    e = ozmoo_executable_list[-1]
+for executable_list in ozmoo_variants:
+    e = executable_list[-1]
     e.add_loader_symbols(loader_symbols)
 print("Q", loader_symbols)
 print("\n".join(make_loader(loader_symbols)))
+
+# SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
+disc_contents = [make_boot(), make_tokenised_loader(), make_findswr_executable()]
+double_sided_dfs = args.double_sided and not args.adfs
+if double_sided_dfs:
+    disc2_contents = []
+for executable_list in ozmoo_variants:
+    if double_sided_dfs and disc_size(disc2_contents) < disc_size(disc_contents):
+        disc2_contents.extend(executable_list)
+    else:
+        disc_contents.extend(executable_list)
+if not args.adfs and args.double_sided:
+    for f in disc2_contents:
+        f.surface = 2
+    disc_contents[1] = make_tokenised_loader()
+print("A")
+for SFTODO in disc_contents:
+    print(SFTODO.leafname)
+print("B")
+for SFTODO in disc2_contents:
+    print(SFTODO.leafname)
