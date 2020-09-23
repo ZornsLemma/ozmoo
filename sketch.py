@@ -217,21 +217,18 @@ class OzmooExecutable(Executable):
         if nonstored_blocks_up_to > self.pseudo_ramtop():
             raise GameWontFit("Not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
-            # Note that swr_dynmem may be negative; this means the game may run
-            # (albeit badly) with no sideways RAM at all. (For relocatable builds
-            # the loader will adjust it anyway, to take account of actual PAGE
-            # versus maximum page the executable was built for.)
+            # Note that swr_dynmem may be negative; this means there will be
+            # some main RAM free after loading dynamic memory when loaded at the
+            # build address. For relocatable builds the loader will also take
+            # account of the actual value of PAGE.
             self.swr_dynmem = nonstored_blocks_up_to - 0x8000
             assert "ACORN_SWR_SMALL_DYNMEM" in self.labels or self.swr_dynmem > 0
             assert self.swr_dynmem <= 16 * 1024
 
         # On a second processor build, we must also have at least
-        # min_vmem_blocks for swappable memory. On sideways RAM builds we leave
-        # checking this to the loader - the dynamic memory size has a big
-        # influence on what we can run at any given start address no matter how
-        # much sideways RAM we have, because we can use at most 16K of it for
-        # dynamic memory, but other banks of sideways RAM can be used for
-        # swappable memory.
+        # min_vmem_blocks for swappable memory. For sideways RAM builds we need
+        # to check at run time if we have enough main/sideways RAM for swappable
+        # memory.
         min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
         if "ACORN_SWR" not in self.labels:
             nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
