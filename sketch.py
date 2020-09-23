@@ -449,10 +449,10 @@ def make_bbc_swr_executable():
     # SWR and I think there's some prospect that we could make a stab at
     # running small games with no SWR and I don't really like ruling that out.
     args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
-    small_e = make_ozmoo_executable(0x1900, args + small_dynmem_args) # SFTODO: CONSTANT ADDRESS
+    small_e = make_ozmoo_executable(bbc_swr_start_address, args + small_dynmem_args)
     if small_e is not None:
         return small_e
-    return make_ozmoo_executable(0x1900, args) # SFTODO: CONSTANT ADDRESS
+    return make_ozmoo_executable(bbc_swr_start_address, args)
 
 
 def make_electron_swr_executable():
@@ -551,6 +551,14 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
 tube_start_address = 0x600
+if not args.adfs:
+    bbc_swr_start_address = 0x1900
+else:
+    # SFTODO: Should I be using 0x1f00? That's what a model B with DFS+ADFS
+    # has PAGE at. Maybe stick with this for now and see if anyone has problems,
+    # so we don't pay a small performance penalty unless there's some evidence
+    # it's useful.
+    bbc_swr_start_address = 0x1d00
 max_start_address = 0x4000
 
 common_labels = {}
