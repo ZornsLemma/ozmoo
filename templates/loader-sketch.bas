@@ -27,6 +27,7 @@ IF potential_himem%=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
+screen_mode=${screen_mode}
 
 MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=7:?bg_colour=4
@@ -84,6 +85,7 @@ REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we sh
 REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS
 
 REM SFTODO: SHOW "LOADING, PLEASE WAIT"
+?screen_mode=SFTODO:IF screen_mode=7 THEN ?fg_colour=6
 !ifdef TUBE_CACHE_BINARY {
 IF tube THEN */${TUBE_CACHE_BINARY}
 }
