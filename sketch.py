@@ -513,10 +513,11 @@ def make_loader():
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
     # tool - it's specifically designed to work with the Ozmoo loader.
-
     def convert(value):
         if isinstance(value, int):
-            return "&" + ourhex(value)
+            as_decimal = str(value)
+            as_hex = "&" + ourhex(value).upper()
+            return as_decimal if len(as_decimal) < len(as_hex) else as_hex
         return value
     symbols = {k: convert(v) for k, v in common_labels.items()}
     symbols["MIN_VMEM_BYTES"] = "&" + ourhex(min_vmem_blocks * bytes_per_vmem_block)
@@ -532,7 +533,6 @@ def make_loader():
         loader = []
         for line in f.readlines():
             line = line[:-1].strip()
-            print(line)
             i = line.find(":REM ")
             if i == -1:
                 i = line.find("REM ")

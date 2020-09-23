@@ -22,8 +22,8 @@ REM large program which may be using memory above &3000 if we're currently
 REM in a non-shadow mode. Normally !BOOT selects a shadow mode to avoid
 REM this problem, but we do this as a fallback (e.g. if we've been copied
 REM to a hard drive and our !BOOT isn't in use any more).
-A%=&85:X%=135:potential_himem%=(USR&FFF4 AND &FFFF00) DIV &100
-IF potential_himem%=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
+A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
+IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
@@ -46,12 +46,12 @@ REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef TUBE_BINARY {
 IF tube THEN binary$="${TUBE_BINARY}":GOTO 2000
 } else {
-IF tube THEN PROCunsupported_machine("second processor")
+IF tube THEN PROCunsupported_machine("a second processor")
 }
 !ifdef ELECTRON_SWR_BINARY {
 IF electron THEN binary$="${ELECTRON_SWR_BINARY}":max_page=${ELECTRON_SWR_PAGE}:relocatable=${ELECTRON_SWR_RELOCATABLE}:swr_needed=${ELECTRON_SWR_SWR_DYNMEM}:GOTO 1000
 } else {
-IF electron THEN PROCunsupported_machine("Electron")
+IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Not just here - if I am able to run some games with no SWR, I should probably take SWR out of the "plain B" and "shadow+sideways RAM" build names (which would affect the new make-acorn.py script too, just as an internal naming thing)
 !ifdef BBC_SHR_SWR_BINARY {
@@ -60,12 +60,13 @@ IF shadow THEN binary$="${BBC_SHR_SWR_BINARY}":max_page=${BBC_SHR_SWR_MAX_PAGE}:
 REM BBC_SWR_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
 REM so if we don't have BBC_SHR_SWR_BINARY we must refuse to work on anything
 REM else.
-IF host_os<>1 THEN PROCunsupported_machine("BBC B+/Master")
+IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 }
 !ifdef BBC_SWR_BINARY {
 binary$="${BBC_SWR_BINARY}":max_page=${BBC_SWR_MAX_PAGE}:relocatable=${BBC_SWR_RELOCATABLE}:swr_needed=${BBC_SWR_SWR_DYNMEM}:GOTO 1000
 } else {
-PROCunsupported_machine("BBC B")
+REM SFTODO: Next line is misleading, depending on the other build options we may mean "a BBC B without shadow RAM", but it will depend on options.
+PROCunsupported_machine("a BBC B")
 }
 
 REM For builds which can use sideways RAM, we need to check if we have enough
@@ -124,6 +125,7 @@ VDU 26:REM SFTODO GET RID OF THIS IF I NEVER DO VDU 28
 *FX4,0
 END
 
+DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROCoscli(command$):$block%=command$:X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
