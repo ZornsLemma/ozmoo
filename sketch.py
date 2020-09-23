@@ -35,6 +35,13 @@ def bytes_to_blocks(x):
 def same_double_page_alignment(lhs, rhs):
     return lhs % 512 == rhs % 512
 
+def test_executable(name):
+    try:
+        child = subprocess.Popen([name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        child.wait()
+    except:
+        die("Can't execute '" + name + "'; is it on your PATH?")
+
 def run_and_check(args, output_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
@@ -550,3 +557,6 @@ print(ourhex(e.start_address))
 e = make_cache_executable()
 print(ourhex(e.start_address))
 print(len(e.binary()))
+
+test_executable("acme")
+test_executable("beebasm")
