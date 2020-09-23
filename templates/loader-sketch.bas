@@ -49,13 +49,13 @@ IF tube THEN binary$="${OZMOO2P_BINARY}":GOTO 2000
 IF tube THEN PROCunsupported_machine("a second processor")
 }
 !ifdef OZMOOE_BINARY {
-IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
+IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
 } else {
 IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Not just here - if I am able to run some games with no SWR, I should probably take SWR out of the "plain B" and "shadow+sideways RAM" build names (which would affect the new make-acorn.py script too, just as an internal naming thing)
 !ifdef OZMOOSH_BINARY {
-IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_needed=${OZMOOSH_SWR_DYNMEM}:GOTO 1000
+IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:GOTO 1000
 } else {
 REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
 REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
@@ -63,7 +63,7 @@ REM else.
 IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 }
 !ifdef OZMOOB_BINARY {
-binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_needed=${OZMOOB_SWR_DYNMEM}:GOTO 1000
+binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:GOTO 1000
 } else {
 REM SFTODO: Next line is misleading, depending on the other build options we may mean "a BBC B without shadow RAM", but it will depend on options.
 PROCunsupported_machine("a BBC B")
@@ -76,11 +76,12 @@ REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM SFTODO THIS WON'T DO THE RIGHT THING ON ELECTRON, WHERE MAIN RAM CAN SUBSTITUTE FOR VMEM BUT NOT DYNMEM
 1000IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 IF relocatable THEN extra_main_ram=max_page-PAGE:?${relocate_target}=PAGE DIV 256 ELSE extra_main_ram=0
-swr_needed=swr_needed-&4000*?${ram_bank_count}
+swr_dynmem_needed=swr_dynmem_needed-&4000*?${ram_bank_count}
 REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
 REM memory, but on the Electron it is used as swappable memory only.
-IF electron AND swr_needed>0 THEN PROCdie_ram(swr_needed,"sideways RAM")
-mem_needed=swr_needed+${MIN_VMEM_BYTES}-extra_main_ram
+vmem_needed=${MIN_VMEM_BYTES}-extra_main_ram
+IF electron AND swr_dynmem_needed>0 THEN PROCdie_ram(swr_dynmem_needed+FNmax(vmem_needed,0),"sideways RAM")
+mem_needed=swr_dynmem_needed+vmem_needed
 IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
@@ -129,3 +130,5 @@ DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+m
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
+
+DEF FNmax(a,b):IF a<b THEN =b ELSE =a
