@@ -1,6 +1,7 @@
 # SFTODO: I am thinking that for SWR builds the build script is not directly responsible for ensuring free memory for vmem paging - a) *if* the build is relocatable a lower PAGE counts towards making this available b) having more SWR than the nominal bare minimum avoids the problem. So the build script needs to communicate a) if the build is reloctable b) the min SWR *excluding* swappable memory required at the "default"/maximum PAGE for that executable to the loader, and it will be responsible for deciding if the game can run or not.
 
 from __future__ import print_function
+import argparse
 import copy
 import os
 import subprocess
@@ -492,6 +493,30 @@ def make_cache_executable():
     return Executable("acorn-cache.asm", None, 0x2c00, relocatable_args)
 
 
+best_effort_version = "Ozmoo"
+try:
+    with open(os.path.join(os.path.dirname(sys.argv[0]), "version.txt"), "r") as f:
+        version_txt = f.read().strip()
+    best_effort_version += " " + version_txt
+except IOError:
+    version_txt = None
+
+parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
+# SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
+if version_txt is not None:
+    parser.add_argument("--version", action="version", version=best_effort_version)
+parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
+parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
+parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
+
+args = parser.parse_args()
+verbose_level = 0 if args.verbose is None else args.verbose
+
+# It's OK to run and give --help etc output if the version.txt file can't be found,
+# but we don't want to generate a disc image with a missing version.
+if version_txt is None:
+    die("Can't find version.txt")
+
 header_version = 0
 header_static_mem = 0xe
 vmem_block_pagecount = 2
@@ -512,7 +537,7 @@ max_start_address = 0x4000
 
 common_labels = {}
 
-with open(sys.argv[1], "rb") as f : # SFTODO with open(args.input_file, "rb") as f:
+with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
 game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = get_word(game_data, header_static_mem)
