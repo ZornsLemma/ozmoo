@@ -520,11 +520,10 @@ if version_txt is None:
 header_version = 0
 header_static_mem = 0xe
 vmem_block_pagecount = 2
-bytes_per_block = 256 # SFTODO MOVE
+bytes_per_block = 256
 bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
-verbose_level = 2 # SFTODO TEMP HACK SHOULD BE PARSED FROM ARGS
 highest_expected_page = 0x2000 # SFTODO: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
 
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
