@@ -17,9 +17,6 @@ def info(s):
 def warn(s):
     print("Warning: %s" % s, file=sys.stderr)
 
-def substitute(lst, a, b): # SFTODO: DELETE IF NOT USED
-    return [x.replace(a, b) for x in lst]
-
 def ourhex(i):
     return hex(i)[2:]
 
@@ -33,11 +30,7 @@ def divide_round_up(x, y):
         return (x // y) + 1
 
 def bytes_to_blocks(x):
-    return divide_round_up(x, 256)
-
-# SFTODO: Make this a member of Executable?
-def max_nonstored_blocks(executable):
-    return (executable.pseudo_ramtop() - executable.labels["story_start"]) // 256
+    return divide_round_up(x, bytes_per_block)
 
 def run_and_check(args, output_filter=None):
     if output_filter is None:
@@ -53,20 +46,6 @@ def run_and_check(args, output_filter=None):
         print("".join(x.decode(encoding="ascii") for x in child_output))
     if child.returncode != 0:
         die("%s failed" % args[0])
-
-# SFTODO: MAKE A MEMBER OF EXECUTABLE?
-def parse_labels(filename):
-    labels = {}
-    with open(filename, "r") as f:
-        for line in f.readlines():
-            line = line[:-1]
-            components = line.split("=")
-            value = components[1].strip()
-            i = value.find(";")
-            if i != -1:
-                value = value[:i]
-            labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
-    return labels
 
 class GameWontFit(Exception):
     pass
@@ -113,7 +92,7 @@ class Executable(object):
         cpu = "65c02" if "-DCMOS=1" in extra_args else "6502"
         run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename, asm_filename])
         os.chdir("..")
-        self.labels = parse_labels(self._labels_filename)
+        self.labels = self._parse_labels()
 
         with open(self._binary_filename, "rb") as f:
             self._binary = bytearray(f.read())
@@ -121,6 +100,19 @@ class Executable(object):
             self.truncate_at("reloc_count")
 
         Executable.cache[cache_key] = (cache_definition, copy.deepcopy(self))
+
+    def _parse_labels(self):
+        labels = {}
+        with open(self._labels_filename, "r") as f:
+            for line in f.readlines():
+                line = line[:-1]
+                components = line.split("=")
+                value = components[1].strip()
+                i = value.find(";")
+                if i != -1:
+                    value = value[:i]
+                labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
+        return labels
 
     def rebuild_at(self, start_address):
         print("SFTODO BASEEXECUTABLE REBUILD_AT")
@@ -198,6 +190,9 @@ class OzmooExecutable(Executable):
             s += "_" + ourhex(start_address)
             return s
 
+        if "-DACORN_NO_SHADOW=1" not in extra_args:
+            extra_args += ["-DACORN_HW_SCROLL=1"]
+
         Executable.__init__(self, "ozmoo.asm", version_maker, start_address, extra_args)
 
         if "ACORN_RELOCATABLE" not in self.labels:
@@ -205,14 +200,10 @@ class OzmooExecutable(Executable):
 
         self.swr_dynmem = 0
         if "VMEM" in self.labels:
-            self.patch_vmem()
+            self._patch_vmem()
 
-    def patch_vmem(e): # SFTODO: RENAME ARG TO 'SELF'
-        assert e.asm_filename == "ozmoo.asm"
-
-        vmem_block_pagecount = e.labels["vmem_block_pagecount"]
-        bytes_per_vmem_block = vmem_block_pagecount * 256
-        assert bytes_per_vmem_block == 512
+    def _patch_vmem(self):
+        assert self.asm_filename == "ozmoo.asm"
 
         if z_machine_version == 3:
             vmem_highbyte_mask = 0x01
@@ -222,17 +213,17 @@ class OzmooExecutable(Executable):
             vmem_highbyte_mask = 0x03
 
         # Can we fit the nonstored blocks into memory?
-        nonstored_blocks_up_to = e.labels["story_start"] + nonstored_blocks * bytes_per_block
-        if nonstored_blocks_up_to > e.pseudo_ramtop():
+        nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
+        if nonstored_blocks_up_to > self.pseudo_ramtop():
             raise GameWontFit("Not enough free RAM for game's dynamic memory")
-        if "ACORN_SWR" in e.labels:
+        if "ACORN_SWR" in self.labels:
             # Note that swr_dynmem may be negative; this means the game may run
             # (albeit badly) with no sideways RAM at all. (For relocatable builds
             # the loader will adjust it anyway, to take account of actual PAGE
             # versus maximum page the executable was built for.)
-            e.swr_dynmem = nonstored_blocks_up_to - 0x8000
-            assert "ACORN_SWR_SMALL_DYNMEM" in e.labels or e.swr_dynmem > 0
-            assert e.swr_dynmem <= 16 * 1024
+            self.swr_dynmem = nonstored_blocks_up_to - 0x8000
+            assert "ACORN_SWR_SMALL_DYNMEM" in self.labels or self.swr_dynmem > 0
+            assert self.swr_dynmem <= 16 * 1024
 
         # On a second processor build, we must also have at least
         # min_vmem_blocks for swappable memory. On sideways RAM builds we leave
@@ -242,16 +233,16 @@ class OzmooExecutable(Executable):
         # dynamic memory, but other banks of sideways RAM can be used for
         # swappable memory.
         min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
-        if "ACORN_SWR" not in e.labels:
+        if "ACORN_SWR" not in self.labels:
             nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
-            if nsmv_up_to > e.pseudo_ramtop():
+            if nsmv_up_to > self.pseudo_ramtop():
                 raise GameWontFit("Not enough free RAM for any swappable memory")
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
-        vmap_offset = e.labels['vmap_z_h'] - e.labels['program_start']
-        vmap_max_size = e.labels['vmap_max_size']
-        assert e._binary[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
+        vmap_offset = self.labels['vmap_z_h'] - self.labels['program_start']
+        vmap_max_size = self.labels['vmap_max_size']
+        assert self._binary[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
         blocks = []
         # SFTODO: We will do this work for every single executable; it's not in practice a
         # big deal but it's a bit inelegant.
@@ -305,14 +296,17 @@ class OzmooExecutable(Executable):
                 # bytes by shrinking vmap_max_size.
                 addr = 0
             vmap_entry = (timestamp << 8) | addr
-            e._binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
-            e._binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
+            self._binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
+            self._binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
 
     def pseudo_ramtop(self):
         if "ACORN_SWR" in self.labels:
             return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
         else:
             return self.labels["flat_ramtop"]
+
+    def max_nonstored_blocks(self):
+        return (self.pseudo_ramtop() - self.labels["story_start"]) // bytes_per_block
 
     # Return the size of the binary, ignoring any relocation data (which isn't
     # important for the limited use we make of the return value).
@@ -337,7 +331,7 @@ bytes_per_block = 256 # SFTODO MOVE
 # SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
 def make_highest_possible_executable(extra_args):
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
-    # - max_nonstored_blocks() can only return even values
+    # - max_nonstored_blocks() can only return even values on a VMEM build
     # - There are two possible start addresses 256 bytes apart which will generate the same
     #   value of max_nonstored_blocks(), as one will waste an extra 256 bytes on aligning
     #   story_start to a 512-byte boundary.
@@ -350,10 +344,9 @@ def make_highest_possible_executable(extra_args):
     if e_e00 is None:
         return None
     # SFTODO: WE ALSO MUST NOT LOAD SO HIGH THAT THE BINARY (AND DON'T FORGET IT WILL HAVE AN AS-YET-UNDETERMINED NUMBER OF BYTES OF RELOC DATA APPENDED TOO) DOESN'T FIT BELOW $8000!
-    surplus_nonstored_blocks = max_nonstored_blocks(e_e00) - nonstored_blocks
+    surplus_nonstored_blocks = e_e00.max_nonstored_blocks() - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
-    # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
-    surplus_nonstored_blocks &= ~0x1
+    assert surplus_nonstored_blocks % 2 == 0
     # There's no point loading really high, and doing a totally naive
     # calculation may cause us to load so high there's no room for the
     # relocation data before &8000, so we never load higher than
@@ -365,7 +358,7 @@ def make_highest_possible_executable(extra_args):
         assert e.size() == e_e00.size()
     else:
         assert e.size() < e_e00.size()
-    assert 0 <= max_nonstored_blocks(e) - nonstored_blocks
+    assert 0 <= e.max_nonstored_blocks() - nonstored_blocks
     return e
 
 
@@ -455,7 +448,7 @@ def make_tube_executable():
     if True: # SFTODO: IF CMOS NOT DISABLED ENTIRELY BY CMD LINE ARG
         tube_args += ["-DCMOS=1"]
     tube_no_vmem = make_ozmoo_executable(tube_start_address, tube_args)
-    if game_blocks <= max_nonstored_blocks(tube_no_vmem):
+    if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
         return tube_no_vmem
     info("Game will be run using virtual memory on second processor")
@@ -470,13 +463,15 @@ def make_findswr_executable():
     return Executable("acorn-findswr.asm", None, 0x900, [])
 
 def make_cache_executable():
-    # In practice the cache executable will only be run in mode 7, but we'll position it to load just below the mode 0 screen RAM.
+    # In practice the cache executable will only be run in mode 7, but we'll
+    # position it to load just below the mode 0 screen RAM.
     return Executable("acorn-cache.asm", None, 0x2c00, ["-DACORN_RELOCATABLE=1"])
 
 
 header_version = 0
 header_static_mem = 0xe
 vmem_block_pagecount = 2
+bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
 verbose_level = 2 # SFTODO TEMP HACK SHOULD BE PARSED FROM ARGS
