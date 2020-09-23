@@ -557,6 +557,7 @@ def substitute(s, d):
             i += 1
     return result
 
+# SFTODO: Rename make_untokenised_loader()?
 def make_loader(symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
@@ -602,7 +603,7 @@ def make_loader(symbols):
                 loader.append(substitute(line, symbols))
     return loader
 
-def make_tokenised_loader():
+def make_tokenised_loader(loader_symbols):
     return File("LOADER", 0, bytearray()) # SFTODO!
 
 
@@ -746,7 +747,8 @@ print("Q", loader_symbols)
 print("\n".join(make_loader(loader_symbols)))
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
-disc_contents = [make_boot(), make_tokenised_loader(), make_findswr_executable()]
+disc_contents = [make_boot(), make_tokenised_loader(loader_symbols), make_findswr_executable()]
+assert all(f is not None for f in disc_contents)
 double_sided_dfs = args.double_sided and not args.adfs
 if double_sided_dfs:
     disc2_contents = []
@@ -758,10 +760,12 @@ for executable_list in ozmoo_variants:
 if not args.adfs and args.double_sided:
     for f in disc2_contents:
         f.surface = 2
-    disc_contents[1] = make_tokenised_loader()
-print("A")
-for SFTODO in disc_contents:
-    print(SFTODO.leafname)
-print("B")
-for SFTODO in disc2_contents:
-    print(SFTODO.leafname)
+    assert disc_contents[1].leafname == "LOADER"
+    disc_contents[1] = make_tokenised_loader(loader_symbols)
+if False: # SFTODO: DELETE
+    print("A")
+    for SFTODO in disc_contents:
+        print(SFTODO.leafname)
+    print("B")
+    for SFTODO in disc2_contents:
+        print(SFTODO.leafname)
