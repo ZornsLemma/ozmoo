@@ -74,7 +74,7 @@ REM SFTODO: WE SHOULD SHOW HARDWARE DETECTION EARLIER THAN THIS, SO USER CAN SEE
 REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM SFTODO THIS WON'T DO THE RIGHT THING ON ELECTRON, WHERE MAIN RAM CAN SUBSTITUTE FOR VMEM BUT NOT DYNMEM
 1000IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-IF relocatable THEN extra_main_ram=max_page-PAGE:?${relocate_to}=PAGE DIV 256 ELSE extra_main_ram=0
+IF relocatable THEN extra_main_ram=max_page-PAGE:?${relocate_target}=PAGE DIV 256 ELSE extra_main_ram=0
 swr_needed=swr_needed-&4000*?${ram_bank_count}
 REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
 REM memory, but on the Electron it is used as swappable memory only.
@@ -105,7 +105,7 @@ IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
 IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
 REM the chances of it accidentally getting corrupted.
-$${filename_data}=filename$
+$${game_data_filename_or_restart_command}=filename$
 *FX4,0
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
 VDU 26:REM GET RID OF THIS IF I NEVER DO VDU 28

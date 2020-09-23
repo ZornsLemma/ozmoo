@@ -4,6 +4,7 @@ from __future__ import print_function
 import argparse
 import copy
 import os
+import re
 import subprocess
 import sys
 
@@ -253,7 +254,6 @@ class OzmooExecutable(Executable):
         # min_vmem_blocks for swappable memory. For sideways RAM builds we need
         # to check at run time if we have enough main/sideways RAM for swappable
         # memory.
-        min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
         if "ACORN_SWR" not in self.labels:
             nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
             if nsmv_up_to > self.pseudo_ramtop():
@@ -492,6 +492,23 @@ def make_cache_executable():
     # position it to load just below the mode 0 screen RAM.
     return Executable("acorn-cache.asm", None, 0x2c00, relocatable_args)
 
+def substitute(s, d):
+    c = re.split("(\$\{|\})", s)
+    result = ""
+    i = 0
+    while i < len(c):
+        if c[i] == "${":
+            k = c[i+1]
+            if k not in d:
+                die("Unknown substitution: " + k)
+            result += d[k]
+            assert c[i+2] == "}"
+            i += 3
+        else:
+            result += c[i]
+            i += 1
+    return result
+
 def make_loader():
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
@@ -502,6 +519,7 @@ def make_loader():
             return "&" + ourhex(value)
         return value
     symbols = {k: convert(v) for k, v in common_labels.items()}
+    symbols["MIN_VMEM_BYTES"] = "&" + ourhex(min_vmem_blocks * bytes_per_vmem_block)
     # SFTODO: This needs to take account of what binaries we were able to build, this is just a hack
     symbols["BBC_SHR_SWR_BINARY"] = "OZMOOSH"
     symbols["BBC_SHR_SWR_MAX_PAGE"] = "&2000"
@@ -539,8 +557,8 @@ def make_loader():
                 else:
                     assert False
             elif if_condition is None or if_condition:
-                # SFTODO: NEED TO DO VARIABLE SUBSTITUTION
-                loader.append(line)
+                # SFTODO: NEED TO DO CRUNCHING UNLESS DISABLED BY CMDLINE ARG
+                loader.append(substitute(line, symbols))
     return loader
 
 
@@ -601,6 +619,7 @@ header_static_mem = 0xe
 vmem_block_pagecount = 2
 bytes_per_block = 256
 bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
+min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
 highest_expected_page = 0x2000 # SFTODO: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
@@ -671,4 +690,4 @@ e = make_cache_executable()
 print(ourhex(e.start_address))
 print(len(e.binary()))
 
-print(make_loader())
+print("\n".join(make_loader()))

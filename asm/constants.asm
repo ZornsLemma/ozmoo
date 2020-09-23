@@ -387,11 +387,7 @@ memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 ; some reshuffling of other data which happens to live in the resident integer
 ; variable workspace but doesn't need to.
 filename_size = 49 ; this takes us from inside K% to end of W%
-!ifdef ACORN_ADFS {
-game_data_filename = $42f
-} else {
-restart_command = $42f
-}
+game_data_filename_or_restart_command = $42f
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 

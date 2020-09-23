@@ -311,9 +311,11 @@ z_ins_restart
     ; On DFS, the loader puts the restart command at this address; this saves a
     ; tiny bit of space in the binary and (more importantly) means the binary
     ; doesn't need to know at build time whether it's on drive 0 or drive 2.
+restart_command = game_data_filename_or_restart_command
     ldx #<restart_command
     ldy #>restart_command
 } else {
+game_data_filename = game_data_filename_or_restart_command
     ; Build up the restart command at scratch_page by copying game_data_filename
     ; and replacing the last component by the executable leafname.
 .last_dot = zp_temp
