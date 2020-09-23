@@ -50,6 +50,10 @@ def run_and_check(args, output_filter=None):
     if child.returncode != 0:
         die("%s failed" % args[0])
 
+# common_labels contains the value of every label which had the same value in
+# every build it existed in. The idea here is that we can use it to allow the
+# loader access to labels without needing to duplicate values or trying to parse
+# source files.
 def update_common_labels(labels):
     for label, value in labels.items():
         common_value = common_labels.get(label, None)
