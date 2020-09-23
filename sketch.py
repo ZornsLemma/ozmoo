@@ -47,6 +47,7 @@ def run_and_check(args, output_filter=None):
     if child.returncode != 0:
         die("%s failed" % args[0])
 
+
 class GameWontFit(Exception):
     pass
         
@@ -83,14 +84,14 @@ class Executable(object):
             self._relocations = e._relocations
             return
 
-        self._labels_filename = "temp/acme_labels_" + output_name
-        self._report_filename = "temp/acme_report_" + output_name
-        self._binary_filename = "temp/" + output_name
+        self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
+        self._report_filename = os.path.join("temp", "acme_report_" + output_name)
+        self._binary_filename = os.path.join("temp", output_name)
         os.chdir("asm")
-        # SFTODO: Should really use the OS-local path join character in next few lines, not '/'
-        output_prefix = "../"
+        def up(path):
+            return os.path.join("..", path)
         cpu = "65c02" if "-DCMOS=1" in extra_args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", output_prefix + self._labels_filename, "-r", output_prefix + self._report_filename, "--outfile", output_prefix + self._binary_filename, asm_filename])
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
         os.chdir("..")
         self.labels = self._parse_labels()
 
