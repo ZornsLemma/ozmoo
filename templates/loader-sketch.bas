@@ -46,13 +46,13 @@ REM The tube build works on both the BBC and Electron, so we check that first.
 IF tube THEN binary$="${TUBE_BINARY}":GOTO 2000
 }
 !ifdef ELECTRON_SWR_BINARY {
-IF electron THEN binary$="${ELECTRON_SWR_BINARY}":max_page=${ELECTRON_SWR_PAGE}:relocatable=${ELECTRON_SWR_RELOCATABLE}:swr_needed=${ELECTRON_SWR_MIN_SWR}:GOTO 1000
+IF electron THEN binary$="${ELECTRON_SWR_BINARY}":max_page=${ELECTRON_SWR_PAGE}:relocatable=${ELECTRON_SWR_RELOCATABLE}:swr_needed=${ELECTRON_SWR_SWR_DYNMEM}:GOTO 1000
 } else {
 IF electron THEN PROCunsupported_machine("Electron")
 }
 REM SFTODO: Not just here - if I am able to run some games with no SWR, I should probably take SWR out of the "plain B" and "shadow+sideways RAM" build names (which would affect the new make-acorn.py script too, just as an internal naming thing)
 !ifdef BBC_SHR_SWR_BINARY {
-IF shadow THEN binary$="${BBC_SHR_SWR_BINARY}":max_page=${BBC_SHR_SWR_MAX_PAGE}:relocatable=${BBC_SHR_SWR_RELOCATABLE}:swr_needed=${BBC_SHR_SWR_MIN_SWR}:GOTO 1000
+IF shadow THEN binary$="${BBC_SHR_SWR_BINARY}":max_page=${BBC_SHR_SWR_MAX_PAGE}:relocatable=${BBC_SHR_SWR_RELOCATABLE}:swr_needed=${BBC_SHR_SWR_SWR_DYNMEM}:GOTO 1000
 } else {
 REM BBC_SWR_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
 REM so if we don't have BBC_SHR_SWR_BINARY we must refuse to work on anything
@@ -60,7 +60,7 @@ REM else.
 IF host_os<>1 THEN PROCunsupported_machine("BBC B+/Master")
 }
 !ifdef BBC_SWR_BINARY {
-binary$="${BBC_SWR_BINARY}":max_page=${BBC_SWR_MAX_PAGE}:relocatable=${BBC_SWR_RELOCATABLE}:swr_needed=${BBC_SWR_MIN_SWR}:GOTO 1000
+binary$="${BBC_SWR_BINARY}":max_page=${BBC_SWR_MAX_PAGE}:relocatable=${BBC_SWR_RELOCATABLE}:swr_needed=${BBC_SWR_SWR_DYNMEM}:GOTO 1000
 } else {
 PROCunsupported_machine("BBC B")
 }
@@ -71,10 +71,14 @@ REM SFTODO: WE SHOULD SHOW HARDWARE DETECTION EARLIER THAN THIS, SO USER CAN SEE
 REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM SFTODO THIS WON'T DO THE RIGHT THING ON ELECTRON, WHERE MAIN RAM CAN SUBSTITUTE FOR VMEM BUT NOT DYNMEM
 1000IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-IF relocatable THEN swr_needed=swr_needed-(max_page-PAGE):?${relocate_to}=PAGE DIV 256
-swr_needed=swr_needed+${MIN_VMEM_BYTES}-&4000*?${ram_bank_count}
-IF swr_needed>0 THEN PROCdie("Sorry, you need at least "+STR$(swr_needed/1024)+"K more of main or sideways RAM.")
-REM SFTODO: If swr_needed is <0 but we're under some kind of pseudo-minimum free RAM, we might want to give a warning about the game probably being very slow.
+IF relocatable THEN extra_main_ram=max_page-PAGE:?${relocate_to}=PAGE DIV 256 ELSE extra_main_ram=0
+swr_needed=swr_needed-&4000*?${ram_bank_count}
+REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
+REM memory, but on the Electron it is used as swappable memory only.
+IF electron AND swr_needed>0 THEN PROCdie_ram(swr_needed, "sideways RAM")
+mem_needed=swr_needed+${MIN_VMEM_BYTES}-extra_main_ram
+IF mem_needed>0 THEN PROCdie_ram(mem_needed, "main or sideways RAM")
+REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
 2000REM SFTODO ALL THE MENU STUFF (IF NOT AUTO START)
 REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS
@@ -93,7 +97,7 @@ IF fs=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
 3000ON ERROR PROCerror
 REM On DFS this is actually a * command, not a filename, hence the leading "/" (="*RUN").
 IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
-IF LEN(filename$)>(filename_size-1) THEN PROCdie("Game data path too long")
+IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
 REM the chances of it accidentally getting corrupted.
 $${filename_data}=filename$
@@ -112,5 +116,7 @@ DEF PROCfinalise
 *FX229,0
 *FX4,0
 END
+
+DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROCoscli(command$):$block%=command$:X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
