@@ -194,7 +194,6 @@ class Executable(object):
         vmem_block_pagecount = self.labels["vmem_block_pagecount"]
         bytes_per_vmem_block = vmem_block_pagecount * 256
         assert bytes_per_vmem_block == 512
-        vmap_max_size = self.labels["vmap_max_size"]
 
         if z_machine_version == 3:
             vmem_highbyte_mask = 0x01
@@ -223,14 +222,9 @@ class Executable(object):
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
-        # SFTODO: Switch to using a safer distinctive string with a clear start and end - OR TBH WE SHOULD BE ABLE TO DETERMINE THE LOCATION FROM OUR LABELS, AND JUST DOUBLE-CHECK FOR THESE VS
-        vmap_offset = self._binary.index(b'VVVVVVVVVVVV')
-        vmap_length = 0
-        while chr(self._binary[vmap_offset + vmap_length]) == 'V':
-            vmap_length += 1
-        if vmap_length & 1 != 0:
-            vmap_length -= 1
-        assert vmap_length >= vmap_max_size * 2
+        vmap_offset = self.labels['vmap_z_h'] - self.labels['program_start']
+        vmap_max_size = self.labels['vmap_max_size']
+        assert self._binary[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
         blocks = []
         # SFTODO: We will do this work for every single executable; it's not in practice a
         # big deal but it's a bit inelegant.
