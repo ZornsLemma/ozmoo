@@ -49,7 +49,7 @@ IF tube THEN binary$="${OZMOO2P_BINARY}":GOTO 2000
 IF tube THEN PROCunsupported_machine("a second processor")
 }
 !ifdef OZMOOE_BINARY {
-IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
+IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
 } else {
 IF electron THEN PROCunsupported_machine("an Electron")
 }

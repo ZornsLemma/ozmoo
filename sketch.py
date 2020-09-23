@@ -20,7 +20,16 @@ def warn(s):
     print("Warning: %s" % s, file=sys.stderr)
 
 def ourhex(i):
+    assert i >= 0
     return hex(i)[2:]
+
+def basic_int(i):
+    as_decimal = str(i)
+    if i < 0:
+        as_hex = "-&" + ourhex(-i).upper()
+    else:
+        as_hex = "&" + ourhex(i).upper()
+    return as_decimal if len(as_decimal) < len(as_hex) else as_hex
 
 def get_word(data, i):
     return data[i]*256 + data[i+1]
@@ -342,9 +351,9 @@ class OzmooExecutable(Executable):
     def add_loader_symbols(self, symbols):
         # SFTODO: NEXT LINE IS WRONG, WE NEED TO BE DOING THIS AFTER WE'VE DONE DISC SURFACE ASSIGNMENT SO ON DFS WE CAN SAY :0.$.LEAFNAME OR :2.$.LEAFNAME
         symbols[self.leafname + "_BINARY"] = self.leafname
-        symbols[self.leafname + "_MAX_PAGE"] = "&" + ourhex(self.start_address)
+        symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_address)
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
-        symbols[self.leafname + "_SWR_DYNMEM"] = "&" + ourhex(self.swr_dynmem)
+        symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
 
 
 def make_ozmoo_executable(leafname, start_address, args):
@@ -381,7 +390,7 @@ def make_highest_possible_executable(leafname, args):
     assert surplus_nonstored_blocks % 2 == 0
     # There's no point loading really high, and doing a totally naive
     # calculation may cause us to load so high there's no room for the
-    # relocation data before &8000, so we never load higher than
+    # relocation data before &8000, so we never load much higher than
     # max_start_address.
     approx_max_start_address = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_address)
     e = make_optimally_aligned_executable(leafname, approx_max_start_address, args, e_e00)
@@ -527,12 +536,10 @@ def make_loader(symbols):
     # tool - it's specifically designed to work with the Ozmoo loader.
     def convert(value):
         if isinstance(value, int):
-            as_decimal = str(value)
-            as_hex = "&" + ourhex(value).upper()
-            return as_decimal if len(as_decimal) < len(as_hex) else as_hex
+            return basic_int(value)
         return value
     symbols.update({k: convert(v) for k, v in common_labels.items()})
-    symbols["MIN_VMEM_BYTES"] = "&" + ourhex(min_vmem_blocks * bytes_per_vmem_block)
+    symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
     with open("templates/loader-sketch.bas", "r") as f:
         # SFTODO: For now I won't support nested !ifdef; if I need it I can
         # implement it.
