@@ -55,19 +55,19 @@ class GameWontFit(Exception):
     pass
         
             
-# SFTODO: In a few places I am doing set(extra_args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
+# SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
 class Executable(object):
     cache = {}
 
-    def __init__(self, asm_filename, version_maker, start_address, extra_args):
+    def __init__(self, asm_filename, version_maker, start_address, args):
         self.asm_filename = asm_filename
         self.version_maker = version_maker
         self.start_address = start_address
-        self.extra_args = extra_args
+        self.args = args
         self._relocations = None
         output_name = os.path.splitext(os.path.basename(asm_filename))[0].replace("-", "_")
         if version_maker is not None:
-            output_name += "_" + version_maker(start_address, extra_args)
+            output_name += "_" + version_maker(start_address, args)
         else:
             output_name += "_" + ourhex(start_address)
 
@@ -76,7 +76,7 @@ class Executable(object):
         # can't have two builds with different parameters using the same output
         # name.
         cache_key = (asm_filename, output_name)
-        cache_definition = (start_address, set(extra_args))
+        cache_definition = (start_address, set(args))
         cache_entry = Executable.cache.get(cache_key, None)
         if cache_entry is not None:
             assert cache_entry[0] == cache_definition
@@ -92,8 +92,8 @@ class Executable(object):
         os.chdir("asm")
         def up(path):
             return os.path.join("..", path)
-        cpu = "65c02" if "-DCMOS=1" in extra_args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.extra_args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
+        cpu = "65c02" if "-DCMOS=1" in args else "6502"
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
         os.chdir("..")
         self.labels = self._parse_labels()
 
@@ -118,7 +118,7 @@ class Executable(object):
         return labels
 
     def rebuild_at(self, start_address):
-        return Executable(self.asm_filename, self.version_maker, start_address, self.extra_args)
+        return Executable(self.asm_filename, self.version_maker, start_address, self.args)
 
     def truncate_at(self, label):
         self._binary = self._binary[:self.labels[label]-self.labels["program_start"]]
@@ -179,28 +179,28 @@ class Executable(object):
 
 
 class OzmooExecutable(Executable):
-    def __init__(self, start_address, extra_args):
-        def version_maker(start_address, extra_args):
-            if "-DACORN_ELECTRON_SWR=1" in extra_args:
+    def __init__(self, start_address, args):
+        def version_maker(start_address, args):
+            if "-DACORN_ELECTRON_SWR=1" in args:
                 s = "electron_swr"
             else:
-                if "-DACORN_SWR=1" in extra_args:
+                if "-DACORN_SWR=1" in args:
                     s = "bbc_swr"
-                    if "-DACORN_NO_SHADOW=1" not in extra_args:
+                    if "-DACORN_NO_SHADOW=1" not in args:
                         s += "_shr"
                 else:
                     s = "tube"
-            if "-DVMEM=1" not in extra_args:
+            if "-DVMEM=1" not in args:
                 s += "_novmem"
-            if "-DACORN_SWR_SMALL_DYNMEM=1" in extra_args:
+            if "-DACORN_SWR_SMALL_DYNMEM=1" in args:
                 s += "_smalldyn"
             s += "_" + ourhex(start_address)
             return s
 
-        if "-DACORN_NO_SHADOW=1" not in extra_args:
-            extra_args += ["-DACORN_HW_SCROLL=1"]
+        if "-DACORN_NO_SHADOW=1" not in args:
+            args += ["-DACORN_HW_SCROLL=1"]
 
-        Executable.__init__(self, "ozmoo.asm", version_maker, start_address, extra_args)
+        Executable.__init__(self, "ozmoo.asm", version_maker, start_address, args)
 
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines_in_stack_space")
@@ -316,12 +316,12 @@ class OzmooExecutable(Executable):
         return len(self._binary)
 
     def rebuild_at(self, start_address):
-        return OzmooExecutable(start_address, self.extra_args)
+        return OzmooExecutable(start_address, self.args)
 
 
-def make_ozmoo_executable(start_address, extra_args):
+def make_ozmoo_executable(start_address, args):
     try:
-        return OzmooExecutable(start_address, extra_args)
+        return OzmooExecutable(start_address, args)
     except GameWontFit:
         return None
 
@@ -330,8 +330,8 @@ def make_ozmoo_executable(start_address, extra_args):
 # an address which means it will work on machines with relatively high values of
 # PAGE if possible. The executable will relocate itself down if PAGE isn't as
 # high as the worst case we assume here.
-def make_highest_possible_executable(extra_args):
-    assert "-DACORN_RELOCATABLE=1" in extra_args
+def make_highest_possible_executable(args):
+    assert "-DACORN_RELOCATABLE=1" in args
 
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte
     # value of PAGE:
@@ -343,7 +343,7 @@ def make_highest_possible_executable(extra_args):
     # - We want to use the higher of those two possible start addresses, because
     #   it means we won't need to waste 256 bytes before the start of the code
     #   if PAGE happens to have the right alignment.
-    e_e00 = make_ozmoo_executable(0xe00, extra_args)
+    e_e00 = make_ozmoo_executable(0xe00, args)
     # If we can't fit build successfully with a start of 0xe00 we can't ever
     # manage it.
     if e_e00 is None:
@@ -356,7 +356,7 @@ def make_highest_possible_executable(extra_args):
     # relocation data before &8000, so we never load higher than
     # max_start_address.
     approx_max_start_address = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_address)
-    e = make_optimally_aligned_executable(approx_max_start_address, extra_args, e_e00)
+    e = make_optimally_aligned_executable(approx_max_start_address, args, e_e00)
     assert e is not None
     if same_double_page_alignment(e.start_address, 0xe00):
         assert e.size() == e_e00.size()
@@ -370,30 +370,29 @@ def make_highest_possible_executable(extra_args):
 # and initial_start_address+256 gives the least wasted space. If provided
 # base_executable is a pre-built executable whcih shares the same double-page
 # alignment as initial_start_address; this may help avoid an unnecessary build.
-def make_optimally_aligned_executable(initial_start_address, extra_args, base_executable = None):
+def make_optimally_aligned_executable(initial_start_address, args, base_executable = None):
     if base_executable is None:
-        base_executable = make_ozmoo_executable(initial_start_address, extra_args)
+        base_executable = make_ozmoo_executable(initial_start_address, args)
         if base_executable is None:
             return None
     else:
         assert base_executable.asm_filename == "ozmoo.asm"
         assert same_double_page_alignment(base_executable.start_address, initial_start_address)
-        assert base_executable.extra_args == extra_args
-    alternate_executable = make_ozmoo_executable(initial_start_address + 256, extra_args)
+        assert base_executable.args == args
+    alternate_executable = make_ozmoo_executable(initial_start_address + 256, args)
     if alternate_executable is not None and alternate_executable.size() < base_executable.size():
         return alternate_executable
     else:
         if base_executable.start_address == initial_start_address:
             return base_executable
         else:
-            return make_ozmoo_executable(initial_start_address, extra_args)
+            return make_ozmoo_executable(initial_start_address, args)
 
 
 def make_shr_swr_executable():
-    # SFTODO: I should maybe (everywhere) just say "args" not "extra args", unless Executable or whatever is going to force some args in all the time
-    extra_args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
 
-    small_e = make_highest_possible_executable(extra_args + small_dynmem_args)
+    small_e = make_highest_possible_executable(args + small_dynmem_args)
     # Some systems may have PAGE too high to run small_e, but those systems
     # would be able to run the game if built with the big dynamic memory model.
     # highest_expected_page determines whether we're willing to prevent a system
@@ -410,7 +409,7 @@ def make_shr_swr_executable():
     # against available main RAM - if a system has PAGE too high to run the big
     # dynamic memory executable we generate, it just can't run the game at all
     # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable(extra_args)
+    big_e = make_highest_possible_executable(args)
     if big_e is not None:
         if small_e is not None and small_e.start_address < highest_expected_page:
             info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=" + ourhex2(small_e.start_address))
@@ -430,21 +429,21 @@ def make_bbc_swr_executable():
     # hole and relocatable code. OTOH, that would force use of at least 16K
     # SWR and I think there's some prospect that we could make a stab at
     # running small games with no SWR and I don't really like ruling that out.
-    extra_args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
-    small_e = make_ozmoo_executable(0x1900, extra_args + small_dynmem_args) # SFTODO: CONSTANT ADDRESS
+    args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
+    small_e = make_ozmoo_executable(0x1900, args + small_dynmem_args) # SFTODO: CONSTANT ADDRESS
     if small_e is not None:
         return small_e
-    return make_ozmoo_executable(0x1900, extra_args) # SFTODO: CONSTANT ADDRESS
+    return make_ozmoo_executable(0x1900, args) # SFTODO: CONSTANT ADDRESS
 
 def make_electron_swr_executable():
-    # SFTODO: Duplication here with make_shr_swr_executable() extra_args
-    extra_args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
+    # SFTODO: Duplication here with make_shr_swr_executable() args
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
     # On the Electron, no main RAM is used for dynamic RAM so there's no
     # disadvantage to loading high in memory as far as the game itself is
     # concerned. However, we'd like to avoid the executable overwriting the mode
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
     # relatively low address which should be >=PAGE on nearly all systems.
-    return make_optimally_aligned_executable(0x1d00, extra_args)
+    return make_optimally_aligned_executable(0x1d00, args)
 
 def make_tube_executable():
     tube_args = ozmoo_base_args
