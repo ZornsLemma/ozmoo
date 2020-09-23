@@ -128,4 +128,4 @@ END
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
-DEF PROCoscli(command$):$block%=command$:X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
+DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
