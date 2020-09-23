@@ -32,6 +32,9 @@ def divide_round_up(x, y):
 def bytes_to_blocks(x):
     return divide_round_up(x, bytes_per_block)
 
+def same_double_page_alignment(lhs, rhs):
+    return lhs % 512 == rhs % 512
+
 def run_and_check(args, output_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
@@ -62,7 +65,6 @@ class Executable(object):
         self.start_address = start_address
         self.extra_args = extra_args
         self._relocations = None
-        # SFTODO: Should really use the OS-local path join character in next few lines, not '/'
         output_name = os.path.splitext(os.path.basename(asm_filename))[0].replace("-", "_")
         if version_maker is not None:
             output_name += "_" + version_maker(start_address, extra_args)
@@ -116,7 +118,6 @@ class Executable(object):
         return labels
 
     def rebuild_at(self, start_address):
-        print("SFTODO BASEEXECUTABLE REBUILD_AT")
         return Executable(self.asm_filename, self.version_maker, start_address, self.extra_args)
 
     def truncate_at(self, label):
@@ -124,6 +125,10 @@ class Executable(object):
 
     def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
+        # other_start_address just needs to be different to self.start_address. We
+        # use 0xe00 a) because it's the lowest possible useful address for non-tube
+        # builds b) it matches OSHWM on a Master which means the labels/report for
+        # this assembly can be used directly when debugging.
         other_start_address = 0xe00
         if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
             other_start_address += (self.start_address - other_start_address) % 0x200
@@ -172,6 +177,7 @@ class Executable(object):
         else:
             return self._binary
 
+
 class OzmooExecutable(Executable):
     def __init__(self, start_address, extra_args):
         def version_maker(start_address, extra_args):
@@ -204,8 +210,6 @@ class OzmooExecutable(Executable):
             self._patch_vmem()
 
     def _patch_vmem(self):
-        assert self.asm_filename == "ozmoo.asm"
-
         if z_machine_version == 3:
             vmem_highbyte_mask = 0x01
         elif z_machine_version == 8:
@@ -312,7 +316,6 @@ class OzmooExecutable(Executable):
         return len(self._binary)
 
     def rebuild_at(self, start_address):
-        print("SFTODO OZMOOEXECUTABLE REBUILD_AT")
         return OzmooExecutable(start_address, self.extra_args)
 
 
@@ -323,25 +326,28 @@ def make_ozmoo_executable(start_address, extra_args):
         return None
 
 
-
-
-bytes_per_block = 256 # SFTODO MOVE
-# SFTODO: PROPER DESCRIPTION - THIS RETURNS A "MAXIMALLY HIGH" BUILD WHICH USES SMALL DYNAMIC MEMORY, OR NONE - NOTE THAT IF THE RETURNED BUILD RUNS AT (SAY) 0x1000, IT MAY NOT BE ACCEPTABLE BECAUSE IT WON'T RUN ON A "TYPICAL" B OR B+ - SO WE NEED TO TAKE SOME USER PREFERENCE INTO ACCOUNT
+# Build an Ozmoo executable which loads at the highest possible address; we pick
+# an address which means it will work on machines with relatively high values of
+# PAGE if possible. The executable will relocate itself down if PAGE isn't as
+# high as the worst case we assume here.
 def make_highest_possible_executable(extra_args):
-    # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte value of PAGE:
-    # - max_nonstored_blocks() can only return even values on a VMEM build
-    # - There are two possible start addresses 256 bytes apart which will generate the same
-    #   value of max_nonstored_blocks(), as one will waste an extra 256 bytes on aligning
-    #   story_start to a 512-byte boundary.
-    # - We want to use the higher of those two possible start addresses, because it means we
-    #   won't need to waste 256 bytes before the start of the code if PAGE happens to have the
-    #   right alignment.
+    assert "-DACORN_RELOCATABLE=1" in extra_args
+
+    # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte
+    # value of PAGE:
+    # - max_nonstored_blocks() can only return even values on a VMEM build.
+    # - nonstored_blocks (i.e. for this specific game) will always be even.
+    # - There are two possible start addresses 256 bytes apart which will
+    #   generate the same value of max_nonstored_blocks(), as one will waste an
+    #   extra 256 bytes on aligning story_start to a 512-byte boundary.
+    # - We want to use the higher of those two possible start addresses, because
+    #   it means we won't need to waste 256 bytes before the start of the code
+    #   if PAGE happens to have the right alignment.
     e_e00 = make_ozmoo_executable(0xe00, extra_args)
     # If we can't fit build successfully with a start of 0xe00 we can't ever
     # manage it.
     if e_e00 is None:
         return None
-    # SFTODO: WE ALSO MUST NOT LOAD SO HIGH THAT THE BINARY (AND DON'T FORGET IT WILL HAVE AN AS-YET-UNDETERMINED NUMBER OF BYTES OF RELOC DATA APPENDED TOO) DOESN'T FIT BELOW $8000!
     surplus_nonstored_blocks = e_e00.max_nonstored_blocks() - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     assert surplus_nonstored_blocks % 2 == 0
@@ -352,16 +358,18 @@ def make_highest_possible_executable(extra_args):
     approx_max_start_address = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_address)
     e = make_optimally_aligned_executable(approx_max_start_address, extra_args, e_e00)
     assert e is not None
-    if (e.start_address & 0x100) == (0xe00 & 0x100):
+    if same_double_page_alignment(e.start_address, 0xe00):
         assert e.size() == e_e00.size()
     else:
-        assert e.size() < e_e00.size()
+        assert e.size() == e_e00.size() - 256
     assert 0 <= e.max_nonstored_blocks() - nonstored_blocks
     return e
 
 
-
-
+# Build an Ozmoo executable which loads at whichever of initial_start_address
+# and initial_start_address+256 gives the least wasted space. If provided
+# base_executable is a pre-built executable whcih shares the same double-page
+# alignment as initial_start_address; this may help avoid an unnecessary build.
 def make_optimally_aligned_executable(initial_start_address, extra_args, base_executable = None):
     if base_executable is None:
         base_executable = make_ozmoo_executable(initial_start_address, extra_args)
@@ -369,11 +377,9 @@ def make_optimally_aligned_executable(initial_start_address, extra_args, base_ex
             return None
     else:
         assert base_executable.asm_filename == "ozmoo.asm"
-        assert (base_executable.start_address & 0x1ff) == (initial_start_address & 0x1ff)
+        assert same_double_page_alignment(base_executable.start_address, initial_start_address)
         assert base_executable.extra_args == extra_args
-    # If the alignment works out appropriately, we may have the same amount of available RAM
-    # with less wasted alignment by building one page past initial_start_address.
-    alternate_executable = make_ozmoo_executable(initial_start_address + 0x100, extra_args)
+    alternate_executable = make_ozmoo_executable(initial_start_address + 256, extra_args)
     if alternate_executable is not None and alternate_executable.size() < base_executable.size():
         return alternate_executable
     else:
@@ -381,7 +387,6 @@ def make_optimally_aligned_executable(initial_start_address, extra_args, base_ex
             return base_executable
         else:
             return make_ozmoo_executable(initial_start_address, extra_args)
-
 
 
 def make_shr_swr_executable():
@@ -469,6 +474,7 @@ def make_cache_executable():
 header_version = 0
 header_static_mem = 0xe
 vmem_block_pagecount = 2
+bytes_per_block = 256 # SFTODO MOVE
 bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
