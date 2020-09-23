@@ -54,6 +54,7 @@ def run_and_check(args, output_filter=None):
     if child.returncode != 0:
         die("%s failed" % args[0])
 
+# SFTODO: MAKE A MEMBER OF EXECUTABLE?
 def parse_labels(filename):
     labels = {}
     with open(filename, "r") as f:
@@ -66,38 +67,6 @@ def parse_labels(filename):
                 value = value[:i]
             labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
     return labels
-
-def template_substitute(template, args):
-    d = {}
-    for arg in args:
-        if arg.startswith("-D"):
-            c = arg.split("=", 1)
-            k = c[0][2:]
-            v = c[1]
-            assert k not in d
-            d[k] = v
-    c = template.split("${")
-    result = c[0]
-    for s in c[1:]:
-        i = s.find("}")
-        if i != -1:
-            tail = s[i+1:]
-            s = s[:i]
-        else:
-            tail = ""
-        # s now contains the contents of a ${...} item in the template
-        if ":" in s:
-            parts = s.split(":")
-            if parts[0] in d:
-                result += parts[1]
-            else:
-                result += parts[2]
-        else:
-            assert s in d
-            result += d[s]
-        result += tail
-    return result
-
 
 class GameWontFit(Exception):
     pass
@@ -121,6 +90,7 @@ class Executable(object):
         else:
             output_name += "_" + ourhex(start_address)
 
+        # SFTODO: MOVE THIS CACHE LOGIC INTO OZMOOEXECUTABLE? WE DON'T NEED IT ANYWHERE ELSE, AND IT WOULD THEN CACHE THE RESULTS OF VMEM PATCHIG AND EVERYTHING, WHICH FEELS A BIT MORE ELEGANT EVEN IF IN PRACTICE IT'S HARMLESS TO REDO THIS WORK
         # Not all build parameters have to be reflected in the output name, but we
         # can't have two builds with different parameters using the same output
         # name.
@@ -159,18 +129,6 @@ class Executable(object):
 
     def truncate_at(self, label):
         self._binary = self._binary[:self.labels[label]-self.labels["program_start"]]
-
-    # Return the size of the binary, ignoring any relocation data (which isn't
-    # important for the limited use we make of the return value).
-    def size(self):
-        return len(self._binary)
-
-    # SFTODO: MOVE OUT OF EXECUTABLE NOW IT'S NOT "OZMOO BINARY" SPECIFIC
-    def pseudo_ramtop(self):
-        if "ACORN_SWR" in self.labels:
-            return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
-        else:
-            return self.labels["flat_ramtop"]
 
     def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
@@ -342,6 +300,17 @@ class OzmooExecutable(Executable):
             vmap_entry = (timestamp << 8) | addr
             e._binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
             e._binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
+
+    def pseudo_ramtop(self):
+        if "ACORN_SWR" in self.labels:
+            return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
+        else:
+            return self.labels["flat_ramtop"]
+
+    # Return the size of the binary, ignoring any relocation data (which isn't
+    # important for the limited use we make of the return value).
+    def size(self):
+        return len(self._binary)
 
     def rebuild_at(self, start_address):
         print("SFTODO OZMOOEXECUTABLE REBUILD_AT")
