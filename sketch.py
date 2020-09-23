@@ -781,7 +781,7 @@ for executable_list in ozmoo_variants:
         disc2_contents.extend(executable_list)
     else:
         disc_contents.extend(executable_list)
-if not args.adfs and args.double_sided:
+if double_sided_dfs:
     for f in disc2_contents:
         f.surface = 2
     assert disc_contents[1].leafname == "LOADER"
