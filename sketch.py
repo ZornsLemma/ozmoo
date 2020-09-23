@@ -50,6 +50,15 @@ def run_and_check(args, output_filter=None):
     if child.returncode != 0:
         die("%s failed" % args[0])
 
+def update_common_labels(labels):
+    for label, value in labels.items():
+        common_value = common_labels.get(label, None)
+        if common_value is None:
+            common_labels[label] = value
+        else:
+            if value != common_value:
+                del common_labels[label]
+
 
 class GameWontFit(Exception):
     pass
@@ -199,15 +208,13 @@ class OzmooExecutable(Executable):
 
         if "-DACORN_NO_SHADOW=1" not in args:
             args += ["-DACORN_HW_SCROLL=1"]
-
         Executable.__init__(self, "ozmoo.asm", version_maker, start_address, args)
-
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines_in_stack_space")
-
         self.swr_dynmem = 0
         if "VMEM" in self.labels:
             self._patch_vmem()
+        update_common_labels(self.labels)
 
     def _patch_vmem(self):
         if z_machine_version == 3:
@@ -471,7 +478,7 @@ def make_findswr_executable():
 def make_cache_executable():
     # In practice the cache executable will only be run in mode 7, but we'll
     # position it to load just below the mode 0 screen RAM.
-    return Executable("acorn-cache.asm", None, 0x2c00, ["-DACORN_RELOCATABLE=1"])
+    return Executable("acorn-cache.asm", None, 0x2c00, relocatable_args)
 
 
 header_version = 0
@@ -491,6 +498,8 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 host = 0xffff0000
 tube_start_address = 0x600
 max_start_address = 0x4000
+
+common_labels = {}
 
 with open(sys.argv[1], "rb") as f : # SFTODO with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
