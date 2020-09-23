@@ -1,3 +1,5 @@
+# SFTODO: I am thinking that for SWR builds the build script is not directly responsible for ensuring free memory for vmem paging - a) *if* the build is relocatable a lower PAGE counts towards making this available b) having more SWR than the nominal bare minimum avoids the problem. So the build script needs to communicate a) if the build is reloctable b) the min SWR *excluding* swappable memory required at the "default"/maximum PAGE for that executable to the loader, and it will be responsible for deciding if the game can run or not.
+
 from __future__ import print_function
 import os
 import subprocess
@@ -32,6 +34,7 @@ def divide_round_up(x, y):
 def bytes_to_blocks(x):
     return divide_round_up(x, 256)
 
+# SFTODO: Make this a member of Executable?
 def max_nonstored_blocks(executable):
     return (executable.pseudo_ramtop() - executable.labels["story_start"]) // 256
 
@@ -150,7 +153,7 @@ class Executable(object):
         other_start_address = 0xe00
         if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
             other_start_address += (self.start_address - other_start_address) % 0x200
-        # SFTODO: If the two addresses are the same the relocation is pointless, can we avoid it?
+        # SFTODO: If the two addresses are the same the relocation is pointless, can we avoid it? I think the build may fail if this is the case, need to test it at least works even if it is pointless
         assert other_start_address <= self.start_address
         other = make_executable(self.asm_filename, other_start_address, self.extra_args)
         assert other is not None
@@ -205,18 +208,16 @@ class Executable(object):
         if nonstored_blocks_up_to > self.pseudo_ramtop():
             raise GameWontFit("Not enough free RAM for game's dynamic memory")
 
-        # We also need memory for at least min_vmem_blocks 512-byte blocks. Tube
-        # builds must have enough RAM free for these in main RAM. Sideways RAM
-        # builds can always accommodate this, given enough sideways RAM.
+        # On a second processor build, we must also have at least
+        # min_vmem_blocks for swappable memory. On sideways RAM builds we leave
+        # checking this to the loader - the dynamic memory size has a big
+        # influence on what we can run at any given start address no matter how
+        # much sideways RAM we have, because we can use at most 16K of it for
+        # dynamic memory, but other banks of sideways RAM can be used for
+        # swappable memory.
         min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
-        if "ACORN_ELECTRON_SWR" in self.labels:
-            electron_main_ram_vmem_blocks = (0x6000 - self.labels["extra_vmem_start"]) / bytes_per_vmem_block # SFTODO MAGIC CONST (START OF MODE 6 SCREEN)
-        else:
-            electron_main_ram_vmem_blocks = 0
-        nsmv_up_to = nonstored_blocks_up_to + max(min_vmem_blocks - electron_main_ram_vmem_blocks, 0) * bytes_per_vmem_block
-        if "ACORN_SWR" in self.labels:
-            self.min_swr = max(nsmv_up_to - 0x8000, 0)
-        else:
+        if "ACORN_SWR" not in self.labels:
+            nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
             if nsmv_up_to > self.pseudo_ramtop():
                 raise GameWontFit("Not enough free RAM for any swappable memory")
 
@@ -346,20 +347,23 @@ def make_highest_possible_executable(extra_args):
     # manage it.
     if e_e00 is None:
         return None
-    # SFTODO: NOW WE ARE USING THIS FOR BIGDYN TOO, WE NEED TO TAKE MIN_VMEM_BLOCKS INTO ACCOUNT - WE ARE GOING TO BE USING SUCH HIGH LOAD ADDRESSES THERE IS NO REAL "WASTE" IN DOING THAT - REALLY IT'S A BIT SILLY EVEN BOTHERING - AH, IT'S NOT COMPLETELY SILLY, BECAUSE THIS WILL MATTER IF DYNMEM IS *REALLY* BIG (EG 30K-ISH)
     # SFTODO: WE ALSO MUST NOT LOAD SO HIGH THAT THE BINARY (AND DON'T FORGET IT WILL HAVE AN AS-YET-UNDETERMINED NUMBER OF BYTES OF RELOC DATA APPENDED TOO) DOESN'T FIT BELOW $8000!
     surplus_nonstored_blocks = max_nonstored_blocks(e_e00) - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     # An extra 256 byte block is useless to us, so round down to a multiple of 512 bytes.
     surplus_nonstored_blocks &= ~0x1
-    approx_max_start_address = 0xe00 + surplus_nonstored_blocks * bytes_per_block
+    # There's no point loading really high, and doing a totally naive
+    # calculation may cause us to load so high there's no room for the
+    # relocation data before &8000, so we never load higher than
+    # max_start_address.
+    approx_max_start_address = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_address)
     e = make_optimally_aligned_executable(approx_max_start_address, extra_args, e_e00)
     assert e is not None
     if (e.start_address & 0x100) == (0xe00 & 0x100):
         assert e.size() == e_e00.size()
     else:
         assert e.size() < e_e00.size()
-    assert 0 <= max_nonstored_blocks(e) - nonstored_blocks <= 1
+    assert 0 <= max_nonstored_blocks(e) - nonstored_blocks
     return e
 
 
@@ -448,7 +452,7 @@ def make_tube_executable():
     tube_args = ozmoo_base_args
     if True: # SFTODO: IF CMOS NOT DISABLED ENTIRELY BY CMD LINE ARG
         tube_args += ["-DCMOS=1"]
-    tube_no_vmem = make_executable("ozmoo.asm", tube_start_addr, tube_args)
+    tube_no_vmem = make_executable("ozmoo.asm", tube_start_address, tube_args)
     if game_blocks <= max_nonstored_blocks(tube_no_vmem):
         info("Game is small enough to run without virtual memory on second processor")
         return tube_no_vmem
@@ -458,7 +462,7 @@ def make_tube_executable():
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-    return make_executable("ozmoo.asm", tube_start_addr, tube_args)
+    return make_executable("ozmoo.asm", tube_start_address, tube_args)
 
 
 header_version = 0
@@ -474,7 +478,8 @@ relocatable_args = ["-DACORN_RELOCATABLE=1"]
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
-tube_start_addr = 0x600
+tube_start_address = 0x600
+max_start_address = 0x4000
 
 with open(sys.argv[1], "rb") as f : # SFTODO with open(args.input_file, "rb") as f:
     game_data = bytearray(f.read())
