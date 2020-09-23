@@ -288,7 +288,7 @@ def patch_vmem(e):
 
 # SFTODO: PATCH_VMEM IS A BIG SOURCE OF NOT-NECESSARILY-FATAL ERRORS, WHAT IS GOING TO CALL THAT AND HOW WILL I HANDLE THIS FAILING? I THINK THIS IS THE ONLY LEGIT REASON FOR FAILING TO BUILD AN EXECUTABLE, THOUGH DO NOTE THAT IN SOME CASES (NOT SURE JUST NOW) IT MAY BE LEGIT FOR A BUILD DOING EXPERIMENTALLY TO FAIL ON THESE GROUPS, WE WOULD THEN JUST TWEAK PARAMS TO DO ANOTHER BUILD FOR THAT TARGET MACHINE
 # SFTODO: MAKE THIS A STATIC/CLASS MEMBER OF Executable???
-def make_executable(asm_filename, start_address, extra_args, version_maker = None):
+def make_executable(asm_filename, start_address, extra_args, extra_processor = None, version_maker = None):
     assert isinstance(start_address, int)
 
     output_name = os.path.splitext(os.path.basename(asm_filename))[0]
@@ -306,6 +306,9 @@ def make_executable(asm_filename, start_address, extra_args, version_maker = Non
         return cache_entry[1]
 
     e = Executable(asm_filename, output_name, start_address, extra_args)
+    e.extra_processor = extra_processor
+    if extra_processor is not None:
+        e = extra_processor(e, start_address, extra_args)
     make_executable.cache[cache_key] = (definition, e)
     return e
 make_executable.cache = {}
@@ -329,15 +332,18 @@ def make_ozmoo_executable(start_address, extra_args):
         s += "_" + ourhex(start_address)
         return s
 
-    e = make_executable("ozmoo.asm", start_address, extra_args, ozmoo_version_maker)
-    if "ACORN_RELOCATABLE" not in e.labels:
-        e.truncate_at("end_of_routines_in_stack_space")
-    e.min_swr = 0
-    if "VMEM" in e.labels:
-        try:
-            patch_vmem(e)
-        except GameWontFit:
-            return None
+    def ozmoo_extra_processor(e, start_address, extra_args):
+        if "ACORN_RELOCATABLE" not in e.labels:
+            e.truncate_at("end_of_routines_in_stack_space")
+        e.min_swr = 0
+        if "VMEM" in e.labels:
+            try:
+                patch_vmem(e)
+            except GameWontFit:
+                return None
+        return e
+
+    e = make_executable("ozmoo.asm", start_address, extra_args, ozmoo_extra_processor, ozmoo_version_maker)
     return e
 
 
