@@ -73,7 +73,6 @@ class GameWontFit(Exception):
         
             
 # SFTODO: In a few places I am doing set(extra_args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
-# SFTODO: I think an Executable object should have a min_swr property which would be 0 for tube builds or (maybe) small games which can run without SWR on a non-2P, 16 for most games and 32 for games which use all of first bank for dynmem. using K not bank count to ease things if I do ever support using e.g. private 12K on B+ where things aren't a multiple of 16.
 class Executable(object):
     cache = {}
 
@@ -204,7 +203,7 @@ class OzmooExecutable(Executable):
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines_in_stack_space")
 
-        self.min_swr = 0
+        self.swr_dynmem = 0
         if "VMEM" in self.labels:
             self.patch_vmem()
 
@@ -226,6 +225,14 @@ class OzmooExecutable(Executable):
         nonstored_blocks_up_to = e.labels["story_start"] + nonstored_blocks * bytes_per_block
         if nonstored_blocks_up_to > e.pseudo_ramtop():
             raise GameWontFit("Not enough free RAM for game's dynamic memory")
+        if "ACORN_SWR" in e.labels:
+            # Note that swr_dynmem may be negative; this means the game may run
+            # (albeit badly) with no sideways RAM at all. (For relocatable builds
+            # the loader will adjust it anyway, to take account of actual PAGE
+            # versus maximum page the executable was built for.)
+            e.swr_dynmem = nonstored_blocks_up_to - 0x8000
+            assert "ACORN_SWR_SMALL_DYNMEM" in e.labels or e.swr_dynmem > 0
+            assert e.swr_dynmem <= 16 * 1024
 
         # On a second processor build, we must also have at least
         # min_vmem_blocks for swappable memory. On sideways RAM builds we leave
@@ -518,9 +525,9 @@ if e is not None:
 else:
     print(None)
 e = make_bbc_swr_executable()
-print(ourhex(e.start_address), e.min_swr)
+print(ourhex(e.start_address), e.swr_dynmem)
 e = make_shr_swr_executable()
-print(ourhex(e.start_address), len(e.binary()))
+print(ourhex(e.start_address), e.swr_dynmem)
 e = make_tube_executable()
 print(ourhex(e.start_address))
 e = make_findswr_executable()
