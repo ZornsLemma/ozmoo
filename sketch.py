@@ -265,6 +265,12 @@ class Executable(object):
     def rebuild_at(self, start_address):
         return Executable(self.asm_filename, self.leafname, self.version_maker, start_address, self.args)
 
+    def add_loader_symbols(self, symbols):
+        if args.adfs:
+            symbols[self.leafname + "_BINARY"] = self.leafname
+        else:
+            symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
+
     def truncate_at(self, label):
         self._binary = self._binary[:self.labels[label]-self.labels["program_start"]]
 
@@ -461,10 +467,7 @@ class OzmooExecutable(Executable):
         return OzmooExecutable(self.leafname, start_address, self.args)
 
     def add_loader_symbols(self, symbols):
-        if args.adfs:
-            symbols[self.leafname + "_BINARY"] = self.leafname
-        else:
-            symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
+        Executable.add_loader_symbols(self, symbols)
         symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_address)
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
@@ -858,8 +861,8 @@ ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
 loader_symbols = {}
 for executable_list in ozmoo_variants:
-    e = executable_list[-1]
-    e.add_loader_symbols(loader_symbols)
+    for e in executable_list:
+        e.add_loader_symbols(loader_symbols)
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
 disc_contents = [make_boot(), make_tokenised_loader(loader_symbols), make_findswr_executable()]
@@ -875,6 +878,7 @@ for executable_list in ozmoo_variants:
 if double_sided_dfs:
     for f in disc2_contents:
         f.surface = 2
+        f.add_loader_symbols(loader_symbols)
     assert disc_contents[1].leafname == "LOADER"
     disc_contents[1] = make_tokenised_loader(loader_symbols)
 
@@ -913,8 +917,7 @@ if not args.adfs:
         # The game data must start on a track boundary at the same place on both surfaces.
         max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
         def pad_predicate(sector):
-            return (sector >= max_first_free_sector and
-                    sector % DfsImage.sectors_per_track == 0)
+            return sector >= max_first_free_sector and sector % DfsImage.sectors_per_track == 0
         disc .add_pad_file(pad_predicate)
         disc2.add_pad_file(pad_predicate)
         data = [bytearray(), bytearray()]
