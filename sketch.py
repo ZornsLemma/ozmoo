@@ -720,7 +720,6 @@ def make_tokenised_loader(loader_symbols):
         length = ((((tokenised_loader[0x10e] >> 4) & 0x3) << 16) |
                   (tokenised_loader[0x10d] << 8) | tokenised_loader[0x10c])
         tokenised_loader = tokenised_loader[512:512+length]
-        # SFTODO: CHECK A GENERATED DISC IMAGE DOESN'T HAVE ANY JUNK AT END OF LOADER
     return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
 
 
@@ -896,7 +895,7 @@ else:
         user_extension = preferred_extension
     output_file = user_prefix + user_extension
 
-# SFTODO: CATCH DISCFULL ERRORS
+# SFTODO: CATCH DISCFULL ERRORS, WARN-AND-PROMOTE TO DOUBLE SIDED IF CAN'T FIT SINGLE SIDED - AS PART OF THIS WILL NEED TO BE CAREFUL THE OUTPUT FILE EXTENSION HACKERY ABOVE IS DONE CORRECTLY WHATEVER THAT WOULD MEAN, AND (WE'D PROBABLY WANT THIS ANYWAY) A LOT OF THIS CURRENTLY IN "MAIN()" CODE WILL WANT TO BE MOVED INTO A FUNCTION
 
 if not args.adfs:
     disc = DfsImage(disc_contents)
@@ -919,9 +918,11 @@ if not args.adfs:
         disc .add_pad_file(pad_predicate)
         disc2.add_pad_file(pad_predicate)
         data = [bytearray(), bytearray()]
-        for i in range(0, bytes_to_blocks(len(game_data)), DfsImage.sectors_per_track):
-            data[(i % (2 * DfsImage.sectors_per_track)) // DfsImage.sectors_per_track].extend(
-                game_data[i*DfsImage.bytes_per_sector:i*DfsImage.bytes_per_sector+DfsImage.bytes_per_track])
+        spt = DfsImage.sectors_per_track
+        bps = DfsImage.bytes_per_sector
+        bpt = DfsImage.bytes_per_track
+        for i in range(0, bytes_to_blocks(len(game_data)), spt):
+            data[(i % (2 * spt)) // spt].extend(game_data[i*bps:i*bps+bpt])
         disc .add_file(File("DATA", 0, 0, data[0]))
         disc2.add_file(File("DATA", 0, 0, data[1]))
         DfsImage.write_dsd(disc, disc2, output_file)
