@@ -37,6 +37,9 @@ DIM block% 256
 REM SFTODO: SET UP HEADER AND FOOTER
 VDU 28,0,22,39,12:REM SFTODO TEMPORARY, TO SIMULATE BANNER
 
+normal_fg=135:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
+IF electron THEN normal_fg=0
+
 shadow=potential_himem=&8000
 tube=PAGE<&E00
 PROCdetect_swr
@@ -120,12 +123,36 @@ DEF PROCerror:CLS:REPORT:PRINT" at line ";ERL:PROCfinalise
 
 DEF PROCdie(message$)
 REM SFTODO: This needs to print nicely on screen preserving any hardware detected output, word-wrapping and using the normal fg colour if we're in mode 7.
-PRINT message$
+PROCpretty_print(normal_fg,message$)
+PRINT
 REM Fall through to PROCfinalise
 DEF PROCfinalise
 *FX229,0
 *FX4,0
 END
+
+REM This is not a completely general pretty-print routine, e.g. it doesn't make
+REM any attempt to handle words which are longer than the screen width. It's
+REM good enough for our needs.
+REM
+REM colour should be 0 or a teletext colour control code.
+REM
+REM The current X text cursor position will be used as the left margin for the
+REM output; if colour<>0 there will be an additional one character indent.
+DEF PROCpretty_print(colour,message$)
+prefix$=CHR$colour+STRING$(POS," ")
+i=1
+VDU colour
+REPEAT
+space=INSTR(message$," ",i+1)
+IF space=0 THEN word$=MID$(message$,i) ELSE word$=MID$(message$,i,space-i)
+new_pos=POS+LENword$
+IF new_pos<40 THEN PRINT word$;" "; ELSE IF new_pos=40 THEN PRINT word$; ELSE PRINT'prefix$;word$;" ";
+IF POS=0 AND space<>0 THEN PRINT prefix$;
+i=space+1
+UNTIL space=0
+IF POS<>0 THEN PRINT
+ENDPROC
 
 DEF PROCdetect_swr
 */FINDSWR
