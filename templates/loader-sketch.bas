@@ -29,9 +29,10 @@ fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 
-MODE 135:VDU 23,1,0;0;0;0;
+MODE 135:MODE134:VDU 23,1,0;0;0;0;:REM SFTODO MODE 134 IS TEMP HACK
 ?fg_colour=7:?bg_colour=4
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
+electron=TRUE:REM SFTODO TEMP HACK
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
 REM SFTODO: SET UP HEADER AND FOOTER
@@ -41,7 +42,8 @@ normal_fg=134:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION - TEMP 134 NOT 135 TO
 header_fg=131:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
 highlight_fg=132:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
 highlight_bg=129:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
-IF electron THEN normal_fg=0:header_fg=0
+electron_space=0
+IF electron THEN normal_fg=0:header_fg=0:electron_space=32
 
 shadow=potential_himem=&8000
 tube=PAGE<&E00
@@ -105,7 +107,7 @@ REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we sh
 
 2000IF LEN(mode_list$)=1 THEN GOTO 3000
 REM SFTODO: min_x/max_x WILL VARY DEPENDING ON MACHINE AND BUILD-TIME OPTIONS INSISTING ON EG 40 OR 80 COLUMNS - WELL, SOMETHING WILL HAPPEN
-PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
+PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
 menu_top_y=VPOS
 max_x=2
 max_y=1
@@ -123,8 +125,8 @@ REM entry, which will always be in the first line if it's present.
 FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
 REM SFTODO: DO 39-width TO ALLOW FOR LEFT HAND CONTROL CODE COLUMN? WHAT ABOUT ELECTRON???
 REM SFTODO DELETE width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
-IF max_x=2 THEN gutter=0 ELSE gutter=5
-FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
+IF max_x=2 THEN margin=0:gutter=0 ELSE margin=2:gutter=3
+FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;SPC(margin);:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
 x=0:y=0:PROChighlight(x,y,TRUE)
 REPEAT
 REM SFTODO: CURSORS AND KEYS TO GO DIRECT TO SPECIFIC MODE
@@ -221,13 +223,19 @@ DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+m
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROChighlight(x,y,on)
+IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
 IF x=2 THEN PROChighlight_internal(x,0,on):y=1
 DEF PROChighlight_internal(x,y,on)
 REM SFTODO: ELECTRON!
-item$=menu$(x,y)
-IF x<2 THEN PRINTTAB(menu_x(x)+3+LENitem$,menu_top_y+y);CHR$normal_fg;CHR$156;
+IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
 PRINTTAB(menu_x(x)-1,menu_top_y+y);
 IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
+ENDPROC
+DEF PROChighlight_internal_electron(x,y,on)
+PRINTTAB(menu_x(x),menu_top_y+y);
+IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
+PRINT SPC(2);menu$(x,y);SPC(2);
+COLOUR 128:COLOUR 7
 ENDPROC
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
