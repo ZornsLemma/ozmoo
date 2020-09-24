@@ -106,7 +106,8 @@ IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
 IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
 REM the chances of it accidentally getting corrupted.
-$${game_data_filename_or_restart_command}=filename$
+filename_data=${game_data_filename_or_restart_command}
+$filename_data=filename$
 *FX4,0
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
 VDU 26:REM GET RID OF THIS IF I NEVER DO VDU 28
@@ -142,5 +143,7 @@ DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amoun
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
 DEF FNpeek(addr%):!block%=&FFFF0000 OR addr%:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
+
+DEF FNfs:A%=0:Y%=0:=USR&FFDA AND &FF
 
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
