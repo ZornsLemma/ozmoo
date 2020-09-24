@@ -168,7 +168,6 @@ class DfsImage(object):
                 f.write(pad(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
 
 
-
 class File(object):
     def __init__(self, leafname, load_address, exec_address, contents):
         self.leafname = leafname
@@ -624,7 +623,7 @@ def make_boot():
         'MODE 135',
         'CHAIN "LOADER"',
     ]
-    return File("!BOOT", 0, 0, "\r".join(boot))
+    return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii"))
 
 def substitute(s, d):
     c = re.split("(\$\{|\})", s)
