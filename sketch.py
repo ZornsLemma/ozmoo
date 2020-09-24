@@ -634,7 +634,7 @@ def make_boot():
         'MODE 135',
         'CHAIN "LOADER"',
     ]
-    return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii"))
+    return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 
 def substitute(s, d):
     c = re.split("(\$\{|\})", s)
@@ -896,6 +896,8 @@ else:
         user_extension = preferred_extension
     output_file = user_prefix + user_extension
 
+# SFTODO: CATCH DISCFULL ERRORS
+
 if not args.adfs:
     disc = DfsImage(disc_contents)
     if not args.double_sided:
@@ -905,7 +907,7 @@ if not args.adfs:
         # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
         # it's good for testing.)
         disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
-        # SFTODO: PUT DATA ON!
+        disc.add_file(File("DATA", 0, 0, game_data))
         DfsImage.write_ssd(disc, output_file)
     else:
         disc2 = DfsImage(disc2_contents)
@@ -914,7 +916,14 @@ if not args.adfs:
         def pad_predicate(sector):
             return (sector >= max_first_free_sector and
                     sector % DfsImage.sectors_per_track == 0)
-        disc.add_pad_file(pad_predicate)
+        disc .add_pad_file(pad_predicate)
         disc2.add_pad_file(pad_predicate)
-        # SFTODO: PUT DATA ON!
+        data = [bytearray(), bytearray()]
+        for i in range(0, bytes_to_blocks(len(game_data)), DfsImage.sectors_per_track):
+            data[(i % (2 * DfsImage.sectors_per_track)) // DfsImage.sectors_per_track].extend(
+                game_data[i*DfsImage.bytes_per_sector:i*DfsImage.bytes_per_sector+DfsImage.bytes_per_track])
+        disc .add_file(File("DATA", 0, 0, data[0]))
+        disc2.add_file(File("DATA", 0, 0, data[1]))
         DfsImage.write_dsd(disc, disc2, output_file)
+else:
+    assert False # SFTODO
