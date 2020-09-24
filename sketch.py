@@ -794,6 +794,7 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
 tube_start_address = 0x600
+# SFTODO: I think overriding these bbc_swr_start_addresses on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines
 if not args.adfs:
     bbc_swr_start_address = 0x1900
 else:

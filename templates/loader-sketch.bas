@@ -39,6 +39,8 @@ VDU 28,0,22,39,8:REM SFTODO TEMPORARY, TO SIMULATE BANNER
 
 normal_fg=134:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION - TEMP 134 NOT 135 TO MAKE IT OBVIOUS IF I FORGET IT!
 header_fg=131:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
+highlight_fg=132:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
+highlight_bg=129:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
 IF electron THEN normal_fg=0:header_fg=0
 
 shadow=potential_himem=&8000
@@ -52,6 +54,9 @@ IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
+
+IF tube OR shadow THEN mode_list$="0346" ELSE IF electron THEN mode_list$="6"
+IF NOT electron THEN mode_list$=mode_list$+"7"
 
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
@@ -98,10 +103,48 @@ mem_needed=swr_dynmem_needed+vmem_needed
 IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
-2000REM SFTODO ALL THE MENU STUFF (IF NOT AUTO START)
+2000IF LEN(mode_list$)=1 THEN GOTO 3000
+REM SFTODO: min_x/max_x WILL VARY DEPENDING ON MACHINE AND BUILD-TIME OPTIONS INSISTING ON EG 40 OR 80 COLUMNS - WELL, SOMETHING WILL HAPPEN
+PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
+menu_top_y=VPOS
+max_x=2
+max_y=1
+DIM menu$(max_x,max_y),menu_x(max_x)
+max_x=1
+menu$(0,0)="0) 80x32"
+menu$(0,1)="1) 80x25"
+menu$(1,0)="4) 40x32"
+menu$(1,1)="6) 40x25"
+menu$(2,0)="7) 40x25   "
+menu$(2,1)="   teletext"
+REM SFTODO: DO 39-width TO ALLOW FOR LEFT HAND CONTROL CODE COLUMN? WHAT ABOUT ELECTRON???
+width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
+FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;SPC(left_pad);:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC(2);menu$(x,y);SPC(2);:NEXT:NEXT
+x=0:y=0:PROChighlight(x,y,TRUE)
+REPEAT
+REM SFTODO: CURSORS AND KEYS TO GO DIRECT TO SPECIFIC MODE
+old_x=x:old_y=y
+REM SFTODO: *FX21???
+key=GET
+IF key=136 AND x>0 THEN x=x-1
+IF key=137 AND x<max_x THEN x=x+1
+IF key=138 AND y<max_y THEN y=y+1
+IF key=139 AND y>0 THEN y=y-1
+IF x<>old_x OR (x<>2 AND y<>old_y) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+UNTIL FALSE
+
+IF GET
+PROChighlight(x,y,FALSE)
+x=1:PROChighlight(x,y,TRUE)
+IF GET
+PROChighlight(x,y,FALSE)
+x=2:PROChighlight(x,y,TRUE)
+
+END
+
 REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS - WE MAY BE ABLE TO MAKE THIS WORK NOT-TOO-BADLY B REGARDING THE MENU AS A SERIES OF 3 COLUMNS - LEFTMOST IS 80 COL, MIDDLE IS 40 COL NOT TXT, RIGHT IS MODE 7 - ELECTRON WILL ALWAYS OMIT RIGHT COL, WE MAY OMIT OTHER COLS DEPENDING ON USER CONFIG AND HARDWARE AVAILABLE - THIS DOESN'T MAKE IT *TRIVIAL*, BUT IT DOES OFFER SOME SORT OF STRUCTURE TO THE PROBLEM
 
-REM SFTODO: SHOW "LOADING, PLEASE WAIT"
+3000REM SFTODO: SHOW "LOADING, PLEASE WAIT"
 SFTODO=7
 ?screen_mode=SFTODO:IF ?screen_mode=7 THEN ?fg_colour=6
 !ifdef CACHE2P_BINARY {
@@ -112,9 +155,9 @@ IF fs<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
 IF fs=5 THEN *DIR
 REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
-ON ERROR GOTO 3000
+ON ERROR GOTO 4000
 IF fs=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
-3000ON ERROR PROCerror
+4000ON ERROR PROCerror
 REM On DFS this is actually a * command, not a filename, hence the leading "/" (="*RUN").
 IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
 IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
@@ -174,9 +217,18 @@ swr$=STR$(swr_banks*16)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i%=0 TO swr_banks-1:swr$=swr$+STR$~FNpeek(${ram_bank_list}+i%):NEXT:swr$=swr$+")"
 ENDPROC
 
-
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
+
+DEF PROChighlight(x,y,on)
+IF x=2 THEN PROChighlight_internal(x,0,on):y=1
+DEF PROChighlight_internal(x,y,on)
+REM SFTODO: ELECTRON!
+item$=menu$(x,y)
+IF x<2 THEN PRINTTAB(menu_x(x)+3+LENitem$,menu_top_y+y);CHR$normal_fg;CHR$156;
+PRINTTAB(menu_x(x)-1,menu_top_y+y);
+IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
+ENDPROC
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
