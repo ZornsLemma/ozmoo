@@ -353,6 +353,7 @@ game_disc_crc = $405 ; 2 bytes
 num_rows = $407 ; !byte 0
 !ifdef ACORN_RELOCATABLE {
 relocate_target = $408 ; !byte 0, low byte of B%
+ozmoo_relocate_target = relocate_target ; SFTODO!?
 }
 ; fg_colour and bg_colour must be adjacent and in this order
 fg_colour = $409 ; !byte 0

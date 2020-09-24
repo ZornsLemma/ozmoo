@@ -246,6 +246,7 @@ class Executable(object):
             self._binary = bytearray(f.read())
         if "ACORN_RELOCATABLE" in self.labels:
             self.truncate_at("reloc_count")
+        update_common_labels(self.labels)
 
         Executable.cache[cache_key] = (cache_definition, copy.deepcopy(self))
 
@@ -356,7 +357,6 @@ class OzmooExecutable(Executable):
         self.swr_dynmem = 0
         if "VMEM" in self.labels:
             self._patch_vmem()
-        update_common_labels(self.labels)
 
     def _patch_vmem(self):
         if z_machine_version == 3:
@@ -856,6 +856,9 @@ if e is not None:
     else:
         ozmoo_variants.append([e])
 
+boot_file = make_boot()
+findswr_executable = make_findswr_executable()
+
 # We sort the executable groups by descending order of size; this isn't really
 # important unless we're doing a double-sided DFS build (where we want to
 # distribute larger things first), but it doesn't hurt to do it in all cases.
@@ -867,7 +870,7 @@ for executable_group in ozmoo_variants:
         e.add_loader_symbols(loader_symbols)
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
-disc_contents = [make_boot(), make_tokenised_loader(loader_symbols), make_findswr_executable()]
+disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
 assert all(f is not None for f in disc_contents)
 double_sided_dfs = args.double_sided and not args.adfs
 if double_sided_dfs:

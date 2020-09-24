@@ -39,7 +39,6 @@ VDU 28,0,22,39,12:REM SFTODO TEMPORARY, TO SIMULATE BANNER
 
 shadow=potential_himem=&8000
 tube=PAGE<&E00
-REM SFTODO: If the build *only* supports tube with no cache, we don't need detect_swr - not sure it's worth worrying about this, but will make a note for now.
 PROCdetect_swr
 
 REM The tube build works on both the BBC and Electron, so we check that first.
@@ -75,7 +74,7 @@ REM SFTODO: WE SHOULD SHOW HARDWARE DETECTION EARLIER THAN THIS, SO USER CAN SEE
 REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM SFTODO THIS WON'T DO THE RIGHT THING ON ELECTRON, WHERE MAIN RAM CAN SUBSTITUTE FOR VMEM BUT NOT DYNMEM
 1000IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-IF relocatable THEN extra_main_ram=max_page-PAGE:?${relocate_target}=PAGE DIV 256 ELSE extra_main_ram=0
+IF relocatable THEN extra_main_ram=max_page-PAGE:?${ozmoo_relocate_target}=PAGE DIV 256 ELSE extra_main_ram=0
 swr_dynmem_needed=swr_dynmem_needed-&4000*?${ram_bank_count}
 REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
 REM memory, but on the Electron it is used as swappable memory only.
@@ -125,9 +124,23 @@ DEF PROCfinalise
 *FX4,0
 END
 
+DEF PROCdetect_swr
+*/FINDSWR
+REM We use FNpeek here because FINDSWR runs on the host and we may be running on
+REM a second processor.
+swr_banks=FNpeek(${ram_bank_count}):swr$=""
+IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
+IF swr_banks=0 THEN ENDPROC
+swr$=STR$(swr_banks*16)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
+swr$=swr$+" &":FOR i%=0 TO swr_banks-1:swr$=swr$+STR$~FNpeek(${ram_bank_list}+i%):NEXT:swr$=swr$+")"
+ENDPROC
+
+
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
+
+DEF FNpeek(addr%):!block%=&FFFF0000 OR addr%:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
 
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
