@@ -41,6 +41,10 @@ def divide_round_up(x, y):
 def bytes_to_blocks(x):
     return divide_round_up(x, bytes_per_block)
 
+def pad(data, size):
+    assert len(data) <= size
+    return data + bytearray(size - len(data))
+
 def disc_size(contents):
     return sum(bytes_to_blocks(len(f.binary())) for f in contents)
 
@@ -87,6 +91,84 @@ class GameWontFit(Exception):
     pass
 
 
+class DfsImage(object):
+    bytes_per_sector = 256
+    sectors_per_track = 10
+    bytes_per_track = sectors_per_track * bytes_per_sector
+    tracks = 80
+    bytes_per_surface = tracks * bytes_per_track
+
+    def __init__(self, contents):
+        self.data = bytearray(2 * DfsImage.bytes_per_sector)
+        sectors = DfsImage.tracks * DfsImage.sectors_per_track
+        self.data[0x107] = sectors & 0xff
+        self.data[0x106] = (sectors >> 8) & 0x3
+        # SFTODO: DISC TITLE
+        # SFTODO: *EXEC !BOOT
+        for f in contents:
+            self.add_file(f)
+
+    def num_files(self):
+        return self.data[0x105] // 8
+
+    def add_file(self, f):
+        # SFTODO: Having "self.data" and "data" is a bit crappy naming
+        data = f.binary()
+        size = bytes_to_blocks(len(data))
+        if len(self.data) + len(data) > DfsImage.bytes_per_surface:
+            raise DiscFull()
+        self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(data), len(self.data) // DfsImage.bytes_per_sector)
+        self.data += data
+        odd_bytes = len(self.data) % DfsImage.bytes_per_sector
+        if odd_bytes != 0:
+            self.data += bytearray(DfsImage.bytes_per_sector - odd_bytes)
+
+    # SFTODO: Bit inconsistent with "addr" vs "address" - maybe switch globally to "addr"??
+    def _add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
+        assert self.num_files() < 31
+        assert len(directory) == 1
+        assert len(name) <= 7
+        self.data[0x105] += 1*8
+        self.data[0x010:0x100] = self.data[0x008:0x0f8]
+        self.data[0x110:0x200] = self.data[0x108:0x1f8]
+        name = (name + " "*7)[:7] + directory
+        self.data[0x008:0x010] = bytearray(name, "ascii")
+        self.data[0x108] = load_addr & 0xff
+        self.data[0x109] = (load_addr >> 8) & 0xff
+        self.data[0x10a] = exec_addr & 0xff
+        self.data[0x10b] = (exec_addr >> 8) & 0xff
+        self.data[0x10c] = length & 0xff
+        self.data[0x10d] = (length >> 8) & 0xff
+        self.data[0x10e] = (
+                (((exec_addr >> 16) & 0x3) << 6) |
+                (((length >> 16) & 0x3) << 4) |
+                (((load_addr >> 16) & 0x3) << 2) |
+                ((start_sector >> 8) & 0x3))
+        self.data[0x10f] = start_sector & 0xff
+
+    @staticmethod
+    def write_ssd(image, filename):
+        data = image.data
+        if args.pad:
+            data = pad(data, DfsImage.bytes_per_surface)
+        # SFTODO: OPTIONAL PADDING
+        with open(filename, "wb") as f:
+            f.write(data)
+
+    @staticmethod
+    def write_dsd(image0, image2, filename):
+        data0 = image0.data
+        data2 = image2.data
+        with open(filename, "wb") as f:
+            for track in range(DfsImage.tracks):
+                i = track * DfsImage.bytes_per_track
+                if not args.pad and i >= len(data0) and i >= len(data2):
+                    break
+                f.write(pad(data0[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
+                f.write(pad(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
+
+
+
 class File(object):
     def __init__(self, leafname, load_address, exec_address, contents):
         self.leafname = leafname
@@ -98,8 +180,8 @@ class File(object):
     # This is called binary() so we have the same interface as Executable.
     def binary(self):
         return self.contents
-        
-            
+
+
 # SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
 class Executable(object):
     cache = {}
@@ -367,7 +449,6 @@ class OzmooExecutable(Executable):
 
     def rebuild_at(self, start_address):
         return OzmooExecutable(self.leafname, start_address, self.args)
-
 
     def add_loader_symbols(self, symbols):
         if args.adfs:
@@ -649,6 +730,7 @@ if version_txt is not None:
 parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
+parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -793,3 +875,7 @@ if False: # SFTODO: DELETE
     print("B")
     for SFTODO in disc2_contents:
         print(SFTODO.leafname)
+
+SFTODO = DfsImage(disc_contents)
+SFTODO2 = DfsImage(disc2_contents)
+DfsImage.write_dsd(SFTODO, SFTODO2, "foo.dsd")

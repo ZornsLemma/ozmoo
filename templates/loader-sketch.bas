@@ -121,7 +121,6 @@ REM SFTODO: This needs to print nicely on screen preserving any hardware detecte
 PRINT message$
 REM Fall through to PROCfinalise
 DEF PROCfinalise
-VDU 26:REM SFTODO GET RID OF THIS IF I NEVER DO VDU 28
 *FX229,0
 *FX4,0
 END
