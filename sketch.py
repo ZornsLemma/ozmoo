@@ -763,7 +763,7 @@ if version_txt is None:
 # Generate a relatively clear error message if we can't find one of our tools,
 # rather than failing on a complex build command.
 test_executable("acme")
-test_executable("beebasm")
+test_executable("beebasm") # SFTODO: Should check for beebasm >= 1.09
 
 if args.output_file is not None:
     _, user_extension = os.path.splitext(args.output_file)
