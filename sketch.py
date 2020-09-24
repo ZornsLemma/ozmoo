@@ -111,13 +111,15 @@ class DfsImage(object):
     def num_files(self):
         return self.data[0x105] // 8
 
+    def first_free_sector(self):
+        return len(self.data) // DfsImage.bytes_per_sector
+
     def add_file(self, f):
         # SFTODO: Having "self.data" and "data" is a bit crappy naming
         data = f.binary()
-        size = bytes_to_blocks(len(data))
-        if len(self.data) + len(data) > DfsImage.bytes_per_surface:
+        if len(self.data) + DfsImage.bytes_per_sector * divide_round_up(len(data), DfsImage.bytes_per_sector) > DfsImage.bytes_per_surface:
             raise DiscFull()
-        self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(data), len(self.data) // DfsImage.bytes_per_sector)
+        self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(data), self.first_free_sector())
         self.data += data
         odd_bytes = len(self.data) % DfsImage.bytes_per_sector
         if odd_bytes != 0:
@@ -133,6 +135,7 @@ class DfsImage(object):
         self.data[0x110:0x200] = self.data[0x108:0x1f8]
         name = (name + " "*7)[:7] + directory
         self.data[0x008:0x010] = bytearray(name, "ascii")
+        self.data[0x00f] |= 128 # lock the file
         self.data[0x108] = load_addr & 0xff
         self.data[0x109] = (load_addr >> 8) & 0xff
         self.data[0x10a] = exec_addr & 0xff
@@ -145,6 +148,14 @@ class DfsImage(object):
                 (((load_addr >> 16) & 0x3) << 2) |
                 ((start_sector >> 8) & 0x3))
         self.data[0x10f] = start_sector & 0xff
+
+    def add_pad_file(self, predicate):
+        pad_start_sector = self.first_free_sector()
+        pad_length_sectors = 0
+        while not predicate(pad_start_sector + pad_length_sectors):
+            pad_length_sectors += 1
+        if pad_length_sectors > 0:
+            self.add_file(File("PAD", 0, 0, bytearray(DfsImage.bytes_per_sector * pad_length_sectors)))
 
     @staticmethod
     def write_ssd(image, filename):
@@ -867,14 +878,43 @@ if double_sided_dfs:
         f.surface = 2
     assert disc_contents[1].leafname == "LOADER"
     disc_contents[1] = make_tokenised_loader(loader_symbols)
-if False: # SFTODO: DELETE
-    print("A")
-    for SFTODO in disc_contents:
-        print(SFTODO.leafname)
-    print("B")
-    for SFTODO in disc2_contents:
-        print(SFTODO.leafname)
 
-SFTODO = DfsImage(disc_contents)
-SFTODO2 = DfsImage(disc2_contents)
-DfsImage.write_dsd(SFTODO, SFTODO2, "foo.dsd")
+# SFTODO: This is a bit of a hack, may well be able to simplify/improve
+if not args.adfs:
+    user_extensions = (".ssd", ".dsd")
+    preferred_extension = ".dsd" if args.double_sided else ".ssd"
+else:
+    user_extensions = (".adf", ".adl")
+    preferred_extension = ".adl" if args.double_sided else ".adf"
+if args.output_file is None:
+    output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+else:
+    user_prefix, user_extension = os.path.splitext(args.output_file)
+    # If the user wants to call the file .img or something, we'll leave it alone.
+    if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
+        warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
+        user_extension = preferred_extension
+    output_file = user_prefix + user_extension
+
+if not args.adfs:
+    disc = DfsImage(disc_contents)
+    if not args.double_sided:
+        # Because we read multiples of vmem_block_pagecount at a time, the data file must
+        # start at a corresponding sector in order to avoid a read ever straddling a track
+        # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
+        # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
+        # it's good for testing.)
+        disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
+        # SFTODO: PUT DATA ON!
+        DfsImage.write_ssd(disc, output_file)
+    else:
+        disc2 = DfsImage(disc2_contents)
+        # The game data must start on a track boundary at the same place on both surfaces.
+        max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
+        def pad_predicate(sector):
+            return (sector >= max_first_free_sector and
+                    sector % DfsImage.sectors_per_track == 0)
+        disc.add_pad_file(pad_predicate)
+        disc2.add_pad_file(pad_predicate)
+        # SFTODO: PUT DATA ON!
+        DfsImage.write_dsd(disc, disc2, output_file)
