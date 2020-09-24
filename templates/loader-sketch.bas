@@ -35,7 +35,7 @@ A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
 REM SFTODO: SET UP HEADER AND FOOTER
-VDU 28,0,22,39,12:REM SFTODO TEMPORARY, TO SIMULATE BANNER
+VDU 28,0,22,39,8:REM SFTODO TEMPORARY, TO SIMULATE BANNER
 
 normal_fg=134:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION - TEMP 134 NOT 135 TO MAKE IT OBVIOUS IF I FORGET IT!
 header_fg=131:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
@@ -51,6 +51,7 @@ IF tube THEN PRINT CHR$normal_fg;"  Second processor"
 IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
+PRINT
 
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
