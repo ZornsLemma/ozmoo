@@ -109,17 +109,22 @@ PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;"(hit ";:sep$="":FOR i=1 TO LEN
 menu_top_y=VPOS
 max_x=2
 max_y=1
-DIM menu$(max_x,max_y),menu_x(max_x)
+DIM menu$(max_x,max_y),menu_x(max_x),mode_x(8),mode_y(8)
 max_x=1
 menu$(0,0)="0) 80x32"
-menu$(0,1)="1) 80x25"
+menu$(0,1)="3) 80x25"
 menu$(1,0)="4) 40x32"
 menu$(1,1)="6) 40x25"
 menu$(2,0)="7) 40x25   "
 menu$(2,1)="   teletext"
+REM The y loop here is done in reverse as VAL(" ") is 0 and we want to get the
+REM second line of the mode 7 entry over with before it can corrupt the mode 0
+REM entry, which will always be in the first line if it's present.
+FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
 REM SFTODO: DO 39-width TO ALLOW FOR LEFT HAND CONTROL CODE COLUMN? WHAT ABOUT ELECTRON???
-width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
-FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;SPC(left_pad);:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC(2);menu$(x,y);SPC(2);:NEXT:NEXT
+REM SFTODO DELETE width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
+IF max_x=2 THEN gutter=0 ELSE gutter=5
+FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
 x=0:y=0:PROChighlight(x,y,TRUE)
 REPEAT
 REM SFTODO: CURSORS AND KEYS TO GO DIRECT TO SPECIFIC MODE
@@ -130,17 +135,12 @@ IF key=136 AND x>0 THEN x=x-1
 IF key=137 AND x<max_x THEN x=x+1
 IF key=138 AND y<max_y THEN y=y+1
 IF key=139 AND y>0 THEN y=y-1
+REM We don't set y if mode 7 (always in column 2 if it's present) is selected
+REM by pressing "7" so subsequent movement with cursor keys remembers the old
+REM y position.
+key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF x<2 THEN y=mode_y(VALkey$)
 IF x<>old_x OR (x<>2 AND y<>old_y) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
-UNTIL FALSE
-
-IF GET
-PROChighlight(x,y,FALSE)
-x=1:PROChighlight(x,y,TRUE)
-IF GET
-PROChighlight(x,y,FALSE)
-x=2:PROChighlight(x,y,TRUE)
-
-END
+UNTIL key=32 OR key=13
 
 REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS - WE MAY BE ABLE TO MAKE THIS WORK NOT-TOO-BADLY B REGARDING THE MENU AS A SERIES OF 3 COLUMNS - LEFTMOST IS 80 COL, MIDDLE IS 40 COL NOT TXT, RIGHT IS MODE 7 - ELECTRON WILL ALWAYS OMIT RIGHT COL, WE MAY OMIT OTHER COLS DEPENDING ON USER CONFIG AND HARDWARE AVAILABLE - THIS DOESN'T MAKE IT *TRIVIAL*, BUT IT DOES OFFER SOME SORT OF STRUCTURE TO THE PROBLEM
 
