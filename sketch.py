@@ -743,6 +743,7 @@ parser.add_argument("-v", "--verbose", action="count", help="be more verbose abo
 parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
+parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -824,6 +825,8 @@ ozmoo_base_args = [
 ]
 if double_sided_dfs:
     ozmoo_base_args += ["-DACORN_DSD=1"]
+if not args.no_mode_7_colour:
+    ozmoo_base_args += ["-DMODE_7_STATUS=1"]
 if args.force_65c02:
     ozmoo_base_args += ["-DCMOS=1"]
 
