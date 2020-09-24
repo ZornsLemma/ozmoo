@@ -37,12 +37,20 @@ DIM block% 256
 REM SFTODO: SET UP HEADER AND FOOTER
 VDU 28,0,22,39,12:REM SFTODO TEMPORARY, TO SIMULATE BANNER
 
-normal_fg=135:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
-IF electron THEN normal_fg=0
+normal_fg=134:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION - TEMP 134 NOT 135 TO MAKE IT OBVIOUS IF I FORGET IT!
+header_fg=131:REM SFTODO: SHOULD BE SET VIA A SUBSTITUTION
+IF electron THEN normal_fg=0:header_fg=0
 
 shadow=potential_himem=&8000
 tube=PAGE<&E00
 PROCdetect_swr
+
+PRINT CHR$header_fg;"Hardware detected:"
+vpos=VPOS
+IF tube THEN PRINT CHR$normal_fg;"  Second processor"
+IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
+IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
+IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {

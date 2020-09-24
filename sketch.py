@@ -98,11 +98,11 @@ class DfsImage(object):
     tracks = 80
     bytes_per_surface = tracks * bytes_per_track
 
-    def __init__(self, contents):
+    def __init__(self, contents, boot_option = 3): # 3 = *EXEC
         self.data = bytearray(2 * DfsImage.bytes_per_sector)
         sectors = DfsImage.tracks * DfsImage.sectors_per_track
         self.data[0x107] = sectors & 0xff
-        self.data[0x106] = (sectors >> 8) & 0x3
+        self.data[0x106] = ((sectors >> 8) & 0x3) | (boot_option << 4)
         # SFTODO: DISC TITLE
         # SFTODO: *EXEC !BOOT
         for f in contents:
@@ -921,7 +921,7 @@ if not args.adfs:
         disc.add_file(File("DATA", 0, 0, game_data))
         DfsImage.write_ssd(disc, output_file)
     else:
-        disc2 = DfsImage(disc2_contents)
+        disc2 = DfsImage(disc2_contents, boot_option=0) # 0 = no action
         # The game data must start on a track boundary at the same place on both surfaces.
         max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
         def pad_predicate(sector):
