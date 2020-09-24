@@ -775,6 +775,8 @@ if args.output_file is not None:
     elif user_extension.lower() == '.adf':
         args.adfs = True
 
+double_sided_dfs = args.double_sided and not args.adfs
+
 header_version = 0
 header_static_mem = 0xe
 vmem_block_pagecount = 2
@@ -820,6 +822,8 @@ ozmoo_base_args = [
     "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
     "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
 ]
+if double_sided_dfs:
+    ozmoo_base_args += ["-DACORN_DSD=1"]
 if args.force_65c02:
     ozmoo_base_args += ["-DCMOS=1"]
 
@@ -872,7 +876,6 @@ for executable_group in ozmoo_variants:
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
 disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
 assert all(f is not None for f in disc_contents)
-double_sided_dfs = args.double_sided and not args.adfs
 if double_sided_dfs:
     disc2_contents = []
 for executable_group in ozmoo_variants:
