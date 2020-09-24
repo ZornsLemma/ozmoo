@@ -835,6 +835,8 @@ else:
     die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
 # SFTODO: WE NEED TO CONTROL WHAT WE TRY TO BUILD USING CMDLINE OPTIONS
+# We work with "executable groups" instead of executables so we can keep related
+# executables together on the disc.
 ozmoo_variants = []
 e = make_electron_swr_executable()
 if e is not None:
@@ -854,14 +856,14 @@ if e is not None:
     else:
         ozmoo_variants.append([e])
 
-# We sort the executable lists by descending order of size; this isn't really
+# We sort the executable groups by descending order of size; this isn't really
 # important unless we're doing a double-sided DFS build (where we want to
 # distribute larger things first), but it doesn't hurt to do it in all cases.
 ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
 loader_symbols = {}
-for executable_list in ozmoo_variants:
-    for e in executable_list:
+for executable_group in ozmoo_variants:
+    for e in executable_group:
         e.add_loader_symbols(loader_symbols)
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
@@ -870,11 +872,11 @@ assert all(f is not None for f in disc_contents)
 double_sided_dfs = args.double_sided and not args.adfs
 if double_sided_dfs:
     disc2_contents = []
-for executable_list in ozmoo_variants:
+for executable_group in ozmoo_variants:
     if double_sided_dfs and disc_size(disc2_contents) < disc_size(disc_contents):
-        disc2_contents.extend(executable_list)
+        disc2_contents.extend(executable_group)
     else:
-        disc_contents.extend(executable_list)
+        disc_contents.extend(executable_group)
 if double_sided_dfs:
     for f in disc2_contents:
         f.surface = 2
