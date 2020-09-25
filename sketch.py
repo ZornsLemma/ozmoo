@@ -153,45 +153,6 @@ def decode_edittf_url(url):
     return unpacked_data
 
 
-# SFTODO: THIS MAY WANT TO RETURN SOME KIND OF OBJECT WHICH WILL BE PASSED INTO MAKE_LOADER()
-def prepare_loader_screen():
-    # SFTODO: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
-    loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
-    lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
-    # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
-    assert len(lines) == 25
-    start_line = None
-    end_line = None
-    # SFTODO: Use nicer defaults, but these will make it obvious if we're failing to parse correctly for now
-    normal_fg = 132
-    header_fg = 132
-    highlight_fg = 132
-    highlight_bg = 131
-    def colour_code(c):
-        if c == b" ":
-            return 135
-        if c >= 129 and c <= 135:
-            return c
-        warn("Invalid colour code found in loader screen")
-    for i, line in enumerate(lines):
-        if b"LOADER OUTPUT STARTS HERE" in line and start_line is None:
-            start_line = i
-        elif b"LOADER OUTPUT ENDS HERE" in line:
-            end_line = i
-        elif start_line is not None and end_line is None:
-            # We are in the area between the start and end lines so look for the
-            # colour lines.
-            if b"Normal foreground" in line:
-                normal_fg = colour_code(line[0])
-            elif b"Header foreground" in line:
-                header_fg = colour_code(line[0])
-            elif b"Highlight foreground" in line:
-                highlight_fg = colour_code(line[0])
-            elif b"Highlight background" in line:
-                highlight_bg = colour_code(line[0])
-    assert False
-
-
 # common_labels contains the value of every label which had the same value in
 # every build it existed in. The idea here is that we can use it to allow the
 # loader access to labels without needing to duplicate values or trying to parse
@@ -204,6 +165,56 @@ def update_common_labels(labels):
         else:
             if value != common_value:
                 del common_labels[label]
+
+
+class LoaderScreen(Exception):
+    def __init__(self):
+        # SFTODO: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
+        loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
+        lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
+        # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
+        assert len(lines) == 25
+        self.start_line = None
+        self.end_line = None
+        # SFTODO: Use nicer defaults, but these will make it obvious if we're failing to parse correctly for now
+        self.normal_fg = 132
+        self.header_fg = 132
+        self.highlight_fg = 132
+        self.highlight_bg = 131
+        for i, line in enumerate(lines):
+            if b"LOADER OUTPUT STARTS HERE" in line and self.start_line is None:
+                self.start_line = i
+            elif b"LOADER OUTPUT ENDS HERE" in line:
+                self.end_line = i
+            elif self.start_line is not None and self.end_line is None:
+                # We are in the area between the start and end lines so look for the
+                # colour lines.
+                def colour_code(c):
+                    if c == 32:
+                        return 135
+                    if c >= 129 and c <= 135:
+                        return c
+                    warn("Invalid colour code %d found in loader screen in line %d" % (c, i))
+                    return 135
+                if b"Normal foreground" in line:
+                    self.normal_fg = colour_code(line[0])
+                elif b"Header foreground" in line:
+                    self.header_fg = colour_code(line[0])
+                elif b"Highlight foreground" in line:
+                    self.highlight_fg = colour_code(line[0])
+                elif b"Highlight background" in line:
+                    self.highlight_bg = colour_code(line[0])
+        assert self.start_line is not None
+        assert self.end_line is not None
+        self.header = lines[0:self.start_line]
+        self.footer = lines[self.end_line+1:]
+        # SFTODO SPACE LINE
+
+    def add_loader_symbols(self, loader_symbols):
+        loader_symbols["NORMAL_FG"] = self.normal_fg
+        loader_symbols["HEADER_FG"] = self.header_fg
+        loader_symbols["HIGHLIGHT_FG"] = self.highlight_fg
+        loader_symbols["HIGHLIGHT_BG"] = self.highlight_bg
 
 
 class GameWontFit(Exception):
@@ -965,6 +976,7 @@ def make_disc_image():
         loader_symbols["NO_ONLY_COLUMN"] = 1
     if cmd_args.auto_start:
         loader_symbols["AUTO_START"] = 1
+    loader_screen.add_loader_symbols(loader_symbols)
 
     disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
     assert all(f is not None for f in disc_contents)
@@ -1052,7 +1064,7 @@ if version_txt is None:
 
 prechecks()
 
-prepare_loader_screen()
+loader_screen = LoaderScreen()
 
 header_version = 0
 header_static_mem = 0xe
