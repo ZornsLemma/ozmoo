@@ -183,7 +183,7 @@ IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0
 IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
 UNTIL key=32 OR key=13
 
-3000 IF ?screen_mode=7 THEN ?fg_colour=6
+3000IF ?screen_mode=7 THEN ?fg_colour=6
 REM SFTODO: SHOW "LOADING, PLEASE WAIT"
 !ifdef CACHE2P_BINARY {
 IF tube THEN */${CACHE2P_BINARY}
