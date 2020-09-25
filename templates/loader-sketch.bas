@@ -29,10 +29,9 @@ fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 
-MODE 135:MODE134:VDU 23,1,0;0;0;0;:REM SFTODO MODE 134 IS TEMP HACK
+MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=7:?bg_colour=4
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
-electron=TRUE:REM SFTODO TEMP HACK
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
 REM SFTODO: SET UP HEADER AND FOOTER
@@ -125,8 +124,8 @@ REM entry, which will always be in the first line if it's present.
 FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
 REM SFTODO: DO 39-width TO ALLOW FOR LEFT HAND CONTROL CODE COLUMN? WHAT ABOUT ELECTRON???
 REM SFTODO DELETE width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
-IF max_x=2 THEN margin=0:gutter=0 ELSE margin=2:gutter=3
-FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;SPC(margin);:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
+IF max_x=2 THEN gutter=0 ELSE gutter=5
+FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
 x=0:y=0:PROChighlight(x,y,TRUE)
 REPEAT
 REM SFTODO: CURSORS AND KEYS TO GO DIRECT TO SPECIFIC MODE
