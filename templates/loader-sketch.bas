@@ -108,9 +108,9 @@ REM SFTODO: If we had nested !ifdef support, in the AUTO_START case we could jus
 REM avoid emitting all the code between the GOTO 3000 and line 3000.
 !ifdef AUTO_START {
 2000IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
-PROCshow_mode_keys:GOTO 3000
+mode_keys_vpos=VPOS:PROCshow_mode_keys:GOTO 3000
 } else {
-2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:PROCshow_mode_keys:REPEAT:key=GET:UNTIL key=32 OR key=13:GOTO 3000
+2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:REPEAT:key=GET:UNTIL key=32 OR key=13:GOTO 3000
 }
 
 DIM mode_x(8),mode_y(8)
@@ -151,6 +151,7 @@ PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep
 menu_top_y=VPOS
 IF max_x=2 THEN gutter=0 ELSE gutter=5
 FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
+mode_keys_vpos=menu_top_y+max_y+2
 mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
 x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE)
 REPEAT
@@ -263,9 +264,23 @@ COLOUR 128:COLOUR 7
 ENDPROC
 
 DEF PROCshow_mode_keys
-REM SFTODO: REMEMBER WE MAY HAVE *NO* MODE KEYS TO SHOW, IF MODE 7 COLOURED STATUS BAR IS OFF AND WE'RE ON A B-NO-SHADOW WHERE HW SCROLL IS NEVER RELEVANT
-PRINTTAB(0,13);:REM SFTODO NEED TO BE CLEVER ABOUT Y POS
-PRINT "SFTODO: KEYS FOR MODE ";?screen_mode
+mode_7_no_hw_scroll=NOT (shadow OR tube OR electron)
+!ifndef MODE_7_STATUS {
+IF mode_7_no_hw_scroll THEN ENDPROC
+}
+mode_keys_max_y=mode_keys_max_y:REM set variable to 0 if it doesn't exist
+IF mode_keys_max_y=0 THEN PRINTTAB(0,mode_keys_vpos);CHR$header_fg;"In-game controls:" ELSE PRINTTAB(0,mode_keys_vpos+1);
+REM The odd indentation on the next few lines is so a) it's easy to see all the
+REM different possible output lines have the same length and will completely
+REM obliterate each other b) the build script will strip off the extra
+REM indentation as it's at the start of the line.
+!ifdef MODE_7_STATUS {
+         IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-F: change status line colour"
+}
+        IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
+        IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change foreground colour "
+IF NOT mode_7_no_hw_scroll THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
+IF VPOS>mode_keys_max_y THEN mode_keys_max_y=VPOS ELSE IF VPOS<mode_keys_max_y THEN FOR y=VPOS TO mode_keys_max_y-1:PRINT STRING$(40,"X");:NEXT
 ENDPROC
 
 DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"

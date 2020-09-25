@@ -684,12 +684,14 @@ def make_loader(symbols):
                 line = line[:i]
             if line in ("", ":"):
                 pass
-            elif line.startswith("!ifdef"):
+            elif line.startswith("!ifdef") or line.startswith("!ifndef"):
                 assert if_condition is None
                 c = line.split(" ")
                 assert len(c) == 3
                 assert c[2] == "{"
                 if_condition = c[1] in symbols
+                if line.startswith("!ifndef"):
+                    if_condition = not if_condition
             elif line.startswith("}"):
                 assert if_condition is not None
                 c = line.split(" ")
