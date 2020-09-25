@@ -41,7 +41,6 @@ screen_mode=${screen_mode}
 
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
-MODE 134:electron=TRUE
 ?fg_colour=7:?bg_colour=4
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256

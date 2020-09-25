@@ -11,7 +11,7 @@ def die(s):
     sys.exit(1)
 
 def info(s):
-    if verbose_level >= 1:
+    if cmd_args.verbose_level >= 1:
         print(s)
 
 def warn(s):
@@ -68,14 +68,14 @@ def test_executable(name):
 def run_and_check(args, output_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
-    if verbose_level >= 2:
+    if cmd_args.verbose_level >= 2:
         print(" ".join(args))
     child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     child.wait()
     child_output = [line for line in child.stdout.readlines() if output_filter(line)]
     # The child's stdout and stderr will both be output to our stdout, but that's not
     # a big deal.
-    if (child.returncode != 0 or verbose_level >= 2) and len(child_output) > 0:
+    if (child.returncode != 0 or cmd_args.verbose_level >= 2) and len(child_output) > 0:
         print("".join(x.decode(encoding="ascii") for x in child_output))
     if child.returncode != 0:
         die("%s failed" % args[0])
@@ -167,7 +167,7 @@ class DfsImage(object):
     @staticmethod
     def write_ssd(image, filename):
         data = image.data
-        if args.pad:
+        if cmd_args.pad:
             data = pad(data, DfsImage.bytes_per_surface)
         # SFTODO: OPTIONAL PADDING
         with open(filename, "wb") as f:
@@ -180,7 +180,7 @@ class DfsImage(object):
         with open(filename, "wb") as f:
             for track in range(DfsImage.tracks):
                 i = track * DfsImage.bytes_per_track
-                if not args.pad and i >= len(data0) and i >= len(data2):
+                if not cmd_args.pad and i >= len(data0) and i >= len(data2):
                     break
                 f.write(pad(data0[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
                 f.write(pad(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
@@ -274,7 +274,7 @@ class Executable(object):
         return Executable(self.asm_filename, self.leafname, self.version_maker, start_address, self.args)
 
     def add_loader_symbols(self, symbols):
-        if args.adfs:
+        if cmd_args.adfs:
             symbols[self.leafname + "_BINARY"] = self.leafname
         else:
             symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
@@ -403,8 +403,8 @@ class OzmooExecutable(Executable):
         blocks = []
         # SFTODO: We will do this work for every single executable; it's not in practice a
         # big deal but it's a bit inelegant.
-        if False: # SFTODO if args.preload_config is not None:
-            with open(args.preload_config, "rb") as f:
+        if False: # SFTODO if cmd_args.preload_config is not None:
+            with open(cmd_args.preload_config, "rb") as f:
                 preload_config = bytearray(f.read())
             for i in range(len(preload_config) // 2):
                 # We don't care about the timestamp on the entries in preload_config; they are in
@@ -438,7 +438,7 @@ class OzmooExecutable(Executable):
         invalid_address = 0x1
         for i, block_index in enumerate(blocks):
             timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
-            if False: # SFTODO args.preload_opt:
+            if False: # SFTODO cmd_args.preload_opt:
                 # Most of the vmap will be ignored, but we have to have at least one entry
                 # and by making it an invalid address we don't need to worry about loading
                 # any "suggested" blocks.
@@ -612,14 +612,14 @@ def make_electron_swr_executable():
 def make_tube_executable():
     leafname = "OZMOO2P"
     tube_args = ozmoo_base_args
-    if not args.force_6502:
+    if not cmd_args.force_6502:
         tube_args += ["-DCMOS=1"]
     tube_no_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
         return tube_no_vmem
     tube_args += ["-DVMEM=1"]
-    if True: # SFTODO not args.no_tube_cache:
+    if True: # SFTODO not cmd_args.no_tube_cache:
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
@@ -730,6 +730,56 @@ def make_tokenised_loader(loader_symbols):
         tokenised_loader = tokenised_loader[512:512+length]
     return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
 
+def parse_args():
+    # SFTODO: MAKE SURE I COPY ALL (USEFUL) ARGS FROM OLD VERSION
+    parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
+    # SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
+    if version_txt is not None:
+        parser.add_argument("--version", action="version", version=best_effort_version)
+    parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
+    parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
+    parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
+    parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
+    parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+    parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
+    parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
+    parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
+    parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
+    parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
+    parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
+    group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
+    group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
+    group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
+
+    args = parser.parse_args()
+
+    args.verbose_level = 0 if args.verbose is None else args.verbose
+
+    if args.only_40_column and args.only_80_column:
+        die("--only-40-column and --only-80-column are incompatible")
+    if args.force_65c02 and args.force_6502:
+        die("--force-65c02 and --force-6502 are incompatible")
+
+    if args.output_file is not None:
+        _, user_extension = os.path.splitext(args.output_file)
+        if user_extension.lower() == '.dsd':
+            args.double_sided = True
+        elif user_extension.lower() == '.adl':
+            args.adfs = True
+            args.double_sided = True
+        elif user_extension.lower() == '.adf':
+            args.adfs = True
+
+    args.double_sided_dfs = args.double_sided and not args.adfs
+
+    if args.default_mode is not None:
+        if args.default_mode not in (0, 3, 4, 6, 7):
+            die("Invalid default mode specified")
+    else:
+        args.default_mode = 7
+
+    return args
+
 
 best_effort_version = "Ozmoo"
 try:
@@ -739,33 +789,7 @@ try:
 except IOError:
     version_txt = None
 
-# SFTODO: MAKE SURE I COPY ALL (USEFUL) ARGS FROM OLD VERSION
-parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
-# SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
-if version_txt is not None:
-    parser.add_argument("--version", action="version", version=best_effort_version)
-parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
-parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
-parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
-parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
-parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
-parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
-parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
-parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
-parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
-parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
-parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
-group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
-group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
-group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
-
-args = parser.parse_args()
-verbose_level = 0 if args.verbose is None else args.verbose
-
-if args.only_40_column and args.only_80_column:
-    die("--only-40-column and --only-80-column are incompatible")
-if args.force_65c02 and args.force_6502:
-    die("--force-65c02 and --force-6502 are incompatible")
+cmd_args = parse_args()
 
 # It's OK to run and give --help etc output if the version.txt file can't be found,
 # but we don't want to generate a disc image with a missing version.
@@ -777,24 +801,6 @@ if version_txt is None:
 test_executable("acme")
 test_executable("beebasm") # SFTODO: Should check for beebasm >= 1.09
 
-if args.output_file is not None:
-    _, user_extension = os.path.splitext(args.output_file)
-    if user_extension.lower() == '.dsd':
-        args.double_sided = True
-    elif user_extension.lower() == '.adl':
-        args.adfs = True
-        args.double_sided = True
-    elif user_extension.lower() == '.adf':
-        args.adfs = True
-
-double_sided_dfs = args.double_sided and not args.adfs
-
-if args.default_mode is not None:
-    default_mode = args.default_mode
-    if default_mode not in (0, 3, 4, 6, 7):
-        die("Invalid default mode specified")
-else:
-    default_mode = 7
 
 header_version = 0
 header_static_mem = 0xe
@@ -813,7 +819,7 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 host = 0xffff0000
 tube_start_address = 0x600
 # SFTODO: I think overriding these bbc_swr_start_addresses on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines - however, worth noting that fiddling with these addresses opens up lots of scope for the screen hole to break the assembly - maybe I would want to offer e00 as an option and that's it, that way I can (hopefully) pre-tweak the code to handle these three values (e00, 1900, 1d00) and that will be that.
-if not args.adfs:
+if not cmd_args.adfs:
     bbc_swr_start_address = 0x1900
 else:
     # SFTODO: Should I be using 0x1f00? That's what a model B with DFS+ADFS
@@ -825,7 +831,7 @@ max_start_address = 0x4000
 
 common_labels = {}
 
-with open(args.input_file, "rb") as f:
+with open(cmd_args.input_file, "rb") as f:
     game_data = bytearray(f.read())
 game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = get_word(game_data, header_static_mem)
@@ -842,11 +848,11 @@ ozmoo_base_args = [
     "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
     "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
 ]
-if double_sided_dfs:
+if cmd_args.double_sided_dfs:
     ozmoo_base_args += ["-DACORN_DSD=1"]
-if not args.no_mode_7_colour:
+if not cmd_args.no_mode_7_colour:
     ozmoo_base_args += ["-DMODE_7_STATUS=1"]
-if args.force_65c02:
+if cmd_args.force_65c02:
     ozmoo_base_args += ["-DCMOS=1"]
 
 z_machine_version = game_data[header_version]
@@ -893,32 +899,32 @@ ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
 # SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
 loader_symbols = {
-    "default_mode": default_mode,
+    "default_mode": cmd_args.default_mode,
 }
 for executable_group in ozmoo_variants:
     for e in executable_group:
         e.add_loader_symbols(loader_symbols)
-if args.only_40_column:
+if cmd_args.only_40_column:
     loader_symbols["ONLY_40_COLUMN"] = 1
-if args.only_80_column:
+if cmd_args.only_80_column:
     loader_symbols["ONLY_80_COLUMN"] = 1
-if not args.only_40_column and not args.only_80_column:
+if not cmd_args.only_40_column and not cmd_args.only_80_column:
     # SFTODO: This is a bit of a workaround for not having nested !ifdef etc in make_loader()
     loader_symbols["NO_ONLY_COLUMN"] = 1
-if args.auto_start:
+if cmd_args.auto_start:
     loader_symbols["AUTO_START"] = 1
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
 disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
 assert all(f is not None for f in disc_contents)
-if double_sided_dfs:
+if cmd_args.double_sided_dfs:
     disc2_contents = []
 for executable_group in ozmoo_variants:
-    if double_sided_dfs and disc_size(disc2_contents) < disc_size(disc_contents):
+    if cmd_args.double_sided_dfs and disc_size(disc2_contents) < disc_size(disc_contents):
         disc2_contents.extend(executable_group)
     else:
         disc_contents.extend(executable_group)
-if double_sided_dfs:
+if cmd_args.double_sided_dfs:
     for f in disc2_contents:
         f.surface = 2
         f.add_loader_symbols(loader_symbols)
@@ -926,16 +932,16 @@ if double_sided_dfs:
     disc_contents[1] = make_tokenised_loader(loader_symbols)
 
 # SFTODO: This is a bit of a hack, may well be able to simplify/improve
-if not args.adfs:
+if not cmd_args.adfs:
     user_extensions = (".ssd", ".dsd")
-    preferred_extension = ".dsd" if args.double_sided else ".ssd"
+    preferred_extension = ".dsd" if cmd_args.double_sided else ".ssd"
 else:
     user_extensions = (".adf", ".adl")
-    preferred_extension = ".adl" if args.double_sided else ".adf"
-if args.output_file is None:
-    output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
+    preferred_extension = ".adl" if cmd_args.double_sided else ".adf"
+if cmd_args.output_file is None:
+    output_file = os.path.basename(os.path.splitext(cmd_args.input_file)[0] + preferred_extension)
 else:
-    user_prefix, user_extension = os.path.splitext(args.output_file)
+    user_prefix, user_extension = os.path.splitext(cmd_args.output_file)
     # If the user wants to call the file .img or something, we'll leave it alone.
     if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
         warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
@@ -944,9 +950,9 @@ else:
 
 # SFTODO: CATCH DISCFULL ERRORS, WARN-AND-PROMOTE TO DOUBLE SIDED IF CAN'T FIT SINGLE SIDED - AS PART OF THIS WILL NEED TO BE CAREFUL THE OUTPUT FILE EXTENSION HACKERY ABOVE IS DONE CORRECTLY WHATEVER THAT WOULD MEAN, AND (WE'D PROBABLY WANT THIS ANYWAY) A LOT OF THIS CURRENTLY IN "MAIN()" CODE WILL WANT TO BE MOVED INTO A FUNCTION
 
-if not args.adfs:
+if not cmd_args.adfs:
     disc = DfsImage(disc_contents)
-    if not args.double_sided:
+    if not cmd_args.double_sided:
         # Because we read multiples of vmem_block_pagecount at a time, the data file must
         # start at a corresponding sector in order to avoid a read ever straddling a track
         # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
