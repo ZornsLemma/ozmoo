@@ -383,7 +383,6 @@ class OzmooExecutable(Executable):
             # build address. For relocatable builds the loader will also take
             # account of the actual value of PAGE.
             self.swr_dynmem = nonstored_blocks_up_to - 0x8000
-            assert "ACORN_SWR_SMALL_DYNMEM" in self.labels or self.swr_dynmem > 0
             assert self.swr_dynmem <= 16 * 1024
 
         # On a second processor build, we must also have at least
@@ -574,12 +573,13 @@ def make_shr_swr_executable():
     big_e = make_highest_possible_executable(leafname, args)
     if big_e is not None:
         if small_e is not None and small_e.start_address < highest_expected_page:
-            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=" + ourhex2(small_e.start_address))
+            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_address))
         else:
             info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity")
     return big_e
 
 
+# SFTODO: We aren't doing an info() about memory model for this executable
 def make_bbc_swr_executable():
     # Because of the screen hole needed to work around not having shadow RAM,
     # this executable is not relocatable. (It would be possible to use the same
@@ -609,7 +609,7 @@ def make_electron_swr_executable():
     return make_optimally_aligned_executable("OZMOOE", 0x1d00, args)
 
 
-def make_tube_executable():
+def make_tube_executables():
     leafname = "OZMOO2P"
     tube_args = ozmoo_base_args
     if not cmd_args.force_6502:
@@ -617,9 +617,9 @@ def make_tube_executable():
     tube_no_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
-        return tube_no_vmem
+        return [tube_no_vmem]
     tube_args += ["-DVMEM=1"]
-    if True: # SFTODO not cmd_args.no_tube_cache:
+    if not cmd_args.no_tube_cache:
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
@@ -627,7 +627,9 @@ def make_tube_executable():
     # Don't call info() until we've successfully built an excecutable; the game
     # may be too big.
     info("Game will be run using virtual memory on second processor")
-    return tube_vmem
+    if cmd_args.no_tube_cache:
+        return [tube_vmem]
+    return [make_cache_executable(), tube_vmem]
 
 def make_findswr_executable():
     return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
@@ -750,6 +752,7 @@ def parse_args():
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
+    group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
 
     args = parser.parse_args()
 
@@ -880,14 +883,7 @@ if e is not None:
 e = make_shr_swr_executable()
 if e is not None:
     ozmoo_variants.append([e])
-e = make_tube_executable()
-if e is not None:
-    if True: # SFTODO NOT DISABLED
-        cache = make_cache_executable()
-        assert cache is not None
-        ozmoo_variants.append([cache, e])
-    else:
-        ozmoo_variants.append([e])
+ozmoo_variants.append(make_tube_executables())
 
 boot_file = make_boot()
 findswr_executable = make_findswr_executable()

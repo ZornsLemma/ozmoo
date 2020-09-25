@@ -58,6 +58,10 @@ shadow=potential_himem=&8000
 tube=PAGE<&E00
 PROCdetect_swr
 
+REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
+REM second processor and the game fits entirely in RAM or the host cache isn't
+REM enabled), as it seems potentially confusing if the sometimes apparently
+REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
 IF tube THEN PRINT CHR$normal_fg;"  Second processor"
