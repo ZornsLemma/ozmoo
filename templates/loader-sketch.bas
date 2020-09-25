@@ -105,6 +105,9 @@ IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
 2000IF NOT (tube OR shadow) THEN GOTO 3000
+REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
+REM trouble than it's worth, because it's shown (with inserted "/" characters)
+REM on screen and for neatness we want it to be sorted into numerical order.
 !ifdef ONLY_80_COLUMN {
 max_x=1
 max_y=0
@@ -144,9 +147,7 @@ IF max_x=2 THEN gutter=0 ELSE gutter=5
 FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
 x=0:y=0:PROChighlight(x,y,TRUE)
 REPEAT
-REM SFTODO: CURSORS AND KEYS TO GO DIRECT TO SPECIFIC MODE
 old_x=x:old_y=y
-REM SFTODO: *FX21???
 key=GET
 IF key=136 AND x>0 THEN x=x-1
 IF key=137 AND x<max_x THEN x=x+1
@@ -154,8 +155,8 @@ IF key=138 AND y<max_y THEN y=y+1
 IF key=139 AND y>0 THEN y=y-1
 REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
 REM with cursor keys remembers the old y position.
-key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF LEFT$(menu$(x,0),1)<>"7" THEN y=mode_y(VALkey$)
-IF x<>old_x OR (x<>2 AND y<>old_y) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
+IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
 UNTIL key=32 OR key=13
 
 REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS - WE MAY BE ABLE TO MAKE THIS WORK NOT-TOO-BADLY B REGARDING THE MENU AS A SERIES OF 3 COLUMNS - LEFTMOST IS 80 COL, MIDDLE IS 40 COL NOT TXT, RIGHT IS MODE 7 - ELECTRON WILL ALWAYS OMIT RIGHT COL, WE MAY OMIT OTHER COLS DEPENDING ON USER CONFIG AND HARDWARE AVAILABLE - THIS DOESN'T MAKE IT *TRIVIAL*, BUT IT DOES OFFER SOME SORT OF STRUCTURE TO THE PROBLEM
@@ -238,9 +239,11 @@ DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amoun
 
 DEF PROChighlight(x,y,on)
 IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
-IF LEFT$(menu$(x,0),1)="7" THEN PROChighlight_internal(x,0,on):y=1
+IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
 DEF PROChighlight_internal(x,y,on)
-REM SFTODO: ELECTRON!
+REM We put the "normal background" code in at the right hand side first before
+REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
+REM to reduce visual glitches.
 IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
 PRINTTAB(menu_x(x)-1,menu_top_y+y);
 IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
@@ -251,6 +254,8 @@ IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
 PRINT SPC(2);menu$(x,y);SPC(2);
 COLOUR 128:COLOUR 7
 ENDPROC
+
+DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
