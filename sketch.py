@@ -157,6 +157,38 @@ def decode_edittf_url(url):
 def prepare_loader_screen():
     # SFTODO: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
     loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
+    lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
+    # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
+    assert len(lines) == 25
+    start_line = None
+    end_line = None
+    # SFTODO: Use nicer defaults, but these will make it obvious if we're failing to parse correctly for now
+    normal_fg = 132
+    header_fg = 132
+    highlight_fg = 132
+    highlight_bg = 131
+    def colour_code(c):
+        if c == b" ":
+            return 135
+        if c >= 129 and c <= 135:
+            return c
+        warn("Invalid colour code found in loader screen")
+    for i, line in enumerate(lines):
+        if b"LOADER OUTPUT STARTS HERE" in line and start_line is None:
+            start_line = i
+        elif b"LOADER OUTPUT ENDS HERE" in line:
+            end_line = i
+        elif start_line is not None and end_line is None:
+            # We are in the area between the start and end lines so look for the
+            # colour lines.
+            if b"Normal foreground" in line:
+                normal_fg = colour_code(line[0])
+            elif b"Header foreground" in line:
+                header_fg = colour_code(line[0])
+            elif b"Highlight foreground" in line:
+                highlight_fg = colour_code(line[0])
+            elif b"Highlight background" in line:
+                highlight_bg = colour_code(line[0])
     assert False
 
 
