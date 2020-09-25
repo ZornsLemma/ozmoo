@@ -56,14 +56,14 @@ IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
 
-IF tube OR shadow THEN mode_list$="0346" ELSE IF electron THEN mode_list$="6"
-IF NOT electron THEN mode_list$=mode_list$+"7"
-
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
 IF tube THEN binary$="${OZMOO2P_BINARY}":GOTO 2000
 } else {
 IF tube THEN PROCunsupported_machine("a second processor")
+}
+!ifdef ONLY_80_COLUMN {
+IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
 }
 !ifdef OZMOOE_BINARY {
 IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
@@ -104,24 +104,40 @@ mem_needed=swr_dynmem_needed+vmem_needed
 IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
-2000IF LEN(mode_list$)=1 THEN GOTO 3000
-REM SFTODO: min_x/max_x WILL VARY DEPENDING ON MACHINE AND BUILD-TIME OPTIONS INSISTING ON EG 40 OR 80 COLUMNS - WELL, SOMETHING WILL HAPPEN
-PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
-menu_top_y=VPOS
+2000IF NOT (tube OR shadow) THEN GOTO 3000
+!ifdef ONLY_80_COLUMN {
+max_x=1
+max_y=0
+DIM menu$(max_x,max_y),menu_x(max_x)
+menu$(0,0)="0) 80x32"
+menu$(1,0)="3) 80x25"
+mode_list$="03"
+}
+!ifdef ONLY_40_COLUMN {
+max_x=1
+max_y=1
+DIM menu$(max_x,max_y),menu_x(max_x)
+IF electron THEN max_y=0:menu$(0,0)="4) 40x32":menu$(1,0)="6) 40x25":mode_list$="46" ELSE menu$(0,0)="4) 40x32":menu$(0,1)="6) 40x25":menu$(1,0)="7) 40x25   ":menu$(1,1)="   teletext":mode_list$="467"
+}
+!ifdef NO_ONLY_COLUMN {
 max_x=2
 max_y=1
-DIM menu$(max_x,max_y),menu_x(max_x),mode_x(8),mode_y(8)
-max_x=1
+DIM menu$(max_x,max_y),menu_x(max_x)
 menu$(0,0)="0) 80x32"
 menu$(0,1)="3) 80x25"
 menu$(1,0)="4) 40x32"
 menu$(1,1)="6) 40x25"
 menu$(2,0)="7) 40x25   "
 menu$(2,1)="   teletext"
+IF electron THEN max_x=1:mode_list$="0346" ELSE mode_list$="03467"
+}
+DIM mode_x(8),mode_y(8)
 REM The y loop here is done in reverse as VAL(" ") is 0 and we want to get the
 REM second line of the mode 7 entry over with before it can corrupt the mode 0
 REM entry, which will always be in the first line if it's present.
 FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
+PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
+menu_top_y=VPOS
 REM SFTODO: DO 39-width TO ALLOW FOR LEFT HAND CONTROL CODE COLUMN? WHAT ABOUT ELECTRON???
 REM SFTODO DELETE width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
 IF max_x=2 THEN gutter=0 ELSE gutter=5
@@ -136,10 +152,9 @@ IF key=136 AND x>0 THEN x=x-1
 IF key=137 AND x<max_x THEN x=x+1
 IF key=138 AND y<max_y THEN y=y+1
 IF key=139 AND y>0 THEN y=y-1
-REM We don't set y if mode 7 (always in column 2 if it's present) is selected
-REM by pressing "7" so subsequent movement with cursor keys remembers the old
-REM y position.
-key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF x<2 THEN y=mode_y(VALkey$)
+REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
+REM with cursor keys remembers the old y position.
+key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF LEFT$(menu$(x,0),1)<>"7" THEN y=mode_y(VALkey$)
 IF x<>old_x OR (x<>2 AND y<>old_y) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
 UNTIL key=32 OR key=13
 
@@ -223,7 +238,7 @@ DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amoun
 
 DEF PROChighlight(x,y,on)
 IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
-IF x=2 THEN PROChighlight_internal(x,0,on):y=1
+IF LEFT$(menu$(x,0),1)="7" THEN PROChighlight_internal(x,0,on):y=1
 DEF PROChighlight_internal(x,y,on)
 REM SFTODO: ELECTRON!
 IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;

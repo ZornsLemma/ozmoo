@@ -744,6 +744,8 @@ parser.add_argument("-2", "--double-sided", action="store_true", help="generate 
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
+parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
 parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -753,6 +755,8 @@ group.add_argument("--force-6502", action="store_true", help="use only 6502 inst
 args = parser.parse_args()
 verbose_level = 0 if args.verbose is None else args.verbose
 
+if args.only_40_column and args.only_80_column:
+    die("--only-40-column and --only-80-column are incompatible")
 if args.force_65c02 and args.force_6502:
     die("--force-65c02 and --force-6502 are incompatible")
 
@@ -843,6 +847,7 @@ else:
     die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
 # SFTODO: WE NEED TO CONTROL WHAT WE TRY TO BUILD USING CMDLINE OPTIONS
+# SFTODO: *PART* OF THIS IS NOT BUILDING "BBC B NO SHADOW" OR "ELECTRON" EXECUTABLES IF --80-COLUMN IS SPECIFIED, BECAUSE THOSE BUILDS CAN'T DO 80 COLUMNS (BORDERLINE ARGUMENT FOR INCLUDING ELECTRON EXECUTABLE, AS IF AN ELECTRON DOES HAVE SHADOW RAM IT CAN RUN IN ANY MODE)
 # We work with "executable groups" instead of executables so we can keep related
 # executables together on the disc.
 ozmoo_variants = []
@@ -876,6 +881,13 @@ loader_symbols = {}
 for executable_group in ozmoo_variants:
     for e in executable_group:
         e.add_loader_symbols(loader_symbols)
+if args.only_40_column:
+    loader_symbols["ONLY_40_COLUMN"] = 1
+if args.only_80_column:
+    loader_symbols["ONLY_80_COLUMN"] = 1
+if not args.only_40_column and not args.only_80_column:
+    # SFTODO: This is a bit of a workaround for not having nested !ifdef etc in make_loader()
+    loader_symbols["NO_ONLY_COLUMN"] = 1
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
 disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
