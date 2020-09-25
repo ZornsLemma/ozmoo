@@ -1,5 +1,6 @@
 from __future__ import print_function
 import argparse
+import base64
 import copy
 import os
 import re
@@ -119,6 +120,44 @@ def prechecks():
                     if len(subversion) > 0 and int(subversion[0]) < 9:
                         die("You need beebasm 1.09 or later to build this")
     run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
+
+
+# SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
+def decode_edittf_url(url):
+    i = url.index(b"#")
+    s = url[i+1:]
+    i = s.index(b":")
+    s = s[i+1:]
+    s += b"===="
+    packed_data = bytearray(base64.urlsafe_b64decode(s))
+    unpacked_data = bytearray()
+    buffer = 0
+    buffer_bits = 0
+    while len(packed_data) > 0 or buffer_bits > 0:
+        if buffer_bits < 7:
+            if len(packed_data) > 0:
+                packed_byte = packed_data.pop(0)
+            else:
+                packed_byte = 0
+            buffer = (buffer << 8) | packed_byte
+            buffer_bits += 8
+        byte = buffer >> (buffer_bits - 7)
+        if byte < 32:
+            byte += 128
+        unpacked_data.append(byte)
+        buffer &= ~(0b1111111 << (buffer_bits - 7))
+        buffer_bits -= 7
+    # SFTODO: At the moment if the edit.tf page contains double-height text the
+    # user must make sure to duplicate it on both lines. We could potentially adjust
+    # this automatically.
+    return unpacked_data
+
+
+# SFTODO: THIS MAY WANT TO RETURN SOME KIND OF OBJECT WHICH WILL BE PASSED INTO MAKE_LOADER()
+def prepare_loader_screen():
+    # SFTODO: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
+    loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
+    assert False
 
 
 # common_labels contains the value of every label which had the same value in
@@ -980,6 +1019,8 @@ if version_txt is None:
     die("Can't find version.txt")
 
 prechecks()
+
+prepare_loader_screen()
 
 header_version = 0
 header_static_mem = 0xe
