@@ -268,8 +268,8 @@ mode_7_no_hw_scroll=NOT (shadow OR tube OR electron)
 !ifndef MODE_7_STATUS {
 IF mode_7_no_hw_scroll THEN ENDPROC
 }
-mode_keys_max_y=mode_keys_max_y:REM set variable to 0 if it doesn't exist
-IF mode_keys_max_y=0 THEN PRINTTAB(0,mode_keys_vpos);CHR$header_fg;"In-game controls:" ELSE PRINTTAB(0,mode_keys_vpos+1);
+mode_keys_last_max_y=mode_keys_last_max_y:REM set variable to 0 if it doesn't exist
+IF mode_keys_last_max_y=0 THEN PRINTTAB(0,mode_keys_vpos);CHR$header_fg;"In-game controls:" ELSE PRINTTAB(0,mode_keys_vpos+1);
 REM The odd indentation on the next few lines is so a) it's easy to see all the
 REM different possible output lines have the same length and will completely
 REM obliterate each other b) the build script will strip off the extra
@@ -278,9 +278,11 @@ REM indentation as it's at the start of the line.
          IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-F: change status line colour"
 }
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
-        IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change foreground colour "
+        IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "
 IF NOT mode_7_no_hw_scroll THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
-IF VPOS>mode_keys_max_y THEN mode_keys_max_y=VPOS ELSE IF VPOS<mode_keys_max_y THEN FOR y=VPOS TO mode_keys_max_y-1:PRINT STRING$(40,"X");:NEXT
+REM Clear any additional rows which we used last time but haven't used this time.
+IF VPOS<mode_keys_last_max_y THEN PRINT SPC(40*(mode_keys_last_max_y-VPOS));
+mode_keys_last_max_y=VPOS
 ENDPROC
 
 DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
