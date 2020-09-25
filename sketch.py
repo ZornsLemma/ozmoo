@@ -80,6 +80,27 @@ def run_and_check(args, output_filter=None):
     if child.returncode != 0:
         die("%s failed" % args[0])
 
+# Generate a relatively clear error message if we can't find one of our tools,
+# rather than failing on a complex build command.
+def prechecks():
+    test_executable("acme")
+    test_executable("beebasm")
+    # Check for a new enough beebasm. We parse the --help output, if we find
+    # something that looks like a version we complain if it's too old; if in
+    # doubt we don't generate an error.
+    def beebasm_version_check(x):
+        c = x.split()
+        if len(c) >= 2 and c[0] == "beebasm":
+            version = c[1]
+            if version.startswith("1."):
+                c = version.split(".")
+                if len(c) >= 2:
+                    subversion = re.findall("^\d+", c[1])
+                    if len(subversion) > 0 and int(subversion[0]) < 9:
+                        die("You need beebasm 1.09 or later to build this")
+    run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
+
+
 # common_labels contains the value of every label which had the same value in
 # every build it existed in. The idea here is that we can use it to allow the
 # loader access to labels without needing to duplicate values or trying to parse
@@ -799,11 +820,7 @@ cmd_args = parse_args()
 if version_txt is None:
     die("Can't find version.txt")
 
-# Generate a relatively clear error message if we can't find one of our tools,
-# rather than failing on a complex build command.
-test_executable("acme")
-test_executable("beebasm") # SFTODO: Should check for beebasm >= 1.09
-
+prechecks()
 
 header_version = 0
 header_static_mem = 0xe
