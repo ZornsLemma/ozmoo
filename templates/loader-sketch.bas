@@ -13,6 +13,16 @@ REM SFTODO: It would be nice if the loader and build system could work
 REM together to allow the user to *optionally* specify a high-res title
 REM screen before we go into the mode 7 loader.
 
+REM SFTODO: Note that for Z3 games, anything shown on the top line of
+REM the screen will remain present occupying the not-yet-displayed
+REM status line until the game starts. This means that if any disc
+REM errors occur during the initial loading, the screen may scroll
+REM but the top line won't. This isn't a big deal but for the nicest
+REM possible appearance in this admittedly unlikely situation either
+REM clear the top line before running the Ozmoo executable or make
+REM sure it has something that looks OK on its own. (For example,
+REM *not* the top half of some double-height text.)
+
 *FX229,1
 *FX4,1
 ON ERROR PROCerror
@@ -31,6 +41,7 @@ screen_mode=${screen_mode}
 
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
+MODE 134:electron=TRUE
 ?fg_colour=7:?bg_colour=4
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
@@ -165,10 +176,11 @@ REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
 REM with cursor keys remembers the old y position.
 key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
 IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
+IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
 UNTIL key=32 OR key=13
 
-3000
-IF ?screen_mode=7 THEN ?fg_colour=6
+3000 IF ?screen_mode=7 THEN ?fg_colour=6
 REM SFTODO: SHOW "LOADING, PLEASE WAIT"
 !ifdef CACHE2P_BINARY {
 IF tube THEN */${CACHE2P_BINARY}
@@ -292,5 +304,33 @@ DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 DEF FNpeek(addr%):!block%=&FFFF0000 OR addr%:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
 
 DEF FNfs:A%=0:Y%=0:=USR&FFDA AND &FF
+
+REM SFTODO: FNpath AND FNstrip CAN BE OMITTED IF THIS IS A DFS BUILD (THOUGH ULTIMATELY I REALLY MEAN "OSWORD 7F", AS IT MAY BE I WANT TO BUILD DFS-WITH-OSGBPB FOR INSTALL ON NFS INSTEAD OF HAVING TO VIA ADFS)
+DEF FNpath
+LOCAL path$,A%,X%,Y%,name%,name$,drive$:REM SFTODO No LOCAL in this code any more?
+DIM data% 256
+path$=""
+REPEAT
+block%!1=data%
+A%=6:X%=block%:Y%=block% DIV 256:CALL &FFD1
+name%=data%+1+?data%
+name%?(1+?name%)=13
+name$=FNstrip($(name%+1))
+path$=name$+"."+path$
+REM On Econet, you can't do *DIR ^ when in the root.
+REM SFTODO: You can't always do *DIR ^ on Econet; can/should I try to work around this?
+IF name$<>"$" AND name$<>"&" THEN *DIR ^
+UNTIL name$="$" OR name$="&"
+path$=LEFT$(path$,LEN(path$)-1)
+?name%=13
+drive$=FNstrip($(data%+1))
+IF drive$<>"" THEN path$=":"+drive$+"."+path$
+PROCoscli("DIR "+path$)
+=path$
+
+DEF FNstrip(s$)
+s$=s$+" "
+REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
+=s$
 
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
