@@ -123,7 +123,7 @@ REM avoid emitting all the code between the GOTO 3000 and line 3000.
 2000IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
 mode_keys_vpos=VPOS:PROCshow_mode_keys:GOTO 3000
 } else {
-2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:REPEAT:key=GET:UNTIL key=32 OR key=13:GOTO 3000
+2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT:key=GET:UNTIL key=32 OR key=13:GOTO 3000
 }
 
 DIM mode_x(8),mode_y(8)
@@ -166,7 +166,7 @@ IF max_x=2 THEN gutter=0 ELSE gutter=5
 FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
 mode_keys_vpos=menu_top_y+max_y+2
 mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
-x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE)
+x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE):PROCspace
 REPEAT
 old_x=x:old_y=y
 key=GET
@@ -297,6 +297,10 @@ IF NOT mode_7_no_hw_scroll THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling 
 REM Clear any additional rows which we used last time but haven't used this time.
 IF VPOS<mode_keys_last_max_y THEN PRINT SPC(40*(mode_keys_last_max_y-VPOS));
 mode_keys_last_max_y=VPOS
+ENDPROC
+
+DEF PROCspace
+PRINTTAB(0,${SPACE_Y});CHR$normal_fg;"Press SPACE/RETURN to start the game...";
 ENDPROC
 
 DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"

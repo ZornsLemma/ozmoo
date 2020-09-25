@@ -174,6 +174,7 @@ class LoaderScreen(Exception):
         lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
         # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
         assert len(lines) == 25
+        self.space_line = None
         self.start_line = None
         self.end_line = None
         # SFTODO: Use nicer defaults, but these will make it obvious if we're failing to parse correctly for now
@@ -185,9 +186,11 @@ class LoaderScreen(Exception):
             "TITLE": cmd_args.title,
             "SUBTITLE": "SFTODO!!!",
             "OZMOO": best_effort_version,
-            "SPACE": "SFTODO!!!",
+            "SPACE": "",
         }
         for i, line in enumerate(lines):
+            if b"${SPACE}" in line:
+                self.space_line = i
             lines[i] = substitute(line, substitutions, lambda x: x)[:40]
             if b"LOADER OUTPUT STARTS HERE" in line and self.start_line is None:
                 self.start_line = i
@@ -211,6 +214,7 @@ class LoaderScreen(Exception):
                     self.highlight_fg = colour_code(line[0])
                 elif b"Highlight background" in line:
                     self.highlight_bg = colour_code(line[0])
+        assert self.space_line is not None
         assert self.start_line is not None
         assert self.end_line is not None
         self.header = lines[0:self.start_line]
@@ -261,6 +265,7 @@ class LoaderScreen(Exception):
         loader_symbols["FOOTER_Y"] = self.end_line + 1
         loader_symbols["WORK_START_Y"] = self.start_line
         loader_symbols["WORK_END_Y"] = self.end_line
+        loader_symbols["SPACE_Y"] = self.space_line
 
 
 class GameWontFit(Exception):
