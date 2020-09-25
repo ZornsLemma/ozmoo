@@ -44,8 +44,11 @@ MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=7:?bg_colour=4
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
-REM SFTODO: SET UP HEADER AND FOOTER
-VDU 28,0,22,39,8:REM SFTODO TEMPORARY, TO SIMULATE BANNER
+REM SFTODO: SUPPORT ELECTRON FOR HEADER/FOOTER!
+PRINTTAB(0,${FOOTER_Y});:${FOOTER}
+VDU 30:IF POS=0 THEN VDU 11
+${HEADER}
+PRINTTAB(0,${WORK_START_Y});
 
 normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
 IF electron THEN normal_fg=0:header_fg=0:electron_space=32

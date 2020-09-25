@@ -181,7 +181,14 @@ class LoaderScreen(Exception):
         self.header_fg = 132
         self.highlight_fg = 132
         self.highlight_bg = 131
+        substitutions = {
+            "TITLE": cmd_args.title,
+            "SUBTITLE": "SFTODO!!!",
+            "OZMOO": best_effort_version,
+            "SPACE": "SFTODO!!!",
+        }
         for i, line in enumerate(lines):
+            lines[i] = substitute(line, substitutions, lambda x: x)[:40]
             if b"LOADER OUTPUT STARTS HERE" in line and self.start_line is None:
                 self.start_line = i
             elif b"LOADER OUTPUT ENDS HERE" in line:
@@ -210,11 +217,50 @@ class LoaderScreen(Exception):
         self.footer = lines[self.end_line+1:]
         # SFTODO SPACE LINE
 
+    @staticmethod
+    def _data_to_basic(data):
+        basic = []
+        for i, line in enumerate(data):
+            line = line # SFTODO LoaderScreen._simplify_line(line)
+            if len(line) == 0:
+                basic.append("PRINT")
+            else:
+                s = ""
+                in_quote = False
+                for b in line:
+                    if b >= 128+32:
+                        b -= 128
+                    if b == ord('"') or b >= 128:
+                        if in_quote:
+                            s += '";'
+                            in_quote = False
+                        s += "CHR$%d" % b
+                    else:
+                        if not in_quote:
+                            s += ';"'
+                            in_quote = True
+                        s += chr(b)
+                if in_quote:
+                    s += '"'
+                if s[0] == ";":
+                    s = s[1:]
+                if len(line) == 40 or i == len(data)-1:
+                    s += ";"
+                basic.append("PRINT" + s)
+        print("Q", basic)
+        return "\n".join(basic)
+
+
     def add_loader_symbols(self, loader_symbols):
         loader_symbols["NORMAL_FG"] = self.normal_fg
         loader_symbols["HEADER_FG"] = self.header_fg
         loader_symbols["HIGHLIGHT_FG"] = self.highlight_fg
         loader_symbols["HIGHLIGHT_BG"] = self.highlight_bg
+        loader_symbols["HEADER"] = LoaderScreen._data_to_basic(self.header)
+        loader_symbols["FOOTER"] = LoaderScreen._data_to_basic(self.footer)
+        loader_symbols["FOOTER_Y"] = self.end_line + 1
+        loader_symbols["WORK_START_Y"] = self.start_line
+        loader_symbols["WORK_END_Y"] = self.end_line
 
 
 class GameWontFit(Exception):
@@ -775,16 +821,16 @@ def make_boot():
     ]
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 
-def substitute(s, d):
+def substitute(s, d, f):
     c = re.split("(\$\{|\})", s)
     result = ""
     i = 0
     while i < len(c):
         if c[i] == "${":
-            k = c[i+1]
+            k = str(c[i+1])
             if k not in d:
                 die("Unknown substitution: " + k)
-            result += basic_string(d[k])
+            result += f(d[k])
             assert c[i+2] == "}"
             i += 3
         else:
@@ -833,7 +879,7 @@ def make_loader(symbols):
                     assert False
             elif if_condition is None or if_condition:
                 # SFTODO: NEED TO DO CRUNCHING UNLESS DISABLED BY CMDLINE ARG
-                loader.append(substitute(line, symbols))
+                loader.append(substitute(line, symbols, basic_string))
     return "\n".join(loader)
 
 def make_tokenised_loader(loader_symbols):
@@ -906,6 +952,8 @@ def parse_args():
             die("Invalid default mode specified")
     else:
         args.default_mode = 7
+
+    args.title = "SFTODOTITLE"
 
     return args
 
@@ -1126,3 +1174,5 @@ while True:
             else:
                 die("Game is too large for a double-sided disc")
 show_deferred_output()
+
+# SFTODO: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
