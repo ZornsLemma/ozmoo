@@ -30,6 +30,8 @@ def basic_int(i):
     return as_decimal if len(as_decimal) < len(as_hex) else as_hex
 
 def basic_string(value):
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
     if isinstance(value, int):
         return basic_int(value)
     return value
@@ -746,6 +748,7 @@ parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS 
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
 parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
+parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
 parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
 parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
@@ -886,6 +889,7 @@ findswr_executable = make_findswr_executable()
 # distribute larger things first), but it doesn't hurt to do it in all cases.
 ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
+# SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
 loader_symbols = {
     "default_mode": default_mode,
 }
@@ -899,6 +903,8 @@ if args.only_80_column:
 if not args.only_40_column and not args.only_80_column:
     # SFTODO: This is a bit of a workaround for not having nested !ifdef etc in make_loader()
     loader_symbols["NO_ONLY_COLUMN"] = 1
+if args.auto_start:
+    loader_symbols["AUTO_START"] = 1
 
 # SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
 disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]

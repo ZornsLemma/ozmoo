@@ -104,7 +104,16 @@ mem_needed=swr_dynmem_needed+vmem_needed
 IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
-2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:GOTO 3000
+REM SFTODO: If we had nested !ifdef support, in the AUTO_START case we could just
+REM avoid emitting all the code between the GOTO 3000 and line 3000.
+!ifdef AUTO_START {
+2000IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
+PROCshow_mode_keys:GOTO 3000
+} else {
+2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:PROCshow_mode_keys:REPEAT:key=GET:UNTIL key=32 OR key=13:GOTO 3000
+}
+
+DIM mode_x(8),mode_y(8)
 REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
 REM trouble than it's worth, because it's shown (with inserted "/" characters)
 REM on screen and for neatness we want it to be sorted into numerical order.
@@ -134,7 +143,6 @@ menu$(2,0)="7) 40x25   "
 menu$(2,1)="   teletext"
 IF electron THEN max_x=1:mode_list$="0346" ELSE mode_list$="03467"
 }
-DIM mode_x(8),mode_y(8)
 REM The y loop here is done in reverse as VAL(" ") is 0 and we want to get the
 REM second line of the mode 7 entry over with before it can corrupt the mode 0
 REM entry, which will always be in the first line if it's present.
@@ -144,7 +152,7 @@ menu_top_y=VPOS
 IF max_x=2 THEN gutter=0 ELSE gutter=5
 FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
 mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
-x=mode_x(VAL(mode$)):y=mode_y(VAL(mode$)):PROChighlight(x,y,TRUE)
+x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE)
 REPEAT
 old_x=x:old_y=y
 key=GET
@@ -157,10 +165,10 @@ REM with cursor keys remembers the old y position.
 key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
 IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
 UNTIL key=32 OR key=13
-IF FNis_mode_7(x) THEN ?screen_mode=7 ELSE ?screen_mode=VAL(menu$(x,y))
 
-3000REM SFTODO: SHOW "LOADING, PLEASE WAIT"
+3000
 IF ?screen_mode=7 THEN ?fg_colour=6
+REM SFTODO: SHOW "LOADING, PLEASE WAIT"
 !ifdef CACHE2P_BINARY {
 IF tube THEN */${CACHE2P_BINARY}
 }
@@ -235,6 +243,8 @@ DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+m
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROChighlight(x,y,on)
+IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
+IF on THEN PROCshow_mode_keys
 IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
 IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
 DEF PROChighlight_internal(x,y,on)
@@ -250,6 +260,11 @@ PRINTTAB(menu_x(x),menu_top_y+y);
 IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
 PRINT SPC(2);menu$(x,y);SPC(2);
 COLOUR 128:COLOUR 7
+ENDPROC
+
+DEF PROCshow_mode_keys
+PRINTTAB(0,13);:REM SFTODO NEED TO BE CLEVER ABOUT Y POS
+PRINT "SFTODO: KEYS FOR MODE ";?screen_mode
 ENDPROC
 
 DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
