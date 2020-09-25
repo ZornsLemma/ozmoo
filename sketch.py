@@ -29,6 +29,11 @@ def basic_int(i):
         as_hex = "&" + ourhex(i).upper()
     return as_decimal if len(as_decimal) < len(as_hex) else as_hex
 
+def basic_string(value):
+    if isinstance(value, int):
+        return basic_int(value)
+    return value
+
 def get_word(data, i):
     return data[i]*256 + data[i+1]
 
@@ -648,7 +653,7 @@ def substitute(s, d):
             k = c[i+1]
             if k not in d:
                 die("Unknown substitution: " + k)
-            result += d[k]
+            result += basic_string(d[k])
             assert c[i+2] == "}"
             i += 3
         else:
@@ -661,11 +666,7 @@ def make_loader(symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
     # tool - it's specifically designed to work with the Ozmoo loader.
-    def convert(value):
-        if isinstance(value, int):
-            return basic_int(value)
-        return value
-    symbols.update({k: convert(v) for k, v in common_labels.items()})
+    symbols.update({k: basic_string(v) for k, v in common_labels.items()})
     symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
     with open("templates/loader-sketch.bas", "r") as f:
         # SFTODO: For now I won't support nested !ifdef; if I need it I can
@@ -744,6 +745,7 @@ parser.add_argument("-2", "--double-sided", action="store_true", help="generate 
 parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
 parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
 parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
 parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
 parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
 parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
@@ -781,6 +783,13 @@ if args.output_file is not None:
         args.adfs = True
 
 double_sided_dfs = args.double_sided and not args.adfs
+
+if args.default_mode is not None:
+    default_mode = args.default_mode
+    if default_mode not in (0, 3, 4, 6, 7):
+        die("Invalid default mode specified")
+else:
+    default_mode = 7
 
 header_version = 0
 header_static_mem = 0xe
@@ -877,7 +886,9 @@ findswr_executable = make_findswr_executable()
 # distribute larger things first), but it doesn't hurt to do it in all cases.
 ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
-loader_symbols = {}
+loader_symbols = {
+    "default_mode": default_mode,
+}
 for executable_group in ozmoo_variants:
     for e in executable_group:
         e.add_loader_symbols(loader_symbols)

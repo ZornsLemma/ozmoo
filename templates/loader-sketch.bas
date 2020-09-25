@@ -29,9 +29,9 @@ fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 
+A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=7:?bg_colour=4
-A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
 REM SFTODO: SET UP HEADER AND FOOTER
@@ -104,7 +104,7 @@ mem_needed=swr_dynmem_needed+vmem_needed
 IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
 
-2000IF NOT (tube OR shadow) THEN GOTO 3000
+2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:GOTO 3000
 REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
 REM trouble than it's worth, because it's shown (with inserted "/" characters)
 REM on screen and for neatness we want it to be sorted into numerical order.
@@ -141,11 +141,10 @@ REM entry, which will always be in the first line if it's present.
 FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
 PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
 menu_top_y=VPOS
-REM SFTODO: DO 39-width TO ALLOW FOR LEFT HAND CONTROL CODE COLUMN? WHAT ABOUT ELECTRON???
-REM SFTODO DELETE width=0:FOR x=0 TO max_x:width=width+4+LENmenu$(x,0):NEXT:left_pad=(40-width) DIV 2
 IF max_x=2 THEN gutter=0 ELSE gutter=5
 FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
-x=0:y=0:PROChighlight(x,y,TRUE)
+mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
+x=mode_x(VAL(mode$)):y=mode_y(VAL(mode$)):PROChighlight(x,y,TRUE)
 REPEAT
 old_x=x:old_y=y
 key=GET
@@ -158,12 +157,10 @@ REM with cursor keys remembers the old y position.
 key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
 IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
 UNTIL key=32 OR key=13
-
-REM SFTODO: WE MAY WANT TO NOT ALLOW RUNNING IN EG 40 COLUMN MODES, IF THE GAME IS REALLY NOT HAPPY WITH THEM SO IDEALLY MENU WILL BE MORE FLEXIBLE THAN IT WAS - WE MAY BE ABLE TO MAKE THIS WORK NOT-TOO-BADLY B REGARDING THE MENU AS A SERIES OF 3 COLUMNS - LEFTMOST IS 80 COL, MIDDLE IS 40 COL NOT TXT, RIGHT IS MODE 7 - ELECTRON WILL ALWAYS OMIT RIGHT COL, WE MAY OMIT OTHER COLS DEPENDING ON USER CONFIG AND HARDWARE AVAILABLE - THIS DOESN'T MAKE IT *TRIVIAL*, BUT IT DOES OFFER SOME SORT OF STRUCTURE TO THE PROBLEM
+IF FNis_mode_7(x) THEN ?screen_mode=7 ELSE ?screen_mode=VAL(menu$(x,y))
 
 3000REM SFTODO: SHOW "LOADING, PLEASE WAIT"
-SFTODO=7
-?screen_mode=SFTODO:IF ?screen_mode=7 THEN ?fg_colour=6
+IF ?screen_mode=7 THEN ?fg_colour=6
 !ifdef CACHE2P_BINARY {
 IF tube THEN */${CACHE2P_BINARY}
 }
