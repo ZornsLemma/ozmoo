@@ -12,10 +12,27 @@ def die(s):
 
 def info(s):
     if cmd_args.verbose_level >= 1:
-        print(s)
+        if defer_output:
+            deferred_output.append((False, s))
+        else:
+            print(s)
 
 def warn(s):
-    print("Warning: %s" % s, file=sys.stderr)
+    if defer_output:
+        deferred_output.append((True, s))
+    else:
+        print("Warning: %s" % s, file=sys.stderr)
+
+def show_deferred_output():
+    global defer_output
+    defer_output = False
+    global deferred_output
+    for is_warning, s in deferred_output:
+        if is_warning:
+            warn(s)
+        else:
+            info(s)
+    deferred_output = []
 
 def ourhex(i):
     assert i >= 0
@@ -57,6 +74,9 @@ def disc_size(contents):
 
 def same_double_page_alignment(lhs, rhs):
     return lhs % 512 == rhs % 512
+
+def double_sided_dfs():
+    return cmd_args.double_sided and not cmd_args.adfs
 
 def test_executable(name):
     try:
@@ -116,6 +136,10 @@ def update_common_labels(labels):
 
 
 class GameWontFit(Exception):
+    pass
+
+
+class DiscFull(Exception):
     pass
 
 
@@ -771,6 +795,7 @@ def parse_args():
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
+    group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
@@ -794,8 +819,6 @@ def parse_args():
         elif user_extension.lower() == '.adf':
             args.adfs = True
 
-    args.double_sided_dfs = args.double_sided and not args.adfs
-
     if args.default_mode is not None:
         if args.default_mode not in (0, 3, 4, 6, 7):
             die("Invalid default mode specified")
@@ -804,7 +827,143 @@ def parse_args():
 
     return args
 
+def make_disc_image():
+    global ozmoo_base_args
+    ozmoo_base_args = [
+        "-DACORN=1",
+        "-DACORN_CURSOR_PASS_THROUGH=1",
+        "-DSTACK_PAGES=4",
+        "-DSMALLBLOCK=1",
+        "-DSPLASHWAIT=0",
+        "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
+        "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
+    ]
+    if double_sided_dfs():
+        ozmoo_base_args += ["-DACORN_DSD=1"]
+    if not cmd_args.no_mode_7_colour:
+        ozmoo_base_args += ["-DMODE_7_STATUS=1"]
+    if cmd_args.force_65c02:
+        ozmoo_base_args += ["-DCMOS=1"]
 
+    global z_machine_version
+    z_machine_version = game_data[header_version]
+    # SFTODO: This is wrong/incomplete - fairly sure we support 4 and 7 too
+    if z_machine_version == 3:
+        ozmoo_base_args += ["-DZ3=1"]
+    elif z_machine_version == 5:
+        ozmoo_base_args += ["-DZ5=1"]
+    elif z_machine_version == 8:
+        ozmoo_base_args += ["-DZ8=1"]
+    else:
+        die("Unsupported Z-machine version: %d" % (z_machine_version,))
+
+    # SFTODO: WE NEED TO CONTROL WHAT WE TRY TO BUILD USING CMDLINE OPTIONS
+    # SFTODO: *PART* OF THIS IS NOT BUILDING "BBC B NO SHADOW" OR "ELECTRON" EXECUTABLES IF --80-COLUMN IS SPECIFIED, BECAUSE THOSE BUILDS CAN'T DO 80 COLUMNS (BORDERLINE ARGUMENT FOR INCLUDING ELECTRON EXECUTABLE, AS IF AN ELECTRON DOES HAVE SHADOW RAM IT CAN RUN IN ANY MODE)
+    # We work with "executable groups" instead of executables so we can keep related
+    # executables together on the disc.
+    ozmoo_variants = []
+    e = make_electron_swr_executable()
+    if e is not None:
+        ozmoo_variants.append([e])
+    e = make_bbc_swr_executable()
+    if e is not None:
+        ozmoo_variants.append([e])
+    e = make_shr_swr_executable()
+    if e is not None:
+        ozmoo_variants.append([e])
+    ozmoo_variants.append(make_tube_executables())
+
+    # We sort the executable groups by descending order of size; this isn't really
+    # important unless we're doing a double-sided DFS build (where we want to
+    # distribute larger things first), but it doesn't hurt to do it in all cases.
+    ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
+
+    # SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
+    loader_symbols = {
+        "default_mode": cmd_args.default_mode,
+    }
+    for executable_group in ozmoo_variants:
+        for e in executable_group:
+            e.add_loader_symbols(loader_symbols)
+    if cmd_args.only_40_column:
+        loader_symbols["ONLY_40_COLUMN"] = 1
+    if cmd_args.only_80_column:
+        loader_symbols["ONLY_80_COLUMN"] = 1
+    if not cmd_args.only_40_column and not cmd_args.only_80_column:
+        # SFTODO: This is a bit of a workaround for not having nested !ifdef etc in make_loader()
+        loader_symbols["NO_ONLY_COLUMN"] = 1
+    if cmd_args.auto_start:
+        loader_symbols["AUTO_START"] = 1
+
+    disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
+    assert all(f is not None for f in disc_contents)
+    if double_sided_dfs():
+        disc2_contents = []
+    for executable_group in ozmoo_variants:
+        if double_sided_dfs() and disc_size(disc2_contents) < disc_size(disc_contents):
+            disc2_contents.extend(executable_group)
+        else:
+            disc_contents.extend(executable_group)
+    if double_sided_dfs():
+        for f in disc2_contents:
+            f.surface = 2
+            f.add_loader_symbols(loader_symbols)
+        assert disc_contents[1].leafname == "LOADER"
+        disc_contents[1] = make_tokenised_loader(loader_symbols)
+
+    # SFTODO: This is a bit of a hack, may well be able to simplify/improve
+    if not cmd_args.adfs:
+        user_extensions = (".ssd", ".dsd")
+        preferred_extension = ".dsd" if cmd_args.double_sided else ".ssd"
+    else:
+        user_extensions = (".adf", ".adl")
+        preferred_extension = ".adl" if cmd_args.double_sided else ".adf"
+    if cmd_args.output_file is None:
+        output_file = os.path.basename(os.path.splitext(cmd_args.input_file)[0] + preferred_extension)
+    else:
+        user_prefix, user_extension = os.path.splitext(cmd_args.output_file)
+        # If the user wants to call the file .img or something, we'll leave it alone.
+        if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
+            warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
+            user_extension = preferred_extension
+        output_file = user_prefix + user_extension
+
+    # SFTODO: CATCH DISCFULL ERRORS, WARN-AND-PROMOTE TO DOUBLE SIDED IF CAN'T FIT SINGLE SIDED - AS PART OF THIS WILL NEED TO BE CAREFUL THE OUTPUT FILE EXTENSION HACKERY ABOVE IS DONE CORRECTLY WHATEVER THAT WOULD MEAN, AND (WE'D PROBABLY WANT THIS ANYWAY) A LOT OF THIS CURRENTLY IN "MAIN()" CODE WILL WANT TO BE MOVED INTO A FUNCTION
+
+    if not cmd_args.adfs:
+        disc = DfsImage(disc_contents)
+        if not cmd_args.double_sided:
+            # Because we read multiples of vmem_block_pagecount at a time, the data file must
+            # start at a corresponding sector in order to avoid a read ever straddling a track
+            # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
+            # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
+            # it's good for testing.)
+            disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
+            disc.add_file(File("DATA", 0, 0, game_data))
+            DfsImage.write_ssd(disc, output_file)
+        else:
+            disc2 = DfsImage(disc2_contents, boot_option=0) # 0 = no action
+            # The game data must start on a track boundary at the same place on both surfaces.
+            max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
+            def pad_predicate(sector):
+                return sector >= max_first_free_sector and sector % DfsImage.sectors_per_track == 0
+            disc .add_pad_file(pad_predicate)
+            disc2.add_pad_file(pad_predicate)
+            data = [bytearray(), bytearray()]
+            spt = DfsImage.sectors_per_track
+            bps = DfsImage.bytes_per_sector
+            bpt = DfsImage.bytes_per_track
+            for i in range(0, bytes_to_blocks(len(game_data)), spt):
+                data[(i % (2 * spt)) // spt].extend(game_data[i*bps:i*bps+bpt])
+            disc .add_file(File("DATA", 0, 0, data[0]))
+            disc2.add_file(File("DATA", 0, 0, data[1]))
+            DfsImage.write_dsd(disc, disc2, output_file)
+    else:
+        assert False # SFTODO
+
+
+defer_output = False
+deferred_output = []
 best_effort_version = "Ozmoo"
 try:
     with open(os.path.join(os.path.dirname(sys.argv[0]), "version.txt"), "r") as f:
@@ -859,137 +1018,26 @@ nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
 
-ozmoo_base_args = [
-    "-DACORN=1",
-    "-DACORN_CURSOR_PASS_THROUGH=1",
-    "-DSTACK_PAGES=4",
-    "-DSMALLBLOCK=1",
-    "-DSPLASHWAIT=0",
-    "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
-    "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-]
-if cmd_args.double_sided_dfs:
-    ozmoo_base_args += ["-DACORN_DSD=1"]
-if not cmd_args.no_mode_7_colour:
-    ozmoo_base_args += ["-DMODE_7_STATUS=1"]
-if cmd_args.force_65c02:
-    ozmoo_base_args += ["-DCMOS=1"]
-
-z_machine_version = game_data[header_version]
-# SFTODO: This is wrong/incomplete - fairly sure we support 4 and 7 too
-if z_machine_version == 3:
-    ozmoo_base_args += ["-DZ3=1"]
-elif z_machine_version == 5:
-    ozmoo_base_args += ["-DZ5=1"]
-elif z_machine_version == 8:
-    ozmoo_base_args += ["-DZ8=1"]
-else:
-    die("Unsupported Z-machine version: %d" % (z_machine_version,))
-
-# SFTODO: WE NEED TO CONTROL WHAT WE TRY TO BUILD USING CMDLINE OPTIONS
-# SFTODO: *PART* OF THIS IS NOT BUILDING "BBC B NO SHADOW" OR "ELECTRON" EXECUTABLES IF --80-COLUMN IS SPECIFIED, BECAUSE THOSE BUILDS CAN'T DO 80 COLUMNS (BORDERLINE ARGUMENT FOR INCLUDING ELECTRON EXECUTABLE, AS IF AN ELECTRON DOES HAVE SHADOW RAM IT CAN RUN IN ANY MODE)
-# We work with "executable groups" instead of executables so we can keep related
-# executables together on the disc.
-ozmoo_variants = []
-e = make_electron_swr_executable()
-if e is not None:
-    ozmoo_variants.append([e])
-e = make_bbc_swr_executable()
-if e is not None:
-    ozmoo_variants.append([e])
-e = make_shr_swr_executable()
-if e is not None:
-    ozmoo_variants.append([e])
-ozmoo_variants.append(make_tube_executables())
-
 boot_file = make_boot()
 findswr_executable = make_findswr_executable()
 
-# We sort the executable groups by descending order of size; this isn't really
-# important unless we're doing a double-sided DFS build (where we want to
-# distribute larger things first), but it doesn't hurt to do it in all cases.
-ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
-
-# SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
-loader_symbols = {
-    "default_mode": cmd_args.default_mode,
-}
-for executable_group in ozmoo_variants:
-    for e in executable_group:
-        e.add_loader_symbols(loader_symbols)
-if cmd_args.only_40_column:
-    loader_symbols["ONLY_40_COLUMN"] = 1
-if cmd_args.only_80_column:
-    loader_symbols["ONLY_80_COLUMN"] = 1
-if not cmd_args.only_40_column and not cmd_args.only_80_column:
-    # SFTODO: This is a bit of a workaround for not having nested !ifdef etc in make_loader()
-    loader_symbols["NO_ONLY_COLUMN"] = 1
-if cmd_args.auto_start:
-    loader_symbols["AUTO_START"] = 1
-
-# SFTODO: If we're building *just* a tube build with no cache support, we don't need the findswr binary - whether it's worth handling this I don't know, but I'll make this note for now.
-disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
-assert all(f is not None for f in disc_contents)
-if cmd_args.double_sided_dfs:
-    disc2_contents = []
-for executable_group in ozmoo_variants:
-    if cmd_args.double_sided_dfs and disc_size(disc2_contents) < disc_size(disc_contents):
-        disc2_contents.extend(executable_group)
-    else:
-        disc_contents.extend(executable_group)
-if cmd_args.double_sided_dfs:
-    for f in disc2_contents:
-        f.surface = 2
-        f.add_loader_symbols(loader_symbols)
-    assert disc_contents[1].leafname == "LOADER"
-    disc_contents[1] = make_tokenised_loader(loader_symbols)
-
-# SFTODO: This is a bit of a hack, may well be able to simplify/improve
-if not cmd_args.adfs:
-    user_extensions = (".ssd", ".dsd")
-    preferred_extension = ".dsd" if cmd_args.double_sided else ".ssd"
-else:
-    user_extensions = (".adf", ".adl")
-    preferred_extension = ".adl" if cmd_args.double_sided else ".adf"
-if cmd_args.output_file is None:
-    output_file = os.path.basename(os.path.splitext(cmd_args.input_file)[0] + preferred_extension)
-else:
-    user_prefix, user_extension = os.path.splitext(cmd_args.output_file)
-    # If the user wants to call the file .img or something, we'll leave it alone.
-    if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
-        warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
-        user_extension = preferred_extension
-    output_file = user_prefix + user_extension
-
-# SFTODO: CATCH DISCFULL ERRORS, WARN-AND-PROMOTE TO DOUBLE SIDED IF CAN'T FIT SINGLE SIDED - AS PART OF THIS WILL NEED TO BE CAREFUL THE OUTPUT FILE EXTENSION HACKERY ABOVE IS DONE CORRECTLY WHATEVER THAT WOULD MEAN, AND (WE'D PROBABLY WANT THIS ANYWAY) A LOT OF THIS CURRENTLY IN "MAIN()" CODE WILL WANT TO BE MOVED INTO A FUNCTION
-
-if not cmd_args.adfs:
-    disc = DfsImage(disc_contents)
-    if not cmd_args.double_sided:
-        # Because we read multiples of vmem_block_pagecount at a time, the data file must
-        # start at a corresponding sector in order to avoid a read ever straddling a track
-        # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
-        # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
-        # it's good for testing.)
-        disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
-        disc.add_file(File("DATA", 0, 0, game_data))
-        DfsImage.write_ssd(disc, output_file)
-    else:
-        disc2 = DfsImage(disc2_contents, boot_option=0) # 0 = no action
-        # The game data must start on a track boundary at the same place on both surfaces.
-        max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
-        def pad_predicate(sector):
-            return sector >= max_first_free_sector and sector % DfsImage.sectors_per_track == 0
-        disc .add_pad_file(pad_predicate)
-        disc2.add_pad_file(pad_predicate)
-        data = [bytearray(), bytearray()]
-        spt = DfsImage.sectors_per_track
-        bps = DfsImage.bytes_per_sector
-        bpt = DfsImage.bytes_per_track
-        for i in range(0, bytes_to_blocks(len(game_data)), spt):
-            data[(i % (2 * spt)) // spt].extend(game_data[i*bps:i*bps+bpt])
-        disc .add_file(File("DATA", 0, 0, data[0]))
-        disc2.add_file(File("DATA", 0, 0, data[1]))
-        DfsImage.write_dsd(disc, disc2, output_file)
-else:
-    assert False # SFTODO
+single_to_double_sided = False
+if not cmd_args.never_defer_output:
+    defer_output = True
+while True:
+    try:
+        make_disc_image()
+        break
+    except DiscFull:
+        if not cmd_args.double_sided:
+            cmd_args.double_sided = True
+            single_to_double_sided = True
+            Executable.cache = {}
+            deferred_output = []
+            warn("Generating a double-sided disc as the game won't fit otherwise")
+        else:
+            if single_to_double_sided:
+                die("Game is too large for even a double-sided disc")
+            else:
+                die("Game is too large for a double-sided disc")
+show_deferred_output()
