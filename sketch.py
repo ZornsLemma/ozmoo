@@ -927,6 +927,25 @@ def make_tokenised_loader(loader_symbols):
         tokenised_loader = tokenised_loader[512:512+length]
     return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
 
+
+def title_from_filename(filename):
+    title = os.path.basename(os.path.splitext(filename)[0])
+    # This logic has been copied from make.rb.
+    camel_case = re.search("[a-z]", title) and re.search("[A-Z]", title) and not re.search(" |_", title)
+    if camel_case:
+        #print("Q", title)
+        title = re.sub("([a-z])([A-Z])", r"\1 \2", title)
+        #print("Q", title)
+        title = re.sub("A([A-Z])", r"A \1", title)
+        #print("Q", title)
+    title = re.sub("_+", " ", title)
+    title = re.sub("(^ +)|( +)$", "", title)
+    # SFTODO: DO THE "REMOVE THE IF LONGER THAN" BIT - MAY WANT TO VARY THIS FOR TITLE SCRREN VS DISC TITLE
+    if re.search("^[a-z]", title):
+        title = title.capitalize()
+    return title
+
+
 def parse_args():
     # SFTODO: MAKE SURE I COPY ALL (USEFUL) ARGS FROM OLD VERSION
     parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
@@ -940,6 +959,8 @@ def parse_args():
     parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
     parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
     parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
+    parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
+    parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
     parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
     parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
@@ -975,8 +996,8 @@ def parse_args():
     else:
         args.default_mode = 7
 
-    args.title = "SFTODOTITLE"
-    args.subtitle = None # SFTODO
+    if args.title is None:
+        args.title = title_from_filename(args.input_file)
 
     return args
 
