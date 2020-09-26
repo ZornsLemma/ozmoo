@@ -46,23 +46,9 @@ MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=7:?bg_colour=4
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
-IF electron THEN GOTO 500
-PRINTTAB(0,${FOOTER_Y});:${FOOTER}
-IF POS=0 THEN VDU 30,11 ELSE VDU 30
-${HEADER}
-PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
-GOTO 750
-500VDU 23,128,0;0,255,255,0,0;
-PRINTTAB(0,23);STRING$(40,CHR$128);LEFT$("Powered by ${OZMOO}",40);
-IF POS=0 THEN VDU 30,11 ELSE VDU 30
-PRINT "${TITLE}";:IF POS>0 THEN PRINT
-PRINTSTRING$(40,CHR$128);
-!ifdef SUBTITLE {
-PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
-}
-PRINT:space_y=22
+IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
 
-750normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
+normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
 IF electron THEN normal_fg=0:header_fg=0:electron_space=32
 
 shadow=potential_himem=&8000
@@ -231,6 +217,25 @@ DEF PROCfinalise
 *FX229,0
 *FX4,0
 END
+
+DEF PROCelectron_header_footer
+VDU 23,128,0;0,255,255,0,0;
+PRINTTAB(0,23);STRING$(40,CHR$128);LEFT$("Powered by ${OZMOO}",40);
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+PRINT "${TITLE}";:IF POS>0 THEN PRINT
+PRINTSTRING$(40,CHR$128);
+!ifdef SUBTITLE {
+PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
+}
+PRINT:space_y=22
+ENDPROC
+
+DEF PROCbbc_header_footer
+PRINTTAB(0,${FOOTER_Y});:${FOOTER}
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+${HEADER}
+PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
+ENDPROC
 
 REM This is not a completely general pretty-print routine, e.g. it doesn't make
 REM any attempt to handle words which are longer than the screen width. It's
