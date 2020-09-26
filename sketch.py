@@ -967,6 +967,8 @@ def parse_args():
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
+    group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
+    group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
@@ -999,6 +1001,9 @@ def parse_args():
     if args.title is None:
         args.title = title_from_filename(args.input_file)
 
+    if args.benchmark:
+        args.debug = True
+
     return args
 
 def make_disc_image():
@@ -1012,12 +1017,17 @@ def make_disc_image():
         "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
     ]
+    # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
         ozmoo_base_args += ["-DACORN_DSD=1"]
     if not cmd_args.no_mode_7_colour:
         ozmoo_base_args += ["-DMODE_7_STATUS=1"]
     if cmd_args.force_65c02:
         ozmoo_base_args += ["-DCMOS=1"]
+    if cmd_args.benchmark:
+        ozmoo_base_args += ["-DBENCHMARK=1"]
+    if cmd_args.debug:
+        ozmoo_base_args += ["-DDEBUG=1"]
 
     global z_machine_version
     z_machine_version = game_data[header_version]
