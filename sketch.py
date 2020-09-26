@@ -274,6 +274,7 @@ class LoaderScreen(Exception):
         return "\n".join(basic)
 
     def add_loader_symbols(self, loader_symbols):
+        # Symbols for the BBC loader screen
         loader_symbols["NORMAL_FG"] = self.normal_fg
         loader_symbols["HEADER_FG"] = self.header_fg
         loader_symbols["HIGHLIGHT_FG"] = self.highlight_fg
@@ -283,6 +284,11 @@ class LoaderScreen(Exception):
         loader_symbols["FOOTER_Y"] = 25 - len(self.footer)
         loader_symbols["MIDDLE_START_Y"] = len(self.header)
         loader_symbols["SPACE_Y"] = loader_symbols["FOOTER_Y"] + self.footer_space_line
+        # Symbols for the Electron loader screen
+        loader_symbols["TITLE"] = cmd_args.title[:40]
+        if cmd_args.subtitle is not None:
+            loader_symbols["SUBTITLE"] = cmd_args.subtitle[:40]
+        loader_symbols["OZMOO"] = best_effort_version
 
 
 class GameWontFit(Exception):
@@ -1116,8 +1122,6 @@ def make_disc_image():
             warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
             user_extension = preferred_extension
         output_file = user_prefix + user_extension
-
-    # SFTODO: CATCH DISCFULL ERRORS, WARN-AND-PROMOTE TO DOUBLE SIDED IF CAN'T FIT SINGLE SIDED - AS PART OF THIS WILL NEED TO BE CAREFUL THE OUTPUT FILE EXTENSION HACKERY ABOVE IS DONE CORRECTLY WHATEVER THAT WOULD MEAN, AND (WE'D PROBABLY WANT THIS ANYWAY) A LOT OF THIS CURRENTLY IN "MAIN()" CODE WILL WANT TO BE MOVED INTO A FUNCTION
 
     if not cmd_args.adfs:
         disc = DfsImage(disc_contents)

@@ -1,3 +1,5 @@
+REM SFTODO: I can potentially avoid GOTOs (which may be neater and shorter) by calling PROCs with the relevant blocks of code
+
 REM SFTODO: Check SFTODOs etc in original loader as some of them may still be valid and need transferring across here
 
 REM The loader uses some of the resident integer variables (or at least the
@@ -44,13 +46,23 @@ MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=7:?bg_colour=4
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
-REM SFTODO: SUPPORT ELECTRON FOR HEADER/FOOTER!
+IF electron THEN GOTO 500
 PRINTTAB(0,${FOOTER_Y});:${FOOTER}
 IF POS=0 THEN VDU 30,11 ELSE VDU 30
 ${HEADER}
-PRINTTAB(0,${MIDDLE_START_Y});
+PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
+GOTO 750
+500VDU 23,128,0;0,255,255,0,0;
+PRINTTAB(0,23);STRING$(40,CHR$128);LEFT$("Powered by ${OZMOO}",40);
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+PRINT "${TITLE}";:IF POS>0 THEN PRINT
+PRINTSTRING$(40,CHR$128);
+!ifdef SUBTITLE {
+PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
+}
+PRINT:space_y=22
 
-normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
+750normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
 IF electron THEN normal_fg=0:header_fg=0:electron_space=32
 
 shadow=potential_himem=&8000
@@ -300,7 +312,7 @@ mode_keys_last_max_y=VPOS
 ENDPROC
 
 DEF PROCspace
-PRINTTAB(0,${SPACE_Y});CHR$normal_fg;"Press SPACE/RETURN to start the game...";
+PRINTTAB(0,space_y);CHR$normal_fg;"Press SPACE/RETURN to start the game...";
 ENDPROC
 
 DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
