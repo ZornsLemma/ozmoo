@@ -527,9 +527,13 @@ class Executable(object):
         if "ACORN_RELOCATABLE" in self.labels:
             if self._relocations is None:
                 self._relocations = self._make_relocations()
-            return self._binary + self._relocations
+            binary = self._binary + self._relocations
         else:
-            return self._binary
+            binary = self._binary
+        # A second processor binary *could* extend past 0x8000 but in practice
+        # it won't come even close.
+        assert self.start_address + len(binary) <= 0x8000
+        return binary
 
 
 class OzmooExecutable(Executable):
