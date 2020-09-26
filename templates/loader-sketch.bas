@@ -1,5 +1,3 @@
-REM SFTODO: I can potentially avoid GOTOs (which may be neater and shorter) by calling PROCs with the relevant blocks of code
-
 REM SFTODO: Check SFTODOs etc in original loader as some of them may still be valid and need transferring across here
 
 REM The loader uses some of the resident integer variables (or at least the
@@ -57,7 +55,7 @@ PROCdetect_swr
 
 REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
 REM second processor and the game fits entirely in RAM or the host cache isn't
-REM enabled), as it seems potentially confusing if the sometimes apparently
+REM enabled), as it seems potentially confusing if we sometimes apparently
 REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
@@ -67,35 +65,81 @@ IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
 
+PROCchoose_version_and_check_ram
+
+!ifdef AUTO_START {
+IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
+mode_keys_vpos=VPOS:PROCshow_mode_keys
+} else {
+IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT:key=GET:UNTIL key=32 OR key=13
+}
+
+IF ?screen_mode=7 THEN ?fg_colour=6
+PRINTTAB(0,space_y);CHR$normal_fg;"Loading, please wait...                ";
+REM SFTODO: SHOW "LOADING, PLEASE WAIT"
+!ifdef CACHE2P_BINARY {
+IF tube THEN */${CACHE2P_BINARY}
+}
+fs=FNfs
+IF fs<>4 THEN path$=FNpath
+REM Select user's home directory on NFS
+IF fs=5 THEN *DIR
+REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
+ON ERROR GOTO 1000
+IF fs=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
+1000ON ERROR PROCerror
+REM On DFS this is actually a * command, not a filename, hence the leading "/" (="*RUN").
+IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
+IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
+REM We do this last, as it uses a lot of resident integer variable space and this reduces
+REM the chances of it accidentally getting corrupted.
+filename_data=${game_data_filename_or_restart_command}
+$filename_data=filename$
+*FX4,0
+REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
+VDU 26:REM GET RID OF THIS IF I NEVER DO VDU 28
+IF fs=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
+END
+
+DEF PROCerror:CLS:REPORT:PRINT" at line ";ERL:PROCfinalise
+
+DEF PROCdie(message$)
+REM SFTODO: This needs to print nicely on screen preserving any hardware detected output, word-wrapping and using the normal fg colour if we're in mode 7.
+PROCpretty_print(normal_fg,message$)
+PRINT
+REM Fall through to PROCfinalise
+DEF PROCfinalise
+*FX229,0
+*FX4,0
+END
+
+DEF PROCelectron_header_footer
+VDU 23,128,0;0,255,255,0,0;
+PRINTTAB(0,23);STRING$(40,CHR$128);LEFT$("Powered by ${OZMOO}",40);
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+PRINT "${TITLE}";:IF POS>0 THEN PRINT
+PRINTSTRING$(40,CHR$128);
+!ifdef SUBTITLE {
+PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
+}
+PRINT:space_y=22
+ENDPROC
+
+DEF PROCbbc_header_footer
+PRINTTAB(0,${FOOTER_Y});:${FOOTER}
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+${HEADER}
+PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
+ENDPROC
+
+DEF PROCchoose_version_and_check_ram
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
-IF tube THEN binary$="${OZMOO2P_BINARY}":GOTO 2000
+IF tube THEN binary$="${OZMOO2P_BINARY}":ENDPROC
 } else {
 IF tube THEN PROCunsupported_machine("a second processor")
 }
-!ifdef ONLY_80_COLUMN {
-IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
-}
-!ifdef OZMOOE_BINARY {
-IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:GOTO 1000
-} else {
-IF electron THEN PROCunsupported_machine("an Electron")
-}
-REM SFTODO: Not just here - if I am able to run some games with no SWR, I should probably take SWR out of the "plain B" and "shadow+sideways RAM" build names (which would affect the new make-acorn.py script too, just as an internal naming thing)
-!ifdef OZMOOSH_BINARY {
-IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:GOTO 1000
-} else {
-REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
-REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
-REM else.
-IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
-}
-!ifdef OZMOOB_BINARY {
-binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:GOTO 1000
-} else {
-REM SFTODO: Next line is misleading, depending on the other build options we may mean "a BBC B without shadow RAM", but it will depend on options.
-PROCunsupported_machine("a BBC B")
-}
+PROCchoose_non_tube_version
 
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
@@ -104,7 +148,7 @@ REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM SFTODO THIS WON'T DO THE RIGHT THING ON ELECTRON, WHERE MAIN RAM CAN SUBSTITUTE FOR VMEM BUT NOT DYNMEM
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
-1000IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
+IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 IF relocatable THEN extra_main_ram=max_page-PAGE:p=PAGE:?${ozmoo_relocate_target}=p DIV 256 ELSE extra_main_ram=0
 swr_dynmem_needed=swr_dynmem_needed-&4000*?${ram_bank_count}
 REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
@@ -114,16 +158,36 @@ IF electron AND swr_dynmem_needed>0 THEN PROCdie_ram(swr_dynmem_needed+FNmax(vme
 mem_needed=swr_dynmem_needed+vmem_needed
 IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
 REM SFTODO: If we have >=MIN_VMEM_BYTES but not >=PREFERRED_MIN_VMEM_BYTES we should maybe show a warning
+ENDPROC
 
-REM SFTODO: If we had nested !ifdef support, in the AUTO_START case we could just
-REM avoid emitting all the code between the GOTO 3000 and line 3000.
-!ifdef AUTO_START {
-2000IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
-mode_keys_vpos=VPOS:PROCshow_mode_keys:GOTO 3000
-} else {
-2000IF NOT (tube OR shadow) THEN ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT:key=GET:UNTIL key=32 OR key=13:GOTO 3000
+DEF PROCchoose_non_tube_version
+!ifdef ONLY_80_COLUMN {
+IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
 }
+!ifdef OZMOOE_BINARY {
+IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:ENDPROC
+} else {
+IF electron THEN PROCunsupported_machine("an Electron")
+}
+REM SFTODO: Not just here - if I am able to run some games with no SWR, I should probably take SWR out of the "plain B" and "shadow+sideways RAM" build names (which would affect the new make-acorn.py script too, just as an internal naming thing)
+!ifdef OZMOOSH_BINARY {
+IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:ENDPROC
+} else {
+REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
+REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
+REM else.
+IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
+}
+!ifdef OZMOOB_BINARY {
+binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}
+} else {
+REM SFTODO: Next line is misleading, depending on the other build options we may mean "a BBC B without shadow RAM", but it will depend on options.
+PROCunsupported_machine("a BBC B")
+}
+ENDPROC
 
+REM SFTODO WE NEED NESTED FOR THIS ifndef AUTO_START {
+DEF PROCmode_menu
 DIM mode_x(8),mode_y(8)
 REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
 REM trouble than it's worth, because it's shown (with inserted "/" characters)
@@ -179,63 +243,29 @@ IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,
 IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
 IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
 UNTIL key=32 OR key=13
-
-3000IF ?screen_mode=7 THEN ?fg_colour=6
-REM SFTODO: SHOW "LOADING, PLEASE WAIT"
-!ifdef CACHE2P_BINARY {
-IF tube THEN */${CACHE2P_BINARY}
-}
-fs=FNfs
-IF fs<>4 THEN path$=FNpath
-REM Select user's home directory on NFS
-IF fs=5 THEN *DIR
-REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
-ON ERROR GOTO 4000
-IF fs=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
-4000ON ERROR PROCerror
-REM On DFS this is actually a * command, not a filename, hence the leading "/" (="*RUN").
-IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
-IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
-REM We do this last, as it uses a lot of resident integer variable space and this reduces
-REM the chances of it accidentally getting corrupted.
-filename_data=${game_data_filename_or_restart_command}
-$filename_data=filename$
-*FX4,0
-REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
-VDU 26:REM GET RID OF THIS IF I NEVER DO VDU 28
-IF fs=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
-END
-
-DEF PROCerror:CLS:REPORT:PRINT" at line ";ERL:PROCfinalise
-
-DEF PROCdie(message$)
-REM SFTODO: This needs to print nicely on screen preserving any hardware detected output, word-wrapping and using the normal fg colour if we're in mode 7.
-PROCpretty_print(normal_fg,message$)
-PRINT
-REM Fall through to PROCfinalise
-DEF PROCfinalise
-*FX229,0
-*FX4,0
-END
-
-DEF PROCelectron_header_footer
-VDU 23,128,0;0,255,255,0,0;
-PRINTTAB(0,23);STRING$(40,CHR$128);LEFT$("Powered by ${OZMOO}",40);
-IF POS=0 THEN VDU 30,11 ELSE VDU 30
-PRINT "${TITLE}";:IF POS>0 THEN PRINT
-PRINTSTRING$(40,CHR$128);
-!ifdef SUBTITLE {
-PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
-}
-PRINT:space_y=22
 ENDPROC
 
-DEF PROCbbc_header_footer
-PRINTTAB(0,${FOOTER_Y});:${FOOTER}
-IF POS=0 THEN VDU 30,11 ELSE VDU 30
-${HEADER}
-PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
+DEF PROChighlight(x,y,on)
+IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
+IF on THEN PROCshow_mode_keys
+IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
+IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
+DEF PROChighlight_internal(x,y,on)
+REM We put the "normal background" code in at the right hand side first before
+REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
+REM to reduce visual glitches.
+IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
+PRINTTAB(menu_x(x)-1,menu_top_y+y);
+IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
 ENDPROC
+DEF PROChighlight_internal_electron(x,y,on)
+PRINTTAB(menu_x(x),menu_top_y+y);
+IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
+PRINT SPC(2);menu$(x,y);SPC(2);
+COLOUR 128:COLOUR 7
+ENDPROC
+
+REM SFTODO ENDIF
 
 REM This is not a completely general pretty-print routine, e.g. it doesn't make
 REM any attempt to handle words which are longer than the screen width. It's
@@ -273,26 +303,6 @@ ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
-
-DEF PROChighlight(x,y,on)
-IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
-IF on THEN PROCshow_mode_keys
-IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
-IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
-DEF PROChighlight_internal(x,y,on)
-REM We put the "normal background" code in at the right hand side first before
-REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
-REM to reduce visual glitches.
-IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
-PRINTTAB(menu_x(x)-1,menu_top_y+y);
-IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
-ENDPROC
-DEF PROChighlight_internal_electron(x,y,on)
-PRINTTAB(menu_x(x),menu_top_y+y);
-IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
-PRINT SPC(2);menu$(x,y);SPC(2);
-COLOUR 128:COLOUR 7
-ENDPROC
 
 DEF PROCshow_mode_keys
 mode_7_no_hw_scroll=NOT (shadow OR tube OR electron)
