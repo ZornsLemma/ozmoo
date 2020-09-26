@@ -171,61 +171,79 @@ class LoaderScreen(Exception):
     def __init__(self):
         # SFTODO: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
         loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
-        lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
         # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
-        assert len(lines) == 25
+        original_lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
+        assert len(original_lines) == 25
+        sections = [[], [], []]
+        section = 0
         self.space_line = None
-        self.start_line = None
-        self.end_line = None
+        substitutions = {
+            "TITLE": cmd_args.title,
+            "SUBTITLE": str(cmd_args.subtitle),
+            "OZMOO": best_effort_version,
+            "SPACE": "${SPACE}", # preserve ${SPACE} when substituting
+        }
+        for i, line in enumerate(original_lines):
+            line = LoaderScreen._to_nearly_ascii(line)
+            is_unwanted_subtitle = b"${SUBTITLE}" in line and cmd_args.subtitle is None
+            line = substitute(line, substitutions, lambda x: x)[:40]
+            line = line.rstrip()
+            if b"LOADER OUTPUT STARTS HERE" in line:
+                section = 1
+            elif b"LOADER OUTPUT ENDS HERE" in line:
+                section = 2
+            if is_unwanted_subtitle:
+                # By shuffling the subtitle into the middle section whether it
+                # appears in the header or footer, we can get rid of it without
+                # breaking the line numbering.
+                sections[1].append(line)
+            else:
+                sections[section].append(line)
+        # Move the "LOADER OUTPUT ENDS HERE" line from the start of section 2 to
+        # the end of section 1.
+        sections[1].append(sections[2].pop(0))
+        self.header = sections[0]
+        self.footer = sections[2]
+
+        self.footer_space_line = None
+        for i, line in enumerate(self.footer):
+            if b"${SPACE}" in line and self.footer_space_line is None:
+                self.footer_space_line = i
+                self.footer[i] = line.replace(b"${SPACE}", b"").rstrip()
+        assert self.footer_space_line is not None
+
         # SFTODO: Use nicer defaults, but these will make it obvious if we're failing to parse correctly for now
         self.normal_fg = 132
         self.header_fg = 132
         self.highlight_fg = 132
         self.highlight_bg = 131
-        substitutions = {
-            "TITLE": cmd_args.title,
-            "SUBTITLE": "SFTODO!!!",
-            "OZMOO": best_effort_version,
-            "SPACE": "",
-        }
-        for i, line in enumerate(lines):
-            if b"${SPACE}" in line:
-                self.space_line = i
-            lines[i] = substitute(line, substitutions, lambda x: x)[:40]
-            if b"LOADER OUTPUT STARTS HERE" in line and self.start_line is None:
-                self.start_line = i
-            elif b"LOADER OUTPUT ENDS HERE" in line:
-                self.end_line = i
-            elif self.start_line is not None and self.end_line is None:
-                # We are in the area between the start and end lines so look for the
-                # colour lines.
-                def colour_code(c):
-                    if c == 32:
-                        return 135
-                    if c >= 129 and c <= 135:
-                        return c
-                    warn("Invalid colour code %d found in loader screen in line %d" % (c, i))
+        for line in sections[1]:
+            def colour_code(c):
+                if c == 32:
                     return 135
-                if b"Normal foreground" in line:
-                    self.normal_fg = colour_code(line[0])
-                elif b"Header foreground" in line:
-                    self.header_fg = colour_code(line[0])
-                elif b"Highlight foreground" in line:
-                    self.highlight_fg = colour_code(line[0])
-                elif b"Highlight background" in line:
-                    self.highlight_bg = colour_code(line[0])
-        assert self.space_line is not None
-        assert self.start_line is not None
-        assert self.end_line is not None
-        self.header = lines[0:self.start_line]
-        self.footer = lines[self.end_line+1:]
-        # SFTODO SPACE LINE
+                if c >= 129 and c <= 135:
+                    return c
+                warn("Invalid colour code %d found in colour definitions on loader screen" % c)
+                return 135
+            if b"Normal foreground" in line:
+                self.normal_fg = colour_code(line[0])
+            elif b"Header foreground" in line:
+                self.header_fg = colour_code(line[0])
+            elif b"Highlight foreground" in line:
+                self.highlight_fg = colour_code(line[0])
+            elif b"Highlight background" in line:
+                self.highlight_bg = colour_code(line[0])
+
+    @staticmethod
+    def _to_nearly_ascii(line):
+        # Teletext data is 7-bit, but the way the Acorn OS handles mode 7 means
+        # we must use top-bit-set codes for codes 0-31.
+        return bytearray([x-128 if x>=128+32 else x for x in line])
 
     @staticmethod
     def _data_to_basic(data):
         basic = []
         for i, line in enumerate(data):
-            line = line # SFTODO LoaderScreen._simplify_line(line)
             if len(line) == 0:
                 basic.append("PRINT")
             else:
@@ -251,9 +269,7 @@ class LoaderScreen(Exception):
                 if len(line) == 40 or i == len(data)-1:
                     s += ";"
                 basic.append("PRINT" + s)
-        print("Q", basic)
         return "\n".join(basic)
-
 
     def add_loader_symbols(self, loader_symbols):
         loader_symbols["NORMAL_FG"] = self.normal_fg
@@ -262,10 +278,9 @@ class LoaderScreen(Exception):
         loader_symbols["HIGHLIGHT_BG"] = self.highlight_bg
         loader_symbols["HEADER"] = LoaderScreen._data_to_basic(self.header)
         loader_symbols["FOOTER"] = LoaderScreen._data_to_basic(self.footer)
-        loader_symbols["FOOTER_Y"] = self.end_line + 1
-        loader_symbols["WORK_START_Y"] = self.start_line
-        loader_symbols["WORK_END_Y"] = self.end_line
-        loader_symbols["SPACE_Y"] = self.space_line
+        loader_symbols["FOOTER_Y"] = 25 - len(self.footer)
+        loader_symbols["MIDDLE_START_Y"] = len(self.header)
+        loader_symbols["SPACE_Y"] = loader_symbols["FOOTER_Y"] + self.footer_space_line
 
 
 class GameWontFit(Exception):
@@ -959,6 +974,7 @@ def parse_args():
         args.default_mode = 7
 
     args.title = "SFTODOTITLE"
+    args.subtitle = None # SFTODO
 
     return args
 

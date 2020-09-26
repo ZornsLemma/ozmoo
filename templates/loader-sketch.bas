@@ -46,9 +46,9 @@ IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
 REM SFTODO: SUPPORT ELECTRON FOR HEADER/FOOTER!
 PRINTTAB(0,${FOOTER_Y});:${FOOTER}
-VDU 30:IF POS=0 THEN VDU 11
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
 ${HEADER}
-PRINTTAB(0,${WORK_START_Y});
+PRINTTAB(0,${MIDDLE_START_Y});
 
 normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
 IF electron THEN normal_fg=0:header_fg=0:electron_space=32
