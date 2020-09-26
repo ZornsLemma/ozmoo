@@ -551,7 +551,7 @@ class OzmooExecutable(Executable):
             s += "_" + ourhex(start_address)
             return s
 
-        if "-DACORN_NO_SHADOW=1" not in args:
+        if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
             args += ["-DACORN_HW_SCROLL=1"]
         Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_address, args)
         if "ACORN_RELOCATABLE" not in self.labels:
