@@ -1197,7 +1197,7 @@ else:
     # so we don't pay a small performance penalty unless there's some evidence
     # it's useful.
     bbc_swr_start_address = 0x1d00
-max_start_address = 0x4000
+max_start_address = 0x3000
 
 common_labels = {}
 
