@@ -64,6 +64,7 @@ IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
+die_top_y=VPOS
 
 PROCchoose_version_and_check_ram
 
@@ -76,7 +77,6 @@ IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos
 
 IF ?screen_mode=7 THEN ?fg_colour=6
 PRINTTAB(0,space_y);CHR$normal_fg;"Loading, please wait...                ";
-REM SFTODO: SHOW "LOADING, PLEASE WAIT"
 !ifdef CACHE2P_BINARY {
 IF tube THEN */${CACHE2P_BINARY}
 }
@@ -97,14 +97,13 @@ filename_data=${game_data_filename_or_restart_command}
 $filename_data=filename$
 *FX4,0
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
-VDU 26:REM GET RID OF THIS IF I NEVER DO VDU 28
 IF fs=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
 END
 
 DEF PROCerror:CLS:REPORT:PRINT" at line ";ERL:PROCfinalise
 
 DEF PROCdie(message$)
-REM SFTODO: This needs to print nicely on screen preserving any hardware detected output, word-wrapping and using the normal fg colour if we're in mode 7.
+VDU 28,0,space_y,39,die_top_y,12
 PROCpretty_print(normal_fg,message$)
 PRINT
 REM Fall through to PROCfinalise
