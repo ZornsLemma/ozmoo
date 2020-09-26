@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 def die(s):
+    show_deferred_output()
     print(s, file=sys.stderr)
     sys.exit(1)
 
