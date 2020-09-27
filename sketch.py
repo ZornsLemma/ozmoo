@@ -560,6 +560,8 @@ class OzmooExecutable(Executable):
 
         if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
             args += ["-DACORN_HW_SCROLL=1"]
+        if cmd_args.preload_opt and "-DVMEM=1" in args:
+            args += ["-DPREOPT=1"]
         Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_address, args)
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines_in_stack_space")
@@ -568,13 +570,6 @@ class OzmooExecutable(Executable):
             self._patch_vmem()
 
     def _patch_vmem(self):
-        if z_machine_version == 3:
-            vmem_highbyte_mask = 0x01
-        elif z_machine_version == 8:
-            vmem_highbyte_mask = 0x07
-        else:
-            vmem_highbyte_mask = 0x03
-
         # Can we fit the nonstored blocks into memory?
         nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
         if nonstored_blocks_up_to > self.pseudo_ramtop():
@@ -601,29 +596,7 @@ class OzmooExecutable(Executable):
         vmap_offset = self.labels['vmap_z_h'] - self.labels['program_start']
         vmap_max_size = self.labels['vmap_max_size']
         assert self._binary[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
-        blocks = []
-        # SFTODO: We will do this work for every single executable; it's not in practice a
-        # big deal but it's a bit inelegant.
-        if False: # SFTODO if cmd_args.preload_config is not None:
-            with open(cmd_args.preload_config, "rb") as f:
-                preload_config = bytearray(f.read())
-            for i in range(len(preload_config) // 2):
-                # We don't care about the timestamp on the entries in preload_config; they are in
-                # order of insertion and that's what we're really interested in. (This isn't
-                # the *same* as the order based on timestamp; a block loaded early may of course
-                # be used again later and therefore have a newer timestamp than another block
-                # loaded after it but never used again.) Note that just as when we don't use
-                # preload_config, the initial vmap entries will be assigned timestamps based
-                # on their order; the timestamp in preload_config are ignored.
-                addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
-                if addr & 1 == 1:
-                    # This is an odd address so it's invalid; we expect to see one of these
-                    # as the first block and we just ignore it.
-                    assert i == 0
-                    continue
-                block_index = (addr - nonstored_blocks) // vmem_block_pagecount
-                assert block_index >= 0
-                blocks.append(block_index)
+        blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []
         for i in range(vmap_max_size):
             if i not in blocks:
                 blocks.append(i)
@@ -633,7 +606,7 @@ class OzmooExecutable(Executable):
         invalid_address = 0x1
         for i, block_index in enumerate(blocks):
             timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
-            if False: # SFTODO cmd_args.preload_opt:
+            if cmd_args.preload_opt:
                 # Most of the vmap will be ignored, but we have to have at least one entry
                 # and by making it an invalid address we don't need to worry about loading
                 # any "suggested" blocks.
@@ -870,14 +843,12 @@ def crunch_line(line, crunched_symbols):
         crunched_symbol = crunched_symbols.get(symbol, None)
         if crunched_symbol is None:
             i = len(crunched_symbols)
-            print("QA", i)
             crunched_symbol = ""
             while True:
                 crunched_symbol += chr(ord("a") + (i % 26))
                 i //= 26
                 if i == 0:
                     break
-            print("Q", crunched_symbol)
             crunched_symbols[symbol] = crunched_symbol
         return crunched_symbol
     symbol = ""
@@ -997,6 +968,8 @@ def parse_args():
     parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
     parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
     parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
+    parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
+    parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1016,6 +989,8 @@ def parse_args():
         die("--only-40-column and --only-80-column are incompatible")
     if args.force_65c02 and args.force_6502:
         die("--force-65c02 and --force-6502 are incompatible")
+    if args.preload_opt and args.preload_config:
+        die("--preload-opt and --preload-config are incompatible")
 
     if args.output_file is not None:
         _, user_extension = os.path.splitext(args.output_file)
@@ -1036,10 +1011,35 @@ def parse_args():
     if args.title is None:
         args.title = title_from_filename(args.input_file)
 
-    if args.benchmark:
+    if args.benchmark or args.preload_opt:
         args.debug = True
 
     return args
+
+
+def make_preload_blocks_list(config_filename):
+    with open(config_filename, "rb") as f:
+        preload_config = bytearray(f.read())
+    blocks = []
+    for i in range(len(preload_config) // 2):
+        # We don't care about the timestamp on the entries in preload_config;
+        # they are in order of insertion and that's what we're really interested
+        # in. (This isn't the *same* as the order based on timestamp; a block
+        # loaded early may of course be used again later and therefore have a
+        # newer timestamp than another block loaded after it but never used
+        # again.) Note that just as when we don't use preload_config, the
+        # initial vmap entries will be assigned timestamps based on their order;
+        # the timestamp in preload_config are ignored.
+        addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
+        if addr & 1 == 1:
+            # This is an odd address so it's invalid; we expect to see one of
+            # these as the first block and we just ignore it.
+            assert i == 0
+            continue
+        block_index = (addr - nonstored_blocks) // vmem_block_pagecount
+        assert block_index >= 0
+        blocks.append(block_index)
+    return blocks
 
 def make_disc_image():
     global ozmoo_base_args
@@ -1064,8 +1064,6 @@ def make_disc_image():
     if cmd_args.debug:
         ozmoo_base_args += ["-DDEBUG=1"]
 
-    global z_machine_version
-    z_machine_version = game_data[header_version]
     # SFTODO: This is wrong/incomplete - fairly sure we support 4 and 7 too
     if z_machine_version == 3:
         ozmoo_base_args += ["-DZ3=1"]
@@ -1231,11 +1229,20 @@ common_labels = {}
 
 with open(cmd_args.input_file, "rb") as f:
     game_data = bytearray(f.read())
+z_machine_version = game_data[header_version]
+if z_machine_version == 3:
+    vmem_highbyte_mask = 0x01
+elif z_machine_version == 8:
+    vmem_highbyte_mask = 0x07
+else:
+    vmem_highbyte_mask = 0x03
 game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = get_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
+if cmd_args.preload_config:
+    cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
 
 boot_file = make_boot()
 findswr_executable = make_findswr_executable()
