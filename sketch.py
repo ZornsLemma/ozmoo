@@ -1,3 +1,5 @@
+# SFTODO: PEP-8 SAYS (CHECK) TWO BLANK LINES BETWEEN TOP LEVEL FUNCTIONS, I ONLY HAVE ONE IN THE FOLLOWING
+
 from __future__ import print_function
 import argparse
 import base64
@@ -287,7 +289,7 @@ class LoaderScreen(Exception):
         loader_symbols["TITLE"] = cmd_args.title[:40]
         if cmd_args.subtitle is not None:
             loader_symbols["SUBTITLE"] = cmd_args.subtitle[:40]
-        loader_symbols["OZMOO"] = best_effort_version
+        loader_symbols["OZMOO"] = ("Powered by " + best_effort_version)[:40]
 
 
 class GameWontFit(Exception):
@@ -861,6 +863,37 @@ def substitute(s, d, f):
             i += 1
     return result
 
+def crunch_line(line, crunched_symbols):
+    def crunch_symbol(symbol):
+        if symbol == "":
+            return ""
+        crunched_symbol = crunched_symbols.get(symbol, None)
+        if crunched_symbol is None:
+            i = len(crunched_symbols)
+            print("QA", i)
+            crunched_symbol = ""
+            while True:
+                crunched_symbol += chr(ord("a") + (i % 26))
+                i //= 26
+                if i == 0:
+                    break
+            print("Q", crunched_symbol)
+            crunched_symbols[symbol] = crunched_symbol
+        return crunched_symbol
+    symbol = ""
+    result = ""
+    in_quote = False
+    for c in line:
+        if c == '"':
+            in_quote = not in_quote
+        if not in_quote and ((c >= "a" and c <="z") or c == "_"):
+            symbol += c
+        else:
+            result += crunch_symbol(symbol) + c
+            symbol = ""
+    result += crunch_symbol(symbol)
+    return result
+
 # SFTODO: Rename make_untokenised_loader()?
 def make_loader(symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
@@ -871,6 +904,7 @@ def make_loader(symbols):
     with open("templates/loader-sketch.bas", "r") as f:
         if_results = []
         loader = []
+        crunched_symbols = {}
         for line in f.readlines():
             line = line[:-1].strip()
             i = line.find(":REM ")
@@ -898,8 +932,10 @@ def make_loader(symbols):
                 else:
                     assert False
             elif all(if_results):
-                # SFTODO: NEED TO DO CRUNCHING UNLESS DISABLED BY CMDLINE ARG
-                loader.append(substitute(line, symbols, basic_string))
+                line = substitute(line, symbols, basic_string)
+                if not cmd_args.no_loader_crunch:
+                    line = crunch_line(line, crunched_symbols)
+                loader.append(line)
     return "\n".join(loader)
 
 def make_tokenised_loader(loader_symbols):
@@ -970,6 +1006,7 @@ def parse_args():
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
+    group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
 
     args = parser.parse_args()
 
