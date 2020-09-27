@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 
+
 def die(s):
     show_deferred_output()
     print(s, file=sys.stderr)
@@ -77,9 +78,14 @@ def bytes_to_blocks(x):
     return divide_round_up(x, bytes_per_block)
 
 
+# SFTODO: Rename this function e.g. pad_to_size()?
 def pad(data, size):
     assert len(data) <= size
     return data + bytearray(size - len(data))
+
+
+def pad_to_multiple_of(data, block_size)
+    return pad(data, block_size * divide_round_up(len(data), block_size))
 
 
 def disc_size(contents):
@@ -341,11 +347,7 @@ class DfsImage(object):
         if len(self.data) + DfsImage.bytes_per_sector * divide_round_up(len(b), DfsImage.bytes_per_sector) > DfsImage.bytes_per_surface:
             raise DiscFull()
         self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(b), self.first_free_sector())
-        self.data += b
-        # SFTODO: I will want the following in ADFS too, so probably put this into a helper function
-        odd_bytes = len(self.data) % DfsImage.bytes_per_sector
-        if odd_bytes != 0:
-            self.data += bytearray(DfsImage.bytes_per_sector - odd_bytes)
+        self.data += pad_to_multiple_of(b, DfsImage.bytes_per_sector)
 
     # SFTODO: Bit inconsistent with "addr" vs "address" - maybe switch globally to "addr"??
     def _add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
@@ -398,6 +400,66 @@ class DfsImage(object):
                     break
                 f.write(pad(data0[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
                 f.write(pad(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
+
+
+# SFTODO: Most/all of the members of DfsImage and AdfsImage should probably have _ prefix to indicate they're nominally private
+class AdfsImage(object):
+    bytes_per_sector = 256
+    sectors_per_track = 16
+    bytes_per_track = sectors_per_track * bytes_per_sector
+    tracks = 80
+    bytes_per_surface = tracks * bytes_per_track
+
+    UNLOCKED = 0
+    LOCKED = 1
+    SUBDIRECTORY = 2
+
+    def __init__(self, contents, boot_option = 3): # 3 = *EXEC
+        self.catalogue = []
+        self.data = bytearray(bytes_per_sector * 2)
+        self.total_sectors = tracks * sectors_per_track
+        if cmd_args.double_sided:
+            self.total_sectors *= 2
+        self.data[0xfc] = self.total_sectors & 0xff
+        self.data[0xfd] = (self.total_sectors >> 8) & 0xff
+        self.data[0x1fd] = boot_option
+        self.data += self._make_directory("$")
+        self.md5 = hashlib.md5()
+        # SFTODO: DISC TITLE
+        for f in contents:
+            self.add_file(f)
+
+    def add_file(self, f):
+        b = f.binary()
+        start_sector = len(self.data) // AdfsImage.bytes_per_sector
+        self.data += pad_to_multiple_of(b, AdfsImage.bytes_per_sector)
+        if len(self.data) > self.total_sectors * AdfsImage.bytes_per_sector:
+            raise DiscFull()
+        self.catalogue.append([f.leafname, f.load_address, f.exec_address, len(b), start_sector, self.LOCKED])
+        self.md5.update(b)
+
+    def _finalise(self, f):
+        SFTODO
+
+    def _get_write_data(self):
+        self._finalise()
+        data = image.data
+        if cmd_args.pad:
+            data = pad(data, self.total_sectors * AdfsImage.bytes_per_sector)
+        return data
+
+    def write_adf(self, filename):
+        with open(filename, "wb") as f:
+            f.write(self._get_write_data())
+
+    def write_adl(self, filename):
+        data = self._get_write_data()
+        max_track = divide_round_up(len(data), bytes_per_track)
+        with open(filename, "wb") as f:
+            for track in range(max_track):
+                for surface in range(2):
+                    i = (surface*AdfsImage.tracks + track) * AdfsImage.bytes_per_track
+                    f.write(pad(data[i:i+AdfsImage.bytes_per_track], AdfsImage.bytes_per_track))
 
 
 class File(object):
@@ -1196,7 +1258,14 @@ def make_disc_image():
             disc2.add_file(File("DATA", 0, 0, data[1]))
             DfsImage.write_dsd(disc, disc2, output_file)
     else:
-        assert False # SFTODO
+        disc = AdfsImage(disc_contents)
+        # There are no alignment requirements for ADFS so we don't need a pad file..
+        disc.add_file(File("DATA", 0, 0, game_data))
+        # SFTODO: disc.add_directory("SAVES")
+        if cmd_args.double_sided:
+            disc.write_adl(output_file)
+        else:
+            disc.write_adf(output_file)
 
 
 defer_output = False
