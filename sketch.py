@@ -1,5 +1,3 @@
-# SFTODO: PEP-8 SAYS (CHECK) TWO BLANK LINES BETWEEN TOP LEVEL FUNCTIONS, I ONLY HAVE ONE IN THE FOLLOWING
-
 from __future__ import print_function
 import argparse
 import base64
