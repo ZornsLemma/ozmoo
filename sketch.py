@@ -14,6 +14,7 @@ def die(s):
     print(s, file=sys.stderr)
     sys.exit(1)
 
+
 def info(s):
     if cmd_args.verbose_level >= 1:
         if defer_output:
@@ -21,11 +22,13 @@ def info(s):
         else:
             print(s)
 
+
 def warn(s):
     if defer_output:
         deferred_output.append((True, s))
     else:
         print("Warning: %s" % s, file=sys.stderr)
+
 
 def show_deferred_output():
     global defer_output
@@ -38,9 +41,11 @@ def show_deferred_output():
             info(s)
     deferred_output = []
 
+
 def ourhex(i):
     assert i >= 0
     return hex(i)[2:]
+
 
 def basic_int(i):
     as_decimal = str(i)
@@ -50,6 +55,7 @@ def basic_int(i):
         as_hex = "&" + ourhex(i).upper()
     return as_decimal if len(as_decimal) < len(as_hex) else as_hex
 
+
 def basic_string(value):
     if isinstance(value, bool):
         return "TRUE" if value else "FALSE"
@@ -57,8 +63,10 @@ def basic_string(value):
         return basic_int(value)
     return value
 
+
 def get_word(data, i):
     return data[i]*256 + data[i+1]
+
 
 def divide_round_up(x, y):
     if x % y == 0:
@@ -66,21 +74,27 @@ def divide_round_up(x, y):
     else:
         return (x // y) + 1
 
+
 def bytes_to_blocks(x):
     return divide_round_up(x, bytes_per_block)
+
 
 def pad(data, size):
     assert len(data) <= size
     return data + bytearray(size - len(data))
 
+
 def disc_size(contents):
     return sum(bytes_to_blocks(len(f.binary())) for f in contents)
+
 
 def same_double_page_alignment(lhs, rhs):
     return lhs % 512 == rhs % 512
 
+
 def double_sided_dfs():
     return cmd_args.double_sided and not cmd_args.adfs
+
 
 def test_executable(name):
     try:
@@ -88,6 +102,7 @@ def test_executable(name):
         child.wait()
     except:
         die("Can't execute '" + name + "'; is it on your PATH?")
+
 
 def run_and_check(args, output_filter=None):
     if output_filter is None:
@@ -103,6 +118,7 @@ def run_and_check(args, output_filter=None):
         print("".join(x.decode(encoding="ascii") for x in child_output))
     if child.returncode != 0:
         die("%s failed" % args[0])
+
 
 # Generate a relatively clear error message if we can't find one of our tools,
 # rather than failing on a complex build command.
@@ -802,13 +818,16 @@ def make_tube_executables():
         return [tube_vmem]
     return [make_cache_executable(), tube_vmem]
 
+
 def make_findswr_executable():
     return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
+
 
 def make_cache_executable():
     # In practice the cache executable will only be run in mode 7, but we'll
     # position it to load just below the mode 0 screen RAM.
     return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args)
+
 
 def make_boot():
     boot = [
@@ -818,6 +837,7 @@ def make_boot():
         'CHAIN "LOADER"',
     ]
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
+
 
 def substitute(s, d, f):
     c = re.split("(\$\{|\})", s)
@@ -835,6 +855,7 @@ def substitute(s, d, f):
             result += c[i]
             i += 1
     return result
+
 
 def crunch_line(line, crunched_symbols):
     def crunch_symbol(symbol):
@@ -864,6 +885,7 @@ def crunch_line(line, crunched_symbols):
             symbol = ""
     result += crunch_symbol(symbol)
     return result
+
 
 # SFTODO: Rename make_untokenised_loader()?
 def make_loader(symbols):
@@ -908,6 +930,7 @@ def make_loader(symbols):
                     line = crunch_line(line, crunched_symbols)
                 loader.append(line)
     return "\n".join(loader)
+
 
 def make_tokenised_loader(loader_symbols):
     loader_bas = os.path.join("temp", "loader.bas")
@@ -1040,6 +1063,7 @@ def make_preload_blocks_list(config_filename):
         assert block_index >= 0
         blocks.append(block_index)
     return blocks
+
 
 def make_disc_image():
     global ozmoo_base_args
