@@ -878,9 +878,7 @@ def make_loader(symbols):
     symbols.update({k: basic_string(v) for k, v in common_labels.items()})
     symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
     with open("templates/loader-sketch.bas", "r") as f:
-        # SFTODO: For now I won't support nested !ifdef; if I need it I can
-        # implement it.
-        if_condition = None
+        if_results = []
         loader = []
         for line in f.readlines():
             line = line[:-1].strip()
@@ -889,27 +887,26 @@ def make_loader(symbols):
                 i = line.find("REM ")
             if i != -1:
                 line = line[:i]
-            if line in ("", ":"):
+            if line in ("", ":", "REM"):
                 pass
             elif line.startswith("!ifdef") or line.startswith("!ifndef"):
-                assert if_condition is None
                 c = line.split(" ")
                 assert len(c) == 3
                 assert c[2] == "{"
-                if_condition = c[1] in symbols
+                if_results.append(c[1] in symbols)
                 if line.startswith("!ifndef"):
-                    if_condition = not if_condition
+                    if_results[-1] = not if_results[-1]
             elif line.startswith("}"):
-                assert if_condition is not None
+                assert len(if_results) > 0
                 c = line.split(" ")
                 if len(c) == 1:
-                    if_condition = None
+                    if_results.pop(-1)
                 elif len(c) == 3:
                     assert c[1] == "else" and c[2] == "{"
-                    if_condition = not if_condition
+                    if_results[-1] = not if_results[-1]
                 else:
                     assert False
-            elif if_condition is None or if_condition:
+            elif all(if_results):
                 # SFTODO: NEED TO DO CRUNCHING UNLESS DISABLED BY CMDLINE ARG
                 loader.append(substitute(line, symbols, basic_string))
     return "\n".join(loader)

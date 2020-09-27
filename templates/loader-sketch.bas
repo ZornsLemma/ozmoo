@@ -182,7 +182,7 @@ PROCunsupported_machine("a BBC B")
 }
 ENDPROC
 
-REM SFTODO WE NEED NESTED FOR THIS ifndef AUTO_START {
+!ifndef AUTO_START {
 DEF PROCmode_menu
 DIM mode_x(8),mode_y(8)
 REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
@@ -260,8 +260,7 @@ IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
 PRINT SPC(2);menu$(x,y);SPC(2);
 COLOUR 128:COLOUR 7
 ENDPROC
-
-REM SFTODO ENDIF
+}
 
 REM This is not a completely general pretty-print routine, e.g. it doesn't make
 REM any attempt to handle words which are longer than the screen width. It's
