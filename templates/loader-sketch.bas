@@ -293,7 +293,7 @@ swr_banks=FNpeek(${ram_bank_count}):swr$=""
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
 IF swr_banks=0 THEN ENDPROC
 swr$=STR$(swr_banks*16)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
-swr$=swr$+" &":FOR i%=0 TO swr_banks-1:swr$=swr$+STR$~FNpeek(${ram_bank_list}+i%):NEXT:swr$=swr$+")"
+swr$=swr$+" &":FOR i=0 TO swr_banks-1:swr$=swr$+STR$~FNpeek(${ram_bank_list}+i):NEXT:swr$=swr$+")"
 ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
@@ -329,28 +329,27 @@ DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
-DEF FNpeek(addr%):!block%=&FFFF0000 OR addr%:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
+DEF FNpeek(addr):!block%=&FFFF0000 OR addr:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
 
 DEF FNfs:A%=0:Y%=0:=USR&FFDA AND &FF
 
 REM SFTODO: FNpath AND FNstrip CAN BE OMITTED IF THIS IS A DFS BUILD (THOUGH ULTIMATELY I REALLY MEAN "OSWORD 7F", AS IT MAY BE I WANT TO BUILD DFS-WITH-OSGBPB FOR INSTALL ON NFS INSTEAD OF HAVING TO VIA ADFS)
 DEF FNpath
-LOCAL path$,A%,X%,Y%,name%,name$,drive$:REM SFTODO No LOCAL in this code any more?
 DIM data% 256
 path$=""
 REPEAT
 block%!1=data%
 A%=6:X%=block%:Y%=block% DIV 256:CALL &FFD1
-name%=data%+1+?data%
-name%?(1+?name%)=13
-name$=FNstrip($(name%+1))
+name=data%+1+?data%
+name?(1+?name)=13
+name$=FNstrip($(name+1))
 path$=name$+"."+path$
 REM On Econet, you can't do *DIR ^ when in the root.
 REM SFTODO: You can't always do *DIR ^ on Econet; can/should I try to work around this?
 IF name$<>"$" AND name$<>"&" THEN *DIR ^
 UNTIL name$="$" OR name$="&"
 path$=LEFT$(path$,LEN(path$)-1)
-?name%=13
+?name=13
 drive$=FNstrip($(data%+1))
 IF drive$<>"" THEN path$=":"+drive$+"."+path$
 PROCoscli("DIR "+path$)
