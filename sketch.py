@@ -214,11 +214,10 @@ class LoaderScreen(Exception):
                 self.footer[i] = line.replace(b"${SPACE}", b"").rstrip()
         assert self.footer_space_line is not None
 
-        # SFTODO: Use nicer defaults, but these will make it obvious if we're failing to parse correctly for now
-        self.normal_fg = 132
-        self.header_fg = 132
-        self.highlight_fg = 132
-        self.highlight_bg = 131
+        self.normal_fg = 135
+        self.header_fg = 131
+        self.highlight_fg = 131
+        self.highlight_bg = 129
         for line in sections[1]:
             def colour_code(c):
                 if c == 32:
@@ -312,7 +311,6 @@ class DfsImage(object):
         self.data[0x107] = sectors & 0xff
         self.data[0x106] = ((sectors >> 8) & 0x3) | (boot_option << 4)
         # SFTODO: DISC TITLE
-        # SFTODO: *EXEC !BOOT
         for f in contents:
             self.add_file(f)
 
@@ -323,12 +321,12 @@ class DfsImage(object):
         return len(self.data) // DfsImage.bytes_per_sector
 
     def add_file(self, f):
-        # SFTODO: Having "self.data" and "data" is a bit crappy naming
-        data = f.binary()
-        if len(self.data) + DfsImage.bytes_per_sector * divide_round_up(len(data), DfsImage.bytes_per_sector) > DfsImage.bytes_per_surface:
+        b = f.binary()
+        if len(self.data) + DfsImage.bytes_per_sector * divide_round_up(len(b), DfsImage.bytes_per_sector) > DfsImage.bytes_per_surface:
             raise DiscFull()
-        self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(data), self.first_free_sector())
-        self.data += data
+        self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(b), self.first_free_sector())
+        self.data += b
+        # SFTODO: I will want the following in ADFS too, so probably put this into a helper function
         odd_bytes = len(self.data) % DfsImage.bytes_per_sector
         if odd_bytes != 0:
             self.data += bytearray(DfsImage.bytes_per_sector - odd_bytes)
@@ -370,7 +368,6 @@ class DfsImage(object):
         data = image.data
         if cmd_args.pad:
             data = pad(data, DfsImage.bytes_per_surface)
-        # SFTODO: OPTIONAL PADDING
         with open(filename, "wb") as f:
             f.write(data)
 
@@ -400,12 +397,10 @@ class File(object):
         return self.contents
 
 
-# SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not.
+# SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not. I should maybe switch to making the args a set in the first place.
 class Executable(object):
     cache = {}
 
-    # SFTODO: Not here specifically - I have args as a global and also args as a parameter in
-    # many functions, this seems crappy. Rename one or both of these?
     def __init__(self, asm_filename, leafname, version_maker, start_address, args):
         self.asm_filename = asm_filename
         self.leafname = leafname
@@ -627,16 +622,10 @@ class OzmooExecutable(Executable):
                 block_index = (addr - nonstored_blocks) // vmem_block_pagecount
                 assert block_index >= 0
                 blocks.append(block_index)
-        # SFTODONOW: SHOULDN'T THIS RANGE START AT nonstored_blocks NOT 0??? IT SHOULD STILL HAVE vmap_max_size *ENTRIES*. - NO, THINK ABOUT IT FRESH BUT THIS IS PROBABLY CORRECT - WE ADD NONSTORED_BLOCKS WHEN CALCULATING ADDR, AND WE SUBTRACT IT WHEN EXTRACING BLOCK INDEX FROM ADDR ABOVE
         for i in range(vmap_max_size):
             if i not in blocks:
                 blocks.append(i)
         blocks = blocks[:vmap_max_size]
-        #print("Q", blocks) SFTODO TEMP
-        #import random # SFTODO TEMP
-        #random.seed(42) # SFTODO TEMP
-        #random.shuffle(blocks) # SFTODO TEMP
-        #print("Q", blocks) # SFTODO TEMP
         # vmap entries should normally address a 512-byte aligned block; invalid_address
         # is odd so it won't ever match when the virtual memory code is searching the map.
         invalid_address = 0x1
@@ -648,8 +637,7 @@ class OzmooExecutable(Executable):
                 # any "suggested" blocks.
                 addr = invalid_address
             else:
-                # SFTODO: Simplify this to "nonstored_blocks + block_index * vmem_block_pagecount"?
-                addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
+                addr = nonstored_blocks + block_index * vmem_block_pagecount
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
                 # such a block.
@@ -784,7 +772,6 @@ def make_shr_swr_executable():
     return big_e
 
 
-# SFTODO: We aren't doing an info() about memory model for this executable
 def make_bbc_swr_executable():
     # Because of the screen hole needed to work around not having shadow RAM,
     # this executable is not relocatable. (It would be possible to use the same
@@ -800,8 +787,12 @@ def make_bbc_swr_executable():
     args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
     small_e = make_ozmoo_executable(leafname, bbc_swr_start_address, args + small_dynmem_args)
     if small_e is not None:
+        info("BBC B sideways RAM executable uses small dynamic memory model")
         return small_e
-    return make_ozmoo_executable(leafname, bbc_swr_start_address, args)
+    big_e = make_ozmoo_executable(leafname, bbc_swr_start_address, args)
+    if big_e is not None:
+        info("BBC B sideways RAM executable uses big dynamic memory model")
+    return big_e
 
 
 def make_electron_swr_executable():
@@ -829,9 +820,8 @@ def make_tube_executables():
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
     tube_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
-    # Don't call info() until we've successfully built an excecutable; the game
-    # may be too big.
-    info("Game will be run using virtual memory on second processor")
+    if tube_vmem is not None:
+        info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
         return [tube_vmem]
     return [make_cache_executable(), tube_vmem]
@@ -1081,7 +1071,6 @@ def make_disc_image():
     if cmd_args.only_80_column:
         loader_symbols["ONLY_80_COLUMN"] = 1
     if not cmd_args.only_40_column and not cmd_args.only_80_column:
-        # SFTODO: This is a bit of a workaround for not having nested !ifdef etc in make_loader()
         loader_symbols["NO_ONLY_COLUMN"] = 1
     if cmd_args.auto_start:
         loader_symbols["AUTO_START"] = 1
