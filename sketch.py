@@ -675,6 +675,7 @@ class OzmooExecutable(Executable):
 def make_ozmoo_executable(leafname, start_address, args):
     try:
         return OzmooExecutable(leafname, start_address, args)
+    # SFTODO: Often this doesn't matter, because this is a trial build of some kind and we'll do something different. But it would be nice if I could somehow record "significant" GameWontFit events and show the text. This kind of ties in with how I allow the user to specify what builds they *want*; that isn't clear yet, so how best to handle showing why we couldn't give some builds they wanted isn't either.
     except GameWontFit:
         return None
 
