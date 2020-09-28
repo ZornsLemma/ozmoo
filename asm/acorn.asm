@@ -1438,7 +1438,9 @@ printstring_os
 ; Calculate a CRC over A bytes of data at YX (A=0 => 256 bytes), returning it in
 ; YX.
 calculate_crc
-.crc = zp_temp ; 2 bytes
+; This must not use the same location as .result in acorn-disk.asm as otherwise
+; when .get_game_disc_back calls calculate_crc it will be overwritten.
+.crc = zp_temp + 2 ; 2 bytes 
     sta .cpy_imm + 1
     stx .eor_abs + 1
     sty .eor_abs + 2
