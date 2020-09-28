@@ -268,8 +268,13 @@ class LoaderScreen(Exception):
     @staticmethod
     def _to_nearly_ascii(line):
         # Teletext data is 7-bit, but the way the Acorn OS handles mode 7 means
-        # we must use top-bit-set codes for codes 0-31.
-        return bytearray([x-128 if x>=128+32 else x for x in line])
+        # we must use top-bit-set codes for codes 0-31. (We could use
+        # top-bit-set codes for everything, but we generate more compact BASIC
+        # code if we prefer 7-bit characters; Python 3 makes it painful to embed
+        # 8-bit characters directly in our BASIC code and it is slighty iffy
+        # anyway.)
+        line = bytearray([x & 0x7f for x in line])
+        return bytearray([x | 0x80 if x < 32 else x for x in line])
 
     @staticmethod
     def _data_to_basic(data):
@@ -496,10 +501,9 @@ class AdfsImage(object):
 
     def _get_write_data(self):
         self._finalise()
-        data = self.data
         if cmd_args.pad:
-            data = pad_to(data, self.total_sectors * AdfsImage.bytes_per_sector)
-        return data
+            return pad_to(self.data, self.total_sectors * AdfsImage.bytes_per_sector)
+        return self.data
 
     @staticmethod
     def _checksum(data):
@@ -517,7 +521,7 @@ class AdfsImage(object):
 
     def write_adl(self, filename):
         data = self._get_write_data()
-        max_track = divide_round_up(len(data), AdfsImage.bytes_per_track)
+        max_track = min(divide_round_up(len(data), AdfsImage.bytes_per_track), AdfsImage.tracks)
         with open(filename, "wb") as f:
             for track in range(max_track):
                 for surface in range(2):
@@ -1010,7 +1014,6 @@ def crunch_line(line, crunched_symbols):
     return result
 
 
-# SFTODO: Rename make_untokenised_loader()?
 def make_text_loader(symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
