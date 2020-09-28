@@ -171,7 +171,6 @@ class LoaderScreen(Exception):
     def __init__(self):
         loader_screen = LoaderScreen._get_title_page()
         # SFTODONOW: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
-        # SFTODONOW: We need to check the middle section is large enough for the maximum possible requirement
         original_lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
         assert len(original_lines) == 25
         sections = [[], [], []]
@@ -202,6 +201,7 @@ class LoaderScreen(Exception):
         # Move the "LOADER OUTPUT ENDS HERE" line from the start of section 2 to
         # the end of section 1.
         sections[1].append(sections[2].pop(0))
+        assert len(sections[1]) >= 13
         self.header = sections[0]
         self.footer = sections[2]
 
