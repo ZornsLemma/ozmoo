@@ -153,37 +153,6 @@ def prechecks():
     run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
 
 
-# SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
-def decode_edittf_url(url):
-    i = url.index(b"#")
-    s = url[i+1:]
-    i = s.index(b":")
-    s = s[i+1:]
-    s += b"===="
-    packed_data = bytearray(base64.urlsafe_b64decode(s))
-    unpacked_data = bytearray()
-    buffer = 0
-    buffer_bits = 0
-    while len(packed_data) > 0 or buffer_bits > 0:
-        if buffer_bits < 7:
-            if len(packed_data) > 0:
-                packed_byte = packed_data.pop(0)
-            else:
-                packed_byte = 0
-            buffer = (buffer << 8) | packed_byte
-            buffer_bits += 8
-        byte = buffer >> (buffer_bits - 7)
-        if byte < 32:
-            byte += 128
-        unpacked_data.append(byte)
-        buffer &= ~(0b1111111 << (buffer_bits - 7))
-        buffer_bits -= 7
-    # SFTODO: At the moment if the edit.tf page contains double-height text the
-    # user must make sure to duplicate it on both lines. We could potentially adjust
-    # this automatically.
-    return unpacked_data
-
-
 # common_labels contains the value of every label which had the same value in
 # every build it existed in. The idea here is that we can use it to allow the
 # loader access to labels without needing to duplicate values or trying to parse
@@ -200,8 +169,7 @@ def update_common_labels(labels):
 
 class LoaderScreen(Exception):
     def __init__(self):
-        # SFTODONOW: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
-        loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
+        loader_screen = LoaderScreen._get_title_page()
         # SFTODONOW: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
         # SFTODONOW: We need to check the middle section is large enough for the maximum possible requirement
         original_lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
@@ -210,15 +178,15 @@ class LoaderScreen(Exception):
         section = 0
         self.space_line = None
         substitutions = {
-            "TITLE": cmd_args.title,
-            "SUBTITLE": str(cmd_args.subtitle),
-            "OZMOO": best_effort_version,
-            "SPACE": "${SPACE}", # preserve ${SPACE} when substituting
+            b"TITLE": cmd_args.title,
+            b"SUBTITLE": str(cmd_args.subtitle),
+            b"OZMOO": best_effort_version,
+            b"SPACE": "${SPACE}", # preserve ${SPACE} when substituting
         }
         for i, line in enumerate(original_lines):
             line = LoaderScreen._to_nearly_ascii(line)
             is_unwanted_subtitle = b"${SUBTITLE}" in line and cmd_args.subtitle is None
-            line = substitute(line, substitutions, lambda x: x)[:40]
+            line = substitute(line, substitutions, lambda x: x.encode("ascii"))[:40]
             line = line.rstrip()
             if b"LOADER OUTPUT STARTS HERE" in line:
                 section = 1
@@ -266,6 +234,50 @@ class LoaderScreen(Exception):
                 self.highlight_bg = colour_code(line[0])
 
     @staticmethod
+    def _get_title_page():
+        if cmd_args.custom_title_page is None:
+            cmd_args.custom_title_page = "https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA"
+        if cmd_args.custom_title_page.startswith("http"):
+            return LoaderScreen._decode_edittf_url(cmd_args.custom_title_page)
+        with open(cmd_args.custom_title_page, "rb") as f:
+            data = f.read()
+        if data.startswith(b"http"):
+            with open(cmd_args.custom_title_page, "r") as f:
+                return LoaderScreen._decode_edittf_url(f.readline())
+        return bytearray(data[0:40*25])
+
+    # SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
+    @staticmethod
+    def _decode_edittf_url(url):
+        i = url.index("#")
+        s = url[i+1:]
+        i = s.index(":")
+        s = s[i+1:]
+        s += "===="
+        packed_data = bytearray(base64.urlsafe_b64decode(s))
+        unpacked_data = bytearray()
+        buffer = 0
+        buffer_bits = 0
+        while len(packed_data) > 0 or buffer_bits > 0:
+            if buffer_bits < 7:
+                if len(packed_data) > 0:
+                    packed_byte = packed_data.pop(0)
+                else:
+                    packed_byte = 0
+                buffer = (buffer << 8) | packed_byte
+                buffer_bits += 8
+            byte = buffer >> (buffer_bits - 7)
+            if byte < 32:
+                byte += 128
+            unpacked_data.append(byte)
+            buffer &= ~(0b1111111 << (buffer_bits - 7))
+            buffer_bits -= 7
+        # SFTODO: At the moment if the edit.tf page contains double-height text the
+        # user must make sure to duplicate it on both lines. We could potentially adjust
+        # this automatically.
+        return unpacked_data
+
+    @staticmethod
     def _to_nearly_ascii(line):
         # Teletext data is 7-bit, but the way the Acorn OS handles mode 7 means
         # we must use top-bit-set codes for codes 0-31. (We could use
@@ -309,15 +321,15 @@ class LoaderScreen(Exception):
 
     def add_loader_symbols(self, loader_symbols):
         # Symbols for the BBC loader screen
-        loader_symbols["NORMAL_FG"] = self.normal_fg
-        loader_symbols["HEADER_FG"] = self.header_fg
-        loader_symbols["HIGHLIGHT_FG"] = self.highlight_fg
-        loader_symbols["HIGHLIGHT_BG"] = self.highlight_bg
+        loader_symbols["NORMAL_FG"] = basic_int(self.normal_fg)
+        loader_symbols["HEADER_FG"] = basic_int(self.header_fg)
+        loader_symbols["HIGHLIGHT_FG"] = basic_int(self.highlight_fg)
+        loader_symbols["HIGHLIGHT_BG"] = basic_int(self.highlight_bg)
         loader_symbols["HEADER"] = LoaderScreen._data_to_basic(self.header)
         loader_symbols["FOOTER"] = LoaderScreen._data_to_basic(self.footer)
-        loader_symbols["FOOTER_Y"] = 25 - len(self.footer)
-        loader_symbols["MIDDLE_START_Y"] = len(self.header)
-        loader_symbols["SPACE_Y"] = loader_symbols["FOOTER_Y"] + self.footer_space_line
+        loader_symbols["FOOTER_Y"] = basic_int(25 - len(self.footer))
+        loader_symbols["MIDDLE_START_Y"] = basic_int(len(self.header))
+        loader_symbols["SPACE_Y"] = basic_int((25 - len(self.footer)) + self.footer_space_line)
         # Symbols for the Electron loader screen
         loader_symbols["TITLE"] = cmd_args.title[:40]
         if cmd_args.subtitle is not None:
@@ -966,17 +978,21 @@ def make_boot():
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 
 
+def substitute_text(s, d, f):
+    return substitute(s.encode("ascii"), {k.encode("ascii"): v.encode("ascii") for k, v in d.items()}, lambda x: f(x.decode("ascii")).encode("ascii")).decode("ascii")
+
+
 def substitute(s, d, f):
-    c = re.split("(\$\{|\})", s)
-    result = ""
+    c = re.split(b"(\$\{|\})", s)
+    result = b""
     i = 0
     while i < len(c):
-        if c[i] == "${":
-            k = str(c[i+1])
+        if c[i] == b"${":
+            k = bytes(c[i+1])
             if k not in d:
-                die("Unknown substitution: " + k)
+                die("Unknown substitution: " + k.decode("ascii"))
             result += f(d[k])
-            assert c[i+2] == "}"
+            assert c[i+2] == b"}"
             i += 3
         else:
             result += c[i]
@@ -1051,7 +1067,7 @@ def make_text_loader(symbols):
                 else:
                     assert False
             elif all(if_results):
-                line = substitute(line, symbols, basic_string)
+                line = substitute_text(line, symbols, basic_string)
                 if not cmd_args.no_loader_crunch:
                     line = crunch_line(line, crunched_symbols)
                 loader.append(line)
@@ -1113,6 +1129,7 @@ def parse_args():
     parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
     parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
     parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
+    parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
     parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
     parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
     parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
@@ -1245,17 +1262,17 @@ def make_disc_image():
 
     # SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
     loader_symbols = {
-        "default_mode": cmd_args.default_mode,
+        "default_mode": basic_int(cmd_args.default_mode),
     }
     for executable_group in ozmoo_variants:
         for e in executable_group:
             e.add_loader_symbols(loader_symbols)
     if cmd_args.only_40_column:
-        loader_symbols["ONLY_40_COLUMN"] = 1
+        loader_symbols["ONLY_40_COLUMN"] = basic_int(1)
     if cmd_args.only_80_column:
-        loader_symbols["ONLY_80_COLUMN"] = 1
+        loader_symbols["ONLY_80_COLUMN"] = basic_int(1)
     if not cmd_args.only_40_column and not cmd_args.only_80_column:
-        loader_symbols["NO_ONLY_COLUMN"] = 1
+        loader_symbols["NO_ONLY_COLUMN"] = basic_int(1)
     if cmd_args.auto_start:
         loader_symbols["AUTO_START"] = 1
     loader_screen.add_loader_symbols(loader_symbols)
