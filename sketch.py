@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 import base64
 import copy
+import hashlib
 import os
 import re
 import subprocess
@@ -427,7 +428,7 @@ class AdfsImage(object):
             self.total_sectors *= 2
         write_le(self.data, 0xfc, self.total_sectors, 2)
         self.data[0x1fd] = boot_option
-        self.data += self._make_directory("$")
+        self.data += AdfsImage._make_directory("$")
         self.md5 = hashlib.md5()
         # SFTODO: DISC TITLE
         for f in contents:
@@ -442,11 +443,28 @@ class AdfsImage(object):
         self.catalogue.append([f.leafname, f.load_address, f.exec_address, len(b), start_sector, self.LOCKED])
         self.md5.update(b)
 
-    def _finalise(self, f):
+    @staticmethod
+    def _make_directory(name):
+        data = bytearray(5 * AdfsImage.bytes_per_sector)
+        data[0x001:0x005] = b"Hugo"
+        data[0x005] = 0 # number of catalogue entries
+        if name == "$":
+            data[0x4cc] = ord("$")
+            data[0x4d9] = ord("$")
+        else:
+            data[0x4cc:0x4d6] = (name.encode("ascii") + b"\r" + b"\0"*10)[:10]
+            data[0x4d9:0x4ec] = (name.encode("ascii") + b"\r" + b"\0"*19)[:19]
+        data[0x4d6] = 2 # parent is always $ in this code
+        data[0x4fb:0x4ff] = b"Hugo"
+        assert data[0] == data[0x4fa]
+        return data
+
+    def _finalise(self):
         first_free_sector = len(self.data) // 256
         write_le(self.data, 0, first_free_sector, 3)
         free_space_len = self.total_sectors - first_free_sector
-        write_le(selfdata, 0, free_space_len, 3)
+        print("Q", free_space_len)
+        write_le(self.data, 0x100, free_space_len, 3)
         self.data[0x1fe] = 3 * 1 # number of free space map entries
         self.data[0x205] = len(self.catalogue)
         self.catalogue = sorted(self.catalogue, key=lambda x: x[0])
@@ -467,15 +485,25 @@ class AdfsImage(object):
         self.md5.update(self.data[0:0x700])
         # Use a "random" disc ID which won't vary gratuitously from run to run.
         self.data[0x1fb:0x1fd] = self.md5.digest()[0:2]
-        self.data[0xff] = self.checksum(self.data[0:0xff])
-        self.data[0x1ff] = self.checksum(self.data[0x100:0x1ff])
+        self.data[0xff] = AdfsImage._checksum(self.data[0:0xff])
+        self.data[0x1ff] = AdfsImage._checksum(self.data[0x100:0x1ff])
 
     def _get_write_data(self):
         self._finalise()
-        data = image.data
+        data = self.data
         if cmd_args.pad:
             data = pad(data, self.total_sectors * AdfsImage.bytes_per_sector)
         return data
+
+    @staticmethod
+    def _checksum(data):
+        c = 0
+        s = 0
+        for b in data[::-1]:
+            s += b + c
+            c = (s & 0x100) >> 8
+            s = s & 0xff
+        return s
 
     def write_adf(self, filename):
         with open(filename, "wb") as f:
@@ -1168,6 +1196,9 @@ def make_disc_image():
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
         ozmoo_base_args += ["-DACORN_DSD=1"]
+    # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
+    if cmd_args.adfs:
+        ozmoo_base_args += ["-DACORN_ADFS=1"]
     if not cmd_args.no_mode_7_colour:
         ozmoo_base_args += ["-DMODE_7_STATUS=1"]
     if cmd_args.force_65c02:
