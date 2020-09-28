@@ -511,7 +511,7 @@ class AdfsImage(object):
 
     def write_adl(self, filename):
         data = self._get_write_data()
-        max_track = divide_round_up(len(data), bytes_per_track)
+        max_track = divide_round_up(len(data), AdfsImage.bytes_per_track)
         with open(filename, "wb") as f:
             for track in range(max_track):
                 for surface in range(2):
@@ -1208,13 +1208,8 @@ def make_disc_image():
     if cmd_args.debug:
         ozmoo_base_args += ["-DDEBUG=1"]
 
-    # SFTODO: This is wrong/incomplete - fairly sure we support 4 and 7 too
-    if z_machine_version == 3:
-        ozmoo_base_args += ["-DZ3=1"]
-    elif z_machine_version == 5:
-        ozmoo_base_args += ["-DZ5=1"]
-    elif z_machine_version == 8:
-        ozmoo_base_args += ["-DZ8=1"]
+    if z_machine_version in (3, 4, 5, 8):
+        ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
     else:
         die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
