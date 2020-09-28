@@ -436,12 +436,20 @@ class AdfsImage(object):
 
     def add_file(self, f):
         b = f.binary()
+        start_sector = self._add_object_data(b)
+        self.catalogue.append([f.leafname, f.load_address, f.exec_address, len(b), start_sector, AdfsImage.LOCKED])
+        self.md5.update(b)
+
+    def add_directory(self, name):
+        start_sector = self._add_object_data(self._make_directory(name))
+        self.catalogue.append([name, 0, 0, 0x500, start_sector, AdfsImage.SUBDIRECTORY | AdfsImage.LOCKED])
+
+    def _add_object_data(self, object_data):
         start_sector = len(self.data) // AdfsImage.bytes_per_sector
-        self.data += pad_to_multiple_of(b, AdfsImage.bytes_per_sector)
+        self.data += pad_to_multiple_of(object_data, AdfsImage.bytes_per_sector)
         if len(self.data) > self.total_sectors * AdfsImage.bytes_per_sector:
             raise DiscFull()
-        self.catalogue.append([f.leafname, f.load_address, f.exec_address, len(b), start_sector, self.LOCKED])
-        self.md5.update(b)
+        return start_sector
 
     @staticmethod
     def _make_directory(name):
@@ -1316,7 +1324,7 @@ def make_disc_image():
         disc = AdfsImage(disc_contents)
         # There are no alignment requirements for ADFS so we don't need a pad file..
         disc.add_file(File("DATA", 0, 0, game_data))
-        # SFTODO: disc.add_directory("SAVES")
+        disc.add_directory("SAVES")
         if cmd_args.double_sided:
             disc.write_adl(output_file)
         else:
