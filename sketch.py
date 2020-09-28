@@ -87,14 +87,13 @@ def bytes_to_blocks(x):
     return divide_round_up(x, bytes_per_block)
 
 
-# SFTODO: Rename this function e.g. pad_to_size()?
-def pad(data, size):
+def pad_to(data, size):
     assert len(data) <= size
     return data + bytearray(size - len(data))
 
 
 def pad_to_multiple_of(data, block_size):
-    return pad(data, block_size * divide_round_up(len(data), block_size))
+    return pad_to(data, block_size * divide_round_up(len(data), block_size))
 
 
 def disc_size(contents):
@@ -201,10 +200,10 @@ def update_common_labels(labels):
 
 class LoaderScreen(Exception):
     def __init__(self):
-        # SFTODO: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
+        # SFTODONOW: WE NEED CMDLINE SUPPORT FOR SPECIFYING AN ALTERNATE SCREEN
         loader_screen = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
-        # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
-        # SFTODO: We need to check the middle section is large enough for the maximum possible requirement
+        # SFTODONOW: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
+        # SFTODONOW: We need to check the middle section is large enough for the maximum possible requirement
         original_lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
         assert len(original_lines) == 25
         sections = [[], [], []]
@@ -355,10 +354,9 @@ class DfsImage(object):
         b = f.binary()
         if len(self.data) + DfsImage.bytes_per_sector * divide_round_up(len(b), DfsImage.bytes_per_sector) > DfsImage.bytes_per_surface:
             raise DiscFull()
-        self._add_to_catalogue("$", f.leafname, f.load_address, f.exec_address, len(b), self.first_free_sector())
+        self._add_to_catalogue("$", f.leafname, f.load_addr, f.exec_addr, len(b), self.first_free_sector())
         self.data += pad_to_multiple_of(b, DfsImage.bytes_per_sector)
 
-    # SFTODO: Bit inconsistent with "addr" vs "address" - maybe switch globally to "addr"??
     def _add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
         assert self.num_files() < 31
         assert len(directory) == 1
@@ -391,7 +389,7 @@ class DfsImage(object):
     def write_ssd(image, filename):
         data = image.data
         if cmd_args.pad:
-            data = pad(data, DfsImage.bytes_per_surface)
+            data = pad_to(data, DfsImage.bytes_per_surface)
         with open(filename, "wb") as f:
             f.write(data)
 
@@ -404,8 +402,8 @@ class DfsImage(object):
                 i = track * DfsImage.bytes_per_track
                 if not cmd_args.pad and i >= len(data0) and i >= len(data2):
                     break
-                f.write(pad(data0[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
-                f.write(pad(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
+                f.write(pad_to(data0[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
+                f.write(pad_to(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
 
 
 # SFTODO: Most/all of the members of DfsImage and AdfsImage should probably have _ prefix to indicate they're nominally private
@@ -437,7 +435,7 @@ class AdfsImage(object):
     def add_file(self, f):
         b = f.binary()
         start_sector = self._add_object_data(b)
-        self.catalogue.append([f.leafname, f.load_address, f.exec_address, len(b), start_sector, AdfsImage.LOCKED])
+        self.catalogue.append([f.leafname, f.load_addr, f.exec_addr, len(b), start_sector, AdfsImage.LOCKED])
         self.md5.update(b)
 
     def add_directory(self, name):
@@ -486,8 +484,8 @@ class AdfsImage(object):
             self.data[offset+2] |= 128 # locked
             if attributes & self.SUBDIRECTORY:
                 self.data[offset+3] |= 128
-            write_le(self.data, offset+ 0xa, entry[1], 4) # load address
-            write_le(self.data, offset+ 0xe, entry[2], 4) # exec address
+            write_le(self.data, offset+ 0xa, entry[1], 4) # load addr
+            write_le(self.data, offset+ 0xe, entry[2], 4) # exec addr
             write_le(self.data, offset+0x12, entry[3], 4) # length
             write_le(self.data, offset+0x16, entry[4], 3) # start_sector
         self.md5.update(self.data[0:0x700])
@@ -500,7 +498,7 @@ class AdfsImage(object):
         self._finalise()
         data = self.data
         if cmd_args.pad:
-            data = pad(data, self.total_sectors * AdfsImage.bytes_per_sector)
+            data = pad_to(data, self.total_sectors * AdfsImage.bytes_per_sector)
         return data
 
     @staticmethod
@@ -524,15 +522,15 @@ class AdfsImage(object):
             for track in range(max_track):
                 for surface in range(2):
                     i = (surface*AdfsImage.tracks + track) * AdfsImage.bytes_per_track
-                    f.write(pad(data[i:i+AdfsImage.bytes_per_track], AdfsImage.bytes_per_track))
+                    f.write(pad_to(data[i:i+AdfsImage.bytes_per_track], AdfsImage.bytes_per_track))
 
 
 class File(object):
-    def __init__(self, leafname, load_address, exec_address, contents):
+    def __init__(self, leafname, load_addr, exec_addr, contents):
         self.leafname = leafname
         self.surface = 0
-        self.load_address = load_address
-        self.exec_address = exec_address
+        self.load_addr = load_addr
+        self.exec_addr = exec_addr
         self.contents = contents
 
     # This is called binary() so we have the same interface as Executable.
@@ -544,30 +542,30 @@ class File(object):
 class Executable(object):
     cache = {}
 
-    def __init__(self, asm_filename, leafname, version_maker, start_address, args):
+    def __init__(self, asm_filename, leafname, version_maker, start_addr, args):
         self.asm_filename = asm_filename
         self.leafname = leafname
         self.surface = 0 # may be overridden later if we're building double-sided DFS
         self.version_maker = version_maker
-        self.start_address = start_address
-        self.load_address = start_address
+        self.start_addr = start_addr
+        self.load_addr = start_addr
         if leafname != "OZMOO2P":
-            self.load_address |= host
-        self.exec_address = self.load_address
+            self.load_addr |= host
+        self.exec_addr = self.load_addr
         self.args = args
         self._relocations = None
         output_name = os.path.splitext(os.path.basename(asm_filename))[0].replace("-", "_")
         if version_maker is not None:
-            output_name += "_" + version_maker(start_address, args)
+            output_name += "_" + version_maker(start_addr, args)
         else:
-            output_name += "_" + ourhex(start_address)
+            output_name += "_" + ourhex(start_addr)
 
         # SFTODO: MOVE THIS CACHE LOGIC INTO OZMOOEXECUTABLE? WE DON'T NEED IT ANYWHERE ELSE, AND IT WOULD THEN CACHE THE RESULTS OF VMEM PATCHIG AND EVERYTHING, WHICH FEELS A BIT MORE ELEGANT EVEN IF IN PRACTICE IT'S HARMLESS TO REDO THIS WORK
         # Not all build parameters have to be reflected in the output name, but we
         # can't have two builds with different parameters using the same output
         # name.
         cache_key = (asm_filename, output_name)
-        cache_definition = (start_address, set(args))
+        cache_definition = (start_addr, set(args))
         cache_entry = Executable.cache.get(cache_key, None)
         if cache_entry is not None:
             assert cache_entry[0] == cache_definition
@@ -584,7 +582,7 @@ class Executable(object):
         def up(path):
             return os.path.join("..", path)
         cpu = "65c02" if "-DCMOS=1" in args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_address)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
         os.chdir("..")
         self.labels = self._parse_labels()
 
@@ -609,8 +607,8 @@ class Executable(object):
                 labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
         return labels
 
-    def rebuild_at(self, start_address):
-        return Executable(self.asm_filename, self.leafname, self.version_maker, start_address, self.args)
+    def rebuild_at(self, start_addr):
+        return Executable(self.asm_filename, self.leafname, self.version_maker, start_addr, self.args)
 
     def add_loader_symbols(self, symbols):
         if cmd_args.adfs:
@@ -623,16 +621,16 @@ class Executable(object):
 
     def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
-        # other_start_address just needs to be different to self.start_address. We
-        # use 0xe00 a) because it's the lowest possible useful address for non-tube
+        # other_start_addr just needs to be different to self.start_addr. We
+        # use 0xe00 a) because it's the lowest possible useful addr for non-tube
         # builds b) it matches OSHWM on a Master which means the labels/report for
         # this assembly can be used directly when debugging.
-        other_start_address = 0xe00
+        other_start_addr = 0xe00
         if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
-            other_start_address += (self.start_address - other_start_address) % 0x200
+            other_start_addr += (self.start_addr - other_start_addr) % 0x200
         # SFTODO: If the two addresses are the same the relocation is pointless, can we avoid it? I think the build may fail if this is the case, need to test it at least works even if it is pointless
-        assert other_start_address <= self.start_address
-        other = self.rebuild_at(other_start_address)
+        assert other_start_addr <= self.start_addr
+        other = self.rebuild_at(other_start_addr)
         assert other is not None
         return Executable._binary_diff(other._binary, self._binary)
 
@@ -676,13 +674,13 @@ class Executable(object):
             binary = self._binary
         # A second processor binary *could* extend past 0x8000 but in practice
         # it won't come even close.
-        assert self.start_address + len(binary) <= 0x8000
+        assert self.start_addr + len(binary) <= 0x8000
         return binary
 
 
 class OzmooExecutable(Executable):
-    def __init__(self, leafname, start_address, args):
-        def version_maker(start_address, args):
+    def __init__(self, leafname, start_addr, args):
+        def version_maker(start_addr, args):
             if "-DACORN_ELECTRON_SWR=1" in args:
                 s = "electron_swr"
             else:
@@ -696,14 +694,14 @@ class OzmooExecutable(Executable):
                 s += "_novmem"
             if "-DACORN_SWR_SMALL_DYNMEM=1" in args:
                 s += "_smalldyn"
-            s += "_" + ourhex(start_address)
+            s += "_" + ourhex(start_addr)
             return s
 
         if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
             args += ["-DACORN_HW_SCROLL=1"]
         if cmd_args.preload_opt and "-DVMEM=1" in args:
             args += ["-DPREOPT=1"]
-        Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_address, args)
+        Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_addr, args)
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines_in_stack_space")
         self.swr_dynmem = 0
@@ -718,7 +716,7 @@ class OzmooExecutable(Executable):
         if "ACORN_SWR" in self.labels:
             # Note that swr_dynmem may be negative; this means there will be
             # some main RAM free after loading dynamic memory when loaded at the
-            # build address. For relocatable builds the loader will also take
+            # build addr. For relocatable builds the loader will also take
             # account of the actual value of PAGE.
             self.swr_dynmem = nonstored_blocks_up_to - 0x8000
             assert self.swr_dynmem <= 16 * 1024
@@ -742,16 +740,16 @@ class OzmooExecutable(Executable):
             if i not in blocks:
                 blocks.append(i)
         blocks = blocks[:vmap_max_size]
-        # vmap entries should normally address a 512-byte aligned block; invalid_address
+        # vmap entries should normally addr a 512-byte aligned block; invalid_addr
         # is odd so it won't ever match when the virtual memory code is searching the map.
-        invalid_address = 0x1
+        invalid_addr = 0x1
         for i, block_index in enumerate(blocks):
             timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
             if cmd_args.preload_opt:
                 # Most of the vmap will be ignored, but we have to have at least one entry
-                # and by making it an invalid address we don't need to worry about loading
+                # and by making it an invalid addr we don't need to worry about loading
                 # any "suggested" blocks.
-                addr = invalid_address
+                addr = invalid_addr
             else:
                 addr = nonstored_blocks + block_index * vmem_block_pagecount
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
@@ -778,19 +776,19 @@ class OzmooExecutable(Executable):
     def size(self):
         return len(self._binary)
 
-    def rebuild_at(self, start_address):
-        return OzmooExecutable(self.leafname, start_address, self.args)
+    def rebuild_at(self, start_addr):
+        return OzmooExecutable(self.leafname, start_addr, self.args)
 
     def add_loader_symbols(self, symbols):
         Executable.add_loader_symbols(self, symbols)
-        symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_address)
+        symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_addr)
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
 
 
-def make_ozmoo_executable(leafname, start_address, args):
+def make_ozmoo_executable(leafname, start_addr, args):
     try:
-        return OzmooExecutable(leafname, start_address, args)
+        return OzmooExecutable(leafname, start_addr, args)
     # SFTODO: Often this doesn't matter, because this is a trial build of some kind and we'll do something different. But it would be nice if I could somehow record "significant" GameWontFit events and show the text. This kind of ties in with how I allow the user to specify what builds they *want*; that isn't clear yet, so how best to handle showing why we couldn't give some builds they wanted isn't either.
     except GameWontFit:
         return None
@@ -824,11 +822,11 @@ def make_highest_possible_executable(leafname, args):
     # There's no point loading really high, and doing a totally naive
     # calculation may cause us to load so high there's no room for the
     # relocation data before &8000, so we never load much higher than
-    # max_start_address.
-    approx_max_start_address = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_address)
-    e = make_optimally_aligned_executable(leafname, approx_max_start_address, args, e_e00)
+    # max_start_addr.
+    approx_max_start_addr = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
+    e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, e_e00)
     assert e is not None
-    if same_double_page_alignment(e.start_address, 0xe00):
+    if same_double_page_alignment(e.start_addr, 0xe00):
         assert e.size() == e_e00.size()
     else:
         assert e.size() == e_e00.size() - 256
@@ -836,27 +834,27 @@ def make_highest_possible_executable(leafname, args):
     return e
 
 
-# Build an Ozmoo executable which loads at whichever of initial_start_address
-# and initial_start_address+256 gives the least wasted space. If provided
+# Build an Ozmoo executable which loads at whichever of initial_start_addr
+# and initial_start_addr+256 gives the least wasted space. If provided
 # base_executable is a pre-built executable whcih shares the same double-page
-# alignment as initial_start_address; this may help avoid an unnecessary build.
-def make_optimally_aligned_executable(leafname, initial_start_address, args, base_executable = None):
+# alignment as initial_start_addr; this may help avoid an unnecessary build.
+def make_optimally_aligned_executable(leafname, initial_start_addr, args, base_executable = None):
     if base_executable is None:
-        base_executable = make_ozmoo_executable(leafname, initial_start_address, args)
+        base_executable = make_ozmoo_executable(leafname, initial_start_addr, args)
         if base_executable is None:
             return None
     else:
         assert base_executable.asm_filename == "ozmoo.asm"
-        assert same_double_page_alignment(base_executable.start_address, initial_start_address)
+        assert same_double_page_alignment(base_executable.start_addr, initial_start_addr)
         assert base_executable.args == args
-    alternate_executable = make_ozmoo_executable(leafname, initial_start_address + 256, args)
+    alternate_executable = make_ozmoo_executable(leafname, initial_start_addr + 256, args)
     if alternate_executable is not None and alternate_executable.size() < base_executable.size():
         return alternate_executable
     else:
-        if base_executable.start_address == initial_start_address:
+        if base_executable.start_addr == initial_start_addr:
             return base_executable
         else:
-            return make_ozmoo_executable(leafname, initial_start_address, args)
+            return make_ozmoo_executable(leafname, initial_start_addr, args)
 
 
 def make_shr_swr_executable():
@@ -870,7 +868,7 @@ def make_shr_swr_executable():
     # running the game in order to get the benefits of the small dynamic memory
     # model.
     if small_e is not None:
-        if small_e.start_address >= highest_expected_page:
+        if small_e.start_addr >= highest_expected_page:
             info("Shadow+sideways RAM executable uses small dynamic memory model")
             return small_e
 
@@ -882,8 +880,8 @@ def make_shr_swr_executable():
     # and there's nothing we can do about it.
     big_e = make_highest_possible_executable(leafname, args)
     if big_e is not None:
-        if small_e is not None and small_e.start_address < highest_expected_page:
-            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_address))
+        if small_e is not None and small_e.start_addr < highest_expected_page:
+            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_addr))
         else:
             info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity")
     return big_e
@@ -902,11 +900,11 @@ def make_bbc_swr_executable():
     # running small games with no SWR and I don't really like ruling that out.
     leafname = "OZMOOB"
     args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
-    small_e = make_ozmoo_executable(leafname, bbc_swr_start_address, args + small_dynmem_args)
+    small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
     if small_e is not None:
         info("BBC B sideways RAM executable uses small dynamic memory model")
         return small_e
-    big_e = make_ozmoo_executable(leafname, bbc_swr_start_address, args)
+    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args)
     if big_e is not None:
         info("BBC B sideways RAM executable uses big dynamic memory model")
     return big_e
@@ -918,7 +916,7 @@ def make_electron_swr_executable():
     # disadvantage to loading high in memory as far as the game itself is
     # concerned. However, we'd like to avoid the executable overwriting the mode
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
-    # relatively low address which should be >=PAGE on nearly all systems.
+    # relatively low addr which should be >=PAGE on nearly all systems.
     return make_optimally_aligned_executable("OZMOOE", 0x1d00, args)
 
 
@@ -927,7 +925,7 @@ def make_tube_executables():
     tube_args = ozmoo_base_args
     if not cmd_args.force_6502:
         tube_args += ["-DCMOS=1"]
-    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
+    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
         return [tube_no_vmem]
@@ -936,7 +934,7 @@ def make_tube_executables():
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-    tube_vmem = make_ozmoo_executable(leafname, tube_start_address, tube_args)
+    tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)
     if tube_vmem is not None:
         info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
@@ -1013,7 +1011,7 @@ def crunch_line(line, crunched_symbols):
 
 
 # SFTODO: Rename make_untokenised_loader()?
-def make_loader(symbols):
+def make_text_loader(symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
     # tool - it's specifically designed to work with the Ozmoo loader.
@@ -1060,7 +1058,7 @@ def make_loader(symbols):
 def make_tokenised_loader(loader_symbols):
     loader_bas = os.path.join("temp", "loader.bas")
     with open(loader_bas, "w") as f:
-        f.write(make_loader(loader_symbols))
+        f.write(make_text_loader(loader_symbols))
     loader_beebasm = os.path.join("temp", "loader.beebasm")
     loader_ssd = os.path.join("temp", "loader.ssd")
     with open(loader_beebasm, "w") as f:
@@ -1367,17 +1365,17 @@ relocatable_args = ["-DACORN_RELOCATABLE=1"]
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
-tube_start_address = 0x600
-# SFTODO: I think overriding these bbc_swr_start_addresses on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines - however, worth noting that fiddling with these addresses opens up lots of scope for the screen hole to break the assembly - maybe I would want to offer e00 as an option and that's it, that way I can (hopefully) pre-tweak the code to handle these three values (e00, 1900, 1d00) and that will be that.
+tube_start_addr = 0x600
+# SFTODO: I think overriding these bbc_swr_start_addres on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines - however, worth noting that fiddling with these addresses opens up lots of scope for the screen hole to break the assembly - maybe I would want to offer e00 as an option and that's it, that way I can (hopefully) pre-tweak the code to handle these three values (e00, 1900, 1d00) and that will be that.
 if not cmd_args.adfs:
-    bbc_swr_start_address = 0x1900
+    bbc_swr_start_addr = 0x1900
 else:
     # SFTODO: Should I be using 0x1f00? That's what a model B with DFS+ADFS
     # has PAGE at. Maybe stick with this for now and see if anyone has problems,
     # so we don't pay a small performance penalty unless there's some evidence
     # it's useful.
-    bbc_swr_start_address = 0x1d00
-max_start_address = 0x3000
+    bbc_swr_start_addr = 0x1d00
+max_start_addr = 0x3000
 
 common_labels = {}
 
