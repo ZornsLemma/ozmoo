@@ -63,8 +63,16 @@ def basic_string(value):
     return value
 
 
-def get_word(data, i):
+def read_le_word(data, i):
     return data[i]*256 + data[i+1]
+
+
+def write_le(data, i, v, n):
+    while n > 0:
+        data[i] = v & 0xff
+        i += 1
+        v >>= 8
+        n -= 1
 
 
 def divide_round_up(x, y):
@@ -84,7 +92,7 @@ def pad(data, size):
     return data + bytearray(size - len(data))
 
 
-def pad_to_multiple_of(data, block_size)
+def pad_to_multiple_of(data, block_size):
     return pad(data, block_size * divide_round_up(len(data), block_size))
 
 
@@ -360,12 +368,9 @@ class DfsImage(object):
         name = (name + " "*7)[:7] + directory
         self.data[0x008:0x010] = bytearray(name, "ascii")
         self.data[0x00f] |= 128 # lock the file
-        self.data[0x108] = load_addr & 0xff
-        self.data[0x109] = (load_addr >> 8) & 0xff
-        self.data[0x10a] = exec_addr & 0xff
-        self.data[0x10b] = (exec_addr >> 8) & 0xff
-        self.data[0x10c] = length & 0xff
-        self.data[0x10d] = (length >> 8) & 0xff
+        write_le(self.data, 0x108, load_addr, 2)
+        write_le(self.data, 0x10a, exec_addr, 2)
+        write_le(self.data, 0x10c, length, 2)
         self.data[0x10e] = (
                 (((exec_addr >> 16) & 0x3) << 6) |
                 (((length >> 16) & 0x3) << 4) |
@@ -416,12 +421,11 @@ class AdfsImage(object):
 
     def __init__(self, contents, boot_option = 3): # 3 = *EXEC
         self.catalogue = []
-        self.data = bytearray(bytes_per_sector * 2)
-        self.total_sectors = tracks * sectors_per_track
+        self.data = bytearray(AdfsImage.bytes_per_sector * 2)
+        self.total_sectors = AdfsImage.tracks * AdfsImage.sectors_per_track
         if cmd_args.double_sided:
             self.total_sectors *= 2
-        self.data[0xfc] = self.total_sectors & 0xff
-        self.data[0xfd] = (self.total_sectors >> 8) & 0xff
+        write_le(self.data, 0xfc, self.total_sectors, 2)
         self.data[0x1fd] = boot_option
         self.data += self._make_directory("$")
         self.md5 = hashlib.md5()
@@ -439,7 +443,32 @@ class AdfsImage(object):
         self.md5.update(b)
 
     def _finalise(self, f):
-        SFTODO
+        first_free_sector = len(self.data) // 256
+        write_le(self.data, 0, first_free_sector, 3)
+        free_space_len = self.total_sectors - first_free_sector
+        write_le(selfdata, 0, free_space_len, 3)
+        self.data[0x1fe] = 3 * 1 # number of free space map entries
+        self.data[0x205] = len(self.catalogue)
+        self.catalogue = sorted(self.catalogue, key=lambda x: x[0])
+        for i, entry in enumerate(self.catalogue):
+            offset = 0x205 + i * 0x1a
+            self.data[offset:offset+10] = (entry[0].encode("ascii") + bytearray(10))[:10]
+            attributes = entry[5]
+            self.data[offset] |= 128 # read
+            if not (attributes & self.SUBDIRECTORY):
+                self.data[offset+1] |= 128 # write
+            self.data[offset+2] |= 128 # locked
+            if attributes & self.SUBDIRECTORY:
+                self.data[offset+3] |= 128
+            write_le(self.data, offset+ 0xa, entry[1], 4) # load address
+            write_le(self.data, offset+ 0xe, entry[2], 4) # exec address
+            write_le(self.data, offset+0x12, entry[3], 4) # length
+            write_le(self.data, offset+0x16, entry[4], 3) # start_sector
+        self.md5.update(self.data[0:0x700])
+        # Use a "random" disc ID which won't vary gratuitously from run to run.
+        self.data[0x1fb:0x1fd] = self.md5.digest()[0:2]
+        self.data[0xff] = self.checksum(self.data[0:0xff])
+        self.data[0x1ff] = self.checksum(self.data[0x100:0x1ff])
 
     def _get_write_data(self):
         self._finalise()
@@ -1328,7 +1357,7 @@ elif z_machine_version == 8:
 else:
     vmem_highbyte_mask = 0x03
 game_blocks = bytes_to_blocks(len(game_data))
-dynamic_size_bytes = get_word(game_data, header_static_mem)
+dynamic_size_bytes = read_le_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
