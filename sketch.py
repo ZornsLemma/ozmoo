@@ -1507,3 +1507,5 @@ while True:
 show_deferred_output()
 
 # SFTODO: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
+
+# SFTODONOW: Need to port Beyond Zork stuff from make.rb. I may want to make the 40 column patching take place only if the user hasn't specified --only-80-columns.
