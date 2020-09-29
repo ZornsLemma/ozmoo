@@ -1137,6 +1137,7 @@ def parse_args():
     parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
     parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
     parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
+    # SFTODO: --min-relocate-addr FROM make-acorn.py, OR NEW REPLACEMENT
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
@@ -1145,6 +1146,18 @@ def parse_args():
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
     group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
     group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+    if False: # SFTODO!
+        group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
+        group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
+        group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
+        group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
+        group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
+        group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
+        group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
+        group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
+        group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
+        group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
+    group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
@@ -1236,6 +1249,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DBENCHMARK=1"]
     if cmd_args.debug:
         ozmoo_base_args += ["-DDEBUG=1"]
+    if cmd_args.waste_bytes:
+        ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
