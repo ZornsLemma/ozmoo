@@ -1147,11 +1147,11 @@ def parse_args():
     group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
     group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
     group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
+    group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
+    group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
+    group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
+    group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
     if False: # SFTODO!
-        group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
-        group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
-        group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
-        group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
         group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
         group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
         group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
@@ -1193,7 +1193,7 @@ def parse_args():
     if args.title is None:
         args.title = title_from_filename(args.input_file)
 
-    if args.benchmark or args.preload_opt or args.print_swaps:
+    if args.benchmark or args.preload_opt or args.trace or args.trace_floppy or args.trace_vm or args.speed or args.print_swaps:
         args.debug = True
 
     return args
@@ -1241,6 +1241,7 @@ def make_disc_image():
     # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
     if cmd_args.adfs:
         ozmoo_base_args += ["-DACORN_ADFS=1"]
+    # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
     if not cmd_args.no_mode_7_colour:
         ozmoo_base_args += ["-DMODE_7_STATUS=1"]
     if cmd_args.force_65c02:
@@ -1249,6 +1250,14 @@ def make_disc_image():
         ozmoo_base_args += ["-DBENCHMARK=1"]
     if cmd_args.debug:
         ozmoo_base_args += ["-DDEBUG=1"]
+    if cmd_args.trace:
+        ozmoo_base_args += ["-DTRACE=1"]
+    if cmd_args.trace_floppy:
+        ozmoo_base_args += ["-DTRACE_FLOPPY=1"]
+    if cmd_args.trace_vm:
+        ozmoo_base_args += ["-DTRACE_VM=1"]
+    if cmd_args.speed:
+        ozmoo_base_args += ["-DPRINTSPEED=1"]
     if cmd_args.print_swaps:
         ozmoo_base_args += ["-DPRINT_SWAPS=1"]
     if cmd_args.waste_bytes:
