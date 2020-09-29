@@ -31,6 +31,10 @@
 }
 }
 
+!ifndef TERPNO {
+	TERPNO = 8
+}
+
 !ifdef Z3 {
 	ZMACHINEVERSION = 3
 }
@@ -293,6 +297,11 @@ initialize
     ; Setup default dictionary
 	jsr parse_default_dictionary
 }
+
+!ifdef Z5PLUS {
+    ; set up terminating characters
+    jsr parse_terminating_characters
+}
 	
 	jsr streams_init
 	jsr stack_init
@@ -477,9 +486,9 @@ z_init
 }
 }
 !ifdef Z4PLUS {
-	lda #8
+	lda #TERPNO
 	sta story_start + header_interpreter_number ; Interpreter number (8 = C64)
-	lda #67 ; "C" = release 3
+	lda #68 ; "D" = release 4
 	sta story_start + header_interpreter_version ; Interpreter version. Usually ASCII code for a capital letter
 	+lda_screen_height
 	sta story_start + header_screen_height_lines

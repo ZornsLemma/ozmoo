@@ -1011,6 +1011,7 @@ cursor_character !byte CURSORCHAR
 }
 
 !ifndef ACORN {
+!ifndef NODARKMODE {
 toggle_darkmode
 !ifdef Z5PLUS {
 	; We will need the old fg colour later, to check which characters have the default colour
@@ -1094,7 +1095,8 @@ toggle_darkmode
 	bne .compare
 	jsr update_cursor
 	rts 
-} else {
+} ; ifndef NODARKMODE
+} else { ; ACORN
 update_colours
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
