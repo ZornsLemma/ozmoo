@@ -176,8 +176,11 @@ IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 !ifdef OZMOOB_BINARY {
 binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}
 } else {
-REM SFTODO: Next line is misleading, depending on the other build options we may mean "a BBC B without shadow RAM", but it will depend on options.
+!ifdef OZMOOSH_BINARY {
+PROCunsupported_machine("a BBC B without shadow RAM")
+} else {
 PROCunsupported_machine("a BBC B")
+}
 }
 ENDPROC
 

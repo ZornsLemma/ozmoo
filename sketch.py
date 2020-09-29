@@ -170,7 +170,7 @@ def update_common_labels(labels):
 class LoaderScreen(Exception):
     def __init__(self):
         loader_screen = LoaderScreen._get_title_page()
-        # SFTODONOW: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
+        # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
         original_lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
         assert len(original_lines) == 25
         sections = [[], [], []]
@@ -1134,6 +1134,9 @@ def parse_args():
     parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
     parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
     parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
+    parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
+    parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
+    parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
@@ -1239,21 +1242,42 @@ def make_disc_image():
     else:
         die("Unsupported Z-machine version: %d" % (z_machine_version,))
 
-    # SFTODO: WE NEED TO CONTROL WHAT WE TRY TO BUILD USING CMDLINE OPTIONS
-    # SFTODO: *PART* OF THIS IS NOT BUILDING "BBC B NO SHADOW" OR "ELECTRON" EXECUTABLES IF --80-COLUMN IS SPECIFIED, BECAUSE THOSE BUILDS CAN'T DO 80 COLUMNS (BORDERLINE ARGUMENT FOR INCLUDING ELECTRON EXECUTABLE, AS IF AN ELECTRON DOES HAVE SHADOW RAM IT CAN RUN IN ANY MODE)
+    want_electron = True
+    want_bbc_swr = True
+    want_bbc_shr_swr = True
+    want_tube = True
+    if cmd_args.bbc_only:
+        want_electron = False
+    if cmd_args.electron_only:
+        want_bbc_swr = False
+        want_bbc_shr_swr = False
+    if cmd_args.no_tube:
+        want_tube = False
+    if cmd_args.only_80_column:
+        want_bbc_swr = False # mode 7 only build
+        # SFTODO: Arguably we should set want_electron to False, but an Electron
+        # with shadow RAM might exist and it would be able to run the game.
+    if not any([want_electron, want_bbc_swr, want_bbc_shr_swr, want_tube]):
+        die("All possible builds have been disabled by command line options, nothing to do!")
+
     # We work with "executable groups" instead of executables so we can keep related
-    # executables together on the disc.
+    # executables together on the disc, although this is only useful for the second
+    # processor build at the moment.
     ozmoo_variants = []
-    e = make_electron_swr_executable()
-    if e is not None:
-        ozmoo_variants.append([e])
-    e = make_bbc_swr_executable()
-    if e is not None:
-        ozmoo_variants.append([e])
-    e = make_shr_swr_executable()
-    if e is not None:
-        ozmoo_variants.append([e])
-    ozmoo_variants.append(make_tube_executables())
+    if want_electron:
+        e = make_electron_swr_executable()
+        if e is not None:
+            ozmoo_variants.append([e])
+    if want_bbc_swr:
+        e = make_bbc_swr_executable()
+        if e is not None:
+            ozmoo_variants.append([e])
+    if want_bbc_shr_swr:
+        e = make_shr_swr_executable()
+        if e is not None:
+            ozmoo_variants.append([e])
+    if want_tube:
+        ozmoo_variants.append(make_tube_executables())
 
     # We sort the executable groups by descending order of size; this isn't really
     # important unless we're doing a double-sided DFS build (where we want to
