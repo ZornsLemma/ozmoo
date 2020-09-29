@@ -1224,4 +1224,7 @@ vmem_start = story_start
 ; the user if we can use the 12K private RAM, since unlike normal SWR we can't
 ; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
 ; because they could be using the more common SWMMFS in a regular sideways RAM
-; bank and have the 12K private RAM free.)
+; bank and have the 12K private RAM free.) - actually, would need to check, but
+; I think in practice "do any extended vectors point into a bank with top bit
+; set?" might be a reliable way to detect private 12K use, I *think* the MMFS+
+; variant will do that too.
