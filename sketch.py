@@ -727,7 +727,7 @@ class OzmooExecutable(Executable):
         # Can we fit the nonstored blocks into memory?
         nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
         if nonstored_blocks_up_to > self.pseudo_ramtop():
-            raise GameWontFit("Not enough free RAM for game's dynamic memory")
+            raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
             # Note that swr_dynmem may be negative; this means there will be
             # some main RAM free after loading dynamic memory when loaded at the
@@ -743,7 +743,7 @@ class OzmooExecutable(Executable):
         if "ACORN_SWR" not in self.labels:
             nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
             if nsmv_up_to > self.pseudo_ramtop():
-                raise GameWontFit("Not enough free RAM for any swappable memory")
+                raise GameWontFit("not enough free RAM for any swappable memory")
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
@@ -801,11 +801,13 @@ class OzmooExecutable(Executable):
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
 
 
-def make_ozmoo_executable(leafname, start_addr, args):
+def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = None):
     try:
         return OzmooExecutable(leafname, start_addr, args)
-    # SFTODO: Often this doesn't matter, because this is a trial build of some kind and we'll do something different. But it would be nice if I could somehow record "significant" GameWontFit events and show the text. This kind of ties in with how I allow the user to specify what builds they *want*; that isn't clear yet, so how best to handle showing why we couldn't give some builds they wanted isn't either.
-    except GameWontFit:
+    # SFTODO: Often this doesn't matter, because this is a trial build of some kind and we'll do something different. But it would be nice if I could somehow record "significant" GameWontFit events and show the text. This kind of ties in with how I allow the user to specify what builds they *want*; that isn't clear yet, so how best to handle showing why we couldn't give some builds they wanted isn't either. - I think I've now done this, perhaps a bit unsatisfactory
+    except GameWontFit as e:
+        if report_failure_prefix is not None:
+            warn("Game is too large for %s: %s" % (report_failure_prefix, str(e)))
         return None
 
 
@@ -813,7 +815,7 @@ def make_ozmoo_executable(leafname, start_addr, args):
 # an address which means it will work on machines with relatively high values of
 # PAGE if possible. The executable will relocate itself down if PAGE isn't as
 # high as the worst case we assume here.
-def make_highest_possible_executable(leafname, args):
+def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_RELOCATABLE=1" in args
 
     # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte
@@ -826,7 +828,7 @@ def make_highest_possible_executable(leafname, args):
     # - We want to use the higher of those two possible start addresses, because
     #   it means we won't need to waste 256 bytes before the start of the code
     #   if PAGE happens to have the right alignment.
-    e_e00 = make_ozmoo_executable(leafname, 0xe00, args)
+    e_e00 = make_ozmoo_executable(leafname, 0xe00, args, report_failure_prefix)
     # If we can't fit build successfully with a start of 0xe00 we can't ever
     # manage it.
     if e_e00 is None:
@@ -839,7 +841,7 @@ def make_highest_possible_executable(leafname, args):
     # relocation data before &8000, so we never load much higher than
     # max_start_addr.
     approx_max_start_addr = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
-    e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, e_e00)
+    e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, report_failure_prefix, e_e00)
     assert e is not None
     if same_double_page_alignment(e.start_addr, 0xe00):
         assert e.size() == e_e00.size()
@@ -853,9 +855,9 @@ def make_highest_possible_executable(leafname, args):
 # and initial_start_addr+256 gives the least wasted space. If provided
 # base_executable is a pre-built executable whcih shares the same double-page
 # alignment as initial_start_addr; this may help avoid an unnecessary build.
-def make_optimally_aligned_executable(leafname, initial_start_addr, args, base_executable = None):
+def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix, base_executable = None):
     if base_executable is None:
-        base_executable = make_ozmoo_executable(leafname, initial_start_addr, args)
+        base_executable = make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
         if base_executable is None:
             return None
     else:
@@ -869,7 +871,7 @@ def make_optimally_aligned_executable(leafname, initial_start_addr, args, base_e
         if base_executable.start_addr == initial_start_addr:
             return base_executable
         else:
-            return make_ozmoo_executable(leafname, initial_start_addr, args)
+            return make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
 
 
 def make_shr_swr_executable():
@@ -878,7 +880,7 @@ def make_shr_swr_executable():
 
     small_e = None
     if not cmd_args.force_big_dynmem:
-        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args)
+        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
         # Some systems may have PAGE too high to run small_e, but those systems
         # would be able to run the game if built with the big dynamic memory model.
         # highest_expected_page determines whether we're willing to prevent a system
@@ -895,7 +897,7 @@ def make_shr_swr_executable():
     # against available main RAM - if a system has PAGE too high to run the big
     # dynamic memory executable we generate, it just can't run the game at all
     # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable(leafname, args)
+    big_e = make_highest_possible_executable(leafname, args, "shadow+sideways RAM")
     if big_e is not None:
         if small_e is not None and small_e.start_addr < highest_expected_page:
             info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_addr))
@@ -922,7 +924,7 @@ def make_bbc_swr_executable():
         if small_e is not None:
             info("BBC B sideways RAM executable uses small dynamic memory model")
             return small_e
-    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args)
+    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, "BBC B sideways RAM")
     if big_e is not None:
         info("BBC B sideways RAM executable uses big dynamic memory model")
     return big_e
@@ -935,7 +937,7 @@ def make_electron_swr_executable():
     # concerned. However, we'd like to avoid the executable overwriting the mode
     # 6 screen RAM and corrupting the loading screen if we can, so we pick a
     # relatively low addr which should be >=PAGE on nearly all systems.
-    return make_optimally_aligned_executable("OZMOOE", 0x1d00, args)
+    return make_optimally_aligned_executable("OZMOOE", 0x1d00, args, "Electron")
 
 
 def make_tube_executables():
@@ -952,7 +954,7 @@ def make_tube_executables():
         tube_args += ["-DACORN_TUBE_CACHE=1"]
         tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-    tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)
+    tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args, "second processor")
     if tube_vmem is not None:
         info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
@@ -1119,7 +1121,6 @@ def title_from_filename(filename):
 
 
 def parse_args():
-    # SFTODO: MAKE SURE I COPY ALL (USEFUL) ARGS FROM OLD VERSION
     parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
     # SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
     if version_txt is not None:
@@ -1290,8 +1291,8 @@ def make_disc_image():
         want_tube = False
     if cmd_args.only_80_column:
         want_bbc_swr = False # mode 7 only build
-        # SFTODO: Arguably we should set want_electron to False, but an Electron
-        # with shadow RAM might exist and it would be able to run the game.
+        # Arguably we should set want_electron to False, but an Electron with
+        # shadow RAM might exist and it would be able to run the game.
     if not any([want_electron, want_bbc_swr, want_bbc_shr_swr, want_tube]):
         die("All possible builds have been disabled by command line options, nothing to do!")
 
@@ -1313,6 +1314,8 @@ def make_disc_image():
             ozmoo_variants.append([e])
     if want_tube:
         ozmoo_variants.append(make_tube_executables())
+    if len(ozmoo_variants) == 0:
+        die("No builds succeeded, can't generate disc image.")
 
     # We sort the executable groups by descending order of size; this isn't really
     # important unless we're doing a double-sided DFS build (where we want to
