@@ -877,16 +877,18 @@ def make_shr_swr_executable():
     leafname = "OZMOOSH"
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
 
-    small_e = make_highest_possible_executable(leafname, args + small_dynmem_args)
-    # Some systems may have PAGE too high to run small_e, but those systems
-    # would be able to run the game if built with the big dynamic memory model.
-    # highest_expected_page determines whether we're willing to prevent a system
-    # running the game in order to get the benefits of the small dynamic memory
-    # model.
-    if small_e is not None:
-        if small_e.start_addr >= highest_expected_page:
-            info("Shadow+sideways RAM executable uses small dynamic memory model")
-            return small_e
+    small_e = None
+    if not cmd_args.force_big_dynmem:
+        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args)
+        # Some systems may have PAGE too high to run small_e, but those systems
+        # would be able to run the game if built with the big dynamic memory model.
+        # highest_expected_page determines whether we're willing to prevent a system
+        # running the game in order to get the benefits of the small dynamic memory
+        # model.
+        if small_e is not None:
+            if small_e.start_addr >= highest_expected_page:
+                info("Shadow+sideways RAM executable uses small dynamic memory model")
+                return small_e
 
     # Note that we don't respect highest_expected_page when generating a big
     # dynamic memory executable; unlike the above decision about whether or not
@@ -916,10 +918,11 @@ def make_bbc_swr_executable():
     # running small games with no SWR and I don't really like ruling that out.
     leafname = "OZMOOB"
     args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
-    small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
-    if small_e is not None:
-        info("BBC B sideways RAM executable uses small dynamic memory model")
-        return small_e
+    if not cmd_args.force_big_dynmem:
+        small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
+        if small_e is not None:
+            info("BBC B sideways RAM executable uses small dynamic memory model")
+            return small_e
     big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args)
     if big_e is not None:
         info("BBC B sideways RAM executable uses big dynamic memory model")
@@ -1151,12 +1154,11 @@ def parse_args():
     group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
     group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
     group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
-    if False: # SFTODO!
-        group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
-        group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
-        group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
-        group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
-        group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
+    group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
+    group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
+    group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
+    group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
+    group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
     group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
@@ -1260,6 +1262,14 @@ def make_disc_image():
         ozmoo_base_args += ["-DPRINTSPEED=1"]
     if cmd_args.print_swaps:
         ozmoo_base_args += ["-DPRINT_SWAPS=1"]
+    if cmd_args.no_hole_check:
+        ozmoo_base_args += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
+    if cmd_args.no_dynmem_adjust:
+        ozmoo_base_args += ["-DACORN_NO_DYNMEM_ADJUST=1"]
+    if cmd_args.fake_read_errors:
+        ozmoo_base_args += ["-DFAKE_READ_ERRORS=1"]
+    if cmd_args.slow:
+        ozmoo_base_args += ["-DSLOW=1"]
     if cmd_args.waste_bytes:
         ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
 
