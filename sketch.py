@@ -1146,8 +1146,8 @@ def parse_args():
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
     group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
     group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+    group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
     if False: # SFTODO!
-        group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
         group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
         group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
         group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
@@ -1193,7 +1193,7 @@ def parse_args():
     if args.title is None:
         args.title = title_from_filename(args.input_file)
 
-    if args.benchmark or args.preload_opt:
+    if args.benchmark or args.preload_opt or args.print_swaps:
         args.debug = True
 
     return args
@@ -1249,6 +1249,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DBENCHMARK=1"]
     if cmd_args.debug:
         ozmoo_base_args += ["-DDEBUG=1"]
+    if cmd_args.print_swaps:
+        ozmoo_base_args += ["-DPRINT_SWAPS=1"]
     if cmd_args.waste_bytes:
         ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
 
