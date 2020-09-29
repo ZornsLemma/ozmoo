@@ -1412,6 +1412,7 @@ def make_disc_image():
             disc.write_adl(output_file)
         else:
             disc.write_adf(output_file)
+    info("Generated disc image " + output_file)
 
 
 defer_output = False
