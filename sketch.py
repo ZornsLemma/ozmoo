@@ -1165,40 +1165,40 @@ def parse_args():
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
 
-    args = parser.parse_args()
+    cmd_args = parser.parse_args()
 
-    args.verbose_level = 0 if args.verbose is None else args.verbose
+    cmd_args.verbose_level = 0 if cmd_args.verbose is None else cmd_args.verbose
 
-    if args.only_40_column and args.only_80_column:
+    if cmd_args.only_40_column and cmd_args.only_80_column:
         die("--only-40-column and --only-80-column are incompatible")
-    if args.force_65c02 and args.force_6502:
+    if cmd_args.force_65c02 and cmd_args.force_6502:
         die("--force-65c02 and --force-6502 are incompatible")
-    if args.preload_opt and args.preload_config:
+    if cmd_args.preload_opt and cmd_args.preload_config:
         die("--preload-opt and --preload-config are incompatible")
 
-    if args.output_file is not None:
+    if cmd_args.output_file is not None:
         _, user_extension = os.path.splitext(args.output_file)
         if user_extension.lower() == '.dsd':
-            args.double_sided = True
+            cmd_args.double_sided = True
         elif user_extension.lower() == '.adl':
-            args.adfs = True
-            args.double_sided = True
+            cmd_args.adfs = True
+            cmd_args.double_sided = True
         elif user_extension.lower() == '.adf':
-            args.adfs = True
+            cmd_args.adfs = True
 
-    if args.default_mode is not None:
-        if args.default_mode not in (0, 3, 4, 6, 7):
+    if cmd_args.default_mode is not None:
+        if cmd_args.default_mode not in (0, 3, 4, 6, 7):
             die("Invalid default mode specified")
     else:
-        args.default_mode = 7
+        cmd_args.default_mode = 7
 
-    if args.title is None:
-        args.title = title_from_filename(args.input_file)
+    if cmd_args.title is None:
+        cmd_args.title = title_from_filename(cmd_args.input_file)
 
-    if args.benchmark or args.preload_opt or args.trace or args.trace_floppy or args.trace_vm or args.speed or args.print_swaps:
-        args.debug = True
+    if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
+        cmd_args.debug = True
 
-    return args
+    return cmd_args
 
 
 def make_preload_blocks_list(config_filename):
