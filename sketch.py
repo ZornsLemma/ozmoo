@@ -635,14 +635,18 @@ class Executable(object):
 
     def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
-        # other_start_addr just needs to be different to self.start_addr. We
-        # use 0xe00 a) because it's the lowest possible useful addr for non-tube
-        # builds b) it matches OSHWM on a Master which means the labels/report for
-        # this assembly can be used directly when debugging.
+        # Ideally other_start_addr will be different from self.start_addr,
+        # otherwise we can't generate any relocations. We use 0xe00 because a)
+        # it's the lowest possible useful address for non-tube builds (tube
+        # builds aren't and don't need to be relocatable) b) it matches OSHWM on
+        # a Master, which means the labels/report for this assembly can be used
+        # directly when debugging. a) means that it doesn't matter if
+        # other_start_addr == self.start_addr, because we will simply generate a
+        # zero-length list of relocations and we're no worse off as a result
+        # because we can't run any lower anyway.
         other_start_addr = 0xe00
         if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
             other_start_addr += (self.start_addr - other_start_addr) % 0x200
-        # SFTODO: If the two addresses are the same the relocation is pointless, can we avoid it? I think the build may fail if this is the case, need to test it at least works even if it is pointless
         assert other_start_addr <= self.start_addr
         other = self.rebuild_at(other_start_addr)
         assert other is not None
@@ -661,7 +665,8 @@ class Executable(object):
                 else:
                     assert this_delta == expected_delta
                 relocations.append(i)
-        assert len(relocations) > 0
+        if len(relocations) == 0:
+            return bytearray([0, 0])
         assert relocations[0] != 0 # we can't encode this
         delta_relocations = []
         last_relocation = 0
@@ -1435,7 +1440,7 @@ header_static_mem = 0xe
 vmem_block_pagecount = 2
 bytes_per_block = 256
 bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
-min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE
+min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
 highest_expected_page = 0x2000 # SFTODO: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
