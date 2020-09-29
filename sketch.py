@@ -485,7 +485,6 @@ class AdfsImage(object):
         first_free_sector = len(self.data) // 256
         write_le(self.data, 0, first_free_sector, 3)
         free_space_len = self.total_sectors - first_free_sector
-        print("Q", free_space_len)
         write_le(self.data, 0x100, free_space_len, 3)
         self.data[0x1fe] = 3 * 1 # number of free space map entries
         self.data[0x205] = len(self.catalogue)
@@ -804,7 +803,6 @@ class OzmooExecutable(Executable):
 def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = None):
     try:
         return OzmooExecutable(leafname, start_addr, args)
-    # SFTODO: Often this doesn't matter, because this is a trial build of some kind and we'll do something different. But it would be nice if I could somehow record "significant" GameWontFit events and show the text. This kind of ties in with how I allow the user to specify what builds they *want*; that isn't clear yet, so how best to handle showing why we couldn't give some builds they wanted isn't either. - I think I've now done this, perhaps a bit unsatisfactory
     except GameWontFit as e:
         if report_failure_prefix is not None:
             warn("Game is too large for %s: %s" % (report_failure_prefix, str(e)))
@@ -1102,21 +1100,21 @@ def make_tokenised_loader(loader_symbols):
     return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
 
 
-def title_from_filename(filename):
+def title_from_filename(filename, remove_the_if_longer_than):
     title = os.path.basename(os.path.splitext(filename)[0])
     # This logic has been copied from make.rb.
     camel_case = re.search("[a-z]", title) and re.search("[A-Z]", title) and not re.search(" |_", title)
     if camel_case:
-        #print("Q", title)
         title = re.sub("([a-z])([A-Z])", r"\1 \2", title)
-        #print("Q", title)
         title = re.sub("A([A-Z])", r"A \1", title)
-        #print("Q", title)
     title = re.sub("_+", " ", title)
     title = re.sub("(^ +)|( +)$", "", title)
-    # SFTODO: DO THE "REMOVE THE IF LONGER THAN" BIT - MAY WANT TO VARY THIS FOR TITLE SCRREN VS DISC TITLE
+    if remove_the_if_longer_than is not None and len(title) > remove_the_if_longer_than:
+        title = re.sub("^(the|a) (.*)$", r"\2", title, flags=re.IGNORECASE)
     if re.search("^[a-z]", title):
         title = title.capitalize()
+    if remove_the_if_longer_than is not None and len(title) > remove_the_if_longer_than:
+        title = title[:remove_the_if_longer_than]
     return title
 
 
@@ -1193,7 +1191,7 @@ def parse_args():
         cmd_args.default_mode = 7
 
     if cmd_args.title is None:
-        cmd_args.title = title_from_filename(cmd_args.input_file)
+        cmd_args.title = title_from_filename(cmd_args.input_file, 40)
 
     if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
         cmd_args.debug = True
