@@ -361,7 +361,7 @@ class DfsImage(object):
         for f in contents:
             self.add_file(f)
 
-    def num_files(self):
+    def _num_files(self):
         return self.data[0x105] // 8
 
     def first_free_sector(self):
@@ -375,7 +375,7 @@ class DfsImage(object):
         self.data += pad_to_multiple_of(b, DfsImage.bytes_per_sector)
 
     def _add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
-        assert self.num_files() < 31
+        assert self._num_files() < 31
         assert len(directory) == 1
         assert len(name) <= 7
         self.data[0x105] += 1*8
@@ -423,7 +423,6 @@ class DfsImage(object):
                 f.write(pad_to(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
 
 
-# SFTODO: Most/all of the members of DfsImage and AdfsImage should probably have _ prefix to indicate they're nominally private
 class AdfsImage(object):
     bytes_per_sector = 256
     sectors_per_track = 16
