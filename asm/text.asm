@@ -12,7 +12,7 @@
 .petscii_char_read = zp_temp
 
 ; only ENTER + cursor + F1-F8 possible on a C64
-; SFTODONOW: ACORN PORT
+; SFTODO: It may be a good idea to tweak this to reflect the fact we have F1-F9 or F1-F10 on Acorn (depending on what the f0 key is mapped to), but I'll leave it alone for now until the handling of function keys settles down.
 num_terminating_characters !byte 1
 terminating_characters !byte $0d
 !ifdef Z5PLUS {	

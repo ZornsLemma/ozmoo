@@ -1109,7 +1109,7 @@ prepare_static_high_memory
 .no_entries
 } else { ; ACORN
 !ifdef PREOPT {
-    ; vmap_used_entries can't be 0. SFTODONOW: I think?
+    ; vmap_used_entries can't be 0. SFTODO: I think?
     lda #1
     sta vmap_used_entries
     sta vmap_clock_index

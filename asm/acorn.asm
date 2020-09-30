@@ -613,7 +613,7 @@ screenkernal_init
     bcs +
     dec .ram_blocks + 1
 +
-    ; SFTODONOW: Not necessarily right here - but probably (why not? keep it all in one place) - it would be good to
+    ; SFTODO: Not necessarily right here - but probably (why not? keep it all in one place) - it would be good to
     ; set the age of vmap blocks which are <=nonstored_blocks to very old, so 
     ; that those now-useless blocks will be the first to be used when loading
     ; new blocks from disc. Their initial ages may well be quite young, since

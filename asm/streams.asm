@@ -468,7 +468,7 @@ character_translation_table_in
     ; use them, it's nice to allow the user to use the standard *KEY
     ; functionality, so we shouldn't force special case handling of function
     ; keys. Something to look into if a game which uses function keys ever comes
-    ; along. SFTODONOW: WE NOW HAVE THIS FOR BEYOND ZORK
+    ; along. SFTODO: I now have function key support, I may want to optionally add some entries here to map Acorn f0->nothing and Acorn f1->ZSCII f1 etc
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     !byte $81, $8b ; Cursor up
     !byte $82, $8a ; Cursor down
