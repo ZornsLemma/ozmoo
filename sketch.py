@@ -64,7 +64,7 @@ def basic_string(value):
     return value
 
 
-def read_le_word(data, i):
+def read_be_word(data, i):
     return data[i]*256 + data[i+1]
 
 
@@ -153,6 +153,53 @@ def prechecks():
                     if len(subversion) > 0 and int(subversion[0]) < 9:
                         die("You need beebasm 1.09 or later to build this")
     run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
+
+
+def patch_game():
+    release = read_be_word(game_data, header_release)
+    serial = game_data[header_serial:header_serial+6].decode("ascii")
+    game_key = "r%d-s%s" % (release, serial)
+
+    # This (Ozmoo upstream) patch shortens a message to work better on 40
+    # character screens. The diff is approximately:
+    #         CALL_2N         R0028 ((SP)+)
+    #         JZ              L01 [TRUE] L0012
+    #         PRINT           "  "
+    # -L0012: PRINT           "[Press "
+    # +L0012: PRINT           " [Cursor "
+    #         JZ              L01 [TRUE] L0013
+    #         PRINT           "UP"
+    #         JUMP            L0014
+    # L0013: PRINT           "DOWN"
+    # -L0014: PRINT           " arrow"
+    # -L0015: PRINT           " to scroll]"
+    # +L0014: PRINT_CHAR      ']'
+    beyond_zork_releases = {
+        "r47-s870915": "f347 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r49-s870917": "f2c0 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r51-s870923": "f2a8 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r57-s871221": "f384 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r60-s880610": "f2dc 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1"
+    }
+    is_beyond_zork = (z_machine_version == 5) and game_key in beyond_zork_releases
+    if is_beyond_zork:
+        info("Game recognised as 'Beyond Zork'")
+        # SFTODO: Should probably offer a command line option to disable this special case handling of BZ
+        if cmd_args.interpreter_num is None:
+            cmd_args.interpreter_num = 2
+        # We don't patch if the game is only going to be run in 80 column mdoes.
+        if not cmd_args.only_80_column:
+            patch = beyond_zork_releases[game_key].split(" ")
+            def pop():
+                return int(patch.pop(0),16)
+            patch_address = pop()
+            patch_check = pop()
+            if read_be_word(game_data, patch_address) == patch_check:
+                while len(patch) > 0:
+                    game_data[patch_address] = pop()
+                    patch_address += 1
+            else:
+                warn("Story file matches serial number and version for Beyond Zork, but contents differ; failed to patch")
 
 
 # common_labels contains the value of every label which had the same value in
@@ -1148,7 +1195,7 @@ def parse_args():
     # SFTODO: --min-relocate-addr FROM make-acorn.py, OR NEW REPLACEMENT
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
-    parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)") # SFTODONOW: NOT TRUE ABOUT DEFAULT FOR BZ YET
+    parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1447,6 +1494,8 @@ prechecks()
 loader_screen = LoaderScreen()
 
 header_version = 0
+header_release = 2
+header_serial = 18
 header_static_mem = 0xe
 vmem_block_pagecount = 2
 bytes_per_block = 256
@@ -1485,12 +1534,14 @@ elif z_machine_version == 8:
 else:
     vmem_highbyte_mask = 0x03
 game_blocks = bytes_to_blocks(len(game_data))
-dynamic_size_bytes = read_le_word(game_data, header_static_mem)
+dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
+
+patch_game()
 
 boot_file = make_boot()
 findswr_executable = make_findswr_executable()
@@ -1517,5 +1568,3 @@ while True:
 show_deferred_output()
 
 # SFTODO: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
-
-# SFTODONOW: Need to port Beyond Zork stuff from make.rb. I may want to make the 40 column patching take place only if the user hasn't specified --only-80-columns.
