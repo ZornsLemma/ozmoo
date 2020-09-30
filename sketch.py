@@ -976,6 +976,7 @@ def make_bbc_swr_executable():
             info("BBC B sideways RAM executable uses small dynamic memory model")
             return small_e
     big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, "BBC B sideways RAM")
+    # SFTODONOW: If big_e is None, we should consider building at $e00 - this won't work on some machines, but it might work on some, and we haven't lost anything. We'd probably go straight to e00 as using a "highest possible" address is likely to fail because we won't have done the tweaking for the screen hole.
     if big_e is not None:
         info("BBC B sideways RAM executable uses big dynamic memory model")
     return big_e
@@ -1191,7 +1192,7 @@ def parse_args():
     parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
     parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
     parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
-    # SFTODO: --min-relocate-addr FROM make-acorn.py, OR NEW REPLACEMENT
+    # SFTODONOW: --min-relocate-addr FROM make-acorn.py, OR NEW REPLACEMENT
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
@@ -1504,7 +1505,7 @@ bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
 min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
-highest_expected_page = 0x2000 # SFTODO: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
+highest_expected_page = 0x2000 # SFTODONOW: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
 
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
@@ -1512,7 +1513,7 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
 tube_start_addr = 0x600
-# SFTODO: I think overriding these bbc_swr_start_addres on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines - however, worth noting that fiddling with these addresses opens up lots of scope for the screen hole to break the assembly - maybe I would want to offer e00 as an option and that's it, that way I can (hopefully) pre-tweak the code to handle these three values (e00, 1900, 1d00) and that will be that.
+# SFTODONOW: I think overriding these bbc_swr_start_addres on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines - however, worth noting that fiddling with these addresses opens up lots of scope for the screen hole to break the assembly - maybe I would want to offer e00 as an option and that's it, that way I can (hopefully) pre-tweak the code to handle these three values (e00, 1900, 1d00) and that will be that.
 if not cmd_args.adfs:
     bbc_swr_start_addr = 0x1900
 else:
