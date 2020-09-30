@@ -155,22 +155,20 @@ def prechecks():
     run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
 
 
-def patch_game():
+def check_if_special_game():
     release = read_be_word(game_data, header_release)
     serial = game_data[header_serial:header_serial+6].decode("ascii")
     game_key = "r%d-s%s" % (release, serial)
 
-    # This (Ozmoo upstream) patch shortens a message to work better on 40
-    # character screens. The diff is approximately:
-    #         CALL_2N         R0028 ((SP)+)
-    #         JZ              L01 [TRUE] L0012
+    # This (Ozmoo upstream) patch shortens a message to work better on 40 column
+    # screens. The diff is approximately:
     #         PRINT           "  "
     # -L0012: PRINT           "[Press "
     # +L0012: PRINT           " [Cursor "
     #         JZ              L01 [TRUE] L0013
     #         PRINT           "UP"
     #         JUMP            L0014
-    # L0013: PRINT           "DOWN"
+    #  L0013: PRINT           "DOWN"
     # -L0014: PRINT           " arrow"
     # -L0015: PRINT           " to scroll]"
     # +L0014: PRINT_CHAR      ']'
@@ -187,7 +185,8 @@ def patch_game():
         # SFTODO: Should probably offer a command line option to disable this special case handling of BZ
         if cmd_args.interpreter_num is None:
             cmd_args.interpreter_num = 2
-        # We don't patch if the game is only going to be run in 80 column mdoes.
+        cmd_args.function_keys = True
+        # We don't patch if the game is only going to be run in 80 column modes.
         if not cmd_args.only_80_column:
             patch = beyond_zork_releases[game_key].split(" ")
             def pop():
@@ -1196,6 +1195,7 @@ def parse_args():
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
+    parser.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1293,7 +1293,6 @@ def make_disc_image():
         "-DSPLASHWAIT=0",
         "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-        "-DACORN_FUNCTION_KEY_PASS_THROUGH=1", # SFTODONOW TEMP HACK
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -1306,6 +1305,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DMODE_7_STATUS=1"]
     if cmd_args.interpreter_num:
         ozmoo_base_args += ["-DTERPNO=%d" % cmd_args.interpreter_num]
+    if cmd_args.function_keys:
+        ozmoo_base_args += ["-DACORN_FUNCTION_KEY_PASS_THROUGH=1"]
     if cmd_args.force_65c02:
         ozmoo_base_args += ["-DCMOS=1"]
     if cmd_args.benchmark:
@@ -1541,7 +1542,7 @@ while nonstored_blocks % vmem_block_pagecount != 0:
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
 
-patch_game()
+check_if_special_game()
 
 boot_file = make_boot()
 findswr_executable = make_findswr_executable()
