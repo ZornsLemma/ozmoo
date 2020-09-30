@@ -483,6 +483,12 @@ s_printchar
 	sta zp_screencolumn
 ++
 }
+!ifdef ACORN {
+    ; We don't have any reverse video handling here on Acorn as noted below, so
+    ; we move the + label forward so anything which hasn't matched yet is
+    ; ignored.
++
+}
     jmp .printchar_end
 +
     ; SF: Reverse video isn't handled by sending control codes through

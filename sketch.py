@@ -1241,6 +1241,7 @@ def make_disc_image():
         "-DSPLASHWAIT=0",
         "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
+        "-DACORN_FUNCTION_KEY_PASS_THROUGH=1", # SFTODO TEMP HACK
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():

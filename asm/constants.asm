@@ -270,6 +270,8 @@ osbyte_initialise_cache = $88 ; USERV *CODE/OSBYTE
 }
 osbyte_enter_language = $8e
 osbyte_read_vdu_variable = $a0
+osbyte_rw_function_key_status = $e1
+osbyte_rw_shift_function_key_status = $e2
 osbyte_rw_escape_key = $e5
 osbyte_read_language = $fc
 vdu_variable_text_window_bottom = $09

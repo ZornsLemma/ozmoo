@@ -200,6 +200,22 @@ ACORN_SWR_BIG_DYNMEM = 1
     jsr do_osbyte_set_cursor_editing
 }
 
+!ifdef ACORN_FUNCTION_KEY_PASS_THROUGH {
+    ; We're going to generate ZSCII codes for the unshifted function keys. We
+    ; choose a base of 133 (=ZSCII f1) for f0 because if we set a base of 132 so
+    ; Acorn f1=ZSCII f1, Acorn f0 would act like cursor right. If we want Acorn
+    ; f1=ZSCII f1 we'll fix that up in the translation table. SFTODO: I HAVEN'T ADDED THIS OPTION TO THE TRANSLATION TABLE YET
+    lda #osbyte_rw_function_key_status
+    ldx #133
+    jsr do_osbyte_y_0
+
+    ; In order to allow the use of *KEY expansions, we'll make the shifted
+    ; function keys generate those.
+    lda #osbyte_rw_shift_function_key_status
+    ldx #1 ; expand as normal soft key
+    jsr do_osbyte_y_0
+}
+
     +init_readtime_inline
     jmp init_cursor_control
 
@@ -993,6 +1009,14 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     jsr do_osbyte_rw_escape_key
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     jsr do_osbyte_set_cursor_editing_x_0
+}
+!ifdef ACORN_FUNCTION_KEY_PASS_THROUGH {
+    lda #osbyte_rw_function_key_status
+    ldx #1 ; default - expand as normal soft key
+    jsr do_osbyte_y_0
+    lda #osbyte_rw_shift_function_key_status
+    ldx #$80 ; default - generate $80+n
+    jsr do_osbyte_y_0
 }
     ; Re-enter the current language.
 re_enter_language
