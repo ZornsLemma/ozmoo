@@ -1148,6 +1148,7 @@ def parse_args():
     # SFTODO: --min-relocate-addr FROM make-acorn.py, OR NEW REPLACEMENT
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
+    parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)") # SFTODONOW: NOT TRUE ABOUT DEFAULT FOR BZ YET
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1197,6 +1198,10 @@ def parse_args():
     else:
         cmd_args.default_mode = 7
 
+    if cmd_args.interpreter_num is not None:
+        if not (0 <= cmd_args.interpreter_num <= 19):
+            die("Invalid interpreter number")
+
     if cmd_args.title is None:
         cmd_args.title = title_from_filename(cmd_args.input_file, 40)
 
@@ -1241,7 +1246,7 @@ def make_disc_image():
         "-DSPLASHWAIT=0",
         "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-        "-DACORN_FUNCTION_KEY_PASS_THROUGH=1", # SFTODO TEMP HACK
+        "-DACORN_FUNCTION_KEY_PASS_THROUGH=1", # SFTODONOW TEMP HACK
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -1252,6 +1257,8 @@ def make_disc_image():
     # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
     if not cmd_args.no_mode_7_colour:
         ozmoo_base_args += ["-DMODE_7_STATUS=1"]
+    if cmd_args.interpreter_num:
+        ozmoo_base_args += ["-DTERPNO=%d" % cmd_args.interpreter_num]
     if cmd_args.force_65c02:
         ozmoo_base_args += ["-DCMOS=1"]
     if cmd_args.benchmark:
