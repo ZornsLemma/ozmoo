@@ -96,6 +96,7 @@ Testing checklist:
 - all four executables
 - Python 2 vs Python 3
 - small non-VMEM games on second processor as well as large VMEM games
+- BBC B executable at &E00, &1900 and &1D00 (screen hole makes it very sensitive)
 
 Benchmarking:
 - THIS IS BIGDYN BECAUSE NOT TAKEN ANY STEPS TO AVOID IT

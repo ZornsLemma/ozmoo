@@ -939,7 +939,7 @@ def make_shr_swr_executable():
         # model.
         if small_e is not None:
             if small_e.start_addr >= highest_expected_page:
-                info("Shadow+sideways RAM executable uses small dynamic memory model")
+                info("Shadow+sideways RAM executable uses small dynamic memory model and requires PAGE<=&" + ourhex(small_e.start_addr).upper())
                 return small_e
 
     # Note that we don't respect highest_expected_page when generating a big
@@ -951,9 +951,9 @@ def make_shr_swr_executable():
     big_e = make_highest_possible_executable(leafname, args, "shadow+sideways RAM")
     if big_e is not None:
         if small_e is not None and small_e.start_addr < highest_expected_page:
-            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_addr))
+            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_addr).upper() + "; big model requires PAGE<=&" + ourhex(big_e.start_addr).upper())
         else:
-            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity")
+            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity and requires PAGE<=&" + ourhex(big_e.start_addr).upper())
     return big_e
 
 
@@ -968,17 +968,35 @@ def make_bbc_swr_executable():
     # hole and relocatable code. OTOH, that would force use of at least 16K
     # SWR and I think there's some prospect that we could make a stab at
     # running small games with no SWR and I don't really like ruling that out.
+    #
+    # We prefer to build to run at bbc_swr_start_addr, but we will build to run
+    # at bbc_swr_start_addr_low if a) that allows us to use the small dynamic
+    # memory model and highest_expected_page permits this b) we couldn't build
+    # at all otherwise. Because the screen hole requires judicious placement of
+    # macros in the source code depending on the exact start address of the code
+    # as well as the precise build options selected, we don't build at arbitrary
+    # addresses to try to run as high as possible; that way madness lies. This
+    # isn't a huge loss in practice, as once a user disables any extra ROMs
+    # claiming workspace PAGE will either be &E00, &1900 or &1D00 depending on
+    # the filing system.
     leafname = "OZMOOB"
     args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
+    have_low_addr = bbc_swr_start_addr_low < bbc_swr_start_addr
     if not cmd_args.force_big_dynmem:
         small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
         if small_e is not None:
-            info("BBC B sideways RAM executable uses small dynamic memory model")
+            info("BBC B sideways RAM executable uses small dynamic memory model and requires PAGE<=&" + ourhex(small_e.start_addr).upper())
             return small_e
-    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, "BBC B sideways RAM")
-    # SFTODONOW: If big_e is None, we should consider building at $e00 - this won't work on some machines, but it might work on some, and we haven't lost anything. We'd probably go straight to e00 as using a "highest possible" address is likely to fail because we won't have done the tweaking for the screen hole.
+        if have_low_addr and bbc_swr_start_addr_low >= highest_expected_page:
+            small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args + small_dynmem_args)
+            if small_e is not None:
+                info("BBC B sideways RAM executable uses small dynamic memory model by requiring PAGE<=&" + ourhex(bbc_swr_start_addr_low).upper())
+                return small_e
+    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, None if have_low_addr else "BBC B sideways RAM")
+    if big_e is None and have_low_addr:
+        big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args, "BBC B sideways RAM")
     if big_e is not None:
-        info("BBC B sideways RAM executable uses big dynamic memory model")
+        info("BBC B sideways RAM executable uses big dynamic memory model and requires PAGE<=&" + ourhex(big_e.start_addr).upper())
     return big_e
 
 
@@ -1522,6 +1540,7 @@ else:
     # so we don't pay a small performance penalty unless there's some evidence
     # it's useful.
     bbc_swr_start_addr = 0x1d00
+bbc_swr_start_addr_low = 0xe00
 max_start_addr = 0x3000
 
 common_labels = {}
