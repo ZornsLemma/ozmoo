@@ -946,15 +946,15 @@ def make_shr_swr_executable():
         small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
         # Some systems may have PAGE too high to run small_e, but those systems
         # would be able to run the game if built with the big dynamic memory model.
-        # highest_expected_page determines whether we're willing to prevent a system
+        # small_dynmem_page_threshold determines whether we're willing to prevent a system
         # running the game in order to get the benefits of the small dynamic memory
         # model.
         if small_e is not None:
-            if small_e.start_addr >= highest_expected_page:
+            if small_e.start_addr >= small_dynmem_page_threshold:
                 info("Shadow+sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
 
-    # Note that we don't respect highest_expected_page when generating a big
+    # Note that we don't respect small_dynmem_page_threshold when generating a big
     # dynamic memory executable; unlike the above decision about whether or not
     # to use the small dynamic memory model, we're not trading off performance
     # against available main RAM - if a system has PAGE too high to run the big
@@ -962,7 +962,7 @@ def make_shr_swr_executable():
     # and there's nothing we can do about it.
     big_e = make_highest_possible_executable(leafname, args, "shadow+sideways RAM")
     if big_e is not None:
-        if small_e is not None and small_e.start_addr < highest_expected_page:
+        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
             info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
         else:
             info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
@@ -983,7 +983,7 @@ def make_bbc_swr_executable():
     #
     # We prefer to build to run at bbc_swr_start_addr, but we will build to run
     # at bbc_swr_start_addr_low if a) that allows us to use the small dynamic
-    # memory model and highest_expected_page permits this b) we couldn't build
+    # memory model and small_dynmem_page_threshold permits this b) we couldn't build
     # at all otherwise. Because the screen hole requires judicious placement of
     # macros in the source code depending on the exact start address of the code
     # as well as the precise build options selected, we don't build at arbitrary
@@ -999,7 +999,7 @@ def make_bbc_swr_executable():
         if small_e is not None:
             info("BBC B sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
             return small_e
-        if have_low_addr and bbc_swr_start_addr_low >= highest_expected_page:
+        if have_low_addr and bbc_swr_start_addr_low >= small_dynmem_page_threshold:
             small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args + small_dynmem_args)
             if small_e is not None:
                 info("BBC B sideways RAM executable uses small dynamic memory model by requiring " + page_le(small_e.start_addr))
@@ -1555,7 +1555,7 @@ bbc_swr_start_addr_low = 0xe00
 # and corrupting the loading screen if we can, so we pick a relatively low addr
 # which should be >=PAGE on nearly all systems.
 electron_swr_start_addr = 0x1d00
-highest_expected_page = 0x2000 # SFTODONOW: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
+small_dynmem_page_threshold = 0x2000
 max_start_addr = 0x3000
 # SFTODO: It might be useful to allow finer-grained control over these build
 # addresses from the command line than --page, but this isn't a bad start and
@@ -1564,7 +1564,7 @@ if cmd_args.page is not None:
     bbc_swr_start_addr = cmd_args.page
     bbc_swr_start_addr_low = cmd_args.page
     electron_swr_start_addr = cmd_args.page
-    highest_expected_page = cmd_args.page
+    small_dynmem_page_threshold = cmd_args.page
 
 
 common_labels = {}
