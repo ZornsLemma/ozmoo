@@ -47,6 +47,10 @@ def ourhex(i):
     return hex(i)[2:]
 
 
+def page_le(i):
+    return "PAGE<=&" + ourhex(i).upper()
+
+
 def basic_int(i):
     as_decimal = str(i)
     if i < 0:
@@ -939,7 +943,7 @@ def make_shr_swr_executable():
         # model.
         if small_e is not None:
             if small_e.start_addr >= highest_expected_page:
-                info("Shadow+sideways RAM executable uses small dynamic memory model and requires PAGE<=&" + ourhex(small_e.start_addr).upper())
+                info("Shadow+sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
 
     # Note that we don't respect highest_expected_page when generating a big
@@ -951,9 +955,9 @@ def make_shr_swr_executable():
     big_e = make_highest_possible_executable(leafname, args, "shadow+sideways RAM")
     if big_e is not None:
         if small_e is not None and small_e.start_addr < highest_expected_page:
-            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require PAGE<=&" + ourhex(small_e.start_addr).upper() + "; big model requires PAGE<=&" + ourhex(big_e.start_addr).upper())
+            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
         else:
-            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity and requires PAGE<=&" + ourhex(big_e.start_addr).upper())
+            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
     return big_e
 
 
@@ -985,18 +989,18 @@ def make_bbc_swr_executable():
     if not cmd_args.force_big_dynmem:
         small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
         if small_e is not None:
-            info("BBC B sideways RAM executable uses small dynamic memory model and requires PAGE<=&" + ourhex(small_e.start_addr).upper())
+            info("BBC B sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
             return small_e
         if have_low_addr and bbc_swr_start_addr_low >= highest_expected_page:
             small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args + small_dynmem_args)
             if small_e is not None:
-                info("BBC B sideways RAM executable uses small dynamic memory model by requiring PAGE<=&" + ourhex(bbc_swr_start_addr_low).upper())
+                info("BBC B sideways RAM executable uses small dynamic memory model by requiring " + page_le(small_e.start_addr))
                 return small_e
     big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, None if have_low_addr else "BBC B sideways RAM")
     if big_e is None and have_low_addr:
         big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args, "BBC B sideways RAM")
     if big_e is not None:
-        info("BBC B sideways RAM executable uses big dynamic memory model and requires PAGE<=&" + ourhex(big_e.start_addr).upper())
+        info("BBC B sideways RAM executable uses big dynamic memory model and requires " + page_le(big_e.start_addr))
     return big_e
 
 
