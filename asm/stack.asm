@@ -375,6 +375,7 @@ z_ins_catch
 	lda stack_ptr + 1
 	jmp z_store_result
 
++make_acorn_screen_hole
 z_ins_throw
 	; Restore pointer given. Return from routine (frame).
 	
