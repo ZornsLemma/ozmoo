@@ -1368,7 +1368,7 @@ read_text
     ; do it properly, this would probably also mean we could implement history
     ; recall/editing using the cursor keys here without preventing the
     ; possibility of a game using the cursor keys for its own purposes, as the
-    ; game would probably read them using z_ins_read_char.
+    ; game would probably read them using z_ins_read_char. SFTODO: UPDATE THIS COMMENT
     cmp #32
     bcs ++
 	jmp .readkey

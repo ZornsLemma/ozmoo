@@ -754,11 +754,23 @@ draw_status_line
     lda screen_mode
     cmp #7
     bne +
+    ; SF: This used to output the colour code via s_printchar, but a recent
+    ; change (to stop Beyond Zork - probably any other game using function keys
+    ; as terminating characters as well - printing the function key codes)
+    ; stopped that working. I can't help thinking the right fix would be to not
+    ; send these valid-for-input-only codes to s_printchar at the end of
+    ; .char_is_ok when they occur as terminating characters and then allow
+    ; s_printchar to print these colour codes, but I may be missing something
+    ; and I don't want to risk causing subtle breakage. As a not-too-bad
+    ; workaround, output using oswrch instead.
+    lda #vdu_home
+    sta s_cursors_inconsistent
+    jsr oswrch
     clc
     lda fg_colour
     adc #mode_7_text_colour_base
-    ; SFTODONOW: This (not necessarily just here, other places too) is broken by my recent fix to discard "invalid" characters (as shown by function keys in BZ). What to do?
-    jsr s_printchar
+    jsr oswrch
+    inc zp_screencolumn
 +
 }
 }
