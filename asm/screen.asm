@@ -757,6 +757,7 @@ draw_status_line
     clc
     lda fg_colour
     adc #mode_7_text_colour_base
+    ; SFTODONOW: This (not necessarily just here, other places too) is broken by my recent fix to discard "invalid" characters (as shown by function keys in BZ). What to do?
     jsr s_printchar
 +
 }
