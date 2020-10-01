@@ -68,6 +68,14 @@ def basic_string(value):
     return value
 
 
+def our_parse_int(s):
+    if s.startswith("$") or s.startswith("&"):
+        return int(s[1:], 16)
+    if s.startswith("0x"):
+        return int(s[2:], 16)
+    return int(s)
+
+
 def read_be_word(data, i):
     return data[i]*256 + data[i+1]
 
@@ -1006,12 +1014,7 @@ def make_bbc_swr_executable():
 
 def make_electron_swr_executable():
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
-    # On the Electron, no main RAM is used for dynamic RAM so there's no
-    # disadvantage to loading high in memory as far as the game itself is
-    # concerned. However, we'd like to avoid the executable overwriting the mode
-    # 6 screen RAM and corrupting the loading screen if we can, so we pick a
-    # relatively low addr which should be >=PAGE on nearly all systems.
-    return make_optimally_aligned_executable("OZMOOE", 0x1d00, args, "Electron")
+    return make_optimally_aligned_executable("OZMOOE", electron_swr_start_addr, args, "Electron")
 
 
 def make_tube_executables():
@@ -1214,7 +1217,7 @@ def parse_args():
     parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
     parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
     parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
-    # SFTODONOW: --min-relocate-addr FROM make-acorn.py, OR NEW REPLACEMENT
+    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR")
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
@@ -1274,6 +1277,9 @@ def parse_args():
 
     if cmd_args.title is None:
         cmd_args.title = title_from_filename(cmd_args.input_file, 40)
+
+    if cmd_args.page is not None:
+        cmd_args.page = our_parse_int(cmd_args.page)
 
     if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
         cmd_args.debug = True
@@ -1527,7 +1533,6 @@ bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
 min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
-highest_expected_page = 0x2000 # SFTODONOW: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
 
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
@@ -1535,7 +1540,6 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
 tube_start_addr = 0x600
-# SFTODONOW: I think overriding these bbc_swr_start_addres on command line would be desirable, so users with &E00 filing systems but no shadow RAM can do a build which can take advantage of the extra main RAM on their machines - however, worth noting that fiddling with these addresses opens up lots of scope for the screen hole to break the assembly - maybe I would want to offer e00 as an option and that's it, that way I can (hopefully) pre-tweak the code to handle these three values (e00, 1900, 1d00) and that will be that.
 if not cmd_args.adfs:
     bbc_swr_start_addr = 0x1900
 else:
@@ -1545,7 +1549,23 @@ else:
     # it's useful.
     bbc_swr_start_addr = 0x1d00
 bbc_swr_start_addr_low = 0xe00
+# On the Electron, no main RAM is used for dynamic RAM so there's no
+# disadvantage to loading high in memory as far as the game itself is concerned.
+# However, we'd like to avoid the executable overwriting the mode 6 screen RAM
+# and corrupting the loading screen if we can, so we pick a relatively low addr
+# which should be >=PAGE on nearly all systems.
+electron_swr_start_addr = 0x1d00
+highest_expected_page = 0x2000 # SFTODONOW: BEST VALUE? MAKE USER CONFIGURABLE ANYWAY. ALSO A BIT MISNAMED AS WE DON'T USE IT FOR EG THE BBC NO SHADOW EXECUTABLE
 max_start_addr = 0x3000
+# SFTODO: It might be useful to allow finer-grained control over these build
+# addresses from the command line than --page, but this isn't a bad start and
+# may really be all we need.
+if cmd_args.page is not None:
+    bbc_swr_start_addr = cmd_args.page
+    bbc_swr_start_addr_low = cmd_args.page
+    electron_swr_start_addr = cmd_args.page
+    highest_expected_page = cmd_args.page
+
 
 common_labels = {}
 
