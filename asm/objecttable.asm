@@ -87,6 +87,7 @@ z_ins_get_parent
 }
     jmp z_store_result
 
++make_acorn_screen_hole
 z_ins_get_prop_len
     ; get_prop_len property-address -> (result)
     ldx z_operand_value_low_arr
