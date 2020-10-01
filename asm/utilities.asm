@@ -922,6 +922,9 @@ divide16
 !macro make_acorn_screen_hole_jmp {
     ; no-op
 }
+!macro make_acorn_screen_hole_before_stack {
+    ; no-op
+}
 }
 
 ; screen update routines

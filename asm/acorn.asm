@@ -1267,6 +1267,24 @@ acorn_screen_hole_end
     }
 }
 
+; On $e00 builds the binary is likely to fit entirely below the screen at $3c00.
+; We need the stack and story to be contiguous, so we must insert a large enough
+; hole at this point even if we're not close to $3c00.
+;
+; .swap_pointers_for_save will temporarily corrupt the last few bytes of the
+; screen memory just below the start of the stack (i.e. just below $4000), but
+; this shouldn't actually be visible because we're using software scrolling and
+; the mode 7 screen data actually only occupies the first 40*25 bytes at $3c00,
+; so it's not necessary to include some extra padding at $4000 to avoid this.
+; SFTODO: BE GOOD TO TEST THIS!
+!macro make_acorn_screen_hole_before_stack {
+    !if * <= $3c00 {
+acorn_screen_hole_start = *
+        !fill $4000 - *, 'X'
+acorn_screen_hole_end
+    }
+}
+
 !macro check_acorn_screen_hole {
     ; This check is important to ensure the no shadow RAM build doesn't crash,
     ; but when the check fails, we need to be able to disable it in order to

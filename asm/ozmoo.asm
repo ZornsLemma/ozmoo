@@ -380,6 +380,7 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
++make_acorn_screen_hole_before_stack
 stack_start
 
 deletable_screen_init_1
