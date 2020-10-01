@@ -1,51 +1,72 @@
-# SFTODO: Allow RETURN to start the game instead of/as well as SPACE
-
-# SFTODO: For games with small enough dynmem it would be nice if the SWR builds would run with no SWR (perhaps painfully)
-
-# SFTODO: Is there any chance of "Beyond Zork" working? Does it work on C64?
-
-# SFTODO: Perhaps be good to check for acme and beebasm (ideally version of beebasm too)
-# on startup and generate a clear error if they're not found.
-
-# SFTODO: Would be nice to set the disc title on the SSD; there's a possibly
-# helpful function in make.rb I can copy.
-
-# SFTODO: Lots of magic constants around sector size and track size and so forth here
-
-# SFTODO: Some uses of assert check things which are not internal errors
-
-# SFTODO: It would be good if the loader could check PAGE against what we know the shadow RAM binary will cope with, so we can get a cleaner error in the loader rather than a "PAGE too high / Bad program" error when the loader actually tries to run it.
-
 from __future__ import print_function
 import argparse
 import base64
+import copy
 import hashlib
-import io
 import os
 import re
-import shutil
 import subprocess
 import sys
 
+
 def die(s):
+    show_deferred_output()
     print(s, file=sys.stderr)
     sys.exit(1)
 
+
 def info(s):
-    if verbose_level >= 1:
-        print(s)
+    if cmd_args.verbose_level >= 1:
+        if defer_output:
+            deferred_output.append((False, s))
+        else:
+            print(s)
+
 
 def warn(s):
-    print("Warning: %s" % s, file=sys.stderr)
+    if defer_output:
+        deferred_output.append((True, s))
+    else:
+        print("Warning: %s" % s, file=sys.stderr)
 
-def substitute(lst, a, b):
-    return [x.replace(a, b) for x in lst]
+
+def show_deferred_output():
+    global defer_output
+    defer_output = False
+    global deferred_output
+    for is_warning, s in deferred_output:
+        if is_warning:
+            warn(s)
+        else:
+            info(s)
+    deferred_output = []
+
 
 def ourhex(i):
+    assert i >= 0
     return hex(i)[2:]
 
-def basichex(i):
-    return "&" + hex(i)[2:].upper()
+
+def page_le(i):
+    return "PAGE<=&" + ourhex(i).upper()
+
+
+def basic_int(i):
+    as_decimal = str(i)
+    if i < 0:
+        as_hex = "-&" + ourhex(-i).upper()
+    else:
+        as_hex = "&" + ourhex(i).upper()
+    return as_decimal if len(as_decimal) < len(as_hex) else as_hex
+
+
+def basic_string(value):
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, int):
+        return basic_int(value)
+    return value
+
 
 def our_parse_int(s):
     if s.startswith("$") or s.startswith("&"):
@@ -54,46 +75,18 @@ def our_parse_int(s):
         return int(s[2:], 16)
     return int(s)
 
-# "Validate" a teletext colour control code. This is mainly needed because it's easy to
-# use a space in the template to indicate "white" for one of the colours, but a space
-# won't do what we need it to do.
-def colour(n):
-    if 129 <= n <= 135:
-        return n
-    else:
-        return 135
 
-# SFTODO: If a command fails (and it's not one we've done "experimentally" accepting it may fail), this should probably always show the command and it's output regardless of verbose_level
-def run_and_check(args, output_filter=None):
-    if output_filter is None:
-        output_filter = lambda x: True
-    if verbose_level >= 2:
-        print(" ".join(args))
-    child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    child.wait()
-    child_output = [line for line in child.stdout.readlines() if output_filter(line)]
-    # The child's stdout and stderr will both be output to our stdout, but that's not
-    # a big deal.
-    if verbose_level >= 2 and len(child_output) > 0:
-        print("".join(x.decode(encoding="ascii") for x in child_output))
-    if child.returncode != 0:
-        die("%s failed" % args[0])
-
-def parse_labels(filename):
-    labels = {}
-    with open(filename, "r") as f:
-        for line in f.readlines():
-            line = line[:-1]
-            components = line.split("=")
-            value = components[1].strip()
-            i = value.find(";")
-            if i != -1:
-                value = value[:i]
-            labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
-    return labels
-
-def get_word(data, i):
+def read_be_word(data, i):
     return data[i]*256 + data[i+1]
+
+
+def write_le(data, i, v, n):
+    while n > 0:
+        data[i] = v & 0xff
+        i += 1
+        v >>= 8
+        n -= 1
+
 
 def divide_round_up(x, y):
     if x % y == 0:
@@ -101,673 +94,359 @@ def divide_round_up(x, y):
     else:
         return (x // y) + 1
 
+
 def bytes_to_blocks(x):
-    return divide_round_up(x, 256)
+    return divide_round_up(x, bytes_per_block)
 
-# SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
-def decode_edittf_url(url):
-    i = url.index(b"#")
-    s = url[i+1:]
-    i = s.index(b":")
-    s = s[i+1:]
-    s += b"===="
-    packed_data = bytearray(base64.urlsafe_b64decode(s))
-    unpacked_data = bytearray()
-    buffer = 0
-    buffer_bits = 0
-    while len(packed_data) > 0 or buffer_bits > 0:
-        if buffer_bits < 7:
-            if len(packed_data) > 0:
-                packed_byte = packed_data.pop(0)
+
+def pad_to(data, size):
+    assert len(data) <= size
+    return data + bytearray(size - len(data))
+
+
+def pad_to_multiple_of(data, block_size):
+    return pad_to(data, block_size * divide_round_up(len(data), block_size))
+
+
+def disc_size(contents):
+    return sum(bytes_to_blocks(len(f.binary())) for f in contents)
+
+
+def same_double_page_alignment(lhs, rhs):
+    return lhs % 512 == rhs % 512
+
+
+def double_sided_dfs():
+    return cmd_args.double_sided and not cmd_args.adfs
+
+
+def test_executable(name):
+    try:
+        child = subprocess.Popen([name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        child.wait()
+    except:
+        die("Can't execute '" + name + "'; is it on your PATH?")
+
+
+def run_and_check(args, output_filter=None):
+    if output_filter is None:
+        output_filter = lambda x: True
+    if cmd_args.verbose_level >= 2:
+        print(" ".join(args))
+    child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    child.wait()
+    child_output = [line for line in child.stdout.readlines() if output_filter(line)]
+    # The child's stdout and stderr will both be output to our stdout, but that's not
+    # a big deal.
+    if (child.returncode != 0 or cmd_args.verbose_level >= 2) and len(child_output) > 0:
+        if cmd_args.verbose_level < 2:
+            print(" ".join(args))
+        print("".join(x.decode(encoding="ascii") for x in child_output))
+    if child.returncode != 0:
+        die("%s failed" % args[0])
+
+
+# Generate a relatively clear error message if we can't find one of our tools,
+# rather than failing on a complex build command.
+def prechecks():
+    test_executable("acme")
+    test_executable("beebasm")
+    # Check for a new enough beebasm. We parse the --help output, if we find
+    # something that looks like a version we complain if it's too old; if in
+    # doubt we don't generate an error.
+    def beebasm_version_check(x):
+        c = x.split()
+        if len(c) >= 2 and c[0] == "beebasm":
+            version = c[1]
+            if version.startswith("1."):
+                c = version.split(".")
+                if len(c) >= 2:
+                    subversion = re.findall("^\d+", c[1])
+                    if len(subversion) > 0 and int(subversion[0]) < 9:
+                        die("You need beebasm 1.09 or later to build this")
+    run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
+
+
+def check_if_special_game():
+    release = read_be_word(game_data, header_release)
+    serial = game_data[header_serial:header_serial+6].decode("ascii")
+    game_key = "r%d-s%s" % (release, serial)
+
+    # This (Ozmoo upstream) patch shortens a message to work better on 40 column
+    # screens. The diff is approximately:
+    #         PRINT           "  "
+    # -L0012: PRINT           "[Press "
+    # +L0012: PRINT           " [Cursor "
+    #         JZ              L01 [TRUE] L0013
+    #         PRINT           "UP"
+    #         JUMP            L0014
+    #  L0013: PRINT           "DOWN"
+    # -L0014: PRINT           " arrow"
+    # -L0015: PRINT           " to scroll]"
+    # +L0014: PRINT_CHAR      ']'
+    beyond_zork_releases = {
+        "r47-s870915": "f347 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r49-s870917": "f2c0 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r51-s870923": "f2a8 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r57-s871221": "f384 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
+        "r60-s880610": "f2dc 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1"
+    }
+    is_beyond_zork = (z_machine_version == 5) and game_key in beyond_zork_releases
+    if is_beyond_zork:
+        info("Game recognised as 'Beyond Zork'")
+        # SFTODO: Should probably offer a command line option to disable this special case handling of BZ
+        if cmd_args.interpreter_num is None:
+            cmd_args.interpreter_num = 2
+        cmd_args.function_keys = True
+        # We don't patch if the game is only going to be run in 80 column modes.
+        if not cmd_args.only_80_column:
+            patch = beyond_zork_releases[game_key].split(" ")
+            def pop():
+                return int(patch.pop(0),16)
+            patch_address = pop()
+            patch_check = pop()
+            if read_be_word(game_data, patch_address) == patch_check:
+                while len(patch) > 0:
+                    game_data[patch_address] = pop()
+                    patch_address += 1
             else:
-                packed_byte = 0
-            buffer = (buffer << 8) | packed_byte
-            buffer_bits += 8
-        byte = buffer >> (buffer_bits - 7)
-        if byte < 32:
-            byte += 128
-        unpacked_data.append(byte)
-        buffer &= ~(0b1111111 << (buffer_bits - 7))
-        buffer_bits -= 7
-    # SFTODO: At the moment if the edit.tf page contains double-height text the
-    # user must make sure to duplicate it on both lines. We could potentially adjust
-    # this automatically.
-    return unpacked_data
-
-def escape_basic_string(s):
-    s = s.replace(b'"', b'";CHR$(34);"')
-    return s
+                warn("Story file matches serial number and version for Beyond Zork, but contents differ; failed to patch")
 
 
-# SFTODO: MOVE/RENAME
-class Executable(object):
-    def __init__(self, base_filename, version, start_address, extra_args):
-        self.base_filename = base_filename
-        self.surface = 0
-        self.raw_version = version
-        version = version.replace("START", ourhex(start_address))
-        self.version = version
-        self.start_address = start_address
-        self.extra_args = extra_args[:]
-        if "-DACORN_NO_SHADOW=1" not in self.extra_args:
-            self.extra_args += ["-DACORN_HW_SCROLL=1"]
-        if "-DVMEM=1" in self.extra_args and args.preload_opt:
-            self.extra_args += ["-DPREOPT=1", "-DDEBUG=1"]
-        if "-DCMOS=1" in acme_args1 + self.extra_args:
-            cpu = "65c02"
+# common_labels contains the value of every label which had the same value in
+# every build it existed in. The idea here is that we can use it to allow the
+# loader access to labels without needing to duplicate values or trying to parse
+# source files.
+def update_common_labels(labels):
+    for label, value in labels.items():
+        common_value = common_labels.get(label, None)
+        if common_value is None:
+            common_labels[label] = value
         else:
-            cpu = "6502"
-        os.chdir("asm")
-        run_and_check(substitute(acme_args1 + ["--cpu", cpu, "--setpc", "$" + ourhex(start_address)] + self.extra_args + acme_args2, "VERSION", version))
-        os.chdir("..")
-        self.binary_filename = "temp/ozmoo_" + version
-        self.labels_filename = "temp/acme_labels_" + version + ".txt"
-        self.labels = parse_labels(self.labels_filename)
+            if value != common_value:
+                del common_labels[label]
 
-        with open(self.binary_filename, "rb") as f:
-            self.binary = f.read()
-        if "ACORN_RELOCATABLE" in self.labels:
-            truncate_label = "reloc_count"
-        else:
-            truncate_label = "end_of_routines_in_stack_space"
-        self.binary = self.binary[:self.labels[truncate_label]-self.labels["program_start"]]
 
-        if "VMEM" in self.labels:
-            self.binary = Executable.patch_vmem(self.binary, self.labels)
+class LoaderScreen(Exception):
+    def __init__(self):
+        loader_screen = LoaderScreen._get_title_page()
+        # SFTODO: Since the loader screen might have been supplied by the user, we should probably not use assert to check for errors here.
+        original_lines = [loader_screen[i:i+40] for i in range(0, len(loader_screen), 40)]
+        assert len(original_lines) == 25
+        sections = [[], [], []]
+        section = 0
+        self.space_line = None
+        substitutions = {
+            b"TITLE": cmd_args.title,
+            b"SUBTITLE": str(cmd_args.subtitle),
+            b"OZMOO": best_effort_version,
+            b"SPACE": "${SPACE}", # preserve ${SPACE} when substituting
+        }
+        for i, line in enumerate(original_lines):
+            line = LoaderScreen._to_nearly_ascii(line)
+            is_unwanted_subtitle = b"${SUBTITLE}" in line and cmd_args.subtitle is None
+            line = substitute(line, substitutions, lambda x: x.encode("ascii"))[:40]
+            line = line.rstrip()
+            if b"LOADER OUTPUT STARTS HERE" in line:
+                section = 1
+            elif b"LOADER OUTPUT ENDS HERE" in line:
+                section = 2
+            if is_unwanted_subtitle:
+                # By shuffling the subtitle into the middle section whether it
+                # appears in the header or footer, we can get rid of it without
+                # breaking the line numbering.
+                sections[1].append(line)
+            else:
+                sections[section].append(line)
+        # Move the "LOADER OUTPUT ENDS HERE" line from the start of section 2 to
+        # the end of section 1.
+        sections[1].append(sections[2].pop(0))
+        assert len(sections[1]) >= 13
+        self.header = sections[0]
+        self.footer = sections[2]
+
+        self.footer_space_line = None
+        for i, line in enumerate(self.footer):
+            if b"${SPACE}" in line and self.footer_space_line is None:
+                self.footer_space_line = i
+                self.footer[i] = line.replace(b"${SPACE}", b"").rstrip()
+        assert self.footer_space_line is not None
+
+        self.normal_fg = 135
+        self.header_fg = 131
+        self.highlight_fg = 131
+        self.highlight_bg = 129
+        for line in sections[1]:
+            def colour_code(c):
+                if c == 32:
+                    return 135
+                if c >= 129 and c <= 135:
+                    return c
+                warn("Invalid colour code %d found in colour definitions on loader screen" % c)
+                return 135
+            if b"Normal foreground" in line:
+                self.normal_fg = colour_code(line[0])
+            elif b"Header foreground" in line:
+                self.header_fg = colour_code(line[0])
+            elif b"Highlight foreground" in line:
+                self.highlight_fg = colour_code(line[0])
+            elif b"Highlight background" in line:
+                self.highlight_bg = colour_code(line[0])
 
     @staticmethod
-    def patch_vmem(binary, labels):
-        binary = bytearray(binary)
-        vmem_block_pagecount = labels["vmem_block_pagecount"]
-        vmap_max_size = labels["vmap_max_size"]
+    def _get_title_page():
+        if cmd_args.custom_title_page is None:
+            cmd_args.custom_title_page = "https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA"
+        if cmd_args.custom_title_page.startswith("http"):
+            return LoaderScreen._decode_edittf_url(cmd_args.custom_title_page)
+        with open(cmd_args.custom_title_page, "rb") as f:
+            data = f.read()
+        if data.startswith(b"http"):
+            with open(cmd_args.custom_title_page, "r") as f:
+                return LoaderScreen._decode_edittf_url(f.readline())
+        return bytearray(data[0:40*25])
 
-        if z_machine_version == 3:
-            vmem_highbyte_mask = 0x01
-        elif z_machine_version == 8:
-            vmem_highbyte_mask = 0x07
-        else:
-            vmem_highbyte_mask = 0x03
+    # SFTODO: Do I need to do the three character switches the OS performs automatically? We will be outputting the mode 7 header/footer using PRINT not direct memory access.
+    @staticmethod
+    def _decode_edittf_url(url):
+        i = url.index("#")
+        s = url[i+1:]
+        i = s.index(":")
+        s = s[i+1:]
+        s += "===="
+        packed_data = bytearray(base64.urlsafe_b64decode(s))
+        unpacked_data = bytearray()
+        buffer = 0
+        buffer_bits = 0
+        while len(packed_data) > 0 or buffer_bits > 0:
+            if buffer_bits < 7:
+                if len(packed_data) > 0:
+                    packed_byte = packed_data.pop(0)
+                else:
+                    packed_byte = 0
+                buffer = (buffer << 8) | packed_byte
+                buffer_bits += 8
+            byte = buffer >> (buffer_bits - 7)
+            if byte < 32:
+                byte += 128
+            unpacked_data.append(byte)
+            buffer &= ~(0b1111111 << (buffer_bits - 7))
+            buffer_bits -= 7
+        # SFTODO: At the moment if the edit.tf page contains double-height text the
+        # user must make sure to duplicate it on both lines. We could potentially adjust
+        # this automatically.
+        return unpacked_data
 
-        if "ACORN_SWR" in labels:
-            pseudo_ramtop = 0xc000
-        else:
-            pseudo_ramtop = labels["flat_ramtop"]
-        ozmoo_ram_blocks = (pseudo_ramtop - labels["story_start"]) / 256
-        # SFTODO: Ideally these failures would result in us generating a disc which doesn't
-        # support the system type we're currently patching the binary for, but which
-        # does support others. (A real example of this has now emerged: Advent.z5, Graham
-        # Nelson's re-implementation of Adventure, is too big for the Electron. You can
-        # work round this by specifying --bbc-only, but it would be nicer not to require the
-        # user to do this.)
-        if nonstored_blocks > ozmoo_ram_blocks:
-            die("Not enough free RAM for game's dynamic memory")
-        if game_blocks > nonstored_blocks:
-            min_vmem_blocks = 2 # absolute minimum, one for PC, one for data
-            if nonstored_blocks + min_vmem_blocks * vmem_block_pagecount > ozmoo_ram_blocks:
-                # SFTODO: On an ACORN_SWR build, this is not necessarily a problem, but let's
-                # keep the check in place for now, as if we fail to meet this condition we
-                # would have to require at least two sideways RAM banks in order to run and
-                # right now the loader doesn't check for that.
-                die("Not enough free RAM for any swappable memory")
+    @staticmethod
+    def _to_nearly_ascii(line):
+        # Teletext data is 7-bit, but the way the Acorn OS handles mode 7 means
+        # we must use top-bit-set codes for codes 0-31. (We could use
+        # top-bit-set codes for everything, but we generate more compact BASIC
+        # code if we prefer 7-bit characters; Python 3 makes it painful to embed
+        # 8-bit characters directly in our BASIC code and it is slighty iffy
+        # anyway.)
+        line = bytearray([x & 0x7f for x in line])
+        return bytearray([x | 0x80 if x < 32 else x for x in line])
 
-        # Generate initial virtual memory map. We just populate the entire table; if the
-        # game is smaller than this we will just never use the other entries.
-        vmap_offset = binary.index(b'VVVVVVVVVVVV')
-        vmap_length = 0
-        while chr(binary[vmap_offset + vmap_length]) == 'V':
-            vmap_length += 1
-        if vmap_length & 1 != 0:
-            vmap_length -= 1
-        assert vmap_length >= vmap_max_size * 2
-        blocks = []
-        # SFTODO: We will do this work for every single executable; it's not in practice a
-        # big deal but it's a bit inelegant.
-        if args.preload_config is not None:
-            with open(args.preload_config, "rb") as f:
-                preload_config = bytearray(f.read())
-            for i in range(len(preload_config) // 2):
-                # We don't care about the timestamp on the entries in preload_config; they are in
-                # order of insertion and that's what we're really interested in. (This isn't
-                # the *same* as the order based on timestamp; a block loaded early may of course
-                # be used again later and therefore have a newer timestamp than another block
-                # loaded after it but never used again.) Note that just as when we don't use
-                # preload_config, the initial vmap entries will be assigned timestamps based
-                # on their order; the timestamp in preload_config are ignored.
-                addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
-                if addr & 1 == 1:
-                    # This is an odd address so it's invalid; we expect to see one of these
-                    # as the first block and we just ignore it.
-                    assert i == 0
-                    continue
-                block_index = (addr - nonstored_blocks) // vmem_block_pagecount
-                assert block_index >= 0
-                blocks.append(block_index)
-        # SFTODONOW: SHOULDN'T THIS RANGE START AT nonstored_blocks NOT 0??? IT SHOULD STILL HAVE vmap_max_size *ENTRIES*. - NO, THINK ABOUT IT FRESH BUT THIS IS PROBABLY CORRECT - WE ADD NONSTORED_BLOCKS WHEN CALCULATING ADDR, AND WE SUBTRACT IT WHEN EXTRACING BLOCK INDEX FROM ADDR ABOVE
-        for i in range(vmap_max_size):
-            if i not in blocks:
-                blocks.append(i)
-        blocks = blocks[:vmap_max_size]
-        #print("Q", blocks) SFTODO TEMP
-        #import random # SFTODO TEMP
-        #random.seed(42) # SFTODO TEMP
-        #random.shuffle(blocks) # SFTODO TEMP
-        #print("Q", blocks) # SFTODO TEMP
-        # vmap entries should normally address a 512-byte aligned block; invalid_address
-        # is odd so it won't ever match when the virtual memory code is searching the map.
-        invalid_address = 0x1
-        for i, block_index in enumerate(blocks):
-            timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
-            if args.preload_opt:
-                # Most of the vmap will be ignored, but we have to have at least one entry
-                # and by making it an invalid address we don't need to worry about loading
-                # any "suggested" blocks.
-                addr = invalid_address
+    @staticmethod
+    def _data_to_basic(data):
+        basic = []
+        for i, line in enumerate(data):
+            if len(line) == 0:
+                basic.append("PRINT")
             else:
-                # SFTODO: Simplify this to "nonstored_blocks + block_index * vmem_block_pagecount"?
-                addr = ((nonstored_blocks // vmem_block_pagecount) + block_index) * vmem_block_pagecount
-            if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
-                # This vmap entry is useless; the current Z-machine version can't contain
-                # such a block.
-                # SFTODO: Warn? It's harmless but it means we could have clawed back a few
-                # bytes by shrinking vmap_max_size.
-                addr = 0
-            vmap_entry = (timestamp << 8) | addr
-            binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
-            binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
-        return binary
+                s = ""
+                in_quote = False
+                for b in line:
+                    if b >= 128+32:
+                        b -= 128
+                    if b == ord('"') or b >= 128:
+                        if in_quote:
+                            s += '";'
+                            in_quote = False
+                        s += "CHR$%d" % b
+                    else:
+                        if not in_quote:
+                            s += ';"'
+                            in_quote = True
+                        s += chr(b)
+                if in_quote:
+                    s += '"'
+                if s[0] == ";":
+                    s = s[1:]
+                if len(line) == 40 or i == len(data)-1:
+                    s += ";"
+                basic.append("PRINT" + s)
+        return "\n".join(basic)
 
-    def add_to_disc(self, disc):
-        high_order = 0 if self.start_address <= 0x800 else host
-        disc.add_file("$", self.base_filename, high_order | self.start_address, high_order | self.start_address, self.binary)
-
-    def filename(self):
-        if not args.adfs:
-            return ":%d.$.%s" % (self.surface, self.base_filename)
-        else:
-            return self.base_filename
-
-
-best_effort_version = "Ozmoo"
-try:
-    with open(os.path.join(os.path.dirname(sys.argv[0]), "version.txt"), "r") as f:
-        version_txt = f.read().strip()
-    best_effort_version += " " + version_txt
-except IOError:
-    version_txt = None
-
-parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
-# SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
-if version_txt is not None:
-    parser.add_argument("--version", action="version", version=best_effort_version)
-parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
-parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
-parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
-parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
-parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
-parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
-parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
-parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
-parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
-parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
-parser.add_argument("--min-relocate-addr", metavar="ADDR", type=str, help="assume PAGE<=ADDR if it helps use the small memory model", default="0x1900") # SFTODO: RENAME THIS ARG
-parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
-parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
-parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
-parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
-parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
-parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
-group = parser.add_argument_group("developer-only arguments (not normally needed)")
-group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
-group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
-group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
-group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
-group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
-group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
-group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
-group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
-group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
-group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
-group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
-group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
-group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
-group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
-group.add_argument("--force-6502", action="store_true", help="only use 6502 instructions on all machines")
-group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
-group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
-# SFTODO: MORE
-args = parser.parse_args()
-verbose_level = 0 if args.verbose is None else args.verbose
-
-if args.force_65c02 and args.force_6502:
-    die("--force-65c02 and --force-6502 are incompatible")
-
-if args.preload_opt and args.preload_config:
-    die("--preload-opt and --preload-config are incompatible")
-
-# It's OK to run and give --help etc output if the version.txt file can't be found,
-# but we don't want to generate a disc image with a missing version.
-if version_txt is None:
-    die("Can't find version.txt")
-
-if args.output_file is not None:
-    _, user_extension = os.path.splitext(args.output_file)
-    if user_extension.lower() == '.dsd':
-        args.double_sided = True
-    elif user_extension.lower() == '.adl':
-        args.adfs = True
-        args.double_sided = True
-    elif user_extension.lower() == '.adf':
-        args.adfs = True
-
-header_version = 0
-header_static_mem = 0xe
-vmem_block_pagecount = 2
-min_timestamp = 0
-max_timestamp = 0xe0 # initial tick value
-
-with open(args.input_file, "rb") as f:
-    game_data = bytearray(f.read())
-game_blocks = bytes_to_blocks(len(game_data))
-dynamic_size_bytes = get_word(game_data, header_static_mem)
-nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
-while nonstored_blocks % vmem_block_pagecount != 0:
-    nonstored_blocks += 1
+    def add_loader_symbols(self, loader_symbols):
+        # Symbols for the BBC loader screen
+        loader_symbols["NORMAL_FG"] = basic_int(self.normal_fg)
+        loader_symbols["HEADER_FG"] = basic_int(self.header_fg)
+        loader_symbols["HIGHLIGHT_FG"] = basic_int(self.highlight_fg)
+        loader_symbols["HIGHLIGHT_BG"] = basic_int(self.highlight_bg)
+        loader_symbols["HEADER"] = LoaderScreen._data_to_basic(self.header)
+        loader_symbols["FOOTER"] = LoaderScreen._data_to_basic(self.footer)
+        loader_symbols["FOOTER_Y"] = basic_int(25 - len(self.footer))
+        loader_symbols["MIDDLE_START_Y"] = basic_int(len(self.header))
+        loader_symbols["SPACE_Y"] = basic_int((25 - len(self.footer)) + self.footer_space_line)
+        # Symbols for the Electron loader screen
+        loader_symbols["TITLE"] = cmd_args.title[:40]
+        if cmd_args.subtitle is not None:
+            loader_symbols["SUBTITLE"] = cmd_args.subtitle[:40]
+        loader_symbols["OZMOO"] = ("Powered by " + best_effort_version)[:40]
 
 
-acme_args1 = [
-    "acme",
-    "-DACORN=1",
-    "-DACORN_CURSOR_PASS_THROUGH=1",
-    "-DSTACK_PAGES=4",
-    "-DSMALLBLOCK=1",
-    "-DSPLASHWAIT=0",
-    "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
-    "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-]
-acme_args2 = [
-    "--format", "plain",
-    # SFTODO: Should really use the OS-local path join character in next three lines, not '/'
-    "-l", "../temp/acme_labels_VERSION.txt",
-    "-r", "../temp/acme_report_VERSION.txt",
-    "--outfile", "../temp/ozmoo_VERSION",
-    "ozmoo.asm"
-]
-
-# SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
-if args.adfs:
-    acme_args1 += ["-DACORN_ADFS=1"]
-
-z_machine_version = game_data[header_version]
-if z_machine_version == 3:
-    acme_args1 += ["-DZ3=1"]
-elif z_machine_version == 5:
-    acme_args1 += ["-DZ5=1"]
-elif z_machine_version == 8:
-    acme_args1 += ["-DZ8=1"]
-else:
-    die("Unsupported Z-machine version: %d" % (z_machine_version,))
-
-debug = args.debug
-if args.benchmark:
-    debug = True
-    acme_args1 += ["-DBENCHMARK=1"]
-if args.trace:
-    debug = True
-    acme_args1 += ["-DTRACE=1"]
-if args.trace_floppy:
-    debug = True
-    acme_args1 += ["-DTRACE_FLOPPY=1"]
-if args.trace_vm:
-    debug = True
-    acme_args1 += ["-DTRACE_VM=1"]
-if args.speed:
-    debug = True
-    acme_args1 += ["-DPRINTSPEED=1"]
-if args.print_swaps:
-    debug = True
-    acme_args1 += ["-DPRINT_SWAPS=1"]
-if args.no_hole_check:
-    acme_args1 += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
-if args.no_dynmem_adjust:
-    acme_args1 += ["-DACORN_NO_DYNMEM_ADJUST=1"]
-if args.waste_bytes:
-    acme_args1 += ["-DWASTE_BYTES=%s" % (args.waste_bytes,)]
-if args.fake_read_errors:
-    acme_args1 += ["-DFAKE_READ_ERRORS=1"]
-if args.slow:
-    acme_args1 += ["-DSLOW=1"]
-if not args.adfs and args.double_sided:
-    acme_args1 += ["-DACORN_DSD=1"]
-if not args.no_mode_7_colour:
-    acme_args1 += ["-DMODE_7_STATUS=1"]
-if args.force_65c02:
-    acme_args1 += ["-DCMOS=1"]
-if debug:
-    acme_args1 += ["-DDEBUG=1"]
-
-try:
-    os.mkdir("temp")
-except OSError:
+class GameWontFit(Exception):
     pass
 
-host = 0xffff0000
-tube_start_addr = 0x600
-if not args.adfs:
-    swr_start_addr = 0x1900
-else:
-    # SFTODO: Should I be using 0x1f00? That's what a model B with DFS+ADFS
-    # has PAGE at. Maybe stick with this for now and see if anyone has problems,
-    # so we don't pay a small performance penalty unless there's some evidence
-    # it's useful.
-    swr_start_addr = 0x1d00
-# Shadow RAM builds will load at or just above some address X and relocate
-# down to PAGE or just above. X must be at or above PAGE on the system the game
-# is running on. Because the code relocates down, it's mostly harmless to have
-# X higher than necessary. However, the decision to build the code for the big
-# or small dynamic memory model must be made at build time and it must be based
-# on the worst case, i.e. a system with PAGE at X where the code can't relocate
-# down. We build a version to run at X=shr_swr_default_start_address *unless*
-# that uses the big dynamic memory model and there's a lower
-# X>=shr_swr_min_start_addr which will allow the small dynamic memory model to
-# be used. One way to look at this is that we're saying "the game must run on
-# any machine where PAGE>=shr_swr_min_start_addr; it would be nice to work on
-# machines where PAGE>=shr_swr_default_start_addr but we're willing to not work
-# on those machines if that enables us to use the small dynamic memory model."
-# SFTODO: This comment may want tweaking, but I'll wait until I've finished
-# fiddling with the code.
-shr_swr_min_start_addr = our_parse_int(args.min_relocate_addr)
-shr_swr_default_start_addr = max(0x2000, shr_swr_min_start_addr)
 
-tube_extra_args = []
-if not args.force_6502:
-    tube_extra_args += ["-DCMOS=1"]
-tube_no_vmem = Executable("OZMOO2P", "tube_no_vmem", tube_start_addr, tube_extra_args)
-
-
-
-def make_loader():
-    if args.custom_title_page is not None:
-        if args.custom_title_page.startswith("http"):
-            title_page_template = decode_edittf_url(args.custom_title_page)
-        else:
-            with open(args.custom_title_page, "rb") as f:
-                title_page_template = f.read()
-            if title_page_template.startswith(b"http"):
-                title_page_template = decode_edittf_url(title_page_template)
-            title_page_template = bytearray(title_page_template)
-            for c in title_page_template:
-                if c < 32:
-                    die("Invalid character found in custom title page")
-    else:
-        title_page_template = decode_edittf_url(b"https://edit.tf/#0:GpPdSTUmRfqBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECAak91JNSZF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsBpPdOrCqSakyL9QIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBTqQaVSmgkRaUVAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQTt_Lbh2IM2_llz8t_XdkQIECBAgQIECBAgQIECBAgQIECAHIy4cmXkgzb-WXPy39d2RAgQIECBAgQIECBAgQIECBAgQIAcjTn0bNOfR0QZt_LLn5b-u7IgQIECBAgQIECBAgQIECBAgAyNOfRs059HRBiw49eflv67siBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIEEyfBiRaSCfVqUKtRBFnRKaCRFpRUCBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAk906EGHF-oECBAgQIECBAgQIECBAgQIECBAgQIECBAgQICaxYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsWLFixYsB0N_fLyy5EGLygSe59qbPn_UCBAgQIECBAgQIECBAgQIECA")
-
-    if args.default_mode is not None:
-        default_mode = args.default_mode
-        if default_mode not in (0, 3, 4, 6, 7):
-            die("Invalid default mode specified")
-    else:
-        default_mode = 7
-
-    with open("templates/loader.bas", "r") as loader_template:
-        # Python 3 won't allow the output to be a text file, because it contains top-bit-set
-        # mode 7 control codes. We therefore have to open it as binary and use os.linesep to
-        # get the line endings right for the platform we're on.
-        loader_file = open("temp/loader.bas", "wb")
-        linesep = os.linesep.encode("ascii")
-        if not args.no_loader_crunch:
-            loader = io.BytesIO()
-        else:
-            loader = loader_file
-        if True: # SFTODO: JUST TO AVOID CHANGING ALL THE FOLLOWING INDENT RIGHT NOW!
-            # SFTODO: Slightly hacky but feeling my way here
-            space_line = None
-            first_loader_line = None
-            last_loader_line = None
-            normal_fg_colour = 135
-            header_fg_colour = 131
-            highlight_fg_colour = 131
-            highlight_bg_colour = 129
-            start_adjust = 0
-            for line in loader_template:
-                assert line[-1] == '\n'
-                line = line[:-1]
-                if line.startswith("REM ${BANNER}"):
-                    loader.write(b"IF host_os%=0 THEN GOTO 500" + linesep)
-                    header = bytearray()
-                    footer = bytearray()
-                    for i in range(0, len(title_page_template) // 40):
-                        banner_line = title_page_template[i*40:(i+1)*40]
-                        if b"LOADER OUTPUT STARTS HERE" in banner_line:
-                            if first_loader_line is None:
-                                first_loader_line = i + start_adjust
-                        elif b"LOADER OUTPUT ENDS HERE" in banner_line:
-                            last_loader_line = i
-                            continue
-                        banner_line = banner_line.replace(b"${TITLE}", title.encode("ascii"))
-                        if b"${SUBTITLE}" in banner_line:
-                            if args.subtitle is not None:
-                                banner_line = banner_line.replace(b"${SUBTITLE}", args.subtitle.encode("ascii"))
-                            else:
-                                start_adjust = -1
-                                continue
-                        banner_line = banner_line.replace(b"${OZMOO}", best_effort_version.encode("ascii"))
-                        banner_line = (banner_line + b" "*40)[:40]
-                        if b"Normal foreground" in banner_line:
-                            normal_fg_colour = colour(banner_line[0])
-                        elif b"Header foreground" in banner_line:
-                            header_fg_colour = colour(banner_line[0])
-                        elif b"Highlight foreground" in banner_line:
-                            highlight_fg_colour = colour(banner_line[0])
-                        elif b"Highlight background" in banner_line:
-                            highlight_bg_colour = colour(banner_line[0])
-                        elif b"${SPACE}" in banner_line:
-                            space_line = i
-                            banner_line = b" "*40
-                        if first_loader_line is None:
-                            header += banner_line
-                        elif last_loader_line is not None:
-                            footer += banner_line
-                    if space_line is None:
-                        space_line = 24
-                    # SFTODO: Need to handle various things not being set, either by giving error or using semi-sensible defaults
-                    while len(footer) > 0 and footer.startswith(b" "*40):
-                        footer = footer[40:]
-                        last_loader_line += 1
-                    loader_lines = last_loader_line + 1 - first_loader_line
-                    min_loader_lines = 13 # SFTODO: 11 is currently enough, but I want to keep one "spare" - OK, now with SWR+2P both being possible 12 is needed sometimes - 13 now we show shadow RAM explicitly
-                    if loader_lines < min_loader_lines:
-                        die("Title page needs at least %d lines for the loader; there are only %d." % (min_loader_lines, loader_lines))
-                    if len(footer) > 0:
-                        print_command = b"PRINTTAB(0,%d);" % (last_loader_line + 1,)
-                        scroll_adjust = False
-                        for i in range(0, len(footer) // 40):
-                            footer_line = footer[i*40:(i+1)*40]
-                            if last_loader_line + 1 + i == 24:
-                                if footer_line[-1] == ord(' '):
-                                    footer_line = footer_line[:-1]
-                                else:
-                                    scroll_adjust = True
-                            loader.write(b"%s\"%s\";%s" % (print_command, escape_basic_string(footer_line), linesep))
-                            print_command = b"PRINT"
-                        if scroll_adjust:
-                            # We printed at the bottom right character of the screen and the OS will
-                            # have automatically scrolled it, so we need to force a scroll down to
-                            # fix this.
-                            loader.write(b"VDU30,11" + linesep)
-                        else:
-                            loader.write(b"VDU30" + linesep)
-                        for i in range(0, len(header) // 40):
-                            header_line = header[i*40:(i+1)*40]
-                            if header_line == b" "*40:
-                                loader.write(b"PRINT" + linesep)
-                            else:
-                                loader.write(b"PRINT\"%s\";%s" % (escape_basic_string(header_line), linesep))
-                    loader.write(b"first_loader_line=%d%s" % (first_loader_line, linesep))
-                    loader.write(b"last_loader_line=%d%s" % (last_loader_line, linesep))
-                    loader.write(b"space_line=%d%s" % (space_line, linesep))
-                    loader.write(b"GOTO 600" + linesep)
-                    # SFTODO: Some of this code could probably just be written inline in the template rather than emitted here
-                    loader.write(b"500")
-                    loader.write(b"VDU 23,128,0;0,255,255,0,0;" + linesep)
-                    loader.write(b"FOR i%=129 TO 159:VDU 23,i%,0;0;0;0;:NEXT" + linesep)
-                    loader.write(b'PRINTTAB(1,23);STRING$(38,CHR$128)\'" Powered by %s";%s' % (best_effort_version.encode("ascii"), linesep))
-                    loader.write(b"VDU 30" + linesep)
-                    loader.write(b'PRINT " %s"%s' % (title.encode("ascii"), linesep))
-                    loader.write(b'PRINT " ";STRING$(38,CHR$128)' + linesep)
-                    if args.subtitle is not None:
-                        loader.write(b'PRINT " %s"%s' % (args.subtitle.encode("ascii"), linesep))
-                        loader.write(b"first_loader_line=4" + linesep)
-                    else:
-                        loader.write(b"first_loader_line=3" + linesep)
-                    loader.write(b"last_loader_line=22" + linesep)
-                    loader.write(b"space_line=22" + linesep)
-                    loader.write(b"600")
-                else:
-                    line = line.replace("${TUBEDETECTED}", tube_detected)
-                    line = line.replace("${BBCSHRSWRDETECTED}", swr_shr_detected)
-                    line = line.replace("${BBCSWRDETECTED}", bbc_swr_detected)
-                    line = line.replace("${ELECTRONSWRDETECTED}", electron_swr_detected)
-                    line = line.replace("${DEFAULTMODE}", str(default_mode))
-                    line = line.replace("${AUTOSTART}", auto_start)
-                    line = line.replace("${TUBECACHE}", tube_cache)
-                    line = line.replace("${NORMALFG}", str(normal_fg_colour))
-                    line = line.replace("${HEADERFG}", str(header_fg_colour))
-                    line = line.replace("${HIGHLIGHTFG}", str(highlight_fg_colour))
-                    line = line.replace("${HIGHLIGHTBG}", str(highlight_bg_colour))
-                    if line.startswith("REM"):
-                        continue
-                    rem_index = line.find(":REM")
-                    if rem_index != -1:
-                        line = line[:rem_index]
-                    if line == "" or line == ":":
-                        continue
-                    loader.write(line.encode("ascii") + linesep)
-        if not args.no_loader_crunch:
-            # As a crude but reasonably effective way to crunch BASIC code
-            # without being too clever, we assume anything not inside quotes
-            # which is a sequence of lowercase characters and underscores is a
-            # variable name which we can safely shorten.
-            # SFTODO: This code is particularly foul, I really didn't have a clue about how to make it work on Python 2 and 3 and just hacked, new_short_token being global sucks, as does the way emit_token has to take token as an argument and return a value for it
-            changes = {}
-            in_quote = False
-            token = bytearray()
-            global new_short_token
-            new_short_token = bytearray([ord("a")])
-            def emit_token(token):
-                if len(token) > 0:
-                    changed_token = changes.get(bytes(token), None)
-                    if changed_token is None:
-                        global new_short_token
-                        changed_token = new_short_token[:]
-                        changes[bytes(token)] = changed_token
-                        for i in range(len(new_short_token) + 1):
-                            if i < len(new_short_token):
-                                if new_short_token[i] < ord("z"):
-                                    new_short_token[i] += 1
-                                    break
-                                else:
-                                    new_short_token[i] = ord("a")
-                            else:
-                                new_short_token += bytearray([ord("a")])
-                    loader_file.write(changed_token)
-                return bytearray()
-            for b in loader.getvalue():
-                b = bytearray([b])
-                if b[0] == ord('"'):
-                    token = emit_token(token)
-                    in_quote = not in_quote
-                    loader_file.write(b)
-                    continue
-                if in_quote:
-                    token = emit_token(token)
-                    loader_file.write(b)
-                    continue
-                if (b[0] >= ord("a") and b[0] <= ord("z")) or b[0] == ord("_"):
-                    token += bytes(b)
-                else:
-                    token = emit_token(token)
-                    loader_file.write(b)
-
-
-
-auto_start = "TRUE" if args.auto_start else "FALSE"
-if args.title is not None:
-    title = args.title
-else:
-    title = os.path.basename(os.path.splitext(args.input_file)[0])
-    # This logic has been copied from make.rb.
-    camel_case = re.search("[a-z]", title) and re.search("[A-Z]", title) and not re.search(" |_", title)
-    if camel_case:
-        #print("Q", title)
-        title = re.sub("([a-z])([A-Z])", r"\1 \2", title)
-        #print("Q", title)
-        title = re.sub("A([A-Z])", r"A \1", title)
-        #print("Q", title)
-    title = re.sub("_+", " ", title)
-    title = re.sub("(^ +)|( +)$", "", title)
-    # SFTODO: DO THE "REMOVE THE IF LONGER THAN" BIT - MAY WANT TO VARY THIS FOR TITLE SCRREN VS DISC TITLE
-    if re.search("^[a-z]", title):
-        title = title.capitalize()
-
-
-
-# SFTODO: Move these two classes to top of file?
 class DiscFull(Exception):
     pass
 
 
-class DiscImage(object):
-    # This will not cope with an arbitrary disc image as a template; because it's
-    # freshly generated by beebasm we know all the files are nicely contiguous
-    # at the start.
-    def __init__(self, template = None):
-        if template is None:
-            self.data = bytearray(512)
-            sectors = 80 * 10
-            self.data[0x107] = sectors & 0xff
-            self.data[0x106] = (sectors >> 8) & 0x3
-        else:
-            with open(template, "rb") as f:
-                self.data = bytearray(f.read())
+class DfsImage(object):
+    bytes_per_sector = 256
+    sectors_per_track = 10
+    bytes_per_track = sectors_per_track * bytes_per_sector
+    tracks = 80
+    bytes_per_surface = tracks * bytes_per_track
 
-    def catalogue_offset(self, file_number):
-        return 8 + file_number * 8
+    def __init__(self, contents, boot_option = 3): # 3 = *EXEC
+        self.data = bytearray(2 * DfsImage.bytes_per_sector)
+        sectors = DfsImage.tracks * DfsImage.sectors_per_track
+        self.data[0x107] = sectors & 0xff
+        self.data[0x106] = ((sectors >> 8) & 0x3) | (boot_option << 4)
+        # SFTODO: DISC TITLE
+        for f in contents:
+            self.add_file(f)
 
-    def num_files(self):
+    def _num_files(self):
         return self.data[0x105] // 8
 
-    def length(self, file_number):
-        o = 0x100 + self.catalogue_offset(file_number)
-        return (((self.data[o+6] >> 4) & 0x3) << 16) | (self.data[o+5] << 8) | self.data[o+4]
-
-    def start_sector(self, file_number):
-        o = 0x100 + self.catalogue_offset(file_number)
-        return ((self.data[o+6] & 0x3) << 8) + self.data[o+7]
-
     def first_free_sector(self):
-        if self.num_files() == 0:
-            return 2
-        else:
-            # The last file on the disc is always in the first catalogue entry.
-            return self.start_sector(0) + bytes_to_blocks(self.length(0))
+        return len(self.data) // DfsImage.bytes_per_sector
 
-    def add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
-        assert self.num_files() < 31
+    def add_file(self, f):
+        b = f.binary()
+        if len(self.data) + DfsImage.bytes_per_sector * divide_round_up(len(b), DfsImage.bytes_per_sector) > DfsImage.bytes_per_surface:
+            raise DiscFull()
+        self._add_to_catalogue("$", f.leafname, f.load_addr, f.exec_addr, len(b), self.first_free_sector())
+        self.data += pad_to_multiple_of(b, DfsImage.bytes_per_sector)
+
+    def _add_to_catalogue(self, directory, name, load_addr, exec_addr, length, start_sector):
+        assert self._num_files() < 31
         assert len(directory) == 1
         assert len(name) <= 7
-        if bytes_to_blocks(length) >= (80*10 - start_sector):
-            raise DiscFull()
         self.data[0x105] += 1*8
         self.data[0x010:0x100] = self.data[0x008:0x0f8]
         self.data[0x110:0x200] = self.data[0x108:0x1f8]
         name = (name + " "*7)[:7] + directory
         self.data[0x008:0x010] = bytearray(name, "ascii")
-        self.data[0x108] = load_addr & 0xff
-        self.data[0x109] = (load_addr >> 8) & 0xff
-        self.data[0x10a] = exec_addr & 0xff
-        self.data[0x10b] = (exec_addr >> 8) & 0xff
-        self.data[0x10c] = length & 0xff
-        self.data[0x10d] = (length >> 8) & 0xff
+        self.data[0x00f] |= 128 # lock the file
+        write_le(self.data, 0x108, load_addr, 2)
+        write_le(self.data, 0x10a, exec_addr, 2)
+        write_le(self.data, 0x10c, length, 2)
         self.data[0x10e] = (
                 (((exec_addr >> 16) & 0x3) << 6) |
                 (((length >> 16) & 0x3) << 4) |
@@ -775,90 +454,80 @@ class DiscImage(object):
                 ((start_sector >> 8) & 0x3))
         self.data[0x10f] = start_sector & 0xff
 
-    def add_file(self, directory, name, load_addr, exec_addr, data):
-        self.add_to_catalogue(directory, name, load_addr, exec_addr, len(data), self.first_free_sector())
-        self.data += data
-        pad = (256 - len(self.data) % 256) & 0xff
-        self.data += bytearray(pad)
-
-    def get_file(self, directory, name):
-        name = bytearray((name + " "*7)[:7] + directory, "ascii")
-        for i in range(self.num_files()):
-            offset = 8 + i * 8
-            if self.data[offset:offset+8] == name:
-                def extend_address(addr):
-                    if ((addr >> 16) & 3) == 3:
-                        return addr | 0xffff0000
-                    else:
-                        return addr
-                load_addr = extend_address(self.data[0x100+offset] | (self.data[0x101+offset] << 8) | (((self.data[0x106+offset] >> 2) & 0x3) << 16))
-                exec_addr = extend_address(self.data[0x102+offset] | (self.data[0x103+offset] << 8) | (((self.data[0x106+offset] >> 6) & 0x3) << 16))
-                length = self.data[0x104+offset] | (self.data[0x105+offset] << 8) | (((self.data[0x106+offset] >> 4) & 0x3) << 16)
-                start_sector = self.data[0x107+offset] | ((self.data[0x106+offset] & 0x3) << 8)
-                return (load_addr, exec_addr, self.data[start_sector*256:start_sector*256+length])
-        return None
-
-    def pad(self, predicate):
+    def add_pad_file(self, predicate):
         pad_start_sector = self.first_free_sector()
-        pad_length = 0
-        while True:
-            track = (pad_start_sector + pad_length) // 10
-            sector = (pad_start_sector + pad_length) % 10
-            if predicate(track, sector):
-                break
-            pad_length += 1
-        if pad_length > 0:
-            self.add_file("$", "PAD", 0, 0, bytearray(256 * pad_length))
+        pad_length_sectors = 0
+        while not predicate(pad_start_sector + pad_length_sectors):
+            pad_length_sectors += 1
+        if pad_length_sectors > 0:
+            self.add_file(File("PAD", 0, 0, bytearray(DfsImage.bytes_per_sector * pad_length_sectors)))
 
-    def lock_all(self):
-        for i in range(self.num_files()):
-            self.data[0x00f + i*8] |= 128
+    @staticmethod
+    def write_ssd(image, filename):
+        data = image.data
+        if cmd_args.pad:
+            data = pad_to(data, DfsImage.bytes_per_surface)
+        with open(filename, "wb") as f:
+            f.write(data)
 
-    def extend(self):
-        self.data += b'\0' * 256 * (80 * 10 - self.first_free_sector())
+    @staticmethod
+    def write_dsd(image0, image2, filename):
+        data0 = image0.data
+        data2 = image2.data
+        with open(filename, "wb") as f:
+            for track in range(DfsImage.tracks):
+                i = track * DfsImage.bytes_per_track
+                if not cmd_args.pad and i >= len(data0) and i >= len(data2):
+                    break
+                f.write(pad_to(data0[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
+                f.write(pad_to(data2[i:i+DfsImage.bytes_per_track], DfsImage.bytes_per_track))
 
 
-# SFTODO: Move?
 class AdfsImage(object):
+    bytes_per_sector = 256
+    sectors_per_track = 16
+    bytes_per_track = sectors_per_track * bytes_per_sector
+    tracks = 80
+    bytes_per_surface = tracks * bytes_per_track
+
     UNLOCKED = 0
     LOCKED = 1
     SUBDIRECTORY = 2
 
-    def __init__(self):
+    def __init__(self, contents, boot_option = 3): # 3 = *EXEC
         self.catalogue = []
-        self.data = bytearray(256 * 2)
-        if args.double_sided:
-            self.total_sectors = 80 * 2 * 16
-        else:
-            self.total_sectors = 80 * 16
-        self.data[0xfc] = self.total_sectors & 0xff
-        self.data[0xfd] = (self.total_sectors >> 8) & 0xff
-        self.data[0x1fd] = 3 # *EXEC !BOOT
-        self.data += self.make_directory("$")
+        self.data = bytearray(AdfsImage.bytes_per_sector * 2)
+        self.total_sectors = AdfsImage.tracks * AdfsImage.sectors_per_track
+        if cmd_args.double_sided:
+            self.total_sectors *= 2
+        write_le(self.data, 0xfc, self.total_sectors, 2)
+        self.data[0x1fd] = boot_option
+        self.data += AdfsImage._make_directory("$")
         self.md5 = hashlib.md5()
+        # SFTODO: DISC TITLE
+        for f in contents:
+            self.add_file(f)
 
-    def add_file(self, directory, name, load_addr, exec_addr, data):
-        assert directory == "$"
-        start_sector = len(self.data) // 256
-        self.data += data
-        pad = (256 - len(self.data) % 256) & 0xff
-        self.data += bytearray(pad)
-        if (len(self.data) // 256) > self.total_sectors:
+    def add_file(self, f):
+        b = f.binary()
+        start_sector = self._add_object_data(b)
+        self.catalogue.append([f.leafname, f.load_addr, f.exec_addr, len(b), start_sector, AdfsImage.LOCKED])
+        self.md5.update(b)
+
+    def add_directory(self, name):
+        start_sector = self._add_object_data(self._make_directory(name))
+        self.catalogue.append([name, 0, 0, 0x500, start_sector, AdfsImage.SUBDIRECTORY | AdfsImage.LOCKED])
+
+    def _add_object_data(self, object_data):
+        start_sector = len(self.data) // AdfsImage.bytes_per_sector
+        self.data += pad_to_multiple_of(object_data, AdfsImage.bytes_per_sector)
+        if len(self.data) > self.total_sectors * AdfsImage.bytes_per_sector:
             raise DiscFull()
-        self.catalogue.append([name, load_addr, exec_addr, len(data), start_sector, self.UNLOCKED])
-        self.md5.update(data)
+        return start_sector
 
-    def add_directory(self, directory, name):
-        assert directory == "$"
-        start_sector = len(self.data) // 256
-        self.data += self.make_directory(name)
-        if (len(self.data) // 256) > self.total_sectors:
-            raise DiscFull()
-        self.catalogue.append([name, 0, 0, 0x500, start_sector, self.SUBDIRECTORY | self.LOCKED])
-
-    @classmethod
-    def make_directory(cls, name):
-        data = bytearray(5 * 256)
+    @staticmethod
+    def _make_directory(name):
+        data = bytearray(5 * AdfsImage.bytes_per_sector)
         data[0x001:0x005] = b"Hugo"
         data[0x005] = 0 # number of catalogue entries
         if name == "$":
@@ -872,22 +541,11 @@ class AdfsImage(object):
         assert data[0] == data[0x4fa]
         return data
 
-    def lock_all(self):
-        for entry in self.catalogue:
-            entry[5] |= self.LOCKED
-
-    def extend(self):
-        self.data += b'\0' * (self.total_sectors * 256 - len(self.data))
-
-    def finalise(self):
+    def _finalise(self):
         first_free_sector = len(self.data) // 256
-        self.data[0] = first_free_sector & 0xff
-        self.data[1] = (first_free_sector >> 8) & 0xff
-        self.data[2] = (first_free_sector >> 16) & 0xff
+        write_le(self.data, 0, first_free_sector, 3)
         free_space_len = self.total_sectors - first_free_sector
-        self.data[0x100] = free_space_len & 0xff
-        self.data[0x101] = (free_space_len >> 8) & 0xff
-        self.data[0x102] = (free_space_len >> 16) & 0xff
+        write_le(self.data, 0x100, free_space_len, 3)
         self.data[0x1fe] = 3 * 1 # number of free space map entries
         self.data[0x205] = len(self.catalogue)
         self.catalogue = sorted(self.catalogue, key=lambda x: x[0])
@@ -898,38 +556,27 @@ class AdfsImage(object):
             self.data[offset] |= 128 # read
             if not (attributes & self.SUBDIRECTORY):
                 self.data[offset+1] |= 128 # write
-            if attributes & self.LOCKED:
-                self.data[offset+2] |= 128
+            self.data[offset+2] |= 128 # locked
             if attributes & self.SUBDIRECTORY:
                 self.data[offset+3] |= 128
-            load_addr = entry[1]
-            self.data[offset+0xa] = load_addr & 0xff
-            self.data[offset+0xb] = (load_addr >> 8) & 0xff
-            self.data[offset+0xc] = (load_addr >> 16) & 0xff
-            self.data[offset+0xd] = (load_addr >> 24) & 0xff
-            exec_addr = entry[2]
-            self.data[offset+0xe] = exec_addr & 0xff
-            self.data[offset+0xf] = (exec_addr >> 8) & 0xff
-            self.data[offset+0x10] = (exec_addr >> 16) & 0xff
-            self.data[offset+0x11] = (exec_addr >> 24) & 0xff
-            length = entry[3]
-            self.data[offset+0x12] = length & 0xff
-            self.data[offset+0x13] = (length >> 8) & 0xff
-            self.data[offset+0x14] = (length >> 16) & 0xff
-            self.data[offset+0x15] = (length >> 24) & 0xff
-            start_sector = entry[4]
-            self.data[offset+0x16] = start_sector & 0xff
-            self.data[offset+0x17] = (start_sector >> 8) & 0xff
-            self.data[offset+0x18] = (start_sector >> 16) & 0xff
+            write_le(self.data, offset+ 0xa, entry[1], 4) # load addr
+            write_le(self.data, offset+ 0xe, entry[2], 4) # exec addr
+            write_le(self.data, offset+0x12, entry[3], 4) # length
+            write_le(self.data, offset+0x16, entry[4], 3) # start_sector
         self.md5.update(self.data[0:0x700])
         # Use a "random" disc ID which won't vary gratuitously from run to run.
-        self.data[0x1fb] = self.md5.digest()[0]
-        self.data[0x1fc] = self.md5.digest()[1]
-        self.data[0xff] = self.checksum(self.data[0:0xff])
-        self.data[0x1ff] = self.checksum(self.data[0x100:0x1ff])
+        self.data[0x1fb:0x1fd] = self.md5.digest()[0:2]
+        self.data[0xff] = AdfsImage._checksum(self.data[0:0xff])
+        self.data[0x1ff] = AdfsImage._checksum(self.data[0x100:0x1ff])
 
-    @classmethod
-    def checksum(cls, data):
+    def _get_write_data(self):
+        self._finalise()
+        if cmd_args.pad:
+            return pad_to(self.data, self.total_sectors * AdfsImage.bytes_per_sector)
+        return self.data
+
+    @staticmethod
+    def _checksum(data):
         c = 0
         s = 0
         for b in data[::-1]:
@@ -938,381 +585,1031 @@ class AdfsImage(object):
             s = s & 0xff
         return s
 
-# SFTODO: Move this function?
-def max_game_blocks_main_ram(executable):
-    return (executable.labels["flat_ramtop"] - executable.labels["story_start"]) // 256
+    def write_adf(self, filename):
+        with open(filename, "wb") as f:
+            f.write(self._get_write_data())
 
-# SFTODO: Move this function?
-def add_findswr_executable(disc):
-    load_address = 0x900
-    os.chdir("asm")
-    extra_args = []
-    run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_findswr.txt", "-r", "../temp/acme_report_findswr.txt", "--outfile", "../temp/findswr", "acorn-findswr.asm"])
-    os.chdir("..")
-    with open("temp/findswr", "rb") as f:
-        disc.add_file("$", "FINDSWR", host | load_address, host | load_address, f.read())
-
-# SFTODO: Move this function?
-def add_cache_executable(disc):
-    # SFTODO: Relocation here feels ugly because we're not using the same machinery as when we make the relocatable Ozmoo binary
-    # In practice the cache executable will only be run in mode 7, but we'll position it
-    # to load just below the mode 0 screen RAM.
-    high_address = 0x2c00
-    low_address = 0xe00 # arbitrary, but useful for debugging on a Master
-    binaries = []
-    os.chdir("asm")
-    for load_address in (low_address, high_address):
-        extra_args = []
-        # SFTODO: THIS EXECUTABLE NEEDS TO RELOCATE ITSELF DOWN TO HOST OSHWM
-        run_and_check(["acme", "--setpc", "$" + ourhex(load_address), "--cpu", "6502", "--format", "plain", "-l", "../temp/acme_labels_cache_%s.txt" % ourhex(load_address), "-r", "../temp/acme_report_cache_%s.txt" % ourhex(load_address), "--outfile", "../temp/cache2p_%s" % ourhex(load_address), "acorn-cache.asm"])
-        with open("../temp/cache2p_%s" % ourhex(load_address), "rb") as f:
-            binaries.append(bytearray(f.read()))
-    relocations = make_relocations(binaries[0], binaries[1])
-    binaries[1] = binaries[1][0:-2] + relocations # - 2 to strip off "0" relocation count
-    os.chdir("..")
-    disc.add_file("$", "CACHE2P", host | high_address, host | high_address, binaries[1])
-            
-# SFTODO: Move this function?
-def make_tube_executable():
-    if game_blocks <= max_game_blocks_main_ram(tube_no_vmem):
-        info("Game is small enough to run without virtual memory on second processor")
-        e = tube_no_vmem
-    else:
-        info("Game will be run using virtual memory on second processor")
-        extra_args = tube_extra_args + ["-DVMEM=1"]
-        if not args.no_tube_cache:
-            extra_args += ["-DACORN_TUBE_CACHE=1"]
-            extra_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
-            extra_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-        e = Executable(tube_no_vmem.base_filename, "tube_vmem", tube_start_addr, extra_args)
-    return e
-
-# SFTODO: Move this function?
-def make_relocations(alternate, master):
-    assert len(alternate) == len(master)
-    expected_delta = None
-    relocations = []
-    for i in range(len(master)):
-        if master[i] != alternate[i]:
-            this_delta = alternate[i] - master[i]
-            if expected_delta is None:
-                expected_delta = this_delta
-            else:
-                assert this_delta == expected_delta
-            relocations.append(i)
-    assert len(relocations) > 0
-    assert relocations[0] != 0 # we can't encode this
-    delta_relocations = []
-    last_relocation = 0
-    for relocation in relocations:
-        delta_relocation = relocation - last_relocation
-        last_relocation = relocation
-        assert delta_relocation > 0
-        # We need to encode the delta_relocation as an 8-bit byte. We use 0 to mean
-        # 'move 255 bytes along but don't perform a relocation'.
-        while delta_relocation >= 256:
-            delta_relocations.append(0)
-            delta_relocation -= 255
-        assert delta_relocation > 0
-        delta_relocations.append(delta_relocation)
-    count = len(delta_relocations)
-    return bytearray([count & 0xff, count >> 8] + delta_relocations)
-
-# SFTODO: Move this function?
-def make_small_dynmem_executable(base_filename, version, start_address, extra_args):
-    if not args.force_big_dynmem:
-        e = Executable(base_filename, version.replace("_DYNMEMSIZE", "_sdyn"), start_address, extra_args + ["-DACORN_SWR_SMALL_DYNMEM=1"])
-        if nonstored_blocks <= max_game_blocks_main_ram(e):
-            return e
-    return Executable(base_filename, version.replace("_DYNMEMSIZE", ""), start_address, extra_args)
-
-# SFTODO: MOVE THIS FUNCTION
-def info_swr_dynmem(name, labels):
-    if "ACORN_SWR_SMALL_DYNMEM" in labels:
-        info("Dynamic memory fits in main RAM on " + name)
-    else:
-        # "may" because it will depend on PAGE at runtime.
-        # SFTODO: But for the sideways-no-shadow build, we only work with one PAGE, so there's actually no "may" about it.
-        info("Sideways RAM may be used for dynamic memory on " + name)
-
-# SFTODO: Move this function?
-# SFTODO: I think this is OK but it could probably do with a review when I can come to it fresh
-def make_swr_shr_executable():
-    base_filename = "OZMOOSH"
-    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1"]
-
-    # We consider two possible start addresses one page apart in a couple of places here;
-    # this is because the requirement that story_start be double page-aligned on VMEM
-    # builds means one alignment will generate a smaller binary than the other as it will
-    # have one less page of padding than the other. We want the smaller one because that
-    # way we won't waste any RAM on machines where PAGE has the same alignment, and on
-    # machines with an oppositely-aligned PAGE the relocation code will waste one page
-    # to maintain the required alignment (which is no worse than having it inserted into
-    # the binary by the build process).
-
-    # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
-    # lower than the high version of the executable - but it's a good choice because it
-    # means we can use the ACME labels/report directly for debugging on a Master.
-    low_start_address_options = (0xe00, 0xe00 + 0x100)
-    low_candidate = None
-    for start_address in low_start_address_options:
-        e = make_small_dynmem_executable(base_filename, "swr_shr_vmem_DYNMEMSIZE_START", start_address, extra_args)
-        if low_candidate is None or len(e.binary) < len(low_candidate.binary):
-            low_candidate = e
-    assert low_candidate is not None
-
-    high_candidate = None
-    info_shown = False
-    if "ACORN_SWR_SMALL_DYNMEM" in low_candidate.labels:
-        surplus_nonstored_blocks = max_game_blocks_main_ram(low_candidate) - nonstored_blocks
-        # We already picked the optimally double page-aligned version of the binary, so we don't
-        # want to adjust by an odd number of pages.
-        if surplus_nonstored_blocks % 2 != 0:
-            surplus_nonstored_blocks -= 1
-        adjusted_high_start_address = low_candidate.start_address + surplus_nonstored_blocks * 0x100
-        if adjusted_high_start_address >= shr_swr_min_start_addr:
-            high_candidate = make_small_dynmem_executable(base_filename, "swr_shr_vmem_DYNMEMSIZE_START", adjusted_high_start_address, extra_args)
-            assert "ACORN_SWR_SMALL_DYNMEM" in high_candidate.labels
-            # If the game has very small dynamic memory requirements, we might actually use
-            # an address higher than shr_swr_default_start_addr.
-            info("Adjusting sideways+shadow RAM build start address to &%s to allow dynamic memory to just fit into main RAM" % (ourhex(high_candidate.start_address),))
-            info_shown = True
-
-    if high_candidate is None:
-        # We can't generate a valid high candidate with the small dynamic memory model;
-        # we may or may not have been able to do so for the low candidate, but since the
-        # two need to agree we must use the large dynamic memory model for both.
-        if "ACORN_SWR_SMALL_DYNMEM" in low_candidate.labels:
-            low_candidate = None
-            for start_address in low_start_address_options:
-                e = Executable(base_filename, "swr_shr_vmem_START", start_address, extra_args)
-                if low_candidate is None or len(e.binary) < len(low_candidate.binary):
-                    low_candidate = e
-        assert low_candidate is not None
-
-        # SFTODO: In principle rather than use shr_swr_default_start_addr we could pick an
-        # address which just leaves n (=2?) pages of sideways RAM free in the first bank
-        # for virtual memory. This would be similar to what we do in the small dynmem case
-        # where we load as high as we can.
-        # SFTODO: For games with a very large dynamic memory requirement, we might need to
-        # allow lowering shr_swr_default_start_addr to make them fit at all. Obviously this
-        # could be done simply by editing the constant value in this script, but allowing
-        # an automatic adjustment using shr_swr_min_start_addr would be friendlier. However,
-        # it's probably not worth worrying about this until a problematic game turns up.
-        high_start_address = shr_swr_default_start_addr + (low_candidate.start_address % 0x200)
-        high_candidate = Executable(base_filename, "swr_shr_vmem_START", high_start_address, extra_args)
-
-    if not info_shown:
-        info_swr_dynmem("sideways+shadow RAM build", high_candidate.labels)
-        info("Sideways+shadow RAM build will run at %s address" % ("even" if high_candidate.start_address % 0x200 == 0 else "odd"))
-
-    relocations = make_relocations(low_candidate.binary, high_candidate.binary)
-    high_candidate.binary += relocations
-    return high_candidate
-
-
-# SFTODO: Move this function?
-def make_bbc_swr_executable():
-    e = make_small_dynmem_executable("OZMOOB", "swr_vmem_DYNMEMSIZE", swr_start_addr, ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_NO_SHADOW=1"])
-    info_swr_dynmem("BBC sideways RAM build", e.labels)
-    return e
-
-
-# SFTODO: Move this function?
-# SFTODO: Some code duplication with make_swr_shr_executable?
-def make_electron_swr_executable():
-    base_filename = "OZMOOE"
-    extra_args = ["-DVMEM=1", "-DACORN_SWR=1", "-DACORN_RELOCATABLE=1", "-DACORN_ELECTRON_SWR=1"]
-
-    # 0xe00 is an arbitrary address - the relocation means we can relocate to any address
-    # lower than the high version of the executable - but it's a good choice because it
-    # means we can use the ACME labels/report directly for debugging with an E00 DFS.
-    low_start_address_options = (0xe00, 0xe00 + 0x100)
-    low_candidate = None
-    for start_address in low_start_address_options:
-        e = Executable(base_filename, "electron_swr_vmem_START", start_address, extra_args)
-        if low_candidate is None or len(e.binary) < len(low_candidate.binary):
-            low_candidate = e
-    assert low_candidate is not None
-
-    # SFTODO: HARD-CODED VALUE
-    high_start_address = 0x1d00
-    if (high_start_address - low_candidate.start_address) % 0x200 != 0:
-        high_start_address += 0x100
-    assert (high_start_address - low_candidate.start_address) % 0x200 == 0
-    high_candidate = Executable(base_filename, "electron_swr_vmem_START", high_start_address, extra_args)
-    info_swr_dynmem("Electron sideways RAM build", high_candidate.labels)
-    relocations = make_relocations(low_candidate.binary, high_candidate.binary)
-    high_candidate.binary += relocations
-    return high_candidate
-
-# BBC and Electron both support tube, so this is built regardless.
-# SFTODO: We might want to offer additional finer control over what is and isn't built.
-tube_executable = make_tube_executable()
-# SFTODO: IF we didn't support tube, tube_detected would be a PROCdie() call.
-tube_detected = 'binary$="%s":max_page%%=&800:any_mode%%=TRUE:GOTO 1000' % (tube_executable.filename(),)
-if not args.no_tube_cache:
-    tube_cache = "IF tube% THEN */CACHE2P"
-else:
-    tube_cache = ""
-
-# SFTODO: We could potentially be smarter about allocating binaries between the
-# two surfaces of a double-sided DFS disc. A BBC-only build would benefit from having
-# two of the three binaries on surface 2. If I try to get clever, do note that the
-# pad-to-track-boundary code may need to allow for the possibility that surface 2
-# is the fullest, not surface 0 as it currently assumes.
-
-if not args.electron_only:
-    swr_shr_executable = make_swr_shr_executable()
-    if not args.adfs and args.double_sided:
-        swr_shr_executable.surface = 2
-    swr_shr_detected = 'binary$="%s":max_page%%=%s:any_mode%%=TRUE:GOTO 1000' % (swr_shr_executable.filename(), basichex(swr_shr_executable.start_address),)
-    bbc_swr_executable = make_bbc_swr_executable()
-    bbc_swr_detected = 'binary$="%s":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (bbc_swr_executable.filename(), basichex(bbc_swr_executable.start_address),)
-else:
-    swr_shr_executable = None
-    bbc_swr_executable = None
-    swr_shr_detected = 'PROCdie("Sorry, BBC not supported by this       "+CHR$${NORMALFG}+"version.")'
-    bbc_swr_detected = swr_shr_detected
-
-if not args.bbc_only:
-    electron_swr_executable = make_electron_swr_executable()
-    if not args.adfs and args.double_sided:
-        electron_swr_executable.surface = 2
-    electron_swr_detected = 'binary$="%s":max_page%%=%s:any_mode%%=FALSE:GOTO 1000' % (electron_swr_executable.filename(), basichex(electron_swr_executable.start_address),)
-else:
-    electron_swr_executable = None
-    electron_swr_detected = 'PROCdie("Sorry, Electron not supported by this  "+CHR$${NORMALFG}+"version.")'
-
-make_loader()
-
-run_and_check([
-    "beebasm",
-    "-i", "templates/base.beebasm",
-    "-do", "temp/base.ssd",
-    "-opt", "3"
-], lambda x: b"no SAVE command" not in x)
-
-# SFTODO: If we're building a double-sided game it might be nice if at least one of the
-# Ozmoo executables could be put on the second surface, using some of the otherwise wasted
-# space for the pad file.
-if not args.adfs:
-    disc = DiscImage("temp/base.ssd") # SFTODO: RENAME DfsImage?
-    if args.double_sided:
-        disc2 = DiscImage()
-else:
-    template_ssd = DiscImage("temp/base.ssd")
-    boot = template_ssd.get_file("$", "!BOOT")
-    loader = template_ssd.get_file("$", "LOADER")
-    disc = AdfsImage()
-    disc.add_file("$", "!BOOT", boot[0], boot[1], boot[2])
-    disc.add_file("$", "LOADER", loader[0], loader[1], loader[2])
-
-# SFTODO: Move this function?
-def add_executable_to_disc(e):
-    if e is None:
-        return
-    if e.surface == 0:
-        d = disc
-    else:
-        assert not args.adfs
-        assert args.double_sided
-        d = disc2
-    e.add_to_disc(d)
-
-add_findswr_executable(disc) # SFTODO: Can/should this be like the following?
-if not args.no_tube_cache and tube_executable is not None:
-    add_cache_executable(disc) # SFTODO: Should this use add_executable_to_disc()?
-add_executable_to_disc(tube_executable)
-add_executable_to_disc(swr_shr_executable)
-add_executable_to_disc(bbc_swr_executable)
-add_executable_to_disc(electron_swr_executable)
-
-# SFTODO: It would be nice if we automatically expanded to a double-sided disc if
-# necessary, but since this alters the binaries we build it's a bit fiddly and I don't
-# think it's a huge problem.
-if not args.adfs:
-    if not args.double_sided:
-        # Because we read multiples of vmem_block_pagecount at a time, the data file must
-        # start at a corresponding sector in order to avoid a read ever straddling a track
-        # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
-        # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
-        # it's good for testing.)
-        disc.pad(lambda track, sector: sector % vmem_block_pagecount == 0)
-        try:
-            disc.add_file("$", "DATA", 0, 0, game_data)
-        except DiscFull:
-            die("Game won't fit on a single-sided disc, try specifying --double-sided")
-    else:
-        # The game data must start on a track boundary at the same place on both surfaces.
-        disc.pad(lambda track, sector: sector == 0)
-        disc2.pad(lambda track, sector: track * 10 + sector == disc.first_free_sector())
-        data = [bytearray(), bytearray()]
-        for i in range(0, bytes_to_blocks(len(game_data)), 10):
-            data[(i % 20) // 10].extend(game_data[i*256:i*256+10*256])
-        try:
-            disc.add_file("$", "DATA", 0, 0, data[0])
-            disc2.add_file("$", "DATA", 0, 0, data[1])
-        except DiscFull:
-            die("Game won't fit on a double-sided disc")
-else:
-    # There are no alignment requirements for ADFS.
-    disc.add_file("$", "DATA", 0, 0, game_data)
-
-disc.lock_all()
-if not args.adfs and args.double_sided:
-    disc2.lock_all()
-
-# SFTODO: This is a bit of a hack, may well be able to simplify/improve
-if not args.adfs:
-    user_extensions = (".ssd", ".dsd")
-    preferred_extension = ".dsd" if args.double_sided else ".ssd"
-else:
-    user_extensions = (".adf", ".adl")
-    preferred_extension = ".adl" if args.double_sided else ".adf"
-if args.output_file is None:
-    output_file = os.path.basename(os.path.splitext(args.input_file)[0] + preferred_extension)
-else:
-    user_prefix, user_extension = os.path.splitext(args.output_file)
-    # If the user wants to call the file .img or something, we'll leave it alone.
-    if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
-        warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
-        user_extension = preferred_extension
-    output_file = user_prefix + user_extension
-
-if args.adfs:
-    # We could put this on right at the start, but it feels a bit neater to have it
-    # after all the game data on the disc.
-    disc.add_directory("$", "SAVES")
-    disc.finalise()
-
-if args.pad:
-    disc.extend()
-    if not args.adfs and args.double_sided:
-        disc2.extend()
-
-# SFTODO: Move this
-def get_track(data, start, size):
-    return (data[start:start+size] + bytearray(size))[:size]
-
-with open(output_file, "wb") as f:
-    if not args.adfs:
-        if not args.double_sided:
-            f.write(disc.data)
-        else:
-            track_size = 256 * 10
-            for track in range(80):
-                i = track * track_size
-                if i >= len(disc.data) and i >= len(disc2.data):
-                    break
-                f.write(get_track(disc.data, i, track_size))
-                f.write(get_track(disc2.data, i, track_size))
-    else:
-        if not args.double_sided:
-            f.write(disc.data)
-        else:
-            max_track = min(divide_round_up(len(disc.data), 16 * 256), 80)
-            track_size = 256 * 16
+    def write_adl(self, filename):
+        data = self._get_write_data()
+        max_track = min(divide_round_up(len(data), AdfsImage.bytes_per_track), AdfsImage.tracks)
+        with open(filename, "wb") as f:
             for track in range(max_track):
                 for surface in range(2):
-                    f.write(get_track(disc.data, (surface*80 + track) * track_size, track_size))
+                    i = (surface*AdfsImage.tracks + track) * AdfsImage.bytes_per_track
+                    f.write(pad_to(data[i:i+AdfsImage.bytes_per_track], AdfsImage.bytes_per_track))
+
+
+class File(object):
+    def __init__(self, leafname, load_addr, exec_addr, contents):
+        self.leafname = leafname
+        self.surface = 0
+        self.load_addr = load_addr
+        self.exec_addr = exec_addr
+        self.contents = contents
+
+    # This is called binary() so we have the same interface as Executable.
+    def binary(self):
+        return self.contents
+
+
+# SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not. I should maybe switch to making the args a set in the first place.
+class Executable(object):
+    cache = {}
+
+    def __init__(self, asm_filename, leafname, version_maker, start_addr, args):
+        self.asm_filename = asm_filename
+        self.leafname = leafname
+        self.surface = 0 # may be overridden later if we're building double-sided DFS
+        self.version_maker = version_maker
+        self.start_addr = start_addr
+        self.load_addr = start_addr
+        if leafname != "OZMOO2P":
+            self.load_addr |= host
+        self.exec_addr = self.load_addr
+        self.args = args
+        self._relocations = None
+        output_name = os.path.splitext(os.path.basename(asm_filename))[0].replace("-", "_")
+        if version_maker is not None:
+            output_name += "_" + version_maker(start_addr, args)
+        else:
+            output_name += "_" + ourhex(start_addr)
+
+        # SFTODO: MOVE THIS CACHE LOGIC INTO OZMOOEXECUTABLE? WE DON'T NEED IT ANYWHERE ELSE, AND IT WOULD THEN CACHE THE RESULTS OF VMEM PATCHIG AND EVERYTHING, WHICH FEELS A BIT MORE ELEGANT EVEN IF IN PRACTICE IT'S HARMLESS TO REDO THIS WORK
+        # Not all build parameters have to be reflected in the output name, but we
+        # can't have two builds with different parameters using the same output
+        # name.
+        cache_key = (asm_filename, output_name)
+        cache_definition = (start_addr, set(args))
+        cache_entry = Executable.cache.get(cache_key, None)
+        if cache_entry is not None:
+            assert cache_entry[0] == cache_definition
+            e = cache_entry[1]
+            self.labels = e.labels
+            self._binary = e._binary
+            self._relocations = e._relocations
+            return
+
+        self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
+        self._report_filename = os.path.join("temp", "acme_report_" + output_name)
+        self._binary_filename = os.path.join("temp", output_name)
+        os.chdir("asm")
+        def up(path):
+            return os.path.join("..", path)
+        cpu = "65c02" if "-DCMOS=1" in args else "6502"
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
+        os.chdir("..")
+        self.labels = self._parse_labels()
+
+        with open(self._binary_filename, "rb") as f:
+            self._binary = bytearray(f.read())
+        if "ACORN_RELOCATABLE" in self.labels:
+            self.truncate_at("reloc_count")
+        update_common_labels(self.labels)
+
+        Executable.cache[cache_key] = (cache_definition, copy.deepcopy(self))
+
+    def _parse_labels(self):
+        labels = {}
+        with open(self._labels_filename, "r") as f:
+            for line in f.readlines():
+                line = line[:-1]
+                components = line.split("=")
+                value = components[1].strip()
+                i = value.find(";")
+                if i != -1:
+                    value = value[:i]
+                labels[components[0].strip()] = int(value.strip().replace("$", "0x"), 0)
+        return labels
+
+    def rebuild_at(self, start_addr):
+        return Executable(self.asm_filename, self.leafname, self.version_maker, start_addr, self.args)
+
+    def add_loader_symbols(self, symbols):
+        if cmd_args.adfs:
+            symbols[self.leafname + "_BINARY"] = self.leafname
+        else:
+            symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
+
+    def truncate_at(self, label):
+        self._binary = self._binary[:self.labels[label]-self.labels["program_start"]]
+
+    def _make_relocations(self):
+        assert "ACORN_RELOCATABLE" in self.labels
+        # Ideally other_start_addr will be different from self.start_addr,
+        # otherwise we can't generate any relocations. We use 0xe00 because a)
+        # it's the lowest possible useful address for non-tube builds (tube
+        # builds aren't and don't need to be relocatable) b) it matches OSHWM on
+        # a Master, which means the labels/report for this assembly can be used
+        # directly when debugging. a) means that it doesn't matter if
+        # other_start_addr == self.start_addr, because we will simply generate a
+        # zero-length list of relocations and we're no worse off as a result
+        # because we can't run any lower anyway.
+        other_start_addr = 0xe00
+        if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
+            other_start_addr += (self.start_addr - other_start_addr) % 0x200
+        assert other_start_addr <= self.start_addr
+        other = self.rebuild_at(other_start_addr)
+        assert other is not None
+        return Executable._binary_diff(other._binary, self._binary)
+
+    @staticmethod
+    def _binary_diff(alternate, master):
+        assert len(alternate) == len(master)
+        expected_delta = None
+        relocations = []
+        for i in range(len(master)):
+            if master[i] != alternate[i]:
+                this_delta = alternate[i] - master[i]
+                if expected_delta is None:
+                    expected_delta = this_delta
+                else:
+                    assert this_delta == expected_delta
+                relocations.append(i)
+        if len(relocations) == 0:
+            return bytearray([0, 0])
+        assert relocations[0] != 0 # we can't encode this
+        delta_relocations = []
+        last_relocation = 0
+        for relocation in relocations:
+            delta_relocation = relocation - last_relocation
+            last_relocation = relocation
+            assert delta_relocation > 0
+            # We need to encode the delta_relocation as an 8-bit byte. We use 0 to mean
+            # 'move 255 bytes along but don't perform a relocation'.
+            while delta_relocation >= 256:
+                delta_relocations.append(0)
+                delta_relocation -= 255
+            assert delta_relocation > 0
+            delta_relocations.append(delta_relocation)
+        count = len(delta_relocations)
+        return bytearray([count & 0xff, count >> 8] + delta_relocations)
+
+    def binary(self):
+        if "ACORN_RELOCATABLE" in self.labels:
+            if self._relocations is None:
+                self._relocations = self._make_relocations()
+            binary = self._binary + self._relocations
+        else:
+            binary = self._binary
+        # A second processor binary *could* extend past 0x8000 but in practice
+        # it won't come even close.
+        assert self.start_addr + len(binary) <= 0x8000
+        return binary
+
+
+class OzmooExecutable(Executable):
+    def __init__(self, leafname, start_addr, args):
+        def version_maker(start_addr, args):
+            if "-DACORN_ELECTRON_SWR=1" in args:
+                s = "electron_swr"
+            else:
+                if "-DACORN_SWR=1" in args:
+                    s = "bbc_swr"
+                    if "-DACORN_NO_SHADOW=1" not in args:
+                        s += "_shr"
+                else:
+                    s = "tube"
+            if "-DVMEM=1" not in args:
+                s += "_novmem"
+            if "-DACORN_SWR_SMALL_DYNMEM=1" in args:
+                s += "_smalldyn"
+            s += "_" + ourhex(start_addr)
+            return s
+
+        if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
+            args += ["-DACORN_HW_SCROLL=1"]
+        if cmd_args.preload_opt and "-DVMEM=1" in args:
+            args += ["-DPREOPT=1"]
+        Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_addr, args)
+        if "ACORN_RELOCATABLE" not in self.labels:
+            self.truncate_at("end_of_routines_in_stack_space")
+        self.swr_dynmem = 0
+        if "VMEM" in self.labels:
+            self._patch_vmem()
+
+    def _patch_vmem(self):
+        # Can we fit the nonstored blocks into memory?
+        nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
+        if nonstored_blocks_up_to > self.pseudo_ramtop():
+            raise GameWontFit("not enough free RAM for game's dynamic memory")
+        if "ACORN_SWR" in self.labels:
+            # Note that swr_dynmem may be negative; this means there will be
+            # some main RAM free after loading dynamic memory when loaded at the
+            # build addr. For relocatable builds the loader will also take
+            # account of the actual value of PAGE.
+            self.swr_dynmem = nonstored_blocks_up_to - 0x8000
+            assert self.swr_dynmem <= 16 * 1024
+
+        # On a second processor build, we must also have at least
+        # min_vmem_blocks for swappable memory. For sideways RAM builds we need
+        # to check at run time if we have enough main/sideways RAM for swappable
+        # memory.
+        if "ACORN_SWR" not in self.labels:
+            nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
+            if nsmv_up_to > self.pseudo_ramtop():
+                raise GameWontFit("not enough free RAM for any swappable memory")
+
+        # Generate initial virtual memory map. We just populate the entire table; if the
+        # game is smaller than this we will just never use the other entries.
+        vmap_offset = self.labels['vmap_z_h'] - self.labels['program_start']
+        vmap_max_size = self.labels['vmap_max_size']
+        assert self._binary[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
+        blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []
+        for i in range(vmap_max_size):
+            if i not in blocks:
+                blocks.append(i)
+        blocks = blocks[:vmap_max_size]
+        # vmap entries should normally addr a 512-byte aligned block; invalid_addr
+        # is odd so it won't ever match when the virtual memory code is searching the map.
+        invalid_addr = 0x1
+        for i, block_index in enumerate(blocks):
+            timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
+            if cmd_args.preload_opt:
+                # Most of the vmap will be ignored, but we have to have at least one entry
+                # and by making it an invalid addr we don't need to worry about loading
+                # any "suggested" blocks.
+                addr = invalid_addr
+            else:
+                addr = nonstored_blocks + block_index * vmem_block_pagecount
+            if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
+                # This vmap entry is useless; the current Z-machine version can't contain
+                # such a block.
+                # SFTODO: Warn? It's harmless but it means we could have clawed back a few
+                # bytes by shrinking vmap_max_size.
+                addr = 0
+            vmap_entry = (timestamp << 8) | addr
+            self._binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
+            self._binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
+
+    def pseudo_ramtop(self):
+        if "ACORN_SWR" in self.labels:
+            return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
+        else:
+            return self.labels["flat_ramtop"]
+
+    def max_nonstored_blocks(self):
+        return (self.pseudo_ramtop() - self.labels["story_start"]) // bytes_per_block
+
+    # Return the size of the binary, ignoring any relocation data (which isn't
+    # important for the limited use we make of the return value).
+    def size(self):
+        return len(self._binary)
+
+    def rebuild_at(self, start_addr):
+        return OzmooExecutable(self.leafname, start_addr, self.args)
+
+    def add_loader_symbols(self, symbols):
+        Executable.add_loader_symbols(self, symbols)
+        symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_addr)
+        symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
+        symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
+
+
+def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = None):
+    try:
+        return OzmooExecutable(leafname, start_addr, args)
+    except GameWontFit as e:
+        if report_failure_prefix is not None:
+            warn("Game is too large for %s: %s" % (report_failure_prefix, str(e)))
+        return None
+
+
+# Build an Ozmoo executable which loads at the highest possible address; we pick
+# an address which means it will work on machines with relatively high values of
+# PAGE if possible. The executable will relocate itself down if PAGE isn't as
+# high as the worst case we assume here.
+def make_highest_possible_executable(leafname, args, report_failure_prefix):
+    assert "-DACORN_RELOCATABLE=1" in args
+
+    # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte
+    # value of PAGE:
+    # - max_nonstored_blocks() can only return even values on a VMEM build.
+    # - nonstored_blocks (i.e. for this specific game) will always be even.
+    # - There are two possible start addresses 256 bytes apart which will
+    #   generate the same value of max_nonstored_blocks(), as one will waste an
+    #   extra 256 bytes on aligning story_start to a 512-byte boundary.
+    # - We want to use the higher of those two possible start addresses, because
+    #   it means we won't need to waste 256 bytes before the start of the code
+    #   if PAGE happens to have the right alignment.
+    e_e00 = make_ozmoo_executable(leafname, 0xe00, args, report_failure_prefix)
+    # If we can't fit build successfully with a start of 0xe00 we can't ever
+    # manage it.
+    if e_e00 is None:
+        return None
+    surplus_nonstored_blocks = e_e00.max_nonstored_blocks() - nonstored_blocks
+    assert surplus_nonstored_blocks >= 0
+    assert surplus_nonstored_blocks % 2 == 0
+    # There's no point loading really high, and doing a totally naive
+    # calculation may cause us to load so high there's no room for the
+    # relocation data before &8000, so we never load much higher than
+    # max_start_addr.
+    approx_max_start_addr = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
+    e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, report_failure_prefix, e_e00)
+    assert e is not None
+    if same_double_page_alignment(e.start_addr, 0xe00):
+        assert e.size() == e_e00.size()
+    else:
+        assert e.size() == e_e00.size() - 256
+    assert 0 <= e.max_nonstored_blocks() - nonstored_blocks
+    return e
+
+
+# Build an Ozmoo executable which loads at whichever of initial_start_addr
+# and initial_start_addr+256 gives the least wasted space. If provided
+# base_executable is a pre-built executable whcih shares the same double-page
+# alignment as initial_start_addr; this may help avoid an unnecessary build.
+def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix, base_executable = None):
+    if base_executable is None:
+        base_executable = make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
+        if base_executable is None:
+            return None
+    else:
+        assert base_executable.asm_filename == "ozmoo.asm"
+        assert same_double_page_alignment(base_executable.start_addr, initial_start_addr)
+        assert base_executable.args == args
+    alternate_executable = make_ozmoo_executable(leafname, initial_start_addr + 256, args)
+    if alternate_executable is not None and alternate_executable.size() < base_executable.size():
+        return alternate_executable
+    else:
+        if base_executable.start_addr == initial_start_addr:
+            return base_executable
+        else:
+            return make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
+
+
+def make_shr_swr_executable():
+    leafname = "OZMOOSH"
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
+
+    small_e = None
+    if not cmd_args.force_big_dynmem:
+        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
+        # Some systems may have PAGE too high to run small_e, but those systems
+        # would be able to run the game if built with the big dynamic memory model.
+        # small_dynmem_page_threshold determines whether we're willing to prevent a system
+        # running the game in order to get the benefits of the small dynamic memory
+        # model.
+        if small_e is not None:
+            if small_e.start_addr >= small_dynmem_page_threshold:
+                info("Shadow+sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
+                return small_e
+
+    # Note that we don't respect small_dynmem_page_threshold when generating a big
+    # dynamic memory executable; unlike the above decision about whether or not
+    # to use the small dynamic memory model, we're not trading off performance
+    # against available main RAM - if a system has PAGE too high to run the big
+    # dynamic memory executable we generate, it just can't run the game at all
+    # and there's nothing we can do about it.
+    big_e = make_highest_possible_executable(leafname, args, "shadow+sideways RAM")
+    if big_e is not None:
+        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
+            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
+        else:
+            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
+    return big_e
+
+
+def make_bbc_swr_executable():
+    # Because of the screen hole needed to work around not having shadow RAM,
+    # this executable is not relocatable. (It would be possible to use the same
+    # strategy as the Electron and generate a relocatable executable with no
+    # screen hole, but that would limit dynamic memory to 16K, whereas using
+    # ACORN_NO_SHADOW allows dynamic memory comparable to other BBC versions.)
+    # SFTODO: We *could* potentially switch between the two strategies - if
+    # dynmem required is <=16K, use an Electron-style approach with no screen
+    # hole and relocatable code. OTOH, that would force use of at least 16K
+    # SWR and I think there's some prospect that we could make a stab at
+    # running small games with no SWR and I don't really like ruling that out.
+    #
+    # We prefer to build to run at bbc_swr_start_addr, but we will build to run
+    # at bbc_swr_start_addr_low if a) that allows us to use the small dynamic
+    # memory model and small_dynmem_page_threshold permits this b) we couldn't build
+    # at all otherwise. Because the screen hole requires judicious placement of
+    # macros in the source code depending on the exact start address of the code
+    # as well as the precise build options selected, we don't build at arbitrary
+    # addresses to try to run as high as possible; that way madness lies. This
+    # isn't a huge loss in practice, as once a user disables any extra ROMs
+    # claiming workspace PAGE will either be &E00, &1900 or &1D00 depending on
+    # the filing system.
+    leafname = "OZMOOB"
+    args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
+    have_low_addr = bbc_swr_start_addr_low < bbc_swr_start_addr
+    if not cmd_args.force_big_dynmem:
+        small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
+        if small_e is not None:
+            info("BBC B sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
+            return small_e
+        if have_low_addr and bbc_swr_start_addr_low >= small_dynmem_page_threshold:
+            small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args + small_dynmem_args)
+            if small_e is not None:
+                info("BBC B sideways RAM executable uses small dynamic memory model by requiring " + page_le(small_e.start_addr))
+                return small_e
+    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, None if have_low_addr else "BBC B sideways RAM")
+    if big_e is None and have_low_addr:
+        big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args, "BBC B sideways RAM")
+    if big_e is not None:
+        info("BBC B sideways RAM executable uses big dynamic memory model and requires " + page_le(big_e.start_addr))
+    return big_e
+
+
+def make_electron_swr_executable():
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
+    return make_optimally_aligned_executable("OZMOOE", electron_swr_start_addr, args, "Electron")
+
+
+def make_tube_executables():
+    leafname = "OZMOO2P"
+    tube_args = ozmoo_base_args
+    if not cmd_args.force_6502:
+        tube_args += ["-DCMOS=1"]
+    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)
+    if game_blocks <= tube_no_vmem.max_nonstored_blocks():
+        info("Game is small enough to run without virtual memory on second processor")
+        return [tube_no_vmem]
+    tube_args += ["-DVMEM=1"]
+    if not cmd_args.no_tube_cache:
+        tube_args += ["-DACORN_TUBE_CACHE=1"]
+        tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
+        tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
+    tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args, "second processor")
+    if tube_vmem is not None:
+        info("Game will be run using virtual memory on second processor")
+    if cmd_args.no_tube_cache:
+        return [tube_vmem]
+    return [make_cache_executable(), tube_vmem]
+
+
+def make_findswr_executable():
+    return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
+
+
+def make_cache_executable():
+    # In practice the cache executable will only be run in mode 7, but we'll
+    # position it to load just below the mode 0 screen RAM.
+    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args)
+
+
+def make_boot():
+    boot = [
+        '*BASIC',
+        '*DIR $',
+        'MODE 135',
+        'CHAIN "LOADER"',
+    ]
+    return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
+
+
+def substitute_text(s, d, f):
+    return substitute(s.encode("ascii"), {k.encode("ascii"): v.encode("ascii") for k, v in d.items()}, lambda x: f(x.decode("ascii")).encode("ascii")).decode("ascii")
+
+
+def substitute(s, d, f):
+    c = re.split(b"(\$\{|\})", s)
+    result = b""
+    i = 0
+    while i < len(c):
+        if c[i] == b"${":
+            k = bytes(c[i+1])
+            if k not in d:
+                die("Unknown substitution: " + k.decode("ascii"))
+            result += f(d[k])
+            assert c[i+2] == b"}"
+            i += 3
+        else:
+            result += c[i]
+            i += 1
+    return result
+
+
+def crunch_line(line, crunched_symbols):
+    def crunch_symbol(symbol):
+        if symbol == "":
+            return ""
+        crunched_symbol = crunched_symbols.get(symbol, None)
+        if crunched_symbol is None:
+            i = len(crunched_symbols)
+            crunched_symbol = ""
+            while True:
+                crunched_symbol += chr(ord("a") + (i % 26))
+                i //= 26
+                if i == 0:
+                    break
+            crunched_symbols[symbol] = crunched_symbol
+        return crunched_symbol
+    symbol = ""
+    result = ""
+    in_quote = False
+    for c in line:
+        if c == '"':
+            in_quote = not in_quote
+        if not in_quote and ((c >= "a" and c <="z") or c == "_"):
+            symbol += c
+        else:
+            result += crunch_symbol(symbol) + c
+            symbol = ""
+    result += crunch_symbol(symbol)
+    return result
+
+
+def make_text_loader(symbols):
+    # This isn't all that user-friendly and it makes some assumptions about what
+    # the BASIC code will look like. I think this is OK, as it's not a general
+    # tool - it's specifically designed to work with the Ozmoo loader.
+    symbols.update({k: basic_string(v) for k, v in common_labels.items()})
+    symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
+    with open("templates/loader.bas", "r") as f:
+        if_results = []
+        loader = []
+        crunched_symbols = {}
+        for line in f.readlines():
+            line = line[:-1].strip()
+            i = line.find(":REM ")
+            if i == -1:
+                i = line.find("REM ")
+            if i != -1:
+                line = line[:i]
+            if line in ("", ":", "REM"):
+                pass
+            elif line.startswith("!ifdef") or line.startswith("!ifndef"):
+                c = line.split(" ")
+                assert len(c) == 3
+                assert c[2] == "{"
+                if_results.append(c[1] in symbols)
+                if line.startswith("!ifndef"):
+                    if_results[-1] = not if_results[-1]
+            elif line.startswith("}"):
+                assert len(if_results) > 0
+                c = line.split(" ")
+                if len(c) == 1:
+                    if_results.pop(-1)
+                elif len(c) == 3:
+                    assert c[1] == "else" and c[2] == "{"
+                    if_results[-1] = not if_results[-1]
+                else:
+                    assert False
+            elif all(if_results):
+                line = substitute_text(line, symbols, basic_string)
+                if not cmd_args.no_loader_crunch:
+                    line = crunch_line(line, crunched_symbols)
+                loader.append(line)
+    return "\n".join(loader)
+
+
+def make_tokenised_loader(loader_symbols):
+    loader_bas = os.path.join("temp", "loader.bas")
+    with open(loader_bas, "w") as f:
+        f.write(make_text_loader(loader_symbols))
+    loader_beebasm = os.path.join("temp", "loader.beebasm")
+    loader_ssd = os.path.join("temp", "loader.ssd")
+    with open(loader_beebasm, "w") as f:
+        f.write('putbasic "%s", "LOADER"\n' % loader_bas)
+    run_and_check([
+        "beebasm",
+        "-i", loader_beebasm,
+        "-do", loader_ssd
+    ], lambda x: b"no SAVE command" not in x)
+    # Since it's the only file on the .ssd, we can get the tokenised BASIC
+    # simply by chopping off the first two sectors. We peek the length out
+    # of one of those sectors first.
+    with open(loader_ssd, "rb") as f:
+        tokenised_loader = bytearray(f.read())
+        length = ((((tokenised_loader[0x10e] >> 4) & 0x3) << 16) |
+                  (tokenised_loader[0x10d] << 8) | tokenised_loader[0x10c])
+        tokenised_loader = tokenised_loader[512:512+length]
+    return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
+
+
+def title_from_filename(filename, remove_the_if_longer_than):
+    title = os.path.basename(os.path.splitext(filename)[0])
+    # This logic has been copied from make.rb.
+    camel_case = re.search("[a-z]", title) and re.search("[A-Z]", title) and not re.search(" |_", title)
+    if camel_case:
+        title = re.sub("([a-z])([A-Z])", r"\1 \2", title)
+        title = re.sub("A([A-Z])", r"A \1", title)
+    title = re.sub("_+", " ", title)
+    title = re.sub("(^ +)|( +)$", "", title)
+    if remove_the_if_longer_than is not None and len(title) > remove_the_if_longer_than:
+        title = re.sub("^(the|a) (.*)$", r"\2", title, flags=re.IGNORECASE)
+    if re.search("^[a-z]", title):
+        title = title.capitalize()
+    if remove_the_if_longer_than is not None and len(title) > remove_the_if_longer_than:
+        title = title[:remove_the_if_longer_than]
+    return title
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
+    # SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
+    if version_txt is not None:
+        parser.add_argument("--version", action="version", version=best_effort_version)
+    parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
+    parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
+    parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
+    parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
+    parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+    parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
+    parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
+    parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
+    parser.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
+    parser.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
+    parser.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
+    parser.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
+    parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
+    parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
+    parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
+    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR")
+    parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
+    parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
+    parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
+    parser.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
+    parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
+    parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
+    group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
+    group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
+    group.add_argument("-d", "--debug", action="store_true", help="build a debug version")
+    group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+    group.add_argument("--print-swaps", action="store_true", help="print virtual memory swaps (implies -d)")
+    group.add_argument("--trace", action="store_true", help="enable tracing (implies -d)")
+    group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
+    group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
+    group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
+    group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
+    group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
+    group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
+    group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
+    group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
+    group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
+    group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
+    group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
+    group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
+    group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
+
+    cmd_args = parser.parse_args()
+
+    cmd_args.verbose_level = 0 if cmd_args.verbose is None else cmd_args.verbose
+
+    if cmd_args.only_40_column and cmd_args.only_80_column:
+        die("--only-40-column and --only-80-column are incompatible")
+    if cmd_args.force_65c02 and cmd_args.force_6502:
+        die("--force-65c02 and --force-6502 are incompatible")
+    if cmd_args.preload_opt and cmd_args.preload_config:
+        die("--preload-opt and --preload-config are incompatible")
+
+    if cmd_args.output_file is not None:
+        _, user_extension = os.path.splitext(args.output_file)
+        if user_extension.lower() == '.dsd':
+            cmd_args.double_sided = True
+        elif user_extension.lower() == '.adl':
+            cmd_args.adfs = True
+            cmd_args.double_sided = True
+        elif user_extension.lower() == '.adf':
+            cmd_args.adfs = True
+
+    if cmd_args.default_mode is not None:
+        if cmd_args.default_mode not in (0, 3, 4, 6, 7):
+            die("Invalid default mode specified")
+    else:
+        cmd_args.default_mode = 7
+
+    if cmd_args.interpreter_num is not None:
+        if not (0 <= cmd_args.interpreter_num <= 19):
+            die("Invalid interpreter number")
+
+    if cmd_args.title is None:
+        cmd_args.title = title_from_filename(cmd_args.input_file, 40)
+
+    if cmd_args.page is not None:
+        cmd_args.page = our_parse_int(cmd_args.page)
+
+    if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
+        cmd_args.debug = True
+
+    return cmd_args
+
+
+def make_preload_blocks_list(config_filename):
+    with open(config_filename, "rb") as f:
+        preload_config = bytearray(f.read())
+    blocks = []
+    for i in range(len(preload_config) // 2):
+        # We don't care about the timestamp on the entries in preload_config;
+        # they are in order of insertion and that's what we're really interested
+        # in. (This isn't the *same* as the order based on timestamp; a block
+        # loaded early may of course be used again later and therefore have a
+        # newer timestamp than another block loaded after it but never used
+        # again.) Note that just as when we don't use preload_config, the
+        # initial vmap entries will be assigned timestamps based on their order;
+        # the timestamp in preload_config are ignored.
+        addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
+        if addr & 1 == 1:
+            # This is an odd address so it's invalid; we expect to see one of
+            # these as the first block and we just ignore it.
+            assert i == 0
+            continue
+        block_index = (addr - nonstored_blocks) // vmem_block_pagecount
+        assert block_index >= 0
+        blocks.append(block_index)
+    return blocks
+
+
+def make_disc_image():
+    global ozmoo_base_args
+    ozmoo_base_args = [
+        "-DACORN=1",
+        "-DACORN_CURSOR_PASS_THROUGH=1",
+        "-DSTACK_PAGES=4",
+        "-DSMALLBLOCK=1",
+        "-DSPLASHWAIT=0",
+        "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
+        "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
+    ]
+    # SFTODO: Re-order these to match the --help output eventually
+    if double_sided_dfs():
+        ozmoo_base_args += ["-DACORN_DSD=1"]
+    # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
+    if cmd_args.adfs:
+        ozmoo_base_args += ["-DACORN_ADFS=1"]
+    # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
+    if not cmd_args.no_mode_7_colour:
+        ozmoo_base_args += ["-DMODE_7_STATUS=1"]
+    if cmd_args.interpreter_num:
+        ozmoo_base_args += ["-DTERPNO=%d" % cmd_args.interpreter_num]
+    if cmd_args.function_keys:
+        ozmoo_base_args += ["-DACORN_FUNCTION_KEY_PASS_THROUGH=1"]
+    if cmd_args.force_65c02:
+        ozmoo_base_args += ["-DCMOS=1"]
+    if cmd_args.benchmark:
+        ozmoo_base_args += ["-DBENCHMARK=1"]
+    if cmd_args.debug:
+        ozmoo_base_args += ["-DDEBUG=1"]
+    if cmd_args.trace:
+        ozmoo_base_args += ["-DTRACE=1"]
+    if cmd_args.trace_floppy:
+        ozmoo_base_args += ["-DTRACE_FLOPPY=1"]
+    if cmd_args.trace_vm:
+        ozmoo_base_args += ["-DTRACE_VM=1"]
+    if cmd_args.speed:
+        ozmoo_base_args += ["-DPRINTSPEED=1"]
+    if cmd_args.print_swaps:
+        ozmoo_base_args += ["-DPRINT_SWAPS=1"]
+    if cmd_args.no_hole_check:
+        ozmoo_base_args += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
+    if cmd_args.no_dynmem_adjust:
+        ozmoo_base_args += ["-DACORN_NO_DYNMEM_ADJUST=1"]
+    if cmd_args.fake_read_errors:
+        ozmoo_base_args += ["-DFAKE_READ_ERRORS=1"]
+    if cmd_args.slow:
+        ozmoo_base_args += ["-DSLOW=1"]
+    if cmd_args.waste_bytes:
+        ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
+
+    if z_machine_version in (3, 4, 5, 8):
+        ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
+    else:
+        die("Unsupported Z-machine version: %d" % (z_machine_version,))
+
+    want_electron = True
+    want_bbc_swr = True
+    want_bbc_shr_swr = True
+    want_tube = True
+    if cmd_args.bbc_only:
+        want_electron = False
+    if cmd_args.electron_only:
+        want_bbc_swr = False
+        want_bbc_shr_swr = False
+    if cmd_args.no_tube:
+        want_tube = False
+    if cmd_args.only_80_column:
+        want_bbc_swr = False # mode 7 only build
+        # Arguably we should set want_electron to False, but an Electron with
+        # shadow RAM might exist and it would be able to run the game.
+    if not any([want_electron, want_bbc_swr, want_bbc_shr_swr, want_tube]):
+        die("All possible builds have been disabled by command line options, nothing to do!")
+
+    # We work with "executable groups" instead of executables so we can keep related
+    # executables together on the disc, although this is only useful for the second
+    # processor build at the moment.
+    ozmoo_variants = []
+    if want_electron:
+        e = make_electron_swr_executable()
+        if e is not None:
+            ozmoo_variants.append([e])
+    if want_bbc_swr:
+        e = make_bbc_swr_executable()
+        if e is not None:
+            ozmoo_variants.append([e])
+    if want_bbc_shr_swr:
+        e = make_shr_swr_executable()
+        if e is not None:
+            ozmoo_variants.append([e])
+    if want_tube:
+        ozmoo_variants.append(make_tube_executables())
+    if len(ozmoo_variants) == 0:
+        die("No builds succeeded, can't generate disc image.")
+
+    # We sort the executable groups by descending order of size; this isn't really
+    # important unless we're doing a double-sided DFS build (where we want to
+    # distribute larger things first), but it doesn't hurt to do it in all cases.
+    ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
+
+    # SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
+    loader_symbols = {
+        "default_mode": basic_int(cmd_args.default_mode),
+    }
+    for executable_group in ozmoo_variants:
+        for e in executable_group:
+            e.add_loader_symbols(loader_symbols)
+    if cmd_args.only_40_column:
+        loader_symbols["ONLY_40_COLUMN"] = basic_int(1)
+    if cmd_args.only_80_column:
+        loader_symbols["ONLY_80_COLUMN"] = basic_int(1)
+    if not cmd_args.only_40_column and not cmd_args.only_80_column:
+        loader_symbols["NO_ONLY_COLUMN"] = basic_int(1)
+    if cmd_args.auto_start:
+        loader_symbols["AUTO_START"] = 1
+    loader_screen.add_loader_symbols(loader_symbols)
+
+    disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
+    assert all(f is not None for f in disc_contents)
+    if double_sided_dfs():
+        disc2_contents = []
+    for executable_group in ozmoo_variants:
+        if double_sided_dfs() and disc_size(disc2_contents) < disc_size(disc_contents):
+            disc2_contents.extend(executable_group)
+        else:
+            disc_contents.extend(executable_group)
+    if double_sided_dfs():
+        for f in disc2_contents:
+            f.surface = 2
+            f.add_loader_symbols(loader_symbols)
+        assert disc_contents[1].leafname == "LOADER"
+        disc_contents[1] = make_tokenised_loader(loader_symbols)
+
+    # SFTODO: This is a bit of a hack, may well be able to simplify/improve
+    if not cmd_args.adfs:
+        user_extensions = (".ssd", ".dsd")
+        preferred_extension = ".dsd" if cmd_args.double_sided else ".ssd"
+    else:
+        user_extensions = (".adf", ".adl")
+        preferred_extension = ".adl" if cmd_args.double_sided else ".adf"
+    if cmd_args.output_file is None:
+        output_file = os.path.basename(os.path.splitext(cmd_args.input_file)[0] + preferred_extension)
+    else:
+        user_prefix, user_extension = os.path.splitext(cmd_args.output_file)
+        # If the user wants to call the file .img or something, we'll leave it alone.
+        if user_extension.lower() in user_extensions and user_extension.lower() != preferred_extension.lower():
+            warn("Changing extension of output from %s to %s" % (user_extension, preferred_extension))
+            user_extension = preferred_extension
+        output_file = user_prefix + user_extension
+
+    if not cmd_args.adfs:
+        disc = DfsImage(disc_contents)
+        if not cmd_args.double_sided:
+            # Because we read multiples of vmem_block_pagecount at a time, the data file must
+            # start at a corresponding sector in order to avoid a read ever straddling a track
+            # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
+            # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
+            # it's good for testing.)
+            disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
+            disc.add_file(File("DATA", 0, 0, game_data))
+            DfsImage.write_ssd(disc, output_file)
+        else:
+            disc2 = DfsImage(disc2_contents, boot_option=0) # 0 = no action
+            # The game data must start on a track boundary at the same place on both surfaces.
+            max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
+            def pad_predicate(sector):
+                return sector >= max_first_free_sector and sector % DfsImage.sectors_per_track == 0
+            disc .add_pad_file(pad_predicate)
+            disc2.add_pad_file(pad_predicate)
+            data = [bytearray(), bytearray()]
+            spt = DfsImage.sectors_per_track
+            bps = DfsImage.bytes_per_sector
+            bpt = DfsImage.bytes_per_track
+            for i in range(0, bytes_to_blocks(len(game_data)), spt):
+                data[(i % (2 * spt)) // spt].extend(game_data[i*bps:i*bps+bpt])
+            disc .add_file(File("DATA", 0, 0, data[0]))
+            disc2.add_file(File("DATA", 0, 0, data[1]))
+            DfsImage.write_dsd(disc, disc2, output_file)
+    else:
+        disc = AdfsImage(disc_contents)
+        # There are no alignment requirements for ADFS so we don't need a pad file..
+        disc.add_file(File("DATA", 0, 0, game_data))
+        disc.add_directory("SAVES")
+        if cmd_args.double_sided:
+            disc.write_adl(output_file)
+        else:
+            disc.write_adf(output_file)
+    info("Generated disc image " + output_file)
+
+
+defer_output = False
+deferred_output = []
+best_effort_version = "Ozmoo"
+try:
+    with open(os.path.join(os.path.dirname(sys.argv[0]), "version.txt"), "r") as f:
+        version_txt = f.read().strip()
+    best_effort_version += " " + version_txt
+except IOError:
+    version_txt = None
+
+cmd_args = parse_args()
+
+# It's OK to run and give --help etc output if the version.txt file can't be found,
+# but we don't want to generate a disc image with a missing version.
+if version_txt is None:
+    die("Can't find version.txt")
+
+prechecks()
+
+loader_screen = LoaderScreen()
+
+header_version = 0
+header_release = 2
+header_serial = 18
+header_static_mem = 0xe
+vmem_block_pagecount = 2
+bytes_per_block = 256
+bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
+min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
+min_timestamp = 0
+max_timestamp = 0xe0 # initial tick value
+
+ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
+relocatable_args = ["-DACORN_RELOCATABLE=1"]
+small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
+
+host = 0xffff0000
+tube_start_addr = 0x600
+if not cmd_args.adfs:
+    bbc_swr_start_addr = 0x1900
+else:
+    # SFTODO: Should I be using 0x1f00? That's what a model B with DFS+ADFS
+    # has PAGE at. Maybe stick with this for now and see if anyone has problems,
+    # so we don't pay a small performance penalty unless there's some evidence
+    # it's useful.
+    bbc_swr_start_addr = 0x1d00
+bbc_swr_start_addr_low = 0xe00
+# On the Electron, no main RAM is used for dynamic RAM so there's no
+# disadvantage to loading high in memory as far as the game itself is concerned.
+# However, we'd like to avoid the executable overwriting the mode 6 screen RAM
+# and corrupting the loading screen if we can, so we pick a relatively low addr
+# which should be >=PAGE on nearly all systems.
+electron_swr_start_addr = 0x1d00
+small_dynmem_page_threshold = 0x2000
+max_start_addr = 0x3000
+# SFTODO: It might be useful to allow finer-grained control over these build
+# addresses from the command line than --page, but this isn't a bad start and
+# may really be all we need.
+if cmd_args.page is not None:
+    bbc_swr_start_addr = cmd_args.page
+    bbc_swr_start_addr_low = cmd_args.page
+    electron_swr_start_addr = cmd_args.page
+    small_dynmem_page_threshold = cmd_args.page
+
+
+common_labels = {}
+
+with open(cmd_args.input_file, "rb") as f:
+    game_data = bytearray(f.read())
+z_machine_version = game_data[header_version]
+if z_machine_version == 3:
+    vmem_highbyte_mask = 0x01
+elif z_machine_version == 8:
+    vmem_highbyte_mask = 0x07
+else:
+    vmem_highbyte_mask = 0x03
+game_blocks = bytes_to_blocks(len(game_data))
+dynamic_size_bytes = read_be_word(game_data, header_static_mem)
+nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
+while nonstored_blocks % vmem_block_pagecount != 0:
+    nonstored_blocks += 1
+if cmd_args.preload_config:
+    cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
+
+check_if_special_game()
+
+boot_file = make_boot()
+findswr_executable = make_findswr_executable()
+
+single_to_double_sided = False
+if not cmd_args.never_defer_output:
+    defer_output = True
+while True:
+    try:
+        make_disc_image()
+        break
+    except DiscFull:
+        if not cmd_args.double_sided:
+            cmd_args.double_sided = True
+            single_to_double_sided = True
+            Executable.cache = {}
+            deferred_output = []
+            warn("Generating a double-sided disc as the game won't fit otherwise")
+        else:
+            if single_to_double_sided:
+                die("Game is too large for even a double-sided disc")
+            else:
+                die("Game is too large for a double-sided disc")
+show_deferred_output()
+
+# SFTODO: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.

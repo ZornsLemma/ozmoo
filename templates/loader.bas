@@ -1,53 +1,18 @@
+REM SFTODO: Check SFTODOs etc in original loader as some of them may still be valid and need transferring across here
+
 REM The loader uses some of the resident integer variables (or at least the
 REM corresponding memory) to communicate with the Ozmoo executable. This
 REM means it's probably least error prone to avoid using resident integer
 REM variables gratuitously in this code.
+
+REM As this code is not performance-critical, I have used real variables instead
+REM of integer variables most of the time to shorten things slightly by avoiding
+REM constant use of "%".
+
 REM SFTODO: It would be nice if the loader and build system could work
 REM together to allow the user to *optionally* specify a high-res title
 REM screen before we go into the mode 7 loader.
-REM SFTODO: In principle the build system could communicate size of
-REM "nonstored_blocks" to this code (it's hard for it to modify it
-REM directly, but it could set a resident integer variable in !BOOT)
-REM and it could also pass on the value of story_start, then this code
-REM (with some fiddling to allow for relocation - but this code tells
-REM where to relocate to, so it's possible) could tell the user if
-REM the game fits entirely in RAM on their machine. It could even set
-REM a flag to communicate this to the Ozmoo binary and prevent it
-REM mentioning removing game disc for save. It would still need to
-REM request/check for the binary on RESTART, so it would need code
-REM for that and maybe RESTART counts as "playing" the game, so the
-REM user shouldn't be told here in the first place.
-*FX229,1
-:
-REM On an Integra-B, we may have problems selecting shadow mode from this
-REM large program which may be using memory above &3000 if we're currently
-REM in a non-shadow mode. Normally !BOOT selects a shadow mode to avoid
-REM this problem, but we do this as a fallback (e.g. if we've been copied
-REM to a hard drive and our !BOOT isn't in use any more).
-A%=&85:X%=135:potential_himem%=(USR&FFF4 AND &FFFF00) DIV &100
-IF potential_himem%=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
-:
-REM The following need to be kept consistent with asm/constants.asm
-REM SFTODO: Should we make make-acorn.py substitute them in?
-relocate_target=&408
-fg_colour=&409
-bg_colour=&40A
-screen_mode=&40B
-ram_bank_count=&904
-ram_bank_list=&905
-filename_data=&42F
-filename_size=49
-:
-MODE 135
-VDU 23,1,0;0;0;0;
-?fg_colour=7
-?bg_colour=4
-A%=0:X%=1:host_os%=USR(&FFF4) DIV &100 AND &FF
-IF host_os%=0 THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
-*FX4,1
-DIM block% 256
-REM ${BANNER} - make-acorn.py will add banner printing code here
-ON ERROR PROCerror
+
 REM SFTODO: Note that for Z3 games, anything shown on the top line of
 REM the screen will remain present occupying the not-yet-displayed
 REM status line until the game starts. This means that if any disc
@@ -57,238 +22,344 @@ REM possible appearance in this admittedly unlikely situation either
 REM clear the top line before running the Ozmoo executable or make
 REM sure it has something that looks OK on its own. (For example,
 REM *not* the top half of some double-height text.)
-:
-shadow%=(potential_himem%=&8000)
-tube%=(PAGE<&E00)
-PROCdetect_swr:REM will die if 0 banks found
-IF tube% THEN ${TUBEDETECTED}
-REM SFTODO: Hypothetical AQR support might kick in here and if found (maybe we ask the user for permission) we'd select the relevant binary and GOTO 1000, otherwise we'd carry on
-IF shadow% AND host_os%<>0 THEN ${BBCSHRSWRDETECTED}
-IF host_os%<>0 THEN ${BBCSWRDETECTED}
-IF host_os%=0 THEN ${ELECTRONSWRDETECTED}
-1000PRINTTAB(0,first_loader_line);CHR$${HEADERFG};"Hardware detected:"
-IF tube% THEN PRINT CHR$${NORMALFG};"  Second processor"
-IF shadow% THEN PRINT CHR$${NORMALFG};"  Shadow RAM"
-IF swr% THEN PRINT CHR$${NORMALFG};"  ";swr$
-IF NOT tube% THEN ?relocate_target=FNrelocate_to DIV 256
-IF PAGE>max_page% THEN PROCdie("Sorry, PAGE must be <=&"+STR$~max_page%+".")
-start_mode%=${DEFAULTMODE}
-IF host_os%=0 AND start_mode%=7 THEN start_mode%=6
-auto%=${AUTOSTART}
-IF host_os%=0 THEN mode_key$="0346" ELSE mode_key$="03467"
-mode_x%=FNmode_x(start_mode%)
-mode_y%=FNmode_y(start_mode%)
-IF NOT any_mode% THEN mode_key$="" ELSE IF NOT auto% THEN PROCmode_menu
-PRINT'CHR$${HEADERFG};"In-game controls:"
-controls_vpos%=VPOS
-PROCupdate_controls
-IF NOT auto% THEN PRINTTAB(0,space_line);CHR$${NORMALFG};"Press SPACE/RETURN to start the game...";
-REPEAT
-*FX21
-IF auto% THEN key$=" " ELSE key$=GET$
-IF host_os%=0 AND key$=CHR$(2) THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
-IF host_os%=0 AND key$=CHR$(6) THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
-IF INSTR(mode_key$,key$)<>0 THEN PROCmenu_to_mode(VAL(key$)) ELSE IF ASC(key$)>=136 AND ASC(key$)<=139 THEN PROCmenu_cursor(ASC(key$))
-UNTIL key$=" " OR key$=CHR$(13)
-?screen_mode=FNmode_from_menu
+
+*FX229,1
+*FX4,1
+ON ERROR PROCerror
+
+REM On an Integra-B, we may have problems selecting shadow mode from this
+REM large program which may be using memory above &3000 if we're currently
+REM in a non-shadow mode. Normally !BOOT selects a shadow mode to avoid
+REM this problem, but we do this as a fallback (e.g. if we've been copied
+REM to a hard drive and our !BOOT isn't in use any more).
+A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
+IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
+
+fg_colour=${fg_colour}
+bg_colour=${bg_colour}
+screen_mode=${screen_mode}
+
+A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
+MODE 135:VDU 23,1,0;0;0;0;
+?fg_colour=7:?bg_colour=4
+IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
+DIM block% 256
+IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
+
+normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
+IF electron THEN normal_fg=0:header_fg=0:electron_space=32
+
+shadow=potential_himem=&8000
+tube=PAGE<&E00
+PROCdetect_swr
+
+REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
+REM second processor and the game fits entirely in RAM or the host cache isn't
+REM enabled), as it seems potentially confusing if we sometimes apparently
+REM fail to detect sideways RAM.
+PRINT CHR$header_fg;"Hardware detected:"
+vpos=VPOS
+IF tube THEN PRINT CHR$normal_fg;"  Second processor"
+IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
+IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
+IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
+PRINT
+die_top_y=VPOS
+
+PROCchoose_version_and_check_ram
+
+!ifdef AUTO_START {
+IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
+mode_keys_vpos=VPOS:PROCshow_mode_keys
+} else {
+IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT:key=GET:UNTIL key=32 OR key=13
+}
+
 IF ?screen_mode=7 THEN ?fg_colour=6
-VDU 28,0,space_line,39,space_line,12,26,31,0,space_line,${NORMALFG}
-PRINT "Loading, please wait...";
-${TUBECACHE}
-fs%=FNfs
-IF fs%<>4 THEN path$=FNpath
+PRINTTAB(0,space_y);CHR$normal_fg;"Loading, please wait...                ";
+!ifdef CACHE2P_BINARY {
+IF tube THEN */${CACHE2P_BINARY}
+}
+fs=FNfs
+IF fs<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
-IF fs%=5 THEN *DIR
+IF fs=5 THEN *DIR
 REM On non-DFS, select a SAVES directory if it exists but don't worry if it doesn't.
-ON ERROR GOTO 2000
-IF fs%=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
-2000ON ERROR PROCerror
-IF fs%=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
-IF LEN(filename$)>(filename_size-1) THEN PROCdie("Game data path too long")
+ON ERROR GOTO 1000
+IF fs=4 THEN PROCoscli("DIR S") ELSE *DIR SAVES
+1000ON ERROR PROCerror
+REM On DFS this is actually a * command, not a filename, hence the leading "/" (="*RUN").
+IF fs=4 THEN filename$="/"+binary$ ELSE filename$=path$+".DATA"
+IF LENfilename$>=${filename_size} THEN PROCdie("Game data path too long")
 REM We do this last, as it uses a lot of resident integer variable space and this reduces
 REM the chances of it accidentally getting corrupted.
+filename_data=${game_data_filename_or_restart_command}
 $filename_data=filename$
 *FX4,0
 REM SFTODO: Should test with BASIC I at some point, probably work fine but galling to do things like PROCoscli and still not work on BASIC I!
-IF fs%=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
+IF fs=4 THEN PROCoscli($filename_data) ELSE PROCoscli("/"+path$+"."+binary$)
 END
-:
-DEF PROCdetect_swr
-swr%=FALSE
-*/FINDSWR
-swr_type=&903
-c%=FNpeek(ram_bank_count)
-IF c%=0 AND NOT tube% THEN PROCdie("Sorry, no free sideways RAM or second  "+CHR$${NORMALFG}+"processor detected.")
-IF c%=0 THEN ENDPROC
-IF FNpeek(swr_type)>2 THEN  PROCdie("Sorry, only ROMSEL-controlled sideways "+CHR$${NORMALFG}+"RAM currently supported.")
-swr$=STR$(16*c%)+"K sideways RAM (bank"
-IF c%>1 THEN swr$=swr$+"s"
-swr$=swr$+" &"
-FOR i%=0 TO c%-1
-swr$=swr$+STR$~FNpeek(ram_bank_list+i%)
-NEXT
-swr$=swr$+")"
-swr%=TRUE
+
+DEF PROCerror:CLS:REPORT:PRINT" at line ";ERL:PROCfinalise
+
+DEF PROCdie(message$)
+VDU 28,0,space_y,39,die_top_y,12
+PROCpretty_print(normal_fg,message$)
+PRINT
+REM Fall through to PROCfinalise
+DEF PROCfinalise
+*FX229,0
+*FX4,0
+END
+
+DEF PROCelectron_header_footer
+VDU 23,128,0;0,255,255,0,0;
+PRINTTAB(0,23);STRING$(40,CHR$128);"${OZMOO}";
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+PRINT "${TITLE}";:IF POS>0 THEN PRINT
+PRINTSTRING$(40,CHR$128);
+!ifdef SUBTITLE {
+PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
+}
+PRINT:space_y=22
 ENDPROC
-:
-DEF FNrelocate_to
-REM SFTODO: We could potentially be more aggressive, relocating down to &1100 or &1300
-REM (we'd need to set a resident integer variable in !BOOT or something so the build
-REM script could communicate which is appropriate) on a B or B+. However, a) I suspect
-REM doing so is incompatible with shadow RAM on a B, where the third party shadow RAM
-REM will have workspace probably at &1900, so we'd probably want to avoid doing that
-REM if we're on a B and shadow RAM is available b) I have in the past had problems with
-REM the SRAM utilities writing (legitimately, if annoyingly) to their part of the "DFS"
-REM workspace and corrupting the RAM I've used below &1900 on OS errors, so this might
-REM be error prone or require some careful setup work here to disable such things. For
-REM now just play it safe.
-REM SFTODO: If the next line is "=PAGE", beebasm seems to tokenise it incorrectly.
-dummy%=PAGE
-=dummy%
-:
+
+DEF PROCbbc_header_footer
+PRINTTAB(0,${FOOTER_Y});:${FOOTER}
+IF POS=0 THEN VDU 30,11 ELSE VDU 30
+${HEADER}
+PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
+ENDPROC
+
+DEF PROCchoose_version_and_check_ram
+REM The tube build works on both the BBC and Electron, so we check that first.
+!ifdef OZMOO2P_BINARY {
+IF tube THEN binary$="${OZMOO2P_BINARY}":ENDPROC
+} else {
+IF tube THEN PROCunsupported_machine("a second processor")
+}
+PROCchoose_non_tube_version
+
+REM For builds which can use sideways RAM, we need to check if we have enough
+REM main RAM and/or sideways RAM to run successfully.
+REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
+REM The use of 'p' in the next line is to work around a beebasm bug.
+REM (https://github.com/stardot/beebasm/issues/45)
+IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
+IF relocatable THEN extra_main_ram=max_page-PAGE:p=PAGE:?${ozmoo_relocate_target}=p DIV 256 ELSE extra_main_ram=0
+swr_dynmem_needed=swr_dynmem_needed-&4000*?${ram_bank_count}
+REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
+REM memory, but on the Electron it is used as swappable memory only.
+vmem_needed=${MIN_VMEM_BYTES}-extra_main_ram
+IF electron AND swr_dynmem_needed>0 THEN PROCdie_ram(swr_dynmem_needed+FNmax(vmem_needed,0),"sideways RAM")
+mem_needed=swr_dynmem_needed+vmem_needed
+IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
+ENDPROC
+
+DEF PROCchoose_non_tube_version
+!ifdef ONLY_80_COLUMN {
+IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
+}
+!ifdef OZMOOE_BINARY {
+IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:ENDPROC
+} else {
+IF electron THEN PROCunsupported_machine("an Electron")
+}
+!ifdef OZMOOSH_BINARY {
+IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:ENDPROC
+} else {
+REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
+REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
+REM else.
+IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
+}
+!ifdef OZMOOB_BINARY {
+binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}
+} else {
+!ifdef OZMOOSH_BINARY {
+PROCunsupported_machine("a BBC B without shadow RAM")
+} else {
+PROCunsupported_machine("a BBC B")
+}
+}
+ENDPROC
+
+!ifndef AUTO_START {
 DEF PROCmode_menu
-DIM m$(1,1)
-m$(0,0)="0) 80x32"
-m$(1,0)="4) 40x32"
-m$(0,1)="3) 80x25"
-m$(1,1)="6) 40x25"
-PRINT'CHR$${HEADERFG};"Screen mode:";CHR$${NORMALFG};"(hit 0/3/4/6";
-IF host_os%<>0 THEN PRINT "/7";
-PRINT " to change)"
-mode_menu_vpos%=VPOS
-IF host_os%<>0 THEN PRINT CHR$${NORMALFG};"  0) 80x32    4) 40x32    7) 40x25"'CHR$${NORMALFG};"  3) 80x25    6) 40x25       teletext" ELSE FOR y%=0 TO 1:FOR x%=0 TO 1:PRINTTAB(3+x%*20,mode_menu_vpos%+y%);m$(x%,y%):NEXT:NEXT
-vpos%=VPOS
-PROChighlight_mode_menu(mode_x%,mode_y%,TRUE)
-PRINTTAB(0,vpos%);
-old_mode_x%=mode_x%:old_mode_y%=mode_y%
+DIM mode_x(8),mode_y(8)
+REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
+REM trouble than it's worth, because it's shown (with inserted "/" characters)
+REM on screen and for neatness we want it to be sorted into numerical order.
+!ifdef ONLY_80_COLUMN {
+max_x=1
+max_y=0
+DIM menu$(max_x,max_y),menu_x(max_x)
+menu$(0,0)="0) 80x32"
+menu$(1,0)="3) 80x25"
+mode_list$="03"
+}
+!ifdef ONLY_40_COLUMN {
+max_x=1
+max_y=1
+DIM menu$(max_x,max_y),menu_x(max_x)
+IF electron THEN max_y=0:menu$(0,0)="4) 40x32":menu$(1,0)="6) 40x25":mode_list$="46" ELSE menu$(0,0)="4) 40x32":menu$(0,1)="6) 40x25":menu$(1,0)="7) 40x25   ":menu$(1,1)="   teletext":mode_list$="467"
+}
+!ifdef NO_ONLY_COLUMN {
+max_x=2
+max_y=1
+DIM menu$(max_x,max_y),menu_x(max_x)
+menu$(0,0)="0) 80x32"
+menu$(0,1)="3) 80x25"
+menu$(1,0)="4) 40x32"
+menu$(1,1)="6) 40x25"
+menu$(2,0)="7) 40x25   "
+menu$(2,1)="   teletext"
+IF electron THEN max_x=1:mode_list$="0346" ELSE mode_list$="03467"
+}
+REM The y loop here is done in reverse as VAL(" ") is 0 and we want to get the
+REM second line of the mode 7 entry over with before it can corrupt the mode 0
+REM entry, which will always be in the first line if it's present.
+FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
+PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
+menu_top_y=VPOS
+IF max_x=2 THEN gutter=0 ELSE gutter=5
+FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
+mode_keys_vpos=menu_top_y+max_y+2
+mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
+x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE):PROCspace
+REPEAT
+old_x=x:old_y=y
+key=GET
+IF key=136 AND x>0 THEN x=x-1
+IF key=137 AND x<max_x THEN x=x+1
+IF key=138 AND y<max_y THEN y=y+1
+IF key=139 AND y>0 THEN y=y-1
+REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
+REM with cursor keys remembers the old y position.
+key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
+IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
+IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
+UNTIL key=32 OR key=13
 ENDPROC
-:
-DEF PROCmenu_cursor(key%)
-IF host_os%=0 THEN max_x%=1 ELSE max_x%=2
-IF key%=136 AND mode_x%>0 THEN mode_x%=mode_x%-1
-IF key%=137 AND mode_x%<max_x% THEN mode_x%=mode_x%+1
-IF key%=138 AND mode_y%<1 THEN mode_y%=mode_y%+1
-IF key%=139 AND mode_y%>0 THEN mode_y%=mode_y%-1
-PROCupdate_mode_menu
+
+DEF PROChighlight(x,y,on)
+IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
+IF on THEN PROCshow_mode_keys
+IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
+IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
+DEF PROChighlight_internal(x,y,on)
+REM We put the "normal background" code in at the right hand side first before
+REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
+REM to reduce visual glitches.
+IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
+PRINTTAB(menu_x(x)-1,menu_top_y+y);
+IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
 ENDPROC
-:
-DEF PROCmenu_to_mode(mode%)
-mode_x%=FNmode_x(mode%)
-mode_y%=FNmode_y(mode%)
-PROCupdate_mode_menu
-ENDPROC
-:
-DEF PROCupdate_mode_menu
-IF mode_x%=old_mode_x% AND mode_y%=old_mode_y% THEN ENDPROC
-IF mode_x%=2 AND old_mode_x%=2 THEN ENDPROC
-PROChighlight_mode_menu(old_mode_x%,old_mode_y%,FALSE)
-PROChighlight_mode_menu(mode_x%,mode_y%,TRUE)
-old_mode_x%=mode_x%:old_mode_y%=mode_y%
-PROCupdate_controls
-ENDPROC
-:
-DEF PROChighlight_mode_menu(mode_x%,mode_y%,on%)
-LOCAL x%,width%,start_y%,end_y%,y%:REM SFTODO OUT OF DATE
-IF host_os%=0 THEN PROChighlight_mode_menu_electron(mode_x%,mode_y%,on%):ENDPROC
-IF mode_x%=2 THEN start_y%=0:end_y%=1:width%=0 ELSE start_y%=mode_y%:end_y%=mode_y%:width%=13
-x%=mode_x%*12
-FOR y%=start_y% TO end_y%
-PRINTTAB(x%,mode_menu_vpos%+y%);
-IF on% THEN VDU ${HIGHLIGHTBG},157,${HIGHLIGHTFG} ELSE PRINT CHR$${NORMALFG};"  ";
-PRINTTAB(x%+width%,mode_menu_vpos%+y%);
-IF width%>0 AND on% THEN VDU 156,${NORMALFG}
-IF width%>0 AND NOT on% THEN PRINT " ";
-NEXT
-ENDPROC
-:
-DEF PROChighlight_mode_menu_electron(mode_x%,mode_y%,on%)
-IF on% THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
-PRINTTAB(1+mode_x%*20,mode_menu_vpos%+mode_y%);"  ";m$(mode_x%,mode_y%);"  ";
+DEF PROChighlight_internal_electron(x,y,on)
+PRINTTAB(menu_x(x),menu_top_y+y);
+IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
+PRINT SPC(2);menu$(x,y);SPC(2);
 COLOUR 128:COLOUR 7
 ENDPROC
-:
-DEF FNmode_x(mode%)
-IF mode%=0 OR mode%=3 THEN =0
-IF mode%=4 OR mode%=6 THEN =1
-=2
-:
-DEF FNmode_y(mode%)
-IF mode%=0 OR mode%=4 OR mode%=7 THEN =0
-=1
-:
-DEF FNmode_from_menu
-IF mode_x%=2 THEN =7
-IF mode_x%=1 THEN =4+2*mode_y%
-=0+3*mode_y%
-:
-DEF PROCupdate_controls
-REM SFTODO: We shouldn't mention CTRL-F at all in mode 7 if the build script has turned mode 7 colour off
-PRINTTAB(0,controls_vpos%);CHR$${NORMALFG};"  CTRL-F: ";
-IF mode_x%=2 THEN PRINT "change status line colour" ELSE PRINT "change foreground colour "'CHR$${NORMALFG};"  CTRL-B: change background colour"
-IF binary$<>"OZMOOB" THEN PRINT CHR$${NORMALFG};"  CTRL-S: change scrolling mode   "
-IF mode_x%=2 THEN PRINT STRING$(40, " ");
+}
+
+REM This is not a completely general pretty-print routine, e.g. it doesn't make
+REM any attempt to handle words which are longer than the screen width. It's
+REM good enough for our needs.
+REM
+REM colour should be 0 or a teletext colour control code.
+REM
+REM The current X text cursor position will be used as the left margin for the
+REM output; if colour<>0 there will be an additional one character indent.
+DEF PROCpretty_print(colour,message$)
+prefix$=CHR$colour+STRING$(POS," ")
+i=1
+VDU colour
+REPEAT
+space=INSTR(message$," ",i+1)
+IF space=0 THEN word$=MID$(message$,i) ELSE word$=MID$(message$,i,space-i)
+new_pos=POS+LENword$
+IF new_pos<40 THEN PRINT word$;" "; ELSE IF new_pos=40 THEN PRINT word$; ELSE PRINT'prefix$;word$;" ";
+IF POS=0 AND space<>0 THEN PRINT prefix$;
+i=space+1
+UNTIL space=0
+IF POS<>0 THEN PRINT
 ENDPROC
-:
-DEF PROCerror
-PROCclear
-REPORT:PRINT " at line ";ERL
-PROCcleanup
-END
-:
-DEF PROCdie(message$)
-PROCclear
-PRINT CHR$${NORMALFG};message$'
-PROCcleanup
-END
-:
-DEF PROCclear
-REM SFTODO: If we don't detect SWR/2P, this gives slightly ugly output. But I would like to leave the HW detected line present if we die for some other reason, as it's informative (e.g. max_page varies with build chosen).
-VDU 28,0,last_loader_line,39,first_loader_line+3,12
+
+DEF PROCdetect_swr
+*/FINDSWR
+REM We use FNpeek here because FINDSWR runs on the host and we may be running on
+REM a second processor.
+swr_banks=FNpeek(${ram_bank_count}):swr$=""
+IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
+IF swr_banks=0 THEN ENDPROC
+swr$=STR$(swr_banks*16)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
+swr$=swr$+" &":FOR i=0 TO swr_banks-1:swr$=swr$+STR$~FNpeek(${ram_bank_list}+i):NEXT:swr$=swr$+")"
 ENDPROC
-:
-DEF PROCcleanup
-VDU 23,1,1,0;0;0;0;
-*FX4,0
-*FX229,0
+
+DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
+DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
+
+DEF PROCshow_mode_keys
+mode_7_no_hw_scroll=NOT (shadow OR tube OR electron)
+!ifndef MODE_7_STATUS {
+IF mode_7_no_hw_scroll THEN ENDPROC
+}
+mode_keys_last_max_y=mode_keys_last_max_y:REM set variable to 0 if it doesn't exist
+IF mode_keys_last_max_y=0 THEN PRINTTAB(0,mode_keys_vpos);CHR$header_fg;"In-game controls:" ELSE PRINTTAB(0,mode_keys_vpos+1);
+REM The odd indentation on the next few lines is so a) it's easy to see all the
+REM different possible output lines have the same length and will completely
+REM obliterate each other b) the build script will strip off the extra
+REM indentation as it's at the start of the line.
+!ifdef MODE_7_STATUS {
+         IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-F: change status line colour"
+}
+        IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
+        IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "
+IF NOT mode_7_no_hw_scroll THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
+REM Clear any additional rows which we used last time but haven't used this time.
+IF VPOS<mode_keys_last_max_y THEN PRINT SPC(40*(mode_keys_last_max_y-VPOS));
+mode_keys_last_max_y=VPOS
 ENDPROC
-:
-DEF PROCoscli($block%)
-LOCAL X%,Y%
-X%=block%:Y%=block% DIV 256:CALL &FFF7
+
+DEF PROCspace
+PRINTTAB(0,space_y);CHR$normal_fg;"Press SPACE/RETURN to start the game...";
 ENDPROC
-:
-REM SFTODO: WE DON'T NEED THIS ON DFS
+
+DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
+
+DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
+
+DEF FNpeek(addr):!block%=&FFFF0000 OR addr:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
+
+DEF FNfs:A%=0:Y%=0:=USR&FFDA AND &FF
+
+REM SFTODO: FNpath AND FNstrip CAN BE OMITTED IF THIS IS A DFS BUILD (THOUGH ULTIMATELY I REALLY MEAN "OSWORD 7F", AS IT MAY BE I WANT TO BUILD DFS-WITH-OSGBPB FOR INSTALL ON NFS INSTEAD OF HAVING TO VIA ADFS)
 DEF FNpath
-LOCAL path$,A%,X%,Y%,name%,name$,drive$
 DIM data% 256
 path$=""
 REPEAT
 block%!1=data%
 A%=6:X%=block%:Y%=block% DIV 256:CALL &FFD1
-name%=data%+1+?data%
-name%?(1+?name%)=13
-name$=FNstrip($(name%+1))
+name=data%+1+?data%
+name?(1+?name)=13
+name$=FNstrip($(name+1))
 path$=name$+"."+path$
 REM On Econet, you can't do *DIR ^ when in the root.
+REM SFTODO: You can't always do *DIR ^ on Econet; can/should I try to work around this?
 IF name$<>"$" AND name$<>"&" THEN *DIR ^
 UNTIL name$="$" OR name$="&"
 path$=LEFT$(path$,LEN(path$)-1)
-?name%=13
+?name=13
 drive$=FNstrip($(data%+1))
 IF drive$<>"" THEN path$=":"+drive$+"."+path$
 PROCoscli("DIR "+path$)
 =path$
-:
+
 DEF FNstrip(s$)
 s$=s$+" "
 REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 =s$
-:
-DEF FNfs
-LOCAL A%,Y%
-A%=0:Y%=0:=USR(&FFDA) AND &FF
-:
-DEF FNpeek(addr%)
-!block%=&FFFF0000 OR addr%
-A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1
-=block%?4
+
+DEF FNmax(a,b):IF a<b THEN =b ELSE =a
