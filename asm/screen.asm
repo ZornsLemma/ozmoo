@@ -242,6 +242,7 @@ start_buffering
 	sty last_break_char_buffer_pos
 	rts
 
++make_acorn_screen_hole
 z_ins_split_window
     ; split_window lines
     ldx z_operand_value_low_arr
