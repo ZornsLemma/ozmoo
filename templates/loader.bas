@@ -72,7 +72,7 @@ PROCchoose_version_and_check_ram
 IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
 mode_keys_vpos=VPOS:PROCshow_mode_keys
 } else {
-IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT:key=GET:UNTIL key=32 OR key=13
+IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
 IF ?screen_mode=7 THEN ?fg_colour=6
@@ -238,10 +238,13 @@ REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
 REM with cursor keys remembers the old y position.
 key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
 IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+UNTIL FNhandle_common_key(key)
+ENDPROC
+
+DEF FNhandle_common_key(key)
 IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
 IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
-UNTIL key=32 OR key=13
-ENDPROC
+=key=32 OR key=13
 
 DEF PROChighlight(x,y,on)
 IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
