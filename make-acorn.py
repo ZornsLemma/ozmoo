@@ -1152,7 +1152,7 @@ def make_text_loader(symbols):
                 if not cmd_args.no_loader_crunch:
                     line = crunch_line(line, crunched_symbols)
                 loader.append(line)
-    return "\n".join(loader)
+    return "\n".join(loader) + "\n"
 
 
 def make_tokenised_loader(loader_symbols):
