@@ -638,6 +638,7 @@ restore_game
     ; to update the header in case the screen dimensions have changed compared
     ; to when this game was saved.
     php
+    pha
     +lda_screen_height
 	sta story_start + header_screen_height_lines
 !ifdef Z5PLUS {
@@ -648,6 +649,7 @@ restore_game
 !ifdef Z5PLUS {
 	sta story_start + header_screen_width_units + 1
 }
+    pla
     plp
 .restore_game_rts
     rts
