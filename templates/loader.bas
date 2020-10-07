@@ -35,6 +35,11 @@ REM to a hard drive and our !BOOT isn't in use any more).
 A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
 IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 
+REM In a few places in the loader (not the Ozmoo binary) we assume printing at
+REM the bottom right of the screen will cause a scroll. Override any "No Scroll"
+REM configuration on a Master to make this assumption valid.
+VDU 23,16,0,254,0;0;0;
+
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
