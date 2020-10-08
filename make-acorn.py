@@ -1256,7 +1256,7 @@ def parse_args():
         die("--preload-opt and --preload-config are incompatible")
 
     if cmd_args.output_file is not None:
-        _, user_extension = os.path.splitext(args.output_file)
+        _, user_extension = os.path.splitext(cmd_args.output_file)
         if user_extension.lower() == '.dsd':
             cmd_args.double_sided = True
         elif user_extension.lower() == '.adl':
