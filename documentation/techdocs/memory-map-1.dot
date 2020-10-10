@@ -5,7 +5,7 @@ digraph memory {
     <table>
         <tr><td>Virtual memory cache<br/>(vmap_max_entries 512-byte blocks)</td>
             <td>
-                <table>
+                <table port="vmem">
                     <tr><td port="lastblock">block vmap_max_entries-1</td></tr>
                     <tr><td>...</td></tr>
                     <tr><td port="block1">block 1</td></tr>
@@ -28,13 +28,13 @@ digraph memory {
     # vmap [label="{ { vmap_max_entries - 1 | foo } | ... | { 1 | foo } | {0 | foo } }"];
     vmap [label=<
          <table>
-            <tr><td>vmap_max_entries - 1</td><td port="lastblock">foo</td></tr>
+            <tr><td>vmap_max_entries-1</td><td port="lastblock">foo</td></tr>
             <tr><td>...</td><td>...</td></tr>
             <tr><td>1</td><td port="block1">bar</td></tr>
             <tr><td>0</td><td port="block0">baz</td></tr>
          </table>>];
 
-    { rank = same; top vmap };
+    { rank = same; vmem vmap };
 
     top:vmap -> vmap;
     top:lastblock -> vmap:lastblock;
