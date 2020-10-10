@@ -1,4 +1,5 @@
 digraph memory {
+    graph [nodesep=2];
     forcelabels=true;
     node [shape=plaintext];
 
@@ -10,10 +11,10 @@ digraph memory {
         <tr><td>Virtual memory cache<br/>(vmap_max_entries<br/>512-byte blocks)</td>
             <td>
                 <table port="vmem">
-                    <tr><td port="lastblock">block vmap_max_entries-1</td></tr>
+                    <tr><td port="lastblock">block vmap_max_entries-1: Z-code: jim</td></tr>
                     <tr><td>...</td></tr>
-                    <tr><td port="block1">block 1</td></tr>
-                    <tr><td port="block0">block 0</td></tr>
+                    <tr><td port="block1">block 1: Z-code: wobble</td></tr>
+                    <tr><td port="block0">block 0: Z-code: baz</td></tr>
                 </table>
             </td>
         </tr>
@@ -47,15 +48,15 @@ digraph memory {
         </tr>
         <tr>
             <td valign="bottom"><sub>$018400</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: wubble</td>
         </tr>
         <tr>
             <td port="z0182" valign="bottom"><sub>$018200</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: wobble</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$018000</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: wibble</td>
         </tr>
         <tr>
             <td></td>
@@ -63,15 +64,15 @@ digraph memory {
         </tr>
         <tr>
             <td valign="bottom"><sub>$004c00</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: sheila</td>
         </tr>
         <tr>
             <td port="z004a" valign="bottom"><sub>$004a00</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: jim</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$004800</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: fred</td>
         </tr>
         <tr>
             <td></td>
@@ -79,15 +80,15 @@ digraph memory {
         </tr>
         <tr>
             <td valign="bottom"><sub>$002e00</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: quux</td>
         </tr>
         <tr>
             <td port="z002c" valign="bottom"><sub>$002c00</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: baz</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$002a00</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: bar</td>
         </tr>
         <tr>
             <td></td>
@@ -95,7 +96,7 @@ digraph memory {
         </tr>
         <tr>
             <td valign="bottom"><sub>$000000</sub></td>
-            <td border="1" cellpadding="10">Z-code</td>
+            <td border="1" cellpadding="10">Z-code: foo</td>
         </tr>
     </table>>];
 
@@ -106,9 +107,9 @@ digraph memory {
     top:block1:e -> top:xblock1:e [dir=none];
     top:block0:e -> top:xblock0:e [dir=none];
 
-    top:z004a:e -> zmachine:z004a:w;
-    top:z002c:e -> zmachine:z002c:w;
-    top:z0182:e -> zmachine:z0182:w;
+    top:z004a:e -> zmachine:z004a:sw;
+    top:z002c:e -> zmachine:z002c:sw;
+    top:z0182:e -> zmachine:z0182:sw;
 }
 
 # vi: sw=4 sts=4
