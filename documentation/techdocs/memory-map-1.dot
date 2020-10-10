@@ -28,10 +28,10 @@ digraph memory {
                         <td><i>timestamp<br/>(5-7 bits)</i></td>
                         <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
                     </tr>
-                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">foo</td><td port="xvmaplast">fred</td></tr>
+                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">$7e</td><td port="z004a">$004a</td></tr>
                     <tr><td>...</td><td>...</td></tr>
-                    <tr><td>1</td><td port="xblock1">bar</td><td>jim</td></tr>
-                    <tr><td>0</td><td port="xblock0">baz</td><td>sheila</td></tr>
+                    <tr><td>1</td><td port="xblock1">$2d</td><td port="z0182">$0182</td></tr>
+                    <tr><td>0</td><td port="xblock0">$61</td><td port="z002c">$002c</td></tr>
                 </table>
             </td>
         </tr>
@@ -50,12 +50,12 @@ digraph memory {
             <td border="1">Z-code</td>
         </tr>
         <tr>
-            <td><sub>$018200</sub></td>
-            <td border="1" port="vmaplasttarget">Z-code</td>
+            <td port="z0182"><sub>$018200</sub></td>
+            <td border="1">Z-code</td>
         </tr>
         <tr>
             <td><sub>$018000</sub></td>
-            <td border="1" port="vmaplasttarget">Z-code</td>
+            <td border="1">Z-code</td>
         </tr>
         <tr>
             <td></td>
@@ -66,7 +66,7 @@ digraph memory {
             <td border="1">Z-code</td>
         </tr>
         <tr>
-            <td><sub>$004a00</sub></td>
+            <td port="z004a"><sub>$004a00</sub></td>
             <td border="1">Z-code</td>
         </tr>
         <tr>
@@ -82,7 +82,7 @@ digraph memory {
             <td border="1">Z-code</td>
         </tr>
         <tr>
-            <td><sub>$002c00</sub></td>
+            <td port="z002c"><sub>$002c00</sub></td>
             <td border="1">Z-code</td>
         </tr>
         <tr>
@@ -106,7 +106,9 @@ digraph memory {
     top:block1:e -> top:xblock1:e [dir=none];
     top:block0:e -> top:xblock0:e [dir=none];
 
-    top:xvmaplast:e -> zmachine:vmaplasttarget; # SFTODO: arrow head?
+    top:z004a:e -> zmachine:z004a:w;
+    top:z002c:e -> zmachine:z002c:w;
+    top:z0182:e -> zmachine:z0182:w;
 }
 
 # vi: sw=4 sts=4
