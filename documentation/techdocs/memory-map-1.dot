@@ -1,4 +1,4 @@
-graph memory {
+digraph memory {
     forcelabels=true;
     node [shape=plaintext];
 
@@ -28,7 +28,7 @@ graph memory {
                         <td><i>timestamp<br/>(5-7 bits)</i></td>
                         <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
                     </tr>
-                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">foo</td><td>fred</td></tr>
+                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">foo</td><td port="xvmaplast">fred</td></tr>
                     <tr><td>...</td><td>...</td></tr>
                     <tr><td>1</td><td port="xblock1">bar</td><td>jim</td></tr>
                     <tr><td>0</td><td port="xblock0">baz</td><td>sheila</td></tr>
@@ -41,7 +41,7 @@ graph memory {
 
     zmachine [xlabel="Z-machine memory map", label=<
     <table>
-        <tr><td>foo</td></tr>
+        <tr><td port="vmaplasttarget">foo</td></tr>
         <tr><td>foo</td></tr>
         <tr><td>foo</td></tr>
     </table>>];
@@ -49,9 +49,11 @@ graph memory {
     {rank = same; top zmachine};
 
     # Get rid of these lines, since they don't route well?
-    top:lastblock:e -- top:xlastblock:e;
-    top:block1:e -- top:xblock1:e;
-    top:block0:e -- top:xblock0:e;
+    top:lastblock:e -> top:xlastblock:e [dir=none];
+    top:block1:e -> top:xblock1:e [dir=none];
+    top:block0:e -> top:xblock0:e [dir=none];
+
+    top:xvmaplast:e -> zmachine:vmaplasttarget; # SFTODO: arrow head?
 }
 
 # vi: sw=4 sts=4
