@@ -1,8 +1,9 @@
 graph memory {
-    graph [splines=line];
+    forcelabels=true;
     node [shape=plaintext];
 
-    top [label=<
+    # SFTODO: Rename "top" to "ram"?
+    top [xlabel="Hardware memory map", label=<
     <table>
         <tr><td colspan="2">Hardware/ROM/OS RAM</td></tr>
         <!-- SFTODO: could label start of this chunk of memory vmap_first_ram_page -->
@@ -37,6 +38,15 @@ graph memory {
         <tr><td colspan="2">Ozmoo code/data</td></tr>
         <tr><td colspan="2">OS RAM</td></tr>
     </table>>];
+
+    zmachine [xlabel="Z-machine memory map", label=<
+    <table>
+        <tr><td>foo</td></tr>
+        <tr><td>foo</td></tr>
+        <tr><td>foo</td></tr>
+    </table>>];
+
+    {rank = same; top zmachine};
 
     # Get rid of these lines, since they don't route well?
     top:lastblock:e -- top:xlastblock:e;
