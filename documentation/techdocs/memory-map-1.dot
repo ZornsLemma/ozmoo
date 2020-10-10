@@ -1,4 +1,5 @@
-digraph memory {
+graph memory {
+    graph [splines=line];
     node [shape=plaintext];
 
     top [label=<
@@ -16,7 +17,7 @@ digraph memory {
         <tr><td colspan="2">Game dynamic memory</td></tr>
         <tr><td colspan="2">Z-machine stack</td></tr>
         <tr><td colspan="2">Ozmoo code/data</td></tr>
-        <tr><td>vmap</td>
+        <tr><td>vmap<br/>(vmap_max_entries 16-bit words)</td>
             <td>
                 <table>
                     <tr><td>vmap_max_entries-1</td><td port="xlastblock">foo</td></tr>
@@ -29,9 +30,9 @@ digraph memory {
         <tr><td colspan="2">Ozmoo code/data</td></tr>
     </table>>];
 
-    top:lastblock -> top:xlastblock;
-    top:block1 -> top:xblock1;
-    top:block0 -> top:xblock0;
+    top:lastblock:e -- top:xlastblock:e;
+    top:block1:e -- top:xblock1:e;
+    top:block0:e -- top:xblock0:e;
 }
 
 # vi: sw=4 sts=4
