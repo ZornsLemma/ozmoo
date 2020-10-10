@@ -1,6 +1,15 @@
 digraph memory {
     node [shape=record];
-    top [label="{ Virtual memory cache | Game dynamic memory | Z-machine stack | { Ozmoo binary | { code | vmap | code } } }"];
+    top [label="{ Virtual memory cache | Game dynamic memory | Z-machine stack | { Ozmoo binary | { code | <vmap> vmap | code } } }"];
+    # vmap [label="{ { vmap_max_entries - 1 | foo } | ... | { 1 | foo } | {0 | foo } }"];
+    vmap [label=<
+         <table>
+            <tr><td>vmap_max_entries - 1</td><td>foo</td></tr>
+            <tr><td>...</td><td>...</td></tr>
+            <tr><td>1</td><td>bar</td></tr>
+            <tr><td>0</td><td>baz</td></tr>
+         </table>>]
+    top:vmap -> vmap
 }
 
 # vi: sw=4 sts=4
