@@ -1,10 +1,10 @@
 digraph memory {
-    graph [nodesep=2];
+    graph [nodesep=2, label="Ozmoo virtual memory data structures", fontsize=20, labelloc=t];
     forcelabels=true;
     node [shape=plaintext];
 
     # SFTODO: Rename "top" to "ram"?
-    top [xlabel="Hardware memory map", label=<
+    top [xlabel="6502 memory map", label=<
     <table>
         <tr><td colspan="2">Hardware/ROM/OS RAM</td></tr>
         <!-- SFTODO: could label start of this chunk of memory vmap_first_ram_page -->
@@ -19,7 +19,7 @@ digraph memory {
                         <td>vmap_max_entries-1</td>
                         <td>jim</td>
                     </tr>
-                    <tr colspan="2"><td>..</td></tr>
+                    <tr><td colspan="2">...</td></tr>
                     <tr>
                         <td>1</td>
                         <td>wobble</td>
@@ -42,10 +42,10 @@ digraph memory {
                         <td><i>timestamp<br/>(5-7 bits)</i></td>
                         <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
                     </tr>
-                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">$7e</td><td port="z004a">$004a</td></tr>
-                    <tr><td>...</td><td>...</td></tr>
-                    <tr><td>1</td><td port="xblock1">$2d</td><td port="z0182">$0182</td></tr>
-                    <tr><td>0</td><td port="xblock0">$61</td><td port="z002c">$002c</td></tr>
+                    <tr><td>vmap_max_entries-1</td><td>$7e</td><td port="z004a">$004a</td></tr>
+                    <tr><td colspan="3">...</td></tr>
+                    <tr><td>1</td><td>$2d</td><td port="z0182">$0182</td></tr>
+                    <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
                 </table>
             </td>
         </tr>
@@ -114,11 +114,6 @@ digraph memory {
     </table>>];
 
     {rank = same; top zmachine};
-
-    # Get rid of these lines, since they don't route well?
-    top:lastblock:e -> top:xlastblock:e [dir=none];
-    top:block1:e -> top:xblock1:e [dir=none];
-    top:block0:e -> top:xblock0:e [dir=none];
 
     top:z004a:e -> zmachine:z004a:sw;
     top:z002c:e -> zmachine:z002c:sw;
