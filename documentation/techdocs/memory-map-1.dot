@@ -1,0 +1,6 @@
+digraph memory {
+    node [shape=record];
+    top [label="{ Virtual memory cache | Game dynamic memory | Z-machine stack | { Ozmoo binary | { code | vmap | code } } }"];
+}
+
+# vi: sw=4 sts=4
