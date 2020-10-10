@@ -46,56 +46,56 @@ digraph memory {
             <td border="1">...</td>
         </tr>
         <tr>
-            <td><sub>$018400</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$018400</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
-            <td port="z0182"><sub>$018200</sub></td>
-            <td border="1">Z-code</td>
+            <td port="z0182" valign="bottom"><sub>$018200</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
-            <td><sub>$018000</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$018000</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
             <td></td>
             <td border="1">...</td>
         </tr>
         <tr>
-            <td><sub>$004c00</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$004c00</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
             <td port="z004a" valign="bottom"><sub>$004a00</sub></td>
             <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
-            <td><sub>$004800</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$004800</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
             <td></td>
             <td border="1">...</td>
         </tr>
         <tr>
-            <td><sub>$002e00</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$002e00</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
-            <td port="z002c"><sub>$002c00</sub></td>
-            <td border="1">Z-code</td>
+            <td port="z002c" valign="bottom"><sub>$002c00</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
-            <td><sub>$002a00</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$002a00</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
             <td></td>
             <td border="1">...</td>
         </tr>
         <tr>
-            <td><sub>$000000</sub></td>
-            <td border="1">Z-code</td>
+            <td valign="bottom"><sub>$000000</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
     </table>>];
 
