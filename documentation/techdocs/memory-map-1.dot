@@ -4,7 +4,9 @@ graph memory {
 
     top [label=<
     <table>
-        <tr><td>Virtual memory cache<br/>(vmap_max_entries 512-byte blocks)</td>
+        <tr><td colspan="2">Hardware/ROM/OS RAM</td></tr>
+        <!-- SFTODO: could label start of this chunk of memory vmap_first_ram_page -->
+        <tr><td>Virtual memory cache<br/>(vmap_max_entries<br/>512-byte blocks)</td>
             <td>
                 <table port="vmem">
                     <tr><td port="lastblock">block vmap_max_entries-1</td></tr>
@@ -17,19 +19,26 @@ graph memory {
         <tr><td colspan="2">Game dynamic memory</td></tr>
         <tr><td colspan="2">Z-machine stack</td></tr>
         <tr><td colspan="2">Ozmoo code/data</td></tr>
-        <tr><td>vmap<br/>(vmap_max_entries 16-bit words)</td>
+        <tr><td>vmap<br/>(vmap_max_entries<br/>16-bit words)</td>
             <td>
                 <table>
-                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">foo</td></tr>
+                    <tr>
+                        <td><i>VM cache index<br/>(implicit)</i></td>
+                        <td><i>timestamp<br/>(5-7 bits)</i></td>
+                        <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
+                    </tr>
+                    <tr><td>vmap_max_entries-1</td><td port="xlastblock">foo</td><td>fred</td></tr>
                     <tr><td>...</td><td>...</td></tr>
-                    <tr><td>1</td><td port="xblock1">bar</td></tr>
-                    <tr><td>0</td><td port="xblock0">baz</td></tr>
+                    <tr><td>1</td><td port="xblock1">bar</td><td>jim</td></tr>
+                    <tr><td>0</td><td port="xblock0">baz</td><td>sheila</td></tr>
                 </table>
             </td>
         </tr>
         <tr><td colspan="2">Ozmoo code/data</td></tr>
+        <tr><td colspan="2">OS RAM</td></tr>
     </table>>];
 
+    # Get rid of these lines, since they don't route well?
     top:lastblock:e -- top:xlastblock:e;
     top:block1:e -- top:xblock1:e;
     top:block0:e -- top:xblock0:e;
