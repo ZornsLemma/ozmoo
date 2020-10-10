@@ -40,7 +40,7 @@ digraph memory {
     </table>>];
 
     zmachine [xlabel="Z-machine memory map", label=<
-    <table border="0">
+    <table border="0" cellspacing="0">
         <tr>
             <td></td>
             <td border="1">...</td>
@@ -66,8 +66,8 @@ digraph memory {
             <td border="1">Z-code</td>
         </tr>
         <tr>
-            <td port="z004a"><sub>$004a00</sub></td>
-            <td border="1">Z-code</td>
+            <td port="z004a" valign="bottom"><sub>$004a00</sub></td>
+            <td border="1" cellpadding="10">Z-code</td>
         </tr>
         <tr>
             <td><sub>$004800</sub></td>
