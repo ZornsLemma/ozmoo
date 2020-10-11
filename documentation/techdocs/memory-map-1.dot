@@ -1,5 +1,5 @@
 digraph memory {
-    graph [nodesep=2, label="Ozmoo virtual memory data structures", fontsize=20, labelloc=t];
+    graph [nodesep=2, label="Ozmoo 4.4 virtual memory data structures", fontsize=20, labelloc=t];
     forcelabels=true;
     node [shape=plaintext];
 
