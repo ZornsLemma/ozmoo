@@ -5,31 +5,31 @@ digraph memory {
 
     # SFTODO: Rename "top" to "ram"?
     top [label=<
-    <table>
+    <table border="0" cellborder="1" cellspacing="0">
         <!-- SFTODO: could label start of this chunk of memory vmap_first_ram_page -->
-        <tr><td colspan="2">Virtual memory cache<br/>(vmap_max_entries<br/>512-byte blocks)</td></tr>
+        <tr><td colspan="2" border="0">Virtual memory cache<br/>(vmap_max_entries 512-byte blocks)</td></tr>
                     <tr>
                         <td><i>VM cache index<br/>(implicit)</i></td>
                         <td><i>512-byte data block</i></td>
                     </tr>
                     <tr>
-                        <td>vmap_max_entries-1</td>
+                        <td port="jim">vmap_max_entries-1</td>
                         <td>jim</td>
                     </tr>
                     <tr><td colspan="2">...</td></tr>
                     <tr>
-                        <td>1</td>
+                        <td port="wobble">1</td>
                         <td>wobble</td>
                     </tr>
                     <tr>
-                        <td>0</td>
+                        <td port="baz">0</td>
                         <td>baz</td>
                     </tr>
     </table>>];
 
     SFTODORENAME [label=<
-    <table>
-        <tr><td colspan="3">vmap<br/>(vmap_max_entries<br/>16-bit words)</td></tr>
+    <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="3" border="0">vmap<br/>(vmap_max_entries 16-bit words)</td></tr>
         <tr>
             <td><i>VM cache index<br/>(implicit)</i></td>
             <td><i>timestamp<br/>(5-7 bits)</i></td>
@@ -41,7 +41,7 @@ digraph memory {
         <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
     </table>>];
 
-    zmachine [xlabel="Z-machine memory map", label=<
+    zmachine [xlabel="Z-code game file", label=<
     <table border="0" cellspacing="0">
         <tr>
             <td></td>
@@ -53,7 +53,7 @@ digraph memory {
         </tr>
         <tr>
             <td port="z0182" valign="bottom"><sub>$018200</sub></td>
-            <td border="1" cellpadding="10"><!-- Z-code: -->wobble</td>
+            <td port="wobble" border="1" cellpadding="10"><!-- Z-code: -->wobble</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$018000</sub></td>
@@ -69,7 +69,7 @@ digraph memory {
         </tr>
         <tr>
             <td port="z004a" valign="bottom"><sub>$004a00</sub></td>
-            <td border="1" cellpadding="10"><!-- Z-code: -->jim</td>
+            <td port="jim" border="1" cellpadding="10"><!-- Z-code: -->jim</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$004800</sub></td>
@@ -85,7 +85,7 @@ digraph memory {
         </tr>
         <tr>
             <td port="z002c" valign="bottom"><sub>$002c00</sub></td>
-            <td border="1" cellpadding="10"><!-- Z-code: -->baz</td>
+            <td port="baz" border="1" cellpadding="10"><!-- Z-code: -->baz</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$002a00</sub></td>
@@ -101,11 +101,15 @@ digraph memory {
         </tr>
     </table>>];
 
-    {rank = same; top zmachine};
+    {rank = same; SFTODORENAME zmachine top};
 
     SFTODORENAME:z004a:e -> zmachine:z004a:sw;
     SFTODORENAME:z002c:e -> zmachine:z002c:sw;
     SFTODORENAME:z0182:e -> zmachine:z0182:sw;
+
+    zmachine:jim:e -> top:jim:w;
+    zmachine:wobble:e -> top:wobble:w;
+    zmachine:baz:e -> top:baz:w;
 }
 
 # vi: sw=4 sts=4
