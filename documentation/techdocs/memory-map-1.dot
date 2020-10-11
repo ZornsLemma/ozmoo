@@ -140,5 +140,6 @@ digraph memory {
 # - In general, to see if block $abcd00 is in RAM already, it's necessary to do a linear search of the whole of vmap for an entry containing the value $abcd.
 # - The vmap_quick_index entries point to the mostly recently accessed entries in vmap, and therefore those entries have the most recent timestamps in vmap. These entries are checked first to see if they are the block of interest, avoiding the need to do a linear search of the whole of vmap a lot of the time.
 # - Virtual memory blocks are always double-page-aligned, so the Z-machine address $abcd in vmap will normally have the least significant bit clear.
+# - The low and high bytes of each vmap entry are actually stored separately, at vmap_z_l and vmap_z_h respectively. This avoids the need to double-increment index registers to step through the entries. On the Acorn port, this also means we can have ~256 vmap entries accessed using index registers.
 
 # vi: sw=4 sts=4
