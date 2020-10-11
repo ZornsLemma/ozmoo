@@ -1,5 +1,5 @@
 digraph memory {
-    graph [nodesep=2, label="Ozmoo 4.4 virtual memory data structures", fontsize=20, labelloc=t];
+    graph [nodesep=2, label="Ozmoo virtual memory data structures", fontsize=20, labelloc=t];
     forcelabels=true;
     node [shape=plaintext];
 
@@ -27,7 +27,7 @@ digraph memory {
                     </tr>
     </table>>];
 
-    SFTODORENAME [label=<
+    vmap [label=<
     <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="3" border="0">vmap<br/>(vmap_max_entries 16-bit words)</td></tr>
         <tr>
@@ -35,9 +35,13 @@ digraph memory {
             <td><i>timestamp<br/>(5-7 bits)</i></td>
             <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
         </tr>
-        <tr><td>vmap_max_entries-1</td><td>$7e</td><td port="z004a">$004a</td></tr>
+        <tr><td>vmap_max_entries-1</td><td>$2d</td><td port="z004a">$004a</td></tr>
         <tr><td colspan="3">...</td></tr>
-        <tr><td>1</td><td>$2d</td><td port="z0182">$0182</td></tr>
+        <tr><td port="86">86</td><td>...</td><td>...</td></tr>
+        <tr><td colspan="3">...</td></tr>
+        <tr><td port="29">29</td><td>...</td><td>...</td></tr>
+        <tr><td colspan="3">...</td></tr>
+        <tr><td port="1">1</td><td>$7e</td><td port="z0182">$0182</td></tr>
         <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
     </table>>];
 
@@ -101,15 +105,31 @@ digraph memory {
         </tr>
     </table>>];
 
-    {rank = same; SFTODORENAME zmachine top};
+    quickindex [label=<
+    <table border="0" cellborder="1" cellspacing="0">
+        <tr><td border="0">vmap_quick_index<br/>(vmap_quick_index_length<br/>8-bit VM cache indices)</td></tr>
+        <tr><td port="29">29</td></tr>
+        <tr><td port="1">1</td></tr>
+        <tr><td port="86">86</td></tr>
+    </table>>];
 
-    SFTODORENAME:z004a:e -> zmachine:z004a:sw;
-    SFTODORENAME:z002c:e -> zmachine:z002c:sw;
-    SFTODORENAME:z0182:e -> zmachine:z0182:sw;
+    # vmapnextquickindex [label="vmap_next_quick_index"];
+
+    {rank = same; quickindex vmap zmachine top};
+
+    vmap:z004a:e -> zmachine:z004a:sw;
+    vmap:z002c:e -> zmachine:z002c:sw;
+    vmap:z0182:e -> zmachine:z0182:sw;
 
     zmachine:jim:e -> top:jim:w;
     zmachine:wobble:e -> top:wobble:w;
     zmachine:baz:e -> top:baz:w;
+
+    quickindex:1:e -> vmap:1:w;
+    quickindex:29:e -> vmap:29:w;
+    quickindex:86:e -> vmap:86:w;
+
+    # vmapnextquickindex -> quickindex:29:w;
 }
 
 # vi: sw=4 sts=4
