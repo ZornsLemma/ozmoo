@@ -3,8 +3,7 @@ digraph memory {
     forcelabels=true;
     node [shape=plaintext];
 
-    # SFTODO: Rename "top" to "ram"?
-    top [label=<
+    vmcache [label=<
     <table border="0" cellborder="1" cellspacing="0">
         <!-- SFTODO: could label start of this chunk of memory vmap_first_ram_page -->
         <tr><td colspan="2" border="0">Virtual memory cache<br/>(vmap_max_entries 512-byte blocks)</td></tr>
@@ -118,15 +117,15 @@ digraph memory {
 
     # vmapnextquickindex [label="vmap_next_quick_index"];
 
-    {rank = same; quickindex vmap zmachine top};
+    {rank = same; quickindex vmap zmachine vmcache};
 
     vmap:z004a:e -> zmachine:z004a:sw;
     vmap:z002c:e -> zmachine:z002c:sw;
     vmap:z0182:e -> zmachine:z0182:sw;
 
-    zmachine:jim:e -> top:jim:w;
-    zmachine:wobble:e -> top:wobble:w;
-    zmachine:baz:e -> top:baz:w;
+    zmachine:jim:e -> vmcache:jim:w;
+    zmachine:wobble:e -> vmcache:wobble:w;
+    zmachine:baz:e -> vmcache:baz:w;
 
     quickindex:1:e -> vmap:1:w;
     quickindex:29:e -> vmap:29:w;
