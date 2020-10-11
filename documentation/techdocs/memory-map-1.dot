@@ -37,9 +37,9 @@ digraph memory {
         </tr>
         <tr><td>vmap_max_entries-1</td><td>$2d</td><td port="z004a">$004a</td></tr>
         <tr><td colspan="3">...</td></tr>
-        <tr><td port="86">86</td><td>...</td><td>...</td></tr>
+        <tr><td port="86">86</td><td>$7e</td><td>...</td></tr>
         <tr><td colspan="3">...</td></tr>
-        <tr><td port="29">29</td><td>...</td><td>...</td></tr>
+        <tr><td port="29">29</td><td>$7d</td><td>...</td></tr>
         <tr><td colspan="3">...</td></tr>
         <tr><td port="1">1</td><td>$7e</td><td port="z0182">$0182</td></tr>
         <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
