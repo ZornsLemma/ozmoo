@@ -4,13 +4,10 @@ digraph memory {
     node [shape=plaintext];
 
     # SFTODO: Rename "top" to "ram"?
-    top [xlabel="6502 memory map", label=<
+    top [label=<
     <table>
-        <tr><td colspan="2">Hardware/ROM/OS RAM</td></tr>
         <!-- SFTODO: could label start of this chunk of memory vmap_first_ram_page -->
-        <tr><td>Virtual memory cache<br/>(vmap_max_entries<br/>512-byte blocks)</td>
-            <td>
-                <table port="vmem">
+        <tr><td colspan="2">Virtual memory cache<br/>(vmap_max_entries<br/>512-byte blocks)</td></tr>
                     <tr>
                         <td><i>VM cache index<br/>(implicit)</i></td>
                         <td><i>512-byte data block</i></td>
@@ -28,29 +25,20 @@ digraph memory {
                         <td>0</td>
                         <td>baz</td>
                     </tr>
-                </table>
-            </td>
+    </table>>];
+
+    SFTODORENAME [label=<
+    <table>
+        <tr><td colspan="3">vmap<br/>(vmap_max_entries<br/>16-bit words)</td></tr>
+        <tr>
+            <td><i>VM cache index<br/>(implicit)</i></td>
+            <td><i>timestamp<br/>(5-7 bits)</i></td>
+            <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
         </tr>
-        <tr><td colspan="2">Game dynamic memory</td></tr>
-        <tr><td colspan="2">Z-machine stack</td></tr>
-        <tr><td colspan="2">Ozmoo code/data</td></tr>
-        <tr><td>vmap<br/>(vmap_max_entries<br/>16-bit words)</td>
-            <td>
-                <table>
-                    <tr>
-                        <td><i>VM cache index<br/>(implicit)</i></td>
-                        <td><i>timestamp<br/>(5-7 bits)</i></td>
-                        <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
-                    </tr>
-                    <tr><td>vmap_max_entries-1</td><td>$7e</td><td port="z004a">$004a</td></tr>
-                    <tr><td colspan="3">...</td></tr>
-                    <tr><td>1</td><td>$2d</td><td port="z0182">$0182</td></tr>
-                    <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
-                </table>
-            </td>
-        </tr>
-        <tr><td colspan="2">Ozmoo code/data</td></tr>
-        <tr><td colspan="2">OS RAM</td></tr>
+        <tr><td>vmap_max_entries-1</td><td>$7e</td><td port="z004a">$004a</td></tr>
+        <tr><td colspan="3">...</td></tr>
+        <tr><td>1</td><td>$2d</td><td port="z0182">$0182</td></tr>
+        <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
     </table>>];
 
     zmachine [xlabel="Z-machine memory map", label=<
@@ -115,9 +103,9 @@ digraph memory {
 
     {rank = same; top zmachine};
 
-    top:z004a:e -> zmachine:z004a:sw;
-    top:z002c:e -> zmachine:z002c:sw;
-    top:z0182:e -> zmachine:z0182:sw;
+    SFTODORENAME:z004a:e -> zmachine:z004a:sw;
+    SFTODORENAME:z002c:e -> zmachine:z002c:sw;
+    SFTODORENAME:z0182:e -> zmachine:z0182:sw;
 }
 
 # vi: sw=4 sts=4
