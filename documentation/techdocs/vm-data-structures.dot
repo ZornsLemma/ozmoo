@@ -12,17 +12,17 @@ digraph memory {
                         <td><i>512-byte data block</i></td>
                     </tr>
                     <tr>
-                        <td port="jim">vmap_max_entries-1</td>
-                        <td>jim</td>
+                        <td port="baz">0</td>
+                        <td>baz</td>
                     </tr>
-                    <tr><td colspan="2">...</td></tr>
                     <tr>
                         <td port="wobble">1</td>
                         <td>wobble</td>
                     </tr>
+                    <tr><td colspan="2">...</td></tr>
                     <tr>
-                        <td port="baz">0</td>
-                        <td>baz</td>
+                        <td port="jim">vmap_max_entries-1</td>
+                        <td>jim</td>
                     </tr>
     </table>>];
 
@@ -34,14 +34,14 @@ digraph memory {
             <td><i>timestamp<br/>(5-7 bits)</i></td>
             <td><i>Z-machine address<br/>high+mid bytes<br/>(9-11 bits)</i></td>
         </tr>
-        <tr><td>vmap_max_entries-1</td><td>$2d</td><td port="z004a">$004a</td></tr>
-        <tr><td colspan="3">...</td></tr>
-        <tr><td port="86">86</td><td>$7e</td><td>...</td></tr>
+        <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
+        <tr><td port="1">1</td><td>$7e</td><td port="z0182">$0182</td></tr>
         <tr><td colspan="3">...</td></tr>
         <tr><td port="29">29</td><td>$7d</td><td>...</td></tr>
         <tr><td colspan="3">...</td></tr>
-        <tr><td port="1">1</td><td>$7e</td><td port="z0182">$0182</td></tr>
-        <tr><td>0</td><td>$61</td><td port="z002c">$002c</td></tr>
+        <tr><td port="86">86</td><td>$7e</td><td>...</td></tr>
+        <tr><td colspan="3">...</td></tr>
+        <tr><td>vmap_max_entries-1</td><td>$2d</td><td port="z004a">$004a</td></tr>
     </table>>];
 
     zmachine [label=<
