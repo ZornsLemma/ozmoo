@@ -56,6 +56,7 @@ IF electron THEN normal_fg=0:header_fg=0:electron_space=32
 
 shadow=potential_himem=&8000
 tube=PAGE<&E00
+IF tube THEN PROCdetect_turbo
 PROCdetect_swr
 
 REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
@@ -64,7 +65,7 @@ REM enabled), as it seems potentially confusing if we sometimes apparently
 REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
-IF tube THEN PRINT CHR$normal_fg;"  Second processor"
+IF tube THEN PRINT CHR$normal_fg;"  Second processor (";tube_ram$;")"
 IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
@@ -293,6 +294,25 @@ IF POS=0 AND space<>0 THEN PRINT prefix$;
 i=space+1
 UNTIL space=0
 IF POS<>0 THEN PRINT
+ENDPROC
+
+DEF PROCdetect_turbo
+REM Try to enable the turbo functionality.
+?&FEF0=&80
+REM Now see if we do have multiple banks or not.
+REM Note that this leaves &371 as zero, so all the bank selectors are 0 when
+REM the main Ozmoo executable starts.
+REM SFTODO: &371 OR &370? NOT SURE YET, THIS WORKS WITH CURRENT B-EM
+!&70=block%:?block%=0
+P%=block%+1
+[OPT 0
+LDY #0
+LDA #1:STA &371:STA (&70),Y
+STY &371:LDA (&70),Y
+RTS
+]
+turbo=(USR(block%+1) AND &FF)=0
+IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
 ENDPROC
 
 DEF PROCdetect_swr
