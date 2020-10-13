@@ -297,12 +297,17 @@ IF POS<>0 THEN PRINT
 ENDPROC
 
 DEF PROCdetect_turbo
+REM SFTODO: Can/should we detect this via modified A register with OSBYTE &84 instead? (We probably still need to enable turbo mode first.)
 REM Try to enable the turbo functionality.
 ?&FEF0=&80
 REM Now see if we do have multiple banks or not.
 REM Note that this leaves &371 as zero, so all the bank selectors are 0 when
 REM the main Ozmoo executable starts.
-REM SFTODO: &371 OR &370? NOT SURE YET, THIS WORKS WITH CURRENT B-EM
+REM SFTODO: Actually playing around in b-em, it looks as though page &3 is never
+REM normally cleared, even on CTRL-BREAK. So we should probably poke the whole
+REM page full of zeroes before enabling the turbo functionality above, otherwise
+REM potentially BASIC could crash. Maybe this zeroing and the poke should be
+REM done in machine code for speed.
 !&70=block%:?block%=0
 P%=block%+1
 [OPT 0
