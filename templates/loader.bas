@@ -298,6 +298,7 @@ ENDPROC
 
 DEF PROCdetect_turbo
 REM SFTODO: Can/should we detect this via modified A register with OSBYTE &84 instead? (We probably still need to enable turbo mode first.)
+REM SFTODO: Once the Ozmoo executable has started poking non-0 into page 3, will BASIC crash on a soft-break? I suspect the re-enter language will disable turbo mode, but test this.
 !&70=block%:?block%=0
 P%=block%+1
 [OPT 0
