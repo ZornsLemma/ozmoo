@@ -533,12 +533,17 @@ screenkernal_init
 
 !ifdef VMEM {
 !ifndef ACORN_SWR {
-    ; SFTODOTURBO: PERM COMMENT - IF THIS IS A TURBO 2P WE WON'T USE VMAP_FIRST_RAM_PAGE, BUT IT'S HARMLESS TO CALCULATE IT ANYWAY - BE GOOD TO CHECK USES IN CODE AND MAKE SURE WE *DON'T* USE IT ON TURBO 2P
+!ifdef ACORN_TURBO {
+    stz vmap_first_ram_page ; SFTODO NONCMOS
+    bit is_turbo
+    bmi +
+}
     clc
     ; SFTODO: WE CAN POSS JUST WRITE LDA #ACORN_INITIAL_NONSTORED_BLOCKS+>STORY_START WITHOUT BREAKING RELOCATION CODE
     lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE NOW
     adc #>story_start
-    sta vmap_first_ram_page ; SFTODOTURBO
+    sta vmap_first_ram_page
++
 }
 
     sec

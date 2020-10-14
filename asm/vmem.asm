@@ -189,7 +189,6 @@ vmap_z_l = vmap_z_h + vmap_max_size
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
 !ifndef ACORN_SWR {
-; These aren't used on a turbo second processor.
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
 }
@@ -699,7 +698,7 @@ read_byte_at_z_address
     beq +
 .check_next_block
 	dex
-!ifndef ACORN_SWR { ; SFTODOTURBO!
+!ifdef NOTDEF ; !ifndef ACORN_SWR { ; SFTODOTURBO! - THIS IS A HACK, WE WANT TO DO THE '255' BRANCH IF ACORN_SWR OR ACORN_TURBO, REALLY
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
@@ -821,13 +820,27 @@ read_byte_at_z_address
 	inc vmap_used_entries
 +	txa
 	tay
-!ifndef ACORN_SWR { ; SFTODOTURBO
+!ifndef ACORN_SWR {
 	asl
 !ifndef SMALLBLOCK {
 	asl
 }
+!ifdef ACORN_TURBO {
+    bit is_turbo
+    bmi +
+}
 	; Carry is already clear
 	adc vmap_first_ram_page
+!ifdef ACORN_TURBO {
+    ; SFTODO: VERY SIMILAR TO CODE IN ACORN.ASM, USE A MACRO?
+    ; SFTODO NON-CMOS VARIANT
+    bra ++
++
+    stz mempointer_ram_bank
+    rol mempointer_ram_bank
+    inc mempointer_ram_bank
+++
+}
 	sta vmap_c64_offset
 }
 	; Pick next index to use
@@ -931,7 +944,7 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 ++	sta vmap_z_h,x
 	dex
-!ifndef ACORN_SWR { ; SFTODOTURBO!
+!ifdef NOTDEF ; SFTODO !ifndef ACORN_SWR { ; SFTODOTURBO! AS ABOVE JUST HACKILY FORCE 255 CASE APP THE TIME FOR NOW
 	bpl -
 } else {
     cpx #255
@@ -970,15 +983,28 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 	ora vmem_tick
 	sta vmap_z_h,x
-!ifndef ACORN_SWR { ; SFTODOTURBO
+!ifndef ACORN_SWR {
+; SFTODOTURBO: THIS IS VERY SIMILAR/SAME AS TWO OTHER BLOCKS
 	txa
 	
 	asl
 !ifndef SMALLBLOCK {
 	asl
 }
+!ifdef ACORN_TURBO {
+    bit is_turbo
+    bmi +
+}
 	; Carry is already clear
 	adc vmap_first_ram_page
+!ifdef ACORN_TURBO {
+    ; SFTODO NON CMOS
++   bra ++
+    stz mempointer_ram_bank
+    rol mempointer_ram_bank
+    inc mempointer_ram_bank
+++
+}
 	sta vmap_c64_offset
 !ifndef ACORN {
 	cmp #first_banked_memory_page
