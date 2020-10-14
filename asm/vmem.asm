@@ -411,15 +411,34 @@ load_blocks_from_index
 	jsr print_byte_as_hex
 }
 
-!ifndef ACORN_SWR { ; SFTODOTURBO
+!ifndef ACORN_SWR {
 	lda vmap_index
 	tax
 	asl
 !ifndef SMALLBLOCK {
 	asl
 }
+!ifdef ACORN_TURBO {
+    bit is_turbo
+    bmi +
+}
 	; Carry is already clear
 	adc vmap_first_ram_page
+!ifdef ACORN_TURBO {
+    jmp ++ ; SFTODO: use BRA? TBH this and following use of CMOS is a bit anal given I have to conditionally compile it anyway, but maybe just go with it for my own satisfaction
++
+    ; Set mempointer_turbo_bank to C+1. It would be easy to just do adc #1:sta
+    ; mempointer_turbo_bank but we don't want to corrupt A.
+    ; SFTODO: If we used banks 2 and 3 (makes no real difference), we could maybe do ldy#1:sta mempoitner_turbo_bank:rol mempointer_turbo_bank (no inc), which might be slight faster - I haven't cycle-counted or byte-counted this yet, just a thought.
+!ifdef CMOS {
+    stz mempointer_turbo_bank
+} else {
+    !error "SFTODO" ; can probably just do ldy#0:sty
+}
+    rol mempointer_turbo_bank
+    inc mempointer_turbo_bank
+++
+}
 
 ; SFTODO: Maybe add some tracing for this
 !ifdef ACORN_TUBE_CACHE {
@@ -602,7 +621,14 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
-!ifndef ACORN_SWR_BIG_DYNMEM { ; SFTODOTURBO
+!ifdef ACORN_TURBO {
+    ; We need to ensure bank 0 is accessed for dynamic memory on a turbo second
+    ; processor. This isn't necessary on an ordinary second processor, but it's
+    ; harmless, so it's faster to just do it rather than check is_turbo first.
+    stz mempointer_turbo_bank ; SFTODO: NEED TO HAVE A NON-CMOS VARIANT
+    bra - ; SFTODO NON CMOS SUPPORT
+} else {
+!ifndef ACORN_SWR_BIG_DYNMEM {
     ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
     ; RAM so it doesn't matter what the value of mempointer_ram_bank is or which
     ; bank is currently paged in.
@@ -615,6 +641,7 @@ read_byte_at_z_address
     lda ram_bank_list
     sta mempointer_ram_bank
     bpl - ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
+}
 }
 .non_dynmem
 	sta zp_pc_h
