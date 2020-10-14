@@ -796,7 +796,7 @@ save_game
     jsr set_default_error_handler
     ; If we just restored we have updated z_pc and need to take that into
     ; account. This is unnecessary but harmless if we just saved.
-!ifdef ACORN_SWR {
+!ifdef ACORN_SWR { ; SFTODOTURBO!?
     ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
     ; outdated value in mempointer_ram_bank.
     lda #$ff

@@ -149,7 +149,7 @@ vmem_block_pagecount = vmem_blocksize / 256
 !ifndef ACORN {
 vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO
 !ifndef ACORN_TUBE_CACHE {
 ; If a game had no dynamic memory we'd have room for about 100 512-byte VM
 ; blocks on the second processor. Let's say every game will have at least 6K of
@@ -180,7 +180,7 @@ vmap_z_l = vmap_z_h + vmap_max_size
 ;SFTODODATA 1
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO?
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
 }
@@ -336,7 +336,7 @@ print_vm_map
     jsr newline
     ldy #0
 -	; print
-!ifdef ACORN_SWR {
+!ifdef ACORN_SWR { ; SFTODOTURBO? LOW PRIORITY THOUGH
     cpy #100
     bcs +
     jsr space ; alignment when <100
@@ -362,7 +362,7 @@ print_vm_map
     jsr print_byte_as_hex
     ; SF: For ACORN_SWR we don't try to calculate the physical address of the
     ; VM block as it's moderately involved.
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO? LOW PRIORITY THOUGH
     jsr space
 	tya
 	asl
@@ -402,7 +402,7 @@ load_blocks_from_index
 	jsr print_byte_as_hex
 }
 
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO
 	lda vmap_index
 	tax
 	asl
@@ -590,7 +590,7 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
-!ifndef ACORN_SWR_BIG_DYNMEM {
+!ifndef ACORN_SWR_BIG_DYNMEM { ; SFTODOTURBO
     ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
     ; RAM so it doesn't matter what the value of mempointer_ram_bank is or which
     ; bank is currently paged in.
@@ -660,7 +660,7 @@ read_byte_at_z_address
     beq +
 .check_next_block
 	dex
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO!
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
@@ -782,7 +782,7 @@ read_byte_at_z_address
 	inc vmap_used_entries
 +	txa
 	tay
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO
 	asl
 !ifndef SMALLBLOCK {
 	asl
@@ -827,7 +827,7 @@ read_byte_at_z_address
 	jsr colon
     ; SF: For ACORN_SWR we don't try to calculate the physical address of the
     ; VM block as it's moderately involved.
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO LOW PRIORITY
 	lda vmap_c64_offset
 	jsr dollar
 	jsr print_byte_as_hex
@@ -892,7 +892,7 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 ++	sta vmap_z_h,x
 	dex
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO!
 	bpl -
 } else {
     cpx #255
@@ -931,7 +931,7 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 	ora vmem_tick
 	sta vmap_z_h,x
-!ifndef ACORN_SWR {
+!ifndef ACORN_SWR { ; SFTODOTURBO
 	txa
 	
 	asl

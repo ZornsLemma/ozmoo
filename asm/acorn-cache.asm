@@ -145,7 +145,7 @@ cache_entries_high = zp_temp ; 1 byte
 ; On entry:
 ;   YX?0:     12 (send block length)
 ;   YX?1:     12 (receive block length)
-;   YX!2:     address of 512-byte data block (high word must be 0)
+;   YX!2:     address of 512-byte data block (high word must be 0) SFTODO: GET RID OF () BIT, IT'S TRUE-ISH BUT NOT REALLY THAT HELPFUL AND POSS NOT QUITE TRUE ONCE WE HAVE TURBO SUPPORT
 ;   YX?6..7:  ID of 512-byte block currently held at YX!2 (offered to cache)
 ;             (ID $FFFF means no block is being offered to the cache.)
 ;             SFTODO: We could use 0 for this special case, Ozmoo will never pass 0 as it will be in dynamic memory - FF does have the small (?) advantage that as it's odd, it can never match the low byte of anything Ozmoo will pass, which may slightly help to optimise searching

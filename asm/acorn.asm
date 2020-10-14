@@ -22,7 +22,7 @@
 ; see the acorn_page_in_bank_* macros.) The OS is not paged and lives
 ; permanently at $c000-$ffff inclusive. The loader will have located any
 ; available sideways RAM banks, verified there's at least one and put the count
-; and a list of bank numbers at ram_bank_{count,list} for us.
+; and a list of bank numbers at ram_bank_{count,list} for us. SFTODO: MINOR QUIBBLE - LOADER WILL HAVE VERIFIED WE HAVE ENOUGH SWR BANKS, THERE MAY BE NONE IF WE CAN GET BY WITHOUT ANY
 ;
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
@@ -520,7 +520,7 @@ screenkernal_init
     ; SFTODO: WE CAN POSS JUST WRITE LDA #ACORN_INITIAL_NONSTORED_BLOCKS+>STORY_START WITHOUT BREAKING RELOCATION CODE
     lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE NOW
     adc #>story_start
-    sta vmap_first_ram_page
+    sta vmap_first_ram_page ; SFTODOTURBO
 }
 
     sec
