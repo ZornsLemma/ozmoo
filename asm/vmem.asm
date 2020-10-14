@@ -149,12 +149,20 @@ vmem_block_pagecount = vmem_blocksize / 256
 !ifndef ACORN {
 vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
-!ifndef ACORN_SWR { ; SFTODOTURBO
+!ifndef ACORN_SWR {
 !ifndef ACORN_TUBE_CACHE {
+!ifdef ACORN_TURBO {
+; SFTODO COMMENT
+; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
+; too large. Not necessarily a problem, but think about it - will there be a
+; problem? Are we wasting (a few bytes only) of RAM for no good reason?
+vmap_max_size = 255
+} else {
 ; If a game had no dynamic memory we'd have room for about 100 512-byte VM
 ; blocks on the second processor. Let's say every game will have at least 6K of
 ; dynamic memory, so we've got room for about 88 512-byte VM blocks.
 vmap_max_size = 88 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+}
 } else {
 ; The host cache is initialised using "extra" entries in the vmap.
 ; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
@@ -180,7 +188,8 @@ vmap_z_l = vmap_z_h + vmap_max_size
 ;SFTODODATA 1
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
-!ifndef ACORN_SWR { ; SFTODOTURBO?
+!ifndef ACORN_SWR {
+; These aren't used on a turbo second processor.
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
 }
@@ -414,6 +423,9 @@ load_blocks_from_index
 
 ; SFTODO: Maybe add some tracing for this
 !ifdef ACORN_TUBE_CACHE {
+!ifdef ACORN_TURBO {
+!error "SFTODO NOT SUPPORTING HOST CACHE WITH TURBO FOR FIRST CUT"
+}
     ; Offer the cache on the host a chance to save the block we're about to
     ; evict from our cache, and ask it if it has the block we want before we
     ; go to disk for it.
