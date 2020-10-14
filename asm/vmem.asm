@@ -698,7 +698,7 @@ read_byte_at_z_address
     beq +
 .check_next_block
 	dex
-!ifdef NOTDEF ; !ifndef ACORN_SWR { ; SFTODOTURBO! - THIS IS A HACK, WE WANT TO DO THE '255' BRANCH IF ACORN_SWR OR ACORN_TURBO, REALLY
+!ifdef NOTDEF { ; !ifndef ACORN_SWR { ; SFTODOTURBO! - THIS IS A HACK, WE WANT TO DO THE '255' BRANCH IF ACORN_SWR OR ACORN_TURBO, REALLY
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
@@ -836,9 +836,9 @@ read_byte_at_z_address
     ; SFTODO NON-CMOS VARIANT
     bra ++
 +
-    stz mempointer_ram_bank
-    rol mempointer_ram_bank
-    inc mempointer_ram_bank
+    stz mempointer_turbo_bank
+    rol mempointer_turbo_bank
+    inc mempointer_turbo_bank
 ++
 }
 	sta vmap_c64_offset
@@ -944,7 +944,7 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 ++	sta vmap_z_h,x
 	dex
-!ifdef NOTDEF ; SFTODO !ifndef ACORN_SWR { ; SFTODOTURBO! AS ABOVE JUST HACKILY FORCE 255 CASE APP THE TIME FOR NOW
+!ifdef NOTDEF { ; SFTODO !ifndef ACORN_SWR { ; SFTODOTURBO! AS ABOVE JUST HACKILY FORCE 255 CASE APP THE TIME FOR NOW
 	bpl -
 } else {
     cpx #255
@@ -1000,9 +1000,9 @@ read_byte_at_z_address
 !ifdef ACORN_TURBO {
     ; SFTODO NON CMOS
 +   bra ++
-    stz mempointer_ram_bank
-    rol mempointer_ram_bank
-    inc mempointer_ram_bank
+    stz mempointer_turbo_bank
+    rol mempointer_turbo_bank
+    inc mempointer_turbo_bank
 ++
 }
 	sta vmap_c64_offset

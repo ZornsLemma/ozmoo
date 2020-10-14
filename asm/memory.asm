@@ -149,6 +149,13 @@ get_page_at_z_pc_did_pha
     ldy mempointer_ram_bank
 }
     sty z_pc_mempointer_ram_bank
+} else {
+!ifdef ACORN_TURBO {
+	; This isn't necessary on a normal second processor, but it's harmless and it's
+	; only one cycle slower to just do it instead of checking before doing it.
+	ldy mempointer_turbo_bank
+	sty z_pc_mempointer_turbo_bank
+}
 }
 	ldy mempointer + 1
 	sty z_pc_mempointer + 1

@@ -369,6 +369,10 @@ use_hw_scroll = $40d ; !byte 0
 }
 !ifdef ACORN_ELECTRON_SWR {
 screen_ram_start_minus_1 = $40e ; !byte 0
+} else {
+!ifdef ACORN_TURBO {
+is_turbo = $40e ; !byte 0
+}
 }
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SWR {
@@ -393,6 +397,13 @@ filename_size = 49 ; this takes us from inside K% to end of W%
 game_data_filename_or_restart_command = $42f
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
+
+; SFTODO: NOT JUST HERE - DO I NEED TO CHECK ndef ACORN_SWR OR DOES ACORN_TURBO IMPLY THIS IS A 2P BUILD?
+!ifdef ACORN_TURBO {
+turbo_bank_base = $301
+mempointer_turbo_bank = turbo_bank_base + mempointer
+z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
+}
 
 scratch_page = $500
 !ifdef ACORN_SWR {
