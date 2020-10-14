@@ -298,22 +298,23 @@ ENDPROC
 
 DEF PROCdetect_turbo
 REM SFTODO: Can/should we detect this via modified A register with OSBYTE &84 instead? (We probably still need to enable turbo mode first.)
-REM Try to enable the turbo functionality.
-?&FEF0=&80
-REM Now see if we do have multiple banks or not.
-REM Note that this leaves &371 as zero, so all the bank selectors are 0 when
-REM the main Ozmoo executable starts.
-REM SFTODO: Actually playing around in b-em, it looks as though page &3 is never
-REM normally cleared, even on CTRL-BREAK. So we should probably poke the whole
-REM page full of zeroes before enabling the turbo functionality above, otherwise
-REM potentially BASIC could crash. Maybe this zeroing and the poke should be
-REM done in machine code for speed.
 !&70=block%:?block%=0
 P%=block%+1
 [OPT 0
-LDY #0
+\ Set all banks to 0 to start with before turning turbo mode on.
+\ (The Ozmoo executable relies on this, and if we didn't do it BASIC might crash
+\ when its (zp),y accesses start accessing random banks once we've turned on
+\ turbo mode.)
+LDY #0:TYA
+.loop
+STA &300,Y
+DEY:BNE loop
+\ Try to turn turbo mode on.
+LDA #&80:STA &FEF0
+\ See if we do actually have multiple 64K banks available.
 LDA #1:STA &371:STA (&70),Y
 STY &371:LDA (&70),Y
+\ Note that &371 is left as 0, so all banks are still 0.
 RTS
 ]
 turbo=(USR(block%+1) AND &FF)=0

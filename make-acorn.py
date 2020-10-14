@@ -1128,6 +1128,10 @@ def make_text_loader(symbols):
                 i = line.find("REM ")
             if i != -1:
                 line = line[:i]
+            i = line.find("\\")
+            if i != -1:
+                # \ comments are terminated by a :, but we know we won't use that.
+                line = line[:i]
             if line in ("", ":", "REM"):
                 pass
             elif line.startswith("!ifdef") or line.startswith("!ifndef"):
