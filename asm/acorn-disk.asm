@@ -34,6 +34,7 @@ readblocks
     lda readblocks_currentblock
     jsr print_byte_as_hex
     jsr comma
+    ; SFTODO: FOR TURBO COPRO ARGUABLY WE SHOULD PRINT readblocks_mempos + 2
     lda readblocks_mempos + 1
     jsr print_byte_as_hex
     lda readblocks_mempos 

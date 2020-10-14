@@ -462,6 +462,23 @@ screenkernal_init
     inc .ram_blocks + 1
 +
 
+!ifndef ACORN_SWR {
+!ifdef ACORN_TURBO {
+    ; If we're on a turbo second processor, we will use all 128K in banks 1 and
+    ; 2 as virtual memory cache. .ram_blocks may be a little too high, because
+    ; it will include all the memory between flat_ramtop and story_start in bank
+    ; 0 as well, whereas in reality we will only use bank 0 for dynamic memory.
+    ; In practice this isn't a problem, because on a turbo second processor
+    ; .ram_blocks is going to get capped at vmap_max_size anyway. SFTODO: PROB
+    ; TRUE, BUT REVISIT AFTER
+    bit is_turbo
+    bpl +
+    inc .ram_blocks + 1
+    inc .ram_blocks + 1
++
+}
+}
+
 !ifdef ACORN_ELECTRON_SWR {
     ; We also have some blocks free between extra_vmem_start and the screen RAM.
     lda #osbyte_read_screen_address
@@ -516,6 +533,7 @@ screenkernal_init
 
 !ifdef VMEM {
 !ifndef ACORN_SWR {
+    ; SFTODOTURBO: PERM COMMENT - IF THIS IS A TURBO 2P WE WON'T USE VMAP_FIRST_RAM_PAGE, BUT IT'S HARMLESS TO CALCULATE IT ANYWAY - BE GOOD TO CHECK USES IN CODE AND MAKE SURE WE *DON'T* USE IT ON TURBO 2P
     clc
     ; SFTODO: WE CAN POSS JUST WRITE LDA #ACORN_INITIAL_NONSTORED_BLOCKS+>STORY_START WITHOUT BREAKING RELOCATION CODE
     lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE NOW
@@ -798,6 +816,9 @@ screenkernal_init
     ; load_suggested_pages subroutine.)
 
 !ifdef ACORN_TUBE_CACHE {
+!ifdef ACORN_TURBO {
+!error "SFTODO FOR FIRST CUT NOT SUPPORTING HOST CACHE WITH TURBO"
+}
 inflated_vmap_max_entries = zp_temp
 from_index = zp_temp + 1
 to_index = vmap_index
@@ -814,7 +835,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; precisely known at build time, but that's not an issue for a tube build)
     lda vmap_max_entries
     sta inflated_vmap_max_entries
-    lda #>(flat_ramtop - story_start)
+    lda #>(flat_ramtop - story_start) ; SFTODOTURBO
     ldx .game_blocks + 1
     bne +
     cmp .game_blocks
