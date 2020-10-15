@@ -1004,8 +1004,8 @@ read_byte_at_z_address
 	adc vmap_first_ram_page
 !ifdef ACORN_TURBO {
     ; SFTODO NON CMOS
-+   bra ++
-    stz mempointer_turbo_bank
+    bra ++
++   stz mempointer_turbo_bank
     rol mempointer_turbo_bank
     inc mempointer_turbo_bank
 ++
