@@ -548,7 +548,7 @@ screenkernal_init
 
     sec
     lda .ram_blocks
-    sbc nonstored_blocks
+    sbc nonstored_blocks ; SFTODO: SBC #ACORN_INITIAL_NONSTORED_BLOCKS?
     sta .ram_blocks
     bcs +
     dec .ram_blocks + 1
@@ -710,15 +710,6 @@ screenkernal_init
     sta .blocks_to_read
     bne .dynmem_load_loop
 
-    ; Calculate CRC of block 0 before it gets modified, so we can use it later
-    ; to identify the game disc after a save or restore.
-    lda #0
-    ldx #<story_start
-    ldy #>story_start
-    jsr calculate_crc
-    stx game_disc_crc
-    sty game_disc_crc + 1
-
 !ifdef ACORN_SWR {
     ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
     lda nonstored_blocks
@@ -788,14 +779,14 @@ screenkernal_init
     lda vmap_z_h,x
     sta zp_temp + 1
     and #vmem_highbyte_mask
-    sta zp_temp + 2
+    sta zp_temp + 4
     txa
     tay
 .inner_loop
     dey
     lda vmap_z_h,y
     and #vmem_highbyte_mask
-    cmp zp_temp + 2
+    cmp zp_temp + 4
     bne +
     lda vmap_z_l,y
     cmp zp_temp
@@ -871,10 +862,11 @@ load_scratch_space = flat_ramtop - vmem_blocksize
 .vmem_blocks = ((>(flat_ramtop - story_start)) - ACORN_INITIAL_NONSTORED_BLOCKS) / vmem_block_pagecount
 .cutover_timestamp = int(ACORN_TUBE_CACHE_MAX_TIMESTAMP + ((float(.vmem_blocks) / vmap_max_size) * (ACORN_TUBE_CACHE_MIN_TIMESTAMP - ACORN_TUBE_CACHE_MAX_TIMESTAMP))) and ($ff xor vmem_highbyte_mask)
 
-    ; Work through the blocks in vmap, loading each in turn and offering it to the
-    ; host cache if it's old and there's room, and keeping it loaded into local memory
-    ; otherwise. We keep doing this until we've loaded vmap_max_entries blocks into
-    ; local memory; blocks offered to the host cache don't count.
+    ; Work through the blocks in vmap, loading each in turn and offering it to
+    ; the host cache if it's old and there's room, and keeping it loaded into
+    ; local memory otherwise. We keep doing this until we've loaded
+    ; vmap_max_entries blocks into local memory (blocks offered to the host
+    ; cache don't count) or until we've loaded all the blocks in vmap.
     lda #0
     sta from_index
     sta to_index
@@ -910,6 +902,9 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     inc to_index
 .continue
     inc from_index
+    lda from_index
+    cmp inflated_vmap_max_entries
+    beq .second_load_loop_done
     lda to_index
     cmp vmap_max_entries
     bne .first_load_loop
@@ -962,6 +957,15 @@ load_scratch_space = flat_ramtop - vmem_blocksize
 }
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
+
+    ; Calculate CRC of block 0 before it gets modified, so we can use it later
+    ; to identify the game disc after a save or restore.
+    lda #0
+    ldx #<story_start
+    ldy #>story_start
+    jsr calculate_crc ; corrupts some zp_temp locations
+    stx game_disc_crc
+    sty game_disc_crc + 1
 } ; End of acorn_deletable_init_inline
 
 !ifdef ACORN_SWR {
