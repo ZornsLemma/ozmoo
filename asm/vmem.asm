@@ -487,6 +487,11 @@ load_blocks_from_index
     lda #0
     sta readblocks_mempos
 	sty readblocks_mempos + 1
+!ifdef ACORN_TURBO {
+    ; SFTODO: WHAT ABOUT NORMAL SECOND PROCESSOR HERE? I THINK THIS IS SAFE BECAUSE I WILL ALWAYS HAVE LEFT THE BANK AT 0, BUT NEED TO THINK ABOUT THIS
+    lda mempointer_turbo_bank
+    sta readblocks_mempos + 2
+}
 	lda vmap_z_l,x ; start block
 	sta readblocks_currentblock
 	lda vmap_z_h,x ; start block

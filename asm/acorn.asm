@@ -684,6 +684,10 @@ screenkernal_init
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
     sta readblocks_mempos ; story_start is page-aligned
+!ifdef ACORN_TURBO {
+    ; This is unnecessary but harmless if we're on a normal second processor.
+    sta readblocks_mempos + 2
+}
     lda #>story_start
     sta readblocks_mempos + 1
 !ifdef VMEM {

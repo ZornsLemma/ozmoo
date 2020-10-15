@@ -207,6 +207,7 @@ cant_open_data_error
     sta osgbpb_block_data_address + 0
     lda readblocks_mempos + 1
     sta osgbpb_block_data_address + 1
+    ; SFTODOTURBO!
     lda #0
     sta osgbpb_block_transfer_length + 0
     sta osgbpb_block_pointer + 0
@@ -280,6 +281,7 @@ readblocks_mempos
 } else { ; ACORN_ADFS
 readblocks_mempos
     !word 0
+    ; SFTODOTURBO MIGHT NEED A THIRD BYTE
 }
 
 wait_for_space
