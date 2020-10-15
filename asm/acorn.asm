@@ -257,6 +257,17 @@ screenkernal_init
     sta initial_jmp + 2
 }
 
+!ifdef ACORN_TURBO {
+    ; We don't have a ROM header which indicates we want the turbo mode enabled
+    ; so it will have been disabled as part of *RUNning this executable. Turn it
+    ; back on if we want it.
+    bit is_turbo
+    bpl +
+    lda #$80
+    sta $fef0 ; SFTODO: MAGIC CONSTANT
++
+}
+
 .dir_ptr = zp_temp ; 2 bytes
 .game_blocks = zp_temp + 2 ; 2 bytes
 ; We can't always use story_start to store the catalogue sectors because on an

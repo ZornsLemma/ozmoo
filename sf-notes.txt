@@ -1,3 +1,6 @@
+b-em, 256K turbo co-pro, no host cache, mode 7, drive noises off - $002300
+
+
 b-em, drive noises on, BBC B, 8271, DFS 0.9, 16K sideways RAM - benchmark completes at - no, it locked up in DFS code (&8CD7-DA) - forgot to note move number, *maybe* 251 but don't trust that
 DFS 1.2 - no, locked up at move 253, again in DFS (ACAE/ACB1)
 OK, let's turn tube on (then I can compare this with BeebEm, which can't handle BBC B no shadow), still DFS 1.2 (16K SWR has disappeared but that's a b-em glitch I think) - OK, it has locked up at move 380 - so I am thinking this is the b-em (?) problem I noticed a while back - it's stuck in DFS again at ACAE/ACB1 - yes, with BeebEm, B with 2P, DFS 1.2, no SWR completes fine, so I'm not going to worry about this too much
