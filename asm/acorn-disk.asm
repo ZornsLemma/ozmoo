@@ -208,6 +208,7 @@ cant_open_data_error
     lda readblocks_mempos + 1
     sta osgbpb_block_data_address + 1
     ; SFTODOTURBO!
+    !error "SFTODOTURBO - OTHER PLACES FOR ADFS TOO"
     lda #0
     sta osgbpb_block_transfer_length + 0
     sta osgbpb_block_pointer + 0
@@ -802,9 +803,15 @@ save_game
     jsr set_default_error_handler
     ; If we just restored we have updated z_pc and need to take that into
     ; account. This is unnecessary but harmless if we just saved.
-!ifdef ACORN_SWR { ; SFTODOTURBO!?
+!ifdef ACORN_SWR {
     ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
     ; outdated value in mempointer_ram_bank.
+    lda #$ff
+    sta zp_pc_h
+}
+!ifdef ACORN_TURBO {
+    ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
+    ; outdated value in mempointer_turbo_bank.
     lda #$ff
     sta zp_pc_h
 }
