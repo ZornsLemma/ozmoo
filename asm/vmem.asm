@@ -146,35 +146,43 @@ read_byte_at_z_address_for_z_pc
 vmem_blockmask = 255 - (>(vmem_blocksize - 1))
 vmem_block_pagecount = vmem_blocksize / 256
 ; vmap_max_length  = (vmem_end-vmem_start) / vmem_blocksize
+; vmap_max_size determines the memory allocated for the vmap; vmap_max_entries
+; is the actual run-time limit, which may be less than vmap_max_size but
+; obviously can't be larger.
+; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
+; too large. Not necessarily a problem, but think about it - will there be a
+; problem? Are we wasting (a few bytes only) of RAM for no good reason?
 !ifndef ACORN {
-vmap_max_size = 102 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+vmap_max_size = 102
 } else {
 !ifndef ACORN_SWR {
 !ifndef ACORN_TUBE_CACHE {
 !ifdef ACORN_TURBO {
-; SFTODO COMMENT
-; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
-; too large. Not necessarily a problem, but think about it - will there be a
-; problem? Are we wasting (a few bytes only) of RAM for no good reason?
+; A turbo second processor has enough RAM to hold 255 512-byte blocks.
 vmap_max_size = 255
+ACORN_LARGE_RUNTIME_VMAP = 1
 } else {
 ; If a game had no dynamic memory we'd have room for about 100 512-byte VM
 ; blocks on the second processor. Let's say every game will have at least 6K of
 ; dynamic memory, so we've got room for about 88 512-byte VM blocks.
-vmap_max_size = 88 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
+vmap_max_size = 88
 }
 } else {
 ; The host cache is initialised using "extra" entries in the vmap.
-; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
-; too large. Not necessarily a problem, but think about it - will there be a
-; problem? Are we wasting (a few bytes only) of RAM for no good reason?
 vmap_max_size = 255
+!ifdef ACORN_TURBO {
+; A turbo second processor has enough RAM to hold 255 512-byte blocks.
+ACORN_LARGE_RUNTIME_VMAP = 1
+} else {
+; We *don't* set ACORN_LARGE_RUNTIME_VMAP; after the initial preload of the host
+; cache, vmap_max_entries will be approximately 88 because the vmap is only
+; concerned with the second processor's own 64K.
+}
 }
 } else {
-; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
-; too large. Not necessarily a problem, but think about it - will there be a
-; problem? Are we wasting (a few bytes only) of RAM for no good reason?
+; We might have enough main+sideways RAM to hold 255 512-byte blocks.
 vmap_max_size = 255
+ACORN_LARGE_RUNTIME_VMAP = 1
 }
 }
 ; vmap_max_entries	!byte 0 ; Moved to ZP
@@ -215,6 +223,29 @@ vmem_oldest_index	!byte 0
 
 !ifdef COUNT_SWAPS {
 vmem_swap_count !byte 0,0
+}
+
+!ifdef ACORN_TURBO {
+!macro acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c {
+    ; If we're running on a normal second processor, carry will be clear and we
+    ; need to do "adc vmap_first_ram_page". Note that we can't treat this as a
+    ; no-op on a turbo second processor simply by setting vmap_first_ram_page to
+    ; 0, because on a turbo second processor carry may be set.
+    ;
+    ; If we're running on a turbo second processor, set mempointer_turbo_bank to
+    ; select virtual memory cache bank C, i.e. bank 1+C (bank 0 is used for code
+    ; and dynamic memory). This must preserve A, X and Y.
+    bit is_turbo
+    bpl .is_normal_second_processor
+    stz mempointer_turbo_bank
+    rol mempointer_turbo_bank
+    inc mempointer_turbo_bank
+    bra .done
+.is_normal_second_processor
+	; Carry is already clear
+	adc vmap_first_ram_page
+.done
+}
 }
 
 +make_acorn_screen_hole
@@ -417,26 +448,11 @@ load_blocks_from_index
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifdef ACORN_TURBO {
-    bit is_turbo
-    bmi +
-}
+!ifndef ACORN_TURBO {
 	; Carry is already clear
 	adc vmap_first_ram_page
-!ifdef ACORN_TURBO {
-    jmp ++ ; SFTODO: use BRA? TBH this and following use of CMOS is a bit anal given I have to conditionally compile it anyway, but maybe just go with it for my own satisfaction
-+
-    ; Set mempointer_turbo_bank to C+1. It would be easy to just do adc #1:sta
-    ; mempointer_turbo_bank but we don't want to corrupt A.
-    ; SFTODO: If we used banks 2 and 3 (makes no real difference), we could maybe do ldy#1:sta mempoitner_turbo_bank:rol mempointer_turbo_bank (no inc), which might be slight faster - I haven't cycle-counted or byte-counted this yet, just a thought.
-!ifdef CMOS {
-    stz mempointer_turbo_bank
 } else {
-    !error "SFTODO" ; can probably just do ldy#0:sty
-}
-    rol mempointer_turbo_bank
-    inc mempointer_turbo_bank
-++
+    +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
 
 ; SFTODO: Maybe add some tracing for this
@@ -444,15 +460,15 @@ load_blocks_from_index
     ; Offer the cache on the host a chance to save the block we're about to
     ; evict from our cache, and ask it if it has the block we want before we
     ; go to disk for it.
-    sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0 SFTODO NOT IN TURBO CASE THEY DON'T
+    sta osword_cache_data_ptr + 1
 !ifdef ACORN_TURBO {
-    ; SFTODO: IF WE JUST KEEP MEMPOINTER_TURBO_BANK AS 0 ON NORMAL TUBE WE COULD SIMPLY ALWAYS DO THIS AND AVOID THE BIT/BPL
-    bit is_turbo
-    bpl +
+    ; If we're on a normal second processor this is redundant but harmless, and
+    ; it's only one cycle slower to just do it rather than check if we need to
+    ; do it first.
     lda mempointer_turbo_bank
     sta osword_cache_data_ptr + 2
-+
 }
+    ; Other bytes at osword_cache_data_ptr always stay 0 and don't need setting.
     lda #osword_cache_no_timestamp_hint
     sta osword_cache_index_offered_timestamp_hint
     lda vmap_z_l,x
@@ -493,7 +509,9 @@ load_blocks_from_index
     sta readblocks_mempos
 	sty readblocks_mempos + 1
 !ifdef ACORN_TURBO {
-    ; SFTODO: WHAT ABOUT NORMAL SECOND PROCESSOR HERE? I THINK THIS IS SAFE BECAUSE I WILL ALWAYS HAVE LEFT THE BANK AT 0, BUT NEED TO THINK ABOUT THIS
+    ; If we're on a normal second processor this is redundant but harmless, and
+    ; it's only one cycle slower to just do it rather than check if we need to
+    ; do it first.
     lda mempointer_turbo_bank
     sta readblocks_mempos + 2
 }
@@ -633,9 +651,10 @@ read_byte_at_z_address
 !ifdef ACORN_TURBO {
     ; We need to ensure bank 0 is accessed for dynamic memory on a turbo second
     ; processor. This isn't necessary on an ordinary second processor, but it's
-    ; harmless, so it's faster to just do it rather than check is_turbo first.
-    stz mempointer_turbo_bank ; SFTODO: NEED TO HAVE A NON-CMOS VARIANT
-    bra - ; SFTODO NON CMOS SUPPORT
+    ; harmless and it's faster to just do it rather than check if it's
+    ; necessary.
+    stz mempointer_turbo_bank
+    bra -
 } else {
 !ifndef ACORN_SWR_BIG_DYNMEM {
     ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
@@ -708,7 +727,7 @@ read_byte_at_z_address
     beq +
 .check_next_block
 	dex
-!ifdef NOTDEF { ; !ifndef ACORN_SWR { ; SFTODOTURBO! - THIS IS A HACK, WE WANT TO DO THE '255' BRANCH IF ACORN_SWR OR ACORN_TURBO, REALLY
+!ifndef ACORN_LARGE_RUNTIME_VMAP {
 	bpl -
 	bmi .no_such_block ; Always branch
 } else {
@@ -835,21 +854,11 @@ read_byte_at_z_address
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifdef ACORN_TURBO {
-    bit is_turbo
-    bmi +
-}
+!ifndef ACORN_TURBO {
 	; Carry is already clear
 	adc vmap_first_ram_page
-!ifdef ACORN_TURBO {
-    ; SFTODO: VERY SIMILAR TO CODE IN ACORN.ASM, USE A MACRO?
-    ; SFTODO NON-CMOS VARIANT
-    bra ++
-+
-    stz mempointer_turbo_bank
-    rol mempointer_turbo_bank
-    inc mempointer_turbo_bank
-++
+} else {
+    +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
 	sta vmap_c64_offset
 }
@@ -1001,19 +1010,11 @@ read_byte_at_z_address
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifdef ACORN_TURBO {
-    bit is_turbo
-    bmi +
-}
+!ifndef ACORN_TURBO {
 	; Carry is already clear
 	adc vmap_first_ram_page
-!ifdef ACORN_TURBO {
-    ; SFTODO NON CMOS
-    bra ++
-+   stz mempointer_turbo_bank
-    rol mempointer_turbo_bank
-    inc mempointer_turbo_bank
-++
+} else {
+    +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
 	sta vmap_c64_offset
 !ifndef ACORN {

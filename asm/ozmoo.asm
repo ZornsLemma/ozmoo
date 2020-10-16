@@ -1,7 +1,3 @@
-; SFTODO TEMP HACK
-!ifndef ACORN_SWR {
-    ACORN_TURBO = 1
-}
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
 ; Z1, Z2, Z6 and Z7 will (probably) never be supported

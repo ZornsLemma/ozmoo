@@ -1020,6 +1020,8 @@ def make_electron_swr_executable():
 def make_tube_executables():
     leafname = "OZMOO2P"
     tube_args = ozmoo_base_args
+    if not cmd_args.no_turbo:
+        tube_args += ["-DACORN_TURBO=1"]
     if not cmd_args.force_6502:
         tube_args += ["-DCMOS=1"]
     tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)
@@ -1244,8 +1246,9 @@ def parse_args():
     group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
     group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
-    group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines")
+    group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines (implies --no-turbo)")
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
+    group.add_argument("--no-turbo", action="store_true", help="disable turbo (256K) second processor support")
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
 
     cmd_args = parser.parse_args()
@@ -1258,6 +1261,15 @@ def parse_args():
         die("--force-65c02 and --force-6502 are incompatible")
     if cmd_args.preload_opt and cmd_args.preload_config:
         die("--preload-opt and --preload-config are incompatible")
+
+    if cmd_args.force_6502:
+        # The CMOS instructions are useful in a second processor build which
+        # supports turbo second processors. Obviously it's possible to avoid
+        # them, but there is a non-zero cost to doing so, so we just don't
+        # support this. (--force-6502 is only supported for debugging and for
+        # non-standard second processors which have had their CMOS CPU
+        # replaced.)
+        cmd_args.no_turbo = True
 
     if cmd_args.output_file is not None:
         _, user_extension = os.path.splitext(cmd_args.output_file)

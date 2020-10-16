@@ -10,7 +10,7 @@
 ; The second processor build (ifndef ACORN_SWR) has a simple flat memory model
 ; with user RAM from $0400-$f7ff inclusive. It's rather like the C64 but without
 ; even the complication of paging the kernal ROM in and out, so it doesn't need
-; the cache which the C64 code uses when ALLMEM is defined.
+; the cache which the C64 code uses when ALLMEM is defined. SFTODO: SAY SOMETHING ABOUT ACORN_TURBO
 ;
 ; The sideways RAM build (ifdef ACORN_SWR) is a bit more involved. The hardware
 ; situation here is that we have main RAM (not paged) from $0000-$7fff
@@ -257,15 +257,16 @@ screenkernal_init
     sta initial_jmp + 2
 }
 
+; SFTODO: Rename "ACORN_TURBO" to "ACORN_TURBO_SUPPORT(ED)"?
 !ifdef ACORN_TURBO {
-    ; We don't have a ROM header which indicates we want the turbo mode enabled
-    ; so it will have been disabled as part of *RUNning this executable. Turn it
-    ; back on if we want it.
+    ; This executable doesn't have a ROM header indicating we want the turbo
+    ; mode enabled, so it will have been disabled when were were executed. Turn
+    ; it back on if we do want it.
     bit is_turbo
-    bpl +
+    bpl .dont_enable_turbo
     lda #$80
-    sta $fef0 ; SFTODO: MAGIC CONSTANT
-+
+    sta turbo_control
+.dont_enable_turbo
 }
 
 .dir_ptr = zp_temp ; 2 bytes
@@ -450,10 +451,10 @@ screenkernal_init
     jsr osbyte
     stx .host_cache_size
 !ifdef ACORN_TURBO {
-    ; A turbo second processor has enough RAM to preload everything without
-    ; touching the host cache. The host cache will still work, but we
-    ; don't have anything to preload into it, so all we need to do is initialise
-    ; it.
+    ; A turbo second processor has enough RAM to preload everything in vmap
+    ; without touching the host cache. The host cache will still work, but we
+    ; don't have anything to preload into it, so having initialised it there's
+    ; nothing else to do.
     bit is_turbo
     bmi .count_turbo_ram
 }
@@ -549,16 +550,19 @@ screenkernal_init
 !ifdef VMEM {
 !ifndef ACORN_SWR {
 !ifdef ACORN_TURBO {
-    stz vmap_first_ram_page ; SFTODO NONCMOS
+    ; On a turbo second processor vmap_first_ram_page is not used; it's part of
+    ; the executable so it will always be initialised to zero and we'll
+    ; hopefully get consistent behaviour if we access it incorrectly (i.e. it
+    ; won't have a random value).
     bit is_turbo
-    bmi +
+    bmi .vmap_first_ram_page_set
 }
     clc
     ; SFTODO: WE CAN POSS JUST WRITE LDA #ACORN_INITIAL_NONSTORED_BLOCKS+>STORY_START WITHOUT BREAKING RELOCATION CODE
-    lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE NOW
+    lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE YET
     adc #>story_start
     sta vmap_first_ram_page
-+
+.vmap_first_ram_page_set
 }
 
     sec
@@ -700,7 +704,10 @@ screenkernal_init
     sta readblocks_currentblock + 1
     sta readblocks_mempos ; story_start is page-aligned
 !ifdef ACORN_TURBO {
-    ; This is unnecessary but harmless if we're on a normal second processor.
+    ; On a turbo second processor readblocks_mempos + 2 is significant and will
+    ; vary; it's probably still zero at this point but play it safe. On a normal
+    ; second processor readblocks_mempos + 2 will always be 0 so this is
+    ; redundant but harmless.
     sta readblocks_mempos + 2
 }
     lda #>story_start
@@ -837,8 +844,7 @@ screenkernal_init
     ; On a turbo second processor we don't do any preloading of the host cache
     ; so we just use a straightforward load loop like the non-tube-cache case
     ; below.
-    lda #0
-    sta vmap_index
+    stz vmap_index
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
