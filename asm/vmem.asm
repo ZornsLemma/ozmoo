@@ -375,7 +375,7 @@ print_vm_map
     jsr newline
     ldy #0
 -	; print
-!ifdef ACORN_SWR { ; SFTODOTURBO? LOW PRIORITY THOUGH
+!ifdef ACORN_SWR {
     cpy #100
     bcs +
     jsr space ; alignment when <100
@@ -401,12 +401,23 @@ print_vm_map
     jsr print_byte_as_hex
     ; SF: For ACORN_SWR we don't try to calculate the physical address of the
     ; VM block as it's moderately involved.
-!ifndef ACORN_SWR { ; SFTODOTURBO? LOW PRIORITY THOUGH
+!ifndef ACORN_SWR {
     jsr space
 	tya
 	asl
 !ifndef SMALLBLOCK {
 	asl
+}
+!ifdef ACORN_TURBO {
+    bit is_turbo
+    bpl +
+    pha
+    lda #1
+    adc #0
+    jsr print_byte_as_hex
+    pla
+    clc
++
 }
 	adc vmap_first_ram_page
     jsr print_byte_as_hex
@@ -898,9 +909,16 @@ read_byte_at_z_address
 	jsr colon
     ; SF: For ACORN_SWR we don't try to calculate the physical address of the
     ; VM block as it's moderately involved.
-!ifndef ACORN_SWR { ; SFTODOTURBO LOW PRIORITY
-	lda vmap_c64_offset
+!ifndef ACORN_SWR {
 	jsr dollar
+!ifdef ACORN_TURBO {
+    bit is_turbo
+    bpl +
+    lda mempointer_turbo_bank
+    jsr print_byte_as_hex
++
+}
+	lda vmap_c64_offset
 	jsr print_byte_as_hex
 	jsr colon
 }
@@ -963,7 +981,7 @@ read_byte_at_z_address
 	and #vmem_highbyte_mask
 ++	sta vmap_z_h,x
 	dex
-!ifdef NOTDEF { ; SFTODO !ifndef ACORN_SWR { ; SFTODOTURBO! AS ABOVE JUST HACKILY FORCE 255 CASE APP THE TIME FOR NOW
+!ifndef ACORN_LARGE_RUNTIME_VMAP {
 	bpl -
 } else {
     cpx #255
@@ -1003,7 +1021,6 @@ read_byte_at_z_address
 	ora vmem_tick
 	sta vmap_z_h,x
 !ifndef ACORN_SWR {
-; SFTODOTURBO: THIS IS VERY SIMILAR/SAME AS TWO OTHER BLOCKS
 	txa
 	
 	asl
