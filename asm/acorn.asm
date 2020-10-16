@@ -288,6 +288,10 @@ screenkernal_init
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
     sta readblocks_mempos ; .catalogue is page-aligned
+!ifdef ACORN_TURBO {
+    ; In reality this is redundant but let's play it safe.
+    sta readblocks_mempos + 2
+}
     lda #>.catalogue
     sta .dir_ptr + 1
     sta readblocks_mempos + 1
