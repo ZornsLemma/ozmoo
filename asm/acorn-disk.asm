@@ -585,6 +585,9 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
+!ifdef ACORN_TURBO {
+    sta readblocks_mempos + 2
+}
     lda #1
     sta readblocks_numblocks
     lda #<scratch_page
