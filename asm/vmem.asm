@@ -441,13 +441,18 @@ load_blocks_from_index
 
 ; SFTODO: Maybe add some tracing for this
 !ifdef ACORN_TUBE_CACHE {
-!ifdef ACORN_TURBO {
-!error "SFTODO NOT SUPPORTING HOST CACHE WITH TURBO FOR FIRST CUT"
-}
     ; Offer the cache on the host a chance to save the block we're about to
     ; evict from our cache, and ask it if it has the block we want before we
     ; go to disk for it.
-    sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0
+    sta osword_cache_data_ptr + 1 ; other bytes at osword_cache_data_ptr always stay 0 SFTODO NOT IN TURBO CASE THEY DON'T
+!ifdef ACORN_TURBO {
+    ; SFTODO: IF WE JUST KEEP MEMPOINTER_TURBO_BANK AS 0 ON NORMAL TUBE WE COULD SIMPLY ALWAYS DO THIS AND AVOID THE BIT/BPL
+    bit is_turbo
+    bpl +
+    lda mempointer_turbo_bank
+    sta osword_cache_data_ptr + 2
++
+}
     lda #osword_cache_no_timestamp_hint
     sta osword_cache_index_offered_timestamp_hint
     lda vmap_z_l,x

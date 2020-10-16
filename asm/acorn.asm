@@ -434,15 +434,14 @@ screenkernal_init
     rol .ram_blocks + 1
     dex
     bne -
+}
     sta .ram_blocks
-} else {
-!ifndef ACORN_TUBE_CACHE {
-    sta .ram_blocks
-} else {
+!ifdef ACORN_TUBE_CACHE {
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
-    ; preloading. We count them for now so we process more of the initial vmap and
-    ; fix up the inflated value of vmap_max_entries later.
+    ; preloading if we're on a normal second processor. We count them for now so
+    ; we process more of the initial vmap and fix up the inflated value of
+    ; vmap_max_entries later.
 .host_cache_size = memory_buffer
     lda screen_mode
     ora #128 ; force shadow mode on
@@ -450,12 +449,34 @@ screenkernal_init
     lda #osbyte_initialise_cache
     jsr osbyte
     stx .host_cache_size
+!ifdef ACORN_TURBO {
+    ; A turbo second processor has enough RAM to preload everything without
+    ; touching about the host cache. The host cache will still work, but we
+    ; don't have anything to preload into it, so all we need to do is initialise
+    ; it.
+    bit is_turbo
+    bmi .count_turbo_ram
+}
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
     rol .ram_blocks + 1
     sta .ram_blocks
-}
+    jmp .host_cache_initialised
+.count_turbo_ram
+    ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
+    ; virtual memory cache. .ram_blocks may be a little too high, because it
+    ; will include all the memory between flat_ramtop and story_start in bank 0
+    ; as well, whereas in reality we will only use bank 0 for dynamic memory and
+    ; any more RAM will be wasted. SFTODO: THE "DYNMEM GROWTH" TRICK COULD
+    ; POTENTIALLY BE USED HERE, AS WITH BIG DYNMEM SWR - THOUGH IT'S MAYBE
+    ; EASIER, BECAUSE WE *KNOW* EXACTLY HOW MUCH RAM WE HAVE AT BUILD TIME WITH
+    ; A TURBO 2P. In practice this isn't a problem, because on a turbo second
+    ; processor .ram_blocks is going to get capped at vmap_max_size anyway.
+    ; SFTODO: PROB TRUE, BUT REVISIT AFTER
+    inc .ram_blocks + 1
+    inc .ram_blocks + 1
+.host_cache_initialised
 }
 
     ; We also have some blocks between flat_ramtop and story_start.
@@ -472,23 +493,6 @@ screenkernal_init
     bcc +
     inc .ram_blocks + 1
 +
-
-!ifndef ACORN_SWR {
-!ifdef ACORN_TURBO {
-    ; If we're on a turbo second processor, we will use all 128K in banks 1 and
-    ; 2 as virtual memory cache. .ram_blocks may be a little too high, because
-    ; it will include all the memory between flat_ramtop and story_start in bank
-    ; 0 as well, whereas in reality we will only use bank 0 for dynamic memory.
-    ; In practice this isn't a problem, because on a turbo second processor
-    ; .ram_blocks is going to get capped at vmap_max_size anyway. SFTODO: PROB
-    ; TRUE, BUT REVISIT AFTER
-    bit is_turbo
-    bpl +
-    inc .ram_blocks + 1
-    inc .ram_blocks + 1
-+
-}
-}
 
 !ifdef ACORN_ELECTRON_SWR {
     ; We also have some blocks free between extra_vmem_start and the screen RAM.
@@ -667,11 +671,11 @@ screenkernal_init
 }
 
     ; At this point, .ram_blocks is the number of RAM blocks we have to use as
-    ; backing RAM for the virtual memory subsystem, because we've subtracted
-    ; off nonstored_blocks. (If we're in the ACORN_TUBE_CACHE case, we don't
-    ; exactly have that number of RAM blocks, but it's convenient to pretend
-    ; we do. vmap_max_entries is fixed up later after we've used the inflated
-    ; value to do the preload sort.)
+    ; backing RAM for the virtual memory subsystem, because we've subtracted off
+    ; nonstored_blocks. (If we're in the ACORN_TUBE_CACHE case on a normal
+    ; second processor, we don't exactly have that number of RAM blocks, but
+    ; it's convenient to pretend we do. vmap_max_entries is fixed up later after
+    ; we've used the inflated value to do the preload sort.)
     ldx #vmap_max_size
     lda .ram_blocks
     lsr .ram_blocks + 1
@@ -828,7 +832,24 @@ screenkernal_init
 
 !ifdef ACORN_TUBE_CACHE {
 !ifdef ACORN_TURBO {
-!error "SFTODO FOR FIRST CUT NOT SUPPORTING HOST CACHE WITH TURBO"
+    bit is_turbo
+    bpl .normal_tube_load
+    ; On a turbo second processor we don't do any preloading of the host cache
+    ; so we just use a straightforward load loop like the non-tube-cache case
+    ; below.
+    lda #0
+    sta vmap_index
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
+-   jsr load_blocks_from_index
+    inc vmap_index
+    lda vmap_index
+    cmp vmap_max_entries
+    bne -
+    sta vmap_used_entries
+    jmp .second_load_loop_done
+.normal_tube_load
 }
 inflated_vmap_max_entries = zp_temp
 from_index = zp_temp + 1
@@ -846,7 +867,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; precisely known at build time, but that's not an issue for a tube build)
     lda vmap_max_entries
     sta inflated_vmap_max_entries
-    lda #>(flat_ramtop - story_start) ; SFTODOTURBO
+    lda #>(flat_ramtop - story_start)
     ldx .game_blocks + 1
     bne +
     cmp .game_blocks
