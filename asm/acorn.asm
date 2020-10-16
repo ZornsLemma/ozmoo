@@ -451,7 +451,7 @@ screenkernal_init
     stx .host_cache_size
 !ifdef ACORN_TURBO {
     ; A turbo second processor has enough RAM to preload everything without
-    ; touching about the host cache. The host cache will still work, but we
+    ; touching the host cache. The host cache will still work, but we
     ; don't have anything to preload into it, so all we need to do is initialise
     ; it.
     bit is_turbo
