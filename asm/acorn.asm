@@ -862,6 +862,8 @@ SFTODOLABEL2
     ; this quite easily.
     ; SFTODO: THIS CODE OR SOME VARIANT OR FACTORED OUT VERSION OF IT MAY BE
     ; USEFUL IN THE DYNMEM ADJUST CASE FOR SIDEWAYS RAM
+    ; SFTODO: I am far from sure this code is right any more. I'm not clear it's right we should stop the first loop if X=vmap_max_entries - isn't it still possible there's useful stuff further up to shuffle down *into* the first vmap_max_entries? And I've added an untested cpx vmap_max_size at the end, because I think for larger games where vmap_max_entries==vmap_max_size, we must be careful not to shuffle a junk X>vmap_max_size or X-has-wrapped-to-0 entry in at the top - it's probably OK for us to leave duplicate "real high address" entries at the end (ideally we'd replace them with dummy odd-address zero timestamp entries, but we probably can't afford the code to do that) - I need to think this through fresh. The basic idea is sound and in practice this does seem to be working but I am not using huge games nor playing them very much so I think a rethink will be useful.
+    !error "SFTODO"
     ldx #255
 .find_first_non_promoted_entry_loop
     inx
@@ -881,9 +883,12 @@ SFTODOLABEL2
     lda vmap_z_l,x
     sta vmap_z_l,y
     inx
+    cpx vmap_max_size
+    beq .vmap_shuffle_loop_done
     iny
     cpy vmap_max_entries
     bne .vmap_shuffle_loop
+.vmap_shuffle_loop_done
 
     ; On a turbo second processor we don't do any preloading of the host cache
     ; so we just use a straightforward load loop like the non-tube-cache case
