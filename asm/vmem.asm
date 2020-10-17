@@ -196,9 +196,14 @@ vmap_z_l = vmap_z_h + vmap_max_size
 ;SFTODODATA 1
 vmap_clock_index !byte 0        ; index where we will attempt to load a block next time
 
-!ifndef ACORN_SWR {
+!ifndef ACORN {
 vmap_first_ram_page		!byte 0
 vmap_c64_offset !byte 0
+} else {
+!ifndef ACORN_SWR {
+vmap_first_ram_page		!byte ACORN_INITIAL_NONSTORED_BLOCKS + >story_start
+vmap_c64_offset !byte 0
+}
 }
 vmap_index !byte 0              ; current vmap index matching the z pointer
 vmem_offset_in_block !byte 0         ; 256 byte offset in 512 byte block (0-1)
@@ -416,10 +421,11 @@ print_vm_map
     adc #0
     jsr print_byte_as_hex
     pla
-    clc
+    bra .skip_adc_vmap_first_ram_page
 +
 }
 	adc vmap_first_ram_page
+.skip_adc_vmap_first_ram_page
     jsr print_byte_as_hex
     lda #$30
     jsr streams_print_output

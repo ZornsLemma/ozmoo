@@ -545,11 +545,13 @@ screenkernal_init
 
 !ifdef VMEM {
 !ifdef ACORN_TURBO {
-    ; On a turbo second processor, we can increase nonstored_blocks to "promote" some additional
-    ; data into dynamic memory and make full use of bank 0. We don't need to keep any of bank 0
-    ; free for virtual memory cache because we have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks, available blocks in bank 0).
-    ; This will probably leave the vmap with some redundant entries for the newly promoted dynamic memory,
-    ; but we sort that out below.
+    ; On a turbo second processor, we can increase nonstored_blocks to "promote"
+    ; some additional data into dynamic memory and make full use of bank 0. We
+    ; don't need to keep any of bank 0 free for virtual memory cache because we
+    ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks,
+    ; available blocks in bank 0). This will probably leave the vmap with some
+    ; redundant entries for the newly promoted dynamic memory, but we sort that
+    ; out below.
     ; SFTODO: This has some overlap with the DYNMEM_ADJUST code below for sideways RAM, but let's keep this separate for now and look at merging the two implementations later.
     bit is_turbo
     bpl .no_turbo_dynmem_adjust
@@ -563,25 +565,10 @@ SFTODOLABEL1
 +   sta nonstored_blocks
 .no_turbo_dynmem_adjust
 }
-}
 
-!ifdef VMEM {
-!ifndef ACORN_SWR {
-!ifdef ACORN_TURBO {
-    ; On a turbo second processor vmap_first_ram_page is not used; it's part of
-    ; the executable so it will always be initialised to zero and we'll
-    ; hopefully get consistent behaviour if we access it incorrectly (i.e. it
-    ; won't have a random value).
-    bit is_turbo
-    bmi .vmap_first_ram_page_set
-}
-    clc
-    ; SFTODO: WE CAN POSS JUST WRITE LDA #ACORN_INITIAL_NONSTORED_BLOCKS+>STORY_START WITHOUT BREAKING RELOCATION CODE
-    lda nonstored_blocks ; SFTODO REDUNDANT BUT LET'S NOT OPTIMISE YET
-    adc #>story_start
-    sta vmap_first_ram_page
-.vmap_first_ram_page_set
-}
+    ; vmap_first_ram_page is not used on a turbo second processor and it's set
+    ; at build time to suit a normal second processor so we don't need any code
+    ; here to handle it.
 
     sec
     lda .ram_blocks
