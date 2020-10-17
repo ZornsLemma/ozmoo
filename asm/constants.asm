@@ -78,6 +78,12 @@ zchars				  = $5d ; 3 bytes
 ; on "big" systems with the maximum supported 144K of sideways RAM. Upping it
 ; to 12 knocked 0.9% off the run time for the benchmark; given the scarcity of
 ; zero page on Acorn non-tube builds, I don't think this is worth having.
+; SFTODO: Could/should we use a larger vmap_quick_index_length on a second
+; processor build? This might be particularly valuable on "big" games with a
+; larger working set which might benefit from the turbo variant. Be careful
+; though, it's possible that increasing this too much may harm performance,
+; though my gut feeling is that even if it doesn't help much it won't hurt in
+; practice. Still, it would be one way to use the extra ZP on a second processor.
 vmap_quick_index_match= $60
 vmap_next_quick_index = $61
 vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
