@@ -470,15 +470,7 @@ screenkernal_init
     jmp .host_cache_initialised
 .count_turbo_ram
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
-    ; virtual memory cache. .ram_blocks may be a little too high, because it
-    ; will include all the memory between flat_ramtop and story_start in bank 0
-    ; as well, whereas in reality we will only use bank 0 for dynamic memory and
-    ; any more RAM will be wasted. SFTODO: THE "DYNMEM GROWTH" TRICK COULD
-    ; POTENTIALLY BE USED HERE, AS WITH BIG DYNMEM SWR - THOUGH IT'S MAYBE
-    ; EASIER, BECAUSE WE *KNOW* EXACTLY HOW MUCH RAM WE HAVE AT BUILD TIME WITH
-    ; A TURBO 2P. In practice this isn't a problem, because on a turbo second
-    ; processor .ram_blocks is going to get capped at vmap_max_size anyway.
-    ; SFTODO: PROB TRUE, BUT REVISIT AFTER
+    ; virtual memory cache.
     inc .ram_blocks + 1
     inc .ram_blocks + 1
 .host_cache_initialised
@@ -552,6 +544,28 @@ screenkernal_init
     sta nonstored_blocks
 
 !ifdef VMEM {
+!ifdef ACORN_TURBO {
+    ; On a turbo second processor, we can increase nonstored_blocks to "promote" some additional
+    ; data into dynamic memory and make full use of bank 0. We don't need to keep any of bank 0
+    ; free for virtual memory cache because we have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks, available blocks in bank 0).
+    ; This will probably leave the vmap with some redundant entries for the newly promoted dynamic memory,
+    ; but we sort that out below.
+    ; SFTODO: This has some overlap with the DYNMEM_ADJUST code below for sideways RAM, but let's keep this separate for now and look at merging the two implementations later.
+    bit is_turbo
+    bpl .no_turbo_dynmem_adjust
+SFTODOLABEL1
+    lda #>(flat_ramtop - story_start)
+    ldx .game_blocks + 1
+    bne +
+    cmp .game_blocks
+    bcc +
+    lda .game_blocks
++   sta nonstored_blocks
+.no_turbo_dynmem_adjust
+}
+}
+
+!ifdef VMEM {
 !ifndef ACORN_SWR {
 !ifdef ACORN_TURBO {
     ; On a turbo second processor vmap_first_ram_page is not used; it's part of
@@ -571,7 +585,7 @@ screenkernal_init
 
     sec
     lda .ram_blocks
-    sbc nonstored_blocks ; SFTODO: SBC #ACORN_INITIAL_NONSTORED_BLOCKS?
+    sbc nonstored_blocks
     sta .ram_blocks
     bcs +
     dec .ram_blocks + 1
@@ -845,6 +859,37 @@ screenkernal_init
 !ifdef ACORN_TURBO {
     bit is_turbo
     bpl .normal_tube_load
+SFTODOLABEL2
+    ; Because we increased nonstored_blocks earlier to make full use of the
+    ; first 64K bank, there may well be entries in the vmap which redundantly
+    ; specify blocks of what is now dynamic memory. Shuffle the vmap entries
+    ; down to get rid of those; because the vmap is now sorted by address we can do
+    ; this quite easily.
+    ; SFTODO: THIS CODE OR SOME VARIANT OR FACTORED OUT VERSION OF IT MAY BE
+    ; USEFUL IN THE DYNMEM ADJUST CASE FOR SIDEWAYS RAM
+    ldx #255
+.find_first_non_promoted_entry_loop
+    inx
+    cpx vmap_max_entries
+    beq .all_loading_done_indirect ; entire game has been promoted into dynmem
+    lda vmap_z_h,x
+    and #vmem_highbyte_mask
+    bne .not_promoted_dynmem
+    lda vmap_z_l,x
+    cmp nonstored_blocks
+    bcc .find_first_non_promoted_entry_loop
+.not_promoted_dynmem
+    ldy #0
+.vmap_shuffle_loop
+    lda vmap_z_h,x
+    sta vmap_z_h,y
+    lda vmap_z_l,x
+    sta vmap_z_l,y
+    inx
+    iny
+    cpy vmap_max_entries
+    bne .vmap_shuffle_loop
+
     ; On a turbo second processor we don't do any preloading of the host cache
     ; so we just use a straightforward load loop like the non-tube-cache case
     ; below.
@@ -852,13 +897,15 @@ screenkernal_init
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
--   jsr load_blocks_from_index
+.turbo_load_loop
+    jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
     cmp vmap_max_entries
-    bne -
+    bne .turbo_load_loop
     sta vmap_used_entries
-    jmp .second_load_loop_done
+.all_loading_done_indirect
+    jmp .all_loading_done
 .normal_tube_load
 }
 inflated_vmap_max_entries = zp_temp
@@ -946,7 +993,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     inc from_index
     lda from_index
     cmp inflated_vmap_max_entries
-    beq .second_load_loop_done
+    beq .all_loading_done
     lda to_index
     cmp vmap_max_entries
     bne .first_load_loop
@@ -980,6 +1027,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     inc from_index
     jmp .second_load_loop
 .second_load_loop_done
+.all_loading_done
 } else { ; not ACORN_TUBE_CACHE
     ; Load the blocks in vmap.
     lda #0
