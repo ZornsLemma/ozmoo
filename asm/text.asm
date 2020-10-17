@@ -1578,9 +1578,9 @@ tokenise_text
     cmp .maxwords
     bne  .find_word_loop
 .parsing_done
-;    lda .numwords
-;    ldy #1
-;    sta (parse_array),y
+     lda .numwords
+     ldy #1
+     sta (parse_array),y
     rts
     ;SFTODODATA 7
 .maxwords   !byte 0 
