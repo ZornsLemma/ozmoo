@@ -520,38 +520,24 @@ screenkernal_init
 }
 
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
-    ; available, including RAM which will be used for dynamic memory. If the
-    ; game is smaller than this, shrink .ram_blocks now so we won't feel the
-    ; temptation to (e.g.) access "dummy" vmap entries for nonexistent game data
-    ; and read past the end of the data file.
-    ; SFTODO: It might be nice to tell the user (how exactly? does the loader
-    ; leave us positioned correctly to output a string, and then we say "press
-    ; SPACE to start" or something?) if the game has loaded entirely into RAM
-    ; and they can remove the disc, and then we'd also want to remove the
-    ; check for the game disc being in the drive after a save/restore. (But
-    ; they would still need the disc in the drive to do a RESTART, so this is
-    ; maybe not a good idea.)
-    ldy .game_blocks
-    lda .game_blocks + 1
-    cmp .ram_blocks + 1
-    bne +
-    cpy .ram_blocks
-+   bcs .game_larger_than_ram
-    sty .ram_blocks
-    sta .ram_blocks + 1
-.game_larger_than_ram
-}
+    ; available, including RAM which will be used for dynamic memory.
 
+    ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
+    ; to treat as dynamic memory. This is normally the game's actual dynamic
+    ; memory rounded up to a 512-byte boundary, i.e.
+    ; ACORN_INITIAL_NONSTORED_BLOCKS. Note that the initial vmap is set up on
+    ; the assumption that nonstored_blocks == ACORN_INITIAL_NONSTORED_BLOCKS, so
+    ; if we change nonstored_blocks we need to adjust the vmap to compensate.
     lda #ACORN_INITIAL_NONSTORED_BLOCKS
     sta nonstored_blocks
-
+    ; SFTODONOW: DO THE SWR BIGDYNMEM STUFF VIA THIS NEW MECHANISM
 !ifdef VMEM {
 !ifdef ACORN_TURBO {
-    ; On a turbo second processor, we can increase nonstored_blocks to "promote"
+    ; On a turbo second processor, we can increase nonstored_blocks to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
     ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks,
-    ; available blocks in bank 0). This will probably leave the vmap with some
+    ; available blocks in bank 0).
     ; redundant entries for the newly promoted dynamic memory, but we sort that
     ; out below.
     ; SFTODO: This has some overlap with the DYNMEM_ADJUST code below for sideways RAM, but let's keep this separate for now and look at merging the two implementations later.
@@ -568,19 +554,34 @@ SFTODOLABEL1
 .no_turbo_dynmem_adjust
 }
 
+    ; Now set .ram_blocks = min(.ram_blocks, .game_blocks - nonstored_blocks),
+    ; i.e. the number of RAM blocks we have available as useful virtual memory
+    ; cache. By taking .game_blocks into account we avoid accidentally accessing
+    ; nonexistent game data past the end of the game.
+    ldx .game_blocks + 1
+    sec
+    lda .game_blocks
+    sbc nonstored_blocks
+    bcs +
+    dex
++   ; XA now contains .game_blocks - nonstored_blocks and XA >= 0.
+    cpx .ram_blocks + 1
+    bne +
+    cmp .ram_blocks
++   bcs +
+    stx .ram_blocks + 1
+    sta .ram_blocks
++
+!error "SFTODO: It's borderline possible this could set .ram_blocks to 0, and then the code below would set vmap_max_entries to 0, and I don't think that would end well - it has to be at least 1, I believe"
+}
+
+!ifndef ACORN_SWR {
     ; vmap_first_ram_page is not used on a turbo second processor and it's set
     ; at build time to suit a normal second processor so we don't need any code
     ; here to handle it.
+}
 
-    sec
-    lda .ram_blocks
-    sbc nonstored_blocks
-    sta .ram_blocks
-    bcs +
-    dec .ram_blocks + 1
-+
-
-!ifndef ACORN_NO_DYNMEM_ADJUST {
+!ifndef ACORN_NO_DYNMEM_ADJUST { ; SFTODONOW GET RID OF THIS AND SWITCH TO NEW STYLE AS PER TURBO
     ; SFTODO: In theory this optimisation is perfectly valid for the small
     ; dynamic memory model, except that we can't grow nonstored_blocks past
     ; flat_ramtop instead of swr_ramtop. It would be near trivial to support this,
@@ -681,12 +682,12 @@ SFTODOLABEL1
 }
 }
 
-    ; At this point, .ram_blocks is the number of RAM blocks we have to use as
-    ; backing RAM for the virtual memory subsystem, because we've subtracted off
-    ; nonstored_blocks. (If we're in the ACORN_TUBE_CACHE case on a normal
-    ; second processor, we don't exactly have that number of RAM blocks, but
-    ; it's convenient to pretend we do. vmap_max_entries is fixed up later after
-    ; we've used the inflated value to do the preload sort.)
+    ; Now set vmap_max_entries = min(.ram_blocks / 2, vmap_max_size), i.e. the
+    ; number of vmap entries we have RAM to support. (If we're in the
+    ; ACORN_TUBE_CACHE case on a normal second processor, we have that much RAM
+    ; in total but the number of vmap entries we can support is lower. It's
+    ; convenient to work with this larger value while we do the initial load,
+    ; then vmap_max_entries is fixed up later.)
     ldx #vmap_max_size
     lda .ram_blocks
     lsr .ram_blocks + 1
@@ -844,6 +845,7 @@ SFTODOLABEL1
     sta vmap_z_h,y
     inx
     cpx vmap_max_entries
+    !error "SFTODO: IN TURBO CASE WE NEED TO SORT >vmap_max_entries"
     bne .outer_loop
 
     ; Now we've sorted vmap, load the corresponding blocks into memory and
@@ -854,41 +856,50 @@ SFTODOLABEL1
 !ifdef ACORN_TURBO {
     bit is_turbo
     bpl .normal_tube_load
+    ; We adjusted nonstored_blocks earlier, so the vmap probably needs adjusting
+    ; to compensate. (It is just possible the adjustment had no effect, but this
+    ; code will be a no-op in that case.) As the vmap is now sorted by address
+    ; we just need to find the first entry which doesn't correspond to dynamic
+    ; memory and move everything down so that entry becomes the first entry in
+    ; the vmap. The space freed up at the end of the vmap by this move is filled
+    ; with dummy entries so those entries will be used first when the game needs
+    ; to load more blocks from disc.
 SFTODOLABEL2
-    ; Because we increased nonstored_blocks earlier to make full use of the
-    ; first 64K bank, there may well be entries in the vmap which redundantly
-    ; specify blocks of what is now dynamic memory. Shuffle the vmap entries
-    ; down to get rid of those; because the vmap is now sorted by address we can do
-    ; this quite easily.
-    ; SFTODO: THIS CODE OR SOME VARIANT OR FACTORED OUT VERSION OF IT MAY BE
-    ; USEFUL IN THE DYNMEM ADJUST CASE FOR SIDEWAYS RAM
-    ; SFTODO: I am far from sure this code is right any more. I'm not clear it's right we should stop the first loop if X=vmap_max_entries - isn't it still possible there's useful stuff further up to shuffle down *into* the first vmap_max_entries? And I've added an untested cpx vmap_max_size at the end, because I think for larger games where vmap_max_entries==vmap_max_size, we must be careful not to shuffle a junk X>vmap_max_size or X-has-wrapped-to-0 entry in at the top - it's probably OK for us to leave duplicate "real high address" entries at the end (ideally we'd replace them with dummy odd-address zero timestamp entries, but we probably can't afford the code to do that) - I need to think this through fresh. The basic idea is sound and in practice this does seem to be working but I am not using huge games nor playing them very much so I think a rethink will be useful.
-    !error "SFTODO"
     ldx #255
 .find_first_non_promoted_entry_loop
     inx
-    cpx vmap_max_entries
-    beq .all_loading_done_indirect ; entire game has been promoted into dynmem
+    cpx vmap_max_entriesXXX
+    beq .all_loading_done_indirect ; entire game has been promoted into dynmem SFTODO!?!?!?!?!
     lda vmap_z_h,x
     and #vmem_highbyte_mask
-    bne .not_promoted_dynmem
+    bne .found_first_non_promoted_entry
     lda vmap_z_l,x
     cmp nonstored_blocks
     bcc .find_first_non_promoted_entry_loop
-.not_promoted_dynmem
+.found_first_non_promoted_entry
     ldy #0
-.vmap_shuffle_loop
+.vmap_move_down_loop
+    cpx #vmap_max_size
+    beq .use_dummy_entry
     lda vmap_z_h,x
     sta vmap_z_h,y
     lda vmap_z_l,x
-    sta vmap_z_l,y
     inx
-    cpx vmap_max_size
-    beq .vmap_shuffle_loop_done
+    bne + ; Always branch
+.use_dummy_entry
+    ; We use $0101 as a dummy entry; this has the oldest possible timestamp so
+    ; the entry will be re-used ASAP and because it has the low bit of the
+    ; address set it can never accidentally match a lookup. (We could use 0 in
+    ; practice; that would never match a lookup because address 0 is guaranteed
+    ; to be dynamic memory so we will never search the vmap for it. But it seems
+    ; a little clearer to use $0101; as SFTODO: I EXPECT this code needs to
+    ; execute on all machines we can't get a small saving by using stz here.)
+    lda #1
+    sta vmap_z_h,y
++   sta vmap_z_l,y
     iny
     cpy vmap_max_entries
-    bne .vmap_shuffle_loop
-.vmap_shuffle_loop_done
+    bne .vmap_move_down_loop
 
     ; On a turbo second processor we don't do any preloading of the host cache
     ; so we just use a straightforward load loop like the non-tube-cache case
@@ -908,6 +919,7 @@ SFTODOLABEL2
     jmp .all_loading_done
 .normal_tube_load
 }
+
 inflated_vmap_max_entries = zp_temp
 from_index = zp_temp + 1
 to_index = vmap_index
