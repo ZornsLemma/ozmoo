@@ -536,21 +536,35 @@ screenkernal_init
     ; On a turbo second processor, we can increase nonstored_blocks to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
-    ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks,
-    ; available blocks in bank 0).
-    ; redundant entries for the newly promoted dynamic memory, but we sort that
-    ; out below.
+    ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks
+    ; - vmem_block_pagecount, available blocks in bank 0). We subtract
+    ; vmem_block_pagecount from game_blocks so that in the following steps
+    ; .ram_blocks >= vmem_block_pagecount and therefore vmap_max_entries >= 1;
+    ; conceptually it's fine for it to be 0, but the code is written to assume
+    ; the vmap has at least one entry. This subtraction can't cause
+    ; nonstored_blocks < ACORN_INITIAL_NONSTORED_BLOCKS unless the game has no
+    ; non-dynamic memory SFTODO: UNLIKELY BUT TECHNICALLY POSSIBLE? WHAT TO DO
+    ; ABOUT THAT? DOES THE FACT WE DIDN'T CHOOSE TO DO A NON-VMEM BUILD RULE THIS OUT? The subtraction is otherwise harmless; it just means that for
+    ; small games one 512-byte block will have to be accessed via the slower
+    ; virtual memory code when it could (if not for these considerations) have
+    ; formed part of dynamic memory. SFTODO: REVIEW ALL THIS FRESH!
     ; SFTODO: This has some overlap with the DYNMEM_ADJUST code below for sideways RAM, but let's keep this separate for now and look at merging the two implementations later.
     bit is_turbo
     bpl .no_turbo_dynmem_adjust
 SFTODOLABEL1
-    lda #>(flat_ramtop - story_start)
-    ldx .game_blocks + 1
-    bne +
-    cmp .game_blocks
-    bcc +
     lda .game_blocks
-+   sta nonstored_blocks
+    sec
+    sbc #vmem_block_pagecount
+    tax
+    lda .game_blocks + 1
+    sbc #0
+    bne .available_blocks_is_smaller
+    cpx #>(flat_ramtop - story_start)
+    bcc .game_blocks_is_smaller
+.available_blocks_is_smaller
+    ldx #>(flat_ramtop - story_start)
+.game_blocks_is_smaller
+    stx nonstored_blocks
 .no_turbo_dynmem_adjust
 }
 
@@ -564,7 +578,7 @@ SFTODOLABEL1
     sbc nonstored_blocks
     bcs +
     dex
-+   ; XA now contains .game_blocks - nonstored_blocks and XA >= 0.
++   ; XA now contains .game_blocks - nonstored_blocks and XA >= vmem_block_pagecount.
     cpx .ram_blocks + 1
     bne +
     cmp .ram_blocks
@@ -572,7 +586,6 @@ SFTODOLABEL1
     stx .ram_blocks + 1
     sta .ram_blocks
 +
-!error "SFTODO: It's borderline possible this could set .ram_blocks to 0, and then the code below would set vmap_max_entries to 0, and I don't think that would end well - it has to be at least 1, I believe"
 }
 
 !ifndef ACORN_SWR {
