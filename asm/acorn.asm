@@ -469,7 +469,7 @@ screenkernal_init
     asl
     rol .ram_blocks + 1
     sta .ram_blocks
-    jmp .host_cache_initialised
+    jmp .host_cache_initialised ; SFTODO: bcc would always branch? saves 1 byte...
 .count_turbo_ram
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
     ; virtual memory cache.
@@ -520,7 +520,29 @@ screenkernal_init
 }
 
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
-    ; available, including RAM which will be used for dynamic memory.
+    ; available, including RAM which will be used for dynamic memory. The build
+    ; system and the loader will have worked together to guarantee that
+    ; .ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount,
+    ; i.e. that we have enough RAM for the game's dynamic memory and two
+    ; 512-byte blocks of virtual memory cache.
+
+    ; In order to avoid accessing nonexistent game data in an attempt to use all
+    ; that RAM, set .ram_blocks = min(.ram_blocks, .game_blocks). SFTODO: Note
+    ; that if the game has *no* non-dynamic memory and it happens to fit
+    ; entirely in RAM, we will probably run into problems below because we'll
+    ; end up setting vmap_max_entries to 0. I don't believe in practice this is
+    ; ever going to happen; if it does the loader might need to artificially
+    ; extend the game data with an extra never-used 512-byte block of
+    ; non-dynamic memory.
+    ldx .game_blocks + 1
+    lda .game_blocks
+    cpx .ram_blocks + 1
+    bne +
+    cmp .ram_blocks
++   bcs +
+    stx .ram_blocks + 1
+    sta .ram_blocks
++
 
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
@@ -537,15 +559,12 @@ screenkernal_init
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
     ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks
-    ; - vmem_block_pagecount, available blocks in bank 0). We subtract
-    ; vmem_block_pagecount from game_blocks so that in the following steps
-    ; .ram_blocks >= vmem_block_pagecount and therefore vmap_max_entries >= 1;
-    ; conceptually it's fine for it to be 0, but the code is written to assume
-    ; the vmap has at least one entry. This subtraction can't cause
+    ; - vmem_block_pagecount, available blocks in bank 0); see below for why we subtract vmem_block_pagecount.
+    ; This subtraction can't cause
     ; nonstored_blocks < ACORN_INITIAL_NONSTORED_BLOCKS unless the game has no
     ; non-dynamic memory SFTODO: UNLIKELY BUT TECHNICALLY POSSIBLE? WHAT TO DO
-    ; ABOUT THAT? DOES THE FACT WE DIDN'T CHOOSE TO DO A NON-VMEM BUILD RULE THIS OUT? The subtraction is otherwise harmless; it just means that for
-    ; small games one 512-byte block will have to be accessed via the slower
+    ; ABOUT THAT? DOES THE FACT WE DIDN'T CHOOSE TO DO A NON-VMEM BUILD RULE THIS OUT? *IF* NECESSARY WE COULD JUST ALSO ADD A THIRD MIN() TERM OF ACORN_INITIAL_NONSTORED_BLOCKS, THIS WOULD BE A SIMPLE cpx #that:bcc +:ldx #that:+ BIT OF CODE, WHICH ISN'T IDEAL BUT NOT TERRIBLE. The subtraction is otherwise harmless; it just means that for
+    ; small games one 512-byte block of RAM will have to be accessed via the slower
     ; virtual memory code when it could (if not for these considerations) have
     ; formed part of dynamic memory. SFTODO: REVIEW ALL THIS FRESH!
     ; SFTODO: This has some overlap with the DYNMEM_ADJUST code below for sideways RAM, but let's keep this separate for now and look at merging the two implementations later.
@@ -568,24 +587,41 @@ SFTODOLABEL1
 .no_turbo_dynmem_adjust
 }
 
-    ; Now set .ram_blocks = min(.ram_blocks, .game_blocks - nonstored_blocks),
-    ; i.e. the number of RAM blocks we have available as useful virtual memory
-    ; cache. By taking .game_blocks into account we avoid accidentally accessing
-    ; nonexistent game data past the end of the game.
-    ldx .game_blocks + 1
+    ; Set .ram_blocks -= nonstored_blocks, i.e. set .ram_blocks to the number of
+    ; RAM blocks we have available as virtual memory cache.
+    lda .ram_blocks
     sec
-    lda .game_blocks
     sbc nonstored_blocks
-    bcs +
-    dex
-+   ; XA now contains .game_blocks - nonstored_blocks and XA >= vmem_block_pagecount.
-    cpx .ram_blocks + 1
-    bne +
-    cmp .ram_blocks
-+   bcs +
-    stx .ram_blocks + 1
     sta .ram_blocks
+    bcs +
+    dec .ram_blocks + 1
 +
+    ; SFTODO: REVIEW ALL THIS FRESH!
+    ; It's important .ram_blocks >= vmem_block_pagecount now so that we will set
+    ; vmap_max_entries >= 1 below. Conceptually it makes sense for
+    ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
+    ;
+    ; If nonstored_blocks == ACORN_INITIAL_NONSTORED_BLOCKS the build system and
+    ; loader work together to guarantee (initial) .ram_blocks >=
+    ; ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount. There are two
+    ; cases:
+    ; a) If we didn't set .ram_blocks = .game_blocks above, the build system and
+    ;    loader guarantee means we now have .ram_blocks >= 2 *
+    ;    vmem_block_pagecount. QED.
+    ; b) If we did set .ram_blocks = .game_blocks above, we assume that the
+    ;    game has at least one block of non-dynamic memory, so before the
+    ;    subtraction we had .ram_blocks = .game_blocks >=
+    ;    ACORN_INITIAL_NONSTORED_BLOCKS + 1. QED.
+    ;
+    ; On a turbo second processor, we may have adjusted nonstored_blocks. There are
+    ; two cases:
+    ; a) If we didn't set .ram_blocks = .game_blocks above, as nonstored_blocks
+    ;    lives in bank 0 and we also have banks 1 and 2 for virtual memory
+    ;    cache, after the subtraction we have .ram_blocks ~= 128K >=
+    ;    vmem_block_pagecount. QED.
+    ; b) If we did set .ram_blocks = .game_blocks above, combine that with the
+    ;    fact the adjustment to nonstored_blocks left nonstored_blocks <=
+    ;    .game_blocks - vmem_block_count. QED.
 }
 
 !ifndef ACORN_SWR {
