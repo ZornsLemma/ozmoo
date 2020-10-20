@@ -711,6 +711,23 @@ SFTODOLABEL1
     tax
 .cap_at_vmap_max_size
     stx vmap_max_entries
+
+!ifdef ACORN_TURBO {
+    ; If we're on a turbo second processor we will probably have adjusted
+    ; nonstored_blocks. We will therefore be making adjustments to vmap to
+    ; compensate, so it's important the whole vmap is sorted. (Technically
+    ; speaking we could just sort the first vmap_max_entries+(nonstored_blocks -
+    ; ACORN_INITIAL_NONSTORED_BLOCKS) entries, but that's fiddlier to calculate
+    ; and it's perfectly correct just to sort the whole vmap, since we do have
+    ; that much RAM as virtual memory cache.) SFTODO: CORRECT? REVISIT FRESH
+    bit is_turbo
+    bpl +
+    ldx #vmap_max_size
++
+}
+    ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
+vmap_sort_entries = .ram_blocks ; 1 byte
+    stx vmap_sort_entries
 }
 
     ; Load the nonstored blocks, or all the blocks if we're not using virtual
@@ -857,8 +874,7 @@ SFTODOLABEL1
     lda zp_temp + 1
     sta vmap_z_h,y
     inx
-    cpx vmap_max_entries
-    !error "SFTODO: IN TURBO CASE WE NEED TO SORT >vmap_max_entries"
+    cpx vmap_sort_entries
     bne .outer_loop
 
     ; Now we've sorted vmap, load the corresponding blocks into memory and
@@ -881,8 +897,6 @@ SFTODOLABEL2
     ldx #255
 .find_first_non_promoted_entry_loop
     inx
-    cpx vmap_max_entriesXXX
-    beq .all_loading_done_indirect ; entire game has been promoted into dynmem SFTODO!?!?!?!?!
     lda vmap_z_h,x
     and #vmem_highbyte_mask
     bne .found_first_non_promoted_entry
