@@ -555,6 +555,7 @@ screenkernal_init
     ; SFTODONOW: DO THE SWR BIGDYNMEM STUFF VIA THIS NEW MECHANISM
 !ifdef VMEM {
 !ifdef ACORN_TURBO {
+!ifndef ACORN_NO_DYNMEM_ADJUST {
     ; On a turbo second processor, we can increase nonstored_blocks to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
@@ -585,6 +586,7 @@ SFTODOLABEL1
 .game_blocks_is_smaller
     stx nonstored_blocks
 .no_turbo_dynmem_adjust
+}
 }
 
     ; Set .ram_blocks -= nonstored_blocks, i.e. set .ram_blocks to the number of

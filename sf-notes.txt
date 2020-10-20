@@ -1,9 +1,13 @@
+256K turbo, M128 host, mode 7, drive noises off, no-dynmem-adjust $00244b ($00244a)
+ditto but with default dynmem-adjust $0021ec ($0021ec) - so 6.5% faster due to more memory access going via "dynmem" not "vmap"
+4MHZ "turbo" copro just for fun, otherwise ditto $0023f8 ($0023f9) - so with the dynmem adjust, the 3MHz 256K turbo beats the 4MHz 64K "turbo"
+
+
 b-em, 256K turbo co-pro, no host cache, mode 7, drive noises off - $002300
 Normal 6502 co-pro, host cache (144K model B), $0022bf
 Ditto but host cache 64K M128 $002b2e
 Ditto but host an unexpanded model B $0029fd
 - so at least for the benchmark a turbo-co pro doesn't help much if you have plenty of host cache (which is maybe a testament to how fast copying data over the tube can be, combined with the fact that at least for the benchmark there's a fair amount of vram cache so we can probably maintain a pretty decent working set and don't need to hit the host cache much) - I suspect for larger games the turbo copro might show more a gain, because there's essentially no overhead to access 128K read-only memory plus maybe 40-50K (guessing) of dynamic memory, plus you can still (once I implement it) get host cache benefits on top of that
-
 
 b-em, drive noises on, BBC B, 8271, DFS 0.9, 16K sideways RAM - benchmark completes at - no, it locked up in DFS code (&8CD7-DA) - forgot to note move number, *maybe* 251 but don't trust that
 DFS 1.2 - no, locked up at move 253, again in DFS (ACAE/ACB1)
