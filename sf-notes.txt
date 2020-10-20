@@ -1,6 +1,8 @@
 256K turbo, M128 host, mode 7, drive noises off, no-dynmem-adjust $00244b ($00244a)
 ditto but with default dynmem-adjust $0021ec ($0021ec) - so 6.5% faster due to more memory access going via "dynmem" not "vmap"
 4MHZ "turbo" copro just for fun, otherwise ditto $0023f8 ($0023f9) - so with the dynmem adjust, the 3MHz 256K turbo beats the 4MHz 64K "turbo"
+3MHz 64K copro $2b5c - so 21.7% faster with a 3MHz 256K
+- OK, looking at tubes[] array in b-em model.c, it looks like the turbo copro is being clocked (correctly?) at 4MHz - but even so, as per the "just for fun" result above, there is an improvement, it's just not as big
 
 
 b-em, 256K turbo co-pro, no host cache, mode 7, drive noises off - $002300
