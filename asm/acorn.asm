@@ -999,6 +999,11 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; e.g. we wouldn't need the code to populate .game_blocks in the first place.
     ; (on SWR builds the dynmem growth optimisation means nonstored_blocks is not
     ; precisely known at build time, but that's not an issue for a tube build)
+    ; This might also simplify some corner cases in the "grow nonstored_blocks"
+    ; logic, because the game size is no longer a runtime variable. I just worry a
+    ; little bit about this breaking already-not-supposed-to-work-but-sort-of-does-just-about
+    ; things where a game developer wants to switch in an updated data file without
+    ; going through the Ozmoo build process.
     lda vmap_max_entries
     sta inflated_vmap_max_entries
     lda #>(flat_ramtop - story_start)
