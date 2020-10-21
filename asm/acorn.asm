@@ -559,8 +559,8 @@ screenkernal_init
     sta nonstored_blocks
     ; SFTODONOW: DO THE SWR BIGDYNMEM STUFF VIA THIS NEW MECHANISM
 !ifdef VMEM {
-!ifdef ACORN_TURBO {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
+!ifdef ACORN_TURBO {
     ; On a turbo second processor, we can increase nonstored_blocks to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
@@ -572,8 +572,11 @@ screenkernal_init
     ; ABOUT THAT? DOES THE FACT WE DIDN'T CHOOSE TO DO A NON-VMEM BUILD RULE THIS OUT? *IF* NECESSARY WE COULD JUST ALSO ADD A THIRD MIN() TERM OF ACORN_INITIAL_NONSTORED_BLOCKS, THIS WOULD BE A SIMPLE cpx #that:bcc +:ldx #that:+ BIT OF CODE, WHICH ISN'T IDEAL BUT NOT TERRIBLE. The subtraction is otherwise harmless; it just means that for
     ; small games one 512-byte block of RAM will have to be accessed via the slower
     ; virtual memory code when it could (if not for these considerations) have
-    ; formed part of dynamic memory. SFTODO: REVIEW ALL THIS FRESH!
-    ; SFTODO: This has some overlap with the DYNMEM_ADJUST code below for sideways RAM, but let's keep this separate for now and look at merging the two implementations later.
+    ; formed part of dynamic memory.
+    ;
+    ; This adjustment will make it faster to access the part of the game which
+    ; has been promoted into dynamic memory, so we do it even if this is a small
+    ; game and we could address enough RAM for the entire game even without it.
     bit is_turbo
     bpl .no_turbo_dynmem_adjust
 SFTODOLABEL1
@@ -591,6 +594,75 @@ SFTODOLABEL1
 .game_blocks_is_smaller
     stx nonstored_blocks
 .no_turbo_dynmem_adjust
+}
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ; It may be useful to increase nonstored_blocks to promote some additional
+    ; data into dynamic memory, either for performance or to make use of more
+    ; sideways RAM.
+    ;
+    ; nonstored_blocks must not be larger than swr_ramtop - story_start,
+    ; otherwise dynamic memory won't fit in the first sideways RAM bank as
+    ; required by the big memory model.
+    ; SFTODO: NOW I'VE FACTORED THIS EXPRESSION OUT, IT WOULD BE STRAIGHTFORWARD TO ALSO DO THIS OPTIMISATION FOR SMALLDYNMEM CASE, I THINK
+.max_dynmem = zp_temp + 4 ; 1 byte
+    lda #>swr_ramtop
+    sec
+    sbc #>story_start
+    sta .max_dynmem
+
+    ; If .game_blocks == .ram_blocks, we want to set nonstored_blocks as high as
+    ; possible; there's no downside as we have enough RAM for the entire game
+    ; and this will allow as much of the game as possible to be accessed via the
+    ; faster dynamic memory code path. Set nonstored_blocks = min(.game_blocks -
+    ; vmem_block_pagecount, .max_dynmem).
+    ldy .ram_blocks + 1
+    lda .ram_blocks
+    cpy .game_blocks + 1
+    bne .game_blocks_ne_ram_blocks
+    cmp .game_blocks
+    bne .game_blocks_ne_ram_blocks
+    sec
+    sbc #vmem_block_pagecount
+    tax
+    tya
+    sbc #0
+    bne .max_dynmem_is_smaller
+    cpx .max_dynmem
+    bcc .game_blocks_is_smaller
+.max_dynmem_is_smaller
+    ldx .max_dynmem
+.game_blocks_is_smaller
+    bne .dynmem_adjust_done ; Always branch
+
+.game_blocks_ne_ram_blocks
+    ; Note that we can't have .game_blocks < .ram_blocks because we reduced
+    ; .ram_blocks to match earlier, so .game_blocks > .ram_blocks. We don't want
+    ; to reduce flexibility by locking parts of the game into RAM instead of
+    ; allowing the virtual memory system to choose what lives in RAM. It's only
+    ; a clear win to increase nonstored_blocks if it brings otherwise unusable
+    ; RAM into play. Set nonstored_blocks =
+    ; max(min(.ram_blocks - vmap_max_size * vmem_block_pagecount, .max_dynmem),
+    ;     ACORN_INITIAL_NONSTORED_BLOCKS)
+.min_lhs_sub = vmap_max_size * vmem_block_pagecount
+    sec
+    sbc #<.min_lhs_sub
+    tax
+    tya
+    sbc #>.min_lhs_sub
+    bmi .use_acorn_initial_nonstored_blocks
+    bne .use_min_rhs
+    cpx .max_dynmem
+    bcc .use_min_lhs
+.use_min_rhs
+    ldx .max_dynmem
+.use_min_lhs
+    cpx #ACORN_INITIAL_NONSTORED_BLOCKS
+    bcs .use_max_lhs
+.use_acorn_initial_nonstored_blocks
+    ldx #ACORN_INITIAL_NONSTORED_BLOCKS
+.use_max_lhs
+.dynmem_adjust_done
+    stx nonstored_blocks
 }
 }
 
@@ -627,113 +699,14 @@ SFTODOLABEL1
     ; b) If we did set .ram_blocks = .game_blocks above, combine that with the
     ;    fact the adjustment to nonstored_blocks left nonstored_blocks <=
     ;    .game_blocks - vmem_block_count. QED.
+    ;
+    ; SFTODO SWR BIGDYN CASE(S)
 }
 
 !ifndef ACORN_SWR {
     ; vmap_first_ram_page is set at build time to suit a normal second processor
     ; and it's not used on a turbo second processor, so we don't need any code
     ; to initialise it.
-}
-
-!ifndef ACORN_NO_DYNMEM_ADJUST { ; SFTODONOW GET RID OF THIS AND SWITCH TO NEW STYLE AS PER TURBO
-    ; SFTODO: In theory this optimisation is perfectly valid for the small
-    ; dynamic memory model, except that we can't grow nonstored_blocks past
-    ; flat_ramtop instead of swr_ramtop. It would be near trivial to support this,
-    ; but since it's an extra case to test (or not test and perhaps be broken)
-    ; and I suspect it offers little benefit (a big game is quite likely to be
-    ; using the big dynamic memory model anyway), I won't do so unless/until a
-    ; game which would benefit turns up.
-!ifdef ACORN_SWR_BIG_DYNMEM {
-!ifdef Z4PLUS {
-    ; If we have more RAM for virtual memory than we can support with the
-    ; vmap_max_size entries at our disposal, we may be able to use more RAM by
-    ; bumping up nonstored_blocks. This will lock some non-dynamic parts of the
-    ; game into memory but free up some vmap entries to represent RAM we'd
-    ; otherwise be unable to use, so we're never worse off as a result and in
-    ; practice we are likely to be better off.
-    ;
-    ; This is only useful for Z4+ games; a Z3 game is limited to 128K and the 255
-    ; 512-byte vmap entries already allow us to access 127.5K; given any realistic
-    ; game is going to have at least 512 bytes of dynamic memory, we are not
-    ; constrained at all by the 255 entry limit. For similar reasons, only a
-    ; machine with a lot of sideways RAM is ever going to need this optimisation.
-    ; To take an extreme example, if a game had no dynamic memory at all and we
-    ; had 16K of main RAM free, we could use 255*0.5-16=111.5K of sideways RAM
-    ; even without this optimisation; in practice we can probably use ~120K+ of
-    ; sideways RAM without needing this optimisation.
-
-    ; Do we have any wasted RAM in the first place?
-.wasted_ram_blocks = zp_temp + 4 ; 1 byte
-    sec
-    lda .ram_blocks
-    sbc #<(vmap_max_size * vmem_block_pagecount)
-    sta .wasted_ram_blocks
-    lda .ram_blocks + 1
-    sbc #>(vmap_max_size * vmem_block_pagecount)
-    bmi .no_wasted_ram
-    ; A is zero; we can't have vastly more RAM than vmap_max_size. The loader
-    ; (for not unrelated reasons) maxes out at detecting nine banks of sideways
-    ; RAM, say we have 16K of main RAM too, that means .ram_blocks is at most
-    ; 4*(16+9*16)=640 and vmap_max_size*vmem_block_pagecount will in practice
-    ; be 510, so the difference is at most 130, which will fit in a single byte.
-    ; (There'd be no point with the current code detecting way more sideways
-    ; RAM even if fitted; given vmap_max_size=255, we can't possibly use more
-    ; than (just under) eight 16K banks of sideways RAM for virtual memory, and
-    ; one more bank for dynamic memory.)
-
-    ; We could profitably increment nonstored_blocks by .wasted_ram_blocks.
-.candidate_nonstored_blocks = .wasted_ram_blocks
-    clc
-    lda .wasted_ram_blocks
-    adc nonstored_blocks
-    sta .candidate_nonstored_blocks
-    ; However, we must not make dynamic RAM overflow the first sideways RAM bank. SFTODO: OR MAIN RAM, IF/WHEN WE EXTEND THIS TO HANDLE SMALL DYNMEM MODEL.
-    ; We're doing a constant subtraction here; this is OK/necessary as noted in
-    ; a different case above.
-    sec
-    lda #>swr_ramtop ; this would be flat_ramtop for ACORN_SWR_SMALL_DYNMEM
-    sbc #>story_start
-    ; A now contains the maximum nonstored_blocks we can have without breaking
-    ; the memory model. So we want nonstored_blocks=min(A,
-    ; .candidate_nonstored_blocks).
-    cmp .candidate_nonstored_blocks
-    bcc +
-    lda .candidate_nonstored_blocks
-+   ; A contains the new value for nonstored_blocks. We need to adjust
-    ; .ram_blocks (which already had the old value of nonstored_blocks
-    ; subtracted from it) before updating nonstored_blocks.
-    tax
-    clc
-    lda .ram_blocks
-    adc nonstored_blocks
-    sta .ram_blocks
-    bcc +
-    inc .ram_blocks + 1
-+   stx nonstored_blocks
-    sec
-    lda .ram_blocks
-    sbc nonstored_blocks
-    sta .ram_blocks
-    bcs +
-    dec .ram_blocks + 1
-+
-    ; SFTODO: Not necessarily right here - but probably (why not? keep it all in one place) - it would be good to
-    ; set the age of vmap blocks which are <=nonstored_blocks to very old, so 
-    ; that those now-useless blocks will be the first to be used when loading
-    ; new blocks from disc. Their initial ages may well be quite young, since
-    ; they are potentially desirable in the early game - it's just that our
-    ; dynmem growth has meant we've pulled them into memory permanently anyway.
-    ; Actually it would probably not be hard to just set these "dead" blocks to
-    ; have "odd" addresses and very old ages, and tweak load_suggested to skip
-    ; blocks with "odd" addresses. We wouldn't need the Electron extra twist
-    ; where the VM code doesn't consider odd addresses - we *want* these to be
-    ; reused, the odd address is just there to stop them matching when we're
-    ; looking for data. Doing this would avoid wasting time loading data into
-    ; them during the initial load and make them immediately available for use
-    ; the first time we need to load anything during play.
-.no_wasted_ram
-}
-}
 }
 
     ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
@@ -753,22 +726,19 @@ SFTODOLABEL1
 .cap_at_vmap_max_size
     stx vmap_max_entries
 
-!ifdef ACORN_TURBO {
-    ; If we're on a turbo second processor we will probably have adjusted
-    ; nonstored_blocks. We will therefore be making adjustments to vmap to
-    ; compensate, so it's important the whole vmap is sorted below. (Technically
-    ; speaking we could just sort the first vmap_max_entries + (nonstored_blocks
-    ; - ACORN_INITIAL_NONSTORED_BLOCKS) entries, but that's fiddlier to
-    ; calculate and it's perfectly correct just to sort the whole vmap, since we
-    ; do have that much RAM as virtual memory cache.) SFTODO: CORRECT? REVISIT
-    ; FRESH
-    bit is_turbo
-    bpl +
+    ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
+vmap_sort_entries = .ram_blocks ; 1 byte
+!ifndef ACORN_NO_DYNMEM_ADJUST {
+    ; If we've adjusted nonstored_blocks, we may need to sort more than
+    ; vmap_max_entries elements of vmap and it's definitely safe to sort all
+    ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
+    ; blocks of virtual memory cache or we have enough RAM for the entire game.
+    lda nonstored_blocks
+    cmp #ACORN_INITIAL_NONSTORED_BLOCKS
+    beq +
     ldx #vmap_max_size
 +
 }
-    ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
-vmap_sort_entries = .ram_blocks ; 1 byte
     stx vmap_sort_entries
 }
 
@@ -923,11 +893,8 @@ vmap_sort_entries = .ram_blocks ; 1 byte
     ; initialise vmap_used_entries. (This roughly corresponds to the C64
     ; load_suggested_pages subroutine.)
 
-!ifdef ACORN_TURBO {
-    bit is_turbo
-    bpl .normal_tube_load
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-    ; We adjusted nonstored_blocks earlier, so the vmap probably needs adjusting
+    ; We may have adjusted nonstored_blocks earlier; if so the vmap needs adjusting
     ; to compensate. (It is just possible the adjustment had no effect, but this
     ; code will be a no-op in that case.) As the vmap is now sorted by address
     ; we just need to find the first entry which doesn't correspond to dynamic
@@ -946,6 +913,8 @@ SFTODOLABEL2
     cmp nonstored_blocks
     bcc .find_first_non_promoted_entry_loop
 .found_first_non_promoted_entry
+    txa
+    beq .no_dynmem_promotion
     ldy #0
 .vmap_move_down_loop
     cpx #vmap_max_size
@@ -969,8 +938,12 @@ SFTODOLABEL2
     iny
     cpy vmap_max_entries
     bne .vmap_move_down_loop
+.no_dynmem_promotion
 }
 
+!ifdef ACORN_TURBO {
+    bit is_turbo
+    bpl .normal_tube_load
     ; On a turbo second processor we don't do any preloading of the host cache
     ; so we just use a straightforward load loop like the non-tube-cache case
     ; below.
