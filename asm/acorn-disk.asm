@@ -8,7 +8,9 @@
 ; need readblock to do the check for having the game disc in the drive.)
 
 ; SFTODODATA 6
+!ifdef VMEM {
 nonstored_blocks		!byte 0
+}
 readblocks_numblocks	!byte 2
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 !ifndef ACORN_ADFS {
