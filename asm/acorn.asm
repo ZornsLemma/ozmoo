@@ -443,6 +443,7 @@ screenkernal_init
     bne -
 }
     sta .ram_blocks
+
 !ifdef ACORN_TUBE_CACHE {
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
@@ -462,20 +463,24 @@ screenkernal_init
     ; don't have anything to preload into it, so having initialised it there's
     ; nothing else to do.
     bit is_turbo
-    bmi .count_turbo_ram
+    bmi .host_cache_initialised
 }
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
     rol .ram_blocks + 1
     sta .ram_blocks
-    jmp .host_cache_initialised ; SFTODO: bcc would always branch? saves 1 byte...
-.count_turbo_ram
+.host_cache_initialised
+}
+
+!ifdef ACORN_TURBO {
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
     ; virtual memory cache.
+    bit is_turbo
+    bpl .dont_count_turbo_ram
     inc .ram_blocks + 1
     inc .ram_blocks + 1
-.host_cache_initialised
+.dont_count_turbo_ram
 }
 
     ; We also have some blocks between flat_ramtop and story_start.
@@ -749,6 +754,7 @@ SFTODOLABEL1
     stx vmap_max_entries
 
 !ifdef ACORN_TURBO {
+    ; SFTODO: SHOULD WE BE CHECKING NO_DYNMEM_ADJUST HERE?
     ; If we're on a turbo second processor we will probably have adjusted
     ; nonstored_blocks. We will therefore be making adjustments to vmap to
     ; compensate, so it's important the whole vmap is sorted below. (Technically
@@ -918,7 +924,6 @@ vmap_sort_entries = .ram_blocks ; 1 byte
     ; initialise vmap_used_entries. (This roughly corresponds to the C64
     ; load_suggested_pages subroutine.)
 
-!ifdef ACORN_TUBE_CACHE {
 !ifdef ACORN_TURBO {
     bit is_turbo
     bpl .normal_tube_load
@@ -969,9 +974,11 @@ SFTODOLABEL2
     ; so we just use a straightforward load loop like the non-tube-cache case
     ; below.
     stz vmap_index
+!ifdef ACORN_TUBE_CACHE {
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
+}
 .turbo_load_loop
     jsr load_blocks_from_index
     inc vmap_index
@@ -984,6 +991,7 @@ SFTODOLABEL2
 .normal_tube_load
 }
 
+!ifdef ACORN_TUBE_CACHE {
 inflated_vmap_max_entries = zp_temp
 from_index = zp_temp + 1
 to_index = vmap_index
@@ -1110,7 +1118,6 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     inc from_index
     jmp .second_load_loop
 .second_load_loop_done
-.all_loading_done
 } else { ; not ACORN_TUBE_CACHE
     ; Load the blocks in vmap.
     lda #0
@@ -1122,6 +1129,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     bne -
     sta vmap_used_entries
 }
+.all_loading_done
 
 !ifdef ACORN_SWR {
     ; The load loop may have left the last bank of sideways RAM paged in; we
