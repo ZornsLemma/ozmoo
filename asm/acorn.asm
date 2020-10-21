@@ -741,7 +741,8 @@ SFTODOLABEL1
     stx vmap_max_entries
 
     ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
-vmap_sort_entries = .ram_blocks ; 1 byte
+vmap_sort_entries = vmem_temp ; 1 byte
+SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; If we've adjusted nonstored_blocks, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
