@@ -598,15 +598,13 @@ SFTODOLABEL1
     bcs +
     dec .ram_blocks + 1
 +
-    ; SFTODO: REVIEW ALL THIS FRESH!
     ; It's important .ram_blocks >= vmem_block_pagecount now so that we will set
     ; vmap_max_entries >= 1 below. Conceptually it makes sense for
     ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
     ;
-    ; If nonstored_blocks == ACORN_INITIAL_NONSTORED_BLOCKS the build system and
-    ; loader work together to guarantee (initial) .ram_blocks >=
-    ; ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount. There are two
-    ; cases:
+    ; The build system and loader work together to guarantee (initial)
+    ; .ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount.
+    ; If nonstored_blocks has not been adjusted, there are two cases:
     ; a) If we didn't set .ram_blocks = .game_blocks above, the build system and
     ;    loader guarantee means we now have .ram_blocks >= 2 *
     ;    vmem_block_pagecount. QED.
@@ -627,9 +625,9 @@ SFTODOLABEL1
 }
 
 !ifndef ACORN_SWR {
-    ; vmap_first_ram_page is not used on a turbo second processor and it's set
-    ; at build time to suit a normal second processor so we don't need any code
-    ; here to handle it.
+    ; vmap_first_ram_page is set at build time to suit a normal second processor
+    ; and it's not used on a turbo second processor, so we don't need any code
+    ; to initialise it.
 }
 
 !ifndef ACORN_NO_DYNMEM_ADJUST { ; SFTODONOW GET RID OF THIS AND SWITCH TO NEW STYLE AS PER TURBO
@@ -733,12 +731,12 @@ SFTODOLABEL1
 }
 }
 
-    ; Now set vmap_max_entries = min(.ram_blocks / 2, vmap_max_size), i.e. the
-    ; number of vmap entries we have RAM to support. (If we're in the
-    ; ACORN_TUBE_CACHE case on a normal second processor, we have that much RAM
-    ; in total but the number of vmap entries we can support is lower. It's
-    ; convenient to work with this larger value while we do the initial load,
-    ; then vmap_max_entries is fixed up later.)
+    ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
+    ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
+    ; (If we're in the ACORN_TUBE_CACHE case on a normal second processor, we
+    ; have that much RAM in total but the number of vmap entries we can support
+    ; is lower. It's convenient to work with this larger value while we do the
+    ; initial load, then vmap_max_entries is fixed up later.)
     ldx #vmap_max_size
     lda .ram_blocks
     lsr .ram_blocks + 1
@@ -753,11 +751,12 @@ SFTODOLABEL1
 !ifdef ACORN_TURBO {
     ; If we're on a turbo second processor we will probably have adjusted
     ; nonstored_blocks. We will therefore be making adjustments to vmap to
-    ; compensate, so it's important the whole vmap is sorted. (Technically
-    ; speaking we could just sort the first vmap_max_entries+(nonstored_blocks -
-    ; ACORN_INITIAL_NONSTORED_BLOCKS) entries, but that's fiddlier to calculate
-    ; and it's perfectly correct just to sort the whole vmap, since we do have
-    ; that much RAM as virtual memory cache.) SFTODO: CORRECT? REVISIT FRESH
+    ; compensate, so it's important the whole vmap is sorted below. (Technically
+    ; speaking we could just sort the first vmap_max_entries + (nonstored_blocks
+    ; - ACORN_INITIAL_NONSTORED_BLOCKS) entries, but that's fiddlier to
+    ; calculate and it's perfectly correct just to sort the whole vmap, since we
+    ; do have that much RAM as virtual memory cache.) SFTODO: CORRECT? REVISIT
+    ; FRESH
     bit is_turbo
     bpl +
     ldx #vmap_max_size
@@ -841,7 +840,7 @@ vmap_sort_entries = .ram_blocks ; 1 byte
     ; Sort vmap into ascending order, preserving the timestamps but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
     ; initial load. The build system can't do this sort, because we're sorting
-    ; the truncated list with just vmap_max_entries not the full list of
+    ; the truncated list with just vmap_sort_entries not the full list of
     ; vmap_max_size entries.
     ;
     ; This only happens once and it's not a huge list so while we don't want it
@@ -993,17 +992,18 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; vmap_max_entries was deliberately artificially high up to this point so
     ; we'd retain and sort more of the initial vmap; set it to the correct value
     ; reflecting the size of the vmap Ozmoo's virtual memory has to work with.
-    ; SFTODO: Worth noting that here - and might be useful in some other code too -
-    ; we are calculating using known-at-build-time values. I could potentially
-    ; simplify/shorten the code in a few places by not treating this dynamically,
-    ; e.g. we wouldn't need the code to populate .game_blocks in the first place.
-    ; (on SWR builds the dynmem growth optimisation means nonstored_blocks is not
-    ; precisely known at build time, but that's not an issue for a tube build)
-    ; This might also simplify some corner cases in the "grow nonstored_blocks"
-    ; logic, because the game size is no longer a runtime variable. I just worry a
-    ; little bit about this breaking already-not-supposed-to-work-but-sort-of-does-just-about
-    ; things where a game developer wants to switch in an updated data file without
-    ; going through the Ozmoo build process.
+    ; SFTODO: Worth noting that here - and might be useful in some other code
+    ; too - we are calculating using known-at-build-time values. I could
+    ; potentially simplify/shorten the code in a few places by not treating this
+    ; dynamically, e.g. we wouldn't need the code to populate .game_blocks in
+    ; the first place. (on SWR builds the dynmem growth optimisation means
+    ; nonstored_blocks is not precisely known at build time, but that's not an
+    ; issue for a tube build) This might also simplify some corner cases in the
+    ; "grow nonstored_blocks" logic, because the game size is no longer a
+    ; runtime variable. I just worry a little bit about this breaking
+    ; already-not-supposed-to-work-but-sort-of-does-just-about things where a
+    ; game developer wants to switch in an updated data file without going
+    ; through the Ozmoo build process.
     lda vmap_max_entries
     sta inflated_vmap_max_entries
     lda #>(flat_ramtop - story_start)
@@ -1090,6 +1090,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; newest block in the host cache so it will spend a long time in there
     ; before being discarded, which should give plenty of opportunity for it to
     ; be requested during gameplay and moved into local memory before it's lost.
+    ; SFTODO: vmap_index is an alias for to_index, maybe use to_index in the follow loop to match the previous loop? This (double check) is just a labelling change, the code would be identical.
     dec vmap_index ; set vmap_index = vmap_max_entries - 1
 .second_load_loop
     ldx from_index
