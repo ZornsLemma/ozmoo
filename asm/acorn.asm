@@ -903,10 +903,6 @@ vmap_sort_entries = .ram_blocks ; 1 byte
     cpx vmap_sort_entries
     bne .outer_loop
 
-    ; Now we've sorted vmap, load the corresponding blocks into memory and
-    ; initialise vmap_used_entries. (This roughly corresponds to the C64
-    ; load_suggested_pages subroutine.)
-
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; We may have adjusted nonstored_blocks earlier; if so the vmap needs adjusting
     ; to compensate. (It is just possible the adjustment had no effect, but this
@@ -954,6 +950,27 @@ SFTODOLABEL2
     bne .vmap_move_down_loop
 .no_dynmem_promotion
 }
+
+    ; Debugging code - use this in conjunction with --print-vm.
+!if 0 {
+    jsr streams_init
+    ; vmap_used_entries is set later in normal use, but set it early here so
+    ; print_vm shows the entire vmap.
+    lda vmap_max_entries
+    sta vmap_used_entries
+    lda #'X'
+    jsr s_printchar
+    lda #>story_start
+    jsr print_byte_as_hex
+    lda nonstored_blocks
+    jsr print_byte_as_hex
+    jsr newline
+    jsr osrdch
+}
+
+    ; Now we've got vmap how we want it, load the corresponding blocks into
+    ; memory and initialise vmap_used_entries. (This roughly corresponds to the
+    ; C64 load_suggested_pages subroutine.)
 
 !ifdef ACORN_TURBO {
     bit is_turbo
@@ -1115,6 +1132,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     lda vmap_index
     cmp vmap_max_entries
     bne -
+SFTODOLABEL4
     sta vmap_used_entries
 }
 .all_loading_done
