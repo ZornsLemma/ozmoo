@@ -1762,5 +1762,7 @@ do_oswrch_vdu_goto_xy
 ; SF: ENHANCEMENT: It would also with a bit more effort probably be possible
 ; to use a proportionally spaced font in modes other than 7, though this would
 ; be a more intrusive code change.
+;
+; SFTODO: Once the upstream dynamic memory access rework is completed and merged, it *may* be possible to do things like (on a turbo copro) use bank 0 free memory plus the whole of bank 1 for dynamic memory, and have banks 2 and 3 for virtual memory cache, or to promote the whole of a game <= ~210K to be pure dynamic memory. Or if we have more main+SWR than the game size, to promote the whole game to dynamic memory and do a simple absolute Z-machine to bank address conversion. I suspect it won't allow >64K dynamic memory, but just making this note so I can consider it when I see how upstream change works.
 
 }
