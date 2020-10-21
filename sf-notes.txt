@@ -114,6 +114,7 @@ Testing checklist:
 - Python 2 vs Python 3
 - small non-VMEM games on second processor as well as large VMEM games
 - BBC B executable at &E00, &1900 and &1D00 (screen hole makes it very sensitive)
+- really big game like Beyond Zork
 
 Benchmarking:
 - THIS IS BIGDYN BECAUSE NOT TAKEN ANY STEPS TO AVOID IT
