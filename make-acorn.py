@@ -782,7 +782,7 @@ class OzmooExecutable(Executable):
             args += ["-DPREOPT=1"]
         Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_addr, args)
         if "ACORN_RELOCATABLE" not in self.labels:
-            self.truncate_at("end_of_routines_in_stack_space")
+            self.truncate_at("end_of_routines")
         self.swr_dynmem = 0
         if "VMEM" in self.labels:
             self._patch_vmem()

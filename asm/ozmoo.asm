@@ -591,8 +591,8 @@ z_init
 }
 
 !zone deletable_init {
-deletable_init_start
 !ifndef ACORN {
+deletable_init_start
 !ifdef CUSTOM_FONT {
     lda #18
 } else {
@@ -602,8 +602,6 @@ deletable_init_start
 	lda #$80
 	sta charset_switchable
 	jmp init_screen_colours ; _invisible
-} else {
-    +acorn_deletable_init_start_subroutine ; ends with rts
 }
 
 deletable_init
@@ -1159,23 +1157,28 @@ load_suggested_pages
 }
 }
 
-end_of_routines_in_stack_space
+!ifdef ACORN {
+    +acorn_init_code_in_stack
+}
 
+end_of_routines_in_stack_space
+!ifdef ACORN {
+    ; It's fine for code to spill over past story_start *as long as it's going
+    ; to be executed before it gets overwritten*. We don't have any preload data
+    ; attached, unlike the C64, so this doesn't cause problems.
+    +acorn_init_code_overlapping_game_data
 !ifdef ACORN_RELOCATABLE {
     ; This must be the last thing in the executable.
 	ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT = 1
     !source "acorn-relocate.asm"
+}
+end_of_routines
 }
 
 !ifndef ACORN {
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 story_start
 } else {
-    ; It's fine for code to spill over past story_start *as long as it's going
-    ; to be executed before it gets overwritten*. This is definitely true of the
-    ; relocation code, because that executes before anything else and is only
-    ; used once. We don't have any preload data attached, unlike the C64, so
-    ; this doesn't cause problems.
 !if (end_of_routines_in_stack_space - stack_start) > stack_size {
     !error "Routines in stack space have overflowed stack"
 }

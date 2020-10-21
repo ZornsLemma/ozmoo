@@ -173,8 +173,12 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; Initialization and finalization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Initialization performed ASAP on startup.
-!macro acorn_deletable_init_start_subroutine {
+; Initialization code which may be placed after the end of the Z-machine stack;
+; this means it will be overwritten as soon as anything is loaded at
+; story_start.
+!macro acorn_init_code_overlapping_game_data {
+; Initialization performed very early during startup.
+deletable_init_start
     ldx #1
     jsr do_osbyte_rw_escape_key
 
@@ -216,24 +220,6 @@ ACORN_SWR_BIG_DYNMEM = 1
     jsr do_osbyte_y_0
 }
 
-    +init_readtime_inline
-    jmp init_cursor_control
-
-screenkernal_init
-    +screenkernal_init_inline
-    rts
-} ; End of acorn_deletable_init_start
-
-; Initialization performed shortly after startup, just after
-; acorn_deletable_init_start. (The distinction is not that important on Acorn
-; as the Ozmoo executable itself doesn't generate a splash screen.)
-!macro acorn_deletable_init_inline {
-!ifdef TRACE_FLOPPY {
-    ; Call streams_init so the tracing is able to show the readblocks calls
-    ; performed here.
-	jsr streams_init
-}
-
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
@@ -267,6 +253,29 @@ screenkernal_init
     lda #$80
     sta turbo_control
 .dont_enable_turbo
+}
+
+    +init_readtime_inline
+    jmp init_cursor_control
+
+; SFTODO: I CAN PUT MORE CODE HERE IF I WISH! (NOT JUST deletable_init_start)
+} ; End of acorn_init_code_overlapping_game_data_inline
+
+; Initialization subroutines which will be placed inside the Z-machine stack.
+!macro acorn_init_code_in_stack {
+screenkernal_init
+    +screenkernal_init_inline
+    rts
+}
+
+; Initialization performed shortly after startup, just after
+; acorn_deletable_init_start. (The distinction is not that important on Acorn
+; as the Ozmoo executable itself doesn't generate a splash screen.)
+!macro acorn_deletable_init_inline {
+!ifdef TRACE_FLOPPY {
+    ; Call streams_init so the tracing is able to show the readblocks calls
+    ; performed here.
+	jsr streams_init
 }
 
 .dir_ptr = zp_temp ; 2 bytes
