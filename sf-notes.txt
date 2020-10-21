@@ -1,3 +1,6 @@
+B 144K SWR $0047ef
+no-dynmem-adjust $004b14 - if this is to be believed a big improvement from the dynmem promotion
+
 256K turbo, M128 host, mode 7, drive noises off, no-dynmem-adjust $00244b ($00244a)
 ditto but with default dynmem-adjust $0021ec ($0021ec) - so 6.5% faster due to more memory access going via "dynmem" not "vmap"
 4MHZ "turbo" copro just for fun, otherwise ditto $0023f8 ($0023f9) - so with the dynmem adjust, the 3MHz 256K turbo beats the 4MHz 64K "turbo"

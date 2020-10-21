@@ -604,17 +604,22 @@ SFTODOLABEL1
     stx nonstored_blocks
 .no_turbo_dynmem_adjust
 }
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR {
     ; It may be useful to increase nonstored_blocks to promote some additional
     ; data into dynamic memory, either for performance or to make use of more
-    ; sideways RAM.
-    ;
-    ; nonstored_blocks must not be larger than swr_ramtop - story_start,
-    ; otherwise dynamic memory won't fit in the first sideways RAM bank as
-    ; required by the big memory model.
-    ; SFTODO: NOW I'VE FACTORED THIS EXPRESSION OUT, IT WOULD BE STRAIGHTFORWARD TO ALSO DO THIS OPTIMISATION FOR SMALLDYNMEM CASE, I THINK
+    ; sideways RAM. We must not make it too large for the memory model we're
+    ; using. (This optimisation has relatively limited scope in the small model,
+    ; but it's trivial to support it anyway. It's just conceivable some games
+    ; and/or machines might benefit from --force-big-dynmem to give this
+    ; optimisation more headroom, but of course the big model has its own
+    ; performance drawbacks so it's probably best not using it unless we're
+    ; forced to.)
 .max_dynmem = zp_temp + 4 ; 1 byte
+!ifdef ACORN_SWR_BIG_DYNMEM {
     lda #>swr_ramtop
+} else {
+    lda #>flat_ramtop
+}
     sec
     sbc #>story_start
     sta .max_dynmem
