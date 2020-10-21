@@ -291,7 +291,11 @@ screenkernal_init
 !ifndef ACORN_ADFS {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game.
-!if 0 { SFTODO: NOT TOTALLY HAPPY WITH THIS, BUT THESE VALUES WILL BE PRESENT WITHOUT US SETTING THEM AND THIS WILL SHRINK CODE - PERM COMMENT IF KEEP THIS
+    ; Because this is initialisation code, we know the following variables are
+    ; already set to predictable values. This optimisation was useful at one
+    ; point but it's not really important right now; it isn't too confusing so
+    ; let's keep it anyway now it's been tested.
+!if 0 {
     lda #2
     sta readblocks_numblocks
     lda #0
@@ -762,7 +766,11 @@ SFTODOLABEL5
     ; here, because at worst we will read a final 512-byte block when we don't
     ; have a full block and that's fine.
 .blocks_to_read = zp_temp + 4 ; 1 byte
-!if 0 { SFTODO: NOT TOTALLY HAPPY WITH THIS, BUT THESE VALUES WILL BE PRESENT WITHOUT US SETTING THEM AND THIS WILL SHRINK CODE - PERM COMMENT IF KEEP THIS
+    ; Because this is initialisation code, we know the following variables are
+    ; already set to predictable values. This optimisation was useful at one
+    ; point but it's not really important right now; it isn't too confusing so
+    ; let's keep it anyway now it's been tested.
+!if 0 {
     lda #2
     sta readblocks_numblocks
     lda #0
@@ -777,7 +785,9 @@ SFTODOLABEL5
     sta readblocks_mempos + 2
 }
 } else {
-    ; SFTODO: ON DFS THE CATALOGUE READ WILL HAVE BUMPED CURRENTBLOCK AND MEMPOS, SO WE MUST SET BOTH OF THOSE BACK
+    ; If we're on DFS the earlier read of the catalogue will have bumped
+    ; readblocks_currentblock and readblocks_mempos, so they have to be set
+    ; explicitly.
     lda #0
     sta readblocks_currentblock
 }
