@@ -754,7 +754,6 @@ SFTODOLABEL1
     stx vmap_max_entries
 
 !ifdef ACORN_TURBO {
-    ; SFTODO: SHOULD WE BE CHECKING NO_DYNMEM_ADJUST HERE?
     ; If we're on a turbo second processor we will probably have adjusted
     ; nonstored_blocks. We will therefore be making adjustments to vmap to
     ; compensate, so it's important the whole vmap is sorted below. (Technically
@@ -927,6 +926,7 @@ vmap_sort_entries = .ram_blocks ; 1 byte
 !ifdef ACORN_TURBO {
     bit is_turbo
     bpl .normal_tube_load
+!ifndef ACORN_NO_DYNMEM_ADJUST {
     ; We adjusted nonstored_blocks earlier, so the vmap probably needs adjusting
     ; to compensate. (It is just possible the adjustment had no effect, but this
     ; code will be a no-op in that case.) As the vmap is now sorted by address
@@ -969,6 +969,7 @@ SFTODOLABEL2
     iny
     cpy vmap_max_entries
     bne .vmap_move_down_loop
+}
 
     ; On a turbo second processor we don't do any preloading of the host cache
     ; so we just use a straightforward load loop like the non-tube-cache case
