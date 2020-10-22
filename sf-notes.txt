@@ -1,3 +1,7 @@
+M128+normal 2P, --no-turbo $0029ff
+M128+normal 2P, (turbo supported but not in use of course) $002a2b
+
+
 B 144K SWR $0047ef
 no-dynmem-adjust $004b14 - if this is to be believed a big improvement from the dynmem promotion
 

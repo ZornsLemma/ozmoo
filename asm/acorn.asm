@@ -258,7 +258,8 @@ deletable_init_start
     +init_readtime_inline
     jmp init_cursor_control
 
-; SFTODO: I CAN PUT MORE CODE HERE IF I WISH! (NOT JUST deletable_init_start)
+; SFTODO: Don't forget more code can go here if it can be executed before we
+; start to put data at story_start.
 } ; End of acorn_init_code_overlapping_game_data_inline
 
 ; Initialization subroutines which will be placed inside the Z-machine stack.

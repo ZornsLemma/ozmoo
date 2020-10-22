@@ -320,7 +320,9 @@ RTS
 ]
 turbo=(USR(block%+1) AND &FF)=0
 IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
+!ifdef ACORN_TURBO {
 ?${is_turbo}=turbo:REM we only care about bit 7 being set
+}
 ENDPROC
 
 DEF PROCdetect_swr
