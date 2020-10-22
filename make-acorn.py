@@ -198,6 +198,7 @@ def check_if_special_game():
         if cmd_args.interpreter_num is None:
             cmd_args.interpreter_num = 2
         cmd_args.function_keys = True
+        cmd_args.no_cursor_editing = True
         # We don't patch if the game is only going to be run in 80 column modes.
         if not cmd_args.only_80_column:
             patch = beyond_zork_releases[game_key].split(" ")
@@ -1228,6 +1229,7 @@ def parse_args():
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
     parser.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
+    parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1352,6 +1354,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DTERPNO=%d" % cmd_args.interpreter_num]
     if cmd_args.function_keys:
         ozmoo_base_args += ["-DACORN_FUNCTION_KEY_PASS_THROUGH=1"]
+    if not cmd_args.no_cursor_editing:
+        ozmoo_base_args += ["-DACORN_CURSOR_EDIT_READ=1"]
     if cmd_args.force_65c02:
         ozmoo_base_args += ["-DCMOS=1"]
     if cmd_args.benchmark:

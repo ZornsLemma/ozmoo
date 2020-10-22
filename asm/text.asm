@@ -281,9 +281,11 @@ z_ins_read
     ; z5: aread text parse time routine -> (result)
     jsr printchar_flush
 !ifdef ACORN_CURSOR_PASS_THROUGH {
+!ifdef ACORN_CURSOR_EDIT_READ {
     ; Since we're reading a line of text here, we temporarily re-enable cursor
     ; editing.
     jsr do_osbyte_set_cursor_editing_x_0
+}
 }
 !ifdef Z3 {
     ; Z1 - Z3 should redraw the status line before input
@@ -384,8 +386,10 @@ z_ins_read
 }
 .read_done
 !ifdef ACORN_CURSOR_PASS_THROUGH {
+!ifdef ACORN_CURSOR_EDIT_READ {
     ldx #1
     jsr do_osbyte_set_cursor_editing
+}
 }
 	jsr start_buffering
     ; debug - print parsearray

@@ -1755,7 +1755,7 @@ calculate_crc
     rts
 
 ; Two wrappers for calling osbyte_set_cursor_editing to reduce code size; we do
-; this is in several places.
+; this in several places.
 do_osbyte_set_cursor_editing_x_0
     ldx #0
 do_osbyte_set_cursor_editing
