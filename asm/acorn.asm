@@ -563,26 +563,25 @@ screenkernal_init
     ; ACORN_INITIAL_NONSTORED_BLOCKS.
     lda #ACORN_INITIAL_NONSTORED_BLOCKS
     sta nonstored_blocks
-    ; SFTODONOW: DO THE SWR BIGDYNMEM STUFF VIA THIS NEW MECHANISM
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_TURBO_SUPPORTED {
+    ; SFTODO: REVIEW THIS FRESH
     ; On a turbo second processor, we can increase nonstored_blocks to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
     ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks
-    ; - vmem_block_pagecount, available blocks in bank 0); see below for why we subtract vmem_block_pagecount.
-    ; This subtraction can't cause
-    ; nonstored_blocks < ACORN_INITIAL_NONSTORED_BLOCKS unless the game has no
-    ; non-dynamic memory SFTODO: UNLIKELY BUT TECHNICALLY POSSIBLE? WHAT TO DO
-    ; ABOUT THAT? DOES THE FACT WE DIDN'T CHOOSE TO DO A NON-VMEM BUILD RULE THIS OUT? *IF* NECESSARY WE COULD JUST ALSO ADD A THIRD MIN() TERM OF ACORN_INITIAL_NONSTORED_BLOCKS, THIS WOULD BE A SIMPLE cpx #that:bcc +:ldx #that:+ BIT OF CODE, WHICH ISN'T IDEAL BUT NOT TERRIBLE. The subtraction is otherwise harmless; it just means that for
-    ; small games one 512-byte block of RAM will have to be accessed via the slower
-    ; virtual memory code when it could (if not for these considerations) have
-    ; formed part of dynamic memory.
+    ; - vmem_block_pagecount, available blocks in bank 0); see below for why we
+    ; subtract vmem_block_pagecount. This subtraction can't cause
+    ; nonstored_blocks < ACORN_INITIAL_NONSTORED_BLOCKS because the build system
+    ; guarantees the game has at least one block of non-dynamic memory. The
+    ; subtraction is otherwise harmless; it just means that for small games one
+    ; 512-byte block of RAM will have to be accessed via the slower virtual
+    ; memory code when it could maybe have been promoted to be dynamic memory.
     ;
     ; This adjustment will make it faster to access the part of the game which
     ; has been promoted into dynamic memory, so we do it even if this is a small
-    ; game and we could address enough RAM for the entire game even without it.
+    ; game and we could address enough RAM for the entire game without it.
     bit is_turbo
     bpl .no_turbo_dynmem_adjust
 SFTODOLABEL1
