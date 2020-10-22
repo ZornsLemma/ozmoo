@@ -486,8 +486,6 @@ load_blocks_from_index
     sta osword_cache_data_ptr + 2
 }
     ; Other bytes at osword_cache_data_ptr always stay 0 and don't need setting.
-    lda #osword_cache_no_timestamp_hint
-    sta osword_cache_index_offered_timestamp_hint
     lda vmap_z_l,x
     sta osword_cache_index_requested
     lda vmap_z_h,x

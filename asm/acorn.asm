@@ -1099,9 +1099,11 @@ SFTODOLABELX3
     ; and #$ff xor vmem_highbyte_mask ; not necessary as we're doing a >= test
     cmp #.cutover_timestamp + 1
     bcs .dont_put_in_cache
-+   lda .host_cache_size
++   ldx .host_cache_size
     beq .dont_put_in_cache
     dec .host_cache_size
+    and #$ff xor vmem_highbyte_mask
+    sta osword_cache_index_offered_timestamp_hint
     ; load_blocks_from_index will have set osword_cache_index_requested
     lda osword_cache_index_requested
     sta osword_cache_index_offered
@@ -1141,6 +1143,9 @@ SFTODOLABELX3
     lda vmap_z_h,y
     and #vmem_highbyte_mask
     sta osword_cache_index_offered + 1
+    lda vmap_z_h,y
+    and #$ff xor vmem_highbyte_mask
+    sta osword_cache_index_offered_timestamp_hint
     lda vmap_z_l,x
     sta vmap_z_l,y
     lda vmap_z_h,x
@@ -1149,6 +1154,10 @@ SFTODOLABELX3
     inc from_index
     jmp .second_load_loop
 .second_load_loop_done
+    ; Now we've finished the initial load, specify no timestamp hint for cache
+    ; operations; this setting will remain untouched for the rest of the game.
+    lda #osword_cache_no_timestamp_hint
+    sta osword_cache_index_offered_timestamp_hint
 } else { ; not ACORN_TUBE_CACHE
     ; Load the blocks in vmap.
     lda #0
