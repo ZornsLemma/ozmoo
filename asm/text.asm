@@ -275,7 +275,6 @@ z_ins_print_ret
 
 
 ; ============================= New unified read instruction
-; SFTODONOW: ON ACORN (DOESN'T HAPPEN ON C64, OR FROTZ) PRESSING RETURN TO ENTER A BLANK LINE REPEATS THE LAST COMMAND - THIS HAPPENS PRETTY CONSISTENTLY ON ALL GAMES, INCLUDING Z3 HH AND Z5 HHGTTG
 z_ins_read
     ; z3: sread text parse
     ; z4: sread text parse time routine
