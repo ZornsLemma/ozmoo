@@ -1599,6 +1599,12 @@ dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
 while nonstored_blocks % vmem_block_pagecount != 0:
     nonstored_blocks += 1
+# The Acorn initialisation code assumes the game has at least one block of
+# non-dynamic memory. That's almost certainly the case anyway, but make sure.
+while game_blocks < nonstored_blocks + vmem_block_pagecount:
+    game_data += bytearray(bytes_per_block)
+    game_blocks = bytes_to_blocks(len(game_data))
+dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
 

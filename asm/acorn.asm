@@ -540,19 +540,14 @@ screenkernal_init
 
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
-    ; system and the loader will have worked together to guarantee that
-    ; .ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount,
-    ; i.e. that we have enough RAM for the game's dynamic memory and two
-    ; 512-byte blocks of virtual memory cache.
+    ; system and the loader will have worked together to guarantee that:
+    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2*vmem_block_pagecount,
+    ;   i.e. that we have enough RAM for the game's dynamic memory and two
+    ;   512-byte blocks of virtual memory cache.
+    ; - the game always has at least one block of non-dynamic memory.
 
     ; In order to avoid accessing nonexistent game data in an attempt to use all
-    ; that RAM, set .ram_blocks = min(.ram_blocks, .game_blocks). SFTODO: Note
-    ; that if the game has *no* non-dynamic memory and it happens to fit
-    ; entirely in RAM, we will probably run into problems below because we'll
-    ; end up setting vmap_max_entries to 0. I don't believe in practice this is
-    ; ever going to happen; if it does the loader might need to artificially
-    ; extend the game data with an extra never-used 512-byte block of
-    ; non-dynamic memory.
+    ; that RAM, set .ram_blocks = min(.ram_blocks, .game_blocks).
     ldx .game_blocks + 1
     lda .game_blocks
     cpx .ram_blocks + 1
@@ -566,9 +561,7 @@ screenkernal_init
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
     ; memory rounded up to a 512-byte boundary, i.e.
-    ; ACORN_INITIAL_NONSTORED_BLOCKS. Note that the initial vmap is set up on
-    ; the assumption that nonstored_blocks == ACORN_INITIAL_NONSTORED_BLOCKS, so
-    ; if we change nonstored_blocks we need to adjust the vmap to compensate.
+    ; ACORN_INITIAL_NONSTORED_BLOCKS.
     lda #ACORN_INITIAL_NONSTORED_BLOCKS
     sta nonstored_blocks
     ; SFTODONOW: DO THE SWR BIGDYNMEM STUFF VIA THIS NEW MECHANISM
@@ -694,6 +687,7 @@ SFTODOLABEL1
     bcs +
     dec .ram_blocks + 1
 +
+    ; SFTODO: REVIEW ALL THE FOLLOWING FRESH, ESP "NEW" SWR CASE
     ; It's important .ram_blocks >= vmem_block_pagecount now so that we will set
     ; vmap_max_entries >= 1 below. Conceptually it makes sense for
     ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
@@ -704,10 +698,10 @@ SFTODOLABEL1
     ; a) If we didn't set .ram_blocks = .game_blocks above, the build system and
     ;    loader guarantee means we now have .ram_blocks >= 2 *
     ;    vmem_block_pagecount. QED.
-    ; b) If we did set .ram_blocks = .game_blocks above, we assume that the
+    ; b) If we did set .ram_blocks = .game_blocks above, we know that the
     ;    game has at least one block of non-dynamic memory, so before the
     ;    subtraction we had .ram_blocks = .game_blocks >=
-    ;    ACORN_INITIAL_NONSTORED_BLOCKS + 1. QED.
+    ;    ACORN_INITIAL_NONSTORED_BLOCKS + vmem_block_pagecount. QED.
     ;
     ; On a turbo second processor, we may have adjusted nonstored_blocks. There are
     ; two cases:
@@ -717,9 +711,17 @@ SFTODOLABEL1
     ;    vmem_block_pagecount. QED.
     ; b) If we did set .ram_blocks = .game_blocks above, combine that with the
     ;    fact the adjustment to nonstored_blocks left nonstored_blocks <=
-    ;    .game_blocks - vmem_block_count. QED.
+    ;    .game_blocks - vmem_block_pagecount. QED.
     ;
-    ; SFTODO SWR BIGDYN CASE(S)
+    ; On a sideways RAM build, we may have adjusted nonstored_blocks. There are
+    ; two cases:
+    ; a) If we didn't set .ram_blocks = .game_blocks above, we either:
+    ;    1) set nonstored_blocks = ACORN_INITIAL_NONSTORED_BLOCKS; see the "not
+    ;       been adjusted" case above.
+    ;    2) set nonstored_blocks <= .ram_blocks - vmap_max_size *
+    ;       vmem_block_pagecount, so after the subtraction we have .ram_blocks
+    ;       >= vmap_max_size * vmem_block_pagecount. QED
+    ; b) exactly the same as for the turbo second processor
 }
 
 !ifndef ACORN_SWR {
@@ -916,14 +918,15 @@ SFTODOLABEL5
     bne .outer_loop
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-    ; We may have adjusted nonstored_blocks earlier; if so the vmap needs adjusting
-    ; to compensate. (It is just possible the adjustment had no effect, but this
-    ; code will be a no-op in that case.) As the vmap is now sorted by address
-    ; we just need to find the first entry which doesn't correspond to dynamic
-    ; memory and move everything down so that entry becomes the first entry in
-    ; the vmap. The space freed up at the end of the vmap by this move is filled
-    ; with dummy entries so those entries will be used first when the game needs
-    ; to load more blocks from disc.
+    ; The initial vmap created by the build system assumes nonstored_blocks ==
+    ; ACORN_INITIAL_NONSTORED_BLOCKS, so if we changed nonstored_blocks earlier
+    ; we need to adjust the vmap to compensate. If we didn't adjust it, this
+    ; code is a no-op. As the vmap is now sorted by address we just need to find
+    ; the first entry which doesn't correspond to dynamic memory and move
+    ; everything down so that entry becomes the first entry in the vmap. The
+    ; space freed up at the end of the vmap by this move is filled with dummy
+    ; entries so those entries will be used first when the game needs to load
+    ; more blocks from disc.
 SFTODOLABEL2
     ldx #255
 .find_first_non_promoted_entry_loop
@@ -952,8 +955,8 @@ SFTODOLABEL2
     ; address set it can never accidentally match a lookup. (We could use 0 in
     ; practice; that would never match a lookup because address 0 is guaranteed
     ; to be dynamic memory so we will never search the vmap for it. But it seems
-    ; a little clearer to use $0101; as SFTODO: I EXPECT this code needs to
-    ; execute on all machines we can't get a small saving by using stz here.)
+    ; a little clearer to use $0101, and this needs to execute on all machines
+    ; so we can't micro-optimise by using stz.)
     lda #1
     sta vmap_z_h,y
 +   sta vmap_z_l,y
