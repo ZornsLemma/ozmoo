@@ -484,6 +484,7 @@ screenkernal_init
     rol .ram_blocks + 1
     sta .ram_blocks
 .host_cache_initialised
+SFTODOLABELX1
 }
 
 !ifdef ACORN_TURBO_SUPPORTED {
@@ -1004,16 +1005,18 @@ SFTODOLABEL2
     cmp vmap_max_entries
     bne .turbo_load_loop
     sta vmap_used_entries
-.all_loading_done_indirect
     jmp .all_loading_done
+
 .normal_tube_load
 }
 
 !ifdef ACORN_TUBE_CACHE {
+; SFTODO: These labels should probably start with a "."
 inflated_vmap_max_entries = zp_temp
 from_index = zp_temp + 1
 to_index = vmap_index
 load_scratch_space = flat_ramtop - vmem_blocksize
+SFTODOLABELX2
 
     ; vmap_max_entries was deliberately artificially high up to this point so
     ; we'd retain and sort more of the initial vmap; set it to the correct value
@@ -1043,6 +1046,19 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     lsr
     sta vmap_max_entries
     sta vmap_used_entries
+    ; Adjust .host_cache_size so the following load loop won't try to put "too
+    ; much" into the host cache; if this happens we might not have enough blocks
+    ; to load into the local virtual memory cache and so some vmap entries would
+    ; be present but not have actually been loaded. (This can happen because the
+    ; cutover timestamp isn't that precise due to limited timestamp resolution,
+    ; especially for Z4+ games.) Note that this doesn't actually stop us using
+    ; more of the host cache; we will offer it blocks willy-nilly during play
+    ; and if it has space it will hold onto them.
+SFTODOLABELX3
+    lda inflated_vmap_max_entries
+    sec
+    sbc vmap_max_entries
+    sta .host_cache_size
 
     ; We now need to load the inflated_vmap_max_entries blocks in the vmap from
     ; disk; vmap_max_entries blocks will go into our local memory as normal, the
@@ -1099,9 +1115,6 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     inc to_index
 .continue
     inc from_index
-    lda from_index
-    cmp inflated_vmap_max_entries
-    beq .all_loading_done
     lda to_index
     cmp vmap_max_entries
     bne .first_load_loop
@@ -1112,7 +1125,7 @@ load_scratch_space = flat_ramtop - vmem_blocksize
     ; luxury of (easily) putting the blocks with older timestamps into the host
     ; cache and keeping the younger ones in local memory, but if we chose the
     ; cutover timestamp correctly we should end up with at most one misplaced
-    ; block in each cache. The misplaced block in the host cache will be the
+    ; block in each cache. SFTODO: I'M NOT SURE IT'S AS PRECISE AS ONE MISPLACED BLOCK, DUE TO LACK OF TIMESTAMP RESOLUTION - IT MAY BE ONE MISPLACED *TIMESTAMP*. IT ISN'T THAT BIG A DEAL, BUT THINK ABOUT THIS AND UPDATE THIS COMMENT. The misplaced block in the host cache will be the
     ; newest block in the host cache so it will spend a long time in there
     ; before being discarded, which should give plenty of opportunity for it to
     ; be requested during gameplay and moved into local memory before it's lost.
