@@ -1021,7 +1021,7 @@ def make_tube_executables():
     leafname = "OZMOO2P"
     tube_args = ozmoo_base_args
     if not cmd_args.no_turbo:
-        tube_args += ["-DACORN_TURBO=1"]
+        tube_args += ["-DACORN_TURBO_SUPPORTED=1"]
     if not cmd_args.force_6502:
         tube_args += ["-DCMOS=1"]
     tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)

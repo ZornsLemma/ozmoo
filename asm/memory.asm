@@ -150,7 +150,7 @@ get_page_at_z_pc_did_pha
 }
     sty z_pc_mempointer_ram_bank
 } else {
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
 	; This isn't necessary on a normal second processor, but it's harmless and
 	; it's only one cycle slower to just do it instead of checking the second
 	; processor type before doing it.

@@ -157,7 +157,7 @@ vmap_max_size = 102
 } else {
 !ifndef ACORN_SWR {
 !ifndef ACORN_TUBE_CACHE {
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
 ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
 vmap_max_size = 255
 ACORN_LARGE_RUNTIME_VMAP = 1
@@ -170,7 +170,7 @@ vmap_max_size = 88
 } else {
 ; The host cache is initialised using "extra" entries in the vmap.
 vmap_max_size = 255
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
 ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
 ACORN_LARGE_RUNTIME_VMAP = 1
 } else {
@@ -230,7 +230,7 @@ vmem_oldest_index	!byte 0
 vmem_swap_count !byte 0,0
 }
 
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
 !macro acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c {
     ; If we're running on a normal second processor, carry will be clear and we
     ; need to do "adc vmap_first_ram_page". Note that we can't treat this as a
@@ -413,7 +413,7 @@ print_vm_map
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
     bpl +
     pha
@@ -465,7 +465,7 @@ load_blocks_from_index
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifndef ACORN_TURBO {
+!ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
 	adc vmap_first_ram_page
 } else {
@@ -478,7 +478,7 @@ load_blocks_from_index
     ; evict from our cache, and ask it if it has the block we want before we
     ; go to disk for it.
     sta osword_cache_data_ptr + 1
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; If we're on a normal second processor this is redundant but harmless, and
     ; it's only one cycle slower to just do it rather than check if we need to
     ; do it first.
@@ -525,7 +525,7 @@ load_blocks_from_index
     lda #0
     sta readblocks_mempos
 	sty readblocks_mempos + 1
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; If we're on a normal second processor this is redundant but harmless, and
     ; it's only one cycle slower to just do it rather than check if we need to
     ; do it first.
@@ -665,7 +665,7 @@ read_byte_at_z_address
     sta zp_pc_l
 	adc #>story_start
 	sta mempointer + 1
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; We need to ensure bank 0 is accessed for dynamic memory on a turbo second
     ; processor. This isn't necessary on an ordinary second processor, but it's
     ; harmless and it's faster to just do it rather than check if it's
@@ -871,7 +871,7 @@ read_byte_at_z_address
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifndef ACORN_TURBO {
+!ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
 	adc vmap_first_ram_page
 } else {
@@ -917,7 +917,7 @@ read_byte_at_z_address
     ; VM block as it's moderately involved.
 !ifndef ACORN_SWR {
 	jsr dollar
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
     bpl +
     lda mempointer_turbo_bank
@@ -1033,7 +1033,7 @@ read_byte_at_z_address
 !ifndef SMALLBLOCK {
 	asl
 }
-!ifndef ACORN_TURBO {
+!ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
 	adc vmap_first_ram_page
 } else {

@@ -209,7 +209,7 @@ cant_open_data_error
     sta osgbpb_block_data_address + 0
     lda readblocks_mempos + 1
     sta osgbpb_block_data_address + 1
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     lda readblocks_mempos + 2
     sta osgbpb_block_data_address + 2
 }
@@ -286,7 +286,7 @@ readblocks_mempos
 } else { ; ACORN_ADFS
 readblocks_mempos
     !word 0
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     !byte 0
 }
 }
@@ -592,7 +592,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     sta readblocks_mempos + 2
 }
     lda #1
@@ -815,7 +815,7 @@ save_game
     lda #$ff
     sta zp_pc_h
 }
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
     ; outdated value in mempointer_turbo_bank.
     lda #$ff

@@ -10,7 +10,7 @@
 ; The second processor build (ifndef ACORN_SWR) has a simple flat memory model
 ; with user RAM from $0400-$f7ff inclusive. It's rather like the C64 but without
 ; even the complication of paging the kernal ROM in and out, so it doesn't need
-; the cache which the C64 code uses when ALLMEM is defined. SFTODO: SAY SOMETHING ABOUT ACORN_TURBO
+; the cache which the C64 code uses when ALLMEM is defined. SFTODO: SAY SOMETHING ABOUT ACORN_TURBO_SUPPORTED
 ;
 ; The sideways RAM build (ifdef ACORN_SWR) is a bit more involved. The hardware
 ; situation here is that we have main RAM (not paged) from $0000-$7fff
@@ -243,8 +243,7 @@ deletable_init_start
     sta initial_jmp + 2
 }
 
-; SFTODO: Rename "ACORN_TURBO" to "ACORN_TURBO_SUPPORT(ED)"?
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; This executable doesn't have a ROM header indicating we want the turbo
     ; mode enabled, so it will have been disabled when were were executed. Turn
     ; it back on if we do want it.
@@ -303,7 +302,7 @@ screenkernal_init
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
     sta readblocks_mempos ; .catalogue is page-aligned
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; In reality this is redundant but let's play it safe.
     sta readblocks_mempos + 2
 }
@@ -471,7 +470,7 @@ screenkernal_init
     lda #osbyte_initialise_cache
     jsr osbyte
     stx .host_cache_size
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; A turbo second processor has enough RAM to preload everything in vmap
     ; without touching the host cache. The host cache will still work, but we
     ; don't have anything to preload into it, so having initialised it there's
@@ -487,7 +486,7 @@ screenkernal_init
 .host_cache_initialised
 }
 
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
     ; virtual memory cache.
     bit is_turbo
@@ -567,7 +566,7 @@ screenkernal_init
     ; SFTODONOW: DO THE SWR BIGDYNMEM STUFF VIA THIS NEW MECHANISM
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; On a turbo second processor, we can increase nonstored_blocks to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
@@ -780,7 +779,7 @@ SFTODOLABEL5
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
     sta readblocks_mempos ; story_start is page-aligned
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     ; On a turbo second processor readblocks_mempos + 2 is significant and will
     ; vary; it's probably still zero at this point but play it safe. On a normal
     ; second processor readblocks_mempos + 2 will always be 0 so this is
@@ -987,7 +986,7 @@ SFTODOLABEL2
     ; memory and initialise vmap_used_entries. (This roughly corresponds to the
     ; C64 load_suggested_pages subroutine.)
 
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
     bpl .normal_tube_load
     ; On a turbo second processor we don't do any preloading of the host cache

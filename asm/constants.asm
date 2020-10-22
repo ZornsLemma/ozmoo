@@ -376,7 +376,7 @@ use_hw_scroll = $40d ; !byte 0
 !ifdef ACORN_ELECTRON_SWR {
 screen_ram_start_minus_1 = $40e ; !byte 0
 } else {
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
 is_turbo = $40e ; !byte 0 SFTODO: RENAME turbo_flag?
 }
 }
@@ -404,7 +404,7 @@ game_data_filename_or_restart_command = $42f
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
-!ifdef ACORN_TURBO {
+!ifdef ACORN_TURBO_SUPPORTED {
 turbo_control = $fef0
 turbo_bank_base = $301
 mempointer_turbo_bank = turbo_bank_base + mempointer
