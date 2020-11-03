@@ -464,6 +464,8 @@ show_more_prompt
     ; SF: ENHANCEMENT: I'm not sure it's a good idea, but I *could* turn the
     ; cursor on and fiddle with the CRTC registers to give it a flashing block
     ; appearance at the bottom right position as a kind of "more" prompt.
+    ; SFTODO: Should we also allow RETURN to scroll? And/or SPACE? And/or any
+    ; key?
 -   lda #osbyte_reflect_keyboard_status
     jsr osbyte
     lda #osbyte_read_key
