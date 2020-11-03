@@ -350,6 +350,7 @@ REM The odd indentation on the next few lines is so a) it's easy to see all the
 REM different possible output lines have the same length and will completely
 REM obliterate each other b) the build script will strip off the extra
 REM indentation as it's at the start of the line.
+                                PRINT CHR$normal_fg;"  SHIFT:  show next page of text"
 !ifdef MODE_7_STATUS {
          IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-F: change status line colour"
 }
