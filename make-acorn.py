@@ -1214,6 +1214,9 @@ def parse_args():
     parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
     parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
     parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+    parser.add_argument("--default-fg-colour", metavar="N", type=int, help="set the default foreground colour (0-7) for modes 0-6")
+    parser.add_argument("--default-bg-colour", metavar="N", type=int, help="set the default background colour (0-7) for modes 0-6")
+    parser.add_argument("--default-mode-7-status-colour", metavar="N", type=int, help="set the default colour (0-7) for the mode 7 status line")
     parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
     parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
     parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
@@ -1263,6 +1266,14 @@ def parse_args():
         die("--force-65c02 and --force-6502 are incompatible")
     if cmd_args.preload_opt and cmd_args.preload_config:
         die("--preload-opt and --preload-config are incompatible")
+
+    def validate_colour(i, d):
+        if i is not None and (i < 0 or i > 7):
+            die("Invalid colour number %d; must be in the range 0-7" % i)
+        return d if i is None else i
+    cmd_args.default_fg_colour = validate_colour(cmd_args.default_fg_colour, 7)
+    cmd_args.default_bg_colour = validate_colour(cmd_args.default_bg_colour, 4)
+    cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6)
 
     if cmd_args.force_6502:
         # The CMOS instructions are useful in a second processor build which
@@ -1435,6 +1446,9 @@ def make_disc_image():
     # SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
     loader_symbols = {
         "default_mode": basic_int(cmd_args.default_mode),
+        "DEFAULT_FG_COLOUR": basic_int(cmd_args.default_fg_colour),
+        "DEFAULT_BG_COLOUR": basic_int(cmd_args.default_bg_colour),
+        "DEFAULT_M7_STATUS_COLOUR": basic_int(cmd_args.default_mode_7_status_colour)
     }
     for executable_group in ozmoo_variants:
         for e in executable_group:

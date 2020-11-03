@@ -46,7 +46,7 @@ screen_mode=${screen_mode}
 
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
-?fg_colour=7:?bg_colour=4
+?fg_colour=${DEFAULT_FG_COLOUR}:?bg_colour=${DEFAULT_BG_COLOUR}
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 DIM block% 256
 IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
@@ -81,7 +81,7 @@ mode_keys_vpos=VPOS:PROCshow_mode_keys
 IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
-IF ?screen_mode=7 THEN ?fg_colour=6
+IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
 PRINTTAB(0,space_y);CHR$normal_fg;"Loading, please wait...                ";
 !ifdef CACHE2P_BINARY {
 IF tube THEN */${CACHE2P_BINARY}
