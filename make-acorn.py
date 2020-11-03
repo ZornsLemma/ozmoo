@@ -1273,6 +1273,7 @@ def parse_args():
         return d if i is None else i
     cmd_args.default_fg_colour = validate_colour(cmd_args.default_fg_colour, 7)
     cmd_args.default_bg_colour = validate_colour(cmd_args.default_bg_colour, 4)
+    # SFTODO: We shouldn't allow colour 0 here
     cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6)
 
     if cmd_args.force_6502:
