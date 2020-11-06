@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 
+# TODO: Should this script always refer to the "temp" directory in the same directory as itself? at the moment if you were to run make-acorn.py from some random directory I think you'd end up with a temp directory there. I just tried it and it actually fails because it can't find "asm", but again, should that be accessed using the same path as make-acorn.py?
+
 
 def die(s):
     show_deferred_output()
@@ -1568,6 +1570,9 @@ bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
 min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
+
+if not os.path.exists("temp"):
+    os.makedirs("temp")
 
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
