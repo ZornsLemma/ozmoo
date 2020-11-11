@@ -1058,9 +1058,17 @@ def make_boot():
     boot = [
         '*BASIC',
         '*DIR $',
-        'MODE 135',
-        'CHAIN "LOADER"',
+        '*FX21'
     ]
+    if cmd_args.splash_image:
+        boot += [
+            'CLOSE #0:CHAIN "PRELOAD"'
+        ]
+    else:
+        boot += [
+            'MODE 135',
+            'CLOSE #0:CHAIN "LOADER"',
+        ]
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 
 
@@ -1116,13 +1124,11 @@ def crunch_line(line, crunched_symbols):
     return result
 
 
-def make_text_loader(symbols):
+def make_text_basic(template, symbols):
     # This isn't all that user-friendly and it makes some assumptions about what
     # the BASIC code will look like. I think this is OK, as it's not a general
     # tool - it's specifically designed to work with the Ozmoo loader.
-    symbols.update({k: basic_string(v) for k, v in common_labels.items()})
-    symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
-    with open("templates/loader.bas", "r") as f:
+    with open(template, "r") as f:
         if_results = []
         loader = []
         crunched_symbols = {}
@@ -1164,28 +1170,88 @@ def make_text_loader(symbols):
     return "\n".join(loader) + "\n"
 
 
-def make_tokenised_loader(loader_symbols):
-    loader_bas = os.path.join("temp", "loader.bas")
-    with open(loader_bas, "w") as f:
-        f.write(make_text_loader(loader_symbols))
-    loader_beebasm = os.path.join("temp", "loader.beebasm")
-    loader_ssd = os.path.join("temp", "loader.ssd")
-    with open(loader_beebasm, "w") as f:
-        f.write('putbasic "%s", "LOADER"\n' % loader_bas)
+def make_tokenised_basic(name, text_basic):
+    filename_text = os.path.join("temp", "%s.bas" % name)
+    with open(filename_text, "w") as f:
+        f.write(text_basic)
+    filename_beebasm = os.path.join("temp", "%s.beebasm" % name)
+    filename_ssd = os.path.join("temp", "%s.ssd" % name)
+    with open(filename_beebasm, "w") as f:
+        f.write('putbasic "%s", "%s"\n' % (filename_text, name.upper()))
     run_and_check([
         "beebasm",
-        "-i", loader_beebasm,
-        "-do", loader_ssd
+        "-i", filename_beebasm,
+        "-do", filename_ssd
     ], lambda x: b"no SAVE command" not in x)
     # Since it's the only file on the .ssd, we can get the tokenised BASIC
     # simply by chopping off the first two sectors. We peek the length out
     # of one of those sectors first.
-    with open(loader_ssd, "rb") as f:
-        tokenised_loader = bytearray(f.read())
-        length = ((((tokenised_loader[0x10e] >> 4) & 0x3) << 16) |
-                  (tokenised_loader[0x10d] << 8) | tokenised_loader[0x10c])
-        tokenised_loader = tokenised_loader[512:512+length]
-    return File("LOADER", host | 0x1900, host | 0x8023, tokenised_loader)
+    with open(filename_ssd, "rb") as f:
+        tokenised_basic = bytearray(f.read())
+        length = ((((tokenised_basic[0x10e] >> 4) & 0x3) << 16) |
+                  (tokenised_basic[0x10d] << 8) | tokenised_basic[0x10c])
+        tokenised_basic = tokenised_basic[512:512+length]
+    return File(name.upper(), host | 0x1900, host | 0x8023, tokenised_basic)
+
+
+def make_tokenised_loader(symbols):
+    # TODO: Maybe some/all of the population of symbols should be moved into this function?
+    if cmd_args.splash_image is not None:
+        symbols["SPLASH"] = "1"
+    symbols.update({k: basic_string(v) for k, v in common_labels.items()})
+    symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
+    loader_text_basic = make_text_basic("templates/loader.bas", symbols)
+    return make_tokenised_basic("loader", loader_text_basic)
+
+
+def splash_screen_address():
+    return {
+        0: 0x3000,
+        1: 0x3000,
+        2: 0x3000,
+        3: 0x4000,
+        4: 0x5800,
+        5: 0x5800,
+        6: 0x6000,
+        7: 0x7000}[cmd_args.splash_mode]
+
+
+def splash_mode_colours():
+    return {
+       0: 2,
+       1: 4,
+       2: 16,
+       3: 2,
+       4: 2,
+       5: 4,
+       6: 2,
+       7: 2}[cmd_args.splash_mode]
+
+
+def make_tokenised_preloader(loader):
+    symbols = {
+        "splash_mode": basic_string(cmd_args.splash_mode),
+        "splash_max_colour": basic_string(splash_mode_colours() - 1),
+        "loader_size": basic_string(len(loader.binary()))
+    }
+    if cmd_args.splash_wait != 0:
+        symbols["splash_wait"] = basic_string(cmd_args.splash_wait * 100)
+    preloader_text_basic = make_text_basic("templates/preloader.bas", symbols)
+    return make_tokenised_basic("preload", preloader_text_basic)
+
+
+# TODO: Support for compressing the splash screen on disc would be nice. We probably want
+# a light compression which is fast to load but will handle simple dithering, to (perhaps)
+# speed up the load time compared to loading an uncompressed dump and to save space on the
+# disc for game data.
+def make_splash_image_file():
+    load_address = splash_screen_address()
+    with open(cmd_args.splash_image, "rb") as f:
+        screen_data = f.read()
+    if load_address + len(screen_data) > 0x8000:
+        die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
+    load_address |= 0xffff0000
+    return File("SPLASH", load_address, load_address, screen_data)
 
 
 def title_from_filename(filename, remove_the_if_longer_than):
@@ -1219,6 +1285,10 @@ def parse_args():
     parser.add_argument("--default-fg-colour", metavar="N", type=int, help="set the default foreground colour (0-7) for modes 0-6")
     parser.add_argument("--default-bg-colour", metavar="N", type=int, help="set the default background colour (0-7) for modes 0-6")
     parser.add_argument("--default-mode-7-status-colour", metavar="N", type=int, help="set the default colour (0-7) for the mode 7 status line")
+    parser.add_argument("--splash-image", metavar="SCREENFILE", type=str, help="use screen dump SCREENFILE as a splash screen")
+    parser.add_argument("--splash-mode", metavar="N", type=int, help="use mode N for the splash screen")
+    parser.add_argument("--splash-wait", metavar="N", type=int, help="show the splash screen for N seconds (0 means 'wait for any key')")
+    # TODO: It would be good to allow a custom palette to be specified for the splash screen, probably as a comma-separated list of colour numbers in physical colour order.
     parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
     parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
     parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
@@ -1268,6 +1338,9 @@ def parse_args():
         die("--force-65c02 and --force-6502 are incompatible")
     if cmd_args.preload_opt and cmd_args.preload_config:
         die("--preload-opt and --preload-config are incompatible")
+    if cmd_args.splash_image or cmd_args.splash_mode:
+        if not (cmd_args.splash_image and cmd_args.splash_mode):
+            die("--splash-image and --splash-mode must both be specified")
 
     def validate_colour(i, d):
         if i is not None and (i < 0 or i > 7):
@@ -1277,6 +1350,11 @@ def parse_args():
     cmd_args.default_bg_colour = validate_colour(cmd_args.default_bg_colour, 4)
     # SFTODO: We shouldn't allow colour 0 here
     cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6)
+
+    cmd_args.splash_wait = 10 if cmd_args.splash_wait is None else cmd_args.splash_wait
+    if cmd_args.splash_mode is not None:
+        if cmd_args.splash_mode < 0 or cmd_args.splash_mode > 7:
+            die("Invalid splash screen mode specified")
 
     if cmd_args.force_6502:
         # The CMOS instructions are useful in a second processor build which
@@ -1466,7 +1544,11 @@ def make_disc_image():
         loader_symbols["AUTO_START"] = 1
     loader_screen.add_loader_symbols(loader_symbols)
 
-    disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
+    disc_contents = [boot_file]
+    loader = make_tokenised_loader(loader_symbols)
+    if cmd_args.splash_image:
+        disc_contents += [make_tokenised_preloader(loader), make_splash_image_file()]
+    disc_contents += [loader, findswr_executable]
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
         disc2_contents = []
@@ -1479,8 +1561,9 @@ def make_disc_image():
         for f in disc2_contents:
             f.surface = 2
             f.add_loader_symbols(loader_symbols)
-        assert disc_contents[1].leafname == "LOADER"
-        disc_contents[1] = make_tokenised_loader(loader_symbols)
+        for i in range(len(disc_contents)):
+            if disc_contents[i].leafname == "LOADER":
+                disc_contents[i] = make_tokenised_loader(loader_symbols)
 
     # SFTODO: This is a bit of a hack, may well be able to simplify/improve
     if not cmd_args.adfs:

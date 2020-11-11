@@ -27,13 +27,20 @@ REM *not* the top half of some double-height text.)
 *FX4,1
 ON ERROR PROCerror
 
+A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
+!ifndef SPLASH {
 REM On an Integra-B, we may have problems selecting shadow mode from this
 REM large program which may be using memory above &3000 if we're currently
 REM in a non-shadow mode. Normally !BOOT selects a shadow mode to avoid
 REM this problem, but we do this as a fallback (e.g. if we've been copied
 REM to a hard drive and our !BOOT isn't in use any more).
-A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
 IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
+} else {
+REM If we have a splash screen, the preloader has taken care of these issues.
+REM We might be very tight for memory though; if we are, change to mode 135
+REM early.
+IF HIMEM-TOP<512 THEN MODE 135:VDU 23,1,0;0;0;0;
+}
 
 REM In a few places in the loader (not the Ozmoo binary) we assume printing at
 REM the bottom right of the screen will cause a scroll. Override any "No Scroll"
@@ -43,21 +50,24 @@ VDU 23,16,0,254,0;0;0;
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
+DIM block% 256
+
+REM Do the hardware detection (which is slightly slow, especially the sideways RAM
+REM detection as that requires running a separate executable) before we change
+REM screen mode; this way if there's a splash screen it's visible during this delay.
+PROCdetect_swr
+shadow=potential_himem=&8000
+tube=PAGE<&E00
+IF tube THEN PROCdetect_turbo
 
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=${DEFAULT_FG_COLOUR}:?bg_colour=${DEFAULT_BG_COLOUR}
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
-DIM block% 256
 IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
 
 normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
 IF electron THEN normal_fg=0:header_fg=0:electron_space=32
-
-shadow=potential_himem=&8000
-tube=PAGE<&E00
-IF tube THEN PROCdetect_turbo
-PROCdetect_swr
 
 REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
 REM second processor and the game fits entirely in RAM or the host cache isn't
