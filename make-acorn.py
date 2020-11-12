@@ -1232,6 +1232,7 @@ def make_tokenised_preloader(loader):
     symbols = {
         "splash_mode": basic_string(cmd_args.splash_mode),
         "splash_max_colour": basic_string(splash_mode_colours() - 1),
+        "splash_screen_address": basic_string(splash_screen_address()),
         "loader_size": basic_string(len(loader.binary()))
     }
     if cmd_args.splash_wait != 0:
