@@ -29,11 +29,13 @@ ON ERROR PROCerror
 
 A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
 !ifndef SPLASH {
-REM On an Integra-B, we may have problems selecting shadow mode from this
-REM large program which may be using memory above &3000 if we're currently
-REM in a non-shadow mode. Normally !BOOT selects a shadow mode to avoid
-REM this problem, but we do this as a fallback (e.g. if we've been copied
-REM to a hard drive and our !BOOT isn't in use any more).
+REM With third-party shadow RAM on an Electron or BBC B, we *may* experience
+REM corruption of memory from &3000 upwards when changing between shadow and
+REM non-shadow modes. Normally !BOOT selects a shadow mode to avoid this
+REM problem, but as a fallback (e.g. if we've been copied to a hard drive and
+REM our !BOOT isn't in use any more) we re-execute ourself after switching to
+REM shadow mode if we're not already in a shadow mode. This line of the program
+REM will almost certainly be below &3000 so won't be corrupted by the switch.
 IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 } else {
 REM If we have a splash screen, the preloader has taken care of these issues.
