@@ -1,7 +1,6 @@
 !source "acorn-constants.asm"
 osbyte_read_top_of_user_memory = $84
 mrb_read_write = $fbfd
-mrb_mode = $27f
 
 BACKWARD_DECOMPRESS = 1
 
@@ -15,30 +14,15 @@ BACKWARD_DECOMPRESS = 1
     sta LZSA_SRC_HI
     jsr decompress
 
-    ; If we're on an Electron with a Master RAM board in shadow mode we need to
-    ; copy the decompressed image into video RAM. See preloader.bas for more on
-    ; this.
-
-    ; TODO: Do we actually need to check all this? preloader.bas checks for "no
-    ; shadow, or Electron MRB shadow" before executing this code, so it would
-    ; probably be enough to just check if we're in a shadow mode and not faff
-    ; checking for Electron or MRB shadow mode.
-    ; Are we on an Electron?
-    lda #osbyte_read_host
-    ldx #1
-    jsr osbyte
-    txa
-    bne just_rts
-    ; We're on an Electron. Are we in a shadow mode?
+    ; If we're in a shadow mode, we know we're on an Electron with a Master RAM
+    ; board in shadow mode. (We know this because this is the only case where
+    ; preloader.bas will call this code if we're in a shadow mode.)
     lda #osbyte_read_top_of_user_memory
     jsr osbyte
     tya
     bpl just_rts
-    ; We're in a shadow mode. Is this MRB shadow mode?
-    lda mrb_mode
-    cmp #$80
-    bne just_rts
-    ; Yes, it's MRB shadow mode, so copy the decompressed data.
+    ; We are in a shadow mode, so use the MRB OS to copy the decompressed data
+    ; into video RAM.
 ptr = $70
     lda #<SPLASH_SCREEN_ADDRESS
     sta ptr
