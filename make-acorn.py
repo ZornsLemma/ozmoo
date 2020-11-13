@@ -1258,7 +1258,19 @@ def make_splash_executable():
         die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
     test_executable("lzsa")
     compressed_data_filename = os.path.join("temp", "splash.lzsa2")
-    run_and_check(["lzsa", "-f", "2", "-r", "-b", "--prefer-ratio", cmd_args.splash_image, compressed_data_filename])
+    def lzsa_filter(line):
+        if line.startswith(b"Safe distance:"):
+            i = line.index(b":")
+            global safe_distance
+            safe_distance = int(line[i+1:].split(b"(")[0])
+        return True
+    run_and_check(["lzsa", "-v", "-f", "2", "-r", "-b", "--prefer-ratio", cmd_args.splash_image, compressed_data_filename], output_filter=lzsa_filter)
+    # It's awkward to determine the actual size of the splash machine code at
+    # build time, but this is a fairly decent conservative approximation. At the
+    # moment the splash machine code is 333 bytes.
+    splash_code_size = 512
+    global splash_start_addr
+    splash_start_addr = 0x8000 - os.path.getsize(compressed_data_filename) - safe_distance - splash_code_size
     return Executable("acorn-splash.asm", "SPLASH", None, splash_start_addr, ["-DSPLASH_SCREEN_ADDRESS=0x%x" % splash_screen_address()])
 
 
@@ -1569,7 +1581,8 @@ def make_disc_image():
     disc_contents = [boot_file]
     loader = make_tokenised_loader(loader_symbols)
     if cmd_args.splash_image:
-        disc_contents += [make_tokenised_preloader(loader), make_splash_executable()]
+        splash_executable = make_splash_executable()
+        disc_contents += [make_tokenised_preloader(loader), splash_executable]
     disc_contents += [loader, findswr_executable]
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
@@ -1710,7 +1723,6 @@ if cmd_args.page is not None:
     bbc_swr_start_addr_low = cmd_args.page
     electron_swr_start_addr = cmd_args.page
     small_dynmem_page_threshold = cmd_args.page
-splash_start_addr = 0x2500
 
 
 common_labels = {}
