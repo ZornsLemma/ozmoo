@@ -19,6 +19,10 @@ BACKWARD_DECOMPRESS = 1
     ; copy the decompressed image into video RAM. See preloader.bas for more on
     ; this.
 
+    ; TODO: Do we actually need to check all this? preloader.bas checks for "no
+    ; shadow, or Electron MRB shadow" before executing this code, so it would
+    ; probably be enough to just check if we're in a shadow mode and not faff
+    ; checking for Electron or MRB shadow mode.
     ; Are we on an Electron?
     lda #osbyte_read_host
     ldx #1
