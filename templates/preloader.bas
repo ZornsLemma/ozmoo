@@ -7,17 +7,17 @@ MODE ${splash_mode}:VDU 23,1,0;0;0;0;
 *FX229,1
 *FX4,1
 
+tube=PAGE<&E00
+host_os=FNusr_osbyte_x(0,1,0)
+
 REM Lower HIMEM to avoid the SPLASH executable corrupting anything. This is
 REM unnecessary but harmless if we're running on a second processor; the
 REM SPLASH executable runs on the host.
 true_himem=HIMEM:HIMEM=(TOP+512) AND &FF00
 
 REM If running the SPLASH executable is going to trample on things, don't!
-tube=PAGE<&E00
 IF NOT tube AND HIMEM>=${splash_start_address} THEN GOTO 2000
 IF tube AND FNusr_osbyte_x(&B3,0,&FF)*256+&600>=${splash_start_address} THEN GOTO 2000
-
-host_os=FNusr_osbyte_x(0,1,0)
 
 REM We didn't request a shadow mode when we changed mode above, but some
 REM systems may force it on (e.g. a BBC machine where the user has done
