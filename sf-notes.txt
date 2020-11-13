@@ -1,3 +1,8 @@
+On b-em, a B with DFS 2.26 and drive noises on takes 3.02 seconds to load a 20K mode 2 splash screen.
+lzsa1 compresses that down to 12.3K, which might cut the load time down to 1.86 seconds (spurious precision). If we can decompress 17600 bytes per second we will break even in terms of user experience. That's 352 bytes per frame. Obviously faster is better, but looking at https://github.com/emmanuel-marty/lzsa (and bearing in mind I don't know platform the graph is from - a spectrum?), that suggests exomiser is a bit slower than ideal (but the faster variants would probably just about break even) - that fits with my intuition from the mode 1 NuLA slideshow stuff I did, where exomiser did seem to slow things down but was worth it as getting more images on the disc was a big win. Since saving disc space is useful here, I can probably afford to go up to lzsa2 compression, unless the decompression code is much bulkier.
+
+
+
 M128+normal 2P, --no-turbo $0029ff
 M128+normal 2P, (turbo supported but not in use of course) $002a2b
 

@@ -1232,7 +1232,7 @@ def make_tokenised_preloader(loader):
     symbols = {
         "splash_mode": basic_string(cmd_args.splash_mode),
         "splash_max_colour": basic_string(splash_mode_colours() - 1),
-        "splash_screen_address": basic_string(splash_screen_address()),
+        "splash_start_address": basic_string(splash_start_addr),
         "loader_size": basic_string(len(loader.binary()))
     }
     if cmd_args.splash_wait != 0:
@@ -1245,14 +1245,13 @@ def make_tokenised_preloader(loader):
 # a light compression which is fast to load but will handle simple dithering, to (perhaps)
 # speed up the load time compared to loading an uncompressed dump and to save space on the
 # disc for game data.
-def make_splash_image_file():
-    load_address = splash_screen_address()
-    with open(cmd_args.splash_image, "rb") as f:
-        screen_data = f.read()
-    if load_address + len(screen_data) > 0x8000:
+def make_splash_executable():
+    if splash_screen_address() + os.path.getsize(cmd_args.splash_image) > 0x8000:
         die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
-    load_address |= 0xffff0000
-    return File("SPLASH", load_address, load_address, screen_data)
+    test_executable("lzsa")
+    compressed_data_filename = os.path.join("temp", "splash.lzsa2")
+    run_and_check(["lzsa", "-f", "2", "-r", "-b", "--prefer-ratio", cmd_args.splash_image, compressed_data_filename])
+    return Executable("acorn-splash.asm", "SPLASH", None, splash_start_addr, ["-DSPLASH_SCREEN_ADDRESS=0x%x" % splash_screen_address()])
 
 
 def title_from_filename(filename, remove_the_if_longer_than):
@@ -1548,7 +1547,7 @@ def make_disc_image():
     disc_contents = [boot_file]
     loader = make_tokenised_loader(loader_symbols)
     if cmd_args.splash_image:
-        disc_contents += [make_tokenised_preloader(loader), make_splash_image_file()]
+        disc_contents += [make_tokenised_preloader(loader), make_splash_executable()]
     disc_contents += [loader, findswr_executable]
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
@@ -1689,6 +1688,7 @@ if cmd_args.page is not None:
     bbc_swr_start_addr_low = cmd_args.page
     electron_swr_start_addr = cmd_args.page
     small_dynmem_page_threshold = cmd_args.page
+splash_start_addr = 0x2500
 
 
 common_labels = {}
