@@ -28,9 +28,9 @@ IF host_os<>0 THEN GOTO 2000
 A%=&EF:X%=0:Y%=&FF:shadow_state=(USR&FFF4 AND &FF00) DIV &100
 IF shadow_state<>&80 THEN GOTO 2000
 
-1000FOR C%=0 TO ${splash_max_colour}:VDU 19,C%,0;0;:NEXT
+1000FOR colour=0 TO ${splash_max_colour}:VDU 19,colour,0;0;:NEXT
 */SPLASH
-VDU 20
+${set_splash_palette}
 *FX21
 !ifdef splash_wait {
 K%=INKEY(${splash_wait})

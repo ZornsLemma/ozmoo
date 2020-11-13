@@ -1216,7 +1216,7 @@ def splash_screen_address():
         7: 0x7000}[cmd_args.splash_mode]
 
 
-def splash_mode_colours():
+def mode_colours(mode):
     return {
        0: 2,
        1: 4,
@@ -1225,7 +1225,11 @@ def splash_mode_colours():
        4: 2,
        5: 4,
        6: 2,
-       7: 2}[cmd_args.splash_mode]
+       7: 2}[mode]
+
+
+def splash_mode_colours():
+    return mode_colours(cmd_args.splash_mode)
 
 
 def make_tokenised_preloader(loader):
@@ -1237,6 +1241,10 @@ def make_tokenised_preloader(loader):
     }
     if cmd_args.splash_wait != 0:
         symbols["splash_wait"] = basic_string(cmd_args.splash_wait * 100)
+    if cmd_args.splash_palette is None:
+        symbols["set_splash_palette"] = "VDU 20"
+    else:
+        symbols["set_splash_palette"] = "VDU " + "".join("19,%d,%d;0;" % (i, j) for i, j in enumerate(cmd_args.splash_palette))
     preloader_text_basic = make_text_basic("templates/preloader.bas", symbols)
     return make_tokenised_basic("preload", preloader_text_basic)
 
@@ -1287,6 +1295,7 @@ def parse_args():
     parser.add_argument("--default-mode-7-status-colour", metavar="N", type=int, help="set the default colour (0-7) for the mode 7 status line")
     parser.add_argument("--splash-image", metavar="SCREENFILE", type=str, help="use screen dump SCREENFILE as a splash screen")
     parser.add_argument("--splash-mode", metavar="N", type=int, help="use mode N for the splash screen")
+    parser.add_argument("--splash-palette", metavar="N,N,...", type=str, help="set physical colours for splash screen")
     parser.add_argument("--splash-wait", metavar="N", type=int, help="show the splash screen for N seconds (0 means 'wait for any key')")
     # TODO: It would be good to allow a custom palette to be specified for the splash screen, probably as a comma-separated list of colour numbers in physical colour order.
     parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
@@ -1338,23 +1347,36 @@ def parse_args():
         die("--force-65c02 and --force-6502 are incompatible")
     if cmd_args.preload_opt and cmd_args.preload_config:
         die("--preload-opt and --preload-config are incompatible")
-    if cmd_args.splash_image or cmd_args.splash_mode:
-        if not (cmd_args.splash_image and cmd_args.splash_mode):
+    if cmd_args.splash_image is not None or cmd_args.splash_mode is not None:
+        if cmd_args.splash_image is None or cmd_args.splash_mode is None:
             die("--splash-image and --splash-mode must both be specified")
+    if cmd_args.splash_palette and not cmd_args.splash_image:
+        die("--splash-palette only works with --splash-image")
 
-    def validate_colour(i, d):
+    def validate_colour(colour, default = None, mode_7 = False):
+        if colour is None:
+            colour = default
+        try:
+            i = int(colour)
+        except:
+            die("Invalid colour %s; colours must be specified as physical colour numbers" % colour)
+        min_colour = 1 if mode_7 else 0
+        max_colour = 7 if mode_7 else 15
         if i is not None and (i < 0 or i > 7):
-            die("Invalid colour number %d; must be in the range 0-7" % i)
+            die("Invalid colour number %d; must be in the range %d-%d" % (i, min_colour, max_colour))
         return d if i is None else i
     cmd_args.default_fg_colour = validate_colour(cmd_args.default_fg_colour, 7)
     cmd_args.default_bg_colour = validate_colour(cmd_args.default_bg_colour, 4)
-    # SFTODO: We shouldn't allow colour 0 here
-    cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6)
+    cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6, True)
 
     cmd_args.splash_wait = 10 if cmd_args.splash_wait is None else cmd_args.splash_wait
     if cmd_args.splash_mode is not None:
         if cmd_args.splash_mode < 0 or cmd_args.splash_mode > 7:
             die("Invalid splash screen mode specified")
+    if cmd_args.splash_palette is not None:
+        cmd_args.splash_palette = [validate_colour(x) for x in cmd_args.splash_palette.split(",")]
+        if len(cmd_args.splash_palette) > mode_colours(cmd_args.splash_mode):
+            die("Too many colours in --splash-palette list for mode %d" % cmd_args.splash_mode)
 
     if cmd_args.force_6502:
         # The CMOS instructions are useful in a second processor build which
