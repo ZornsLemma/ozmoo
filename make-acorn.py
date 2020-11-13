@@ -1232,7 +1232,7 @@ def splash_mode_colours():
     return mode_colours(cmd_args.splash_mode)
 
 
-def make_tokenised_preloader(loader):
+def make_tokenised_preloader(loader, splash_start_addr):
     symbols = {
         "splash_mode": basic_string(cmd_args.splash_mode),
         "splash_max_colour": basic_string(splash_mode_colours() - 1),
@@ -1257,7 +1257,13 @@ def make_splash_executable():
     if splash_screen_address() + os.path.getsize(cmd_args.splash_image) > 0x8000:
         die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
     test_executable("lzsa")
+    # Do a trial build of acorn-splash.asm with a zero-length file to determine
+    # the size of the machine code; this is a bit OTT, but why not?
     compressed_data_filename = os.path.join("temp", "splash.lzsa2")
+    with open(compressed_data_filename, "wb") as f:
+        pass
+    e = Executable("acorn-splash.asm", "SPLASH", None, 0x1000, ["-DSPLASH_SCREEN_ADDRESS=$1000"])
+    splash_code_size = len(e.binary())
     def lzsa_filter(line):
         if line.startswith(b"Safe distance:"):
             i = line.index(b":")
@@ -1265,13 +1271,8 @@ def make_splash_executable():
             safe_distance = int(line[i+1:].split(b"(")[0])
         return True
     run_and_check(["lzsa", "-v", "-f", "2", "-r", "-b", "--prefer-ratio", cmd_args.splash_image, compressed_data_filename], output_filter=lzsa_filter)
-    # It's awkward to determine the actual size of the splash machine code at
-    # build time, but this is a fairly decent conservative approximation. At the
-    # moment the splash machine code is 333 bytes.
-    splash_code_size = 512
-    global splash_start_addr
     splash_start_addr = 0x8000 - os.path.getsize(compressed_data_filename) - safe_distance - splash_code_size
-    return Executable("acorn-splash.asm", "SPLASH", None, splash_start_addr, ["-DSPLASH_SCREEN_ADDRESS=0x%x" % splash_screen_address()])
+    return Executable("acorn-splash.asm", "SPLASH", None, splash_start_addr, ["-DSPLASH_SCREEN_ADDRESS=$%x" % splash_screen_address()])
 
 
 def title_from_filename(filename, remove_the_if_longer_than):
@@ -1582,7 +1583,7 @@ def make_disc_image():
     loader = make_tokenised_loader(loader_symbols)
     if cmd_args.splash_image:
         splash_executable = make_splash_executable()
-        disc_contents += [make_tokenised_preloader(loader), splash_executable]
+        disc_contents += [make_tokenised_preloader(loader, splash_executable.load_addr & 0xffff), splash_executable]
     disc_contents += [loader, findswr_executable]
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
