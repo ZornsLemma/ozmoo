@@ -1528,8 +1528,6 @@ def make_disc_image():
         want_tube = False
     if cmd_args.only_80_column:
         want_bbc_swr = False # mode 7 only build
-        # Arguably we should set want_electron to False, but an Electron with
-        # shadow RAM might exist and it would be able to run the game.
     if not any([want_electron, want_bbc_swr, want_bbc_shr_swr, want_tube]):
         die("All possible builds have been disabled by command line options, nothing to do!")
 
