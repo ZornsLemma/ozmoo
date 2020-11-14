@@ -648,23 +648,23 @@ class Executable(object):
             assert cache_entry[0] == cache_definition
             e = cache_entry[1]
             self.labels = e.labels
-            self._binary = e._binary
+            self._asm_output = e._asm_output
             self._relocations = e._relocations
             return
 
         self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
         self._report_filename = os.path.join("temp", "acme_report_" + output_name)
-        self._binary_filename = os.path.join("temp", output_name)
+        self._asm_output_filename = os.path.join("temp", output_name)
         os.chdir("asm")
         def up(path):
             return os.path.join("..", path)
         cpu = "65c02" if "-DCMOS=1" in args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._binary_filename), asm_filename])
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename])
         os.chdir("..")
         self.labels = self._parse_labels()
 
-        with open(self._binary_filename, "rb") as f:
-            self._binary = bytearray(f.read())
+        with open(self._asm_output_filename, "rb") as f:
+            self._asm_output = bytearray(f.read())
         if "ACORN_RELOCATABLE" in self.labels:
             self.truncate_at("reloc_count")
         update_common_labels(self.labels)
@@ -694,7 +694,7 @@ class Executable(object):
             symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
 
     def truncate_at(self, label):
-        self._binary = self._binary[:self.labels[label]-self.labels["program_start"]]
+        self._asm_output = self._asm_output[:self.labels[label]-self.labels["program_start"]]
 
     def _make_relocations(self):
         assert "ACORN_RELOCATABLE" in self.labels
@@ -713,10 +713,10 @@ class Executable(object):
         assert other_start_addr <= self.start_addr
         other = self.rebuild_at(other_start_addr)
         assert other is not None
-        return Executable._binary_diff(other._binary, self._binary)
+        return Executable._diff(other._asm_output, self._asm_output)
 
     @staticmethod
-    def _binary_diff(alternate, master):
+    def _diff(alternate, master):
         assert len(alternate) == len(master)
         expected_delta = None
         relocations = []
@@ -751,9 +751,9 @@ class Executable(object):
         if "ACORN_RELOCATABLE" in self.labels:
             if self._relocations is None:
                 self._relocations = self._make_relocations()
-            binary = self._binary + self._relocations
+            binary = self._asm_output + self._relocations
         else:
-            binary = self._binary
+            binary = self._asm_output
         # A second processor binary *could* extend past 0x8000 but in practice
         # it won't come even close.
         assert self.start_addr + len(binary) <= 0x8000
@@ -816,7 +816,7 @@ class OzmooExecutable(Executable):
         # game is smaller than this we will just never use the other entries.
         vmap_offset = self.labels['vmap_z_h'] - self.labels['program_start']
         vmap_max_size = self.labels['vmap_max_size']
-        assert self._binary[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
+        assert self._asm_output[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
         blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []
         for i in range(vmap_max_size):
             if i not in blocks:
@@ -841,8 +841,8 @@ class OzmooExecutable(Executable):
                 # bytes by shrinking vmap_max_size.
                 addr = 0
             vmap_entry = (timestamp << 8) | addr
-            self._binary[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
-            self._binary[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
+            self._asm_output[vmap_offset + i + 0            ] = (vmap_entry >> 8) & 0xff
+            self._asm_output[vmap_offset + i + vmap_max_size] = vmap_entry & 0xff
 
     def pseudo_ramtop(self):
         if "ACORN_SWR" in self.labels:
@@ -856,7 +856,7 @@ class OzmooExecutable(Executable):
     # Return the size of the binary, ignoring any relocation data (which isn't
     # important for the limited use we make of the return value).
     def size(self):
-        return len(self._binary)
+        return len(self._asm_output)
 
     def rebuild_at(self, start_addr):
         return OzmooExecutable(self.leafname, start_addr, self.args)
