@@ -1249,10 +1249,6 @@ def make_tokenised_preloader(loader, splash_start_addr):
     return make_tokenised_basic("preload", preloader_text_basic)
 
 
-# TODO: Support for compressing the splash screen on disc would be nice. We probably want
-# a light compression which is fast to load but will handle simple dithering, to (perhaps)
-# speed up the load time compared to loading an uncompressed dump and to save space on the
-# disc for game data.
 def make_splash_executable():
     if splash_screen_address() + os.path.getsize(cmd_args.splash_image) > 0x8000:
         die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
