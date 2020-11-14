@@ -1249,10 +1249,21 @@ def make_tokenised_preloader(loader, splash_start_addr):
     return make_tokenised_basic("preload", preloader_text_basic)
 
 
+def compress_lzsa(input_filename, output_filename, extra_args):
+    test_executable("lzsa")
+    safe_distance_list = [None]
+    def lzsa_filter(line):
+        if line.startswith(b"Safe distance:"):
+            i = line.index(b":")
+            safe_distance_list[0] = int(line[i+1:].split(b"(")[0])
+        return True
+    run_and_check(["lzsa", "-v", "-f", "2", "-r"] + extra_args + ["--prefer-ratio", input_filename, output_filename], output_filter=lzsa_filter)
+    return safe_distance_list[0]
+
+
 def make_splash_executable():
     if splash_screen_address() + os.path.getsize(cmd_args.splash_image) > 0x8000:
         die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
-    test_executable("lzsa")
     # Do a trial build of acorn-splash.asm with a zero-length file to determine
     # the size of the machine code; this is a bit OTT, but why not?
     compressed_data_filename = os.path.join("temp", "splash.lzsa2")
@@ -1260,13 +1271,7 @@ def make_splash_executable():
         pass
     e = Executable("acorn-splash.asm", "SPLASH", None, 0x1000, ["-DSPLASH_SCREEN_ADDRESS=$1000"])
     splash_code_size = len(e.binary())
-    def lzsa_filter(line):
-        if line.startswith(b"Safe distance:"):
-            i = line.index(b":")
-            global safe_distance
-            safe_distance = int(line[i+1:].split(b"(")[0])
-        return True
-    run_and_check(["lzsa", "-v", "-f", "2", "-r", "-b", "--prefer-ratio", cmd_args.splash_image, compressed_data_filename], output_filter=lzsa_filter)
+    safe_distance = compress_lzsa(cmd_args.splash_image, compressed_data_filename, ["-b"])
     splash_start_addr = 0x8000 - os.path.getsize(compressed_data_filename) - safe_distance - splash_code_size
     return Executable("acorn-splash.asm", "SPLASH", None, splash_start_addr, ["-DSPLASH_SCREEN_ADDRESS=$%x" % splash_screen_address()])
 
