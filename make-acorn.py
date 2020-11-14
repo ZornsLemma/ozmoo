@@ -631,6 +631,7 @@ class Executable(object):
         self.exec_addr = self.load_addr
         self.args = args
         self._relocations = None
+        self._binary = None
         output_name = os.path.splitext(os.path.basename(asm_filename))[0].replace("-", "_")
         if version_maker is not None:
             output_name += "_" + version_maker(start_addr, args)
@@ -748,6 +749,8 @@ class Executable(object):
         return bytearray([count & 0xff, count >> 8] + delta_relocations)
 
     def binary(self):
+        if self._binary is not None:
+            return self._binary
         if "ACORN_RELOCATABLE" in self.labels:
             if self._relocations is None:
                 self._relocations = self._make_relocations()
@@ -757,6 +760,20 @@ class Executable(object):
         # A second processor binary *could* extend past 0x8000 but in practice
         # it won't come even close.
         assert self.start_addr + len(binary) <= 0x8000
+        if self.asm_filename == "ozmoo.asm" and not cmd_args.no_exe_compression:
+            binary_filename = os.path.join("temp", "binary")
+            with open(binary_filename, "wb") as f:
+                f.write(binary)
+            compressed_binary_filename = os.path.join("temp", "binary.lzsa2")
+            safe_distance = compress_lzsa(binary_filename, compressed_binary_filename, [])
+            new_load_addr = self.load_addr + safe_distance
+            e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, ["-DDECOMPRESS_TO=$%x" % (self.load_addr & 0xffff)])
+            # TODO: Use 0x8000? Or use 0x7c00 above not 0x8000?
+            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x7c00
+            self.load_addr = new_load_addr
+            self.exec_addr = new_load_addr + os.path.getsize(compressed_binary_filename)
+            binary = e.binary()
+        self._binary = binary
         return binary
 
 
@@ -1350,6 +1367,7 @@ def parse_args():
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
     group.add_argument("--no-turbo", action="store_true", help="disable turbo (256K) second processor support")
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
+    group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
 
     cmd_args = parser.parse_args()
 

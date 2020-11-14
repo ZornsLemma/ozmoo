@@ -1,6 +1,6 @@
 ; This file is a lightly tweaked copy of decompress_fast_v2.asm from
 ; https://github.com/emmanuel-marty/lzsa. We need backwards decompression
-; support so we can't use decompress_faster_v2.asm.
+; support for the splash screen so we can't use decompress_faster_v2.asm.
 
 ; -----------------------------------------------------------------------------
 ; Decompress raw LZSA2 block.

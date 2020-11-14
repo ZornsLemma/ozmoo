@@ -4,6 +4,8 @@ mrb_read_write = $fbfd
 
 BACKWARD_DECOMPRESS = 1
 
+    ; TODO: Since these are actually instructions in the decompression code being
+    ; modified, can we simply assemble it with the correct values already in place?
     lda #$ff
     sta LZSA_DST_LO
     lda #$7f
@@ -44,7 +46,7 @@ just_rts
     rts
 
 decompress
-!source "acorn-lzsa.asm"
+!source "acorn-lzsa-fast.asm"
 
 data_start
     !binary "../temp/splash.lzsa2"
