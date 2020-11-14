@@ -29,4 +29,3 @@ decompress
     lda #>DECOMPRESS_TO
     sta LZSA_DST_HI
 !source "acorn-lzsa-faster.asm"
-

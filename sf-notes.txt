@@ -1,3 +1,15 @@
+Executable compression:
+- OZMOOB load-and-decompress 1.59, load 1.29 (timed on M128)
+- OZMOOSH l-a-d 1.74, load 1.42 (timed on M128)
+- OZMOOE l-a-d 2.8, load 2.3 (timed with stopwatch using Elkulator in normal mode)
+Without executable compression, timed in same way:
+- OZMOOB load 1.81
+- OZMOOSH load 1.74
+- OZMOOE load 2.8
+(OZMOO2P is awkward to time as it corrupts BASIC workspace)
+So it looks like the compression doesn't hurt, since load-and-decompress times are pretty much the same as load times for uncompressed (and thus larger) files, and for OZMOOB (probably due to its screen hole) it's actually a small improvement. And of course given there's no time penalty compression is a win, since it frees up more space on the disc.
+
+
 On b-em, a B with DFS 2.26 and drive noises on takes 3.02 seconds to load a 20K mode 2 splash screen.
 lzsa1 compresses that down to 12.3K, which might cut the load time down to 1.86 seconds (spurious precision). If we can decompress 17600 bytes per second we will break even in terms of user experience. That's 352 bytes per frame. Obviously faster is better, but looking at https://github.com/emmanuel-marty/lzsa (and bearing in mind I don't know platform the graph is from - a spectrum?), that suggests exomiser is a bit slower than ideal (but the faster variants would probably just about break even) - that fits with my intuition from the mode 1 NuLA slideshow stuff I did, where exomiser did seem to slow things down but was worth it as getting more images on the disc was a big win. Since saving disc space is useful here, I can probably afford to go up to lzsa2 compression, unless the decompression code is much bulkier.
 - the compressed version takes 2.80 seconds to load and display the splash screen. *LOAD of the SPLASH executable takes 1.79s. It's a shame we can't use the faster decompression code but we need backwards decompression because the screen RAM is at the top of memory and we don't have enough RAM to not overlap the buffers. Still, this isn't bad, it is saving disc space (8.5K after we allow for sector size rounding) and it is slightly faster than loading the raw uncompressed file. (I am using lzsa2 optimised for ratio; I suppose I could push things a bit to improve the performance, but saving disc space is good too and given the compressed version is still faster than uncompressed I'm not too inclined to sacrifice disc space for a tiny bit of speed.)
