@@ -4,16 +4,6 @@ mrb_read_write = $fbfd
 
 BACKWARD_DECOMPRESS = 1
 
-    ; TODO: Since these are actually instructions in the decompression code being
-    ; modified, can we simply assemble it with the correct values already in place?
-    lda #$ff
-    sta LZSA_DST_LO
-    lda #$7f
-    sta LZSA_DST_HI
-    lda #<(data_end - 1)
-    sta LZSA_SRC_LO
-    lda #>(data_end - 1)
-    sta LZSA_SRC_HI
     jsr decompress
 
     ; If we're in a shadow mode, we know we're on an Electron with a Master RAM
@@ -46,7 +36,7 @@ just_rts
     rts
 
 decompress
-!source "acorn-lzsa-fast.asm"
+    !source "acorn-lzsa-fast.asm"
 
 data_start
     !binary "../temp/splash.lzsa2"
