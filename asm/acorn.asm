@@ -229,7 +229,6 @@ deletable_init_start
     stx re_enter_language_ldx_imm + 1
 
 !ifndef ACORN_SWR {
-!error "SFTODO: This is broken by the LZSA compression of executables - the entry address is the entry address of the decompression code, not our initial JMP - can/should I hack the tube OS ZP addresses to change the re-entry address? Can I 'legally' force a re-entry (e.g. *GO decompressed_start_address)? Yes, http://beebwiki.mdfs.net/Tube_Documentation_Errors says you should construct a *GO command."
     ; On a second processor, a soft break will transfer control back to our
     ; execution address. We will have thrown away our initialization code by
     ; that point and can't restart properly. In order to avoid random behaviour

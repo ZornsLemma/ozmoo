@@ -1,6 +1,8 @@
 ; This file is a lightly tweaked copy of decompress_faster_v2.asm from
 ; https://github.com/emmanuel-marty/lzsa.
 
+oscli = $fff7
+
 ; ***************************************************************************
 ; ***************************************************************************
 ;
@@ -439,7 +441,18 @@ lzsa2_next_page:
 
 .finished:      pla                             ; Decompression completed, pop
                 pla                             ; return address.
+                ; We must enter the decompressed code using *GO on a second
+                ; processor so that a soft break re-enters it at that point;
+                ; see http://beebwiki.mdfs.net/Tube_Documentation_Errors.
+                !ifdef     TUBE {
+                ldx     #<go_command
+                ldy     #>go_command
+                jmp     oscli
+go_command
+                !source "../temp/go.asm"
+                } else {
                 jmp     DECOMPRESS_TO
+                }
 
                 ;
                 ; Get a nibble value from compressed data in A.

@@ -767,7 +767,14 @@ class Executable(object):
             compressed_binary_filename = os.path.join("temp", "binary.lzsa2")
             safe_distance = compress_lzsa(binary_filename, compressed_binary_filename, [])
             new_load_addr = self.load_addr + safe_distance
-            e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, ["-DDECOMPRESS_TO=$%x" % (self.load_addr & 0xffff)])
+            extra_args = ["-DDECOMPRESS_TO=$%x" % (self.load_addr & 0xffff)]
+            if self.leafname == "OZMOO2P":
+                extra_args += ["-DTUBE=1"]
+                # I can't see any way to get acme to generate a hex version of the
+                # DECOMPRESS_TO value, so do it like this.
+                with open(os.path.join("temp", "go.asm"), "w") as f:
+                    f.write('!text "GO %X", 13' % (self.load_addr & 0xffff))
+            e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, extra_args)
             # TODO: Use 0x8000? Or use 0x7c00 above not 0x8000?
             assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x7c00
             self.load_addr = new_load_addr
