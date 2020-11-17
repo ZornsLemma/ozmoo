@@ -140,6 +140,20 @@ print_buffer2             = $129 ; 41 bytes
 ; but (particularly if we have some otherwise wasted space floating around due
 ; to page alignment issues) it might be worth relocating at least one of these
 ; buffers.
+; SFTODO: I think I can and probably should move these buffers to the *top* of
+; the stack and initialise the stack pointer to start just below them when we
+; intialise. This will burn about three bytes of totally discardable init code,
+; so it's virtually free, and it then means we are morally in the clear - Ozmoo
+; then uses "quite a lot" of stack (but it is the foreground application) and if
+; a filing system or interrupt handler goes bananas and uses loads of stack it
+; will cause a wrap (its fault!) rather than trampling over our data not 
+; protected by being above the stack pointer (our fault). It is worth noting
+; this is a temporary buffer used only during printing, so there shouldn't be
+; any filing system calls, and an interrupt handler is unlikely to go crazy with
+; stack use, but even so, making this change would be slightly better I think.
+; (It *might* also remove the need for relocating these when using ACORN_OSRDCH,
+; though it's probably safest not to let the stack get "too full" if we can
+; help it.)
 print_buffer		  = $100 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 }
