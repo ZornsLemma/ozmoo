@@ -1255,6 +1255,7 @@ def parse_args():
     group.add_argument("--no-tube-cache", action="store_true", help="disable host cache use on second processor")
     group.add_argument("--no-turbo", action="store_true", help="disable turbo (256K) second processor support")
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
+    group.add_argument("--osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
 
     cmd_args = parser.parse_args()
 
@@ -1393,6 +1394,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DSLOW=1"]
     if cmd_args.waste_bytes:
         ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
+    if cmd_args.osrdch:
+        ozmoo_base_args += ["-DACORN_OSRDCH=1"]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]

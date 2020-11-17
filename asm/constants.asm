@@ -140,8 +140,10 @@ print_buffer2             = $129 ; 41 bytes
 ; but (particularly if we have some otherwise wasted space floating around due
 ; to page alignment issues) it might be worth relocating at least one of these
 ; buffers.
+!ifndef ACORN_OSRDCH {
 print_buffer		  = $100 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+}
 }
 
 !ifndef ACORN {

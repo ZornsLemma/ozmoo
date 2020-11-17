@@ -1042,12 +1042,20 @@ getchar_and_maybe_toggle_darkmode
 +	rts
 }
 } else { ; ACORN
+!ifndef ACORN_OSRDCH {
     lda #osbyte_read_key
     ldx #0
     jsr do_osbyte_y_0
     bcc +
     ldx #0
 +   txa
+} else {
+    ; Some emulators (e.g. BeebEm 4.15) don't allow text to be pasted in unless
+    ; it's read via OSRDCH, so we allow the use of OSRDCH as a workaround. This
+    ; will break games which rely on timers being able to break into user
+    ; input.
+    jsr osrdch
+}
     jmp check_user_interface_controls
 }
 
@@ -1842,3 +1850,11 @@ default_alphabet ; 26 * 3
     !raw "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     !raw 32,13,"0123456789.,!?_#'",34,47,92,"-:()"
 	
+!ifdef ACORN_OSRDCH {
+    ; BeebEm (4.15, at least) pokes code into memory at $100 to implement paste
+    ; via OSRDCH, so we need to relocate these buffers to avoid problems.
+print_buffer
+    !fill 81
+print_buffer2
+    !fill 81
+}
