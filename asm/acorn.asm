@@ -1256,6 +1256,12 @@ SFTODOLABEL4
 } ; End of acorn_deletable_screen_init_2_inline
 
 !macro clean_up_and_quit_inline {
+    ; TODO: Should this print something like "[Press SPACE]", flush keyboard
+    ; buffer and wait for SPACE before continuing? Maybe also adding a blank
+    ; line of output before we call osbyte_enter_language for neatness. Apart
+    ; from looking nicer, this might have a useful gameplay function as entering
+    ; BASIC could cause text to scroll which the user hasn't read yet, whereas
+    ; our "[Press SPACE]" prompt would be done under control of Ozmoo's paging.
 !ifdef ACORN_NO_SHADOW {
     jsr undo_mode_7_3c00
 }
