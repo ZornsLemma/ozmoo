@@ -401,6 +401,21 @@ screenkernal_init
     ; of the game.
     asl .game_blocks
     rol .game_blocks + 1
+!ifndef VMEM {
+    ; If we don't have virtual memory, the logic below to cap .game_blocks at
+    ; .ram_blocks won't kick in. Since we don't have virtual memory, we know the
+    ; game will fit in RAM - but due to the doubling of .game_blocks we just did,
+    ; it might be larger than RAM, causing us to read too much and corrupt
+    ; things. TODO: If we simply passed in the game size as a build parameter
+    ; this sort of thing would go away.
+    lda #0
+    sta .game_blocks + 1
+    lda #>(flat_ramtop - story_start)
+    cmp .game_blocks
+    bcs +
+    sta .game_blocks
++
+}
 }
 } else { ; ACORN_ADFS
     lda #<game_data_filename
