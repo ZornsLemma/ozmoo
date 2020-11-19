@@ -176,10 +176,32 @@ readblocks
     beq .read_ok
     cmp #$10
     beq .retry
+!if 1 { ; SFTODO: make this a build time option?
+    pha
+    and #$f0
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+    lda .hex_num,x
+    sta .disc_read_error_number
+    pla
+    and #$0f
+    tax
+    lda .hex_num,x
+    sta .disc_read_error_number + 1
+}
     brk
     !byte 0
-    !text "Disc read error"
+    !text "Disc error &"
+.disc_read_error_number
+    !text "xx"
     !byte 0
+!if 1 { ; SFTODO: part of above code
+.hex_num
+	!text "0123456789ABCDEF"
+}
 .read_ok
 } else { ; ACORN_ADFS
     lda osgbpb_block_handle
