@@ -154,8 +154,10 @@ print_buffer2             = $129 ; 41 bytes
 ; (It *might* also remove the need for relocating these when using ACORN_OSRDCH,
 ; though it's probably safest not to let the stack get "too full" if we can
 ; help it.)
+!ifndef ACORN_OSRDCH {
 print_buffer		  = $100 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
 print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+}
 }
 
 !ifndef ACORN {
