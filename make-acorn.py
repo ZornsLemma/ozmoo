@@ -1463,7 +1463,7 @@ def make_disc_image():
     if not cmd_args.only_40_column and not cmd_args.only_80_column:
         loader_symbols["NO_ONLY_COLUMN"] = basic_int(1)
     if cmd_args.auto_start:
-        loader_symbols["AUTO_START"] = 1
+        loader_symbols["AUTO_START"] = basic_int(1)
     loader_screen.add_loader_symbols(loader_symbols)
 
     disc_contents = [boot_file, make_tokenised_loader(loader_symbols), findswr_executable]
