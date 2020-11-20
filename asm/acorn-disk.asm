@@ -176,21 +176,22 @@ readblocks
     beq .read_ok
     cmp #$10
     beq .retry
-!if 1 { ; SFTODO: make this a build time option?
+!if 0 { ; SFTODO EXPERIMENTAL - 24 bytes (plus " &xx"=4 in error message)
     pha
-    and #$f0
     lsr
     lsr
     lsr
     lsr
-    tax
-    lda .hex_num,x
-    sta .disc_read_error_number
+    ldx #(-2 & $ff)
+-   and #$0f
+    cmp #10
+    bcc +
+    adc #'A'-10-1-'0'
++   adc #'0'
+    sta .disc_read_error_number-(-2 & $ff),x
     pla
-    and #$0f
-    tax
-    lda .hex_num,x
-    sta .disc_read_error_number + 1
+    inx
+    bne -
 }
     brk
     !byte 0
@@ -198,10 +199,6 @@ readblocks
 .disc_read_error_number
     !text "xx"
     !byte 0
-!if 1 { ; SFTODO: part of above code
-.hex_num
-	!text "0123456789ABCDEF"
-}
 .read_ok
 } else { ; ACORN_ADFS
     lda osgbpb_block_handle
