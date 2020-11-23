@@ -176,9 +176,28 @@ readblocks
     beq .read_ok
     cmp #$10
     beq .retry
+!if 0 { ; SFTODO EXPERIMENTAL - 24 bytes (plus " &xx"=4 in error message)
+    pha
+    lsr
+    lsr
+    lsr
+    lsr
+    ldx #(-2 & $ff)
+-   and #$0f
+    cmp #10
+    bcc +
+    adc #'A'-10-1-'0'
++   adc #'0'
+    sta .disc_read_error_number-(-2 & $ff),x
+    pla
+    inx
+    bne -
+}
     brk
     !byte 0
-    !text "Disc read error"
+    !text "Disc error &"
+.disc_read_error_number
+    !text "xx"
     !byte 0
 .read_ok
 } else { ; ACORN_ADFS
