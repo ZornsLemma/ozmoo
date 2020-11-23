@@ -86,6 +86,12 @@ die_top_y=VPOS
 
 PROCchoose_version_and_check_ram
 
+!ifdef SPLASH {
+REM Flush the keyboard buffer to reduce confusion if the user held down SPACE
+REM or RETURN for a while in order to dismiss the loader screen.
+*FX21
+}
+
 !ifdef AUTO_START {
 IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
 mode_keys_vpos=VPOS:PROCshow_mode_keys
