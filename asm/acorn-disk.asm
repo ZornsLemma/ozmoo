@@ -176,7 +176,7 @@ readblocks
     beq .read_ok
     cmp #$10
     beq .retry
-!if 0 { ; SFTODO EXPERIMENTAL - 24 bytes (plus " &xx"=4 in error message)
+!if 1 { ; SFTODO EXPERIMENTAL - 24 bytes (plus " &xx"=4 in error message)
     pha
     lsr
     lsr
@@ -197,6 +197,7 @@ readblocks
     !byte 0
     !text "Disc error &"
 .disc_read_error_number
+    ; SFTODO: The " &xx" bit should only be included if the above code is
     !text "xx"
     !byte 0
 .read_ok
