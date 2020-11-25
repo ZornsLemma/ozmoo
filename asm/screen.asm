@@ -466,6 +466,10 @@ show_more_prompt
     ; appearance at the bottom right position as a kind of "more" prompt.
     ; SFTODO: Should we also allow RETURN to scroll? And/or SPACE? And/or any
     ; key?
+    ; SFTODO: Would it save code if we actually used OS page mode (without trying
+    ; the tricks described above to generate a single character "more" prompt)
+    ; instead of emulating it ourselves? *Probably* not given how short this code
+    ; is, but maybe worth thinking about it.
 -   lda #osbyte_reflect_keyboard_status
     jsr osbyte
     lda #osbyte_read_key
