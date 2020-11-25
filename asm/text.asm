@@ -1042,6 +1042,15 @@ getchar_and_maybe_toggle_darkmode
 +	rts
 }
 } else { ; ACORN
+    ; In non-teletext modes, copying characters with COPY will only work if they
+    ; share the current OS foreground and background colours. There's a fair
+    ; chance the OS colours are still set to reverse video from drawing the
+    ; status bar; s_printchar would set these correctly the next time it's
+    ; called, but we need to make sure this is right now so COPY works. (We
+    ; can't make this work perfectly if the game mixes normal and reverse video
+    ; a lot, but this will fix things for the typical game anyway.)
+    jsr s_reverse_to_os_reverse
+
 !ifndef ACORN_OSRDCH {
     lda #osbyte_read_key
     ldx #0
