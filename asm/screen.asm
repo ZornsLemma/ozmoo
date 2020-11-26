@@ -1008,6 +1008,9 @@ turn_off_cursor
     ; The VDU 23 command now lacks one byte to be complete, so let's wait for
     ; VSYNC now at the last possible minute before outputting that last byte
     ; and actioning the VDU 23 command.
+    ; SFTODO: This VSYNC hits the benchmark quite hard but will be imperceptible
+    ; normally, it might be worth conditionally omitting the next two lines in
+    ; a benchmark build.
     lda #osbyte_wait_for_vsync
     jsr osbyte
     lda #0

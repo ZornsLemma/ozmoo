@@ -3,6 +3,8 @@ Master 128, mode 7:
 - with *FX19 use: $004c0d
 - so a 3.1% increase in runtime
 - absolute increase is 592
+- !if-ing out the osbyte to read vdu status gives $4c0f ($4c0d another time), i.e. negligible
+- !if-ing out the VSYNC osbyte (I did see the solid block flicker in at one point) gives $49bf, i.e. back where it was before, as we'd expect
 mode 3:
 - before *FX19 $005850
 - with $00592b
