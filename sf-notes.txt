@@ -1,3 +1,20 @@
+Master 128, mode 7:
+- before *FX19 use benchmark: $0049bd
+- with *FX19 use: $004c0d
+- so a 3.1% increase in runtime
+- absolute increase is 592
+mode 3:
+- before *FX19 $005850
+- with $00592b
+- so just under 1% increase in runtime
+- absolute increase is 219
+mode 6:
+- before $0051b2
+- with $0051f2
+- 0.3% increase in runtime
+- absolute increase is 64
+
+
 Executable compression:
 - OZMOOB load-and-decompress 1.59, load 1.29 (timed on M128)
 - OZMOOSH l-a-d 1.74, load 1.42 (timed on M128)

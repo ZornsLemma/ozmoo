@@ -955,38 +955,61 @@ init_cursor_control
     sta cursor_status
     bne .cursor_control ; Always branch
 
-turn_off_cursor
-    dec cursor_status
-    jmp .cursor_control
+    ; turn_off_cursor and turn_on_cursor adjust the value in cursor_status
+    ; rather than setting a flag so they can be nested safely; the cursor should
+    ; be turned on iff cursor_status is non-negative. Because we wait for VSYNC
+    ; when telling the OS to turn the cursor on or off to try to avoid visual
+    ; artefacts from doing so, we want to avoid this unless cursor_status has
+    ; just transitioned from negative to non-negative or vice versa.
 turn_on_cursor
     inc cursor_status
-.cursor_control
-; Turn the OS cursor on or off. When it's turned on it's forced into the
-; location corresponding to zp_screen{column,row}, which is where it "should"
-; have been all along. The cursor is turned on iff cursor_status is non-negative.
-    ldx #0
+    beq .really_turn_on_cursor
+.cursor_control_rts
+    rts
+turn_off_cursor
     lda cursor_status
-    bmi +
+    dec cursor_status
+    tax
+    bne .cursor_control_rts
+    ; We're turning the OS cursor off.
+    lda #osbyte_read_vdu_status
+    jsr osbyte
+    txa
+    and #vdu_status_cursor_editing
+    beq .cursor_control
+    ; We're in cursor editing mode, so we need to output a carriage return to
+    ; turn it off. This will turn the cursor back on, so we must output it
+    ; before we turn the cursor off. (We could turn the cursor off before
+    ; outputting the carriage return as well, in order to try to minimise the
+    ; chances of the user seeing it flick briefly into the leftmost column, but
+    ; in practice this doesn't seem to help much.)
+    lda #vdu_cr
+    sta s_cursors_inconsistent
+    jsr oswrch
+    jmp .cursor_control
+.really_turn_on_cursor
+    ; Just before we turn the OS cursor on, it's forced into the location
+    ; corresponding to zp_screen{column,row}, which is where it "should" have
+    ; been all along.
     jsr s_cursor_to_screenrowcolumn
-    ldx #1
-+   lda #23
+.cursor_control
+    lda #vdu_miscellaneous
     jsr oswrch
     lda #1
     jsr oswrch
-    txa
+    clc
+    adc cursor_status ; we know A=1 and cursor_status=-1 for off or 0 for on
     jsr oswrch
-    ldx #7
+    ldx #6
     lda #0
 -   jsr oswrch
     dex
     bne -
-    lda cursor_status
-    bpl inc_z_pc_page_rts
-    ; We allow the use of the standard Acorn cursor editing. Judging from the
-    ; OS 1.20 disassembly, this only gets disabled when a carriage return is
-    ; output via OSWRCH, which we don't normally do. We therefore do it here
-    ; solely to turn off cursor editing.
-    lda #$0d
-    sta s_cursors_inconsistent
+    ; The VDU 23 command now lacks one byte to be complete, so let's wait for
+    ; VSYNC now at the last possible minute before outputting that last byte
+    ; and actioning the VDU 23 command.
+    lda #osbyte_wait_for_vsync
+    jsr osbyte
+    lda #0
     jmp oswrch
 }
