@@ -369,6 +369,7 @@ z_ins_check_arg_count
 .branch_false
 	jmp make_branch_false
 
++make_acorn_screen_hole
 z_ins_catch
 	; Store pointer to first byte where pushed values are stored in current frame.
 	ldx stack_ptr
