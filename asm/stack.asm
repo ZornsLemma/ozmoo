@@ -120,6 +120,7 @@ stack_push_top_value
 }
 	rts
 
++make_acorn_screen_hole
 ; This is used by stack_call_routine	
 .many_pushed_bytes
 	lda stack_ptr
