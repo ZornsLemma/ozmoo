@@ -1,3 +1,109 @@
+; C128 is now in a separate constants-c128 instead
+;
+
+!ifdef TARGET_C64 {
+basic_reset           = $a000
+SCREEN_HEIGHT         = 25
+SCREEN_WIDTH          = 40
+SCREEN_ADDRESS        = $0400
+COLOUR_ADDRESS        = $d800
+COLOUR_ADDRESS_DIFF   = COLOUR_ADDRESS - SCREEN_ADDRESS
+num_rows 			  = $a6 ; !byte 0
+CURRENT_DEVICE        = $ba
+ti_variable           = $a0; 3 bytes
+keyboard_buff_len     = $c6
+keyboard_buff         = $277
+
+use_reu				  = $9b
+window_start_row	  = $9c; 4 bytes
+
+
+; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
+s_ignore_next_linebreak = $b0 ; 3 bytes
+s_reverse 			  = $b3 ; !byte 0
+
+zp_temp               = $fb ; 5 bytes
+savefile_zp_pointer   = $c1 ; 2 bytes
+first_banked_memory_page = $d0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
+reu_filled            = $0255 ; 4 bytes
+vmap_buffer_start     = $0334
+vmap_buffer_end       = $0400 ; Last byte + 1. Should not be more than vmap_buffer_start + 512
+}
+
+!ifdef TARGET_PLUS4 {
+basic_reset           = $8000
+SCREEN_HEIGHT         = 25
+SCREEN_WIDTH          = 40
+SCREEN_ADDRESS        = $0c00
+COLOUR_ADDRESS        = $0800
+COLOUR_ADDRESS_DIFF   = $10000 + COLOUR_ADDRESS - SCREEN_ADDRESS
+CURRENT_DEVICE        = $ae
+ti_variable           = $a3; 3 bytes
+keyboard_buff_len     = $ef
+keyboard_buff         = $527
+
+
+zp_temp               = $3b ; 5 bytes
+;use_reu				  = $87
+window_start_row	  = $88; 4 bytes
+
+
+num_rows 			  = $b7 ; !byte 0
+
+; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
+s_ignore_next_linebreak = $b8 ; 3 bytes
+s_reverse 			  = $bb ; !byte 0
+
+savefile_zp_pointer   = $c1 ; 2 bytes
+; first_banked_memory_page = $fc ; Normally $fc (meaning $fc00-$ffff needs banking, but that area can't be used anyway) 
+
+fkey_string_lengths = $55f
+fkey_string_area = $567
+
+vmap_buffer_start     = $0332
+vmap_buffer_end       = $03f2 ; Last byte + 1. Should not be more than vmap_buffer_start + 510
+;vmap_buffer_start     = $0333
+;vmap_buffer_end       = $0437 ; Last byte + 1. Should not be more than vmap_buffer_start + 510
+
+ted_voice_2_low       = $ff0f
+ted_voice_2_high      = $ff10
+ted_volume            = $ff11
+
+}
+
+!ifdef TARGET_MEGA65 {
+basic_reset           = $a000 ; the mega65 version is always run in C64 mode
+SCREEN_HEIGHT         = 25
+SCREEN_WIDTH          = 80
+!ifdef CUSTOM_FONT {
+SCREEN_ADDRESS        = $1000
+} else {
+SCREEN_ADDRESS        = $0800
+}
+COLOUR_ADDRESS        = $d800
+COLOUR_ADDRESS_DIFF   = COLOUR_ADDRESS - SCREEN_ADDRESS
+CURRENT_DEVICE        = $ba
+ti_variable           = $a0; 3 bytes
+num_rows 			  = $a6 ; !byte 0
+keyboard_buff_len     = $c6
+keyboard_buff         = $277
+
+use_reu				  = $9b
+window_start_row	  = $9c; 4 bytes
+
+; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
+s_ignore_next_linebreak = $b0 ; 3 bytes
+s_reverse 			  = $b3 ; !byte 0
+
+zp_temp               = $fb ; 5 bytes
+savefile_zp_pointer   = $c1 ; 2 bytes
+first_banked_memory_page = $d0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
+reu_filled            = $0255 ; 4 bytes
+vmap_buffer_start     = $0334
+vmap_buffer_end       = $0400 ; Last byte + 1. Should not be more than vmap_buffer_start + 512
+
+}
+
 ; --- ZERO PAGE --
 ; BASIC not much used, so many positions free to use
 ; memory bank control
@@ -23,21 +129,26 @@ zp_mempos             = $14 ; 2 bytes
 z_operand_value_high_arr = $16 ; !byte 0, 0, 0, 0, 0, 0, 0, 0
 z_operand_value_low_arr = $1e ;  !byte 0, 0, 0, 0, 0, 0, 0, 0
 
-; NOTE: This entire block, except last byte of z_pc_mempointer and z_pc_mempointer_is_unsafe is saved!
-z_local_vars_ptr      = $26 ; 2 bytes
-z_local_var_count	  = $28
-stack_pushed_bytes	  = $29 ; !byte 0, 0
-stack_ptr             = $2b ; 2 bytes
-stack_top_value 	  = $2d ; 2 bytes !byte 0, 0
-stack_has_top_value   = $2f ; !byte 0
-; SF: z_pc is big-endian, z_pc_mempointer is little-endian
-z_pc				  = $30 ; 3 bytes (last byte shared with z_pc_mempointer)
-z_pc_mempointer		  = $32 ; 2 bytes (first byte shared with z_pc)
-; z_pc_mempointer_is_unsafe = $34
-
-zp_save_start = z_local_vars_ptr
-zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
-
+;
+; NOTE: This entire block of variables, except last byte of z_pc_mempointer
+; and z_pc_mempointer_is_unsafe is included in the save/restore files
+; and _have_ to be stored in a contiguous block of zero page addresses
+;
+	z_local_vars_ptr      = $26 ; 2 bytes
+	z_local_var_count	  = $28
+	stack_pushed_bytes	  = $29 ; !byte 0, 0
+	stack_ptr             = $2b ; 2 bytes
+	stack_top_value 	  = $2d ; 2 bytes !byte 0, 0
+	stack_has_top_value   = $2f ; !byte 0
+	; SF: z_pc is big-endian, z_pc_mempointer is little-endian
+	z_pc				  = $30 ; 3 bytes (last byte shared with z_pc_mempointer)
+	z_pc_mempointer		  = $32 ; 2 bytes (first byte shared with z_pc)
+	zp_save_start = z_local_vars_ptr
+	zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
+;
+; End of contiguous zero page block
+;
+;
 
 !ifndef ACORN {
 vmap_max_entries	  = $34
@@ -91,25 +202,21 @@ vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
 
 z_temp				  = $68 ; 12 bytes
 
+; SFTODO: I should look at tidying up the ACORN conditional stuff in this file
+; to try to "match" the Commodore platforms later (although this may not be
+; trivial, because those platforms probably share some common details which
+; the Acorn port doesn't), but let's not worry about that for now.
 !ifndef ACORN {
 
 s_colour 			  = $74 ; !byte 1 ; white as default
 
 vmem_temp			  = $92 ; 2 bytes
-alphabet_table		  = $96 ; 2 bytes
+; alphabet_table		  = $96 ; 2 bytes
 
-use_reu				  = $9b
-
-window_start_row	  = $9c; 4 bytes
-
-num_rows			  = $a6 ; !byte 0
 current_window		  = $a7 ; !byte 0
 
 is_buffered_window	  = $ab;  !byte 1
 
-; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
-s_ignore_next_linebreak = $b0 ; 3 bytes
-s_reverse 			  = $b3 ; !byte 0
 
 s_stored_x			  = $b4 ; !byte 0
 s_stored_y			  = $b5 ; !byte 0
@@ -119,20 +226,18 @@ max_chars_on_line	  = $bd; !byte 0
 buffer_index		  = $be ; !byte 0
 last_break_char_buffer_pos = $bf ; !byte 0
 
-
 zp_cursorswitch       = $cc
 zp_screenline         = $d1 ; 2 bytes current line (pointer to screen memory)
-zp_screencolumn       = $d3 ; current cursor column
-zp_screenrow          = $d6 ; current cursor row
+zp_screencolumn       = $d3 ; 1 byte current cursor column
+zp_screenrow          = $d6 ; 1 byte current cursor row
 zp_colourline         = $f3 ; 2 bytes current line (pointer to colour memory)
 cursor_row			  = $f7 ; 2 bytes
 cursor_column		  = $f9 ; 2 bytes
-zp_temp               = $fb ; 5 bytes
 }
 
 !ifndef ACORN {
-print_buffer		  = $100 ; 41 bytes
-print_buffer2             = $129 ; 41 bytes
+print_buffer		  = $100 ; SCREEN_WIDTH + 1 bytes
+print_buffer2         = $200 ; SCREEN_WIDTH + 1 bytes
 } else {
 ; SFTODO: Is it OK to use 162 bytes of the stack like this? In practice we
 ; certainly seem to get away with it, and my brief experiments when I
@@ -155,8 +260,9 @@ print_buffer2             = $129 ; 41 bytes
 ; though it's probably safest not to let the stack get "too full" if we can
 ; help it.)
 !ifndef ACORN_OSRDCH {
-print_buffer		  = $100 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
-print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S PROB FINE BUT CHECK HOW IT'S USED
+; SFTODO: Not specifically related to print_buffer etc, but do I need to tweak anything because SCREEN_WIDTH is variable at runtime on some Acorn builds? I don't know if it's variable at runtime on any Commodore platforms.
+print_buffer		  = $100 ; SCREEN_WIDTH + 1 bytes
+print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
 }
 }
 
@@ -164,33 +270,50 @@ print_buffer2		  = $151 ; 81 bytes SF: OK? THIS IS OBV STACK ON C64 TOO SO IT'S 
 memory_buffer         =	$02a7
 memory_buffer_length  = 89
 
-first_banked_memory_page = $d0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
-
+!ifdef TARGET_PLUS4 {
+charset_switchable 	  = $547
+} else {
 charset_switchable 	  = $291
-
-datasette_buffer_start= $0334 ; Actually starts at 33c, but the eight bytes before that are unused
-datasette_buffer_end  = $03fb
-
-; --- BASIC rom routines ---
-;basic_printstring     = $ab1e ; write string in a/y (LO </HI >)
-;basic_printinteger    = $bdcd ; write integer value in a/x
+}
 
 ; --- I/O registers ---
+!ifdef TARGET_PLUS4 {
+; TED reference here:
+; http://mclauchlan.site.net.au/scott/C=Hacking/C-Hacking12/gfx.html
+reg_screen_bitmap_mode = $ff12
+reg_screen_char_mode  = $ff13
+reg_bordercolour      = $ff19
+reg_backgroundcolour  = $ff15 
+}
+!ifdef TARGET_MEGA65 {
 reg_screen_char_mode  = $d018 
 reg_bordercolour      = $d020
 reg_backgroundcolour  = $d021 
+}
+!ifdef TARGET_C64 {
+reg_screen_char_mode  = $d018 
+reg_bordercolour      = $d020
+reg_backgroundcolour  = $d021 
+}
 
 ; --- Kernel routines ---
-kernal_delay_1ms      = $eeb3 ; delay 1 ms
-kernal_setcursor      = $e50c ; set cursor to x/y (row/column)
+!ifdef TARGET_C64 {
 kernal_reset          = $fce2 ; cold reset of the C64
-kernal_scnkey         = $ff9f ; scan the keyboard
+kernal_delay_1ms      = $eeb3 ; delay 1 ms
+}
+!ifdef TARGET_PLUS4 {
+kernal_reset          = $fff6 ; cold reset of the PLUS4
+kernal_delay_1ms      = $e2dc ; delay 1 ms
+}
+!ifdef TARGET_MEGA65 {
+kernal_reset          = $e4b8 ; Reset back to C65 mode
+kernal_delay_1ms      = $eeb3 ; delay 1 ms
+}
 kernal_setlfs         = $ffba ; set file parameters
 kernal_setnam         = $ffbd ; set file name
 kernal_open           = $ffc0 ; open a file
 kernal_close          = $ffc3 ; close a file
 kernal_chkin          = $ffc6 ; define file as default input
-kernal_chkout         = $ffc9 ; define file as default output
 kernal_clrchn         = $ffcc ; close default input/output files
 kernal_readchar       = $ffcf ; read byte from default input into a
 ;use streams_print_output instead of kernal_printchar
@@ -200,41 +323,9 @@ kernal_load           = $ffd5 ; load file
 kernal_save           = $ffd8 ; save file
 kernal_readtime       = $ffde ; get time of day in a/x/y
 kernal_getchar        = $ffe4 ; get a character
-kernal_plot           = $fff0 ; set (c=1)/get (c=0) cursor: x=row, y=column
 }
 
-
-; story file header constants
-header_version = $0
-header_flags_1 = $1
-header_high_mem = $4
-header_initial_pc = $6
-header_dictionary = $8
-header_object_table = $a
-header_globals = $c
-header_static_mem = $e
-header_flags_2 = $10
-header_serial = $12
-header_abbreviations = $18
-header_filelength = $1a
-header_checksum = $1c
-header_interpreter_number = $1e
-header_interpreter_version = $1f
-header_screen_height_lines = $20
-header_screen_width_chars = $21
-header_screen_width_units = $22
-header_screen_height_units = $24
-header_font_width_units = $26
-header_font_height_units = $27
-!ifndef ACORN {
-header_default_bg_colour = $2c
-header_default_fg_colour = $2d
-}
-header_terminating_chars_table = $2e
-header_standard_revision_number = $32
-header_alphabet_table = $34
-header_header_extension_table = $36
-
+; SFTODO: It might be worth having a constants-acorn.asm (note there is a constants-c128.asm - is that *in addition* to this, or a complete alternative to this?). Not necessarily just for stuff in the following block.
 !ifdef ACORN {
 
 ; Acorn OS and hardware constants
@@ -345,7 +436,7 @@ screen_height_minus_1 = $8a ; 1 byte
 }
 
 vmem_temp			  = $00 ; 2 bytes
-alphabet_table		  = $7e ; 2 bytes
+; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway
 
 window_start_row	  = $80; 4 bytes
 
@@ -444,6 +535,8 @@ scratch_double_page = scratch_page
 ; right at the end of the binary, and first thing (perhaps even before relocating
 ; if we're in a reloctable build) copy it down to somewhere in $400-800. That's
 ; if I think this is a good thing to do, not saying it is.
+; SFTODO: It just *might* be possible and worthwhile (at least on some builds,
+; maybe only COMPLEX_MEMORY ones) to use some memory in $400-$800 as VM cache.
 }
 
 }

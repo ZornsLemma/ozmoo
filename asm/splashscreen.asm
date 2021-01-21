@@ -5,6 +5,17 @@ splash_screen
 splash_line_y
 	ldx splash_index_line,y
 	lda splash_index_col,y
+!ifdef TARGET_C128 {
+	ldy COLS_40_80
+	beq +
+	clc
+	adc #20
++
+}
+!ifdef TARGET_MEGA65 {
+	clc
+	adc #20
+}
 	tay
 	jsr set_cursor
 	ldy z_temp
@@ -16,21 +27,25 @@ splash_line_y
 	cpy #5
 	bne splash_line_y
 
-	lda $a2
+	lda ti_variable + 2
 	clc
 	adc #<(SPLASHWAIT*60)
 	sta z_temp + 2
-	lda $a1
+	lda ti_variable + 1
 	adc #>(SPLASHWAIT*60)
 	sta z_temp + 1
 	
 -	jsr kernal_getchar
+	cmp #0
 	bne +
-	lda z_temp + 2
-	cmp $a2
+	ldx z_temp + 2
+	cpx ti_variable + 2
+	beq ++
+	inx
+	cpx ti_variable + 2
 	bne -
-	lda z_temp + 1
-	cmp $a1
+++	lda z_temp + 1
+	cmp ti_variable + 1
 	bne -
 +	
 	lda #147

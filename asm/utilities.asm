@@ -12,47 +12,153 @@
 
 !ifndef ACORN {
 ; zero_processorports: ...<d000><e000><a000> on/off
+
+plus4_enable_ram = $ff3f
+plus4_enable_rom = $ff3e
+
+; C128 MMU ($ff00)
+; 7–6 Processor RAM bank (0–3)
+;  00:  RAM 0
+;  01:  RAM 1
+;  10:  RAM 2 (but not used/available)
+;  11:  RAM 3 (but not used/available)
+; 5–4 Contents of the area $C000–$FFFF;$E000-$FBFF
+;  00 Kernal ROM
+;  01 Internal Function ROM
+;  10 External Function ROM (ROMH)
+;  11 RAM
+; 3–2 Contents of the area $8000–$BFFF
+;  00 BASIC ROM high
+;  01 Internal Function ROM
+;  10 External Function ROM (ROML)
+;  11 RAM
+; 1   Contents of the area $4000–$7FFF
+;   0 BASIC ROM low
+;   1 RAM
+; 0   Contents of the area $D000–$DFFF
+;   0 I/O registers
+;   1 RAM or character generator ROM
+
+!macro before_dynmem_read {
+!ifdef TARGET_PLUS4 {
+	sei
+	sta plus4_enable_ram
+}
+}
+!macro after_dynmem_read {
+!ifdef TARGET_PLUS4 {
+	sta plus4_enable_rom
+	cli
+}
+}
+
 !macro set_memory_all_ram {
-    ; Don't forget to disable interrupts first!
-    pha
-    lda #%00110000 
-    sta zero_processorports
-    pla
+	; Don't forget to disable interrupts first!
+	pha
+!ifdef TARGET_C128 {
+	lda #%00111111 ; all RAM0
+	sta $ff00
+} else {
+	lda #%00110000 
+!ifdef TARGET_PLUS4 {
+;	sta plus4_enable_ram
+} else {
+	sta zero_processorports
+}
+}
+	pla
 }
 !macro set_memory_all_ram_unsafe {
-    ; Don't forget to disable interrupts first!
-    lda #%00110000 
-    sta zero_processorports
+	; Don't forget to disable interrupts first!
+!ifdef TARGET_C128 {
+	lda #%00111111 ; all RAM0
+	sta $ff00
+} else {
+	lda #%00110000 
+!ifdef TARGET_PLUS4 {
+;	sta plus4_enable_ram
+} else {
+	sta zero_processorports
+}
+}
 }
 
 !macro set_memory_no_basic {
-    pha
-    lda #%00110110
-    sta zero_processorports
-    pla
+	!ifdef TARGET_PLUS4 {
+	} else {
+			pha
+		!ifdef TARGET_C128 {
+			lda #%00001110 ; 48K RAM0 (0-$c000)
+			sta $ff00
+		} else {
+			lda #%00110110
+			sta zero_processorports
+		}
+			pla
+	} ; not TARGET_PLUS4
 }
+
 !macro set_memory_no_basic_unsafe {
-    lda #%00110110
-    sta zero_processorports
+	!ifdef TARGET_PLUS4 {
+	} else {
+		!ifdef TARGET_C128 {
+			lda #%00001110 ; 48K RAM0 (0-$c000)
+			sta $ff00
+		} else {
+			lda #%00110110
+			sta zero_processorports
+		}
+	} ; not TARGET_PLUS4
 }
 
 !macro set_memory_normal {
-    pha
-    lda #%00110111
-    sta zero_processorports
-    pla
+	!ifdef TARGET_PLUS4 {
+	} else {
+			pha
+		!ifdef TARGET_C128 {
+			lda #%00000000 ; default
+			sta $ff00
+		} else {
+			lda #%00110111
+			sta zero_processorports
+		}
+			pla
+	} ; not TARGET_PLUS4
 }
 
 ; to be expanded to disable NMI IRQs later if needed
 !macro disable_interrupts {
-    sei 
+	sei 
 }
 
 !macro enable_interrupts {
-    cli
+	cli
 }
 }
 
+; !ifdef SLOW {
+!ifdef TARGET_PLUS4 {
+read_next_byte_at_z_pc_sub
+    jsr restart_read_next_byte_at_z_pc_unsafe_sub
+!ifndef CMOS {
+	ldy #0
+!ifdef TARGET_PLUS4 { ; SF: Upstream has this, but it's redundant because it's inside another ifdef TARGET_PLUS4
+	sei
+	sta plus4_enable_ram
+	lda (z_pc_mempointer),y
+	sta plus4_enable_rom
+	cli
+} else {
+	lda (z_pc_mempointer),y
+}
+	inc z_pc_mempointer ; Also increases z_pc
+	beq ++
+	rts
+++  jmp inc_z_pc_page
+}
+
+; SFTODO: This may or may not be useful/needed/correct in 5.3, for now I've just merged it across as-is
+; SFTODO: IT MAY BE THAT IT'S CLEANER TO JUST NOT SUPPORT THIS OPTIMISATION IN SLOW MODE, I DON'T KNOW. SEE HOW THE CODE LOOKS WHEN I'M NOT IN THE MIDDLE OF A MERGE... - I ALSO NOTE THAT THE UPSTREAM VERSION OF THIS FILE DOES *NOT* RESPECT IFDEF SLOW ANY MORE, WHICH I THINK WOULD ARGUE FOR THIS ACORN VERSION OF THESE ROUTINES/MACROS NOT DOING THE SAME - IF I DO GET RID OF SLOW, DON'T FORGET TO MOVE OVER THE COMMENTS WHICH ARE ONLY IN THE SLOW CASE TO THE NON-SLOW CASE
 !ifdef SLOW {
 !ifdef ACORN_SWR_BIG_DYNMEM {
 ; In the big dynamic memory model, the first RAM bank (which may hold dynamic
@@ -117,10 +223,14 @@ read_next_byte_at_z_pc_sub
 	beq ++
 	rts
 ++  jmp inc_z_pc_page
+	inc z_pc_mempointer ; Also increases z_pc
+	beq ++
+	rts
+++  jmp inc_z_pc_page
 
 } else { ; not ACORN_SWR_BIG_DYNMEM
 
-; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
+; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0. SFTODO STILL TRUE IN 5.3?
 read_next_byte_at_z_pc_sub
 !ifndef CMOS {
 	ldy #0
@@ -246,7 +356,155 @@ read_next_byte_at_z_pc_sub
 }
 
 }
-}	
+}
+
+!ifdef COMPLEX_MEMORY {
+string_array_read_byte
+	sty .temp
+	stx .temp + 1
+	lda string_array
+	clc
+	adc .temp
+	tay
+	lda string_array + 1
+	adc #0
+	tax
+	lda #0
+	jsr read_byte_at_z_address
+	sta .temp + 2
+	ldy .temp
+	ldx .temp + 1
+	lda .temp + 2
+	rts
+
+string_array_write_byte
+	sta .temp
+	sty .temp + 1
+	lda z_address
+	pha
+	lda z_address + 1
+	pha
+	lda z_address + 2
+	pha
+	lda string_array
+	clc
+	adc .temp + 1
+	sta z_address + 2
+	lda string_array + 1
+	adc #0
+	sta z_address + 1
+	lda #0
+	sta z_address
+	lda .temp
+	jsr write_next_byte
+	pla
+	sta z_address + 2
+	pla
+	sta z_address + 1
+	pla
+	sta z_address
+	lda .temp
+	rts
+	
+parse_array_read_byte
+	sty .temp
+	stx .temp + 1
+	lda parse_array
+	clc
+	adc .temp
+	tay
+	lda parse_array + 1
+	adc #0
+	tax
+	lda #0
+	jsr read_byte_at_z_address
+	sta .temp + 2
+	ldy .temp
+	ldx .temp + 1
+	lda .temp + 2
+	rts
+
+parse_array_write_byte
+	sta .temp
+	sty .temp + 1
+	lda z_address
+	pha
+	lda z_address + 1
+	pha
+	lda z_address + 2
+	pha
+	lda parse_array
+	clc
+	adc .temp + 1
+	sta z_address + 2
+	lda parse_array + 1
+	adc #0
+	sta z_address + 1
+	lda #0
+	sta z_address
+	lda .temp
+	jsr write_next_byte
+	pla
+	sta z_address + 2
+	pla
+	sta z_address + 1
+	pla
+	sta z_address
+	lda .temp
+	rts
+
+.temp !byte 0,0,0
+
+!macro macro_string_array_read_byte {
+	jsr string_array_read_byte
+}
+!macro macro_string_array_write_byte {
+	jsr string_array_write_byte
+}
+!macro macro_parse_array_read_byte {
+	jsr parse_array_read_byte
+}
+!macro macro_parse_array_write_byte {
+	jsr parse_array_write_byte
+}
+
+} else { ; Not COMPLEX_MEMORY
+
+!macro macro_string_array_read_byte {
+	lda (string_array),y
+}
+!macro macro_string_array_write_byte {
+	sta (string_array),y
+}
+!macro macro_parse_array_read_byte {
+	lda (parse_array),y
+}
+!macro macro_parse_array_write_byte {
+	sta (parse_array),y
+}
+
+
+}
+
+
+!ifdef TARGET_C128 {
+convert_byte_to_two_digits = $f9fb
+} else {
+!ifndef ACORN { ; SFTODO: IS THIS NEEDED ON ACORN?
+convert_byte_to_two_digits
+; In: A (value 0-99)
+; Out: X: top digit, A: Bottom digit
+	ldx #$30
+	sec
+-	inx
+	sbc #10
+	bcs -
+	dex
+	adc #10 + $30 ; Carry already clear. Add 10 to fix going < 0. Add $30 to make it a digit
+	rts
+}
+}
+
 
 ERROR_UNSUPPORTED_STREAM = 1
 ERROR_CONFIG = 2
@@ -306,95 +564,95 @@ ERROR_DIVISION_BY_ZERO = 17
 }
 
 .error_message_high_arr
-    !byte >.error_unsupported_stream
-    !byte >.error_config
-    !byte >.error_stream_nesting_error
-    !byte >.error_floppy_read_error
-    !byte >.error_memory_over_64kb
-    !byte >.error_stack_full
-    !byte >.error_stack_empty
-    !byte >.error_opcode_not_implemented
-    !byte >.error_used_nonexistent_local_var
-    !byte >.error_bad_property_length
-    !byte >.error_unsupported_story_version
-    !byte >.error_out_of_memory
-    !byte >.error_write_above_dynmem
-    !byte >.error_read_above_statmem
-    !byte >.error_too_many_terminators
-    !byte >.error_no_vmem_index
-    !byte >.error_division_by_zero
+	!byte >.error_unsupported_stream
+	!byte >.error_config
+	!byte >.error_stream_nesting_error
+	!byte >.error_floppy_read_error
+	!byte >.error_memory_over_64kb
+	!byte >.error_stack_full
+	!byte >.error_stack_empty
+	!byte >.error_opcode_not_implemented
+	!byte >.error_used_nonexistent_local_var
+	!byte >.error_bad_property_length
+	!byte >.error_unsupported_story_version
+	!byte >.error_out_of_memory
+	!byte >.error_write_above_dynmem
+	!byte >.error_read_above_statmem
+	!byte >.error_too_many_terminators
+	!byte >.error_no_vmem_index
+	!byte >.error_division_by_zero
 
 .error_message_low_arr
-    !byte <.error_unsupported_stream
-    !byte <.error_config
-    !byte <.error_stream_nesting_error
-    !byte <.error_floppy_read_error
-    !byte <.error_memory_over_64kb
-    !byte <.error_stack_full
-    !byte <.error_stack_empty
-    !byte <.error_opcode_not_implemented
-    !byte <.error_used_nonexistent_local_var
-    !byte <.error_bad_property_length
-    !byte <.error_unsupported_story_version
-    !byte <.error_out_of_memory
-    !byte <.error_write_above_dynmem
-    !byte <.error_read_above_statmem
-    !byte <.error_too_many_terminators
-    !byte <.error_no_vmem_index
-    !byte <.error_division_by_zero
+	!byte <.error_unsupported_stream
+	!byte <.error_config
+	!byte <.error_stream_nesting_error
+	!byte <.error_floppy_read_error
+	!byte <.error_memory_over_64kb
+	!byte <.error_stack_full
+	!byte <.error_stack_empty
+	!byte <.error_opcode_not_implemented
+	!byte <.error_used_nonexistent_local_var
+	!byte <.error_bad_property_length
+	!byte <.error_unsupported_story_version
+	!byte <.error_out_of_memory
+	!byte <.error_write_above_dynmem
+	!byte <.error_read_above_statmem
+	!byte <.error_too_many_terminators
+	!byte <.error_no_vmem_index
+	!byte <.error_division_by_zero
 }
 
 fatalerror
-    ; prints the error, then resets the computer
-    ; input: a (error code)
-    ; side effects: resets the computer
+	; prints the error, then resets the computer
+	; input: a (error code)
+	; side effects: resets the computer
 	sta z_temp + 11
 !ifndef DEBUG {
-    pha
+	pha
 !ifndef ACORN {
-    +set_memory_normal
+	+set_memory_normal
 }
-    ldy #>.fatal_error_string
+	ldy #>.fatal_error_string
 	lda #<.fatal_error_string
 	jsr printstring
-    pla
-    tax
-    lda #0
-    jsr printinteger
-    lda #$0d
-    jsr streams_print_output
-    jsr printchar_flush
+	pla
+	tax
+	lda #0
+	jsr printinteger
+	lda #$0d
+	jsr streams_print_output
+	jsr printchar_flush
 !ifndef ACORN {
-    jsr kernal_readchar   ; read keyboard
-    jmp kernal_reset      ; reset
+	jsr kernal_readchar   ; read keyboard
+	jmp kernal_reset      ; reset
 } else {
 -   jmp -
 }
-.fatal_error_string !pet "fatal error: ",0
+.fatal_error_string !pet "fatal error: ",0 ; SFTODO: THIS SHOULD USE !TEXT ON ACORN
 } else {
-    pha
-    jsr print_following_string
+	pha
+	jsr print_following_string
 !ifndef ACORN {
-    !pet "fatal error ", 0
+	!pet "fatal error ", 0
 } else {
-    !text "fatal error ", 0
+	!text "fatal error ", 0
 }
-    pla
-    tax
-    dex
-    jsr printa
-    jsr colon
-    jsr space
-    lda .error_message_high_arr,x
-    tay
-    lda .error_message_low_arr,x
-    jsr printstring
-    jsr newline
-    jsr print_trace
-    jsr printchar_flush
+	pla
+	tax
+	dex
+	jsr printa
+	jsr colon
+	jsr space
+	lda .error_message_high_arr,x
+	tay
+	lda .error_message_low_arr,x
+	jsr printstring
+	jsr newline
+	jsr print_trace
+	jsr printchar_flush
 !ifndef ACORN {
-    jsr kernal_readchar   ; read keyboard
-    jmp kernal_reset      ; reset
+	jsr kernal_readchar   ; read keyboard
+	jmp kernal_reset      ; reset
 } else {
 -   jmp -
 }
@@ -404,251 +662,251 @@ fatalerror
 .saved_y !byte 0
 
 space
-    ; subroutine: print space
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #$20
-    jsr streams_print_output
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print space
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #$20
+	jsr streams_print_output
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 comma
-    ; subroutine: print comma
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #44
-    jsr streams_print_output
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print comma
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #44
+	jsr streams_print_output
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 dollar
-    ; subroutine: print dollar
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #36
-    jsr printchar_buffered
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print dollar
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #36
+	jsr printchar_buffered
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 colon
-    ; subroutine: print colon
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #58
-    jsr streams_print_output
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print colon
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #58
+	jsr streams_print_output
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 arrow
-    ; subroutine: print ->
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #$2d
-    jsr streams_print_output
-    lda #$3e
-    jsr streams_print_output
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print ->
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #$2d
+	jsr streams_print_output
+	lda #$3e
+	jsr streams_print_output
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 
 newline
-    ; subroutine: print newline
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #$0d
-    jsr streams_print_output
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print newline
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #$0d
+	jsr streams_print_output
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 printx
-    ; subroutine: print value stored in x register
-    ; input: x
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    lda #$00
-    jsr printinteger
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print value stored in x register
+	; input: x
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	lda #$00
+	jsr printinteger
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 printy
-    ; subroutine: print value stored in y register
-    ; input: y
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    tya
-    tax
-    lda #$00
-    jsr printinteger
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print value stored in y register
+	; input: y
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	tya
+	tax
+	lda #$00
+	jsr printinteger
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 printa
-    ; subroutine: print value stored in a register
-    ; input: a
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    tax
-    lda #$00
-    jsr printinteger
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	; subroutine: print value stored in a register
+	; input: a
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	tax
+	lda #$00
+	jsr printinteger
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 pause
-    ; subroutine: print newline
-    ; input: 
-    ; output:
-    ; used registers:
-    ; side effects:
-    php
-    sta .saved_a
-    stx .saved_x
-    sty .saved_y
-    jsr print_following_string
+	; subroutine: print newline
+	; input: 
+	; output:
+	; used registers:
+	; side effects:
+	php
+	sta .saved_a
+	stx .saved_x
+	sty .saved_y
+	jsr print_following_string
 !ifndef ACORN {
 	!pet "[Intentional pause. Press ENTER.]",13,0
 } else {
 	!text "[Intentional pause. Press ENTER.]",13,0
 }
-    jsr print_trace
-    jsr printchar_flush
-!ifndef ACORN {
-    jsr kernal_readchar   ; read keyboard
+	jsr print_trace
+	jsr printchar_flush
+!ifndef ACORN { ; SFTODO: SHOULD I MAKE KERNAL_READCHAR AN ALIAS FOR OSRDCH??? THEN WOULDN'T NEED THIS CONDITIONAL COMPILATION, MAYBE A SAVING, MAYBE NOT
+	jsr kernal_readchar   ; read keyboard
 } else {
     jsr osrdch
 }
-    lda .saved_a
-    ldx .saved_x
-    ldy .saved_y
-    plp
-    rts
+	lda .saved_a
+	ldx .saved_x
+	ldy .saved_y
+	plp
+	rts
 
 print_following_string
-    ; print text (implicit argument passing)
-    ; input: 
-    ; output:
-    ; used registers: a
-    ; side effects:
+	; print text (implicit argument passing)
+	; input: 
+	; output:
+	; used registers: a
+	; side effects:
 !zone {
-    ; usage:
-    ;    jsr print_following_string
-    ;    !pet "message",0
-    ; uses stack pointer to find start of text, then
-    ; updates the stack so that execution continues
-    ; directly after the end of the text
+	; usage:
+	;    jsr print_following_string
+	;    !pet "message",0
+	; uses stack pointer to find start of text, then
+	; updates the stack so that execution continues
+	; directly after the end of the text
 
-    ; store the return address
-    ; the address on stack is -1 before the first character
-    pla  ; remove LO for return address
-    sta .return_address + 1
-    pla  ; remove HI for return address
-    sta .return_address + 2
+	; store the return address
+	; the address on stack is -1 before the first character
+	pla  ; remove LO for return address
+	sta .return_address + 1
+	pla  ; remove HI for return address
+	sta .return_address + 2
 
-    ; print the string
+	; print the string
 -   inc .return_address + 1
-    bne .return_address
-    inc .return_address + 2
+	bne .return_address
+	inc .return_address + 2
 .return_address
-    lda $0000 ; self-modifying code (aaarg! but oh, so efficent)
-    beq +
-    jsr streams_print_output
-    jmp -
+	lda $0000 ; self-modifying code (aaarg! but oh, so efficent)
+	beq +
+	jsr streams_print_output
+	jmp -
 
-    ; put updated return address on stack
+	; put updated return address on stack
 +   lda .return_address + 2
-    pha 
-    lda .return_address + 1
-    pha
-    rts
+	pha 
+	lda .return_address + 1
+	pha
+	rts
 }
 
 print_trace
 !ifdef TRACE {
-    jsr newline
+	jsr newline
 	jsr print_following_string
 !ifndef ACORN {
 	!pet "last opcodes: (#, z_pc, opcode)",0
 } else {
 	!text "last opcodes: (#, z_pc, opcode)",0
 }
-    jsr newline
+	jsr newline
 	lda z_trace_index
 	tay
 	and #%11
@@ -763,11 +1021,11 @@ print_bad_zscii_code
 
 
 printinteger
-    ; subroutine: print 16 bit integer value
-    ; input: a,x (x = low, a = high);
-    ; output:
-    ; used registers: a, x, y
-    ; side effects:
+	; subroutine: print 16 bit integer value
+	; input: a,x (x = low, a = high);
+	; output:
+	; used registers: a, x, y
+	; side effects:
 !zone {
 	pha
 	ldy #1
@@ -806,66 +1064,64 @@ printinteger
 }
 
 printstring
-    ; input: a,y (lo/hi)
-    ; output:
-    ; used registers:
-    ; side effects:
+	; input: a,y (lo/hi)
+	; output:
+	; used registers:
+	; side effects:
 !zone {
-    sta .loop+1
-    sty .loop+2
-    ldy #0
+	sta .loop+1
+	sty .loop+2
+	ldy #0
 .loop
-    lda $8000,y
-    beq +
-    jsr streams_print_output
-    iny
-    bne .loop
+	lda $8000,y
+	beq +
+	jsr streams_print_output
+	iny
+	bne .loop
 +   rts
 }
 
-!ifdef VMEM {
-!ifndef ACORN {
-conv2dec
-    ; convert a to decimal in x,a
-    ; for example a=#$0f -> x='1', a='5'
-    ldx #$30 ; store '0' in x
--   cmp #10
-    bcc +    ; a < 10
-    inx
-    sec
-    sbc #10
-    jmp -
-+   adc #$30
-    rts
-}
-}
+; !ifdef VMEM {
+; conv2dec
+	; ; convert a to decimal in x,a
+	; ; for example a=#$0f -> x='1', a='5'
+	; ldx #$30 ; store '0' in x
+; -   cmp #10
+	; bcc +    ; a < 10
+	; inx
+	; sec
+	; sbc #10
+	; jmp -
+; +   adc #$30
+	; rts
+; }
 
 mult16
-    ;16-bit multiply with 32-bit product
-    ;http://codebase64.org/doku.php?id=base:16bit_multiplication_32-bit_product
-    lda #$00
-    sta product+2 ; clear upper bits of product
-    sta product+3 
-    ldx #$10 ; set binary count to 16 
+	;16-bit multiply with 32-bit product
+	;http://codebase64.org/doku.php?id=base:16bit_multiplication_32-bit_product
+	lda #$00
+	sta product+2 ; clear upper bits of product
+	sta product+3 
+	ldx #$10 ; set binary count to 16 
 shift_r
-    lsr multiplier+1 ; divide multiplier by 2 
-    ror multiplier
-    bcc rotate_r 
-    lda product+2 ; get upper half of product and add multiplicand
-    clc
-    adc multiplicand
-    sta product+2
-    lda product+3 
-    adc multiplicand+1
+	lsr multiplier+1 ; divide multiplier by 2 
+	ror multiplier
+	bcc rotate_r 
+	lda product+2 ; get upper half of product and add multiplicand
+	clc
+	adc multiplicand
+	sta product+2
+	lda product+3 
+	adc multiplicand+1
 rotate_r
-    ror ; rotate partial product 
-    sta product+3 
-    ror product+2
-    ror product+1 
-    ror product 
-    dex
-    bne shift_r 
-    rts
+	ror ; rotate partial product
+	sta product+3 
+	ror product+2
+	ror product+1 
+	ror product 
+	dex
+	bne shift_r 
+	rts
     ;SFTODODATA 8
 multiplier
 divisor
@@ -885,10 +1141,10 @@ remainder
 
 !zone {
 divide16	
-	lda #0	        ;preset remainder to 0
+	lda #0          ;preset remainder to 0
 	sta remainder
 	sta remainder + 1
-	ldx #16	        ;repeat for each bit: ...
+	ldx #16         ;repeat for each bit: ...
 .divloop
 	asl dividend	;dividend lb & hb*2, msb -> Carry
 	rol dividend + 1	
@@ -897,7 +1153,7 @@ divide16
 	lda remainder
 	sec
 	sbc divisor	;substract divisor to see if it fits in
-	tay	        ;lb result -> Y, for we may need it later
+	tay         ;lb result -> Y, for we may need it later
 	lda remainder + 1
 	sbc divisor+1
 	bcc .skip	;if carry=0 then divisor didn't fit in yet

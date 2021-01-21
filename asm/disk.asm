@@ -1,5 +1,5 @@
 first_unavailable_save_slot_charcode	!byte 0
-current_disks !byte $ff, $ff, $ff, $ff
+current_disks !byte $ff, $ff, $ff, $ff,$ff, $ff, $ff, $ff
 boot_device !byte 0
 ask_for_save_device !byte $ff
 
@@ -9,7 +9,7 @@ disk_info
 	!byte 8, 8, 0, 0, 0, 130, 131, 0 
 } else {
 
-device_map !byte 0,0,0,0
+device_map !byte 0,0,0,0,0,0,0,0
 
 nonstored_blocks		!byte 0
 readblocks_numblocks	!byte 0 
@@ -31,36 +31,37 @@ disk_info
 }
 
 readblocks
-    ; read <n> blocks (each 256 bytes) from disc to memory
-    ; set values in readblocks_* before calling this function
-    ; register: a,x,y
+	; read <n> blocks (each 256 bytes) from disc to memory
+	; set values in readblocks_* before calling this function
+	; register: a,x,y
 !ifdef TRACE_FLOPPY {
-    jsr newline
-    jsr print_following_string
-    !pet "readblocks (n,zp,c64) ",0
-    lda readblocks_numblocks
-    jsr printa
-    jsr comma
-    lda readblocks_currentblock + 1
-    jsr print_byte_as_hex
-    lda readblocks_currentblock
-    jsr print_byte_as_hex
-    jsr comma
-    lda readblocks_mempos + 1
-    jsr print_byte_as_hex
-    lda readblocks_mempos 
-    jsr print_byte_as_hex
-    jsr newline
+	jsr newline
+	jsr print_following_string
+	!pet "readblocks (n,zp,c64) ",0
+	lda readblocks_numblocks
+	jsr printa
+	jsr comma
+	lda readblocks_currentblock + 1
+	jsr print_byte_as_hex
+	lda readblocks_currentblock
+	jsr print_byte_as_hex
+	jsr comma
+	lda readblocks_mempos + 1
+	jsr print_byte_as_hex
+	lda readblocks_mempos 
+	jsr print_byte_as_hex
+	jsr newline
 }
 -   jsr readblock ; read block
-    inc readblocks_mempos + 1   ; update mempos,block for next iteration
-    inc readblocks_currentblock
-    bne +
-    inc readblocks_currentblock + 1
+	inc readblocks_mempos + 1   ; update mempos,block for next iteration
+	inc readblocks_currentblock
+	bne +
+	inc readblocks_currentblock + 1
 +   dec readblocks_numblocks        ; loop
-    bne -
-    rts
+	bne -
+	rts
 
+!if SUPPORT_REU = 1 {
 .readblock_from_reu
 	ldx readblocks_currentblock_adjusted
 	ldy readblocks_currentblock_adjusted + 1
@@ -70,12 +71,12 @@ readblocks
 +	tya
 	ldy readblocks_mempos + 1 ; Assuming lowbyte is always 0 (which it should be)
 	jmp copy_page_from_reu
-
+}
 readblock
-    ; read 1 block from floppy
-    ; $mempos (contains address to store in) [in]
-    ; set values in readblocks_* before calling this function
-    ; register a,x,y
+	; read 1 block from floppy
+	; $mempos (contains address to store in) [in]
+	; set values in readblocks_* before calling this function
+	; register a,x,y
 
 !ifdef TRACE_FLOPPY {
 	jsr print_following_string
@@ -96,11 +97,12 @@ readblock
 	sta readblocks_currentblock_adjusted + 1
 	sta .blocks_to_go + 1
 
+!if SUPPORT_REU = 1 {
 	; Check if game has been cached to REU
 	bit use_reu
 	bvs .readblock_from_reu
-
-    ; convert block to track/sector
+}
+	; convert block to track/sector
 	
 	lda disk_info + 2 ; Number of disks
 	ldx #0 ; Memory index
@@ -257,7 +259,7 @@ readblock
 .temp_y 		!byte 0
 
 
-    ; convert track/sector to ascii and update drive command
+	; convert track/sector to ascii and update drive command
 read_track_sector
 	; input: a: track, x: sector, y: device#, Word at readblocks_mempos holds storage address
 	sta .track
@@ -265,89 +267,111 @@ read_track_sector
 	sty .device
 .have_set_device_track_sector
 	lda .track
-    jsr conv2dec
-    stx .uname_track
-    sta .uname_track + 1
-    lda .sector
-    jsr conv2dec
-    stx .uname_sector
-    sta .uname_sector + 1
+	jsr convert_byte_to_two_digits
+	stx .uname_track
+	sta .uname_track + 1
+	lda .sector
+	jsr convert_byte_to_two_digits
+	stx .uname_sector
+	sta .uname_sector + 1
 
 !ifdef TRACE_FLOPPY_VERBOSE {
-    jsr space
-    jsr dollar
-    lda readblocks_mempos + 1
-    jsr print_byte_as_hex
-    lda readblocks_mempos 
-    jsr print_byte_as_hex
-    jsr comma
-    ldx readblocks_currentblock
-    jsr printx
-    ;jsr comma
-    ;lda #<.uname
-    ;ldy #>.uname
-    ;jsr printstring
-    jsr newline
+	jsr space
+	jsr dollar
+	lda readblocks_mempos + 1
+	jsr print_byte_as_hex
+	lda readblocks_mempos 
+	jsr print_byte_as_hex
+	jsr comma
+	ldx readblocks_currentblock
+	jsr printx
+	;jsr comma
+	;lda #<.uname
+	;ldy #>.uname
+	;jsr printstring
+	jsr newline
 }
-    ; open the channel file
-    lda #cname_len
-    ldx #<.cname
-    ldy #>.cname
-    jsr kernal_setnam ; call SETNAM
 
-    lda #$02      ; file number 2
-    ldx .device
+!ifdef TARGET_C128 {
+	lda #0
+	sta allow_2mhz_in_40_col
+	sta reg_2mhz	;CPU = 1MHz
+}
+
+
+	; open the channel file
+	lda #cname_len
+	ldx #<.cname
+	ldy #>.cname
+	jsr kernal_setnam ; call SETNAM
+
+	lda #$02      ; file number 2
+	ldx .device
 	tay      ; secondary address 2
-    jsr kernal_setlfs ; call SETLFS
+	jsr kernal_setlfs ; call SETLFS
+!ifdef TARGET_C128 {
+	lda #$00
+	tax
+	jsr kernal_setbnk
+}
+	jsr kernal_open     ; call OPEN
+	bcs .error    ; if carry set, the file could not be opened
 
-    jsr kernal_open     ; call OPEN
-    bcs .error    ; if carry set, the file could not be opened
+	; open the command channel
 
-    ; open the command channel
+	lda #uname_len
+	ldx #<.uname
+	ldy #>.uname
+	jsr kernal_setnam ; call SETNAM
+	lda #$0F      ; file number 15
+	ldx .device
+	tay      ; secondary address 15
+	jsr kernal_setlfs ; call SETLFS
+!ifdef TARGET_C128 {
+	lda #$00
+	tax
+	jsr kernal_setbnk
+}
+	jsr kernal_open ; call OPEN (open command channel and send U1 command)
+	bcs .error    ; if carry set, the file could not be opened
 
-    lda #uname_len
-    ldx #<.uname
-    ldy #>.uname
-    jsr kernal_setnam ; call SETNAM
-    lda #$0F      ; file number 15
-    ldx .device
-    tay      ; secondary address 15
-    jsr kernal_setlfs ; call SETLFS
+	; check drive error channel here to test for
+	; FILE NOT FOUND error etc.
 
-    jsr kernal_open ; call OPEN (open command channel and send U1 command)
-    bcs .error    ; if carry set, the file could not be opened
+	ldx #$02      ; filenumber 2
+	jsr kernal_chkin ; call CHKIN (file 2 now used as input)
 
-    ; check drive error channel here to test for
-    ; FILE NOT FOUND error etc.
+	lda readblocks_mempos
+	sta zp_mempos
+	lda readblocks_mempos+1
+	sta zp_mempos + 1
 
-    ldx #$02      ; filenumber 2
-    jsr kernal_chkin ; call CHKIN (file 2 now used as input)
-
-    lda readblocks_mempos
-    sta zp_mempos
-    lda readblocks_mempos+1
-    sta zp_mempos + 1
-
-    ldy #$00
+	ldy #$00
 -   jsr kernal_readchar ; call CHRIN (get a byte from file)
-    sta (zp_mempos),Y   ; write byte to memory
-    iny
-    bne -         ; next byte, end when 256 bytes are read
+	sta (zp_mempos),Y   ; write byte to memory
+	iny
+	bne -         ; next byte, end when 256 bytes are read
+!ifdef TARGET_C128 {
+	jsr close_io
+	jmp restore_2mhz
+} else {
 	jmp close_io
+}
+
 .error
-    ; accumulator contains BASIC error code
-    ; most likely errors:
-    ; A = $05 (DEVICE NOT PRESENT)
-    jsr close_io    ; even if OPEN failed, the file has to be closed
-    lda #ERROR_FLOPPY_READ_ERROR
-    jsr fatalerror
+	; accumulator contains BASIC error code
+	; most likely errors:
+	; A = $05 (DEVICE NOT PRESENT)
+	jsr close_io    ; even if OPEN failed, the file has to be closed
+	lda #ERROR_FLOPPY_READ_ERROR
+	jsr fatalerror
 .cname !text "#"
 cname_len = * - .cname
 
 .uname !text "U1 2 0 "
 .uname_track !text "18 "
 .uname_sector !text "00"
-    !byte 0 ; end of string, so we can print debug messages
+	!byte 0 ; end of string, so we can print debug messages
 
 uname_len = * - .uname
 .track  !byte 0
@@ -360,13 +384,13 @@ uname_len = * - .uname
 } ; End of !ifdef VMEM
 
 close_io
-    lda #$0F      ; filenumber 15
-    jsr kernal_close ; call CLOSE
+	lda #$0F      ; filenumber 15
+	jsr kernal_close ; call CLOSE
 
-    lda #$02      ; filenumber 2
-    jsr kernal_close ; call CLOSE
+	lda #$02      ; filenumber 2
+	jsr kernal_close ; call CLOSE
 
-    jmp kernal_clrchn ; call CLRCHN
+	jmp kernal_clrchn ; call CLRCHN
 
 !zone disk_messages {
 prepare_for_disk_msgs
@@ -390,7 +414,7 @@ print_insert_disk_msg
 -	lda disk_info + 8,y
 	beq .disk_name_done
 	bmi .special_string
-	jsr printchar_raw
+	jsr s_printchar
 	iny
 	bne - ; Always branch
 .special_string
@@ -409,23 +433,31 @@ print_insert_disk_msg
 	jsr printstring_raw
 	ldy .save_y
 	lda disk_info + 4,y
-	tax
-	cmp #10
-	bcc +
-	lda #$31
-	jsr printchar_raw
+	jsr convert_byte_to_two_digits
+	cpx #$30
+	beq +
+	pha
 	txa
-	sec
-	sbc #10
-+	clc
-	adc #$30
-	jsr printchar_raw
+	jsr s_printchar
+	pla
++	jsr s_printchar
+	; tax
+	; cmp #10
+	; bcc +
+	; lda #$31
+	; jsr s_printchar
+	; txa
+	; sec
+	; sbc #10
+; +	clc
+	; adc #$30
+	; jsr s_printchar
 	lda #>insert_msg_3
 	ldx #<insert_msg_3
 	jsr printstring_raw
 	;jsr kernal_readchar ; this shows the standard kernal prompt (not good)
 -	jsr kernal_getchar
-    beq -
+	beq -
 	; lda .print_row
 	; clc
 	; adc #3
@@ -461,17 +493,23 @@ insert_msg_3
 WANT_RESTART = 1
 z_ins_restart
 	; Find right device# for boot disk
-
 	ldx disk_info + 3
+
+!ifndef TARGET_MEGA65 {
 	lda disk_info + 4,x
-	cmp #10
-	bcc +
-	inc .restart_code_string + 12
-	sec
-	sbc #10
-+	ora #$30
-	sta .restart_code_string + 13
-	
+	jsr convert_byte_to_two_digits
+	stx .device_no
+	sta .device_no + 1
+	; cmp #10
+	; bcc +
+	; inc .device_no
+	; sec
+	; sbc #10
+; +	ora #$30
+	; sta .device_no + 1
+	ldx disk_info + 3
+}
+
 	; Check if disk is in drive
 	lda disk_info + 4,x
 	tay
@@ -480,6 +518,39 @@ z_ins_restart
 	beq +
 	jsr print_insert_disk_msg
 +
+
+!if SUPPORT_REU = 1 {
+	lda use_reu
+	beq +
+	; Write the game id as a signature to say that REU is already loaded.
+	ldx #3
+-	lda game_id,x
+	sta reu_filled,x
+	dex
+	bpl -
++
+}
+
+!ifdef TARGET_MEGA65 {
+	; reset will autoboot the game again from disk
+	jmp kernal_reset
+}
+
+!ifndef TARGET_MEGA65 {
+	sei
+	cld
+!ifdef TARGET_C128 {
+	lda #0
+	sta c128_mmu_cfg
+}
+	jsr $ff8a ; restor (Fill vector table at $0314-$0333 with default values)
+	jsr $ff84 ; ioinit (Initialize CIA's, SID, memory config, interrupt timer)
+	jsr $ff81 ; scinit (Initialize VIC; set nput/output to keyboard/screen)
+	cli
+!ifdef TARGET_C128 {
+	sta c128_mmu_load_pcra
+}
+}
 
 	; Copy restart code
 	ldx #.restart_code_end - .restart_code_begin
@@ -492,21 +563,25 @@ z_ins_restart
 	ldx #0
 -	lda .restart_keys,x
 	beq +
-	sta 631,x
+	sta keyboard_buff,x
 	inx
 	bne - ; Always branch
-+	stx 198
-	jsr clear_screen_raw
-	; lda #147
-	; jsr $ffd2
++	stx keyboard_buff_len
+	lda #147
+	jsr kernal_printchar
 	lda #z_exe_mode_exit
 	sta z_exe_mode
 	rts
 .restart_keys
 ;	!pet "lO",34,":*",34,",08:",131,0
+!ifdef TARGET_C128 {
+	; must select memory under $4000 (basic)
+	!pet "sY4e3",13,0
+.restart_code_address = 4000
+} else {
 	!pet "sY3e4",13,0
-
-.restart_code_address = 30000
+.restart_code_address = 30000 ; $7530
+}
 
 .restart_code_begin
 .restart_code_string_final_pos = .restart_code_string - .restart_code_begin + .restart_code_address
@@ -516,15 +591,37 @@ z_ins_restart
 	jsr $ffd2
 	inx
 	bne -
-	; Setup	key sequence
-+	lda #131
-	sta 631
++	; Setup	key sequence
+!ifdef TARGET_PLUS4_OR_C128 {
+	lda #19 ; home
+	sta keyboard_buff
+	lda #17 ; down
+	sta keyboard_buff + 1
+	lda #17 ; down
+	sta keyboard_buff + 2
+	lda #13 ; run
+	sta keyboard_buff + 3
+	lda #13 ; run
+	sta keyboard_buff + 4
+	lda #5
+} else {
+	lda #131 ; run
+	sta keyboard_buff
 	lda #1
-	sta 198
+}
+	sta keyboard_buff_len
 	rts
-		
+
 .restart_code_string
-	!pet 147,17,17,"    ",34,":*",34,",08",19,0
+!ifdef TARGET_PLUS4_OR_C128 {
+	!pet 147,17,17,"lO",34,":story",34,","
+.device_no
+	!pet "08",17,17,17,17,17,"rU",19,0
+} else { ; Not Plus4 or C128
+	!pet 147,17,17,"    ",34,":story",34,","
+.device_no
+	!pet "08",19,0
+}
 ; .restart_code_keys
 	; !pet 131,0
 .restart_code_end
@@ -535,8 +632,13 @@ z_ins_restore
 !ifdef Z3 {
 	jsr restore_game
 	beq +
+	ldx #0
+	jsr split_window
 	jmp make_branch_true
-+	jmp make_branch_false
++
+	ldx #0
+	jsr split_window
+	jmp make_branch_false
 }
 !ifdef Z4 {
 	jsr restore_game
@@ -558,11 +660,7 @@ z_ins_save
 	jmp make_branch_true
 +	jmp make_branch_false
 }
-!ifdef Z4 {
-	jsr save_game
-	jmp z_store_result
-}
-!ifdef Z5PLUS {
+!ifdef Z4PLUS {
 	jsr save_game
 	jmp z_store_result
 }
@@ -572,68 +670,71 @@ z_ins_save
 .filename !pet "!0" ; 0 is changed to slot number
 .inputstring !fill 15 ; filename max 16 chars (fileprefix + 14)
 .input_alphanum
-    ; read a string with only alphanumeric characters into .inputstring
-    ; return: x = number of characters read
-    ;         .inputstring: null terminated string read (max 20 characters)
-    ; modifies a,x,y
+	; read a string with only alphanumeric characters into .inputstring
+	; return: x = number of characters read
+	;         .inputstring: null terminated string read (max 20 characters)
+	; modifies a,x,y
 	jsr turn_on_cursor
-    lda #0
-    sta .inputlen
--   jsr kernal_getchar
-    cmp #$14 ; delete
-    bne +
-    ldx .inputlen
-    beq -
-    dec .inputlen
+	lda #0
+	sta .inputlen
+	cli
+	jsr kernal_clrchn
+-	jsr kernal_getchar
+	beq -
+	cmp #$14 ; delete
+	bne +
+	ldx .inputlen
+	beq -
+	dec .inputlen
 	pha
 	jsr turn_off_cursor
 	pla
-    jsr s_printchar
+	jsr s_printchar
 	jsr turn_on_cursor
-    jmp -
+	jmp -
 +   cmp #$0d ; enter
-    beq .input_done
+	beq .input_done
 	cmp #$20
 	beq .char_is_ok
-    sec
-    sbc #$30
-    cmp #$5B-$30
-    bcs -
-    sbc #$09 ;actually -$0a because C=0
-    cmp #$41-$3a
-    bcc -
-    adc #$39 ;actually +$3a because C=1
+	sec
+	sbc #$30
+	cmp #$5B-$30
+	bcs -
+	sbc #$09 ;actually -$0a because C=0
+	cmp #$41-$3a
+	bcc -
+	adc #$39 ;actually +$3a because C=1
 .char_is_ok
-    ldx .inputlen
-    cpx #14
-    bcs -
-    sta .inputstring,x
-    inc .inputlen
-    jsr s_printchar
+	ldx .inputlen
+	cpx #14
+	bcs -
+	sta .inputstring,x
+	inc .inputlen
+	jsr s_printchar
 	jsr update_cursor
-    jmp -
+	jmp -
 .input_done
 	pha
 	jsr turn_off_cursor
 	pla
 	jsr s_printchar ; return
-    ldx .inputlen
-    lda #0
-    sta .inputstring,x
+	ldx .inputlen
+	lda #0
+	sta .inputstring,x
 	rts
 
 .error
-    ; accumulator contains BASIC error code
-    ; most likely errors:
-    ; A = $05 (DEVICE NOT PRESENT)
+	; accumulator contains BASIC error code
+	; most likely errors:
+	; A = $05 (DEVICE NOT PRESENT)
 	sta zp_temp + 1 ; Store error code for printing
-    jsr close_io    ; even if OPEN failed, the file has to be closed
+	jsr close_io    ; even if OPEN failed, the file has to be closed
 	lda #>.disk_error_msg
 	ldx #<.disk_error_msg
 	jsr printstring_raw
 	; Add code to print error code!
-    lda #0
-    rts
+	lda #0
+	rts
 	
 list_save_files
 	lda #13
@@ -652,22 +753,26 @@ list_save_files
 	lda zp_screenline + 1
 	sta .base_screen_pos + 1
 
-    ; open the channel file
-    lda #1
-    ldx #<.dirname
-    ldy #>.dirname
-    jsr kernal_setnam ; call SETNAM
+	; open the channel file
+!ifdef TARGET_C128 {
+	lda #$00
+	tax
+	jsr kernal_setbnk
+}
+	lda #1
+	ldx #<.dirname
+	ldy #>.dirname
+	jsr kernal_setnam ; call SETNAM
 
-    lda #2      ; file number 2
-    ldx disk_info + 4 ; Device# for save disk
+	lda #2      ; file number 2
+	ldx disk_info + 4 ; Device# for save disk
 +   ldy #0      ; secondary address 2
-    jsr kernal_setlfs ; call SETLFS
+	jsr kernal_setlfs ; call SETLFS
+	jsr kernal_open     ; call OPEN
+	bcs .error    ; if carry set, the file could not be opened
 
-    jsr kernal_open     ; call OPEN
-    bcs .error    ; if carry set, the file could not be opened
-
-    ldx #2      ; filenumber 2
-    jsr kernal_chkin ; call CHKIN (file 2 now used as input)
+	ldx #2      ; filenumber 2
+	jsr kernal_chkin ; call CHKIN (file 2 now used as input)
 
 	; Skip load address and disk title
 	ldy #32
@@ -704,13 +809,30 @@ list_save_files
 	tax
 	lda .occupied_slots - $30,x
 	bne .not_a_save_file ; Since there is another save file with the same number, we ignore this file.
+
+!ifdef TARGET_C128 {
+	lda COLS_40_80
+	bne +++
+}
+; Set the first 40 chars of each row to the current text colour	
+	lda s_colour
+!ifdef TARGET_PLUS4 {
+	tay
+	lda plus4_vic_colours,y 
+}
+	ldy #39
+-	sta (zp_colourline),y
+	dey
+	bpl -
++++
+	
 	txa
 	sta .occupied_slots - $30,x
-	jsr printchar_raw
+	jsr s_printchar
 	lda #58
-	jsr printchar_raw
+	jsr s_printchar
 	lda #32
-	jsr printchar_raw
+	jsr s_printchar
 	dec zp_temp + 1
 	
 -	jsr kernal_readchar
@@ -719,8 +841,8 @@ list_save_files
 	beq .end_of_name
 	bit zp_temp + 1
 	bpl - ; Skip printing if not a save file
-	jsr printchar_raw
-	bne - ; Always branch
+	jsr s_printchar
+	jmp -
 .end_of_name
 -	jsr kernal_readchar
 	cmp #0 ; EOL
@@ -728,8 +850,8 @@ list_save_files
 	bit zp_temp + 1
 	bpl .read_next_line ; Skip printing if not a save file
 	lda #13
-	jsr printchar_raw
-	bne .read_next_line
+	jsr s_printchar
+	jmp .read_next_line
 	
 .end_of_dir
 	jsr close_io
@@ -738,13 +860,30 @@ list_save_files
 	ldx #0
 -	lda .occupied_slots,x
 	bne +
+
+!ifdef TARGET_C128 {
+	lda COLS_40_80
+	bne +++
+}
+; Set the first 40 chars of each row to the current text colour	
+	lda s_colour
+!ifdef TARGET_PLUS4 {
+	tay
+	lda plus4_vic_colours,y 
+}
+	ldy #39
+---	sta (zp_colourline),y
+	dey
+	bpl ---
++++
+
 	txa
 	ora #$30
-	jsr printchar_raw
+	jsr s_printchar
 	lda #58
-	jsr printchar_raw
+	jsr s_printchar
 	lda #13
-	jsr printchar_raw
+	jsr s_printchar
 +	inx
 	cpx disk_info + 1 ; # of save slots
 	bcc -
@@ -758,11 +897,15 @@ list_save_files
 	bcc -
 	
 	lda #1 ; Signal success
-    rts
+	rts
 
 .insertion_sort_item
 	; Parameters: x, .sort_item: item (1-9)
 	stx .current_item
+!ifdef TARGET_C128 {
+    lda COLS_40_80
+    bne vdc_insertion_sort
+}
 --	jsr .calc_screen_address
 	stx zp_temp + 2
 	sta zp_temp + 3
@@ -790,6 +933,80 @@ list_save_files
 	bne --
 .done_sort
 	rts
+!ifdef TARGET_C128 {
+vdc_insertion_sort
+	jsr .calc_screen_address
+	stx zp_temp + 2 ; convert from $0400 (VIC-II) to $0000 (VDC)
+	sec
+	sbc #$04
+	sta zp_temp + 3
+	ldx .current_item
+	dex
+	jsr .calc_screen_address
+	stx zp_temp ; convert from $0400 (VIC-II) to $0000 (VDC)
+	sec
+	sbc #$04
+	sta zp_temp + 1
+	; read  both rows from VCD into temp buffers
+	lda zp_temp
+	ldy zp_temp + 1
+	jsr VDCSetAddress
+	ldy #0
+-	jsr VDCReadByte
+	sta $0400,y
+	iny
+	cpy #17
+	bne -
+	lda zp_temp + 2
+	ldy zp_temp + 3
+	jsr VDCSetAddress
+	ldy #0
+-	jsr VDCReadByte
+	sta $0428,y
+	iny
+	cpy #17
+	bne -
+	; sort in the buffer
+	ldy #0
+	lda $0428,y ; (zp_temp + 2),y
+	cmp $0400,y ; (zp_temp),y
+	bcs .done_sort
+	; Swap items
+	ldy #17
+-	lda $0400,y ; (zp_temp),y
+	pha
+	lda $0428,y ; (zp_temp + 2),y
+	sta $0400,y ; (zp_temp),y
+	pla
+	sta $0428,y ; (zp_temp + 2),y
+	dey
+	bpl -
+	; copy back from the buffers into VDC
+	lda zp_temp
+	ldy zp_temp + 1
+	jsr VDCSetAddress
+	ldy #0
+-	lda $0400,y
+	jsr VDCWriteByte
+	iny
+	cpy #17
+	bne -
+	lda zp_temp + 2
+	ldy zp_temp + 3
+	jsr VDCSetAddress
+	ldy #0
+-	lda $0428,y
+	jsr VDCWriteByte
+	iny
+	cpy #17
+	bne -
+	; check next line
+	dec .current_item
+	ldx .current_item
+	beq +
+	jmp vdc_insertion_sort
++	rts
+}
 .calc_screen_address
 	lda .base_screen_pos
 	ldy .base_screen_pos + 1
@@ -797,7 +1014,7 @@ list_save_files
 	clc
 -	dec .counter
 	bmi +
-	adc #40
+	adc s_screen_width
 	tax
 	tya
 	adc #0
@@ -832,21 +1049,15 @@ list_save_files
 	ldx disk_info + 4 ; Device# for save disk
 	lda #0
 	sta current_disks - 8,x
-	beq .insert_done
-.dont_print_insert_save_disk	
-	ldx #0
-	ldy #5
--	jsr kernal_delay_1ms
-	dex
-	bne -
-	dey
-	bne -
+	beq .insert_done ; Always branch
+.dont_print_insert_save_disk
+	jsr wait_a_sec
 .insert_done
-    ldx #0
+	ldx #0
 !ifdef Z5PLUS {
 	jmp erase_window
 } else {
-    jsr erase_window
+	jsr erase_window
 	ldx window_start_row + 1 ; First line in lower window
 	ldy #0
 	jmp set_cursor
@@ -862,42 +1073,64 @@ list_save_files
 	ldx disk_info + 4 ; Device# for save disk
 	sta current_disks - 8,x
 +	ldx #0
-    jmp erase_window
+	jmp erase_window
 
 maybe_ask_for_save_device
 	lda ask_for_save_device
-	beq .dont_ask
-	lda #0
-	sta ask_for_save_device
+	beq .ok_dont_ask
 .ask_again
 	lda #>.save_device_msg ; high
 	ldx #<.save_device_msg ; low
 	jsr printstring_raw
 	jsr .input_alphanum
 	cpx #0
-	beq .dont_ask
+	beq .ok_dont_ask
 	cpx #3
-	bcs .ask_again
+	bcs .incorrect_device
 	; One or two digits
 	cpx #1
 	bne .two_digits
 	lda .inputstring
-	and #1
-	ora #8
+	cmp #$38
+	bcc .incorrect_device
+	cmp #$3a
+	bcs .incorrect_device
+	and #$0f
 	bne .store_device ; Always jump
 .two_digits
+	lda .inputstring
+	cmp #$31
+	bne .incorrect_device
 	lda .inputstring + 1
-	and #1
-	ora #10
+	cmp #$30
+	bcc .incorrect_device
+	cmp #$36
+	bcs .incorrect_device
+	and #$0f
+	adc #10 ; Carry already clear
 .store_device
 	sta disk_info + 4
-.dont_ask
+.ok_dont_ask
+	lda #0
+	sta ask_for_save_device
+	clc ; All OK
+	rts
+.incorrect_device
+	sec
 	rts
 	
 restore_game
-	jsr maybe_ask_for_save_device
 
-    jsr .insert_save_disk
+!ifdef TARGET_C128 {
+	lda #0
+	sta allow_2mhz_in_40_col
+	sta reg_2mhz	;CPU = 1MHz
+}
+
+	jsr maybe_ask_for_save_device
+	bcs .restore_failed
+
+	jsr .insert_save_disk
 
 	; List files on disk
 	jsr list_save_files
@@ -925,36 +1158,73 @@ restore_game
 	lda #>.restore_msg
 	ldx #<.restore_msg
 	jsr printstring_raw
-
 	jsr .swap_pointers_for_save
 	
 	; Perform restore
 	jsr do_restore
-    bcs .restore_failed    ; if carry set, a file error has happened
+	bcs .restore_failed    ; if carry set, a file error has happened
 
+!ifdef TARGET_C128 {
+	jsr restore_2mhz
+	; Copy stack and pointers from bank 1 to bank 0
+	jsr .copy_stack_and_pointers_to_bank_0
+	; z_temp + 4 now holds the page# where the zp registers are stored in vmem_cache
+	lda #(>stack_start) - 1
+	sta z_temp + 2
+	lda #($100 - zp_bytes_to_save)
+	sta z_temp + 1
+	sta z_temp + 3
+	ldy #zp_bytes_to_save - 1
+-	lda (z_temp + 3),y
+	sta (z_temp + 1),y
+	dey
+	bpl -
+}
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
-	lda use_reu
-	bmi +
-    jsr .insert_story_disk
-+	jsr get_page_at_z_pc
+!if SUPPORT_REU = 1 {
+ 	lda use_reu
+	bmi .restore_success_dont_insert_story_disk
+}
+	jsr .insert_story_disk
+.restore_success_dont_insert_story_disk	
+;	inc zp_pc_l ; Make sure read_byte_at_z_address
+!ifdef Z4PLUS {
+!ifdef TARGET_C128 {
+	jsr update_screen_width_in_header
+}
+}
+	jsr get_page_at_z_pc
 	lda #0
 	ldx #1
 	rts
 .restore_failed
-	lda use_reu
-	bmi +
-    jsr .insert_story_disk
+!if SUPPORT_REU = 1 {
+ 	lda use_reu
+	bmi .restore_fail_dont_insert_story_disk
+}
+	jsr .insert_story_disk
 	; Return failed status
-+	lda #0
+.restore_fail_dont_insert_story_disk
+!ifdef TARGET_C128 {
+	jsr restore_2mhz
+}
+	lda #0
 	tax
 	rts
 
 save_game
 
-	jsr maybe_ask_for_save_device
+!ifdef TARGET_C128 {
+	lda #0
+	sta allow_2mhz_in_40_col
+	sta reg_2mhz	;CPU = 1MHz
+}
 
-    jsr .insert_save_disk
+	jsr maybe_ask_for_save_device
+	bcs .restore_failed
+
+	jsr .insert_save_disk
 
 	; List files on disk
 	jsr list_save_files
@@ -990,89 +1260,126 @@ save_game
 	jsr printstring_raw
 
 	; Erase old file, if any
-    lda #5
-    ldx #<.erase_cmd
-    ldy #>.erase_cmd
-    jsr kernal_setnam
-    lda #$0f      ; file number 15
-    ldx disk_info + 4 ; Device# for save disk
-	ldy #$0f      ; secondary address 15
-    jsr kernal_setlfs
-    jsr kernal_open ; open command channel and send delete command)
-    bcs .restore_failed  ; if carry set, the file could not be opened
-    lda #$0f      ; filenumber 15
-    jsr kernal_close
+!ifdef TARGET_C128 {
+	lda #$00
+	tax
+	jsr kernal_setbnk
+}
+	lda #5
+	ldx #<.erase_cmd
+	ldy #>.erase_cmd
+	jsr kernal_setnam
+	lda #$0f      ; file number 15
+	ldx disk_info + 4 ; Device# for save disk
+	tay           ; secondary address 15
+	jsr kernal_setlfs
+	jsr kernal_open ; open command channel and send delete command)
+	bcs .restore_failed  ; if carry set, the file could not be opened
+	lda #$0f      ; filenumber 15
+	jsr kernal_close
 	
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
+!ifdef TARGET_C128 {
+	jsr .copy_stack_and_pointers_to_bank_1
+}
 	
 	; Perform save
 	jsr do_save
-    bcs .restore_failed    ; if carry set, a save error has happened
-
+	bcc +
+	jmp .restore_failed    ; if carry set, a save error has happened
++
+!ifdef TARGET_C128 {
+	jsr restore_2mhz
+}
 	; Swap out z_pc and stack_ptr
 	jsr .swap_pointers_for_save
 
+!if SUPPORT_REU = 1 {
  	lda use_reu
-	bmi +
+	bmi .dont_insert_story_disk
+}
 	jsr .insert_story_disk
-+	lda #0
+.dont_insert_story_disk
+	lda #0
 	ldx #1
 	rts
 
 do_restore
-    lda #3
-    ldx #<.restore_filename
-    ldy #>.restore_filename
-    jsr kernal_setnam
-    lda #1      ; file number
-    ldx disk_info + 4 ; Device# for save disk
+!ifdef TARGET_C128 {
+	lda #$01
+	ldx #$00
+	jsr kernal_setbnk
+}
+	lda #3
+	ldx #<.restore_filename
+	ldy #>.restore_filename
+	jsr kernal_setnam
+	lda #1      ; file number
+	ldx disk_info + 4 ; Device# for save disk
 	ldy #1      ; not $01 means: load to address stored in file
-    jsr kernal_setlfs
-    lda #$00      ; $00 means: load to memory (not verify)
-    jsr kernal_load
-    php ; store c flag so error can be checked by calling routine
-    lda #1 
-    jsr kernal_close
-    plp ; restore c flag
-    rts
+	jsr kernal_setlfs
+	lda #$00      ; $00 means: load to memory (not verify)
+	jsr kernal_load
+	php ; store c flag so error can be checked by calling routine
+	lda #1 
+	jsr kernal_close
+	plp ; restore c flag
+	rts
 
 do_save
-    lda .inputlen
-    clc
-    adc #2 ; add 2 bytes for prefix
-    ldx #<.filename
-    ldy #>.filename
-    jsr kernal_setnam
-    lda #1      ; file# 1
-    ldx disk_info + 4 ; Device# for save disk
-	ldy #1
-    jsr kernal_setlfs
-    lda #<(stack_start - zp_bytes_to_save)
-    sta $c1
-    lda #>(stack_start - zp_bytes_to_save)
-    sta $c2
-    ldx story_start + header_static_mem + 1
-    lda story_start + header_static_mem
-    clc
-    adc #>story_start
-    tay
-    lda #$c1      ; start address located in $C1/$C2
-    jsr kernal_save
-    php ; store c flag so error can be checked by calling routine
-    lda #1 
-    jsr kernal_close
-    plp ; restore c flag
-    rts
+!ifdef TARGET_C128 {
+	lda #$01
+	ldx #$00
+	jsr kernal_setbnk
+}
+	lda .inputlen
+	clc
+	adc #2 ; add 2 bytes for prefix
+	ldx #<.filename
+	ldy #>.filename
+	jsr kernal_setnam
+	lda #1      ; file# 1
+	ldx disk_info + 4 ; Device# for save disk
+	tay         ; secondary address: 1
+	jsr kernal_setlfs
+!ifdef TARGET_C128 {
+	lda #<(story_start_bank_1 - stack_size - zp_bytes_to_save)
+	ldx #>(story_start_bank_1 - stack_size - zp_bytes_to_save)
+} else {
+	lda #<(stack_start - zp_bytes_to_save)
+	ldx #>(stack_start - zp_bytes_to_save)
+}
+	sta savefile_zp_pointer
+	stx savefile_zp_pointer + 1
+	ldx dynmem_size
+	lda dynmem_size + 1
+;	ldy #header_static_mem
+;	jsr read_header_word
+	clc
+!ifdef TARGET_C128 {
+	adc #>story_start_bank_1
+} else {
+	adc #>story_start
+}	
+	tay
+	lda #savefile_zp_pointer ; start address located in zero page
+	jsr kernal_save
+	php ; store c flag so error can be checked by calling routine
+	lda #1 
+	jsr kernal_close
+	plp ; restore c flag
+	rts
+	
 .last_disk	!byte 0
 .saveslot !byte 0
-.saveslot_msg_save	!pet 13,"Save to",0 ; Will be modified to say highest available slot #
-.saveslot_msg_restore	!pet 13,"Restore from",0 ; Will be modified to say highest available slot #
+.saveslot_msg_save	!pet 13,"Save to",0
+.saveslot_msg_restore	!pet 13,"Restore from",0
 .saveslot_msg	!pet " slot (0-9, RETURN=cancel): ",0 ; Will be modified to say highest available slot #
 .savename_msg	!pet "Comment (RETURN=cancel): ",0
 .save_msg	!pet 13,"Saving...",13,0
 .restore_msg	!pet 13,"Restoring...",13,0
-.save_device_msg !pet 13,"Device# (8-11, RETURN=default): ",0
+.save_device_msg !pet 13,"Device# (8-15, RETURN=default): ",0
 .restore_filename !pet "!0*" ; 0 will be changed to selected slot
 .erase_cmd !pet "s:!0*" ; 0 will be changed to selected slot
 .swap_pointers_for_save
@@ -1084,6 +1391,104 @@ do_save
 	dex
 	bpl -
 	rts
+	
+!ifdef TARGET_C128 {
+.copy_stack_and_pointers_to_bank_1
+	; Pick a cache page to use, one that the z_pc_mempointer isn't pointing to
+	ldy #>vmem_cache_start
+	ldx #0
+	txa
+	cpy z_pc_mempointer + 1
+	bne +
+	inx
++	sta vmem_cache_page_index,x ; Mark as unused
+	txa
+	clc
+	adc #>vmem_cache_start
+	sta z_temp ; vmem_cache page for copying
+	lda #(>stack_start) - 1
+	sta z_temp + 1 ; Source page
+	lda #(>story_start_bank_1) - (>stack_size) - 1
+	sta z_temp + 2 ; Destination page
+	lda #(>stack_size) + 1
+	sta z_temp + 3 ; # of pages to copy
+-	lda z_temp + 1
+	ldy z_temp
+	ldx #0
+	jsr copy_page_c128 ; Copy a page to vmem_cache
+	lda z_temp
+	ldy z_temp + 2
+	ldx #1
+	jsr copy_page_c128
+	inc z_temp + 1
+	inc z_temp + 2
+	dec z_temp + 3
+	bne -
+	rts
+
+.copy_stack_and_pointers_to_bank_0
+	; ; Pick a cache page to use, one that the z_pc_mempointer isn't pointing to
+	ldy #>vmem_cache_start
+	ldx #0
+	txa
+	cpy z_pc_mempointer + 1
+	bne +
+	inx
++	
+	sta vmem_cache_page_index,x ; Mark as unused
+	txa
+	clc
+	adc #>vmem_cache_start
+	sta z_temp + 4 ; vmem_cache page for copying
+	tay
+	lda #(>story_start_bank_1) - 1
+	sta z_temp + 1 ; Source page
+	lda #(>story_start) - 1
+	sta z_temp + 2 ; Destination page
+	lda #(>stack_size) + 1
+	sta z_temp + 3 ; # of pages to copy
+-	lda z_temp + 1
+	ldy z_temp + 4
+	ldx #1
+	jsr copy_page_c128 ; Copy a page to vmem_cache
+	dec z_temp + 3
+	beq + ; Stop after copying the last page to vmem_cache
+	lda z_temp + 4
+	ldy z_temp + 2
+	ldx #0
+	jsr copy_page_c128
+	dec z_temp + 1
+	dec z_temp + 2
+	bne - ; Always branch
++	rts
+
+}	
+
+wait_a_sec
+; Delay ~1.2 s so player can read the last text before screen is cleared
+!ifdef TARGET_C128 {
+	ldx #40 ; How many frames to wait
+--	ldy #1
+-	bit $d011
+	bmi --
+	cpy #0
+	beq -
+	; This is the beginning of a new frame
+	dey
+	dex
+	bne -
+} else {
+	ldx #0
+	ldy #5
+-	jsr kernal_delay_1ms
+	dex
+	bne -
+	dey
+	bne -
+}
+	rts
+
+	
 }
 
 
