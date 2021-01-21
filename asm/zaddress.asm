@@ -120,6 +120,7 @@ write_next_byte
 ; a,x,y are preserved
 	sta z_address_temp
 !ifndef UNSAFE {
+!if 0 { ; SFTODO: I SHOULD PROB SUPPORT THIS ON ACORN, BUT RIGHT NOW dynmem_size IS NOT BEING INITIALISED ON ACORN AS IT'S OTHERWISE UNNEEDED. THE IDEA OF BURNING TWO BYTES ON A COPY OF THIS FROM THE HEADER FOR SUCH LITTLE USE ANNOYS ME FAR THAN IS PROBABLY RATIONAL. OF COURSE, IF I *DO* DECIDE TO DO SOMETHING DIFFERENT, I SHOULD MAKE SURE NOT TO ALLOCATE 2 BYTES TO dynmem_size ON ACORN BUILDS!
 	lda z_address
 	bne .write_outside_dynmem
 	lda z_address + 2
@@ -127,6 +128,7 @@ write_next_byte
 	lda z_address + 1
 	sbc dynmem_size + 1
 	bcs .write_outside_dynmem
+}
 }
 
 !ifdef TARGET_C128 {

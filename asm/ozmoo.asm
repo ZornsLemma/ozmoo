@@ -452,11 +452,12 @@ initialize
 	sta $d012
 ++
 }
-	cli
+	cli ; SFTODO: WE DON'T NEED THIS ON ACORN
 
 
 	jsr z_execute
 
+	; SFTODO: IT'S PROB CORRECT THERE'S *NO* ACORN CODE HERE, BUT A) TEST IT B) COMMENT WHY WE DON'T NEED ANY
 !ifndef ACORN {
 !ifdef TARGET_PLUS4_OR_C128 {
 !ifdef TARGET_C128 {
@@ -1200,8 +1201,7 @@ deletable_init
 ; parse_header section
 
 
-!ifndef SFTODOACORN { ; SFTODONOW: IF CORRECT CAN PROB MERGE WITH PREV ACORN/!ACORN BLOCK - I AM HOWEVER *SUPER* UNCLEAR RIGH TNOW IF THE FOLLOWING CODE IS NEEDED FOR ACORN OR IF IT'S SUBSUMED IN SOME ACORN-SPECIFIC INIT CODE FROM ANOTHER FILE
-	!error "SFTODONOW - SEE COMMENT ON PREV LINE"
+!ifndef ACORN { ; SFTODO: I JUST MAY WANT TO DO THE DYNMEM_SIZE INITIALISATION FROM THIS COMMODORE CODE, BUT IT WOULD PROBABLY BE DONE IN ONE OF THE MACROS IN ACORN.ASM EVEN IF I DO KEEP THIS
 	; Store the size of dynmem AND (if VMEM is enabled)
 	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
 !ifdef TARGET_C128 {
@@ -1267,7 +1267,7 @@ deletable_init
 } ; SFTODO!?!?
 
 } ; End of !ifdef VMEM
-} ; SFTODO!?!?!?!
+}
 
 !ifndef UNSAFE {
 	; check z machine version
