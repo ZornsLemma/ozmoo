@@ -325,6 +325,7 @@ copy_page
 	+set_memory_no_basic_unsafe
 	cli
 	rts
+}
 } ; not TARGET_C128
 }
 

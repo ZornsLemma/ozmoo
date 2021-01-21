@@ -145,6 +145,9 @@ read_byte_at_z_address
 ; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
 ; too large. Not necessarily a problem, but think about it - will there be a
 ; problem? Are we wasting (a few bytes only) of RAM for no good reason?
+; SFTODO: If we're willing (as per other SFTODOs, I believe) to "commit" to building a
+; more game-specific executable, the build system *knows* the size of the game's dynmem and
+; how many 512-byte read-only blocks it has, so it could pass in a "max useful vmap_max_size" value for us - no waste and no compromise. (Or, equivalently, if - it may already do so - it passes in dynmem size - careful with any rounding - and game size, we can computer this ourselves very easily at assembly time)
 vmem_blocksize = 512
 vmem_indiv_block_mask = >(vmem_blocksize - 1)
 vmem_block_pagecount = vmem_blocksize / 256
@@ -477,7 +480,6 @@ load_blocks_from_index
 .in_bank_0
 }	
 	asl
-}
 !ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
 	adc vmap_first_ram_page
@@ -645,6 +647,7 @@ load_blocks_from_index_using_cache
 }
 	rts
 }
+}
 
 +make_acorn_screen_hole
 ; SF: Note that this is allowed to corrupt X and Y. SFTODO PROBABLY STILL TRUE IN 5.3 BUT MAYBE CHECK
@@ -733,6 +736,7 @@ read_byte_at_z_address
     lda ram_bank_list
     sta mempointer_ram_bank
     bpl .read_and_return_value ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
+}
 }
 }
 .non_dynmem

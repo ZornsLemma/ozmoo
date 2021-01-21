@@ -929,7 +929,7 @@ read_operand
 	dey
 	lda (z_local_vars_ptr),y
 	bcc .store_operand ; Always branch
-!ifndef COMPLEX_MEMORY {
+!ifndef COMPLEX_MEMORY { ; SFTODO: Redundant, already in ndef COMPLEX_MEMORY block?
 .read_global_var
 	; cmp #128
 	; bcs .read_high_global_var
@@ -968,6 +968,7 @@ read_operand
     jmp .store_operand
 }
 } ; end COMPLEX_MEMORY
+}
 !ifndef UNSAFE {
 .nonexistent_local
 	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR

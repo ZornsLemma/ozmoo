@@ -1108,8 +1108,9 @@ s_erase_window
 	sta zp_screenrow
 	sta zp_screencolumn
 	rts
+}
 
-!ifndef ACORN {
+!ifndef ACORN { ; SFTODO: merge with prev ndef ACORN block?
 .update_screenpos
 	; set screenpos (current line) using row
 	ldx zp_screenrow

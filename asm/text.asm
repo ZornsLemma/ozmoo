@@ -946,7 +946,7 @@ find_word_in_dictionary
 	ldy #0
 .unordered_loop_check_entry
 	jsr read_next_byte
-!ifdef Z4PLUS {
+!ifdef Z4PLUS { ; SFTODO: Redundant, as inside a Z5PLUS block?
 	cmp zword,y
 } else {
 	cmp zword + 2,y
@@ -1443,7 +1443,6 @@ read_text
 ;	jsr reset_cursor_blink
 ;}
 	jsr turn_on_cursor
-}
 !ifdef Z5PLUS {
 	ldy #1
 	+macro_string_array_read_byte
