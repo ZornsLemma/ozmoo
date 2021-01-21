@@ -37,6 +37,7 @@
 ; be gratuitously different from Commodore port now it has support for non-40x25 screens
 
 !ifndef ACORN {
+    ; SFTODO: THIS IS NOT TRUE ANY MORE, OF COURSE
     FIXED_SCREEN_SIZE = 1
 } else {
     !ifdef ACORN_NO_SHADOW {
@@ -52,9 +53,9 @@ max_lines = 25
 }
 } else {
 !ifdef Z3 {
-max_lines = screen_height_minus_1
+max_lines = s_screen_height_minus_one
 } else {
-max_lines = screen_height
+max_lines = s_screen_height
 }
 }
 
@@ -62,28 +63,28 @@ max_lines = screen_height
     !ifdef FIXED_SCREEN_SIZE {
         cmp #25
     } else {
-        cmp screen_height
+        cmp s_screen_height
     }
 }
 !macro cmp_screen_width {
     !ifdef FIXED_SCREEN_SIZE {
         cmp #40
     } else {
-        cmp screen_width
+        cmp s_screen_width
     }
 }
 !macro cpx_screen_height {
     !ifdef FIXED_SCREEN_SIZE {
         cpx #25
     } else {
-        cpx screen_height
+        cpx s_screen_height
     }
 }
 !macro cpx_screen_width {
     !ifdef FIXED_SCREEN_SIZE {
         cpx #40
     } else {
-        cpx screen_width
+        cpx s_screen_width
     }
 }
 !macro cpx_max_lines {
@@ -97,49 +98,49 @@ max_lines = screen_height
     !ifdef FIXED_SCREEN_SIZE {
         cpy #40
     } else {
-        cpy screen_width
+        cpy s_screen_width
     }
 }
-!macro cpy_screen_width_plus_1 {
+!macro cpy_screen_width_plus_one {
     !ifdef FIXED_SCREEN_SIZE {
         cpy #41
     } else {
-        cpy screen_width_plus_1
+        cpy s_screen_width_plus_one
     }
 }
-!macro lda_screen_height_minus_1 {
+!macro lda_screen_height_minus_one {
     !ifdef FIXED_SCREEN_SIZE {
         lda #24
     } else {
-        lda screen_height_minus_1
+        lda s_screen_height_minus_one
     }
 }
 !macro lda_screen_height {
     !ifdef FIXED_SCREEN_SIZE {
         lda #25
     } else {
-        lda screen_height
+        lda s_screen_height
     }
 }
-!macro lda_screen_width_minus_1 {
+!macro lda_screen_width_minus_one {
     !ifdef FIXED_SCREEN_SIZE {
         lda #39
     } else {
-        lda screen_width_minus_1
+        lda s_screen_width_minus_one
     }
 }
-!macro ldx_screen_width_minus_1 {
+!macro ldx_screen_width_minus_one {
     !ifdef FIXED_SCREEN_SIZE {
         ldx #39
     } else {
-        ldx screen_width_minus_1
+        ldx s_screen_width_minus_one
     }
 }
 !macro lda_screen_width {
     !ifdef FIXED_SCREEN_SIZE {
         lda #40
     } else {
-        lda screen_width
+        lda s_screen_width
     }
 }
 !macro ldx_max_lines {
@@ -149,39 +150,39 @@ max_lines = screen_height
         ldx max_lines
     }
 }
-!macro ldx_screen_height_minus_1 {
+!macro ldx_screen_height_minus_one {
     !ifdef FIXED_SCREEN_SIZE {
         ldx #24
     } else {
-        ldx screen_height_minus_1
+        ldx s_screen_height_minus_one
     }
 }
 !macro ldx_screen_width {
     !ifdef FIXED_SCREEN_SIZE {
         ldx #40
     } else {
-        ldx screen_width
+        ldx s_screen_width
     }
 }
-!macro ldy_screen_height_minus_1 {
+!macro ldy_screen_height_minus_one {
     !ifdef FIXED_SCREEN_SIZE {
         ldy #24
     } else {
-        ldy screen_height_minus_1
+        ldy s_screen_height_minus_one
     }
 }
 !macro ldy_screen_height {
     !ifdef FIXED_SCREEN_SIZE {
         ldy #25
     } else {
-        ldy screen_height
+        ldy s_screen_height
     }
 }
 !macro ldy_screen_width {
     !ifdef FIXED_SCREEN_SIZE {
         ldy #40
     } else {
-        ldy screen_width
+        ldy s_screen_width
     }
 }
 
@@ -809,7 +810,7 @@ s_printchar
 	cmp window_start_row + 1,y
 	bcc ++
 	dec zp_screenrow
-	+lda_screen_width_minus_1
+	+lda_screen_width_minus_one
 	sta zp_screencolumn
 ++
 }
@@ -995,7 +996,7 @@ s_printchar
 !ifdef ACORN_HW_SCROLL {
     lda use_hw_scroll
     beq .no_hw_scroll0
-    +lda_screen_height_minus_1
+    +lda_screen_height_minus_one
     sta zp_screenrow ; s_pre_scroll normally does this but we may not call it
     ldx window_start_row + 1 ; how many top lines to protect
     dex
@@ -1372,7 +1373,7 @@ s_erase_line_from_cursor
     lda use_hw_scroll
     beq .no_hw_scroll2
     ldx #0
-    +ldy_screen_height_minus_1
+    +ldy_screen_height_minus_one
     sty zp_screenrow
     jsr do_oswrch_vdu_goto_xy
     jsr set_os_normal_video ; new line must not be reverse video
@@ -1418,7 +1419,7 @@ s_erase_line_from_cursor
     lda zp_screenrow
     pha
     jsr oswrch
-    +lda_screen_width_minus_1
+    +lda_screen_width_minus_one
     jsr oswrch
     pla
     jsr oswrch
@@ -1475,16 +1476,16 @@ s_pre_scroll
     ; We don't need to update zp_screencolumn, our caller will have done it.
     ; sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
     jsr oswrch
-    +lda_screen_height_minus_1
+    +lda_screen_height_minus_one
     sta zp_screenrow ; leave the ozmoo cursor on the last line
     jsr oswrch
-    +lda_screen_width_minus_1
+    +lda_screen_width_minus_one
     jsr oswrch
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
     ; Move the cursor to the bottom right of the text window
-    +ldx_screen_width_minus_1
-    +lda_screen_height_minus_1
+    +ldx_screen_width_minus_one
+    +lda_screen_height_minus_one
     sec
     sbc window_start_row + 1
     tay

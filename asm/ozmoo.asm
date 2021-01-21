@@ -486,7 +486,11 @@ initialize
 !source "utilities.asm"
 !source "screenkernal.asm"
 !source "streams.asm"
-!source "disk.asm"
+!ifndef ACORN {
+	!source "disk.asm"
+} else {
+	!source "acorn-disk.asm"
+}
 !ifdef VMEM {
 	!if SUPPORT_REU = 1 {
 	!source "reu.asm"

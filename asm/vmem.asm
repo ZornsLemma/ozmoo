@@ -849,16 +849,6 @@ read_byte_at_z_address
 }
 }
 
-; SFTODO: I am not sure the bcs case can ever occur on Acorn, since we always
-; pre-populate vmap. If this is true we can probably ifdef this out for both SWR
-; and 2P builds. (But it's only one instruction, so hardly worth it?) (OK, it
-; *can* occur with PREOPT, but it still can't occur "normally" on Acorn. But it
-; is still just one byte and I should probably just get rid of this comment...)
-    +make_acorn_screen_hole_jmp
-+	ldx vmap_clock_index
--	cpx vmap_used_entries
-	bcs .block_chosen
-
 ; SFTODO: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised.
 .not_initial_reu_loading
 	ldx vmap_used_entries
@@ -1277,7 +1267,6 @@ convert_index_x_to_ram_bank_and_address
 }
 }
 
-; SFTODO: Hack, let's just allocate a fake datasette buffer here
 ; SFTODO: For now I'm going to pre-fill this as part of the build
 ; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
@@ -1287,8 +1276,7 @@ convert_index_x_to_ram_bank_and_address
 ; each half was page-aligned. Profile this before doing anything.
 !ifdef ACORN {
 !ifdef VMEM {
-datasette_buffer_start
+vmap_buffer_start
     !FILL vmap_max_size * 2, 'V'
-datasette_buffer_end
 }
 }
