@@ -858,14 +858,13 @@ read_byte_at_z_address
 +	ldx vmap_clock_index
 -	cpx vmap_used_entries
 	bcs .block_chosen
-=======
 
+; SFTODO: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised.
 .not_initial_reu_loading
 	ldx vmap_used_entries
 	cpx vmap_max_entries
 	bcc .block_chosen
 
->>>>>>> master
 !ifdef DEBUG {
 !ifdef PREOPT {
 	ldx #0

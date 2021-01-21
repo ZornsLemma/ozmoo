@@ -38,6 +38,11 @@
 		SLOW = 1
 	}
 }
+} else {
+	; SFTODO: This may not be the best way of doing this, but I want to get things working and tested before (much later) maybe trying to make the Acorn port fit a bit more cleanly
+	TARGET_ASSIGNED = 1
+	SUPPORT_REU = 0 ; SFTODO: Can I get rid of need for this definition?
+
 }
 
 !ifndef TARGET_ASSIGNED {
@@ -318,7 +323,7 @@ c128_border_phase1
 	sta reg_2mhz	;CPU = 1MHz
 	jmp $ff33	;return from IRQ
 
-} else { ; SFTODO: As per SFTODO elsewhere, note that it looks like constants-c128.asm is *alternative* to constants.asm, whereas currently acorn-constants.asm is an addition
+} else { ; SFTODO: As per SFTODO elsewhere, note that it looks like constants-c128.asm is *alternative* to constants.asm, whereas currently acorn-constants.asm is an addition (plus acorn-constants.asm is only constants common to all the executables)
 !source "constants.asm"
 !ifdef ACORN {
 !source "acorn-constants.asm" ; SFTODO: rename constants-acorn.asm?
@@ -474,6 +479,9 @@ initialize
 
 
 ; include other assembly files
+!ifdef ACORN {
+	!source "acorn.asm"
+}
 !source "utilities.asm"
 !source "screenkernal.asm"
 !source "streams.asm"

@@ -90,6 +90,14 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 !zone {
 
+; SFTODO: These macros may be useful on Acorn and different versions may want
+; different definitions, but for now I don't think I want them to do anythnig,
+; as anything necessary is done explicitly by other Acorn-specific code.
+!macro before_dynmem_read {
+}
+!macro after_dynmem_read {
+}
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Sideways RAM paging
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
