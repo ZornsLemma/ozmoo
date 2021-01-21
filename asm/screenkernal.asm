@@ -508,23 +508,23 @@ s_init
 	rts
 } else {
 !macro screenkernal_init_inline {
-    !error "SFTODO: ALMOST CERTAINLY NEEDS BRINGING INTO LINE WITH THE 5.3 s_init CODE FOR COMMODORE"
-!ifndef ACORN_NO_SHADOW {
-    ; story_start + header_screen_{width,height}* are only valid for certain
-    ; Z-machine versions. We don't want to be querying the OS for these values all
-    ; the time, so we keep them here.
+; SFTODO: PROB ALL ACORN BUILDS WANT THIS NOW !ifndef ACORN_NO_SHADOW {
+    ; We don't want to be querying the OS for the screen resolution all the
+    ; time, so initialise the relevant variables here. (The Commodore versions
+    ; do the same; note that story_start + header_screen_{width,height}* aren't
+    ; always valid, so we can't use those values.)
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
     jsr osbyte
-    stx screen_height_minus_1
+    stx s_screen_height_minus_one
     inx
-    stx screen_height
-    sty screen_width_minus_1
+    stx s_screen_height
+    sty s_screen_width_minus_one
     iny
-    sty screen_width
+    sty s_screen_width
     iny
-    sty screen_width_plus_1
-}
+    sty s_screen_width_plus_one
+; SFTODO: SEE ABOVE }
 
     ; Pick up the current OS cursor position; this will improve readability if
     ; any errors occuring during initialization, and it doesn't affect the game
@@ -536,7 +536,7 @@ s_init
     sty zp_screenrow
 	; Set to 0: s_ignore_next_linebreak, s_reverse, s_os_reverse
     lda #0
-    ldx #4 ; also s_os_reverse
+    ldx #4
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -
