@@ -71,6 +71,9 @@ read_byte_at_z_address
 	clc
 	adc #>story_start
 	sta mempointer + 1
+!ifdef ACORN { ; SFTODO: IDEALLY WE MIGHT "RENAME" THE TARGET_PLUS4 BELOW (AND IN OTHER PLACES?) TO NO_BANKED_MEMORY OR SIMILAR AND USE THAT RATHER THAN NEEDING TO SPECIAL-CASE ACORN
+	bne .return_result ; Always branch
+} else {
 !ifdef TARGET_PLUS4 {
 	bne .return_result ; Always branch
 } else {	
@@ -107,6 +110,7 @@ read_byte_at_z_address
 	jsr inc_vmem_cache_cnt
 	jmp .return_result 
 } ; Not TARGET_PLUS4
+}
 	
 } else {
 ; virtual memory
