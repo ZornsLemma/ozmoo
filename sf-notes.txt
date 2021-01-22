@@ -1,7 +1,7 @@
 M128+internal 6502, mode 7, 5.3 with probably broken initial vmap, drive noises off - $0027be
 ditto but 3MHz external 6502 - $002f4a
 ditto (3MHz) but with alpha 3.7f - $002d37 (and no disc access during play, unless I missed a brief one while watching it run and I probably didn't)
-
+ditto but 5.3 with fixed make-acorn.py vmap handling - $002de8 (and no disc access during play) - so 1.5% slower than alpha 3.7f, which is mildly disappointing (particularly given the Z3 quick index optimisations due to the new vmap storage) but not terrible, and I haven't even tried to investigate this yet
 
 Master 128, mode 7:
 - before *FX19 use benchmark: $0049bd

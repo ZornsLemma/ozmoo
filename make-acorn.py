@@ -848,7 +848,7 @@ class OzmooExecutable(Executable):
         blocks = blocks[:vmap_max_size]
         # vmap entries should normally addr a 512-byte aligned block; invalid_addr
         # is odd so it won't ever match when the virtual memory code is searching the map.
-        invalid_addr = 0x1
+        invalid_addr = 0x1 # SFTODO: NO LONGER AN INVALID ADDR
         for i, block_index in enumerate(blocks):
             timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
             if cmd_args.preload_opt:
@@ -857,7 +857,7 @@ class OzmooExecutable(Executable):
                 # any "suggested" blocks.
                 addr = invalid_addr
             else:
-                addr = nonstored_blocks + block_index * vmem_block_pagecount
+                addr = (nonstored_blocks + block_index * vmem_block_pagecount) >> 1
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
                 # such a block.
@@ -1472,6 +1472,7 @@ def make_preload_blocks_list(config_filename):
         # again.) Note that just as when we don't use preload_config, the
         # initial vmap entries will be assigned timestamps based on their order;
         # the timestamp in preload_config are ignored.
+        # SFTODO: As per SFTODOs in asm code, need to update this for new 5.3 shifted-right-one-bit vmap
         addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
         if addr & 1 == 1:
             # This is an odd address so it's invalid; we expect to see one of
@@ -1759,11 +1760,11 @@ with open(cmd_args.input_file, "rb") as f:
     game_data = bytearray(f.read())
 z_machine_version = game_data[header_version]
 if z_machine_version == 3:
-    vmem_highbyte_mask = 0x01
+    vmem_highbyte_mask = 0x00
 elif z_machine_version == 8:
-    vmem_highbyte_mask = 0x07
-else:
     vmem_highbyte_mask = 0x03
+else:
+    vmem_highbyte_mask = 0x01
 game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
