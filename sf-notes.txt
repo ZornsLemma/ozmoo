@@ -1,3 +1,8 @@
+M128+internal 6502, mode 7, 5.3 with probably broken initial vmap, drive noises off - $0027be
+ditto but 3MHz external 6502 - $002f4a
+ditto (3MHz) but with alpha 3.7f - $002d37 (and no disc access during play, unless I missed a brief one while watching it run and I probably didn't)
+
+
 Master 128, mode 7:
 - before *FX19 use benchmark: $0049bd
 - with *FX19 use: $004c0d

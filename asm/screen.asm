@@ -123,7 +123,7 @@ erase_window
 !ifdef Z5PLUS {
 	lda window_start_row + 1
 } else {
-	+lda_screen_height_minus_1
+	+lda_screen_height_minus_one
 }
 	stx cursor_row + 1
 	pha
