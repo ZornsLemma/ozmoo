@@ -8,6 +8,7 @@ vmem_cache_page_index !fill cache_pages + 1, 0
 vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 }
+; SFTODO: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
 
 !ifndef ACORN { ; SFTODO!?
 !ifndef TARGET_PLUS4 {
@@ -129,20 +130,6 @@ read_byte_at_z_address
 ; will store in datasette_buffer
 ;
 
-!if 0 { ; SFTODO: I THINK THIS IS DEAD CODE, BUT WON'T DELETE IT UNTIL I'M SURE
-!ifdef SMALLBLOCK {
-	vmem_blocksize = 512
-} else {
-	vmem_blocksize = 1024 ; This hasn't been used in a long time, and probably doesn't work anymore.
-!ifdef ACORN {
-    ; Given the above comment I've not made any attempt to make this work on
-    ; Acorn.
-    !error "VMEM only supports SMALLBLOCK on Acorn"
-}
-}
-}
-
-
 ; vmap_max_size determines the memory allocated for the vmap; vmap_max_entries
 ; is the actual run-time limit, which may be less than vmap_max_size but
 ; obviously can't be larger. SFTODO: ALMOST CERTAINLY STILL TRUE IN 5.3 BUT CHECK
@@ -227,6 +214,7 @@ vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
+; SFTODO: IT LOOKS LIKE THE HIGH/MID BYTES IN THE VMAP ARE NOW STORED SHIFTED RIGHT ONE BIT IN 5.3, WHICH MEANS WE NO LONGER "WASTE" A BIT ON THE ALWAYS-ZERO LOW BIT, ALLOWING AN EXTRA BIT FOR THE TICK. SHOULD UPDATE THE DIAGRAM I DREW AND THE TEXT IN THE TECH MANUAL ACCORDINGLY AND SUBMIT A PULL REQUEST UPSTREAM FOR THIS (CHECK I HAVE THE RIGHT IDEA FIRST).
 !ifdef Z8 {
 	vmem_tick_increment = 4
 	vmem_highbyte_mask = $03
@@ -307,6 +295,7 @@ print_optimized_vm_map
 
 	ldx #0
 -	lda vmap_z_h,x
+; SFTODO: I SUSPECT MAKE-ACORN.PY PREOPT PARSING CODE NEEDS UPDATING TO ACOMMDATE THE "SHIFT RIGHT ONE BIT" OF VMAP_Z_[LH], OR WE NEED TO UNDO THE SHIFT HERE - SOMETHING LIKE THAT
 !ifdef ACORN {
     ldy .handle
     jsr osbput
@@ -326,6 +315,7 @@ print_optimized_vm_map
 	lda zp_temp
 	bne +++
 	; Print block that was just to be read
+    ; SFTODO: NOTE THAT ZP_PC_H IS *NOT* SHIFTED RIGHT 1 BIT, UNLIKE ALL THE VMAP_Z_[LH] VALUES WE JUST OUTPUT - NEED TO BE CONSISTENT
 	lda zp_pc_h
 !ifdef ACORN {
     ldy .handle
@@ -333,7 +323,6 @@ print_optimized_vm_map
 }
 	jsr print_byte_as_hex
 	lda zp_pc_l
-; SFTODO: THERE USED TO BE AN "and #vmem_blockmask" HERE (INCL COMMODORE CODE, NOT JUST MY PORT), IT'S GONE NOW, MAYBE IT ISN'T NEEDED BUT THINK ABOUT IT LATER
 !ifdef ACORN {
     ldy .handle
     jsr osbput
@@ -507,9 +496,13 @@ load_blocks_from_index
     ; Other bytes at osword_cache_data_ptr always stay 0 and don't need setting.
     lda vmap_z_l,x
     sta osword_cache_index_requested
+!if vmem_highbyte_mask > 0 {
     lda vmap_z_h,x
     and #vmem_highbyte_mask
     sta osword_cache_index_requested + 1
+} else {
+    ; osword_cache_index_requested + 1 is initialised to 0 and will never change.
+}
     lda #osword_cache_op
     ldx #<osword_cache_block
     ldy #>osword_cache_block
@@ -736,7 +729,7 @@ read_byte_at_z_address
     ; We have to set mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank. We keep the first
     ; bank paged in by default, so we don't need to page it in now and therefore
-    ; the '-' label can be after the page in code, to save a few cycles.
+    ; the '-' label can be after the page in code, to save a few cycles. SFTODO: THIS IS PROB TRUE, BUT CHECK 5.3 - ALSO THE '-' LABEL IS (I THINK) NOW RENAMED .read_and_return_value SO COMMENT TEXT NEEDS TWEAKING AT LEAST
     lda ram_bank_list
     sta mempointer_ram_bank
     bpl .read_and_return_value ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
@@ -749,18 +742,7 @@ read_byte_at_z_address
 	lda #0
 	sta vmap_quick_index_match
 	txa
-    ; SFTODO: The fact vmem_temp will always be even means it may be possible
-    ; to block out unusable areas of memory above vmem_start by giving them
-    ; vmap_z_[hl] entries with odd addresses which could never be matched. This
-    ; just might be helpful on an Electron port where dynamic memory starts at
-    ; $8000 to avoid contiguous-dynmem problems with the 8K screen at the top of
-    ; main RAM; we could use the ~4K of main RAM below the screen as virtual
-    ; memory cache by putting vmem_start down there and blocking out the screen
-    ; and the actual dynamic memory with unmatchable vmap_z_[h] entries. I
-    ; suppose it's not actually quite that good, as we'd need to prevent those
-    ; unmatched entries aging out, but it might not be too hard/inefficient to
-    ; tweak the code to leave them alone. - IN 5.3 THIS MIGHT NOT BE TRUE, NOT THOUGHT PROPERLY - BUT NOTE THAT 5.3 SETS vmem_ofset_in_block TO WHAT (I THINK) USED TO GO INTO vmem_temp, AND THERE IS NOW A ROR ON THE VALUE PUT IN vmem_temp - NEED TO LOOK INTO THIS PROPERLY - IT MAY BE SOME OF THIS IS UNNECESSARY ON ACORN PORT, OR THAT SOME OTHER CODE WILL NEED TWEAKING TO ACCOMODATE THE DIFFERENT (IF I READ THE CODE RIGHT) INTERPRETATION vmem_temp NOW HAS IN 5.3
-	and #vmem_indiv_block_mask ; keep index into kB chunk
+	and #vmem_indiv_block_mask ; keep index into kB chunk SFTODO: (UPSTREAM) COMMENT IS OUTDATED, SHOULD SAY 512-BYTE CHUNK (BLOCK)
 	sta vmem_offset_in_block
 	txa
 	ror
@@ -1079,17 +1061,22 @@ read_byte_at_z_address
     ; Save the Z-address of the block we're about to evict before we overwrite it.
     lda vmap_z_l,x
     sta osword_cache_index_offered
+!if vmem_highbyte_mask > 0 {
     lda vmap_z_h,x
-    and #vmem_highbyte_mask
+    and #vmem_highbyte_mask ; SFTODO: THIS MAY BE 0, IN WHICH CASE WE CAN CONDITIONALLY NOT ASSEMBLE THIS INSTRUCTION - TINY SAVING, BUT WHY NOT?
+} else {
+    ; SFTODO: It *may* be that osword_cache_index_offered + 1 would simply always be 0 and we could move the sta into the > 0 block and do nothin in this else. However, the way the initial load modified index_offered+1 a lot makes me a bit nervous about this - of course, it could simply make sure it explicitly zeroes this at the end if highbyte_mask is 0. But for now let's just go with this.
+    lda #0
+}
     sta osword_cache_index_offered + 1
 }
 
 	; Store address of 512 byte block to load, then load it
 	lda zp_pc_h
-	lsr ; SFTODO: THIS LSR IS NEW IN 5.3 AND MAY SUGGEST THERE'S SOMTHING GOING ON WHICH WILL REQUIRE TWEAKS TO ACORN CODE
+	lsr
 	sta vmap_z_h,x
 	lda zp_pc_l
-	ror ; SFTODO: DITTO - ALSO, THERE USED TO BE "AND #VMEM_BLOCKMASK" HERE, BUT I SUSPECT IT'S NOT NEEDED NOW BECAUSE WE'RE SHIFTING STUFF DOWN TO GIVE US "MORE RANGE"
+	ror
 	sta vmap_z_l,x
 	stx vmap_index
     ; SF: Be aware that if tracing is on here, the newly loaded block will
@@ -1278,6 +1265,7 @@ convert_index_x_to_ram_bank_and_address
 ; SFTODO: Is there any value in page-aligning this? Although since the two halves
 ; are not exactly page-aligned we'd end up having to waste a couple of bytes so
 ; each half was page-aligned. Profile this before doing anything.
+; SFTODO: Do I need to tweak the make-acorn.py code which pre-fills this to take account of the "shifted right one bit" approach now used in 5.3?
 !ifdef ACORN {
 !ifdef VMEM {
 vmap_buffer_start
