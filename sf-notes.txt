@@ -1,3 +1,7 @@
+M128, mode 7, 5.3 (fixed vmap), drive noises off, bigdyn - $004d3a (3.7f $004c10, so 1.5% slower)
+M128, mode 7, 5.3 (fixed vmap), drive noises off, smalldyn - $004969 (3.7f $00483f, so 1.6% slower)
+- so the slowdown on benchmark from 3.7f to current 5.3 is consistently about 1.5% with or without tube
+
 M128+internal 6502, mode 7, 5.3 with probably broken initial vmap, drive noises off - $0027be
 ditto but 3MHz external 6502 - $002f4a
 ditto (3MHz) but with alpha 3.7f - $002d37 (and no disc access during play, unless I missed a brief one while watching it run and I probably didn't)
