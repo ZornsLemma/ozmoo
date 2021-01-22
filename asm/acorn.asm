@@ -861,6 +861,9 @@ SFTODOLABEL5
 }
 
 !ifdef VMEM {
+    ; vmem_highbyte_mask might be 0 and that enables some small optimisations, but
+    ; in this one-off discardable init code we favour simplicity and don't bother.
+
 !ifndef PREOPT {
     ; Sort vmap into ascending order, preserving the timestamps but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
@@ -957,6 +960,7 @@ SFTODOLABEL2
     and #vmem_highbyte_mask
     bne .found_first_non_promoted_entry
     lda vmap_z_l,x
+    !error "SFTODO: I think we need to account for the shift-right tweak in 5.3 here - we could probably just store nonstored_blocks>>1 in a temp location and compare with that"
     cmp nonstored_blocks
     bcc .find_first_non_promoted_entry_loop
 .found_first_non_promoted_entry
@@ -979,6 +983,7 @@ SFTODOLABEL2
     ; to be dynamic memory so we will never search the vmap for it. But it seems
     ; a little clearer to use $0101, and this needs to execute on all machines
     ; so we can't micro-optimise by using stz.)
+    !error "SFTODO: THIS LOW-BIT-NON-ZERO TRICK ISN'T VALID ANY MORE, SO WE PROBABLY NEED TO USE 0 INSTEAD"
     lda #1
     sta vmap_z_h,y
 +   sta vmap_z_l,y
