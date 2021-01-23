@@ -1,3 +1,10 @@
+Looking at profiling for smalldyn benchmark 3.7f vs 5.3:
+- is it possible read_byte_at_z_address is being called more now? Not too clear, but the lda (mempointer),y when it's the same 256 byte segment is hot in 5.3 and not in 3.7f
+- read_next_byte (which calls read_byte_at_z_address unconditionally, and always has) is called way more often in 5.3 than 3.7f
+- .read_new_byte inside read_byte_at_z_address is called *more* in 5.3, but not all that much (maybe twice as much, but it's not called all that much in the first place) - so it's the "same 256 byte segment" case which is potentially accounting for most of the lost performance
+- read_byte_at_z_address is not called significantly more outside read_next_byte in 5.3 than 3.7f, so I think read_next_byte is a big part of the difference
+
+
 Master 128, mode 7:
 - before *FX19 use benchmark: $0049bd
 - with *FX19 use: $004c0d
