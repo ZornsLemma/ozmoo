@@ -455,7 +455,7 @@ z_exe_mode_exit = $ff
 }
 }
 	lda #z_exe_mode_normal
-	sta z_exe_mode
+	+set_z_exe_mode_a ; sta z_exe_mode
 }
 .return_from_z_execute
 	rts
@@ -496,6 +496,41 @@ z_execute
 }
 }
 
+; SFTODO: MOVE, BIT HACKY, EXPERIMENTAL
+; SFTODO: IF WE SHUFFLED THE z_exe_mode CHECK FROM AFTER THE CONDITIONAL DEBUGGING CODE TO BEFORE IT, WE WOULDN'T NEED THIS SPECIAL CASE, BUT MAYBE THAT'S NOT IDEAL
+!ifdef TIMING {
+	SIMPLE_MAIN_LOOP_ENTRY = 0
+}
+!ifdef PRINTSPEED {
+	SIMPLE_MAIN_LOOP_ENTRY = 0
+}
+!ifndef SIMPLE_MAIN_LOOP_ENTRY {
+	SIMPLE_MAIN_LOOP_ENTRY = 1
+}
+!if SIMPLE_MAIN_LOOP_ENTRY = 0 {
+!macro set_z_exe_mode_a {
+	sta z_exe_mode
+}
+} else {
+!macro set_z_exe_mode_a {
+	; SFTODO: THIS MACRO COULD EXPAND TO JSR SUBROUTINE AND ALL THE FOLLOWING PUT INTO A SUBROUTINE - I DON'T THINK Z_EXE_MODE IS CHANGED VERY MUCH
+	sta z_exe_mode ; SFTODO DO CLEVER STUFF AS WELL
+	cmp #0 ; SFTODO: MAYBE REDUNDANT, CHECK CALLERS, BUT PLAY IT SAFE FOR NOW
+	beq .normal_exe_mode
+	lda #<main_loop
+	sta jmp_main_loop + 1
+	lda #>main_loop
+	bne .done
+.normal_exe_mode
+	lda #<main_loop_normal
+	sta jmp_main_loop + 1
+	lda #>main_loop_normal
+.done
+	sta jmp_main_loop + 2
+}
+}
+
+main_loop
 .main_loop
 
 ; Timing
@@ -576,6 +611,7 @@ z_execute
 	; SFTODO: There may be a big and easy-ish win to be had by patching jmp .main_loop to skip or execute the following two instructions when we change z_exe_mode.
 	lda z_exe_mode
 	bne .not_normal_exe_mode
+main_loop_normal
 
 !ifdef VICE_TRACE {
 	; send trace info to $DE00-$DE02, which a patched
@@ -830,6 +866,7 @@ dumptovice
     +finish_read_next_byte_at_z_pc_unsafe
 .jsr_perform
 	jsr $8000
+jmp_main_loop
 	jmp .main_loop
 
 
