@@ -2,6 +2,7 @@ Experimental mempointer change:
 - working (at least for smalldyn benchmark) but not optimised - $004989 (so slightly slower, $004969)
 - small tweak - $004983
 - avoid saving/loading Y in some hot code paths - $004950 (so 0.13% faster than when we started, yay!)
+- inlining simple case of read_byte_at_next_z_address in read_next_byte - $00490b (so 0.5% faster than we when started)
 
 Looking at profiling for smalldyn benchmark 3.7f vs 5.3:
 - is it possible read_byte_at_z_address is being called more now? Not too clear, but the lda (mempointer),y when it's the same 256 byte segment is hot in 5.3 and not in 3.7f

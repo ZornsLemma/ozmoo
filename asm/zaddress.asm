@@ -79,6 +79,31 @@ read_next_byte
 	lda z_address
 	ldx z_address + 1
 	ldy z_address + 2
+!if 1 { ; SFTODO: HACKY, ASSUMES ACORN SWR BUILD I THINK
+	cpx zp_pc_l
+	bne .differentSFTODO
+	cmp zp_pc_h
+	bne .differentSFTODO
+!ifdef ACORN_SWR {
+    +acorn_page_in_bank_using_a mempointer_ram_bank
+}
+	lda (mempointer),y
+!ifdef ACORN_SWR {
+    +acorn_swr_page_in_default_bank_using_y
+}
+!if 1 { ; SFTODO: JUST TO PROVE IT'S OK
+    ldx #42
+    ldy #86
+}
+	inc z_address + 2
+	bne +
+	inc z_address + 1
+	bne +
+	inc z_address
++   ldy z_address_temp
+	rts
+.differentSFTODO
+}
 	jsr read_byte_at_z_address
 	inc z_address + 2
 	bne +
