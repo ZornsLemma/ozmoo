@@ -356,6 +356,10 @@ game_id		!byte 0,0,0,0
 initialize
 }
 ; SFTODO: CAN WE GET RID OF CLD/CLI FOR ACORN?
+!ifndef SFTODOXXX {
+	lda #0
+	sta SFTODOFLAG
+}
 	cld
 	cli
 !ifdef ACORN {

@@ -777,6 +777,9 @@ streams_unset_z_address
 	sta z_address,x
 	dex
 	bpl -
+!ifndef SFTODOXXX {
+    lsr SFTODOFLAG ; set to 0
+}
 	rts
 	
 

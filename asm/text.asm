@@ -1828,6 +1828,9 @@ print_addr
 	asl z_address + 2
 	rol z_address + 1 
 	rol z_address 
+!ifndef SFTODOXXX {
+    lsr SFTODOFLAG ; set to 0
+}
 	; print the abbreviation
 	jsr print_addr
 	; restore state
@@ -1852,6 +1855,9 @@ print_addr
 	pla
 	tax
 	lda #0
+!ifndef SFTODOXXX {
+    sta SFTODOFLAG ; set to 0
+}
 	sta alphabet_offset
 	jmp .next_zchar
 .l0 ldy escape_char_counter

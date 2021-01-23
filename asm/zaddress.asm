@@ -7,11 +7,17 @@ set_z_address
 	stx z_address + 2
 	sta z_address + 1
 	lda #$0
+!ifndef SFTODOXXX {
+    sta SFTODOFLAG ; set to 0
+}
 	sta z_address
 	rts
 
 +make_acorn_screen_hole
 dec_z_address
+!ifndef SFTODOXXX {
+    lsr SFTODOFLAG ; set to 0
+}
 	pha
 	dec z_address + 2
 	lda z_address + 2
@@ -27,18 +33,30 @@ dec_z_address
 
 +make_acorn_screen_hole
 set_z_himem_address
+!ifndef SFTODOXXX {
+    lsr SFTODOFLAG ; set to 0
+}
 	stx z_address + 2
 	sta z_address + 1
 	sty z_address
 	rts
 
 skip_bytes_z_address
+!ifndef SFTODOXXX {
+    lsr SFTODOFLAG ; set to 0
+}
 	; skip <a> bytes
 	clc
 	adc z_address + 2
 	sta z_address + 2
+!ifndef SFTODOXXX {
+    lda #0
+    sta SFTODOFLAG ; set to 0
+    adc z_address + 1
+} else {
 	lda z_address + 1
 	adc #0
+}
 	sta z_address + 1
 	lda z_address
 	adc #0
@@ -71,6 +89,10 @@ get_z_himem_address
 	rts
 
 read_next_byte
+!ifndef SFTODOXXX { ; SFTODO EXPERIMENTAL
+	lda SFTODOFLAG ; 1 if last call to read_byte_at_z_address was us (read_next_byte) with no intervening set_z_address, otherwise 0
+	bne SFTODO999
+ }
 	; input: 
 	; output: a
 	; side effects: z_address
@@ -80,13 +102,44 @@ read_next_byte
 	ldx z_address + 1
 	ldy z_address + 2
 	jsr read_byte_at_z_address
+	inc SFTODOFLAG ; set to 1
+	; SFTODO: FOLLOWING CODE IS DUPLICATED, IN A TIDIER IMPL WE'D PROB JUST BNE (ALWAYS) TO THE FAST PATH COPY
 	inc z_address + 2
 	bne +
+!ifndef SFTODOXXX {
+	dec SFTODOFLAG ; set back to 0; we've wrapped to a new page
+}
 	inc z_address + 1
 	bne +
 	inc z_address
 +   ldy z_address_temp
 	rts
+!if 1 { ; SFTODO EXPERIMENTAL
+SFTODO999
+	sty z_address_temp
+	; SFTODO: NOT THOUGHT WHETHER WE NEED ANY ACORN SWR PAGING ETC HERE; JUST WING IT FOR NOW
+!ifdef ACORN_SWR {
+    +acorn_page_in_bank_using_a mempointer_ram_bank
+}
+	inc mempointer
+-	beq - ; SFTODO TEMP FOR DEBUGGING, I BELIEVE THIS IS IMPOSSIBLE
+	ldy #0
+	lda (mempointer),y
+!ifdef ACORN_SWR {
+	+acorn_swr_page_in_default_bank_using_y
+}
+	inc z_address + 2
+	bne +
+!ifndef SFTODOXXX {
+	dec SFTODOFLAG ; set back to 0; we've wrapped to a new page
+}
+	inc z_address + 1
+	bne +
+	inc z_address
++   ldy z_address_temp
+	rts
+SFTODO
+}
 
 set_z_paddress
 	; convert a/x to paddr in z_address
@@ -101,6 +154,9 @@ set_z_paddress
 	sta z_address + 2
 	rol z_address + 1
 	lda #$0
+!ifndef SFTODOXXX {
+    sta SFTODOFLAG ; set to 0
+}
 	rol
 !ifdef Z4PLUS {
 	asl z_address + 2

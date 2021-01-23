@@ -652,6 +652,9 @@ read_byte_at_z_address
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
+!ifndef SFTODOXXX {
+    lsr SFTODOFLAG ; set to 0 SFTODO CODE IS VERY BRANCHY BUT BE GOOD IF WE COULD DO THIS VIA STA/STX/STY INSTEAD
+}
 
 !ifdef TARGET_C128 {
 	; TODO: For C128, we do the dynmem check both here and 40 lines down. Make it better!
