@@ -243,6 +243,9 @@ program_start
 ;	lda #$41
 ;	jsr $ffd2
 ;	jsr wait_a_sec
+	; SFTODO: HACK, WOULD PROB BE BETTER PLACES TO DO THIS
+	lda #0
+	sta mempointer
 
 !ifdef TARGET_C128 {
 	jsr VDCInit
