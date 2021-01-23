@@ -572,7 +572,8 @@ z_execute
 }
 }
 }
-	
+
+	; SFTODO: There may be a big and easy-ish win to be had by patching jmp .main_loop to skip or execute the following two instructions when we change z_exe_mode.
 	lda z_exe_mode
 	bne .not_normal_exe_mode
 
