@@ -154,6 +154,7 @@ get_page_at_z_pc_did_pha
 	jsr read_byte_at_z_address
 !ifdef ACORN_SWR {
 !ifdef ACORN_SWR_SMALL_DYNMEM {
+; SFTODO: read_byte_at_z_address_for_z_pc NO LONGER SEEMS TO EXIST, IS THIS JUST A RENAME OR IS THIS COMMENT OUTDATED/INVALID?
     ; read_byte_at_z_address_for_z_pc will have left the then-current value of
     ; z_pc_mempointer_ram_bank paged in, so we need to explicitly page in the
     ; newly set z_pc_mempointer_ram_bank. This is mildly inefficient, but it

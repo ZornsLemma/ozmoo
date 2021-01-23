@@ -4,6 +4,7 @@ Looking at profiling for smalldyn benchmark 3.7f vs 5.3:
 - read_next_byte (which calls read_byte_at_z_address unconditionally, and always has) is called way more often in 5.3 than 3.7f
 - .read_new_byte inside read_byte_at_z_address is called *more* in 5.3, but not all that much (maybe twice as much, but it's not called all that much in the first place) - so it's the "same 256 byte segment" case which is potentially accounting for most of the lost performance
 - read_byte_at_z_address is not called significantly more outside read_next_byte in 5.3 than 3.7f, so I think read_next_byte is a big part of the difference
+- calc_address_in_byte_array used to handle dynmem specially and most of its invocations were dynmem, but I don't know if this in itself is responsible for much of the increased traffic via read_new_byte
 
 M128, mode 7, 5.3 (fixed vmap), drive noises off, bigdyn - $004d3a (3.7f $004c10, so 1.5% slower)
 M128, mode 7, 5.3 (fixed vmap), drive noises off, smalldyn - $004969 (3.7f $00483f, so 1.6% slower)
