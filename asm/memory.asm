@@ -151,7 +151,7 @@ get_page_at_z_pc_did_pha
 	lda z_pc
 	ldx z_pc + 1
 	ldy z_pc + 2
-    sty z_pc_mempointer
+    ; sty z_pc_mempointer - redundant, this is same address as z_pc + 2
 	jsr read_byte_at_z_address
 !ifdef ACORN_SWR {
 !ifdef ACORN_SWR_SMALL_DYNMEM {
