@@ -51,6 +51,7 @@ inc_vmem_cache_cnt
 ; Non-virtual memory
 
 read_byte_at_z_address
+read_byte_at_z_address_SFTODO ; SFTODO TEMP HACK TO MAKE TUBE VSN COMPILE, NOT NEC CORRECT
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
@@ -649,6 +650,8 @@ load_blocks_from_index_using_cache
 +make_acorn_screen_hole
 ; SF: Note that this is allowed to corrupt X and Y. SFTODO PROBABLY STILL TRUE IN 5.3 BUT MAYBE CHECK
 read_byte_at_z_address
+    lsr SFTODOFLAG
+read_byte_at_z_address_SFTODO
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a

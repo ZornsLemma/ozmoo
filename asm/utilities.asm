@@ -296,6 +296,7 @@ string_array_write_byte
 	sta z_address + 1
 	lda #0
 	sta z_address
+    lsr SFTODOFLAG
 	lda .temp
 	jsr write_next_byte
 	pla
@@ -304,6 +305,7 @@ string_array_write_byte
 	sta z_address + 1
 	pla
 	sta z_address
+    lsr SFTODOFLAG
 	lda .temp
 	rts
 	
@@ -343,6 +345,7 @@ parse_array_write_byte
 	sta z_address + 1
 	lda #0
 	sta z_address
+    lsr SFTODOFLAG
 	lda .temp
 	jsr write_next_byte
 	pla
@@ -351,6 +354,7 @@ parse_array_write_byte
 	sta z_address + 1
 	pla
 	sta z_address
+    lsr SFTODOFLAG
 	lda .temp
 	rts
 

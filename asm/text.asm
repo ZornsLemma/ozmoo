@@ -819,6 +819,7 @@ find_word_in_dictionary
 	; lda z_address+2
 	; jsr printa
 	jsr print_addr
+    lsr SFTODOFLAG
 	pla 
 	sta z_address + 2
 	pla 
@@ -1828,6 +1829,7 @@ print_addr
 	asl z_address + 2
 	rol z_address + 1 
 	rol z_address 
+    lsr SFTODOFLAG
 	; print the abbreviation
 	jsr print_addr
 	; restore state
@@ -1850,6 +1852,7 @@ print_addr
 	pla
 	sta z_address
 	pla
+    lsr SFTODOFLAG
 	tax
 	lda #0
 	sta alphabet_offset

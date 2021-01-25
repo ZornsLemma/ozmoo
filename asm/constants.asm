@@ -439,6 +439,7 @@ screen_height_minus_1 = $8a ; 1 byte
 
 vmem_temp			  = $00 ; 2 bytes
 ; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway
+SFTODOFLAG = $7e ; 1 byte
 
 window_start_row	  = $80; 4 bytes
 

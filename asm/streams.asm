@@ -763,6 +763,7 @@ translate_zscii_to_petscii
 	rts
 
 streams_set_z_address
+    lsr SFTODOFLAG
 	ldy z_address
 	sty .z_address
 	ldy z_address + 1
@@ -772,6 +773,7 @@ streams_set_z_address
 	jmp set_z_address
 
 streams_unset_z_address
+    lsr SFTODOFLAG
 	ldx #2
 -	lda .z_address,x
 	sta z_address,x

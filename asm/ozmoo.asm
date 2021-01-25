@@ -244,6 +244,9 @@ program_start
 ;	jsr $ffd2
 ;	jsr wait_a_sec
 
+	; SFTODO: TEMP HACK, PROB BETTER PLACE TO DO THIS
+	lda #0
+	sta SFTODOFLAG
 !ifdef TARGET_C128 {
 	jsr VDCInit
 	; initialize is in Basic LO ROM in C128 mode, so we need

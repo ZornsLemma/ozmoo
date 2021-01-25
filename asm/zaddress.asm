@@ -9,10 +9,12 @@ set_z_address
 	; SFTODO: The next couple of instructions are executed often enough it might be worth adding a CMOS version which does stz
 	lda #$0
 	sta z_address
+    lsr SFTODOFLAG
 	rts
 
 +make_acorn_screen_hole
 dec_z_address
+	lsr SFTODOFLAG
 	pha
 	dec z_address + 2
 	lda z_address + 2
@@ -28,12 +30,14 @@ dec_z_address
 
 +make_acorn_screen_hole
 set_z_himem_address
+	lsr SFTODOFLAG
 	stx z_address + 2
 	sta z_address + 1
 	sty z_address
 	rts
 
 skip_bytes_z_address
+	lsr SFTODOFLAG
 	; skip <a> bytes
 	clc
 	adc z_address + 2
@@ -73,22 +77,48 @@ get_z_himem_address
 	rts
 
 read_next_byte
-	; input: 
+	; input:
 	; output: a
 	; side effects: z_address
 	; used registers: a,x
+	; SFTODO: ASSUMING SWR VMEM CASE FOR NOW
 	sty z_address_temp
-	lda z_address
-	ldx z_address + 1
-	ldy z_address + 2
-	; SFTODO: Note that this is the main call to read_byte_at_z_address; a handful originate elsewhere, but nearly all come from here.
-	jsr read_byte_at_z_address
+	lda SFTODOFLAG
+	beq SFTODOSLOW
+	inc mempointer
+-	beq - ; SFTODO: TEMP FOR DEBUGGING - SHOULD BE IMPOSSIBLE
+!ifdef ACORN_SWR {
+    +acorn_page_in_bank_using_a mempointer_ram_bank
+}
+	ldy #0
+	+before_dynmem_read
+	lda (mempointer),y
+	+after_dynmem_read
+!ifdef ACORN_SWR {
+    +acorn_swr_page_in_default_bank_using_y
+}
 	inc z_address + 2
-	bne +
+	beq SFTODO2
+    ldy z_address_temp
+	rts
+SFTODO2
+	lsr SFTODOFLAG
+SFTODO3
 	inc z_address + 1
 	bne +
 	inc z_address
 +   ldy z_address_temp
+	rts
+SFTODOSLOW
+	lda z_address
+	ldx z_address + 1
+	ldy z_address + 2
+	; SFTODO: Note that this is the main call to read_byte_at_z_address; a handful originate elsewhere, but nearly all come from here.
+	jsr read_byte_at_z_address_SFTODO
+	inc z_address + 2
+	beq SFTODO3
+	inc SFTODOFLAG ; 0->1
+    ldy z_address_temp
 	rts
 
 set_z_paddress
@@ -98,6 +128,7 @@ set_z_paddress
 	; side effects: z_address
 	; used registers: a,x
 	; example: $031b -> $00, $0c, $6c (Z5)
+	lsr SFTODOFLAG
 	sta z_address + 1
 	txa
 	asl
@@ -169,6 +200,7 @@ write_next_byte
 	sta $8000 ; This address is modified above
 }
 
+	lsr SFTODOFLAG
 	inc z_address + 2
 	bne +
 	inc z_address + 1
