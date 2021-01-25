@@ -1,4 +1,5 @@
 Experimental read_new_byte optimisation ("v2") $004914 - so it's making a negligible difference
+Now switched to "mempointer+0 is always $00" - $0048fa - so 0.144% faster (!)
 
 With latest upstream changes 5.3 ("usual" M128 no tube config, smalldyn) takes $004915, so 1.2% slower than 3.7f.
 

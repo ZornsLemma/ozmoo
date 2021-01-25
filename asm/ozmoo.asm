@@ -247,6 +247,7 @@ program_start
 	; SFTODO: TEMP HACK, PROB BETTER PLACE TO DO THIS
 	lda #0
 	sta SFTODOFLAG
+    sta mempointer
 !ifdef TARGET_C128 {
 	jsr VDCInit
 	; initialize is in Basic LO ROM in C128 mode, so we need

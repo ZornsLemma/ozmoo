@@ -14,12 +14,12 @@ set_z_address
 
 +make_acorn_screen_hole
 dec_z_address
-	lsr SFTODOFLAG
 	pha
 	dec z_address + 2
 	lda z_address + 2
 	cmp #$ff
 	bne +
+	lsr SFTODOFLAG
 	dec z_address + 1
 	lda z_address + 1
 	cmp #$ff
@@ -37,7 +37,7 @@ set_z_himem_address
 	rts
 
 skip_bytes_z_address
-	lsr SFTODOFLAG
+	lsr SFTODOFLAG ; SFTODO: IF WE DO THE BCC TRICK WE CAN ONLY DO THIS LSR IF WE MOVE TO A NEW PAGE
 	; skip <a> bytes
 	clc
 	adc z_address + 2
@@ -85,12 +85,10 @@ read_next_byte
 	sty z_address_temp
 	lda SFTODOFLAG
 	beq SFTODOSLOW
-	inc mempointer
--	beq - ; SFTODO: TEMP FOR DEBUGGING - SHOULD BE IMPOSSIBLE
 !ifdef ACORN_SWR {
     +acorn_page_in_bank_using_a mempointer_ram_bank
 }
-	ldy #0
+	ldy z_address + 2
 	+before_dynmem_read
 	lda (mempointer),y
 	+after_dynmem_read
