@@ -924,7 +924,7 @@ draw_status_line
 	lda z_operand_value_high_arr + 1
 	pha
 	ldx #0
-	clc ; SFTODO: This is upstream, my old Acorn port had near identical code but with sec here; superficially clc before sbc is weird (especially when the sbc is with a constant value) - maybe this is correct, but making a note to revisit this later when I have a clearer idea of how the code is working or if I experience glitches - I guess all this does is alter the exact X position of the score, so it's not exactly a bug, but it might be worth mentioning it to upstream to see if it is deliberate (and perhaps it would be as well to use sec and sbc #16 instead, to be more "conventional", if this *is* the preferred offset)
+	sec
 	lda s_screen_width
 	sbc #15
 	tay
@@ -959,14 +959,10 @@ draw_status_line
 .timegame
 	; time game
 	ldx #0
-!ifndef ACORN {
-	ldy #25 ; SFTODO: This is upstream, I wonder if this is a small bug for time games in 80 column mode - perhaps mention it to upstream later, for now I will use my own conditional ACORN code and leave this alone
-} else {
-    sec
-    +lda_screen_width
-    sbc #(40-25)
-    tay
-}
+	sec
+	lda s_screen_width
+	sbc #15
+	tay
 	jsr set_cursor
 	lda #>.time_str
 	ldx #<.time_str

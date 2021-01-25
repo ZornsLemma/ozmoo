@@ -28,6 +28,22 @@ z_test_mode_print_and_store = 2
 ; opcountvar = 64
 ; opcountext = 96
 
+; Entered with A containing new z_exe_mode value; Z flag should reflect A.
+set_z_exe_mode
+	sta z_exe_mode
+	beq .normal
+	lda #<not_normal_exe_mode
+	sta jmp_main_loop + 1
+	lda #>not_normal_exe_mode
+	bne .finish ; Always branch
+.normal
+	lda #<main_loop_normal_exe_mode
+	sta jmp_main_loop + 1
+	lda #>main_loop_normal_exe_mode
+.finish
+	sta jmp_main_loop + 2
+	rts
+
 ; =========================================== Highbytes of jump table
 
 z_jump_high_arr
@@ -445,18 +461,17 @@ z_exe_mode_exit = $ff
 
 !zone z_execute {
 
-+make_acorn_screen_hole
-.not_normal_exe_mode
+not_normal_exe_mode
 !ifdef Z4PLUS {
 !ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code.
 !ifndef ACORN { ; ACORN builds never use z_exe_mode_exit and don't need this code.
-	cmp #z_exe_mode_return_from_read_interrupt
+	lda z_exe_mode
 	bne .return_from_z_execute
 }
 }
-	lda #z_exe_mode_normal
-	sta z_exe_mode
 }
+	lda #z_exe_mode_normal
+	jsr set_z_exe_mode ; SFTODO: COULD BE JMP AND OMIT FOLLOWING RTS, BUT PROB NOT WORTH THE CONDITIONAL ASSEMBLY FAFF
 .return_from_z_execute
 	rts
 
@@ -496,7 +511,7 @@ z_execute
 }
 }
 
-.main_loop
+main_loop_normal_exe_mode
 
 ; Timing
 !ifdef TIMING {
@@ -572,10 +587,6 @@ z_execute
 }
 }
 }
-
-	; SFTODO: There may be a big and easy-ish win to be had by patching jmp .main_loop to skip or execute the following two instructions when we change z_exe_mode.
-	lda z_exe_mode
-	bne .not_normal_exe_mode
 
 !ifdef VICE_TRACE {
 	; send trace info to $DE00-$DE02, which a patched
@@ -830,7 +841,8 @@ dumptovice
     +finish_read_next_byte_at_z_pc_unsafe
 .jsr_perform
 	jsr $8000
-	jmp .main_loop
+jmp_main_loop
+	jmp main_loop_normal_exe_mode ; target patched by set_z_exe_mode_subroutine
 
 
 z_not_implemented
@@ -867,7 +879,7 @@ read_operand
 	+read_next_byte_at_z_pc_unsafe_middle
 	tax
 	pla
-	jmp .store_operand ; Always branch
+	jmp .store_operand ; Always branch
 .operand_is_not_large_constant
 	+read_next_byte_at_z_pc_unsafe_middle
 	cpx #%00000010

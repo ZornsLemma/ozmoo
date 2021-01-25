@@ -1,3 +1,4 @@
+With latest upstream changes 5.3 ("usual" M128 no tube config, smalldyn) takes $004915, so 1.2% slower than 3.7f.
 
 Looking at profiling for smalldyn benchmark 3.7f vs 5.3:
 - is it possible read_byte_at_z_address is being called more now? Not too clear, but the lda (mempointer),y when it's the same 256 byte segment is hot in 5.3 and not in 3.7f
