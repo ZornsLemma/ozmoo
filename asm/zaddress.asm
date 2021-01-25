@@ -37,19 +37,16 @@ set_z_himem_address
 	rts
 
 skip_bytes_z_address
-	lsr SFTODOFLAG ; SFTODO: IF WE DO THE BCC TRICK WE CAN ONLY DO THIS LSR IF WE MOVE TO A NEW PAGE
 	; skip <a> bytes
 	clc
 	adc z_address + 2
 	sta z_address + 2
-	; SFTODO: Would it save a few cycles to do bcc ++:inc z_address+1:bne ++:inc z_address:++ rts here?
-	lda z_address + 1
-	adc #0
-	sta z_address + 1
-	lda z_address
-	adc #0
-	sta z_address
-	rts
+	bcc +
+	lsr SFTODOFLAG
+	inc z_address + 1
+	bne +
+	inc z_address
++	rts
 
 !ifdef DEBUG {
 print_z_address
