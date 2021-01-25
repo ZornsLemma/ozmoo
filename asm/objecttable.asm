@@ -931,7 +931,7 @@ find_prop
 	cmp z_operand_value_low_arr + 1; max 63 properties so only low_arr
 	beq .find_prop_found
 	; skip property data
--   jsr read_next_byte
+-   jsr read_next_byte ; SFTODO: moderately hot caller of read_next_byte - if we *are* just skipping and discarding data, can we optimise this?
 	dec .property_length
 	bne -
 	jmp .property_loop

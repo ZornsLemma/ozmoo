@@ -1698,7 +1698,7 @@ z_ins_loadw_and_storew
 	bne .storew
 	jsr read_next_byte
 	pha
-	jsr read_next_byte
+	jsr read_next_byte ; SFTODO: moderately hot caller of read_next_byte where we know we are reading the next byte in memory not an arbitrary byte
 	tax
 	pla
 	jmp z_store_result
@@ -1712,7 +1712,7 @@ z_ins_nop
 	
 z_ins_loadb
 	jsr calc_address_in_byte_array
-	jsr read_next_byte
+	jsr read_next_byte ; SFTODO: fairly hot caller of read_next_byte
 	tax
 	lda #0
 	jmp z_store_result
