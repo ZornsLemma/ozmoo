@@ -195,9 +195,9 @@ write_next_byte
 	sta $8000 ; This address is modified above
 }
 
-	lsr SFTODOFLAG
 	inc z_address + 2
 	bne +
+	lsr SFTODOFLAG
 	inc z_address + 1
 	bne +
 	inc z_address
