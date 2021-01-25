@@ -5,12 +5,21 @@
 
 set_z_address
 	stx z_address + 2
+	cmp z_address + 1
+	beq SFTODO9
 	sta z_address + 1
 	; SFTODO: The next couple of instructions are executed often enough it might be worth adding a CMOS version which does stz
 	lda #$0
+SFTODO9B
 	sta z_address
-    lsr SFTODOFLAG
+    sta SFTODOFLAG
 	rts
+SFTODO9
+	lda #$0
+	cmp z_address
+	bne SFTODO9B
+	rts
+
 
 +make_acorn_screen_hole
 dec_z_address
