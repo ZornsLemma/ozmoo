@@ -535,7 +535,7 @@ z_store_result
 	+read_next_byte_at_z_pc
 	tay
 	pla
-	jmp z_set_variable
+	jmp z_set_variable ; SFTODO: This is a hot instruction, may be worth moving this code to just before z_set_variable so we can fall through
 }
 
 
