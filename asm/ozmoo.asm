@@ -244,10 +244,6 @@ program_start
 ;	jsr $ffd2
 ;	jsr wait_a_sec
 
-	; SFTODO: TEMP HACK, PROB BETTER PLACE TO DO THIS
-	lda #0
-	sta SFTODOFLAG
-    sta mempointer
 !ifdef TARGET_C128 {
 	jsr VDCInit
 	; initialize is in Basic LO ROM in C128 mode, so we need
@@ -359,6 +355,10 @@ game_id		!byte 0,0,0,0
 !ifdef ACORN_RELOCATABLE {
 initialize
 }
+	; SFTODO: TEMP HACK, PROB BETTER PLACE TO DO THIS
+	lda #0
+	sta SFTODOFLAG
+    sta mempointer
 ; SFTODO: CAN WE GET RID OF CLD/CLI FOR ACORN?
 	cld
 	cli

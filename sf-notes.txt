@@ -3,6 +3,7 @@ Now switched to "mempointer+0 is always $00" - $0048fa - so 0.144% faster (!)
 Now tweaked advance n - $0048e1 - so 0.278% faster compared to baseline
 Now tweaked write - $0048ce - so 0.379% faster compared to baseline
 Tweaked set_z_address - $0048c8 - so a tiny improvement
+Fix glitch causing use of abs not zp addresses - $0048b2 - another small improvement, taking us to 0.529% faster compared to baseline and 0.618% slower than 3.7f
 
 With latest upstream changes 5.3 ("usual" M128 no tube config, smalldyn) takes $004915, so 1.2% slower than 3.7f.
 
