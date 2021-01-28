@@ -195,6 +195,9 @@ zchars				  = $5d ; 3 bytes
 ; though, it's possible that increasing this too much may harm performance,
 ; though my gut feeling is that even if it doesn't help much it won't hurt in
 ; practice. Still, it would be one way to use the extra ZP on a second processor.
+; SFTODO: It might be worth making vmap_quick_index_length variable at runtime
+; based on how much RAM we actually have. (It is used in few enough places the
+; initialisation code could patch the code up.)
 vmap_quick_index_match= $60
 vmap_next_quick_index = $61
 vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
