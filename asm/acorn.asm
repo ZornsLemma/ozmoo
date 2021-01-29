@@ -232,6 +232,7 @@ deletable_init_start
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
     ldx #0
+    stx mempointer
     ldy #$ff
     jsr osbyte
     stx re_enter_language_ldx_imm + 1

@@ -1436,6 +1436,9 @@ deletable_init_start
 
 	lda #$80
 	sta charset_switchable
+	lda #0
+	sta mempointer
+
 	jmp init_screen_colours ; _invisible
 }
 

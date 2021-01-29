@@ -38,14 +38,11 @@ skip_bytes_z_address
 	clc
 	adc z_address + 2
 	sta z_address + 2
-	; SFTODO: Would it save a few cycles to do bcc ++:inc z_address+1:bne ++:inc z_address:++ rts here?
-	lda z_address + 1
-	adc #0
-	sta z_address + 1
-	lda z_address
-	adc #0
-	sta z_address
-	rts
+	bcc +
+	inc z_address + 1
+	bne +
+	inc z_address
++   rts
 
 !ifdef DEBUG {
 print_z_address

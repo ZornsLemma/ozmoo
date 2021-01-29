@@ -117,6 +117,7 @@ mempointer            = $03 ; 2 bytes
 mem_temp              = $05 ; 2 bytes
 z_extended_opcode	  = $07
 
+mempointer_y          = $08 ; 1 byte
 z_opcode_number       = $09
 zp_pc_h               = $0a
 zp_pc_l               = $0b
@@ -441,13 +442,13 @@ screen_height_minus_1 = $8a ; 1 byte
 }
 
 vmem_temp			  = $00 ; 2 bytes
-; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway
+; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway - I have now used $7e FWIW, $7f is still free
 
 window_start_row	  = $80; 4 bytes
 
 current_window		  = $74 ; !byte 0
 
-is_buffered_window	  = $08;  !byte 1
+is_buffered_window	  = $7e;  !byte 1
 
 ; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
 s_ignore_next_linebreak = $84 ; 3 bytes
