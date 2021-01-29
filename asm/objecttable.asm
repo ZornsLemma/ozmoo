@@ -927,13 +927,12 @@ find_prop
 	lda .property_number
 	cmp #0
 	beq .find_prop_not_found
-	lda .property_number
+	;lda .property_number ; SFTODO: Isn't this redundant? we did it three lines above and there's no label
 	cmp z_operand_value_low_arr + 1; max 63 properties so only low_arr
 	beq .find_prop_found
 	; skip property data
--   jsr read_next_byte ; SFTODO: moderately hot caller of read_next_byte - if we *are* just skipping and discarding data, can we optimise this?
-	dec .property_length
-	bne -
+	lda .property_length
+	jsr skip_bytes_z_address
 	jmp .property_loop
 .find_prop_not_found
 	ldx #0
