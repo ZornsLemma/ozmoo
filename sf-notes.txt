@@ -1,3 +1,5 @@
+New upstream 5.3 with code reordered $004787 (repeat $00478e) - so 0.99% faster than previous, and 0.96% *faster* than 3.7f, yay!
+
 New upstream changes 5.3 (including some but not all of read_next_byte optimisations), M128 usual, smalldyn - $004887 (so 0.4% slower than 3.7f)
 
 With latest upstream changes 5.3 ("usual" M128 no tube config, smalldyn) takes $004915, so 1.2% slower than 3.7f.
