@@ -513,7 +513,7 @@ read_operand
 	; Variable# in a
 	cmp #0
 	beq .read_from_stack
-!ifdef COMPLEX_MEMORY {
+!if 0 { ; SFTODO TEMP HACK !ifdef COMPLEX_MEMORY {
 	tay
 	jsr z_get_variable_reference_and_value
 ;	jmp .store_operand
@@ -564,7 +564,13 @@ read_operand
 	jmp .store_operand ; Always branch
 
 
-!ifndef COMPLEX_MEMORY {
+!if 1 { ; SFTODO HACK - NEW CODE
+.read_global_var
+	tay
+	jsr z_get_variable_reference_and_value
+	jmp .store_operand
+}
+!if 0 { ; SFTODO HACK !ifndef COMPLEX_MEMORY {
 .read_global_var
 	cmp #128
 	bcs .read_high_global_var
