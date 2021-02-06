@@ -94,13 +94,13 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 !macro lda_dynmem_ind_y_corrupt_x zp {
     lda (zp),y
-    ; TODO: DELIBERATELY CORRUPT X TO TEST
+    inx ; SFTODO: TEMP DELIBERATELY CORRUPT X TO TEST
 }
 
 !macro lda_dynmem_ind_y zp {
     stx $90 ; SFTODO TEMP ALLOCATION
     +lda_dynmem_ind_y_corrupt_x zp
-    php ; SFTODO: NECESSARY?
+    php ; SFTODO: NECESSARY? COULD REVIEW CALLERS TO SEE IF WE CAN DO AWAY WITH PHP/PLP, BUT LET'S PLAY IT SAFE FOR NOW
     ldx $90
     plp
 }
