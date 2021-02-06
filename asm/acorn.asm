@@ -92,11 +92,13 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 }
 
+; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value - IF WE NEED TO WORRY ABOUT THIS, IT MAY BE ENOUGH TO ALWAYS CLEAR CARRY RATHER THAN PRESERVE IT
 !macro lda_dynmem_ind_y_corrupt_x zp {
     lda (zp),y
     inx ; SFTODO: TEMP DELIBERATELY CORRUPT X TO TEST
 }
 
+; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value
 !macro lda_dynmem_ind_y zp {
     stx $90 ; SFTODO TEMP ALLOCATION
     +lda_dynmem_ind_y_corrupt_x zp

@@ -705,10 +705,10 @@ z_get_referenced_value
 	ldy #1
 	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this.
 	+before_dynmem_read
-	lda (zp_temp),y
+	+lda_dynmem_ind_y_corrupt_x zp_temp
 	tax
 	dey
-	lda (zp_temp),y
+	+lda_dynmem_ind_y zp_temp
 	+after_dynmem_read
 	rts
 
@@ -757,10 +757,10 @@ z_get_low_global_variable_value
 	; Not TARGET_C128
 	iny
 	+before_dynmem_read
-	lda (z_low_global_vars_ptr),y
+	+lda_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
 	tax
 	dey
-	lda (z_low_global_vars_ptr),y
+	+lda_dynmem_ind_y z_low_global_vars_ptr
 	+after_dynmem_read
 	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not TARGET_C128
