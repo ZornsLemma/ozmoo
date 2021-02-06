@@ -703,6 +703,7 @@ z_get_referenced_value
 .in_bank_0
 }
 	ldy #1
+	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this.
 	+before_dynmem_read
 	lda (zp_temp),y
 	tax

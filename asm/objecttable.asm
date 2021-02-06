@@ -57,6 +57,7 @@ z_ins_get_child
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y
 }
 
@@ -75,6 +76,7 @@ z_ins_get_child
 	pha
 	tya
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y
 	tax
 	dey
@@ -109,6 +111,7 @@ z_ins_get_parent
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y
 }
 
@@ -121,6 +124,7 @@ z_ins_get_parent
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	ldy #7
 	lda (object_tree_ptr),y
 	tax
@@ -220,9 +224,10 @@ z_ins_remove_obj_body
 	sta .parent_num
 	stx .parent_num + 1
 } else {
+	+adjust_dynmem_ptr .zp_object
 	lda (.zp_object),y
 	sta .parent_num
-	iny
+	iny ; SFTODO: I THINK THIS WILL BREAK THINGS WITH ADJUST_DYNMEM_PTR IF WE WRAP TO A NEW PAGE
 	lda (.zp_object),y
 	sta .parent_num + 1
 }
@@ -238,6 +243,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr .zp_object
 	lda (.zp_object),y
 }
 
@@ -269,9 +275,10 @@ z_ins_remove_obj_body
 	sta .child_num
 	stx .child_num + 1
 } else {
+	+adjust_dynmem_ptr .zp_parent
 	lda (.zp_parent),y
 	sta .child_num
-	iny
+	iny ; SFTODO: AWKWARD WRT ADJUST_DYNMEM_PTR
 	lda (.zp_parent),y
 	sta .child_num + 1
 }
@@ -287,6 +294,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr .zp_parent
 	lda (.zp_parent),y
 }
 
@@ -318,11 +326,12 @@ z_ins_remove_obj_body
 	ldy #10
 	jsr write_word_to_bank_1_c128
 } else {
+	+adjust_dynmem_ptr .zp_object
 	lda (.zp_object),y
 	pha
-	iny
+	iny ; SFTODO ADJUST_DYNMEM_PTR PROBLEM
 	lda (.zp_object),y
-	ldy #11  ; child+1
+	ldy #11  ; child+1 ; SFTODO: ADJUST_DYNMEM_PTR PROBLEM?
 	sta (.zp_parent),y
 	dey
 	pla
@@ -338,10 +347,11 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr .zp_object
 	lda (.zp_object),y
 }
 
-	ldy #6  ; child
+	ldy #6  ; child SFTODO: ADJUST_DYNMEM_PTR PROBLEM?
 
 !ifdef TARGET_C128 {
 	ldx #.zp_parent
@@ -379,6 +389,7 @@ z_ins_remove_obj_body
 	sta .sibling_num
 	stx .sibling_num + 1
 } else {
+	+adjust_zp_ptr .zp_sibling
 	lda (.zp_sibling),y
 	sta .sibling_num
 	iny
@@ -397,6 +408,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr .zp_sibling
 	lda (.zp_sibling),y
 }
 
@@ -423,6 +435,7 @@ z_ins_remove_obj_body
 	jsr read_word_from_bank_1_c128
 	jsr write_word_to_bank_1_c128
 } else {
+	+adjust_zp_ptr .zp_object
 	lda (.zp_object),y
 	sta (.zp_sibling),y
 	iny
@@ -443,6 +456,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02af
 } else {
+	+adjust_dynmem_ptr .zp_object
 	lda (.zp_object),y
 	sta (.zp_sibling),y
 }
@@ -547,9 +561,10 @@ print_obj
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y ; low byte
 	tax
-	dey
+	dey ; SFTODO: ACTUALLY THESE DEYS WHICH I HAD BEEN ASSUMING WERE OK MIGHT ALSO SOMETIMES BE A PROBLEM - NOT BEEN OVER THEM INDIVIDUALLY YET
 	lda (object_tree_ptr),y ; high byte
 }
 	+after_dynmem_read
@@ -575,6 +590,7 @@ z_ins_jin
 	ldx #$7f
 	jsr $02a2
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y
 }
 	+after_dynmem_read
@@ -593,10 +609,11 @@ z_ins_jin
 	bne .branch_false
 	cpx z_operand_value_low_arr + 1
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y
 	cmp z_operand_value_high_arr + 1
 	bne .branch_false
-	iny
+	iny ; SFTODO: ADJUST_DYNMEM_PTR PROBLEM?
 	lda (object_tree_ptr),y
 	cmp z_operand_value_low_arr + 1
 }
@@ -619,6 +636,7 @@ z_ins_test_attr
 	jsr $02a2
 	ldx object_temp
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y
 }
 	+after_dynmem_read
@@ -658,6 +676,7 @@ z_ins_set_attr
 	ldx #$7f
 	jmp $02af
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	ldx .bitmask_index
 	lda (object_tree_ptr),y
 	ora .bitmask,x
@@ -695,6 +714,7 @@ z_ins_clear_attr
 	ldx #$7f
 	jmp $02af
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	ldx .bitmask_index
 	lda (object_tree_ptr),y
 	and .bitmask,x
@@ -749,9 +769,11 @@ z_ins_insert_obj
 	+after_dynmem_read
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
+	+adjust_dynmem_ptr .zp_object
+	+adjust_dynmem_ptr .zp_dest
 	lda .dest_num
 	sta (.zp_object),y
-	iny
+	iny ; SFTODO: ADJUST_DYNMEM_PTR PROBLEM? - AND FOLLOWING Y ADJUSTMENTS
 	lda .dest_num + 1
 	sta (.zp_object),y
 	; object.sibling = destination.child
@@ -893,9 +915,10 @@ find_first_prop
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
+	+adjust_dynmem_ptr object_tree_ptr
 	lda (object_tree_ptr),y ; low byte
 	tax
-	dey
+	dey ; SFTODO: POTENTIAL ADP PROBLEM?
 	lda (object_tree_ptr),y ; high byte
 }
 	+after_dynmem_read
@@ -965,9 +988,10 @@ z_ins_get_prop
 	lda #default_properties_ptr
 	jsr read_word_from_bank_1_c128
 } else {
+	+adjust_dynmem_ptr default_properties_ptr
 	lda (default_properties_ptr),y
 	tax
-	dey
+	dey ; SFTODO: POTENTIAL ADP PROBLEM?
 	lda (default_properties_ptr),y
 }
 	+after_dynmem_read	

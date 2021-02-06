@@ -1,3 +1,10 @@
+Why do I want to get rid of the screen hole?
+- presumably any fix would work just as well with a mode 6 screen as a mode 7 screen
+- this would mean a B-no-shadow could use mode 6 (user preference, accented characters) given sufficient SWR and small enough game dynmem
+- it would also mean the Electron would be a lot less of a special case (it would mainly differ from B-no-shadow just in the Electron-style ROM paging)
+- the macros to insert the screen hole are pretty annoying and intermittently cause Ozmoo to break when building some untried combinations of game+config
+- it *might* (if the overhead is small/can be runtime patched) allow B-no-shadow and BBC-shadow to be combined into a single executable (not *overly* optimistic about this, but we'll see)
+
 New upstream 5.3 with code reordered $004787 (repeat $00478e) - so 1.34% faster than previous, and 0.96% *faster* than 3.7f, yay!
 - built experimentally with COMPLEX_MEMORY gives $004a88 - 4.2% slower than without, and 3.2% slower than 3.7f - and of course this is without actually altering read_byte_at_z_address to allow for a read hole
 - experimental build with pseudo-COMPLEX_MEMORY only for global variable access - $004844 - so 1% slower than "standard" build (of couse still without modification to actually create a hole)

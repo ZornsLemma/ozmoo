@@ -87,6 +87,11 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 }
 }
+; SFTODO TEMP HACK START
+!macro adjust_dynmem_ptr x {
+
+}
+; SFTODO TEMP HACK END
 
 !zone {
 
