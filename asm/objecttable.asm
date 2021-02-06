@@ -57,14 +57,14 @@ z_ins_get_child
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 
 	pha ; Value is zero if object is zero, non-zero if object is non-zero
 	tax
 	lda #0
 } else  {
+!error "SFTODO: DYNMEM HOLE CHANGES, BUT NOT DOING ANYTHING OTHER THAN Z3 YET"
 
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
@@ -111,13 +111,13 @@ z_ins_get_parent
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 
 	tax
 	lda #0
 } else  {
+!error "SFTODO: Z4+ DYNMEM HOLE"
 
 !ifdef TARGET_C128 {
 	ldy #6
@@ -216,6 +216,7 @@ z_ins_remove_obj_body
 	; get parent number
 	+before_dynmem_read
 !ifdef Z4PLUS {
+!error "SFTODO: Z4+ DYNMEM HOLE"
 	ldy #6  ; parent
 
 !ifdef TARGET_C128 {
@@ -243,8 +244,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr .zp_object
-	lda (.zp_object),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
 }
 
 	sta .parent_num + 1
@@ -275,11 +275,10 @@ z_ins_remove_obj_body
 	sta .child_num
 	stx .child_num + 1
 } else {
-	+adjust_dynmem_ptr .zp_parent
-	lda (.zp_parent),y
+	+lda_dynmem_ind_y_corrupt_x .zp_parent
 	sta .child_num
-	iny ; SFTODO: AWKWARD WRT ADJUST_DYNMEM_PTR
-	lda (.zp_parent),y
+	iny
+	+lda_dynmem_ind_y_corrupt_x .zp_parent
 	sta .child_num + 1
 }
 
@@ -294,8 +293,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr .zp_parent
-	lda (.zp_parent),y
+	+lda_dynmem_ind_y_corrupt_x .zp_parent
 }
 
 	sta .child_num + 1
@@ -315,6 +313,7 @@ z_ins_remove_obj_body
 
 	+before_dynmem_read
 !ifdef Z4PLUS {
+!error "SFTODO DYNMEM HOLE"
 	ldy #8  ; sibling
 
 !ifdef TARGET_C128 {
@@ -326,16 +325,15 @@ z_ins_remove_obj_body
 	ldy #10
 	jsr write_word_to_bank_1_c128
 } else {
-	+adjust_dynmem_ptr .zp_object
-	lda (.zp_object),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
 	pha
-	iny ; SFTODO ADJUST_DYNMEM_PTR PROBLEM
-	lda (.zp_object),y
-	ldy #11  ; child+1 ; SFTODO: ADJUST_DYNMEM_PTR PROBLEM?
-	sta (.zp_parent),y
+	iny
+	+lda_dynmem_ind_y_corrupt_x .zp_object
+	ldy #11  ; child+1
+	+sta_dynmem_ind_y_corrupt_x .zp_parent
 	dey
 	pla
-	sta (.zp_parent),y
+	+sta_dynmem_ind_y_corrupt_x .zp_parent
 }
 
 } else {
@@ -347,11 +345,10 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr .zp_object
-	lda (.zp_object),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
 }
 
-	ldy #6  ; child SFTODO: ADJUST_DYNMEM_PTR PROBLEM?
+	ldy #6  ; child
 
 !ifdef TARGET_C128 {
 	ldx #.zp_parent
@@ -359,7 +356,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02af
 } else {
-	sta (.zp_parent),y
+	+sta_dynmem_ind_y_corrupt_x .zp_parent
 }
 
 }
@@ -381,6 +378,7 @@ z_ins_remove_obj_body
 
 	; get next sibling number
 !ifdef Z4PLUS {
+!error "SFTODO"
 	ldy #8  ; sibling
 
 !ifdef TARGET_C128 {
@@ -408,8 +406,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr .zp_sibling
-	lda (.zp_sibling),y
+	+lda_dynmem_ind_y_corrupt_x .zp_sibling
 }
 
 	sta .sibling_num + 1
@@ -425,6 +422,7 @@ z_ins_remove_obj_body
 
 	; .zp_sibling.sibling == object. set to object.sibling instead
 !ifdef Z4PLUS {
+!error "SFTODO"
 	ldy #8  ; sibling
 
 !ifdef TARGET_C128 {
@@ -456,9 +454,8 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02af
 } else {
-	+adjust_dynmem_ptr .zp_object
-	lda (.zp_object),y
-	sta (.zp_sibling),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_corrupt_x .zp_sibling
 }
 
 
@@ -469,6 +466,7 @@ z_ins_remove_obj_body
 	; always set obj.parent and obj.sibling to 0
 	lda #0
 !ifdef Z4PLUS {
+!error "SFTODO"
 	ldy #6  ; parent
 
 !ifdef TARGET_C128 {
@@ -504,9 +502,9 @@ z_ins_remove_obj_body
 	tax
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 	iny ; sibling (5)
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 }
 
 }
@@ -561,11 +559,10 @@ print_obj
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y ; low byte
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 	tax
-	dey ; SFTODO: ACTUALLY THESE DEYS WHICH I HAD BEEN ASSUMING WERE OK MIGHT ALSO SOMETIMES BE A PROBLEM - NOT BEEN OVER THEM INDIVIDUALLY YET
-	lda (object_tree_ptr),y ; high byte
+	dey
+	+lda_dynmem_ind_y object_tree_ptr ; high byte
 }
 	+after_dynmem_read
 
@@ -590,8 +587,7 @@ z_ins_jin
 	ldx #$7f
 	jsr $02a2
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 	+after_dynmem_read
 
@@ -599,6 +595,7 @@ z_ins_jin
 	bne .branch_false
 	beq .branch_true
 } else {
+!error "SFTODO"
 	ldy #6  ; parent
 
 	+before_dynmem_read
@@ -636,8 +633,7 @@ z_ins_test_attr
 	jsr $02a2
 	ldx object_temp
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y object_tree_ptr
 }
 	+after_dynmem_read
 
@@ -676,11 +672,10 @@ z_ins_set_attr
 	ldx #$7f
 	jmp $02af
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 	ldx .bitmask_index
-	lda (object_tree_ptr),y
 	ora .bitmask,x
-	sta (object_tree_ptr),y
+	+sta_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 +
 	+after_dynmem_read
@@ -714,14 +709,13 @@ z_ins_clear_attr
 	ldx #$7f
 	jmp $02af
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 	ldx .bitmask_index
-	lda (object_tree_ptr),y
 	and .bitmask,x
 	beq +
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y object_tree_ptr
 	eor .bitmask,x
-	sta (object_tree_ptr),y
+	+sta_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 +
 	+after_dynmem_read
@@ -744,6 +738,7 @@ z_ins_insert_obj
 	sta .dest_num
 	stx .dest_num + 1
 !ifdef Z4PLUS {
+!error "SFTODO"
 	; object.parent = destination
 	ldy #6 ; parent
 
@@ -830,16 +825,16 @@ z_ins_insert_obj
 	; object.parent = destination
 	ldy #4 ; parent
 	lda .dest_num + 1
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; object.sibling = destination.child
 	ldy #6; child
-	lda (.zp_dest),y
+	+lda_dynmem_ind_y_corrupt_x .zp_dest
 	dey ; sibling (4)
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; destination.child = object
 	ldy #6 ; child
 	lda object_num + 1
-	sta (.zp_dest),y
+	+sta_dynmem_ind_y_corrupt_x .zp_dest
 	+after_dynmem_read
 	rts
 }
@@ -915,11 +910,10 @@ find_first_prop
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y ; low byte
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr ; low byte
 	tax
-	dey ; SFTODO: POTENTIAL ADP PROBLEM?
-	lda (object_tree_ptr),y ; high byte
+	dey
+	+lda_dynmem_ind_y object_tree_ptr ; high byte
 }
 	+after_dynmem_read
 
@@ -988,11 +982,10 @@ z_ins_get_prop
 	lda #default_properties_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+adjust_dynmem_ptr default_properties_ptr
-	lda (default_properties_ptr),y
+	+lda_dynmem_ind_y_corrupt_x default_properties_ptr
 	tax
-	dey ; SFTODO: POTENTIAL ADP PROBLEM?
-	lda (default_properties_ptr),y
+	dey
+	+lda_dynmem_ind_y default_properties_ptr
 }
 	+after_dynmem_read	
 	jmp .return_property_result

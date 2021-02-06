@@ -91,6 +91,24 @@ ACORN_SWR_BIG_DYNMEM = 1
 !macro adjust_dynmem_ptr x {
 
 }
+
+!macro lda_dynmem_ind_y_corrupt_x zp {
+    lda (zp),y
+    ; TODO: DELIBERATELY CORRUPT X TO TEST
+}
+
+!macro lda_dynmem_ind_y zp {
+    stx $90 ; SFTODO TEMP ALLOCATION
+    +lda_dynmem_ind_y_corrupt_x zp
+    php ; SFTODO: NECESSARY?
+    ldx $90
+    plp
+}
+
+!macro sta_dynmem_ind_y_corrupt_x zp {
+    sta (zp),y
+    ; TODO: DELIBERATELY CORRUPT X TO TEST
+}
 ; SFTODO TEMP HACK END
 
 !zone {
