@@ -525,7 +525,7 @@ read_operand
 	tay
 	dey
 	cpy z_local_var_count
-	bcs .nonexistent_local
+	bcs .nonexistent_local_SFTODO_HACK
 }
 	asl ; This clears carry
 	tay
@@ -548,6 +548,7 @@ read_operand
 }
 	inc z_operand_count
 	rts
+.nonexistent_local_SFTODO_HACK jmp .nonexistent_local
 
 .read_from_stack
 !ifdef SLOW {

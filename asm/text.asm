@@ -1617,7 +1617,7 @@ tokenise_text
 	; skip initial space
 	cpy .textend
 	beq +
-	bcs .parsing_done
+	bcs .parsing_done_SFTODO_HACK
 +	+macro_string_array_read_byte
 ;	lda (string_array),y
 	cmp #$20
@@ -1643,6 +1643,7 @@ tokenise_text
 	bcs .word_found
 	iny
 	bne - ; Always branch
+.parsing_done_SFTODO_HACK jmp .parsing_done
 .terminator_found
 	cpy .wordstart
 	beq .word_found
