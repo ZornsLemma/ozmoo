@@ -92,6 +92,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 }
 
+SFTODOHOLEPAGES = 0
 ; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value - IF WE NEED TO WORRY ABOUT THIS, IT MAY BE ENOUGH TO ALWAYS CLEAR CARRY RATHER THAN PRESERVE IT
 !macro lda_dynmem_ind_y_corrupt_x zp {
     ; SFTODO: I SUSPECT A TABLE ACCESS USING X MIGHT BE FASTER, BUT LET'S GET IT WORKING BEFORE WORRYING ABOUT SUCH THINGS
@@ -99,7 +100,7 @@ ACORN_SWR_BIG_DYNMEM = 1
     cmp #$7c
     bcc +
     clc
-    adc #0 ; SFTODO: SHOULD BE NO OF PAGES OF SCREEN HOLE, BUT LET'S BE AN EXPENSIVE NOP FOR NOW
+    adc #SFTODOHOLEPAGES
     sta $92 ; SFTODO TEMP WORKSPACE
     lda zp
     sta $91
@@ -125,7 +126,7 @@ ACORN_SWR_BIG_DYNMEM = 1
     cmp #$7c
     bcc +
     clc
-    adc #0 ; SFTODO: TEMP NO-OP
+    adc #SFTODOHOLEPAGES
     sta $92
     lda zp
     sta $91
@@ -585,7 +586,7 @@ SFTODOLABELX1
     ; deletable init code so it doesn't really cost anything b) if we don't,
     ; the relocation code fails because we have a variation which doesn't follow
     ; the simple fixed relationship we expect.
-    lda #>flat_ramtop
+    lda #(>flat_ramtop) - SFTODOHOLEPAGES
     sec
     sbc #>story_start
     clc

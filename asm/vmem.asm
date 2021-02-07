@@ -713,7 +713,15 @@ read_byte_at_z_address
 	; Dynmem access
 	txa
 	adc #>story_start
-	sta mempointer + 1
+!if 1 { ; SFTODO MEM HOLE STUFF
+    cmp #$7c
+    bcc +
+    clc
+    adc #SFTODOHOLEPAGES
++   sta mempointer + 1
+} else {
+	SFTODOsta mempointer + 1
+}
 !ifdef ACORN_TURBO_SUPPORTED {
     ; We need to ensure bank 0 is accessed for dynamic memory on a turbo second
     ; processor. This isn't necessary on an ordinary second processor, but it's
@@ -1253,6 +1261,13 @@ convert_index_x_to_ram_bank_and_address
     adc #(>flat_ramtop)-1
 } else {
     adc screen_ram_start_minus_1
+}
+!if 1 { ; SFTODO MEM HOLE EXP
+    cmp #$7c
+    bcc +
+    clc
+    adc #SFTODOHOLEPAGES
++
 }
     rts
 }
