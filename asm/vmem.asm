@@ -1262,7 +1262,7 @@ convert_index_x_to_ram_bank_and_address
 } else {
     adc screen_ram_start_minus_1
 }
-!if 1 { ; SFTODO MEM HOLE EXP
+!if 1 { ; SFTODO MEM HOLE EXP - I DON'T THINK THIS IS FULLY GENERAL, IT'S ALL VERY HACKY AND I AM ONLY WORKING WITH SMALLDYNMEM AT THE MOMENT
     cmp #$7c
     bcc +
     clc

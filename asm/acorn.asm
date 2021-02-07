@@ -907,7 +907,7 @@ SFTODOLABEL5
     ldx #0
     stx vmem_blocks_stolen_in_first_bank
     sec
-    sbc #>flat_ramtop
+    sbc #(>flat_ramtop) - SFTODOHOLEPAGES
     bcc .some_vmem_in_main_ram
     lsr
     sta vmem_blocks_stolen_in_first_bank
