@@ -569,7 +569,7 @@ read_operand
 	cmp #128
 	bcs .read_high_global_var
     +finish_read_next_byte_at_z_pc_unsafe ; SFTODO: NEED TO REVIEW USE OF THESE MACROS, THE UPSTREAM REARRANGEMENT OF THIS CODE (NOT TO MENTION GENERAL 5.3 CHANCES) MAY MEAN THEY'RE WRONG, DON'T THINK THIS IS A BIG DEAL BUT NEED TO CHECK
-!ifdef SLOW {
+!if 1 { ; SFTODO TEMP HACK !ifdef SLOW {
 	jsr z_get_low_global_variable_value
 } else {
 	asl
@@ -581,6 +581,7 @@ read_operand
 	lda (z_low_global_vars_ptr),y
 }
 !ifndef ACORN_SWR_BIG_DYNMEM {
+	clc ; SFTODO TEMP HACK TO PLAY IT SAFE
 	bcc .store_operand ; Always branch
 } else {
     +restart_read_next_byte_at_z_pc_unsafe
@@ -592,11 +593,12 @@ read_operand
 	asl ; This sets carry
 	tay
 	iny
-	lda (z_high_global_vars_ptr),y
+	+lda_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
 	tax
 	dey
-	lda (z_high_global_vars_ptr),y
+	+lda_dynmem_ind_y z_high_global_vars_ptr
 !ifndef ACORN_SWR_BIG_DYNMEM {
+	sec ; SFTODO TEMP HACK TO PLAY IT SAFE
 	bcs .store_operand ; Always branch
 } else {
     +restart_read_next_byte_at_z_pc_unsafe
