@@ -118,9 +118,23 @@ ACORN_SWR_BIG_DYNMEM = 1
     plp
 }
 
+; SFTODO: DOES THIS NEED TO PRESERVE FLAGS?
 !macro sta_dynmem_ind_y_corrupt_x zp {
+    pha
+    lda zp+1
+    cmp #$7c
+    bcc +
+    clc
+    adc #0 ; SFTODO: TEMP NO-OP
+    sta $92
+    lda zp
+    sta $91
+    pla
+    sta ($91),y
+    jmp ++
++   pla
     sta (zp),y
-    inx ; SFTODO: DELIBERATELY CORRUPT X TO TEST
+++  inx ; SFTODO: DELIBERATELY CORRUPT X TO TEST
 }
 
 !macro sta_dynmem_ind_y zp {

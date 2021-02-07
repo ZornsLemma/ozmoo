@@ -1423,7 +1423,7 @@ read_text
 
 	ldy #0
 -   cmp terminating_characters,y
-	beq .read_text_done
+	beq .read_text_done_SFTODO_HACK
 	iny
 	cpy num_terminating_characters
 	bne -
@@ -1453,6 +1453,7 @@ read_text
 ;	sta (string_array),y
 }
 	jmp .readkey ; don't store in the array
+.read_text_done_SFTODO_HACK jmp .read_text_done
 +   ; disallow cursor keys etc
     ; SF: Note that this is part of read_text, used only by z_ins_read, and
     ; therefore we are reading a line of text here. The following code will
