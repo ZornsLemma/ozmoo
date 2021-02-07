@@ -1679,13 +1679,14 @@ tokenise_text
 	ldy .wordend
 	lda .numwords
 	cmp .maxwords
-	bne  .find_word_loop
+	bne  .find_word_loop_SFTODO_HACK
 .parsing_done
 	ldy #1
 	lda .numwords
 	+macro_parse_array_write_byte
 ;	sta (parse_array),y ; num of words
 	rts
+.find_word_loop_SFTODO_HACK jmp .find_word_loop
     ;SFTODODATA 7
 .maxwords   !byte 0 
 .numwords   !byte 0 

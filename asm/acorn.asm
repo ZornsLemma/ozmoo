@@ -109,7 +109,16 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 !macro sta_dynmem_ind_y_corrupt_x zp {
     sta (zp),y
-    ; TODO: DELIBERATELY CORRUPT X TO TEST
+    inx ; SFTODO: DELIBERATELY CORRUPT X TO TEST
+}
+
+!macro sta_dynmem_ind_y zp {
+    ; SFTODO: SEE COMMENTS RE PRESERVING ETC IN LDA NO-CORRUPT-X MACRO ABOVE
+    stx $90
+    +sta_dynmem_ind_y_corrupt_x zp
+    php
+    ldx $90
+    plp
 }
 ; SFTODO TEMP HACK END
 

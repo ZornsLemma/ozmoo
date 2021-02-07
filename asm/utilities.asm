@@ -371,17 +371,18 @@ parse_array_write_byte
 
 } else { ; Not COMPLEX_MEMORY
 
+; SFTODO: FOR NOW I'M ASSUMING I HAVE TO USE THE NO-CORRUPT-X VERSIONS OF MY DYNMEM MACROS BUT I HAVEN'T CHECKED THE CALLERS OF THESE
 !macro macro_string_array_read_byte {
-	lda (string_array),y
+	+lda_dynmem_ind_y string_array
 }
 !macro macro_string_array_write_byte {
-	sta (string_array),y
+	+sta_dynmem_ind_y string_array
 }
 !macro macro_parse_array_read_byte {
-	lda (parse_array),y
+	+lda_dynmem_ind_y parse_array
 }
 !macro macro_parse_array_write_byte {
-	sta (parse_array),y
+	+sta_dynmem_ind_y parse_array
 }
 
 
