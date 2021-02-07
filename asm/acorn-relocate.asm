@@ -21,6 +21,7 @@ reloc_start = program_start
 ; locations. I can't find any official documentation to say what zero page we
 ; can and can't use, but looking at the different versions of the tube host code
 ; on mdfs.net I can't see any problem with transient use of these in practice.
+; SFTODO: I have a feeling JGH may have posted about this recently (Jan 2021-ish, no later than 7 Feb 2021) on stardot, maybe check and reference thread here.
 .delta = $70
 .codep = $71 ; 2 bytes
 .deltap = $73 ; 2 bytes

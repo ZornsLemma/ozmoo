@@ -643,10 +643,10 @@ z_set_variable_reference_to_value
 .set_in_bank_0
 }
 	ldy #0
-	sta (zp_temp),y
+    +sta_dynmem_ind_y zp_temp
 	iny
 	txa
-	sta (zp_temp),y
+    +sta_dynmem_ind_y_corrupt_x zp_temp
 	rts
 
 z_get_variable_reference_and_value
@@ -782,7 +782,7 @@ z_set_variable
 	sta z_temp
 	stx z_temp + 1
 	tya
-!ifdef SLOW {
+!if 1 { ; SFTODO TEMP HACK !ifdef SLOW {
 	jsr z_get_variable_reference_and_value
 	lda z_temp
 	ldx z_temp + 1
