@@ -1038,7 +1038,7 @@ s_printchar
     ; Force the OS text cursor to move if necessary; normally it would be
     ; invisible at this point, but TerpEtude's "Timed full-line input" test can
     ; leave the OS text cursor visible at the top left if you type a character
-    ; in the rightmost column and then wait for the timed mwessage to appear.
+    ; in the rightmost column and then wait for the timed message to appear.
     jsr s_cursor_to_screenrowcolumn
 }
 .printchar_end
@@ -1762,6 +1762,7 @@ update_colours
     jsr oswrch
     jmp oswrch
 
+    ; SFTODO: It might be worth (for games like Border Zone where - check I'm not confused - hardware scrolling is not an option) allowing the build system to avoid showing CTRL-S on the loader screen and avoid having code for it in the Ozmoo binary. This might already be possible, I haven't checked. I suspect the user would have to specify a command line option for this, we can't really examine the game ourselves and infer it "always" uses a >1 line status area.
 check_user_interface_controls
 !ifdef ACORN_HW_SCROLL {
     cmp #'S' - ctrl_key_adjust
