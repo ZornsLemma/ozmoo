@@ -457,7 +457,6 @@ z_ins_remove_obj_body
 	; always set obj.parent and obj.sibling to 0
 	lda #0
 !ifdef Z4PLUS {
-!error "SFTODO"
 	ldy #6  ; parent
 
 !ifdef TARGET_C128 {
@@ -472,13 +471,13 @@ z_ins_remove_obj_body
 	iny ; sibling (8)
 	jsr write_word_to_bank_1_c128
 } else {
-	sta (.zp_object),y
+	sta_dynmem_ind_y_corrupt_x .zp_object
 	iny
-	sta (.zp_object),y
+	sta_dynmem_ind_y_corrupt_x .zp_object
 	iny ; sibling (8)
-	sta (.zp_object),y
+	sta_dynmem_ind_y_corrupt_x .zp_object
 	iny
-	sta (.zp_object),y
+	sta_dynmem_ind_y_corrupt_x .zp_object
 }
 
 
@@ -586,7 +585,6 @@ z_ins_jin
 	bne .branch_false
 	beq .branch_true
 } else {
-!error "SFTODO"
 	ldy #6  ; parent
 
 	+before_dynmem_read
@@ -597,12 +595,11 @@ z_ins_jin
 	bne .branch_false
 	cpx z_operand_value_low_arr + 1
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 	cmp z_operand_value_high_arr + 1
 	bne .branch_false
-	iny ; SFTODO: ADJUST_DYNMEM_PTR PROBLEM?
-	lda (object_tree_ptr),y
+	iny
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 	cmp z_operand_value_low_arr + 1
 }
 	+after_dynmem_read
@@ -729,7 +726,6 @@ z_ins_insert_obj
 	sta .dest_num
 	stx .dest_num + 1
 !ifdef Z4PLUS {
-!error "SFTODO"
 	; object.parent = destination
 	ldy #6 ; parent
 
@@ -755,31 +751,29 @@ z_ins_insert_obj
 	+after_dynmem_read
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
-	+adjust_dynmem_ptr .zp_object
-	+adjust_dynmem_ptr .zp_dest
 	lda .dest_num
-	sta (.zp_object),y
-	iny ; SFTODO: ADJUST_DYNMEM_PTR PROBLEM? - AND FOLLOWING Y ADJUSTMENTS
+	+sta_dynmem_ind_y_corrupt_x .zp_object
+	iny
 	lda .dest_num + 1
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; object.sibling = destination.child
 	ldy #10 ; child
-	lda (.zp_dest),y
+	+lda_dynmem_ind_y_corrupt_x .zp_dest
 	pha
 	iny
-	lda (.zp_dest),y
+	+lda_dynmem_ind_y_corrupt_x .zp_dest
 	ldy #9 ; sibling + 1
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 	dey
 	pla
-	sta (.zp_object),y
+	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; destination.child = object
 	ldy #10 ; child
 	lda object_num
-	sta (.zp_dest),y
+	+sta_dynmem_ind_y_corrupt_x .zp_dest
 	iny
 	lda object_num + 1
-	sta (.zp_dest),y
+	+sta_dynmem_ind_y_corrupt_x .zp_dest
 	+after_dynmem_read
 	rts
 }
