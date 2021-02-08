@@ -1228,6 +1228,7 @@ convert_index_x_to_ram_bank_and_address
     sec
     sbc vmem_blocks_in_main_ram
     bcc .in_main_ram
+    ; SFTODO: Can we conditionally compile out this clc-adc if we're in smalldyn?? We probably need the clc given we use CA as a 9-bit value immediately after, but the adc may be redundant - would need to check.
     clc
     adc vmem_blocks_stolen_in_first_bank
     ; CA is now the 9-bit block offset of the required data from the start of

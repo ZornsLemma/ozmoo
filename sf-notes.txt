@@ -1,3 +1,13 @@
+Screen hole notes - transfer these into a permanent comment at top of acorn.asm (or somewhere) when/if this settles down:
+- although this will be automatically true in practice, I think the screen hole needs to be a multiple of 512 bytes so as to avoid breaking alignment assumptions on read-only memory
+- (bigdyn only) all dynmem accesses need to be checked, if the raw 6502 address calculated is >=start_of_screen_hole, it must be incremented by the corresponding number of pages
+- the build system needs to take into account the potential screen hole when deciding how much RAM will be free for certain values of PAGE, similarly the loader probably needs to be tweaked in this regard
+- SFTODO: HOW IS READ-ONLY ACCESS AFFECTED? I SUSPECT THERE ARE A FEW SUB-CASES
+- for smalldyn, I suspect read-only access (via convert_index_x...) can accommodate the screen hole for (nearly) free, by just taking care to set vmem_blocks_in_main_ram correctly during initialisation and using (as ACORN_ELECTRON_SWR already does) screen_ram_start instead of flat_ramtop as the top of main RAM
+- for bigdyn I suspect convert_index_x... can also handle a screen hole mostly for free, again just by ensuring vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank are set up correctly and using screen_ram_start as the top of main RAM
+
+
+
 Why do I want to get rid of the screen hole?
 - presumably any fix would work just as well with a mode 6 screen as a mode 7 screen
 - this would mean a B-no-shadow could use mode 6 (user preference, accented characters) given sufficient SWR and small enough game dynmem
