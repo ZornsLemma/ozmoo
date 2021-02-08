@@ -117,19 +117,17 @@ z_ins_get_parent
 	tax
 	lda #0
 } else  {
-!error "SFTODO: Z4+ DYNMEM HOLE"
 
 !ifdef TARGET_C128 {
 	ldy #6
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
 	ldy #7
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
 	tax
 	dey
-	lda (object_tree_ptr),y
+	+lda_dynmem_ind_y object_tree_ptr
 }
 
 }
@@ -216,7 +214,6 @@ z_ins_remove_obj_body
 	; get parent number
 	+before_dynmem_read
 !ifdef Z4PLUS {
-!error "SFTODO: Z4+ DYNMEM HOLE"
 	ldy #6  ; parent
 
 !ifdef TARGET_C128 {
@@ -225,11 +222,10 @@ z_ins_remove_obj_body
 	sta .parent_num
 	stx .parent_num + 1
 } else {
-	+adjust_dynmem_ptr .zp_object
-	lda (.zp_object),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
 	sta .parent_num
-	iny ; SFTODO: I THINK THIS WILL BREAK THINGS WITH ADJUST_DYNMEM_PTR IF WE WRAP TO A NEW PAGE
-	lda (.zp_object),y
+	iny
+	+lda_dynmem_ind_y_corrupt_x .zp_object
 	sta .parent_num + 1
 }
 
@@ -313,7 +309,6 @@ z_ins_remove_obj_body
 
 	+before_dynmem_read
 !ifdef Z4PLUS {
-!error "SFTODO DYNMEM HOLE"
 	ldy #8  ; sibling
 
 !ifdef TARGET_C128 {
@@ -378,7 +373,6 @@ z_ins_remove_obj_body
 
 	; get next sibling number
 !ifdef Z4PLUS {
-!error "SFTODO"
 	ldy #8  ; sibling
 
 !ifdef TARGET_C128 {
@@ -387,11 +381,10 @@ z_ins_remove_obj_body
 	sta .sibling_num
 	stx .sibling_num + 1
 } else {
-	+adjust_zp_ptr .zp_sibling
-	lda (.zp_sibling),y
+	+lda_dynmem_ind_y_corrupt_x .zp_sibling
 	sta .sibling_num
 	iny
-	lda (.zp_sibling),y
+	+lda_dynmem_ind_y_corrupt_x .zp_sibling
 	sta .sibling_num + 1
 }
 
@@ -422,7 +415,6 @@ z_ins_remove_obj_body
 
 	; .zp_sibling.sibling == object. set to object.sibling instead
 !ifdef Z4PLUS {
-!error "SFTODO"
 	ldy #8  ; sibling
 
 !ifdef TARGET_C128 {
@@ -433,12 +425,11 @@ z_ins_remove_obj_body
 	jsr read_word_from_bank_1_c128
 	jsr write_word_to_bank_1_c128
 } else {
-	+adjust_zp_ptr .zp_object
-	lda (.zp_object),y
-	sta (.zp_sibling),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_corrupt_x .zp_sibling
 	iny
-	lda (.zp_object),y
-	sta (.zp_sibling),y
+	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_corrupt_x .zp_sibling
 }
 
 } else {
