@@ -1012,7 +1012,7 @@ z_ins_get_next_prop
 	beq + ; property == 0, return first property number
 	; find the property, and return next number
 	jsr find_prop
-	; skip property data
+	; skip property data SFTODO: COULD WE USE skip_bytes_z_address HERE?
 -   jsr read_next_byte
 	dec .property_length
 	bne -
