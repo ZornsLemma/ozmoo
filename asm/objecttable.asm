@@ -64,7 +64,6 @@ z_ins_get_child
 	tax
 	lda #0
 } else  {
-!error "SFTODO: DYNMEM HOLE CHANGES, BUT NOT DOING ANYTHING OTHER THAN Z3 YET"
 
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
@@ -76,7 +75,7 @@ z_ins_get_child
 	pha
 	tya
 } else {
-	+adjust_dynmem_ptr object_tree_ptr
+	!error "SFTODO: MEM HOLE SUPPORT, NEED FOR ORA IS MILDLY ANNOYING"
 	lda (object_tree_ptr),y
 	tax
 	dey

@@ -570,16 +570,16 @@ read_operand
 	cmp #128
 	bcs .read_high_global_var
     +finish_read_next_byte_at_z_pc_unsafe ; SFTODO: NEED TO REVIEW USE OF THESE MACROS, THE UPSTREAM REARRANGEMENT OF THIS CODE (NOT TO MENTION GENERAL 5.3 CHANCES) MAY MEAN THEY'RE WRONG, DON'T THINK THIS IS A BIG DEAL BUT NEED TO CHECK
-!if 1 { ; SFTODO TEMP HACK !ifdef SLOW {
+!ifdef SLOW {
 	jsr z_get_low_global_variable_value
 } else {
 	asl
 	tay
 	iny
-	lda (z_low_global_vars_ptr),y
+	+lda_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
 	tax
 	dey
-	lda (z_low_global_vars_ptr),y
+	+lda_dynmem_ind_y z_low_global_vars_ptr
 }
 !ifndef ACORN_SWR_BIG_DYNMEM {
 	clc ; SFTODO TEMP HACK TO PLAY IT SAFE
@@ -782,7 +782,7 @@ z_set_variable
 	sta z_temp
 	stx z_temp + 1
 	tya
-!if 1 { ; SFTODO TEMP HACK !ifdef SLOW {
+!ifdef SLOW {
 	jsr z_get_variable_reference_and_value
 	lda z_temp
 	ldx z_temp + 1
@@ -811,20 +811,20 @@ z_set_variable
 	asl
 	tay
 	lda z_temp
-	sta (z_low_global_vars_ptr),y
+	+sta_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
 	iny
 	lda z_temp + 1
-	sta (z_low_global_vars_ptr),y
+	+sta_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
 	rts
 .write_high_global_var
 ;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will remove top bit
 	asl
 	tay
 	lda z_temp
-	sta (z_high_global_vars_ptr),y
+	+sta_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
 	iny
 	lda z_temp + 1
-	sta (z_high_global_vars_ptr),y
+	+sta_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
 	rts
 } ; Not SLOW
 } ; Zone
@@ -840,6 +840,7 @@ z_ins_not_supported
 	rts
 }
 
+; SFTODO: Prob already have a note elsewhere but jic: with the new model where dynmem accesses in the Ozmoo code are relatively "isolated" and have macros around them, it may be possible for the bigdyn model to keep the Z-machine PC bank paged in by default, just like the smalldyn model - it would then use these macros to temporarily page in the first SWR bank when dynmem being accessed. This might offer a performance improvement. And *if* it did, it would make the smalldyn and bigdyn models more similar, probably reducing code complexity. Note that this is completely independent of memory hole support.
 +make_acorn_screen_hole
 !zone z_division {
 z_divide
