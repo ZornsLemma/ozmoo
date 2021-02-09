@@ -567,6 +567,7 @@ read_operand
 
 !ifndef COMPLEX_MEMORY {
 .read_global_var
+	; SFTODO: AS ELSEWHERE, WE COULD MOVE THE ASL FROM BOTH PATHS TO HERE AND NOT BOTHER WITH CMP #128
 	cmp #128
 	bcs .read_high_global_var
     +finish_read_next_byte_at_z_pc_unsafe ; SFTODO: NEED TO REVIEW USE OF THESE MACROS, THE UPSTREAM REARRANGEMENT OF THIS CODE (NOT TO MENTION GENERAL 5.3 CHANCES) MAY MEAN THEY'RE WRONG, DON'T THINK THIS IS A BIG DEAL BUT NEED TO CHECK
@@ -807,6 +808,7 @@ z_set_variable
 	sta (z_local_vars_ptr),y
 	rts
 .write_global_var
+	; SFTODO: NOT HUGE, BUT IF WE DID THE ASL NOW (WHICH OCCURS ON BOTH PATHS ANYWAY) WE COULD AVOID DOING THE CMP #128
 	cmp #128
 	bcs .write_high_global_var
 	asl
