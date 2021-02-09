@@ -792,6 +792,12 @@ z_set_variable
 } else {
 	cmp #16
 	bcs .write_global_var
+!if 1 { ; SFTODO TEMP EXP
+	jsr z_get_variable_reference_and_value
+	lda z_temp
+	ldx z_temp + 1
+	jmp z_set_variable_reference_to_value
+}
 	; Local variable
 	tay
 	dey
