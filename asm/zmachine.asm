@@ -708,7 +708,7 @@ z_get_referenced_value
 .in_bank_0
 }
 	ldy #1
-	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this.
+	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this. (I believe in the local var case the dynmem code can't trigger, because the address is in the stack - it's bad for performance to even try, but not *wrong*.)
 	+before_dynmem_read
 	+lda_dynmem_ind_y_corrupt_x zp_temp
 	tax
@@ -801,6 +801,11 @@ z_set_variable
 }
 	asl
 	tay
+!if 1 { ; SFTODO TEMP HACK
+	lda z_local_vars_ptr + 1
+	cmp #$7b
+HANG	bcs HANG
+}
 	lda z_temp
 	sta (z_local_vars_ptr),y
 	iny
