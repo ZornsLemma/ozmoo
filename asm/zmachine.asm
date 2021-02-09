@@ -784,7 +784,7 @@ z_set_variable
 	sta z_temp
 	stx z_temp + 1
 	tya
-!ifdef SLOW {
+!if 1 { ; SFTODO TEMP !ifdef SLOW {
 	jsr z_get_variable_reference_and_value
 	lda z_temp
 	ldx z_temp + 1
