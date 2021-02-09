@@ -14,6 +14,7 @@ Why do I want to get rid of the screen hole?
 - it would also mean the Electron would be a lot less of a special case (it would mainly differ from B-no-shadow just in the Electron-style ROM paging)
 - the macros to insert the screen hole are pretty annoying and intermittently cause Ozmoo to break when building some untried combinations of game+config
 - it *might* (if the overhead is small/can be runtime patched) allow B-no-shadow and BBC-shadow to be combined into a single executable (not *overly* optimistic about this, but we'll see)
+- it means the B-no-shadow executable can take advantage of arbitrary PAGE, instead of having to assume a fixed value (because the relocation code can't slide code round the screen hole) - this means the same game will work on DFS or (say) E00-MMFS and take advantage of the extra RAM where it's available
 
 New upstream 5.3 with code reordered $004787 (repeat $00478e) - so 1.34% faster than previous, and 0.96% *faster* than 3.7f, yay!
 - built experimentally with COMPLEX_MEMORY gives $004a88 - 4.2% slower than without, and 3.2% slower than 3.7f - and of course this is without actually altering read_byte_at_z_address to allow for a read hole
