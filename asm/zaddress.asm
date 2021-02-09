@@ -154,14 +154,21 @@ write_next_byte
 	pla
 	tax
 	lda z_address_temp
-} else { 
+} else {
+; SFTODO: NOTE THIS DOESN'T USE THE BEFORE/AFTER DYNMEM MACROS, MAYBE I SHOULD ADD THEM OR SOME ACORN EQUIVALENT - DOES THE CALLER DO THEM? OR ARE THEY NOT NEC AS WE HAVE C128 BRANCH ABOVE?
 	; not TARGET_C128
-	!error "SFTODO: This needs to take account of any dynmem hole"
 	lda z_address + 2
 	sta .write_byte + 1
 	lda z_address + 1
 	clc
 	adc #>story_start
+!if 1 { ; SFTODO: MEMORY HOLE
+	cmp #$7c
+	bcc +
+	clc
+	adc #SFTODOHOLEPAGES
++
+}
 	sta .write_byte + 2
 	lda z_address_temp
 .write_byte
