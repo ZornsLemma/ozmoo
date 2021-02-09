@@ -900,7 +900,7 @@ SFTODOLABEL5
     adc #SFTODOHOLEPAGES
     sta readblocks_mempos + 1
 +
- }
+}
     jsr readblocks
     lda .blocks_to_read
     sec
