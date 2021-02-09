@@ -63,6 +63,7 @@ get_z_address
 	lda z_address + 1 ; high
 	rts
 
+; SFTODO: Could we rejig this slightly so it does the ldy and falls through into get_z_address? Would save a few bytes and probably no less clear, maybe arguably clearer. Check callers don't use flags-reflect-Y first!
 get_z_himem_address
 	ldx z_address + 2
 	lda z_address + 1
@@ -155,6 +156,7 @@ write_next_byte
 	lda z_address_temp
 } else { 
 	; not TARGET_C128
+	!error "SFTODO: This needs to take account of any dynmem hole"
 	lda z_address + 2
 	sta .write_byte + 1
 	lda z_address + 1
