@@ -131,7 +131,15 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
             !if zp = default_properties_ptr {
                 jsr lda_dynmem_ind_y_slow_default_properties_ptr_sub
             } else {
-                !error "Unsupported zp"
+                !if zp = string_array {
+                    jsr lda_dynmem_ind_y_slow_string_array_sub
+                } else {
+                    !if zp = parse_array {
+                        jsr lda_dynmem_ind_y_slow_parse_array_sub
+                    } else {
+                        !error "Unsupported zp"
+                    }
+                }
             }
         }
     }
@@ -192,7 +200,15 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
         !if zp = zp_mempos {
             jsr sta_dynmem_ind_y_slow_zp_mempos_sub
         } else {
-            !error "Unsupported zp"
+            !if zp = string_array {
+                jsr sta_dynmem_ind_y_slow_string_array_sub
+            } else {
+                !if zp = parse_array {
+                    jsr sta_dynmem_ind_y_slow_parse_array_sub
+                } else {
+                    !error "Unsupported zp"
+                }
+            }
         }
     }
 }

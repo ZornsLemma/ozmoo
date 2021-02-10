@@ -374,16 +374,16 @@ parse_array_write_byte
 ; SFTODO: FOR NOW I'M ASSUMING I HAVE TO USE THE NO-CORRUPT-X VERSIONS OF MY DYNMEM MACROS BUT I HAVEN'T CHECKED THE CALLERS OF THESE
 ; SFTODO: These are not so visible as dynmem_ind users in the profile due to the double-macro wrapping, worth checking profile to see how hot these four macros are - no, they're not that hot
 !macro macro_string_array_read_byte {
-	+lda_dynmem_ind_y string_array
+	+lda_dynmem_ind_y_slow string_array
 }
 !macro macro_string_array_write_byte {
-	+sta_dynmem_ind_y string_array
+	+sta_dynmem_ind_y_slow string_array
 }
 !macro macro_parse_array_read_byte {
-	+lda_dynmem_ind_y parse_array
+	+lda_dynmem_ind_y_slow parse_array
 }
 !macro macro_parse_array_write_byte {
-	+sta_dynmem_ind_y parse_array
+	+sta_dynmem_ind_y_slow parse_array
 }
 
 

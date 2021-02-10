@@ -1163,6 +1163,14 @@ lda_dynmem_ind_y_slow_zp_mempos_sub
 	+lda_dynmem_ind_y zp_mempos
 	rts
 
+lda_dynmem_ind_y_slow_string_array_sub
+	+lda_dynmem_ind_y string_array
+	rts
+
+lda_dynmem_ind_y_slow_parse_array_sub
+	+lda_dynmem_ind_y parse_array
+	rts
+
 lda_dynmem_ind_y_slow_default_properties_ptr_sub
 	+lda_dynmem_ind_y default_properties_ptr
 	rts
@@ -1173,5 +1181,13 @@ sta_dynmem_ind_y_slow_object_tree_ptr_sub
 
 sta_dynmem_ind_y_slow_zp_mempos_sub
 	+sta_dynmem_ind_y zp_mempos
+	rts
+
+sta_dynmem_ind_y_slow_string_array_sub
+	+sta_dynmem_ind_y string_array
+	rts
+
+sta_dynmem_ind_y_slow_parse_array_sub
+	+sta_dynmem_ind_y parse_array
 	rts
 }
