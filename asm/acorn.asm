@@ -184,6 +184,18 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
     ;ldx $90
     ;plp
 }
+
+!macro sta_dynmem_ind_y_slow zp {
+    !if zp = object_tree_ptr {
+        jsr sta_dynmem_ind_y_slow_object_tree_ptr_sub
+    } else {
+        !if zp = zp_mempos {
+            jsr sta_dynmem_ind_y_slow_zp_mempos_sub
+        } else {
+            !error "Unsupported zp"
+        }
+    }
+}
 ; SFTODO TEMP HACK END
 
 !zone {

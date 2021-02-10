@@ -328,11 +328,10 @@ z_ins_remove_obj_body
 	iny
 	+lda_dynmem_ind_y_slow .zp_object
 	ldy #11  ; child+1
-	; SFTODO: DO A SLOW STORE
-	+sta_dynmem_ind_y_corrupt_x .zp_parent
+	+sta_dynmem_ind_y_slow .zp_parent
 	dey
 	pla
-	+sta_dynmem_ind_y_corrupt_x .zp_parent
+	+sta_dynmem_ind_y_slow .zp_parent
 }
 
 } else {
@@ -355,8 +354,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02af
 } else {
-	; SFTODO SLOW STORE VARIANT
-	+sta_dynmem_ind_y_corrupt_x .zp_parent
+	+sta_dynmem_ind_y_slow .zp_parent
 }
 
 }
@@ -431,12 +429,11 @@ z_ins_remove_obj_body
 	jsr write_word_to_bank_1_c128
 } else {
 	; SFTODO: SOME POTENTIAL FOR WORD VARIANT
-	; SFTODO SLOW STORE VARIANT
 	+lda_dynmem_ind_y_slow .zp_object
-	+sta_dynmem_ind_y_corrupt_x .zp_sibling
+	+sta_dynmem_ind_y_slow .zp_sibling
 	iny
 	+lda_dynmem_ind_y_slow .zp_object
-	+sta_dynmem_ind_y_corrupt_x .zp_sibling
+	+sta_dynmem_ind_y_slow .zp_sibling
 }
 
 } else {
@@ -453,8 +450,7 @@ z_ins_remove_obj_body
 	jsr $02af
 } else {
 	+lda_dynmem_ind_y_slow .zp_object
-	; SFTODO SLOW STORE VARIANT
-	+sta_dynmem_ind_y_corrupt_x .zp_sibling
+	+sta_dynmem_ind_y_slow .zp_sibling
 }
 
 
@@ -479,14 +475,13 @@ z_ins_remove_obj_body
 	iny ; sibling (8)
 	jsr write_word_to_bank_1_c128
 } else {
-	; SFTODO: SLOW STORE VARIANT
-	sta_dynmem_ind_y_corrupt_x .zp_object
+	sta_dynmem_ind_y_slow .zp_object
 	iny
-	sta_dynmem_ind_y_corrupt_x .zp_object
+	sta_dynmem_ind_y_slow .zp_object
 	iny ; sibling (8)
-	sta_dynmem_ind_y_corrupt_x .zp_object
+	sta_dynmem_ind_y_slow .zp_object
 	iny
-	sta_dynmem_ind_y_corrupt_x .zp_object
+	sta_dynmem_ind_y_slow .zp_object
 }
 
 
@@ -501,10 +496,9 @@ z_ins_remove_obj_body
 	tax
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
-	; SFTODO SLOW STORE VARIANT
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	iny ; sibling (5)
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 }
 
 }
@@ -674,8 +668,7 @@ z_ins_set_attr
 	+lda_dynmem_ind_y_slow object_tree_ptr
 	ldx .bitmask_index
 	ora .bitmask,x
-	; SFTODO SLOW STORE
-	+sta_dynmem_ind_y_corrupt_x object_tree_ptr
+	+sta_dynmem_ind_y_slow object_tree_ptr
 }
 +
 	+after_dynmem_read
@@ -715,8 +708,7 @@ z_ins_clear_attr
 	beq +
 	+lda_dynmem_ind_y_slow object_tree_ptr
 	eor .bitmask,x
-	; SFTODO SLOW STORE
-	+sta_dynmem_ind_y_corrupt_x object_tree_ptr
+	+sta_dynmem_ind_y_slow object_tree_ptr
 }
 +
 	+after_dynmem_read
@@ -765,11 +757,10 @@ z_ins_insert_obj
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
 	lda .dest_num
-	; SFTODO: SLOW STORE EVERYWHERE
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	iny
 	lda .dest_num + 1
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	; object.sibling = destination.child
 	ldy #10 ; child
 	+lda_dynmem_ind_y_slow .zp_dest
@@ -780,14 +771,14 @@ z_ins_insert_obj
 	+sta_dynmem_ind_y_slow .zp_object
 	dey
 	pla
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	; destination.child = object
 	ldy #10 ; child
 	lda object_num
-	+sta_dynmem_ind_y_corrupt_x .zp_dest
+	+sta_dynmem_ind_y_slow .zp_dest
 	iny
 	lda object_num + 1
-	+sta_dynmem_ind_y_corrupt_x .zp_dest
+	+sta_dynmem_ind_y_slow .zp_dest
 	+after_dynmem_read
 	rts
 }
@@ -824,16 +815,16 @@ z_ins_insert_obj
 	; object.parent = destination
 	ldy #4 ; parent
 	lda .dest_num + 1
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	; object.sibling = destination.child
 	ldy #6; child
 	+lda_dynmem_ind_y_slow .zp_dest
 	dey ; sibling (4)
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	; destination.child = object
 	ldy #6 ; child
 	lda object_num + 1
-	+sta_dynmem_ind_y_corrupt_x .zp_dest
+	+sta_dynmem_ind_y_slow .zp_dest
 	+after_dynmem_read
 	rts
 }
@@ -1174,5 +1165,13 @@ lda_dynmem_ind_y_slow_zp_mempos_sub
 
 lda_dynmem_ind_y_slow_default_properties_ptr_sub
 	+lda_dynmem_ind_y default_properties_ptr
+	rts
+
+sta_dynmem_ind_y_slow_object_tree_ptr_sub
+	+sta_dynmem_ind_y object_tree_ptr
+	rts
+
+sta_dynmem_ind_y_slow_zp_mempos_sub
+	+sta_dynmem_ind_y zp_mempos
 	rts
 }
