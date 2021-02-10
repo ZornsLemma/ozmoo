@@ -96,6 +96,7 @@ SFTODOHOLEPAGES = 1
 !macro lda_dynmem_ind_y_corrupt_x zp {
     ; SFTODO: I SUSPECT A TABLE ACCESS USING X MIGHT BE FASTER, BUT LET'S GET IT WORKING BEFORE WORRYING ABOUT SUCH THINGS
     ; SFTODO: WE COULD MAYBE SPECIAL CASE THINGS WHERE PAGE-WRAPPING ISN'T A CONCERN?
+    php ; SFTODO EXPERIMENTAL
     clc
     tya
     adc zp
@@ -107,6 +108,7 @@ SFTODOHOLEPAGES = 1
     clc
     adc #SFTODOHOLEPAGES
 +   sta .lda_abs+2
+    plp ; SFTODO EXPERIMENTAL
 .lda_abs
     lda $ffff ; patched
     ;inx ; SFTODO: TEMP DELIBERATELY CORRUPT X
@@ -145,11 +147,11 @@ SFTODOHOLEPAGES = 1
 
 !macro sta_dynmem_ind_y zp {
     ; SFTODO: SEE COMMENTS RE PRESERVING ETC IN LDA NO-CORRUPT-X MACRO ABOVE
-    stx $90
+    ;stx $90
     +sta_dynmem_ind_y_corrupt_x zp
-    php
-    ldx $90
-    plp
+    ;php
+    ;ldx $90
+    ;plp
 }
 ; SFTODO TEMP HACK END
 
