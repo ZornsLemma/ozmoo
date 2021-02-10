@@ -96,27 +96,7 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 ; SFTODO: WORTH NOTING THAT ACTUALLY THE SCREEN HOLE IS ONLY RELEVANT FOR BIGDYN - FOR WHATEVER MACHINE YOU'RE BUILDING FOR, IF SMALLEST SCREEN MODE AND MAX SUPPORTED PAGE DOESN'T ALLOW DYNMEM TO FIT IN MAIN RAM, IT'S NOT A SMALLMEM SITUATION. ALTHOUGH EVEN IN A SMALLDYN BUILD, WE MIGHT STILL WANT TO SUPPORT SCREEN HOLE SO READ-ONLY VMEM CAN WRAP ROUND IT - SO SMALLDYN BUILDS *WOULD* PROB NEED TO CARE ABOUT SCREEN HOLE, *BUT* CODE ACCESSING DYNMEM ITSELF AS OPPOSEd TO GENERIC VMEM CODE WOULD NOT NEED TO WORRY ABOUT IT
 ; SFTODO: ALL THESE MACROS IGNORE THE POSSIBILITY (zp),Y HAS ZP<SCREENHOLESTART BUT ZP+Y>=SCREENHOLESTART - SIGH! - NOW FIXED, WITHOUT WORRYING ABOUT OPTIMISATION
 ; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value - IF WE NEED TO WORRY ABOUT THIS, IT MAY BE ENOUGH TO ALWAYS CLEAR CARRY RATHER THAN PRESERVE IT
-!macro lda_dynmem_ind_y_corrupt_x zp {
-!if 0 { ; SFTODO: OLD
-    ; SFTODO: I SUSPECT A TABLE ACCESS USING X MIGHT BE FASTER, BUT LET'S GET IT WORKING BEFORE WORRYING ABOUT SUCH THINGS
-    ; SFTODO: WE COULD MAYBE SPECIAL CASE THINGS WHERE PAGE-WRAPPING ISN'T A CONCERN?
-    php ; SFTODO EXPERIMENTAL
-    clc
-    tya
-    adc zp
-    sta .lda_abs+1
-    lda zp+1
-    adc #0
-    cmp #$7c
-    bcc +
-    clc
-    adc #SFTODOHOLEPAGES
-+   sta .lda_abs+2
-    plp ; SFTODO EXPERIMENTAL
-.lda_abs
-    lda $ffff ; patched
-    ;inx ; SFTODO: TEMP DELIBERATELY CORRUPT X
-} else {
+!macro lda_dynmem_ind_y_corrupt_x zp { ; SFTODO: DOESN'T CORRUPT X, IF THIS CONTINUES TO HOLD CHANGE THE NAME
     lda zp + 1
     cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
     bcc .zp_y_ok
@@ -141,13 +121,20 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
     lda (zp),y
 .done
 }
-}
 
 !macro lda_dynmem_ind_y_slow zp {
     !if zp = object_tree_ptr {
         jsr lda_dynmem_ind_y_slow_object_tree_ptr_sub
     } else {
-        !error "Unsupported zp"
+        !if zp = zp_mempos {
+            jsr lda_dynmem_ind_y_slow_zp_mempos_sub
+        } else {
+            !if zp = default_properties_ptr {
+                jsr lda_dynmem_ind_y_slow_default_properties_ptr_sub
+            } else {
+                !error "Unsupported zp"
+            }
+        }
     }
 }
 

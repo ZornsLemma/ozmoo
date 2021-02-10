@@ -122,11 +122,12 @@ z_ins_get_parent
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
+	; SFTODO: This isn't hot, but if I implement it *anyway*, this could go load two bytes in ascending order (as C128 case does) and perhaps use a ldxa word-loading variant to minimise screen hole checking
 	ldy #7
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 	tax
 	dey
-	+lda_dynmem_ind_y object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 }
 
 }
@@ -221,10 +222,11 @@ z_ins_remove_obj_body
 	sta .parent_num
 	stx .parent_num + 1
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	; SFTODO: Potential for a word-loading variant, though it doesn't load A and X.
+	+lda_dynmem_ind_y_slow .zp_object
 	sta .parent_num
 	iny
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+lda_dynmem_ind_y_slow .zp_object
 	sta .parent_num + 1
 }
 
@@ -239,7 +241,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+lda_dynmem_ind_y_slow .zp_object
 }
 
 	sta .parent_num + 1
@@ -270,10 +272,11 @@ z_ins_remove_obj_body
 	sta .child_num
 	stx .child_num + 1
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_parent
+	; SFTODO: Potential for word-loading variant
+	+lda_dynmem_ind_y_slow .zp_parent
 	sta .child_num
 	iny
-	+lda_dynmem_ind_y_corrupt_x .zp_parent
+	+lda_dynmem_ind_y_slow .zp_parent
 	sta .child_num + 1
 }
 
@@ -288,7 +291,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_parent
+	+lda_dynmem_ind_y_slow .zp_parent
 }
 
 	sta .child_num + 1
@@ -319,11 +322,13 @@ z_ins_remove_obj_body
 	ldy #10
 	jsr write_word_to_bank_1_c128
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	; SFTODO: Potential for word-loading variant
+	+lda_dynmem_ind_y_slow .zp_object
 	pha
 	iny
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+lda_dynmem_ind_y_slow .zp_object
 	ldy #11  ; child+1
+	; SFTODO: DO A SLOW STORE
 	+sta_dynmem_ind_y_corrupt_x .zp_parent
 	dey
 	pla
@@ -339,7 +344,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+lda_dynmem_ind_y_slow .zp_object
 }
 
 	ldy #6  ; child
@@ -350,6 +355,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02af
 } else {
+	; SFTODO SLOW STORE VARIANT
 	+sta_dynmem_ind_y_corrupt_x .zp_parent
 }
 
@@ -380,10 +386,10 @@ z_ins_remove_obj_body
 	sta .sibling_num
 	stx .sibling_num + 1
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_sibling
+	+lda_dynmem_ind_y_slow .zp_sibling
 	sta .sibling_num
 	iny
-	+lda_dynmem_ind_y_corrupt_x .zp_sibling
+	+lda_dynmem_ind_y_slow .zp_sibling
 	sta .sibling_num + 1
 }
 
@@ -398,7 +404,7 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_sibling
+	+lda_dynmem_ind_y_slow .zp_sibling
 }
 
 	sta .sibling_num + 1
@@ -424,10 +430,12 @@ z_ins_remove_obj_body
 	jsr read_word_from_bank_1_c128
 	jsr write_word_to_bank_1_c128
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	; SFTODO: SOME POTENTIAL FOR WORD VARIANT
+	; SFTODO SLOW STORE VARIANT
+	+lda_dynmem_ind_y_slow .zp_object
 	+sta_dynmem_ind_y_corrupt_x .zp_sibling
 	iny
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+lda_dynmem_ind_y_slow .zp_object
 	+sta_dynmem_ind_y_corrupt_x .zp_sibling
 }
 
@@ -444,7 +452,8 @@ z_ins_remove_obj_body
 	ldx #$7f
 	jsr $02af
 } else {
-	+lda_dynmem_ind_y_corrupt_x .zp_object
+	+lda_dynmem_ind_y_slow .zp_object
+	; SFTODO SLOW STORE VARIANT
 	+sta_dynmem_ind_y_corrupt_x .zp_sibling
 }
 
@@ -470,6 +479,7 @@ z_ins_remove_obj_body
 	iny ; sibling (8)
 	jsr write_word_to_bank_1_c128
 } else {
+	; SFTODO: SLOW STORE VARIANT
 	sta_dynmem_ind_y_corrupt_x .zp_object
 	iny
 	sta_dynmem_ind_y_corrupt_x .zp_object
@@ -491,6 +501,7 @@ z_ins_remove_obj_body
 	tax
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
+	; SFTODO SLOW STORE VARIANT
 	+sta_dynmem_ind_y_corrupt_x .zp_object
 	iny ; sibling (5)
 	+sta_dynmem_ind_y_corrupt_x .zp_object
@@ -548,10 +559,11 @@ print_obj
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	; SFTODO WORD LOAD POTENTIAL
+	+lda_dynmem_ind_y_slow object_tree_ptr ; low byte
 	tax
 	dey
-	+lda_dynmem_ind_y object_tree_ptr ; high byte
+	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
 	+after_dynmem_read
 
@@ -576,7 +588,7 @@ z_ins_jin
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 }
 	+after_dynmem_read
 
@@ -594,11 +606,11 @@ z_ins_jin
 	bne .branch_false
 	cpx z_operand_value_low_arr + 1
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 	cmp z_operand_value_high_arr + 1
 	bne .branch_false
 	iny
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 	cmp z_operand_value_low_arr + 1
 }
 	+after_dynmem_read
@@ -620,7 +632,7 @@ z_ins_test_attr
 	jsr $02a2
 	ldx object_temp
 } else {
-	+lda_dynmem_ind_y object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 }
 	+after_dynmem_read
 
@@ -659,9 +671,10 @@ z_ins_set_attr
 	ldx #$7f
 	jmp $02af
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 	ldx .bitmask_index
 	ora .bitmask,x
+	; SFTODO SLOW STORE
 	+sta_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 +
@@ -696,12 +709,13 @@ z_ins_clear_attr
 	ldx #$7f
 	jmp $02af
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 	ldx .bitmask_index
 	and .bitmask,x
 	beq +
-	+lda_dynmem_ind_y object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 	eor .bitmask,x
+	; SFTODO SLOW STORE
 	+sta_dynmem_ind_y_corrupt_x object_tree_ptr
 }
 +
@@ -751,18 +765,19 @@ z_ins_insert_obj
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
 	lda .dest_num
+	; SFTODO: SLOW STORE EVERYWHERE
 	+sta_dynmem_ind_y_corrupt_x .zp_object
 	iny
 	lda .dest_num + 1
 	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; object.sibling = destination.child
 	ldy #10 ; child
-	+lda_dynmem_ind_y_corrupt_x .zp_dest
+	+lda_dynmem_ind_y_slow .zp_dest
 	pha
 	iny
-	+lda_dynmem_ind_y_corrupt_x .zp_dest
+	+lda_dynmem_ind_y_slow .zp_dest
 	ldy #9 ; sibling + 1
-	+sta_dynmem_ind_y_corrupt_x .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	dey
 	pla
 	+sta_dynmem_ind_y_corrupt_x .zp_object
@@ -812,7 +827,7 @@ z_ins_insert_obj
 	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; object.sibling = destination.child
 	ldy #6; child
-	+lda_dynmem_ind_y_corrupt_x .zp_dest
+	+lda_dynmem_ind_y_slow .zp_dest
 	dey ; sibling (4)
 	+sta_dynmem_ind_y_corrupt_x .zp_object
 	; destination.child = object
@@ -894,10 +909,10 @@ find_first_prop
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr ; low byte
+	+lda_dynmem_ind_y_slow object_tree_ptr ; low byte
 	tax
 	dey
-	+lda_dynmem_ind_y object_tree_ptr ; high byte
+	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
 	+after_dynmem_read
 
@@ -966,10 +981,10 @@ z_ins_get_prop
 	lda #default_properties_ptr
 	jsr read_word_from_bank_1_c128
 } else {
-	+lda_dynmem_ind_y_corrupt_x default_properties_ptr
+	+lda_dynmem_ind_y_slow default_properties_ptr
 	tax
 	dey
-	+lda_dynmem_ind_y default_properties_ptr
+	+lda_dynmem_ind_y_slow default_properties_ptr
 }
 	+after_dynmem_read	
 	jmp .return_property_result
@@ -1146,8 +1161,18 @@ calculate_object_address
 
 	; SFTODO: THESE SUBROUTINES LOGICALLY BELONG ELSEWHERE BUT DO THEM HERE FOR NOW
 !ifdef ACORN_SCREEN_HOLE {
+; SFTODO: IF ANY OF THESE SUBROUTINES ONLY GETS ONE USE WE SHOULD PROBABLY JUST INLINE THE CODE, THOUGH THAT MIGHT INVITE ACCIDENTAL BLOAT IF CODE CHANGES AND WE GO FROM 1->2 USES
+
 lda_dynmem_ind_y_slow_object_tree_ptr_sub
 	; SFTODO: This will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
 	+lda_dynmem_ind_y object_tree_ptr
+	rts
+
+lda_dynmem_ind_y_slow_zp_mempos_sub
+	+lda_dynmem_ind_y zp_mempos
+	rts
+
+lda_dynmem_ind_y_slow_default_properties_ptr_sub
+	+lda_dynmem_ind_y default_properties_ptr
 	rts
 }
