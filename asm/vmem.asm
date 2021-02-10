@@ -1258,17 +1258,14 @@ convert_index_x_to_ram_bank_and_address
     ; actual start.
     asl
     ; Carry is set
+!if 0 { ; SFTODO: HACKING FOR MEM HOLE
 !ifndef ACORN_ELECTRON_SWR {
     adc #(>flat_ramtop)-1
 } else {
     adc screen_ram_start_minus_1
 }
-!if 1 { ; SFTODO MEM HOLE EXP - I DON'T THINK THIS IS FULLY GENERAL, IT'S ALL VERY HACKY AND I AM ONLY WORKING WITH SMALLDYNMEM AT THE MOMENT
-    cmp #$7c
-    bcc +
-    clc
-    adc #SFTODOHOLEPAGES
-+
+} else {
+    adc #($80-1)-SFTODOHOLEPAGES
 }
     rts
 }

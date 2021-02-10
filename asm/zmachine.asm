@@ -792,12 +792,6 @@ z_set_variable
 } else {
 	cmp #16
 	bcs .write_global_var
-!if 1 { ; SFTODO TEMP EXP
-	jsr z_get_variable_reference_and_value
-	lda z_temp
-	ldx z_temp + 1
-	jmp z_set_variable_reference_to_value
-}
 	; Local variable
 	tay
 	dey
@@ -819,12 +813,6 @@ HANG	bcs HANG
 	sta (z_local_vars_ptr),y
 	rts
 .write_global_var
-!if 1 { ; SFTODO TEMP EXP
-	jsr z_get_variable_reference_and_value
-	lda z_temp
-	ldx z_temp + 1
-	jmp z_set_variable_reference_to_value
-}
 	; SFTODO: NOT HUGE, BUT IF WE DID THE ASL NOW (WHICH OCCURS ON BOTH PATHS ANYWAY) WE COULD AVOID DOING THE CMP #128
 	cmp #128
 	bcs .write_high_global_var
