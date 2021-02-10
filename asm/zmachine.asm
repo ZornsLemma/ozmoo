@@ -574,6 +574,7 @@ read_operand
 !ifdef SLOW {
 	jsr z_get_low_global_variable_value
 } else {
+	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM PATH (WRT MEM HOLE)
 	asl
 	tay
 	iny
@@ -644,6 +645,7 @@ z_set_variable_reference_to_value
 	; jmp $02af
 .set_in_bank_0
 }
+	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE)
 	ldy #0
     +sta_dynmem_ind_y zp_temp
 	iny
@@ -709,6 +711,7 @@ z_get_referenced_value
 }
 	ldy #1
 	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this. (I believe in the local var case the dynmem code can't trigger, because the address is in the stack - it's bad for performance to even try, but not *wrong*.)
+	; SFTODO: FOLLOWING ON FROM PREV COMMENT, THIS IS ~2X AS HOT AS THE OTHER "RELATIVELY HOT" CASES I'VE NOTED - BUT AS PER PREV COMMENT, SOME OF THOSE MAY BE ABLE TO GO VIA A LOCAL VAR "NO POSSIBILTIY OF MEM HOLE" VARIANT ON THIS CODE
 	+before_dynmem_read
 	+lda_dynmem_ind_y_corrupt_x zp_temp
 	tax
