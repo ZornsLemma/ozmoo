@@ -1,3 +1,12 @@
+Distinct ZP addresses used by dynmem_ind macros:
+- zp_temp
+- z_low_global_vars_ptr
+- z_high_global_vars_ptr
+- object_tree_ptr (.zp_sibling, .zp_parent, .zp_dest)
+- default_properties_ptr
+- .zp_object (zp_mempos)
+(To help with thinking about factoring code/partial code for macro into subroutines with hard-coded ZP addresses.)
+
 Current unoptimised bigdyn screenhole code takes $004e3b (and remember it's had 512 bytes of memory taken away, though that's not likely to make a huge difference in itself)
 Non-screenhole bigdyn takes $004b71
 - so 3.7% slower. That's not great but it's not terrible, bearing in mind the complete lack of optimisation (there's paranoid code to preserve flags and some debugging checks and also some further optimisation potential).
