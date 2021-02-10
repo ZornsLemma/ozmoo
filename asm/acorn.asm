@@ -96,6 +96,7 @@ SFTODOHOLEPAGES = 1
 !macro lda_dynmem_ind_y_corrupt_x zp {
     ; SFTODO: I SUSPECT A TABLE ACCESS USING X MIGHT BE FASTER, BUT LET'S GET IT WORKING BEFORE WORRYING ABOUT SUCH THINGS
     ; SFTODO: WE COULD MAYBE SPECIAL CASE THINGS WHERE PAGE-WRAPPING ISN'T A CONCERN?
+    php ; SFTODO: EXPERIMENTAL
     clc
     tya
     adc zp
@@ -110,6 +111,7 @@ SFTODOHOLEPAGES = 1
 .lda_abs
     lda $ffff ; patched
     inx ; SFTODO: TEMP DELIBERATELY CORRUPT X
+    plp ; SFTODO: EXPERIMENTAL
 }
 
 ; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value
@@ -123,6 +125,7 @@ SFTODOHOLEPAGES = 1
 
 ; SFTODO: DOES THIS NEED TO PRESERVE FLAGS?
 !macro sta_dynmem_ind_y_corrupt_x zp {
+    php ; SFTODO: EXPERIMENTAL
     pha
     clc
     tya
@@ -139,6 +142,7 @@ SFTODOHOLEPAGES = 1
 .sta_abs
     sta $ffff ; patched
     inx ; SFTODO: DELIBERATELY CORRUPT X TO TEST
+    plp ; SFTODO: EXPERIMENTAL
 }
 
 !macro sta_dynmem_ind_y zp {
