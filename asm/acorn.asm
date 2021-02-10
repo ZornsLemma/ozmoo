@@ -114,7 +114,6 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
     sta $91 ; SFTODO: PROPER ADDRESS
     lda zp
     sta $90
-.lda_abs_y
     lda ($90),y
     jmp .done
 .zp_y_ok
@@ -149,24 +148,32 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 
 ; SFTODO: DOES THIS NEED TO PRESERVE FLAGS?
 !macro sta_dynmem_ind_y_corrupt_x zp {
-    php ; SFTODO: EXPERIMENTAL
-    pha
+    ; SFTODO: CORRUPTING X MIGHT BE HELPFUL HERE, BUT DEPENDS ON HOW PERF SENSITIVE CALLERS ARE
+    sta $94 ; SFTODO PROPER ADDRESS
+    lda zp + 1
+    cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
+    bcc .zp_y_ok
+    bne .zp_y_not_ok
+    ; We need to add Y to (zp) to see if it's going to cause the high byte to
+    ; increase and point into the screen hole.
     clc
     tya
     adc zp
-    sta .sta_abs+1
-    lda zp+1
-    adc #0
-    cmp #$7c
-    bcc +
-    clc
-    adc #SFTODOHOLEPAGES
-+   sta .sta_abs+2
-    pla
-.sta_abs
-    sta $ffff ; patched
-    ;inx ; SFTODO: DELIBERATELY CORRUPT X TO TEST
-    plp ; SFTODO: EXPERIMENTAL
+    bcc .zp_y_ok
+    lda zp + 1
+.zp_y_not_ok
+    ; A holds zp + 1, C is set.
+    adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 because carry is set
+    sta $91 ; SFTODO: PROPER ADDRESS
+    lda zp
+    sta $90
+    lda $94
+    sta ($90),y
+    jmp .done
+.zp_y_ok
+    lda $94
+    sta (zp),y
+.done
 }
 
 !macro sta_dynmem_ind_y zp {
