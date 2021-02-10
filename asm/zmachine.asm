@@ -668,7 +668,7 @@ z_get_variable_reference_and_value
 	jsr stack_get_ref_to_top_value
 	stx zp_temp
 	sta zp_temp + 1
-	jmp z_get_referenced_value
+	jmp z_get_referenced_value ; SFTODO: WRT MEM HOLE, WE KNOW IT'S ON STACK HERE - ALTHOUGH THIS HARDLY EVER GETS EXECUTED, BUT IF IT'S "FREE" TO OPTIMISE THIS, MIGHT AS WELL
 +	tya
 	cmp #16
 	bcs .find_global_var
@@ -688,6 +688,23 @@ z_get_variable_reference_and_value
 	lda z_local_vars_ptr + 1
 	adc #0
 	sta zp_temp + 1
+
+!if 1 { ; SFTODO MEM HOLE STUFF
+	; SFTODO: We would normally fall through into z_get_referenced_value here, but
+	; that's slow when we're doing memory hole shenanigans and here we know we're
+	; accessing a value on the stack, so we inline the standard version. There's
+	; no value in having this separate code if we don't have a memory hole; it just
+	; wastes a bit of memory on redundant code.
+z_get_referenced_value_simple
+	ldy #1
+	+before_dynmem_read
+	lda (zp_temp),y
+	tax
+	dey
+	lda (zp_temp),y
+	+after_dynmem_read
+	rts
+}
 
 z_get_referenced_value
 !ifdef TARGET_C128 {
