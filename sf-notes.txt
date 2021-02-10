@@ -12,6 +12,7 @@ Current unoptimised bigdyn screenhole code takes $004e3b (and remember it's had 
 Non-screenhole bigdyn takes $004b71
 - so 3.7% slower. That's not great but it's not terrible, bearing in mind the complete lack of optimisation (there's paranoid code to preserve flags and some debugging checks and also some further optimisation potential).
 - optimising local variable dynmem access takes us down to $004dd5 - so now 3.2% slower, not too bad for such a simple change
+- WIP partial optimising/tidying - $004cce - so down to 1.8% slower
 
 Screen hole notes - transfer these into a permanent comment at top of acorn.asm (or somewhere) when/if this settles down:
 - although this will be automatically true in practice, I think the screen hole needs to be a multiple of 512 bytes so as to avoid breaking alignment assumptions on read-only memory

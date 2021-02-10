@@ -57,13 +57,13 @@ z_ins_get_child
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 }
 
 	pha ; Value is zero if object is zero, non-zero if object is non-zero
 	tax
 	lda #0
-} else  {
+} else {
 
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
@@ -110,7 +110,7 @@ z_ins_get_parent
 	ldx #$7f
 	jsr $02a2
 } else {
-	+lda_dynmem_ind_y_corrupt_x object_tree_ptr
+	+lda_dynmem_ind_y_slow object_tree_ptr
 }
 
 	tax
@@ -1143,3 +1143,11 @@ calculate_object_address
 	sta object_tree_ptr + 1
 	rts
 	
+
+	; SFTODO: THESE SUBROUTINES LOGICALLY BELONG ELSEWHERE BUT DO THEM HERE FOR NOW
+!ifdef ACORN_SCREEN_HOLE {
+lda_dynmem_ind_y_slow_object_tree_ptr_sub
+	; SFTODO: This will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
+	+lda_dynmem_ind_y object_tree_ptr
+	rts
+}
