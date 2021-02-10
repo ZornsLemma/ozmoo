@@ -17,6 +17,7 @@ Non-screenhole bigdyn takes $004b71
 - more WIP - $004c5b - so 1.2% slower
 - more WIP - $004c5e
 - more WIP - $004c67 - so 1.3% slower
+- more WIP - $004c46 - so 1.1% slower (bit illogical, random noise? maybe smaller code gives extra VM page?)
 
 Screen hole notes - transfer these into a permanent comment at top of acorn.asm (or somewhere) when/if this settles down:
 - although this will be automatically true in practice, I think the screen hole needs to be a multiple of 512 bytes so as to avoid breaking alignment assumptions on read-only memory

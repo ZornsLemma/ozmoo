@@ -137,7 +137,11 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
                     !if zp = parse_array {
                         jsr lda_dynmem_ind_y_slow_parse_array_sub
                     } else {
-                        !error "Unsupported zp"
+                        !if zp = z_low_global_vars_ptr {
+                            jsr lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
+                        } else {
+                            !error "Unsupported zp"
+                        }
                     }
                 }
             }
@@ -206,7 +210,15 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
                 !if zp = parse_array {
                     jsr sta_dynmem_ind_y_slow_parse_array_sub
                 } else {
-                    !error "Unsupported zp"
+                    !if zp = z_low_global_vars_ptr {
+                        jsr sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
+                    } else {
+                        !if zp = z_high_global_vars_ptr {
+                            jsr sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
+                        } else {
+                            !error "Unsupported zp"
+                        }
+                    }
                 }
             }
         }

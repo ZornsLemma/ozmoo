@@ -761,7 +761,8 @@ z_get_referenced_value
 	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
 	jsr fatalerror
 }
-	
+
+; SFTODO: IS THIS ONLY USED ON Z3 (if !SLOW)? IF SO, CAN WE OMIT IT ON Z4+ BUILDS?
 ; z_get_variable_value
 z_get_low_global_variable_value
 	; Read global var 0-111
@@ -785,12 +786,12 @@ z_get_low_global_variable_value
 	; Not TARGET_C128
 	iny
 	+before_dynmem_read
-	+lda_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
+	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	tax
 	dey
-	+lda_dynmem_ind_y z_low_global_vars_ptr
+	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	+after_dynmem_read
-	rts ; Note that caller may assume that carry is clear on return!
+	rts ; Note that caller may assume that carry is clear on return! SFTODO: I SUSPECT I'M BREAKING THIS AND JUST GETTING AWAY WITH IT BY CHANCE - BUT MAYBE CHECK AND SEE IF CALLERS ACTUALLY ARE ASSUMING THIS
 } ; End else - Not TARGET_C128
 
 
@@ -842,20 +843,20 @@ HANG	bcs HANG
 	asl
 	tay
 	lda z_temp
-	+sta_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
+	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	iny
 	lda z_temp + 1
-	+sta_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
+	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	rts
 .write_high_global_var
 ;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will remove top bit
 	asl
 	tay
 	lda z_temp
-	+sta_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
+	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	iny
 	lda z_temp + 1
-	+sta_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
+	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	rts
 } ; Not SLOW
 } ; Zone
