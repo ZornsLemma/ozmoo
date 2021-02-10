@@ -6,6 +6,7 @@ Distinct ZP addresses used by dynmem_ind macros:
 - default_properties_ptr
 - .zp_object (zp_mempos)
 (To help with thinking about factoring code/partial code for macro into subroutines with hard-coded ZP addresses.)
+This may be ignoring the doubly-wrapped uses in macro_string_array.../macro_parse_array..., so that adds string_array and parse_array to the above list
 
 Current unoptimised bigdyn screenhole code takes $004e3b (and remember it's had 512 bytes of memory taken away, though that's not likely to make a huge difference in itself)
 Non-screenhole bigdyn takes $004b71
