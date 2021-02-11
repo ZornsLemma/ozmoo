@@ -9,7 +9,7 @@ Distinct ZP addresses used by dynmem_ind macros:
 This may be ignoring the doubly-wrapped uses in macro_string_array.../macro_parse_array..., so that adds string_array and parse_array to the above list
 
 Current unoptimised bigdyn screenhole code takes $004e3b (and remember it's had 512 bytes of memory taken away, though that's not likely to make a huge difference in itself)
-Non-screenhole bigdyn takes $004b71 (and I can reproduce this - actually $004b69 - with the "new" code with mem hole disable via conditional compilation)
+Non-screenhole bigdyn takes $004b71 (and I can reproduce this - actually $004b69 - with the "new" code with mem hole disable via conditional compilation - and hacking to not have a screenhole but write-off 2 pages of memory, to get a "fairer" comparison, I get $004b64 - there's obviously some kind of jitter in the timings here, perhaps due to 500% speed but not sure)
 - so 3.7% slower. That's not great but it's not terrible, bearing in mind the complete lack of optimisation (there's paranoid code to preserve flags and some debugging checks and also some further optimisation potential).
 - optimising local variable dynmem access takes us down to $004dd5 - so now 3.2% slower, not too bad for such a simple change
 - WIP partial optimising/tidying - $004cce - so down to 1.8% slower
