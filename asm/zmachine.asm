@@ -649,12 +649,49 @@ z_set_variable_reference_to_value
 .set_in_bank_0
 }
 	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
+!ifndef ACORN_SCREEN_HOLE {
 	ldy #0
     +sta_dynmem_ind_y zp_temp
 	iny
 	txa
     +sta_dynmem_ind_y_corrupt_x zp_temp
 	rts
+} else {
+!zone { ; SFTODO TEMP
+	ldy #0
+	sta $96 ; SFTODO PROPER - I COULD MAYBE USE Y TO SAVE A, SINCE I KNOW Y=0
+	lda zp_temp + 1 ; SFTODO: MAYBE USE Y FOR THIS INSTEAD TO AVOID CORRUPTING A ON "FAST PATH"?
+	cmp #ACORN_SCREEN_HOLE_START_PAGE
+	bcs .zp_y_not_ok
+	lda $96
+	sta (zp_temp),y
+	ldy zp_temp
+	iny
+	beq .zp_y_maybe_no_longer_ok
+	txa
+	ldy #1
+	sta (zp_temp),y
+	rts
+.zp_y_not_ok
+	adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 because carry is set
+	; SFTODO: EXPERIMENTALLY TRAMPLING ON zp_temp, I AM *NOT* SURE THIS IS SAFE - WOULD NEED TO CODE REVIEW IF IT DOES SEEM TO WORK
+	sta $91 ; SFTODO PROPER
+	lda zp_temp
+	sta $90
+	lda $96
+	sta ($90),y
+	iny
+	txa
+	sta ($90),y
+	rts
+.zp_y_maybe_no_longer_ok
+	; SFTODO: WE COULD CHECK ZP_TEMP+1 BUT FOR NOW LET'S JUST FALL BACK ON THIS DEFINITELY-OK IF SLOWER THAN NEC CODE
+	ldy #1
+	txa
+	+sta_dynmem_ind_y_corrupt_x zp_temp
+	rts
+}
+}
 
 z_get_variable_reference_and_value
 	; input: Variable in y
