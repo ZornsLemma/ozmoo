@@ -713,7 +713,7 @@ read_byte_at_z_address
 	; Dynmem access
 	txa
 	adc #>story_start
-!ifdef ACORN_SCREEN_HOLE {
+!ifdef ACORN_SCREEN_HOLE { ; SFTODO: THIS IS PROB NOT NEC ON SMALLDYN WITH A SCREEN HOLE
     cmp #ACORN_SCREEN_HOLE_START_PAGE
     bcc +
     clc
