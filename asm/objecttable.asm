@@ -75,15 +75,27 @@ z_ins_get_child
 	pha
 	tya
 } else {
-	!error "SFTODO: MEM HOLE SUPPORT, NEED FOR ORA IS MILDLY ANNOYING"
+!ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	lda (object_tree_ptr),y
 	tax
 	dey
 	ora (object_tree_ptr),y
 	pha ; Value is zero if object is zero, non-zero if object is non-zero
 	lda (object_tree_ptr),y
+} else {
+	; We need to do "ora (object_tree_ptr),y"; since SFTODO: CHECK THAT IS TRUE
+	; BY PROFILING this isn't performance critical, we make do with the
+	; lda_dynmem_ind_y_slow macro and use a temporary location.
+	+lda_dynmem_ind_y_slow object_tree_ptr
+	sta object_temp
+	tax
+	dey
+	+lda_dynmem_ind_y_slow object_tree_ptr
+	ora object_temp
+	pha ; Value is zero if object is zero, non-zero if object is non-zero
+	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-
+}
 }
 	+after_dynmem_read
 
@@ -459,6 +471,7 @@ z_ins_remove_obj_body
 
 .remove_obj_done
 	; always set obj.parent and obj.sibling to 0
+	+before_dynmem_read ; SFTODO: I added this, but think it's correct/necessary
 	lda #0
 !ifdef Z4PLUS {
 	ldy #6  ; parent
@@ -502,6 +515,7 @@ z_ins_remove_obj_body
 }
 
 }
+	+after_dynmem_read ; SFTODO: I added this, but think it's correct/necessary
 	rts
 
 find_attr
@@ -785,6 +799,7 @@ z_ins_insert_obj
 
 } else {
 
+	+before_dynmem_read ; SFTODO: I added this but I think it's necessary/correct
 !ifdef TARGET_C128 {
 	; object.parent = destination
 	lda #.zp_object
@@ -893,7 +908,6 @@ find_first_prop
 	ldy #8
 }
 
-; SFTODO: NOTE THAT ALL THE PLACES WHERE WE READ DYNMEM (PROB INDICATED BY THESE MACROS) NEED TO HANDLE A SCREEN HOLE, NOT JUST THE COMPLEX_MEMORY PLACES...
 	+before_dynmem_read
 !ifdef TARGET_C128 {
 	dey

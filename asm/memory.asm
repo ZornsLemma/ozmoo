@@ -1,16 +1,6 @@
 ; Routines to handle memory
 ; SFTODO: ALLRAM might have been done away with - probably not a big deal, but check to see if I have any comments or code related to it and fix up if it has gone
 
-!if 0 { ; SFTODO!?
-; SFTODO: Is this relevant/needed/correct for 5.3? Just carrying it over for now without thinking...
-!ifdef ACORN_SWR_BIG_DYNMEM {
-inc_z_pc_page_acorn_unsafe
-    jsr inc_z_pc_page
-    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
-    rts
-}
-}
-
 ; SF: On Acorn non-VMEM (and, I believe, C64 non-ALLMEM) this just needs to do
 ; the two inc statements and rts, no need for anything else. Conditionally
 ; assembling this is a real faff so we just accept the small inefficiency. SFTODO: Is this still true/relevant for 5.3?
@@ -155,19 +145,19 @@ get_page_at_z_pc_did_pha
 	ldy z_pc + 2
 	jsr read_byte_at_z_address
 !ifdef ACORN_SWR {
-!if 1 { ; SFTODO!? !ifdef ACORN_SWR_SMALL_DYNMEM {
-; SFTODO: read_byte_at_z_address_for_z_pc NO LONGER SEEMS TO EXIST, IS THIS JUST A RENAME OR IS THIS COMMENT OUTDATED/INVALID?
-    ; read_byte_at_z_address_for_z_pc will have left the then-current value of
-    ; z_pc_mempointer_ram_bank paged in, so we need to explicitly page in the
-    ; newly set z_pc_mempointer_ram_bank. This is mildly inefficient, but it
-    ; only happens when the Z-machine PC crosses a page boundary and the
-    ; contortions required to avoid it are not worth it.
+    ; read_byte_at_z_address will have set mempointer and mempointer_ram_bank,
+    ; temporarily paged in mempointer_ram_bank to do the read and then reverted
+    ; to the default of having z_pc_mempointer_ram_bank paged in. In this
+    ; specific case, we're about to set z_pc_mempointer_ram_bank to
+    ; mempointer_ram_bank, so we'd rather that hadn't happened, and we need to
+    ; explicitly page the new z_pc_mempointer_ram_bank in. This is mildly
+    ; inefficient, but it only happens when the Z-machine PC crosses a page
+    ; boundary and the contortions required to avoid it are not worth it.
+	; SFTODO: Just possibly it's not hard to avoid it with the new 5.x code,
+	; maybe check. But I doubt this is performace-critical anyway.
     +acorn_page_in_bank_using_y mempointer_ram_bank ; leaves bank in Y
-} else {
-    ldy mempointer_ram_bank
-}
     sty z_pc_mempointer_ram_bank
-} else {
+} else { ; !ACORN_SWR
 !ifdef ACORN_TURBO_SUPPORTED {
 	; This isn't necessary on a normal second processor, but it's harmless and
 	; it's only one cycle slower to just do it instead of checking the second
@@ -334,6 +324,7 @@ copy_page
 
 
 
+; SFTODO: The following subroutines effectively assume the memory hole doesn't start until story_start+256; this is not going to be a problem, but the build system should check this constraint isn't violated.
 read_header_word
 ; y contains the address in the header
 ; Returns: Value in a,x
@@ -390,9 +381,6 @@ write_header_byte
 	ldx .tmp + 1
 	rts
 } else {
-	; SFTODO: Far from the only place, but this may want special-casing for some Acorn builds.
-	; (It may not, though. We're accessing the first 256 bytes of dynmem, and those may always
-	; be trivially accessible.)
 	sta story_start,y
 	rts
 }
