@@ -930,6 +930,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     # calculation may cause us to load so high there's no room for the
     # relocation data before &8000, so we never load much higher than
     # max_start_addr.
+    # SFTODO: I believe (not checked too carefully right now) this means the executable can't load higher than max_start_addr + 0x100 (if the optimal alignment forces an extra page) in - this may give us a value we can pass into the assembly as a define which would allow the assembler to say "even if PAGE is as high as possibly supported, we know that for this game the global variables can never live higher than &XXXX and that will be below the screen hole (if appropriate) or below $8000 and therefore we can avoid screen hole checks and/or avoid before/after_dynmem_read calls for bigdyn accesses - although the executable needs to know its own story_start value to infer the one for this max possible PAGE, and I suspect things will go circular if we try to generate different code based on that - still, food for thought
     approx_max_start_addr = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
     e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, report_failure_prefix, e_e00)
     assert e is not None
@@ -943,7 +944,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
 
 # Build an Ozmoo executable which loads at whichever of initial_start_addr
 # and initial_start_addr+256 gives the least wasted space. If provided
-# base_executable is a pre-built executable whcih shares the same double-page
+# base_executable is a pre-built executable which shares the same double-page
 # alignment as initial_start_addr; this may help avoid an unnecessary build.
 def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix, base_executable = None):
     if base_executable is None:
