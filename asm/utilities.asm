@@ -163,7 +163,7 @@ read_next_byte_at_z_pc_sub
 
 ; SFTODO: This may or may not be useful/needed/correct in 5.3, for now I've just merged it across as-is
 ; SFTODO: IT MAY BE THAT IT'S CLEANER TO JUST NOT SUPPORT THIS OPTIMISATION IN SLOW MODE, I DON'T KNOW. SEE HOW THE CODE LOOKS WHEN I'M NOT IN THE MIDDLE OF A MERGE... - I ALSO NOTE THAT THE UPSTREAM VERSION OF THIS FILE DOES *NOT* RESPECT IFDEF SLOW ANY MORE, WHICH I THINK WOULD ARGUE FOR THIS ACORN VERSION OF THESE ROUTINES/MACROS NOT DOING THE SAME - IF I DO GET RID OF SLOW, DON'T FORGET TO MOVE OVER THE COMMENTS WHICH ARE ONLY IN THE SLOW CASE TO THE NON-SLOW CASE
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!if 0 { ; SFTODO!? !ifdef ACORN_SWR_BIG_DYNMEM {
 ; In the big dynamic memory model, the first RAM bank (which may hold dynamic
 ; memory) is paged in by default. In order to optimise decoding of multi-byte
 ; Z-machine instructions, read_next_byte_at_z_pc_unsafe* and friends are used to

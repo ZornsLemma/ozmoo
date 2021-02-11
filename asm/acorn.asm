@@ -89,7 +89,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 ; SFTODO TEMP HACK START
 ; SFTODO: Instead of just checking !ifdef ACORN_SCREEN_HOLE, a *lot* of code should actually be checking for that defined *and* bigdyn - smalldyn probably requires very little explicit support for a screen hole, and I can imagine it will be virtually free (so for games where "B-no-shadow" builds as smalldyn, we'll not bother putting a separate "BBC shadow" executable on the disc.)
-ACORN_SCREEN_HOLE = 1
+; SFTODO ACORN_SCREEN_HOLE = 1
 ACORN_SCREEN_HOLE_START_PAGE = $7c ; SFTODO: AT RISK OF STATING THE OBVIOUS, IF WE WANT TO DO A BUILD FOR SHADOW+NON-SHADOW AND THIS IS A ZP ADDRESS, BY SETTING THAT ZP ADDRESS TO $FF THE SCREEN HOLE CODE WILL BE MOSTLY DISABLED "FAIRLY EFFICIENTLY"
 ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NOW
 SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
@@ -254,8 +254,18 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 ; different definitions, but for now I don't think I want them to do anythnig,
 ; as anything necessary is done explicitly by other Acorn-specific code.
 !macro before_dynmem_read {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    pha ; SFTODO TEMP PLAY IT SAFE
+    +acorn_page_in_bank_using_a ram_bank_list
+    pla
+}
 }
 !macro after_dynmem_read {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    pha ; SFTODO TEMP PLAY IT SAFE
+    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
+    pla
+}
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1400,11 +1410,7 @@ SFTODOLABEL4
 
 !ifdef ACORN_SWR {
 !macro acorn_swr_page_in_default_bank_using_y {
-!ifdef ACORN_SWR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_y ram_bank_list
-} else {
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
-}
 }
 }
 
@@ -2028,5 +2034,7 @@ do_oswrch_vdu_goto_xy
 ; be a more intrusive code change.
 ;
 ; SFTODO: Once the upstream dynamic memory access rework is completed and merged, it *may* be possible to do things like (on a turbo copro) use bank 0 free memory plus the whole of bank 1 for dynamic memory, and have banks 2 and 3 for virtual memory cache, or to promote the whole of a game <= ~210K to be pure dynamic memory. Or if we have more main+SWR than the game size, to promote the whole game to dynamic memory and do a simple absolute Z-machine to bank address conversion. I suspect it won't allow >64K dynamic memory, but just making this note so I can consider it when I see how upstream change works.
+
+; SFTODO: If the bigdyn model where Z-machine PC bank is paged in by default works out, it may be a worthwhile saving for global variable accesses to avoid paging in the dynmem bank if we know the global variables live below $8000. ("know" might ultimately mean an initialisation-time check and dynamic code patching, but before that it might mean a cheap check in the code doing the global var access to avoid the paging. although the paging is maybe - do the cycle counting - cheap enough that by the time we do even a cheap check, we're not going to come out ahead.)
 
 }

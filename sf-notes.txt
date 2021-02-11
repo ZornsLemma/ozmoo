@@ -1,3 +1,7 @@
+Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
+- baseline is $004b71 for bigdyn, probably (not double-checked) $004787 for smalldyn
+- initial hack $00494a - woohoo, 2.9% faster than old bigdyn, and "only" 2.5% slower than smalldyn
+
 Distinct ZP addresses used by dynmem_ind macros:
 - zp_temp
 - z_low_global_vars_ptr

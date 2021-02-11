@@ -582,10 +582,12 @@ read_operand
 	asl
 	tay
 	iny
+	+before_dynmem_read
     +lda_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
 	tax
 	dey
     +lda_dynmem_ind_y z_low_global_vars_ptr
+	+after_dynmem_read
 }
 !ifndef ACORN_SWR_BIG_DYNMEM {
 	clc ; SFTODO TEMP HACK TO PLAY IT SAFE
@@ -600,10 +602,12 @@ read_operand
 	asl ; This sets carry
 	tay
 	iny
+	+before_dynmem_read
 	+lda_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
 	tax
 	dey
 	+lda_dynmem_ind_y z_high_global_vars_ptr
+	+after_dynmem_read
 !ifndef ACORN_SWR_BIG_DYNMEM {
 	sec ; SFTODO TEMP HACK TO PLAY IT SAFE
 	bcs .store_operand_SFTODO_HACK ; Always branch

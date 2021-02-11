@@ -690,9 +690,9 @@ read_byte_at_z_address
     +acorn_page_in_bank_using_a mempointer_ram_bank
 }
 .read_and_return_value
-	+before_dynmem_read
+	; SFTODO: THIS IS NOT *NECESSARILY* DYNMEM, IT MIGHT BE SAME READ-ONLY PAGE AS BEFORE +before_dynmem_read
 	lda (mempointer),y
-	+after_dynmem_read
+	; SFTODO: DITTO +after_dynmem_read
 !ifdef ACORN_SWR { ; SFTODO: DOES THIS INTERACT WELL WITH NEW READ_AND_RETURN_VALUE LABEL? SHOULD I MAYBE BE PUTTING THIS PAGING LOGIC IN THE BEFORE/AFTER_DYNMEM_READ MACROS???
     +acorn_swr_page_in_default_bank_using_y
 }
@@ -740,7 +740,7 @@ read_byte_at_z_address
     ; read_byte_at_z_address don't page in the wrong bank. We keep the first
     ; bank paged in by default, so we don't need to page it in now and therefore
     ; the '-' label can be after the page in code, to save a few cycles. SFTODO: THIS IS PROB TRUE, BUT CHECK 5.3 - ALSO THE '-' LABEL IS (I THINK) NOW RENAMED .read_and_return_value SO COMMENT TEXT NEEDS TWEAKING AT LEAST
-    lda ram_bank_list
+    +acorn_page_in_bank_using_a ram_bank_list
     sta mempointer_ram_bank
     bpl .read_and_return_value ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
 }
@@ -1206,9 +1206,9 @@ read_byte_at_z_address
 	sta mempointer + 1
 .return_result
 	ldy mempointer_y
-	+before_dynmem_read
+	; SFTODO: THIS IS NOT NECESSARILY (IN FACT PROB DEFINITELY NOT) DYNMEM +before_dynmem_read
 	lda (mempointer),y
-	+after_dynmem_read
+	; SFTODO: +after_dynmem_read
 !ifdef ACORN_SWR {
     +acorn_swr_page_in_default_bank_using_y
 }

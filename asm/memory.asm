@@ -1,12 +1,14 @@
 ; Routines to handle memory
 ; SFTODO: ALLRAM might have been done away with - probably not a big deal, but check to see if I have any comments or code related to it and fix up if it has gone
 
+!if 0 { ; SFTODO!?
 ; SFTODO: Is this relevant/needed/correct for 5.3? Just carrying it over for now without thinking...
 !ifdef ACORN_SWR_BIG_DYNMEM {
 inc_z_pc_page_acorn_unsafe
     jsr inc_z_pc_page
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
     rts
+}
 }
 
 ; SF: On Acorn non-VMEM (and, I believe, C64 non-ALLMEM) this just needs to do
@@ -153,7 +155,7 @@ get_page_at_z_pc_did_pha
 	ldy z_pc + 2
 	jsr read_byte_at_z_address
 !ifdef ACORN_SWR {
-!ifdef ACORN_SWR_SMALL_DYNMEM {
+!if 1 { ; SFTODO!? !ifdef ACORN_SWR_SMALL_DYNMEM {
 ; SFTODO: read_byte_at_z_address_for_z_pc NO LONGER SEEMS TO EXIST, IS THIS JUST A RENAME OR IS THIS COMMENT OUTDATED/INVALID?
     ; read_byte_at_z_address_for_z_pc will have left the then-current value of
     ; z_pc_mempointer_ram_bank paged in, so we need to explicitly page in the
