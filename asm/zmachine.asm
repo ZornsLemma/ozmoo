@@ -284,7 +284,7 @@ dumptovice
 	stz z_temp + 5 ; Signal to NOT read up to four more operands
 }
 }
-	+read_next_byte_at_z_pc_unsafe_start
+	+read_next_byte_at_z_pc
 	sta z_opcode
 	
 !ifdef DEBUG {	
@@ -387,7 +387,7 @@ dumptovice
 	; Form = Extended
 	lda #z_opcode_opcount_ext
 	sta z_opcode_opcount ; Set to EXT
-	+read_next_byte_at_z_pc ; SFTODO: IS THIS NEW AND/OR A BUG? SHOULD I BE USING THE UNSAFE_MIDDLE VARIANT HERE? (IF IT'S A BUG, IT'S PROBABLY JUST A MINOR PERFORMANCE PROBLEM, NOT ACTUALLY INCORRECT)
+	+read_next_byte_at_z_pc
 	sta z_extended_opcode
 	sta z_opcode_number
 	jmp .get_4_op_types
@@ -397,7 +397,7 @@ dumptovice
 ; If z_temp + 5 = $ff, x holds first byte of arg types and we need to read one more byte and store in z_temp + 4 
 	ldy #4 ; index of last possible operand + 1 (4 or 8) 
 	sty z_temp
-	+read_next_byte_at_z_pc_unsafe_middle
+	+read_next_byte_at_z_pc
 !ifdef Z4PLUS {
 	ldy z_temp + 5
 	beq .not_4_extra_args
@@ -456,7 +456,6 @@ dumptovice
 	sta .jsr_perform + 1
 	lda z_jump_high_arr,x
 	sta .jsr_perform + 2
-    +finish_read_next_byte_at_z_pc_unsafe
 .jsr_perform
 	jsr $8000
 jmp_main_loop
@@ -499,14 +498,14 @@ z_not_implemented
 read_operand
 ; Operand type in x - Zero flag must reflect if X is 0 upon entry
 	bne .operand_is_not_large_constant
-	+read_next_byte_at_z_pc_unsafe_middle
+	+read_next_byte_at_z_pc
 	sta z_temp + 2 ; Temporary storage while we read another byte
-	+read_next_byte_at_z_pc_unsafe_middle
+	+read_next_byte_at_z_pc
 	tax
 	lda z_temp + 2
 	jmp .store_operand ; Always branch
 .operand_is_not_large_constant
-	+read_next_byte_at_z_pc_unsafe_middle
+	+read_next_byte_at_z_pc
 	cpx #%00000001
 	beq .operand_is_small_constant
 
@@ -571,11 +570,10 @@ read_operand
 	; SFTODO: AS ELSEWHERE, WE COULD MOVE THE ASL FROM BOTH PATHS TO HERE AND NOT BOTHER WITH CMP #128
 	cmp #128
 	bcs .read_high_global_var
-    +finish_read_next_byte_at_z_pc_unsafe
 !ifdef SLOW {
 	jsr z_get_low_global_variable_value
 } else {
-	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM PATH (WRT MEM HOLE) - HOWEVER, WITH THE NEW IMPL OF THE LDA_DYNMEM... MACRO, THERE ISN'T MUCH SAVINGS TO BE HAD (0.07% - YES, REALLY - SAVING ON THE BENCHMARK IF I JUST HARDCODE THIS TO USE PLAIN LDA (ZP),Y FOR THE TWO CALLS BELOW)
+	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM PATH (WRT MEM HOLE) - HOWEVER, WITH THE NEW IMPL OF THE LDA_DYNMEM... MACRO, THERE ISN'T MUCH SAVINGS TO BE HAD (0.07% - YES, REALLY - SAVING ON THE BENCHMARK IF I JUST HARDCODE THIS TO USE PLAIN LDA (ZP_TEMP),Y FOR THE TWO CALLS BELOW)
 	; SFTODO: WOULD IT BE POSSIBLE (ALSO FOR HIGH GLOBAL VARS) FOR US TO MAKE AN ASSEMBLY-TIME DECISION WHETHER OR NOT THE GLOBAL VARS (WHICH ARE AT A KNOWN OFFSET WITHIN THE GAME - IT'S IN THE HEADER, CAN A GAME CHANGE THIS AT RUNTIME!?!?!) CAN EVER COLLIDE WITH THE SCREEN HOLE? WE MIGHT NEED TO BE CAREFUL WHEN DOING ASSEMBLY AT DIFFERENT ADDRESSES TO GENERATE RELOCATIONS, IT MIGHT BE THE BUILD SYSTEM WOULD NEED TO BE IN CHARGE OF "TRYING" THIS, BUT MAYBE WE CAN DO IT JUST HERE IN THE ASSEMBLY (AND PERHAPS THE BUILD SYSTEM COULD COPY A FLAG FROM THE HIGHEST-PAGE BUILD'S OUTPUT TO THE INPUT OF THE LOWER-PAGE INPUT TO MAKE SURE THE TWO BINARIES ARE "THE SAME", OR THE BUILD SYSTEM WOULD PASS IN "ASSUME PAGE IS XXXX (THE HIGH VALUE) FOR DECISIONS LIKE THIS", THAT WOULD PROBABLY BE SIMPLER)
 	; SFTODO: OK, AT LEAST ON OZMOO (AND I SUSPECT IN GENERAL), ADDRESS OF GLOBAL VARS IN HEADER IS ONLY READ ONCE ON STARTUP, SO IT CAN'T CHANGE (AND WE THUS KNOW IT AT BUILD TIME)
 	; SFTODO: IT MAY ALSO BE POSSIBLE/USEFUL TO TAKE ADVANTAGE OF THE TWO BYTE ASCENDING ACCESS TO AVOID DOING THE MEMORY HOLE CHECK ON BOTH BYTES AND JUST DO IT ONCE
@@ -593,11 +591,9 @@ read_operand
 	clc ; SFTODO TEMP HACK TO PLAY IT SAFE
 	bcc .store_operand ; Always branch
 } else {
-    +restart_read_next_byte_at_z_pc_unsafe
     jmp .store_operand
 }
 .read_high_global_var
-    +finish_read_next_byte_at_z_pc_unsafe
 	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
 	asl ; This sets carry
 	tay
@@ -612,7 +608,6 @@ read_operand
 	sec ; SFTODO TEMP HACK TO PLAY IT SAFE
 	bcs .store_operand_SFTODO_HACK ; Always branch
 } else {
-    +restart_read_next_byte_at_z_pc_unsafe
     jmp .store_operand
 }
 .store_operand_SFTODO_HACK jmp .store_operand
