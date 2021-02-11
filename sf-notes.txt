@@ -3,6 +3,8 @@ Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
 - initial hack $00494a - woohoo, 2.9% faster than old bigdyn, and "only" 2.5% slower than smalldyn
 - omitting pha/pla in before_dynmen_read - $004901, so 3.2% faster than old bigdyn
 
+FWIW 3.7 model B no shadow bigdyn takes $004d51 IIRC ($004c10 is prob 3.7f figure for M128, which has less SWR so is probably at a disadvantage, but it's not exactly apples-to-apples), so *maybe* (this may be unfair in all sorts of ways and is just a super quick hacky comparison) the mode-7-at-3c00 hack costs 1.6% in performance anyway, which if true would mean the 0.9% slowdown I am seeing for the 5.x screen hole support is probably still a net win. our_keyv is mostly free, but our_wrchv (to adjust the cursor position) is fairly hot, so that is plausible.
+
 Distinct ZP addresses used by dynmem_ind macros:
 - zp_temp
 - z_low_global_vars_ptr
