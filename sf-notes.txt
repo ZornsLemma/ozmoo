@@ -22,6 +22,7 @@ Non-screenhole bigdyn takes $004b71
 - more WIP - $004c22 - so 0.9% slower
 - more WIP - $004c28 - illogical as would expect this to be faster
 - more WIP - $004c22 - bit disappointing
+- with screen hole support but with 0-size hole starting at $ff00 to disable it - $004c29 - bit illogical
 
 Screen hole notes - transfer these into a permanent comment at top of acorn.asm (or somewhere) when/if this settles down:
 - although this will be automatically true in practice, I think the screen hole needs to be a multiple of 512 bytes so as to avoid breaking alignment assumptions on read-only memory

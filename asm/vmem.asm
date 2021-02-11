@@ -713,14 +713,14 @@ read_byte_at_z_address
 	; Dynmem access
 	txa
 	adc #>story_start
-!if 1 { ; SFTODO MEM HOLE STUFF
-    cmp #$7c
+!ifdef ACORN_SCREEN_HOLE {
+    cmp #ACORN_SCREEN_HOLE_START_PAGE
     bcc +
     clc
-    adc #SFTODOHOLEPAGES
+    adc #ACORN_SCREEN_HOLE_PAGES
 +   sta mempointer + 1
 } else {
-	SFTODOsta mempointer + 1
+	sta mempointer + 1
 }
 !ifdef ACORN_TURBO_SUPPORTED {
     ; We need to ensure bank 0 is accessed for dynamic memory on a turbo second

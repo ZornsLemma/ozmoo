@@ -162,11 +162,11 @@ write_next_byte
 	lda z_address + 1
 	clc
 	adc #>story_start
-!if 1 { ; SFTODO: MEMORY HOLE
-	cmp #$7c
+!ifdef ACORN_SCREEN_HOLE {
+	cmp #ACORN_SCREEN_HOLE_START_PAGE
 	bcc +
 	clc
-	adc #SFTODOHOLEPAGES
+	adc #ACORN_SCREEN_HOLE_PAGES
 +
 }
 	sta .write_byte + 2
