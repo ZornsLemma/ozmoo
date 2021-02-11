@@ -387,7 +387,7 @@ dumptovice
 	; Form = Extended
 	lda #z_opcode_opcount_ext
 	sta z_opcode_opcount ; Set to EXT
-	+read_next_byte_at_z_pc
+	+read_next_byte_at_z_pc ; SFTODO: IS THIS NEW AND/OR A BUG? SHOULD I BE USING THE UNSAFE_MIDDLE VARIANT HERE? (IF IT'S A BUG, IT'S PROBABLY JUST A MINOR PERFORMANCE PROBLEM, NOT ACTUALLY INCORRECT)
 	sta z_extended_opcode
 	sta z_opcode_number
 	jmp .get_4_op_types
@@ -571,7 +571,7 @@ read_operand
 	; SFTODO: AS ELSEWHERE, WE COULD MOVE THE ASL FROM BOTH PATHS TO HERE AND NOT BOTHER WITH CMP #128
 	cmp #128
 	bcs .read_high_global_var
-    +finish_read_next_byte_at_z_pc_unsafe ; SFTODO: NEED TO REVIEW USE OF THESE MACROS, THE UPSTREAM REARRANGEMENT OF THIS CODE (NOT TO MENTION GENERAL 5.3 CHANCES) MAY MEAN THEY'RE WRONG, DON'T THINK THIS IS A BIG DEAL BUT NEED TO CHECK
+    +finish_read_next_byte_at_z_pc_unsafe
 !ifdef SLOW {
 	jsr z_get_low_global_variable_value
 } else {
