@@ -657,13 +657,12 @@ z_set_variable_reference_to_value
     +sta_dynmem_ind_y_corrupt_x zp_temp
 	rts
 } else {
+	; SFTODO: BE GOOD TO ENSURE ALL THE DIFFERENT CASES HERE DO GET TESTED
 !zone { ; SFTODO TEMP
-	ldy #0
-	sta $96 ; SFTODO PROPER - I COULD MAYBE USE Y TO SAVE A, SINCE I KNOW Y=0
-	lda zp_temp + 1 ; SFTODO: MAYBE USE Y FOR THIS INSTEAD TO AVOID CORRUPTING A ON "FAST PATH"?
-	cmp #ACORN_SCREEN_HOLE_START_PAGE
+	ldy zp_temp + 1
+	cpy #ACORN_SCREEN_HOLE_START_PAGE
 	bcs .zp_y_not_ok
-	lda $96
+	ldy #0
 	sta (zp_temp),y
 	ldy zp_temp
 	iny
@@ -673,12 +672,15 @@ z_set_variable_reference_to_value
 	sta (zp_temp),y
 	rts
 .zp_y_not_ok
+	tay
+	lda zp_temp + 1
 	adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 because carry is set
 	; SFTODO: EXPERIMENTALLY TRAMPLING ON zp_temp, I AM *NOT* SURE THIS IS SAFE - WOULD NEED TO CODE REVIEW IF IT DOES SEEM TO WORK
 	sta $91 ; SFTODO PROPER
 	lda zp_temp
 	sta $90
-	lda $96
+	tya
+	ldy #0
 	sta ($90),y
 	iny
 	txa
