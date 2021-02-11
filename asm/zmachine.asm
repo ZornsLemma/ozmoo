@@ -768,7 +768,8 @@ z_get_referenced_value
 	; rts
 .in_bank_0
 }
-	ldy #1
+!ifndef ACORN_SCREEN_HOLE {
+	ldy #1 ; SFTODO: DON'T DO THIS IN SCREEN HOLE CASE IF IT'S REDUNDANT, AS IT PROB WILL BE
 	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this. (I believe in the local var case the dynmem code can't trigger, because the address is in the stack - it's bad for performance to even try, but not *wrong*.)
 	; SFTODO: FOLLOWING ON FROM PREV COMMENT, THIS IS ~2X AS HOT AS THE OTHER "RELATIVELY HOT" CASES I'VE NOTED - BUT AS PER PREV COMMENT, SOME OF THOSE MAY BE ABLE TO GO VIA A LOCAL VAR "NO POSSIBILTIY OF MEM HOLE" VARIANT ON THIS CODE
 	+before_dynmem_read
@@ -778,6 +779,47 @@ z_get_referenced_value
 	+lda_dynmem_ind_y zp_temp
 	+after_dynmem_read
 	rts
+} else {
+!zone { ; SFTODO!?
+	+before_dynmem_read
+	; SFTODO: THIS CODE MIGHT BE USABLE (FACTORED OUT AS A MACRO) FOR GLOBAL VAR ACCESS TOO
+	lda zp_temp + 1
+	cmp #ACORN_SCREEN_HOLE_START_PAGE
+	bcs .zp_y_not_ok
+	ldy #0
+	lda (zp_temp),y
+	sta $96 ; SFTODO PROPER
+	ldy zp_temp
+	iny
+	beq .zp_y_maybe_no_longer_ok
+	ldy #1
+	lda (zp_temp),y
+	tax
+	lda $96
+	+after_dynmem_read
+	rts
+.zp_y_not_ok
+	adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 as carry is set
+	sta $91 ; SFTODO PROPER
+	lda zp_temp
+	sta $90
+	ldy #1
+	lda ($90),y
+	tax
+	dey
+	lda ($90),y
+	+after_dynmem_read
+	rts
+.zp_y_maybe_no_longer_ok
+	; SFTODO: IT MIGHT BE OK IF WE CHECK HIGH BYTE, BUT LET'S JUST DO THIS FOR NOW
+	ldy #1
+	+lda_dynmem_ind_y zp_temp
+	tax
+	lda $96
+	+after_dynmem_read
+	rts
+}
+}
 
 .find_global_var
 	ldx #0
