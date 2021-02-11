@@ -255,14 +255,15 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 ; as anything necessary is done explicitly by other Acorn-specific code.
 !macro before_dynmem_read {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    pha ; SFTODO TEMP PLAY IT SAFE
+; SFTODO: Commodore version does preserve A, but a code review suggests this isn't important
+    ;pha ; SFTODO TEMP PLAY IT SAFE
     +acorn_page_in_bank_using_a ram_bank_list
-    pla
+    ;pla
 }
 }
 !macro after_dynmem_read {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    pha ; SFTODO TEMP PLAY IT SAFE
+    pha ; SFTODO TEMP PLAY IT SAFE - QUICK CODE REVIEW SUGGESTS *SOME* PLACES DEFINITELY NEED A PRESERVING, BUT OTHERS DON'T - WE COULD ADD A _CORRUPT_[AXY] VARIANT WHICH AVOIDS DOING THE PHA/PLA, ALTHOUGH IT'S PROBABLY ONLY WORTH IT IF THIS MAKES A DIFFERENCE TO PERFORMANCE, AND MAYBE THEN ONLY ON "HOT" PLACES CALLING THIS MACRO, NOT ALL OF THEM
     +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
     pla
 }
