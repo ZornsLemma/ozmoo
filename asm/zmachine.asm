@@ -781,6 +781,12 @@ z_get_referenced_value
 	rts
 } else {
 !zone { ; SFTODO!?
+	; Many calls to this code are to access stack variables, which can be
+	; accessed without worrying about the memory hole.
+	lda zp_temp + 1
+	cmp #>story_start
+	bcc z_get_referenced_value_simple
+	; SFTODO: IS IT STILL WORTH OPTIMISING THE REMAINING CASES? QUITE POSSIBLY IT IS...
 	+before_dynmem_read
 	; SFTODO: THIS CODE MIGHT BE USABLE (FACTORED OUT AS A MACRO) FOR GLOBAL VAR ACCESS TOO
 	lda zp_temp + 1
