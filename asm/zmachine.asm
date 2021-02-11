@@ -701,6 +701,8 @@ z_set_variable_reference_to_value
 }
 }
 
+.find_global_var_SFTODO_HACK jmp .find_global_var
+.nonexistent_local_SFTODO_HACK jmp .nonexistent_local
 z_get_variable_reference_and_value
 	; input: Variable in y
 	; output: Address is stored in (zp_temp), bank may be stored in zp_temp + 2
@@ -719,7 +721,7 @@ z_get_variable_reference_and_value
 	jmp z_get_referenced_value ; SFTODO: WRT MEM HOLE, WE KNOW IT'S ON STACK HERE - ALTHOUGH THIS HARDLY EVER GETS EXECUTED, BUT IF IT'S "FREE" TO OPTIMISE THIS, MIGHT AS WELL
 +	tya
 	cmp #16
-	bcs .find_global_var
+	bcs .find_global_var_SFTODO_HACK
 	; Local variable
 !ifdef TARGET_C128 {
 	ldx #0
@@ -728,7 +730,7 @@ z_get_variable_reference_and_value
 	dey
 !ifndef UNSAFE {
 	cpy z_local_var_count
-	bcs .nonexistent_local
+	bcs .nonexistent_local_SFTODO_HACK
 }
 	asl ; Also clears carry
 	adc z_local_vars_ptr
@@ -737,12 +739,12 @@ z_get_variable_reference_and_value
 	adc #0
 	sta zp_temp + 1
 
-!ifdef ACORN_SCREEN_HOLE {
-	; SFTODO: We would normally fall through into z_get_referenced_value here, but
-	; that's slow when we're doing memory hole shenanigans and here we know we're
-	; accessing a value on the stack, so we inline the standard version. There's
-	; no value in having this separate code if we don't have a memory hole; it just
-	; wastes a bit of memory on redundant code.
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+	; We would normally fall through into z_get_referenced_value here, but
+	; that's slow when we're doing memory hole shenanigans and here we know
+	; we're accessing a value on the stack, so we inline the standard version.
+	; There's no value in having this separate code if we don't have a memory
+	; hole in dynamic memory; it just wastes a bit of memory on redundant code.
 z_get_referenced_value_simple
 	ldy #1
 	+before_dynmem_read
@@ -774,10 +776,8 @@ z_get_referenced_value
 	; rts
 .in_bank_0
 }
-!ifndef ACORN_SCREEN_HOLE {
-	ldy #1 ; SFTODO: DON'T DO THIS IN SCREEN HOLE CASE IF IT'S REDUNDANT, AS IT PROB WILL BE
-	; SFTODO: This dynmem read is relatively hot; a lot of others (e.g. all? of the objecttable.asm ones). And this one is *sometimes* (not I think always) reading from local vars, which live on stack and are no problem, so it may be that's the "hot" case - this is all a bit casually investigated right now, I haven't been too careful to verify this. (I believe in the local var case the dynmem code can't trigger, because the address is in the stack - it's bad for performance to even try, but not *wrong*.)
-	; SFTODO: FOLLOWING ON FROM PREV COMMENT, THIS IS ~2X AS HOT AS THE OTHER "RELATIVELY HOT" CASES I'VE NOTED - BUT AS PER PREV COMMENT, SOME OF THOSE MAY BE ABLE TO GO VIA A LOCAL VAR "NO POSSIBILTIY OF MEM HOLE" VARIANT ON THIS CODE
+!ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+	ldy #1
 	+before_dynmem_read
 	+lda_dynmem_ind_y_corrupt_x zp_temp
 	tax
@@ -788,7 +788,7 @@ z_get_referenced_value
 } else {
 !zone { ; SFTODO!?
 	; Many calls to this code are to access stack variables, which can be
-	; accessed without worrying about the memory hole.
+	; accessed without worrying about the memory hole. SFTODO: SEARCH AND REPLCAE "MEMORY HOLE" TO "SCREEN HOLE" EVERYWHERE
 	lda zp_temp + 1
 	cmp #>story_start
 	bcc z_get_referenced_value_simple
@@ -839,7 +839,7 @@ SFTODOTEMP
 	+after_dynmem_read
 	rts
 }
-}
+} ; end ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
 .find_global_var
 	ldx #0

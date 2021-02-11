@@ -1,3 +1,4 @@
+; SFTODO: DON'T FORGET BUILD SYSTEM PROB NEEDS TWEAKING FOR SCREEN HOLE - BEFORE "MAIN RAM" STILL ENDED AT 8000 BECAUSE OF THE 3C00 SCREEN, NOW IT NEEDS TO RECOGNISE SCREEN RAM STARTS AT 6000/7C00
 ; Acorn-specific code factored out into its own file for readability.
 
 ; Note that the code macros defined in here have the suffix "_inline" if control
@@ -23,6 +24,9 @@
 ; permanently at $c000-$ffff inclusive. The loader will have located any
 ; available sideways RAM banks, verified there's at least one and put the count
 ; and a list of bank numbers at ram_bank_{count,list} for us. SFTODO: MINOR QUIBBLE - LOADER WILL HAVE VERIFIED WE HAVE ENOUGH SWR BANKS, THERE MAY BE NONE IF WE CAN GET BY WITHOUT ANY
+;
+; SFTODO: This is outdated now I'm reworking the bigdyn model, needs rewriting.
+; Also the memory hole stuff alters how Electron and B-no-shadow work.
 ;
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
@@ -87,16 +91,32 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 }
 }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Screen hole support
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; SFTODO TEMP HACK START
 ; SFTODO: Instead of just checking !ifdef ACORN_SCREEN_HOLE, a *lot* of code should actually be checking for that defined *and* bigdyn - smalldyn probably requires very little explicit support for a screen hole, and I can imagine it will be virtually free (so for games where "B-no-shadow" builds as smalldyn, we'll not bother putting a separate "BBC shadow" executable on the disc.)
-; SFTODO ACORN_SCREEN_HOLE = 1
+ACORN_SCREEN_HOLE = 1
 ACORN_SCREEN_HOLE_START_PAGE = $7c ; SFTODO: AT RISK OF STATING THE OBVIOUS, IF WE WANT TO DO A BUILD FOR SHADOW+NON-SHADOW AND THIS IS A ZP ADDRESS, BY SETTING THAT ZP ADDRESS TO $FF THE SCREEN HOLE CODE WILL BE MOSTLY DISABLED "FAIRLY EFFICIENTLY"
 ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NOW
 SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 
+; The screen hole mostly "just works" for the small dynamic memory model;
+; because the hole always comes *after* all dynamic memory, only read-only VM
+; block access needs to take it into account. Define an extra constant to allow for
+; easy testing of the combination of the big dynamic memory model and screen hole.
 !ifdef ACORN_SCREEN_HOLE {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE = 1
+}
+}
+
+!ifdef ACORN_SWR_BIGDYNMEM_AND_SCREEN_HOLE {
+
 ; SFTODO: WORTH NOTING THAT ACTUALLY THE SCREEN HOLE IS ONLY RELEVANT FOR BIGDYN - FOR WHATEVER MACHINE YOU'RE BUILDING FOR, IF SMALLEST SCREEN MODE AND MAX SUPPORTED PAGE DOESN'T ALLOW DYNMEM TO FIT IN MAIN RAM, IT'S NOT A SMALLMEM SITUATION. ALTHOUGH EVEN IN A SMALLDYN BUILD, WE MIGHT STILL WANT TO SUPPORT SCREEN HOLE SO READ-ONLY VMEM CAN WRAP ROUND IT - SO SMALLDYN BUILDS *WOULD* PROB NEED TO CARE ABOUT SCREEN HOLE, *BUT* CODE ACCESSING DYNMEM ITSELF AS OPPOSEd TO GENERIC VMEM CODE WOULD NOT NEED TO WORRY ABOUT IT
-; SFTODO: ALL THESE MACROS IGNORE THE POSSIBILITY (zp),Y HAS ZP<SCREENHOLESTART BUT ZP+Y>=SCREENHOLESTART - SIGH! - NOW FIXED, WITHOUT WORRYING ABOUT OPTIMISATION
+
 ; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value - IF WE NEED TO WORRY ABOUT THIS, IT MAY BE ENOUGH TO ALWAYS CLEAR CARRY RATHER THAN PRESERVE IT
 !macro lda_dynmem_ind_y_corrupt_x zp { ; SFTODO: DOESN'T CORRUPT X, IF THIS CONTINUES TO HOLD CHANGE THE NAME
     lda zp + 1
@@ -123,6 +143,9 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 .done
 }
 
+; Dynamic memory reads which aren't performance critical use this macro, which
+; calls a subroutine instead of inlining the code. We need to call a different
+; version of the subroutine for each 16-bit zero page address.
 !macro lda_dynmem_ind_y_slow zp {
     !if zp = object_tree_ptr {
         jsr lda_dynmem_ind_y_slow_object_tree_ptr_sub
@@ -199,6 +222,9 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
     ;plp
 }
 
+; Dynamic memory reads which aren't performance critical use this macro, which
+; calls a subroutine instead of inlining the code. We need to call a different
+; version of the subroutine for each 16-bit zero page address.
 !macro sta_dynmem_ind_y_slow zp {
     !if zp = object_tree_ptr {
         jsr sta_dynmem_ind_y_slow_object_tree_ptr_sub
@@ -226,27 +252,34 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
         }
     }
 }
-} else {
+
+} else { ; !ACORN_SWR_BIGDYNMEM_AND_SCREEN_HOLE
+
 !macro lda_dynmem_ind_y zp {
     lda (zp),y
 }
+
 !macro lda_dynmem_ind_y_corrupt_x zp {
     lda (zp),y
 }
+
 !macro lda_dynmem_ind_y_slow zp {
     lda (zp),y
 }
+
 !macro sta_dynmem_ind_y zp {
     sta (zp),y
 }
+
 !macro sta_dynmem_ind_y_corrupt_x zp {
     sta (zp),y
 }
+
 !macro sta_dynmem_ind_y_slow zp {
     sta (zp),y
 }
+
 }
-; SFTODO TEMP HACK END
 
 !zone {
 
@@ -700,7 +733,7 @@ SFTODOLABELX1
 !ifndef ACORN_SCREEN_HOLE {
     lda #(>flat_ramtop)
 } else {
-    lda #(>flat_ramtop) - SFTODOHOLEPAGES
+    lda #(>flat_ramtop) - ACORN_SCREEN_HOLE_PAGES
 }
     sec
     sbc #>story_start
@@ -1008,8 +1041,7 @@ SFTODOLABEL5
 
 ; SFTODO: NOTE THAT AT PRESENT (OF COURSE) THE VMAP SET UP BY THE BUILD SCRIPT HAS NO IDEA ABOUT THE MEMORY HOLE AND SO THE INITIAL LOAD WON'T CORRESPOND PROPERLY WITH THE VMAP (I THINK) - IT MAY BE WE NEED TO PATCH THIS UP AT RUNTIME, NOT THOUGHT IT THROUGH PROPERLY YET - ACTUALLY MAYBE THIS IS FINE, ANYWAY, SINCE THE MEM HOLE IS "TRANSPARENTLY" HIDDEN BELOW THE LEVEL OF THE VMAP - JUST THINK ABOUT IT LATER!
 .dynmem_load_loop
-!ifdef ACORN_SCREEN_HOLE {
-    ; SFTODO: REMEMBER THE MEM HOLE COULD ALSO APPEAR IN THE MIDDLE OF RO-MEM-IN-MAIN-RAM, SO WE NEED SOMETHING LIKE THIS, BUT WE ALSO NEED TO COPE WITH IT DURING THE VMEM LOAD - I *SUSPECT* THIS JUST WORKS AUTOMATICALLY BECAUSE WE LOAD RO-MEM VIA LOAD_BLOCKS_FROM_INDEX, BUT NEED TO THINK ABOUT THIS JUST TO BE SAFE
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
     lda readblocks_mempos + 1
     cmp #ACORN_SCREEN_HOLE_START_PAGE
     bne +
@@ -1783,7 +1815,7 @@ acorn_screen_hole_end
 
 ; This macro is like an initialization subroutine, but by using a macro we
 ; can place it in the discardable init code while still having it in this file
-; where it logically belongs.
+; where it logically belongs. SFTODO: That comment seems a little odd, discardable init is in this file too - the idea is probably fine, just check and tweak comment.
 !macro set_up_mode_7_3c00_inline {
     ; In reality we don't expect to be called with our handlers already
     ; installed, but be paranoid - this is deletable init code so it's mostly
@@ -1935,6 +1967,63 @@ screen_copy
     bne .screen_copy_loop
     rts
 } ; End of !ifdef ACORN_NO_SHADOW
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Screen hole support subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+
+lda_dynmem_ind_y_slow_object_tree_ptr_sub
+	; SFTODO: This (all of them) will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
+	+lda_dynmem_ind_y object_tree_ptr
+	rts
+
+lda_dynmem_ind_y_slow_zp_mempos_sub
+	+lda_dynmem_ind_y zp_mempos
+	rts
+
+lda_dynmem_ind_y_slow_string_array_sub
+	+lda_dynmem_ind_y string_array
+	rts
+
+lda_dynmem_ind_y_slow_parse_array_sub
+	+lda_dynmem_ind_y parse_array
+	rts
+
+lda_dynmem_ind_y_slow_default_properties_ptr_sub
+	+lda_dynmem_ind_y default_properties_ptr
+	rts
+
+lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
+	+lda_dynmem_ind_y z_low_global_vars_ptr
+	rts
+
+sta_dynmem_ind_y_slow_object_tree_ptr_sub
+	+sta_dynmem_ind_y object_tree_ptr
+	rts
+
+sta_dynmem_ind_y_slow_zp_mempos_sub
+	+sta_dynmem_ind_y zp_mempos
+	rts
+
+sta_dynmem_ind_y_slow_string_array_sub
+	+sta_dynmem_ind_y string_array
+	rts
+
+sta_dynmem_ind_y_slow_parse_array_sub
+	+sta_dynmem_ind_y parse_array
+	rts
+
+sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
+	+sta_dynmem_ind_y z_low_global_vars_ptr
+	rts
+
+sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
+	+sta_dynmem_ind_y z_high_global_vars_ptr
+	rts
+
+}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Miscellaneous utility routines
