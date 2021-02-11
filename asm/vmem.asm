@@ -1258,7 +1258,7 @@ convert_index_x_to_ram_bank_and_address
     ; actual start.
     asl
     ; Carry is set
-!if 0 { ; SFTODO: HACKING FOR MEM HOLE
+!ifndef ACORN_SCREEN_HOLE {
 !ifndef ACORN_ELECTRON_SWR {
     adc #(>flat_ramtop)-1
 } else {

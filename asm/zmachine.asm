@@ -732,7 +732,7 @@ z_get_variable_reference_and_value
 	adc #0
 	sta zp_temp + 1
 
-!if 1 { ; SFTODO MEM HOLE STUFF
+!ifdef ACORN_SCREEN_HOLE {
 	; SFTODO: We would normally fall through into z_get_referenced_value here, but
 	; that's slow when we're doing memory hole shenanigans and here we know we're
 	; accessing a value on the stack, so we inline the standard version. There's
