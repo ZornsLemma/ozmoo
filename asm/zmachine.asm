@@ -662,7 +662,7 @@ z_set_variable_reference_to_value
     +sta_dynmem_ind_y zp_temp
 	iny
 	txa
-    +sta_dynmem_ind_y_corrupt_x zp_temp
+    +sta_dynmem_ind_y zp_temp
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } else {
@@ -701,7 +701,7 @@ z_set_variable_reference_to_value
 	; SFTODO: WE COULD CHECK ZP_TEMP+1 BUT FOR NOW LET'S JUST FALL BACK ON THIS DEFINITELY-OK IF SLOWER THAN NEC CODE
 	ldy #1
 	txa
-	+sta_dynmem_ind_y_corrupt_x zp_temp
+	+sta_dynmem_ind_y zp_temp
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 }

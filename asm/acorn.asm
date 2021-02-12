@@ -178,8 +178,10 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
     }
 }
 
-!macro sta_dynmem_ind_y_corrupt_x zp {
-    ; SFTODO: CORRUPTING X MIGHT BE HELPFUL HERE, BUT DEPENDS ON HOW PERF SENSITIVE CALLERS ARE
+; SF: There would be some small performance gains here from allowing X to be
+; corrupted, but few callers (and no performance-critical ones) would be able to
+; take advantage, so it's not worth providing an X-corrupting version.
+!macro sta_dynmem_ind_y zp {
     sta $94 ; SFTODO PROPER ADDRESS
     lda zp + 1
     cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
@@ -205,15 +207,6 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
     lda $94
     sta (zp),y
 .done
-}
-
-!macro sta_dynmem_ind_y zp {
-    ; SFTODO: SEE COMMENTS RE PRESERVING ETC IN LDA NO-CORRUPT-X MACRO ABOVE
-    ;stx $90
-    +sta_dynmem_ind_y_corrupt_x zp
-    ;php
-    ;ldx $90
-    ;plp
 }
 
 ; Dynamic memory reads which aren't performance critical use this macro, which
@@ -283,11 +276,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO TEMP
 }
 
 !macro sta_dynmem_ind_y zp {
-    +debug_dynmem 1
-    sta (zp),y
-}
-
-!macro sta_dynmem_ind_y_corrupt_x zp {
     +debug_dynmem 1
     sta (zp),y
 }
