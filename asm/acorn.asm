@@ -99,7 +99,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 
 ; SFTODO TEMP HACK START
 ; SFTODO: Instead of just checking !ifdef ACORN_SCREEN_HOLE, a *lot* of code should actually be checking for that defined *and* bigdyn - smalldyn probably requires very little explicit support for a screen hole, and I can imagine it will be virtually free (so for games where "B-no-shadow" builds as smalldyn, we'll not bother putting a separate "BBC shadow" executable on the disc.)
-ACORN_SCREEN_HOLE = 1
+;ACORN_SCREEN_HOLE = 1
 ACORN_SCREEN_HOLE_START_PAGE = $7c ; SFTODO: AT RISK OF STATING THE OBVIOUS, IF WE WANT TO DO A BUILD FOR SHADOW+NON-SHADOW AND THIS IS A ZP ADDRESS, BY SETTING THAT ZP ADDRESS TO $FF THE SCREEN HOLE CODE WILL BE MOSTLY DISABLED "FAIRLY EFFICIENTLY"
 ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NOW
 
