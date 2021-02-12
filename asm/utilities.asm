@@ -45,7 +45,7 @@ plus4_enable_rom = $ff3e
 	sta plus4_enable_ram
 }
 }
-!macro after_dynmem_read {
+!macro after_dynmem_read_preserve_axy {
 !ifdef TARGET_PLUS4 {
 	sta plus4_enable_rom
 	cli
@@ -295,26 +295,26 @@ parse_array_write_byte
 !macro macro_string_array_read_byte {
 	+before_dynmem_read ; SFTODO
 	+lda_dynmem_ind_y_slow string_array
-	+after_dynmem_read ; SFTODO
+	+after_dynmem_read_preserve_axy ; SFTODO
 }
 !macro macro_string_array_write_byte {
 	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
 	+before_dynmem_read ; SFTODO
 	pla
 	+sta_dynmem_ind_y_slow string_array
-	+after_dynmem_read ; SFTODO
+	+after_dynmem_read_preserve_axy ; SFTODO
 }
 !macro macro_parse_array_read_byte {
 	+before_dynmem_read ; SFTODO
 	+lda_dynmem_ind_y_slow parse_array
-	+after_dynmem_read ; SFTODO
+	+after_dynmem_read_preserve_axy ; SFTODO
 }
 !macro macro_parse_array_write_byte {
 	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
 	+before_dynmem_read ; SFTODO
 	pla
 	+sta_dynmem_ind_y_slow parse_array
-	+after_dynmem_read ; SFTODO
+	+after_dynmem_read_preserve_axy ; SFTODO
 }
 
 }

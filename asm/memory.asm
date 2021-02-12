@@ -314,7 +314,7 @@ copy_page
 	sta $8000,y
 	iny
 	bne .copy
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	+set_memory_no_basic_unsafe
 	cli
 	rts

@@ -1,4 +1,4 @@
-; SFTODO: GENERAL POINT - I REALLY NEED TO REVIEW ALL CODE WHICH CALLS (AND REMEMBER THE INDIRECTION VIA SOME DOUBLE MACROS IN PLACES) MY BEFORE/AFTER_DYNMEM_READ MACROS AND THE LDA/STA DYNMEM MACROS AND SEE WHICH ONES NEED FLAGS/A/X/Y PRESERVING - AT THE MOMENT I'M WINGING IT A LITTLE BIT, BUT I'D LIKE TO TRY TO HEAD PROBLEMS OFF RATHER THAN WAIT FOR OBSCURE GAME-BREAKING BUGS TO BE REPORTED
+; SFTODO: GENERAL POINT - I REALLY NEED TO REVIEW ALL CODE WHICH CALLS (AND REMEMBER THE INDIRECTION VIA SOME DOUBLE MACROS IN PLACES) MY BEFORE/after_dynmem_read_preserve_axy MACROS AND THE LDA/STA DYNMEM MACROS AND SEE WHICH ONES NEED FLAGS/A/X/Y PRESERVING - AT THE MOMENT I'M WINGING IT A LITTLE BIT, BUT I'D LIKE TO TRY TO HEAD PROBLEMS OFF RATHER THAN WAIT FOR OBSCURE GAME-BREAKING BUGS TO BE REPORTED
 ; see: http://inform-fiction.org/zmachine/standards/z1point1/sect12.html
 
 ; globals
@@ -98,7 +98,7 @@ z_ins_get_child
 }
 }
 }
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 
 	jsr z_store_result
 	pla ; Value is zero if object is zero, non-zero if object is non-zero
@@ -144,7 +144,7 @@ z_ins_get_parent
 }
 
 }
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	jmp z_store_result
 
 +make_acorn_screen_hole
@@ -574,7 +574,7 @@ print_obj
 	dey
 	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 
 	jsr set_z_address
 	jsr read_next_byte ; length of object short name
@@ -599,7 +599,7 @@ z_ins_jin
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 
 	cmp z_operand_value_low_arr + 1
 	bne .branch_false
@@ -645,7 +645,7 @@ z_ins_test_attr
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 
 	and .bitmask,x
 	beq .branch_false
@@ -770,7 +770,7 @@ z_ins_insert_obj
 	lda object_num
 	ldx object_num + 1
 	ldy #10
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	jmp write_word_to_bank_1_c128 ; increases y by 1
 } else {
 	lda .dest_num
@@ -826,7 +826,7 @@ z_ins_insert_obj
 	ldy #6 ; child
 	lda object_num + 1
 	ldx #$7f
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	jmp $02af
 	
 } else {
@@ -922,7 +922,7 @@ find_first_prop
 	dey
 	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 
 	pha ; a is destroyed by set_z_address
 	jsr set_z_address
@@ -994,7 +994,7 @@ z_ins_get_prop
 	dey
 	+lda_dynmem_ind_y_slow default_properties_ptr
 }
-	+after_dynmem_read	
+	+after_dynmem_read_preserve_axy	
 	jmp .return_property_result
 .property_found
 	lda .property_length

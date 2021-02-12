@@ -585,7 +585,7 @@ read_operand
 	tax
 	dey
     +lda_dynmem_ind_y z_low_global_vars_ptr
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 }
 !ifndef ACORN_SWR_BIG_DYNMEM {
 !if 1 { ; SFTODO: MAKE THIS CONDITIONAL-BUT_OFF-NORMALY
@@ -605,7 +605,7 @@ read_operand
 	tax
 	dey
 	+lda_dynmem_ind_y z_high_global_vars_ptr
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 !ifndef ACORN_SWR_BIG_DYNMEM {
 !if 1 { ; SFTODO: MAKE THIS CONDITIONAL-BUT_OFF-NORMALY
 -	bcc -
@@ -758,7 +758,7 @@ z_get_referenced_value_simple
 	tax
 	dey
 	lda (zp_temp),y
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	rts
 }
 
@@ -789,7 +789,7 @@ z_get_referenced_value
 	tax
 	dey
 	+lda_dynmem_ind_y zp_temp
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	rts
 } else {
 !zone { ; SFTODO!?
@@ -822,7 +822,7 @@ SFTODOTEMP
 	lda (zp_temp),y
 	tax
 	lda $96
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	rts
 .zp_y_not_ok
 	adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 as carry is set
@@ -834,7 +834,7 @@ SFTODOTEMP
 	tax
 	dey
 	lda ($90),y
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	rts
 .zp_y_maybe_no_longer_ok
 	; SFTODO: IT MIGHT BE OK IF WE CHECK HIGH BYTE, BUT LET'S JUST DO THIS FOR NOW
@@ -842,7 +842,7 @@ SFTODOTEMP
 	+lda_dynmem_ind_y zp_temp
 	tax
 	lda $96
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	rts
 }
 } ; end ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
@@ -904,7 +904,7 @@ z_get_low_global_variable_value
 	tax
 	dey
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
-	+after_dynmem_read
+	+after_dynmem_read_preserve_axy
 	; SFTODO: Permanent comment if true - caller *doesn't* assume carry clear if ACORN_SWR_BIG_DYNMEM, so we're OK
 	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not TARGET_C128
