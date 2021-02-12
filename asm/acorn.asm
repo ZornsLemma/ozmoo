@@ -258,11 +258,16 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 
 } else { ; !ACORN_SWR_BIGDYNMEM_AND_SCREEN_HOLE
 
-!if 1 { ; SFTODO!
+!ifdef ACORN_SWR_BIGDYNMEM {
 !macro debug_dynmem {
+!if 1 { ; SFTODO!
     lda romsel_copy
     cmp ram_bank_list
 -   bne -
+}
+}
+} else {
+!macro debug_dynmem {
 }
 }
 
