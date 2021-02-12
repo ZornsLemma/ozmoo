@@ -80,6 +80,11 @@
 ; restore code has to be slightly different because the data we need to save/
 ; restore is no longer contiguous in memory.
 
+; Control a few small debug assertions and similar.
+; SFTODO: Make this controllable via the build script?
+; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
+ACORN_DEBUG_ASSERT = 1
+
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
 ; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this.

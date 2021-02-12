@@ -588,7 +588,7 @@ read_operand
 	+after_dynmem_read_corrupt_y
 }
 !ifndef ACORN_SWR_BIG_DYNMEM {
-!if 1 { ; SFTODO: MAKE THIS CONDITIONAL-BUT_OFF-NORMALY
+!ifdef ACORN_DEBUG_ASSERT {
 -	bcs -
 }
 	bcc .store_operand ; Always branch
@@ -607,7 +607,7 @@ read_operand
 	+lda_dynmem_ind_y z_high_global_vars_ptr
 	+after_dynmem_read_corrupt_y
 !ifndef ACORN_SWR_BIG_DYNMEM {
-!if 1 { ; SFTODO: MAKE THIS CONDITIONAL-BUT_OFF-NORMALY
+!ifdef ACORN_DEBUG_ASSERT {
 -	bcc -
 }
 	bcs .store_operand_SFTODO_HACK ; Always branch
@@ -941,7 +941,7 @@ z_set_variable
 }
 	asl
 	tay
-!if 1 { ; SFTODO TEMP HACK
+!if 0 { ; SFTODO TEMP HACK
 	lda z_local_vars_ptr + 1
 	cmp #$7b
 HANG	bcs HANG
