@@ -1222,10 +1222,14 @@ SFTODO33
 	sta mempointer + 1
 .return_result
 	ldy mempointer_y
-	; SFTODO: THIS IS NOT NECESSARILY (IN FACT PROB DEFINITELY NOT) DYNMEM +before_dynmem_read
+!ifndef ACORN_SWR {
+    ; See comments on analogous code at .read_and_return_value.
+	+before_dynmem_read
+}
 	lda (mempointer),y
-	; SFTODO: +after_dynmem_read
-!ifdef ACORN_SWR {
+!ifndef ACORN_SWR {
+	+after_dynmem_read
+} else {
     +acorn_swr_page_in_default_bank_using_y
 }
 	rts
