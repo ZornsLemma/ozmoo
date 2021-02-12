@@ -1065,6 +1065,10 @@ init_cursor_control
     ; when telling the OS to turn the cursor on or off to try to avoid visual
     ; artefacts from doing so, we want to avoid this unless cursor_status has
     ; just transitioned from negative to non-negative or vice versa.
+	; SFTODO: It's probably just an emulation/VM glitch, *but* just typing
+	; "LOOK" at the prompt in HH seems to cause the cursor to flick to bottom
+	; right and generally be more visible than I'd expect. Come back to this
+	; later, compare it with Ozmoo 4.4, see if something's broken.
 turn_on_cursor
     inc cursor_status
     beq .really_turn_on_cursor

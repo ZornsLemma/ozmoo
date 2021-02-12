@@ -1418,7 +1418,6 @@ read_text
 	+macro_string_array_write_byte
 ;	sta (string_array),y
 	jmp .read_text_done ; a should hold 0 to return 0 here
-.readkey_SFTODO_HACK jmp .readkey
 	; check terminating characters
 +   
 } ; Z4PLUS
@@ -1456,6 +1455,7 @@ read_text
 ;	sta (string_array),y
 }
 	jmp .readkey ; don't store in the array
+.readkey_SFTODO_HACK jmp .readkey
 .read_text_done_SFTODO_HACK jmp .read_text_done
 +   ; disallow cursor keys etc
     ; SF: Note that this is part of read_text, used only by z_ins_read, and
