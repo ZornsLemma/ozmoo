@@ -39,7 +39,7 @@ plus4_enable_rom = $ff3e
 ;   0 I/O registers
 ;   1 RAM or character generator ROM
 
-!macro before_dynmem_read {
+!macro before_dynmem_read_corrupt_a {
 !ifdef TARGET_PLUS4 {
 	sei
 	sta plus4_enable_ram
@@ -293,25 +293,25 @@ parse_array_write_byte
 ; SFTODO: THESE ARE GETTING QUITE BIG (IN THE BIGDYN CASE, OB NOT THE CASE WHERE THEY JUST BOIL DOWN TO LDA (ZP),Y) AND IF THEY'RE NOT PERFORMANCE CRITICAL MAYBE THEY SHOULD BE MADE INTO SUBROUTINES AS IN COMPLEX_MEMORY CASE
 ; SFTODO: I *PROB* CAN'T USE after_dynmem_read_corrupt_a HERE BUT THINK ABOUT IT
 !macro macro_string_array_read_byte {
-	+before_dynmem_read ; SFTODO
+	+before_dynmem_read_corrupt_a ; SFTODO
 	+lda_dynmem_ind_y_slow string_array
 	+after_dynmem_read_preserve_axy ; SFTODO
 }
 !macro macro_string_array_write_byte {
 	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
-	+before_dynmem_read ; SFTODO
+	+before_dynmem_read_corrupt_a ; SFTODO
 	pla
 	+sta_dynmem_ind_y_slow string_array
 	+after_dynmem_read_preserve_axy ; SFTODO
 }
 !macro macro_parse_array_read_byte {
-	+before_dynmem_read ; SFTODO
+	+before_dynmem_read_corrupt_a ; SFTODO
 	+lda_dynmem_ind_y_slow parse_array
 	+after_dynmem_read_preserve_axy ; SFTODO
 }
 !macro macro_parse_array_write_byte {
 	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
-	+before_dynmem_read ; SFTODO
+	+before_dynmem_read_corrupt_a ; SFTODO
 	pla
 	+sta_dynmem_ind_y_slow parse_array
 	+after_dynmem_read_preserve_axy ; SFTODO

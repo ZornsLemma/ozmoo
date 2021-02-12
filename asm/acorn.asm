@@ -311,17 +311,18 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 
 !zone {
 
-; SFTODO: Should I use *different* (similar) names for the Acorn macros, so I don't accidentally merge in an upstream use of the Commodore-style ones and break thigns? eg change all before_dynmem_read to before_dynmem_read_corrupt_a etc
-; SFTODO: These macros may be useful on Acorn and different versions may want
-; different definitions, but for now I don't think I want them to do anythnig,
-; as anything necessary is done explicitly by other Acorn-specific code.
+; SF: In the Acorn port, I've deliberately renamed before_dynmem_read and
+; after_dynmem_read so that any upstream changes which use these macros will
+; fail to build and force me to inspect them manually. The Commodore versions
+; don't modify any registers or flags (except I), but that's not trivially true
+; for the Acorn port.
+
+; SFTODO: It may be I can/should use these macros in some places instead of more
+; explicit paging using the acorn*bank* macros.
 ; SFTODO: MAY BE WORTH USING ZP (COPYING RAM_BANK_LIST ON STARTUP, AS IT "CAN'T" BE IN ZP) FOR THE BANKS IN THESE TWO MACROS, THEY *MIGHT* BE PERFORMANCE CRTICAL BUT EVEN IF THEY'RE NOT, THE REDUCED CODE SIZE (AND IMPROVED BRANCH RANGE AS A RESULT) IS PROBABLY WORTH IT
-!macro before_dynmem_read {
+
+!macro before_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    ; SF: The Commodore version of this macro preserves A and the flags, but
-    ; I've reviewed the code and it's fine in practice to corrupt them. Given
-    ; how often this is called (from both a size and space point of view) it
-    ; seems best to accept this small behaviour change.
     +acorn_page_in_bank_using_a ram_bank_list
 }
 }

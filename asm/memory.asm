@@ -307,7 +307,7 @@ copy_page
 	sty .copy + 5
 	sei
 	+set_memory_all_ram_unsafe
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 -   ldy #0
 .copy
 	lda $8000,y

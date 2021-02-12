@@ -49,7 +49,7 @@ z_ins_get_child
 	pla
 	tay
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifndef Z4PLUS {
 
 !ifdef TARGET_C128 {
@@ -113,7 +113,7 @@ z_ins_get_parent
 	lda z_operand_value_high_arr
 	jsr calculate_object_address
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifndef Z4PLUS {
 	ldy #4
 
@@ -225,7 +225,7 @@ z_ins_remove_obj_body
 	sta .zp_object + 1
 	
 	; get parent number
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef Z4PLUS {
 	ldy #6  ; parent
 
@@ -275,7 +275,7 @@ z_ins_remove_obj_body
 	jsr calculate_object_address
 
 	; get child number
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef Z4PLUS {
 	ldy #10  ; child
 
@@ -322,7 +322,7 @@ z_ins_remove_obj_body
 	; object is the child of parent
 	; set child of parent to object's sibling
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef Z4PLUS {
 	ldy #8  ; sibling
 
@@ -381,7 +381,7 @@ z_ins_remove_obj_body
 	sta .sibling_num
 	stx .sibling_num + 1
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 -
 	lda .sibling_num
 	ldx .sibling_num + 1
@@ -472,7 +472,7 @@ z_ins_remove_obj_body
 
 .remove_obj_done
 	; always set obj.parent and obj.sibling to 0
-	+before_dynmem_read ; SFTODO: I added this, but think it's correct/necessary
+	+before_dynmem_read_corrupt_a ; SFTODO: I added this, but think it's correct/necessary
 	lda #0
 !ifdef Z4PLUS {
 	ldy #6  ; parent
@@ -562,7 +562,7 @@ print_obj
 	ldy #8
 }
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	dey
 	lda #object_tree_ptr
@@ -590,7 +590,7 @@ z_ins_jin
 !ifndef Z4PLUS {
 	ldy #4  ; parent
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	sta $02aa
@@ -607,7 +607,7 @@ z_ins_jin
 } else {
 	ldy #6  ; parent
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
@@ -634,7 +634,7 @@ z_ins_test_attr
 	; test_attr object attribute ?(label)
 	jsr find_attr
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	stx object_temp
 	lda #object_tree_ptr
@@ -666,7 +666,7 @@ z_ins_set_attr
 .do_set_attr
 	ldy .attribute_index
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	sta $02aa
@@ -703,7 +703,7 @@ z_ins_clear_attr
 .do_clear_attr
 	ldy .attribute_index
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	sta $02aa
@@ -751,7 +751,7 @@ z_ins_insert_obj
 	; object.parent = destination
 	ldy #6 ; parent
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #.zp_object
 	sta write_word_c128_zp_1
@@ -802,7 +802,7 @@ z_ins_insert_obj
 
 } else {
 
-	+before_dynmem_read ; SFTODO: I added this but I think it's necessary/correct
+	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's necessary/correct
 !ifdef TARGET_C128 {
 	; object.parent = destination
 	lda #.zp_object
@@ -911,7 +911,7 @@ find_first_prop
 	ldy #8
 }
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	dey
 	lda #object_tree_ptr
@@ -983,7 +983,7 @@ z_ins_get_prop
 	tay
 	dey
 
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	dey
 	lda #default_properties_ptr

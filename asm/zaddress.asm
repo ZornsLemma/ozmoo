@@ -170,7 +170,7 @@ write_next_byte
 +
 }
 	sta .write_byte + 2
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	lda z_address_temp
 .write_byte
 	sta $8000 ; This address is modified above

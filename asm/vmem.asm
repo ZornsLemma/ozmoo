@@ -60,7 +60,7 @@ read_byte_at_z_address
 	bne .read_new_byte
 	; same 256 byte segment, just return
 .return_result
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	lda (mempointer),y
 	+after_dynmem_read_preserve_axy
 	rts
@@ -685,7 +685,7 @@ read_byte_at_z_address
 	cmp zp_pc_h
 	bne .read_new_byte
 	; same 256 byte segment, just return
-    ; SFTODO: I *HAVEN'T* REFAMILIARISED MYSELF FULLY WITH THE DIFFERENT SWR MODELS, BUT IS IT NOT POSSIBLE THAT AT LEAST IN THE SMALLDYN MODEL, WE *DON'T* NEED TO DO THIS PAGING OPERATION HERE? I THINK IT'S ACTUALLY NOT SO MUCH ABOUT BIGDYN VS SMALLDYN - IN ANY SWR BUILD, WE *MAY* BE READING NON-DYNMEM HERE (WHICH IS WHY WE DON'T USE before_dynmem_read). IT WOULD I BELEIVE BE *CORRECT* TO CHECK HIGH BYTE OF MEMPOINTER AND AVOID PAGING IF IT'S <$80, THE QUESTION IS WHETHER THAT'S A NET WIN. (WE WOULD SAVE *TWO* LOTS OF PAGING WHEN IT IS USEFUL, AT THE COST OF AN EXTRA CHECK EVERY TIME).
+    ; SFTODO: I *HAVEN'T* REFAMILIARISED MYSELF FULLY WITH THE DIFFERENT SWR MODELS, BUT IS IT NOT POSSIBLE THAT AT LEAST IN THE SMALLDYN MODEL, WE *DON'T* NEED TO DO THIS PAGING OPERATION HERE? I THINK IT'S ACTUALLY NOT SO MUCH ABOUT BIGDYN VS SMALLDYN - IN ANY SWR BUILD, WE *MAY* BE READING NON-DYNMEM HERE (WHICH IS WHY WE DON'T USE before_dynmem_read_corrupt_a). IT WOULD I BELEIVE BE *CORRECT* TO CHECK HIGH BYTE OF MEMPOINTER AND AVOID PAGING IF IT'S <$80, THE QUESTION IS WHETHER THAT'S A NET WIN. (WE WOULD SAVE *TWO* LOTS OF PAGING WHEN IT IS USEFUL, AT THE COST OF AN EXTRA CHECK EVERY TIME).
 !ifdef ACORN_SWR { ; SFTODO: SHOULD THIS BE AFTER THE (NEW IN 5.3) READ_AND_RETURN_VALUE LABEL?? I THINK THAT LABEL IS MERELY A NAMED LABEL WHERE THERE USED TO BE A "-" LABEL, FWIW
 !if 1 { ; SFTODO TEMP PROFILING
     lda mempointer + 1
@@ -699,9 +699,9 @@ SFTODO33
 !ifndef ACORN_SWR {
     ; We're *not* necessarily reading dynamic memory here - we may be, but we
     ; may be reading from a read-only VM page. We therefore control the sideways
-    ; RAM paging explicitly in this code; before_dynmem_read might incorrectly
+    ; RAM paging explicitly in this code; before_dynmem_read_corrupt_a might incorrectly
     ; page in the bank containing dynamic memory.
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 }
 	lda (mempointer),y
 !ifndef ACORN_SWR {
@@ -1224,7 +1224,7 @@ SFTODO33
 	ldy mempointer_y
 !ifndef ACORN_SWR {
     ; See comments on analogous code at .read_and_return_value.
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 }
 	lda (mempointer),y
 !ifndef ACORN_SWR {

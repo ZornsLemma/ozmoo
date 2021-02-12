@@ -580,7 +580,7 @@ read_operand
 	asl
 	tay
 	iny
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
     +lda_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
 	tax
 	dey
@@ -600,7 +600,7 @@ read_operand
 	asl ; This sets carry
 	tay
 	iny
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
 	tax
 	dey
@@ -654,8 +654,8 @@ z_set_variable_reference_to_value
 }
 	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
 	; SFTODO: BEFORE/AFTER DYNMEM MACROS ARE NOT USED HERE ATM
-	pha ; SFTODO: TO WORK AROUND MY +BEFORE_DYNMEM_READ CORRUPTING IT
-	+before_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	pha ; SFTODO: TO WORK AROUND MY +before_dynmem_read_corrupt_a CORRUPTING IT
+	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	pla
 !ifndef ACORN_SCREEN_HOLE {
 	ldy #0
@@ -753,7 +753,7 @@ z_get_variable_reference_and_value
 	; hole in dynamic memory; it just wastes a bit of memory on redundant code.
 z_get_referenced_value_simple
 	ldy #1
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	lda (zp_temp),y
 	tax
 	dey
@@ -784,7 +784,7 @@ z_get_referenced_value
 }
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	ldy #1
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y_corrupt_x zp_temp
 	tax
 	dey
@@ -799,7 +799,7 @@ z_get_referenced_value
 	cmp #>story_start
 	bcc z_get_referenced_value_simple
 	; SFTODO: IS IT STILL WORTH OPTIMISING THE REMAINING CASES? QUITE POSSIBLY IT IS...
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	; SFTODO: THIS CODE MIGHT BE USABLE (FACTORED OUT AS A MACRO) FOR GLOBAL VAR ACCESS TOO
 	lda zp_temp + 1
 !if 0 { ; SFTODO: ON BENCHMARK 2/3 OF CALLS TO THIS CODE ARE FOR STACK VARS
@@ -899,7 +899,7 @@ z_get_low_global_variable_value
 } else {
 	; Not TARGET_C128
 	iny
-	+before_dynmem_read
+	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	tax
 	dey
@@ -958,7 +958,7 @@ HANG	bcs HANG
 	bcs .write_high_global_var
 	asl
 	tay
-	+before_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	iny
@@ -970,7 +970,7 @@ HANG	bcs HANG
 ;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will remove top bit
 	asl
 	tay
-	+before_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	iny
