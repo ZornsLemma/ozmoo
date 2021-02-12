@@ -240,6 +240,55 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
     }
 }
 
+lda_dynmem_ind_y_slow_object_tree_ptr_sub
+	; SFTODO: This (all of them) will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
+	+lda_dynmem_ind_y object_tree_ptr
+	rts
+
+lda_dynmem_ind_y_slow_zp_mempos_sub
+	+lda_dynmem_ind_y zp_mempos
+	rts
+
+lda_dynmem_ind_y_slow_string_array_sub
+	+lda_dynmem_ind_y string_array
+	rts
+
+lda_dynmem_ind_y_slow_parse_array_sub
+	+lda_dynmem_ind_y parse_array
+	rts
+
+lda_dynmem_ind_y_slow_default_properties_ptr_sub
+	+lda_dynmem_ind_y default_properties_ptr
+	rts
+
+lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
+	+lda_dynmem_ind_y z_low_global_vars_ptr
+	rts
+
+sta_dynmem_ind_y_slow_object_tree_ptr_sub
+	+sta_dynmem_ind_y object_tree_ptr
+	rts
+
+sta_dynmem_ind_y_slow_zp_mempos_sub
+	+sta_dynmem_ind_y zp_mempos
+	rts
+
+sta_dynmem_ind_y_slow_string_array_sub
+	+sta_dynmem_ind_y string_array
+	rts
+
+sta_dynmem_ind_y_slow_parse_array_sub
+	+sta_dynmem_ind_y parse_array
+	rts
+
+sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
+	+sta_dynmem_ind_y z_low_global_vars_ptr
+	rts
+
+sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
+	+sta_dynmem_ind_y z_high_global_vars_ptr
+	rts
+
 } else { ; !ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
@@ -1996,63 +2045,6 @@ screen_copy
     bne .screen_copy_loop
     rts
 } ; End of !ifdef ACORN_NO_SHADOW
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Screen hole support subroutines
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-
-lda_dynmem_ind_y_slow_object_tree_ptr_sub
-	; SFTODO: This (all of them) will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
-	+lda_dynmem_ind_y object_tree_ptr
-	rts
-
-lda_dynmem_ind_y_slow_zp_mempos_sub
-	+lda_dynmem_ind_y zp_mempos
-	rts
-
-lda_dynmem_ind_y_slow_string_array_sub
-	+lda_dynmem_ind_y string_array
-	rts
-
-lda_dynmem_ind_y_slow_parse_array_sub
-	+lda_dynmem_ind_y parse_array
-	rts
-
-lda_dynmem_ind_y_slow_default_properties_ptr_sub
-	+lda_dynmem_ind_y default_properties_ptr
-	rts
-
-lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+lda_dynmem_ind_y z_low_global_vars_ptr
-	rts
-
-sta_dynmem_ind_y_slow_object_tree_ptr_sub
-	+sta_dynmem_ind_y object_tree_ptr
-	rts
-
-sta_dynmem_ind_y_slow_zp_mempos_sub
-	+sta_dynmem_ind_y zp_mempos
-	rts
-
-sta_dynmem_ind_y_slow_string_array_sub
-	+sta_dynmem_ind_y string_array
-	rts
-
-sta_dynmem_ind_y_slow_parse_array_sub
-	+sta_dynmem_ind_y parse_array
-	rts
-
-sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+sta_dynmem_ind_y z_low_global_vars_ptr
-	rts
-
-sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
-	+sta_dynmem_ind_y z_high_global_vars_ptr
-	rts
-
-}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Miscellaneous utility routines
