@@ -209,7 +209,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 .done
 }
 
-; Dynamic memory reads which aren't performance critical use this macro, which
+; Dynamic memory writes which aren't performance critical use this macro, which
 ; calls a subroutine instead of inlining the code. We need to call a different
 ; version of the subroutine for each 16-bit zero page address.
 !macro sta_dynmem_ind_y_slow zp {
@@ -292,8 +292,8 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO TEMP
 ; SF: In the Acorn port, I've deliberately renamed before_dynmem_read and
 ; after_dynmem_read so that any upstream changes which use these macros will
 ; fail to build and force me to inspect them manually. The Commodore versions
-; don't modify any registers or flags (except I), but that's not trivially true
-; for the Acorn port.
+; don't modify any registers or flags (except I), but that would cost time
+; and space on the Acorn port.
 
 ; SFTODO: It may be I can/should use these macros in some places instead of more
 ; explicit paging using the acorn*bank* macros.
