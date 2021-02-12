@@ -259,7 +259,7 @@ z_ins_remove_obj_body
 
 	sta .parent_num + 1
 }
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 
 	; is there a parent?
 	lda .parent_num
@@ -309,7 +309,7 @@ z_ins_remove_obj_body
 
 	sta .child_num + 1
 }
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 
 	; child_num == object_num?
 	lda .child_num
@@ -371,7 +371,7 @@ z_ins_remove_obj_body
 }
 
 }
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 
 	jmp .remove_obj_done
 .not_child
@@ -468,7 +468,7 @@ z_ins_remove_obj_body
 
 
 }
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 
 .remove_obj_done
 	; always set obj.parent and obj.sibling to 0
@@ -516,7 +516,7 @@ z_ins_remove_obj_body
 }
 
 }
-	+after_dynmem_read ; SFTODO: I added this, but think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this, but think it's correct/necessary
 	rts
 
 find_attr
@@ -623,7 +623,7 @@ z_ins_jin
 	cmp z_operand_value_low_arr + 1
 }
 	php ; SFTODO: NECESSARY BUT DON'T LIKE DOING IT LIKE THIS - NEEDS TO BE INSIDE MACRO SO BUILDS WHICH HAVE NULL MACRO DON'T WASTE THIS PHP/PLP
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 	plp
 
 	bne .branch_false
@@ -688,7 +688,7 @@ z_ins_set_attr
 	+sta_dynmem_ind_y_slow object_tree_ptr
 }
 +
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 	rts
 
 z_ins_clear_attr
@@ -728,7 +728,7 @@ z_ins_clear_attr
 	+sta_dynmem_ind_y_slow object_tree_ptr
 }
 +
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 	rts
 
 z_ins_insert_obj
@@ -796,7 +796,7 @@ z_ins_insert_obj
 	iny
 	lda object_num + 1
 	+sta_dynmem_ind_y_slow .zp_dest
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 	rts
 }
 
@@ -843,7 +843,7 @@ z_ins_insert_obj
 	ldy #6 ; child
 	lda object_num + 1
 	+sta_dynmem_ind_y_slow .zp_dest
-	+after_dynmem_read
+	+after_dynmem_read_corrupt_a
 	rts
 }
 

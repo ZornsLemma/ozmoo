@@ -311,6 +311,7 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 
 !zone {
 
+; SFTODO: Should I use *different* (similar) names for the Acorn macros, so I don't accidentally merge in an upstream use of the Commodore-style ones and break thigns? eg change all before_dynmem_read to before_dynmem_read_corrupt_a etc
 ; SFTODO: These macros may be useful on Acorn and different versions may want
 ; different definitions, but for now I don't think I want them to do anythnig,
 ; as anything necessary is done explicitly by other Acorn-specific code.
@@ -324,10 +325,18 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
     +acorn_page_in_bank_using_a ram_bank_list
 }
 }
+
+!macro after_dynmem_read_corrupt_a {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
+}
+}
+
+; SFTODO: IT'S POSSIBLE SOME CALLERS OF THIS NON-A-CORRUPTING VERSION COULD USE AN X OR Y CORRUPTING VERSION
 !macro after_dynmem_read {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    pha ; SFTODO TEMP PLAY IT SAFE - QUICK CODE REVIEW SUGGESTS *SOME* PLACES DEFINITELY NEED A PRESERVING, BUT OTHERS DON'T - WE COULD ADD A _CORRUPT_[AXY] VARIANT WHICH AVOIDS DOING THE PHA/PLA, ALTHOUGH IT'S PROBABLY ONLY WORTH IT IF THIS MAKES A DIFFERENCE TO PERFORMANCE, AND MAYBE THEN ONLY ON "HOT" PLACES CALLING THIS MACRO, NOT ALL OF THEM
-    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
+    pha
+    +after_dynmem_read_corrupt_a
     pla
 }
 }

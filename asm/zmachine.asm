@@ -663,7 +663,7 @@ z_set_variable_reference_to_value
 	iny
 	txa
     +sta_dynmem_ind_y_corrupt_x zp_temp
-	+after_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } else {
 	; SFTODO: BE GOOD TO ENSURE ALL THE DIFFERENT CASES HERE DO GET TESTED
@@ -679,7 +679,7 @@ z_set_variable_reference_to_value
 	txa
 	ldy #1
 	sta (zp_temp),y
-	+after_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .zp_y_not_ok
 	tay
@@ -695,14 +695,14 @@ z_set_variable_reference_to_value
 	iny
 	txa
 	sta ($90),y
-	+after_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .zp_y_maybe_no_longer_ok
 	; SFTODO: WE COULD CHECK ZP_TEMP+1 BUT FOR NOW LET'S JUST FALL BACK ON THIS DEFINITELY-OK IF SLOWER THAN NEC CODE
 	ldy #1
 	txa
 	+sta_dynmem_ind_y_corrupt_x zp_temp
-	+after_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 }
 }
@@ -964,7 +964,7 @@ HANG	bcs HANG
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
-	+after_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .write_high_global_var
 ;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will remove top bit
@@ -976,7 +976,7 @@ HANG	bcs HANG
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
-	+after_dynmem_read ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } ; Not SLOW
 } ; Zone
@@ -1297,6 +1297,7 @@ z_ins_jg
 } else {
     ; Unfortunately the Electron's more verbose ROM paging code means
     ; make_branch_true is out of range of a branch instruction.
+	; SFTODO: CHECK THIS STILL TRUE IN FINAL-ISH 5.X PORT
 +   bpl make_branch_false
     jmp make_branch_true
 }
