@@ -62,7 +62,7 @@ read_byte_at_z_address
 .return_result
 	+before_dynmem_read_corrupt_a
 	lda (mempointer),y
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 	rts
 .read_new_byte
 !ifndef TARGET_PLUS4 { ; SFTODO: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANCE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
@@ -705,7 +705,7 @@ SFTODO33
 }
 	lda (mempointer),y
 !ifndef ACORN_SWR {
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 } else {
     +acorn_swr_page_in_default_bank_using_y
 }
@@ -1228,7 +1228,7 @@ SFTODO33
 }
 	lda (mempointer),y
 !ifndef ACORN_SWR {
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 } else {
     +acorn_swr_page_in_default_bank_using_y
 }

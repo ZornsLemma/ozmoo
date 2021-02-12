@@ -174,7 +174,10 @@ write_next_byte
 	lda z_address_temp
 .write_byte
 	sta $8000 ; This address is modified above
-	+after_dynmem_read_preserve_axy ; SFTODO: PROB CAN'T USE _corrupt_a VARIANT BUT THINK
+	; SFTODO: Having reviewed the code, I am fairly sure we could use
+	; after_dynmem_read_corrupt_a here, but unless profiling shows a reasonable
+	; gain it's probably as well not to risk it.
+	+after_dynmem_read_preserve_axy
 }
 
 	inc z_address + 2

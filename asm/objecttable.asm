@@ -98,7 +98,7 @@ z_ins_get_child
 }
 }
 }
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 
 	jsr z_store_result
 	pla ; Value is zero if object is zero, non-zero if object is non-zero
@@ -144,7 +144,7 @@ z_ins_get_parent
 }
 
 }
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 	jmp z_store_result
 
 +make_acorn_screen_hole
@@ -574,7 +574,7 @@ print_obj
 	dey
 	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 
 	jsr set_z_address
 	jsr read_next_byte ; length of object short name
@@ -599,7 +599,7 @@ z_ins_jin
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 
 	cmp z_operand_value_low_arr + 1
 	bne .branch_false
@@ -645,7 +645,7 @@ z_ins_test_attr
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 
 	and .bitmask,x
 	beq .branch_false
@@ -922,7 +922,7 @@ find_first_prop
 	dey
 	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_corrupt_y
 
 	pha ; a is destroyed by set_z_address
 	jsr set_z_address
@@ -994,7 +994,7 @@ z_ins_get_prop
 	dey
 	+lda_dynmem_ind_y_slow default_properties_ptr
 }
-	+after_dynmem_read_preserve_axy	
+	+after_dynmem_read_corrupt_y
 	jmp .return_property_result
 .property_found
 	lda .property_length
