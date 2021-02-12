@@ -321,7 +321,7 @@ dumptovice
 }
 	bne .dont_get_4_extra_op_types
 .get_4_extra_op_types
-	+read_next_byte_at_z_pc_unsafe_middle
+	+read_next_byte_at_z_pc
 	tax
 	dec z_temp + 5 ; Signal to read up to four more operands, and first four operand types are in x
 .dont_get_4_extra_op_types

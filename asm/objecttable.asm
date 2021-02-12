@@ -488,13 +488,13 @@ z_ins_remove_obj_body
 	iny ; sibling (8)
 	jsr write_word_to_bank_1_c128
 } else {
-	sta_dynmem_ind_y_slow .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	iny
-	sta_dynmem_ind_y_slow .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	iny ; sibling (8)
-	sta_dynmem_ind_y_slow .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 	iny
-	sta_dynmem_ind_y_slow .zp_object
+	+sta_dynmem_ind_y_slow .zp_object
 }
 
 
