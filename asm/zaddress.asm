@@ -155,14 +155,13 @@ write_next_byte
 	tax
 	lda z_address_temp
 } else {
-; SFTODO: NOTE THIS DOESN'T USE THE BEFORE/AFTER DYNMEM MACROS, MAYBE I SHOULD ADD THEM OR SOME ACORN EQUIVALENT - DOES THE CALLER DO THEM? OR ARE THEY NOT NEC AS WE HAVE C128 BRANCH ABOVE?
 	; not TARGET_C128
 	lda z_address + 2
 	sta .write_byte + 1
 	lda z_address + 1
 	clc
 	adc #>story_start
-!ifdef ACORN_SCREEN_HOLE {
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	cmp #ACORN_SCREEN_HOLE_START_PAGE
 	bcc +
 	clc
@@ -170,14 +169,14 @@ write_next_byte
 +
 }
 	sta .write_byte + 2
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a ; SF: I added this
 	lda z_address_temp
 .write_byte
 	sta $8000 ; This address is modified above
 	; SFTODO: Having reviewed the code, I am fairly sure we could use
 	; after_dynmem_read_corrupt_a here, but unless profiling shows a reasonable
 	; gain it's probably as well not to risk it.
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_preserve_axy ; SF: I added this
 }
 
 	inc z_address + 2
