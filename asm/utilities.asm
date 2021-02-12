@@ -289,32 +289,68 @@ parse_array_write_byte
 
 } else { ; Not COMPLEX_MEMORY
 
-; SFTODO: I AM NOT HAPPY AT USING BEFORE/AFTER DYMEM MACROS IN HERE, BUT I AM DOING IT FOR NOW TO SEE IF IT *WORKS* BEFORE WORRYING ABOUT PUTTING THESE CALLS IN AROUND OUR CALLERS
-; SFTODO: THESE ARE GETTING QUITE BIG (IN THE BIGDYN CASE, OB NOT THE CASE WHERE THEY JUST BOIL DOWN TO LDA (ZP),Y) AND IF THEY'RE NOT PERFORMANCE CRITICAL MAYBE THEY SHOULD BE MADE INTO SUBROUTINES AS IN COMPLEX_MEMORY CASE
-; SFTODO: I *PROB* CAN'T USE after_dynmem_read_corrupt_a HERE BUT THINK ABOUT IT
-!macro macro_string_array_read_byte {
-	+before_dynmem_read_corrupt_a ; SFTODO
+!ifdef ACORN_SWR_BIG_DYNMEM {
+
+; SF: These aren't performance critical and they're quite large so it seems
+; better to put them in subroutines to avoid bloating the code. Similarly, it
+; doesn't seem worth diverging from upstream in many places to add the
+; {before,after}_dynmem_read macro calls around these macro invocations.
+
+string_array_read_byte
+	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y_slow string_array
-	+after_dynmem_read_preserve_axy ; SFTODO
-}
-!macro macro_string_array_write_byte {
-	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
-	+before_dynmem_read_corrupt_a ; SFTODO
+	+after_dynmem_read_preserve_axy
+	rts
+
+string_array_write_byte
+	pha
+	+before_dynmem_read_corrupt_a
 	pla
 	+sta_dynmem_ind_y_slow string_array
-	+after_dynmem_read_preserve_axy ; SFTODO
-}
-!macro macro_parse_array_read_byte {
-	+before_dynmem_read_corrupt_a ; SFTODO
+	+after_dynmem_read_preserve_axy
+	rts
+
+parse_array_read_byte
+	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y_slow parse_array
-	+after_dynmem_read_preserve_axy ; SFTODO
-}
-!macro macro_parse_array_write_byte {
-	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
-	+before_dynmem_read_corrupt_a ; SFTODO
+	+after_dynmem_read_preserve_axy
+	rts
+
+parse_array_write_byte
+	pha
+	+before_dynmem_read_corrupt_a
 	pla
 	+sta_dynmem_ind_y_slow parse_array
-	+after_dynmem_read_preserve_axy ; SFTODO
+	+after_dynmem_read_preserve_axy
+	rts
+
+!macro macro_string_array_read_byte {
+	jsr string_array_read_byte
+}
+!macro macro_string_array_write_byte {
+	jsr string_array_write_byte
+}
+!macro macro_parse_array_read_byte {
+	jsr parse_array_read_byte
+}
+!macro macro_parse_array_write_byte {
+	jsr parse_array_write_byte
+}
+
+} else { ; Not ACORN_SWR_BIG_DYNMEM
+!macro macro_string_array_read_byte {
+	lda (string_array),y
+}
+!macro macro_string_array_write_byte {
+	sta (string_array),y
+}
+!macro macro_parse_array_read_byte {
+	lda (parse_array),y
+}
+!macro macro_parse_array_write_byte {
+	sta (parse_array),y
+}
+
 }
 
 }
