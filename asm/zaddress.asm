@@ -166,7 +166,7 @@ write_next_byte
 	cmp #ACORN_SCREEN_HOLE_START_PAGE
 	bcc +
 	clc
-	adc #ACORN_SCREEN_HOLE_PAGES
+	adc #ACORN_SCREEN_HOLE_PAGES ; SFTODO: MIGHT AS WELL DO -1 TRICK TO AVOID CLC
 +
 }
 	sta .write_byte + 2

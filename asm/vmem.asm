@@ -733,7 +733,7 @@ SFTODO33
     cmp #ACORN_SCREEN_HOLE_START_PAGE
     bcc +
     clc
-    adc #ACORN_SCREEN_HOLE_PAGES
+    adc #ACORN_SCREEN_HOLE_PAGES ; SFTODO: MIGHT AS WELL DO THE -1 TRICK TO AVOID THE CLC
 +   sta mempointer + 1
 } else {
 	sta mempointer + 1
