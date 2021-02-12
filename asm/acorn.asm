@@ -317,10 +317,11 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 ; SFTODO: MAY BE WORTH USING ZP (COPYING RAM_BANK_LIST ON STARTUP, AS IT "CAN'T" BE IN ZP) FOR THE BANKS IN THESE TWO MACROS, THEY *MIGHT* BE PERFORMANCE CRTICAL BUT EVEN IF THEY'RE NOT, THE REDUCED CODE SIZE (AND IMPROVED BRANCH RANGE AS A RESULT) IS PROBABLY WORTH IT
 !macro before_dynmem_read {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-; SFTODO: Commodore version does preserve A, but a code review suggests this isn't important
-    ;pha ; SFTODO TEMP PLAY IT SAFE
+    ; SF: The Commodore version of this macro preserves A and the flags, but
+    ; I've reviewed the code and it's fine in practice to corrupt them. Given
+    ; how often this is called (from both a size and space point of view) it
+    ; seems best to accept this small behaviour change.
     +acorn_page_in_bank_using_a ram_bank_list
-    ;pla
 }
 }
 !macro after_dynmem_read {

@@ -296,7 +296,7 @@ parse_array_write_byte
 	+after_dynmem_read ; SFTODO
 }
 !macro macro_string_array_write_byte {
-	pha
+	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
 	+before_dynmem_read ; SFTODO
 	pla
 	+sta_dynmem_ind_y_slow string_array
@@ -308,7 +308,7 @@ parse_array_write_byte
 	+after_dynmem_read ; SFTODO
 }
 !macro macro_parse_array_write_byte {
-	pha
+	pha ; SFTODO: PROB UNAVOIDABLE BUT THINK
 	+before_dynmem_read ; SFTODO
 	pla
 	+sta_dynmem_ind_y_slow parse_array
