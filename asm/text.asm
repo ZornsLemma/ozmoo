@@ -933,6 +933,8 @@ find_word_in_dictionary
 	rts
 
 !ifdef Z5PLUS {
+.found_dict_entry_SFTODO_HACK jmp .found_dict_entry
+.no_entry_found_SFTODO_HACK jmp .no_entry_found
 .find_word_in_unordered_dictionary
 ; In the end, jump to either .found_dict_entry or .no_entry_found
 	ldx dict_entries
@@ -955,7 +957,7 @@ find_word_in_dictionary
 	iny
 	cpy #ZCHAR_BYTES_PER_ENTRY
 	bne .unordered_loop_check_entry
-	beq .found_dict_entry ; Always branch
+	beq .found_dict_entry_SFTODO_HACK ; Always branch
 	
 	
 .unordered_not_a_match	
@@ -977,7 +979,7 @@ find_word_in_dictionary
 	sta .dictionary_address
 	bcc .unordered_check_next_word ; Always branch
 
-+	bcs .no_entry_found ; Always branch
++	bcs .no_entry_found_SFTODO_HACK ; Always branch
 } ; End of !ifdef Z5PLUS
 
 !ifndef ACORN {
@@ -1416,6 +1418,7 @@ read_text
 	+macro_string_array_write_byte
 ;	sta (string_array),y
 	jmp .read_text_done ; a should hold 0 to return 0 here
+.readkey_SFTODO_HACK jmp .readkey
 	; check terminating characters
 +   
 } ; Z4PLUS
@@ -1432,7 +1435,7 @@ read_text
 	; allow delete if anything in the buffer
 	ldy .read_text_column
 	cpy #2
-	bcc .readkey
+	bcc .readkey_SFTODO_HACK
 	dec .read_text_column
 !ifndef ACORN {
 	jsr turn_off_cursor

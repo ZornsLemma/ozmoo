@@ -289,17 +289,30 @@ parse_array_write_byte
 
 } else { ; Not COMPLEX_MEMORY
 
+; SFTODO: I AM NOT HAPPY AT USING BEFORE/AFTER DYMEM MACROS IN HERE, BUT I AM DOING IT FOR NOW TO SEE IF IT *WORKS* BEFORE WORRYING ABOUT PUTTING THESE CALLS IN AROUND OUR CALLERS
 !macro macro_string_array_read_byte {
+	+before_dynmem_read ; SFTODO
 	+lda_dynmem_ind_y_slow string_array
+	+after_dynmem_read ; SFTODO
 }
 !macro macro_string_array_write_byte {
+	pha
+	+before_dynmem_read ; SFTODO
+	pla
 	+sta_dynmem_ind_y_slow string_array
+	+after_dynmem_read ; SFTODO
 }
 !macro macro_parse_array_read_byte {
+	+before_dynmem_read ; SFTODO
 	+lda_dynmem_ind_y_slow parse_array
+	+after_dynmem_read ; SFTODO
 }
 !macro macro_parse_array_write_byte {
+	pha
+	+before_dynmem_read ; SFTODO
+	pla
 	+sta_dynmem_ind_y_slow parse_array
+	+after_dynmem_read ; SFTODO
 }
 
 }

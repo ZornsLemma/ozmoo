@@ -258,27 +258,47 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 
 } else { ; !ACORN_SWR_BIGDYNMEM_AND_SCREEN_HOLE
 
+!if 1 { ; SFTODO!
+!macro debug_dynmem {
+    lda romsel_copy
+    cmp ram_bank_list
+-   bne -
+}
+}
+
 !macro lda_dynmem_ind_y zp {
+    +debug_dynmem
     lda (zp),y
 }
 
 !macro lda_dynmem_ind_y_corrupt_x zp {
+    +debug_dynmem
     lda (zp),y
 }
 
 !macro lda_dynmem_ind_y_slow zp {
+    +debug_dynmem
     lda (zp),y
 }
 
 !macro sta_dynmem_ind_y zp {
+    pha
+    +debug_dynmem
+    pla
     sta (zp),y
 }
 
 !macro sta_dynmem_ind_y_corrupt_x zp {
+    pha
+    +debug_dynmem
+    pla
     sta (zp),y
 }
 
 !macro sta_dynmem_ind_y_slow zp {
+    pha
+    +debug_dynmem
+    pla
     sta (zp),y
 }
 
