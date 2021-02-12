@@ -581,7 +581,7 @@ read_operand
 	tay
 	iny
 	+before_dynmem_read_corrupt_a
-    +lda_dynmem_ind_y_corrupt_x z_low_global_vars_ptr
+    +lda_dynmem_ind_y z_low_global_vars_ptr
 	tax
 	dey
     +lda_dynmem_ind_y z_low_global_vars_ptr
@@ -601,7 +601,7 @@ read_operand
 	tay
 	iny
 	+before_dynmem_read_corrupt_a
-	+lda_dynmem_ind_y_corrupt_x z_high_global_vars_ptr
+	+lda_dynmem_ind_y z_high_global_vars_ptr
 	tax
 	dey
 	+lda_dynmem_ind_y z_high_global_vars_ptr
@@ -785,7 +785,7 @@ z_get_referenced_value
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	ldy #1
 	+before_dynmem_read_corrupt_a
-	+lda_dynmem_ind_y_corrupt_x zp_temp
+	+lda_dynmem_ind_y zp_temp
 	tax
 	dey
 	+lda_dynmem_ind_y zp_temp

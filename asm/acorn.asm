@@ -124,7 +124,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 ; SF: These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
 ; macros will also alter N and Z. In practice this isn't a problem.
 
-!macro lda_dynmem_ind_y_corrupt_x zp { ; SFTODO: DOESN'T CORRUPT X, IF THIS CONTINUES TO HOLD CHANGE THE NAME
+!macro lda_dynmem_ind_y zp { ; SFTODO: DOESN'T CORRUPT X, IF THIS CONTINUES TO HOLD CHANGE THE NAME
     lda zp + 1
     cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
     bcc .zp_y_ok
@@ -178,15 +178,6 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
             }
         }
     }
-}
-
-; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value
-!macro lda_dynmem_ind_y zp {
-    ;stx $90 ; SFTODO TEMP ALLOCATION
-    +lda_dynmem_ind_y_corrupt_x zp
-    ;php ; SFTODO: NECESSARY? COULD REVIEW CALLERS TO SEE IF WE CAN DO AWAY WITH PHP/PLP, BUT LET'S PLAY IT SAFE FOR NOW
-    ;ldx $90
-    ;plp
 }
 
 ; SFTODO: DOES THIS NEED TO PRESERVE FLAGS?
@@ -279,11 +270,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO TEMP
 }
 
 !macro lda_dynmem_ind_y zp {
-    +debug_dynmem
-    lda (zp),y
-}
-
-!macro lda_dynmem_ind_y_corrupt_x zp {
     +debug_dynmem
     lda (zp),y
 }
