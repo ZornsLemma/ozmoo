@@ -295,8 +295,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO TEMP
 ; don't modify any registers or flags (except I), but that would cost time
 ; and space on the Acorn port.
 
-; SFTODO: It may be I can/should use these macros in some places instead of more
-; explicit paging using the acorn*bank* macros.
 ; SFTODO: MAY BE WORTH USING ZP (COPYING RAM_BANK_LIST ON STARTUP, AS IT "CAN'T" BE IN ZP) FOR THE BANKS IN THESE TWO MACROS, THEY *MIGHT* BE PERFORMANCE CRTICAL BUT EVEN IF THEY'RE NOT, THE REDUCED CODE SIZE (AND IMPROVED BRANCH RANGE AS A RESULT) IS PROBABLY WORTH IT
 
 !macro before_dynmem_read_corrupt_a {
