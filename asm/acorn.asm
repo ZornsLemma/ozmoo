@@ -314,6 +314,7 @@ SFTODOHOLEPAGES = ACORN_SCREEN_HOLE_PAGES ; SFTODO TEMP
 ; SFTODO: These macros may be useful on Acorn and different versions may want
 ; different definitions, but for now I don't think I want them to do anythnig,
 ; as anything necessary is done explicitly by other Acorn-specific code.
+; SFTODO: MAY BE WORTH USING ZP (COPYING RAM_BANK_LIST ON STARTUP, AS IT "CAN'T" BE IN ZP) FOR THE BANKS IN THESE TWO MACROS, THEY *MIGHT* BE PERFORMANCE CRTICAL BUT EVEN IF THEY'RE NOT, THE REDUCED CODE SIZE (AND IMPROVED BRANCH RANGE AS A RESULT) IS PROBABLY WORTH IT
 !macro before_dynmem_read {
 !ifdef ACORN_SWR_BIG_DYNMEM {
 ; SFTODO: Commodore version does preserve A, but a code review suggests this isn't important
