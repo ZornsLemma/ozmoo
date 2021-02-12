@@ -588,10 +588,12 @@ read_operand
 	+after_dynmem_read
 }
 !ifndef ACORN_SWR_BIG_DYNMEM {
-	clc ; SFTODO TEMP HACK TO PLAY IT SAFE
+!if 1 { ; SFTODO: MAKE THIS CONDITIONAL-BUT_OFF-NORMALY
+-	bcs -
+}
 	bcc .store_operand ; Always branch
 } else {
-    jmp .store_operand
+    jmp .store_operand ; SFTODO: carry not guaranteed to be clear, and it's probably too far for bcc anyway
 }
 .read_high_global_var
 	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
@@ -605,10 +607,12 @@ read_operand
 	+lda_dynmem_ind_y z_high_global_vars_ptr
 	+after_dynmem_read
 !ifndef ACORN_SWR_BIG_DYNMEM {
-	sec ; SFTODO TEMP HACK TO PLAY IT SAFE
+!if 1 { ; SFTODO: MAKE THIS CONDITIONAL-BUT_OFF-NORMALY
+-	bcc -
+}
 	bcs .store_operand_SFTODO_HACK ; Always branch
 } else {
-    jmp .store_operand
+    jmp .store_operand ; SFTODO: carry not guaranteed to be set, and it's (probably) too far for bcs anyway
 }
 .store_operand_SFTODO_HACK jmp .store_operand
 } ; end COMPLEX_MEMORY
@@ -865,7 +869,14 @@ SFTODOTEMP
 	jsr fatalerror
 }
 
-; SFTODO: IS THIS ONLY USED ON Z3 (if !SLOW)? IF SO, CAN WE OMIT IT ON Z4+ BUILDS?
+!ifdef Z3 {
+	Z3_OR_SLOW = 1
+} else {
+	!ifdef SLOW {
+		Z3_OR_SLOW = 1
+	}
+}
+!ifdef Z3_OR_SLOW { ; SFTODO: I ADDED THIS, I THINK IT'S RIGHT, IF SO UPSTREAM IT
 ; z_get_variable_value
 z_get_low_global_variable_value
 	; Read global var 0-111
@@ -894,8 +905,10 @@ z_get_low_global_variable_value
 	dey
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	+after_dynmem_read
-	rts ; Note that caller may assume that carry is clear on return! SFTODO: I SUSPECT I'M BREAKING THIS AND JUST GETTING AWAY WITH IT BY CHANCE - BUT MAYBE CHECK AND SEE IF CALLERS ACTUALLY ARE ASSUMING THIS
+	; SFTODO: Permanent comment if true - caller *doesn't* assume carry clear if ACORN_SWR_BIG_DYNMEM, so we're OK
+	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not TARGET_C128
+}
 
 
 ; Used by z_set_variable
