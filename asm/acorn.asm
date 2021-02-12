@@ -1540,6 +1540,10 @@ SFTODOLABEL4
     ; from looking nicer, this might have a useful gameplay function as entering
     ; BASIC could cause text to scroll which the user hasn't read yet, whereas
     ; our "[Press SPACE]" prompt would be done under control of Ozmoo's paging.
+    ; SFTODO: At least once, in HHGTTG SG, returning to BASIC when dead after
+    ; the house being demolished gave me the BASIC prompt at the top left of an
+    ; un-cleared screen when I chose QUIT. Is this a bug? Or at least an
+    ; unfortunate glitch I should do something to try to avoid.
 !ifdef ACORN_NO_SHADOW {
     jsr undo_mode_7_3c00
 }
