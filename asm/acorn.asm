@@ -117,9 +117,13 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 
 ; SFTODO: WORTH NOTING THAT ACTUALLY THE SCREEN HOLE IS ONLY RELEVANT FOR BIGDYN - FOR WHATEVER MACHINE YOU'RE BUILDING FOR, IF SMALLEST SCREEN MODE AND MAX SUPPORTED PAGE DOESN'T ALLOW DYNMEM TO FIT IN MAIN RAM, IT'S NOT A SMALLMEM SITUATION. ALTHOUGH EVEN IN A SMALLDYN BUILD, WE MIGHT STILL WANT TO SUPPORT SCREEN HOLE SO READ-ONLY VMEM CAN WRAP ROUND IT - SO SMALLDYN BUILDS *WOULD* PROB NEED TO CARE ABOUT SCREEN HOLE, *BUT* CODE ACCESSING DYNMEM ITSELF AS OPPOSEd TO GENERIC VMEM CODE WOULD NOT NEED TO WORRY ABOUT IT
 
-; SFTODO: MIGHT BE WORTH SUPPORTING A DEBUG BUILD WHERE THESE MACROS HANG IF &F4 DOESN'T CONTAIN THE FIRST (DYNMEM) RAM BANK - THAT WOULD HELP CATCH CODE WHICH ISN'T CORRECTLY BRACKETED BY BEFORE/after_dynmem_read_preserve_axy
+; We don't support DEBUG_BIG_DYNMEM here; these macros are already quite bloated
+; and it would probably cause branch out of range errors. We should catch any
+; bugs in this area using the non-screen hole version of the code.
 
-; SFTODO: THIS MAY NEED TO PRESERVE CARRY, SEE COMMENT IN z_get_low_global_variable_value - IF WE NEED TO WORRY ABOUT THIS, IT MAY BE ENOUGH TO ALWAYS CLEAR CARRY RATHER THAN PRESERVE IT
+; SF: These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
+; macros will also alter N and Z. In practice this isn't a problem.
+
 !macro lda_dynmem_ind_y_corrupt_x zp { ; SFTODO: DOESN'T CORRUPT X, IF THIS CONTINUES TO HOLD CHANGE THE NAME
     lda zp + 1
     cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
@@ -147,7 +151,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 
 ; Dynamic memory reads which aren't performance critical use this macro, which
 ; calls a subroutine instead of inlining the code. We need to call a different
-; version of the subroutine for each 16-bit zero page address.
+; version of the subroutine for each zero page address.
 !macro lda_dynmem_ind_y_slow zp {
     !if zp = object_tree_ptr {
         jsr lda_dynmem_ind_y_slow_object_tree_ptr_sub
@@ -258,8 +262,12 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 } else { ; !ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
+
+; Debugging macro to check that the SWR bank containing the upper part of dynmem
+; is paged in when it should be.
+DEBUG_BIG_DYNMEM = 1 ; SFTODO TEMP
 !macro debug_dynmem {
-!if 1 { ; SFTODO!
+!ifdef DEBUG_BIG_DYNMEM { ; SFTODO!
     lda romsel_copy
     cmp ram_bank_list
 -   bne -
