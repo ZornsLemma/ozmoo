@@ -65,7 +65,7 @@ read_byte_at_z_address
 	+after_dynmem_read
 	rts
 .read_new_byte
-!ifndef TARGET_PLUS4 {
+!ifndef TARGET_PLUS4 { ; SFTODO: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANCE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
 	sty mempointer_y
 }
 	txa
@@ -685,15 +685,22 @@ read_byte_at_z_address
 	cmp zp_pc_h
 	bne .read_new_byte
 	; same 256 byte segment, just return
-    ; SFTODO: I *HAVEN'T* REFAMILIARISED MYSELF FULLY WITH THE DIFFERENT SWR MODELS, BUT IS IT NOT POSSIBLE THAT AT LEAST IN THE SMALLDYN MODEL, WE *DON'T* NEED TO DO THIS PAGING OPERATION HERE?
+    ; SFTODO: I *HAVEN'T* REFAMILIARISED MYSELF FULLY WITH THE DIFFERENT SWR MODELS, BUT IS IT NOT POSSIBLE THAT AT LEAST IN THE SMALLDYN MODEL, WE *DON'T* NEED TO DO THIS PAGING OPERATION HERE? I THINK IT'S ACTUALLY NOT SO MUCH ABOUT BIGDYN VS SMALLDYN - IN ANY SWR BUILD, WE *MAY* BE READING NON-DYNMEM HERE (WHICH IS WHY WE DON'T USE before_dynmem_read). IT WOULD I BELEIVE BE *CORRECT* TO CHECK HIGH BYTE OF MEMPOINTER AND AVOID PAGING IF IT'S <$80, THE QUESTION IS WHETHER THAT'S A NET WIN. (WE WOULD SAVE *TWO* LOTS OF PAGING WHEN IT IS USEFUL, AT THE COST OF AN EXTRA CHECK EVERY TIME).
 !ifdef ACORN_SWR { ; SFTODO: SHOULD THIS BE AFTER THE (NEW IN 5.3) READ_AND_RETURN_VALUE LABEL?? I THINK THAT LABEL IS MERELY A NAMED LABEL WHERE THERE USED TO BE A "-" LABEL, FWIW
     +acorn_page_in_bank_using_a mempointer_ram_bank
 }
 .read_and_return_value
-	; SFTODO: THIS IS NOT *NECESSARILY* DYNMEM, IT MIGHT BE SAME READ-ONLY PAGE AS BEFORE +before_dynmem_read
+!ifndef ACORN_SWR {
+    ; We're *not* necessarily reading dynamic memory here - we may be, but we
+    ; may be reading from a read-only VM page. We therefore control the sideways
+    ; RAM paging explicitly in this code; before_dynmem_read might incorrectly
+    ; page in the bank containing dynamic memory.
+	+before_dynmem_read
+}
 	lda (mempointer),y
-	; SFTODO: DITTO +after_dynmem_read
-!ifdef ACORN_SWR { ; SFTODO: DOES THIS INTERACT WELL WITH NEW READ_AND_RETURN_VALUE LABEL? SHOULD I MAYBE BE PUTTING THIS PAGING LOGIC IN THE BEFORE/AFTER_DYNMEM_READ MACROS???
+!ifndef ACORN_SWR {
+	+after_dynmem_read
+} else {
     +acorn_swr_page_in_default_bank_using_y
 }
 !if 1 { ; SFTODO: JUST TO PROVE IT'S OK
@@ -711,9 +718,12 @@ read_byte_at_z_address
 	cpx nonstored_blocks
 	bcs .non_dynmem
 	; Dynmem access
+    ; SFTODO: I think this is a relatively rare case; it certainly is in the
+    ; benchmark, so it may not be worth being too tricksy with optimisation in
+    ; this code path.
 	txa
 	adc #>story_start
-!ifdef ACORN_SCREEN_HOLE { ; SFTODO: THIS IS PROB NOT NEC ON SMALLDYN WITH A SCREEN HOLE
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
     cmp #ACORN_SCREEN_HOLE_START_PAGE
     bcc +
     clc
@@ -734,12 +744,14 @@ read_byte_at_z_address
     ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
     ; RAM so it doesn't matter what the value of mempointer_ram_bank is or which
     ; bank is currently paged in.
+    ; SFTODO: I think we could just do the lda+rts here; since we haven't paged out the
+    ; current bank there's no need to page it back in afterwards, as read_and_return_value will.
 	bne .read_and_return_value ; Always branch
-} else {
-    ; We have to set mempointer_ram_bank correctly so subsequent calls to
-    ; read_byte_at_z_address don't page in the wrong bank. We keep the first
-    ; bank paged in by default, so we don't need to page it in now and therefore
-    ; the '-' label can be after the page in code, to save a few cycles. SFTODO: THIS IS PROB TRUE, BUT CHECK 5.3 - ALSO THE '-' LABEL IS (I THINK) NOW RENAMED .read_and_return_value SO COMMENT TEXT NEEDS TWEAKING AT LEAST
+} else { ; ACORN_SWR_BIG_DYNMEM
+    ; SFTODO: WE COULD POSSIBLY DO "bpl read_and_return_value" or "bmi +:lda:rts:+" HERE, SINCE IF THE ADDRESS ISN'T IN SWR WE DON'T NEED TO PAGE ANYTHING IN OR OUT TO GET TO THE DATA
+    ; We have to page in the first SWR bank now, and we have to set
+    ; mempointer_ram_bank correctly so subsequent calls to
+    ; read_byte_at_z_address don't page in the wrong bank.
     +acorn_page_in_bank_using_a ram_bank_list
     sta mempointer_ram_bank
     bpl .read_and_return_value ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
@@ -827,7 +839,6 @@ read_byte_at_z_address
 .no_such_block
 
 	; Load 512 byte block into RAM
-!ifndef ACORN {
 !if SUPPORT_REU = 1 {
 	; First, check if this is initial REU loading
 	ldx use_reu
@@ -840,7 +851,6 @@ read_byte_at_z_address
 	bne .block_chosen
 	inx ; Set x to 1
 	bne .block_chosen ; Always branch
-}
 }
 
 ; SFTODO: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised.
@@ -1277,7 +1287,7 @@ convert_index_x_to_ram_bank_and_address
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
 ; SFTODO: Is there any value in page-aligning this? Although since the two halves
 ; are not exactly page-aligned we'd end up having to waste a couple of bytes so
-; each half was page-aligned. Profile this before doing anything.
+; each half was page-aligned. Profile this before doing anything. I think we really should be page-aligning-plus-1 (note the -1 in the hot code accessing it) vmap_z_l.
 ; SFTODO: Do I need to tweak the make-acorn.py code which pre-fills this to take account of the "shifted right one bit" approach now used in 5.3?
 !ifdef ACORN {
 !ifdef VMEM {
