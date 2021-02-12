@@ -1286,7 +1286,7 @@ convert_index_x_to_ram_bank_and_address
     adc screen_ram_start_minus_1
 }
 } else {
-    adc #($80-1)-SFTODOHOLEPAGES
+    adc #($80-1)-ACORN_SCREEN_HOLE_PAGES
 }
     rts
 }
