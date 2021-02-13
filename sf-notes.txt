@@ -1,3 +1,13 @@
+M128 mode 7 smalldyn:
+- 1K screen hole with $7c as immediate constant - $004747
+- 1K screen hole with $7c held in zp - $00474b, so 0.02% slower (makes sense, smalldyn has nearly-free memory hole)
+M128 mode 7 bigdyn:
+- 1K screen hole with $7c as immediate constant - $004936
+- 1K screen hole with $7c held in zp - $00494f, so 0.13% slower
+I think I "have" to go with using zp, otherwise a) Electron build won't take advantage of shadow RAM b) a single B-no-shadow executable won't be able to support mode 6 or 7 c) as with Electron, might be desirable to have a single BBC executable which handles shadow and no shadow
+
+
+
 Latest code, M128 mode 7
 - smalldyn $004776 (previous baseline was $004787, I think this is due to getting rid of a few bits of debug code, but very reasonable value)
 - bigdyn $004900 (previous baseline was $004b71, this is a whisker faster than experimental bigdyn rework so that's reasonable)
