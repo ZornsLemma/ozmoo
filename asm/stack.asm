@@ -120,8 +120,7 @@ stack_push_top_value
 }
 	rts
 
-+make_acorn_screen_hole
-; This is used by stack_call_routine	
+; This is used by stack_call_routine
 .many_pushed_bytes
 	lda stack_ptr
 	clc
@@ -370,14 +369,12 @@ z_ins_check_arg_count
 .branch_false
 	jmp make_branch_false
 
-+make_acorn_screen_hole
 z_ins_catch
 	; Store pointer to first byte where pushed values are stored in current frame.
 	ldx stack_ptr
 	lda stack_ptr + 1
 	jmp z_store_result
 
-+make_acorn_screen_hole
 z_ins_throw
 	; Restore pointer given. Return from routine (frame).
 	
@@ -489,7 +486,6 @@ stack_return_from_routine
 	ldy #0
 	lda (zp_temp + 2),y
 	
-    +make_acorn_screen_hole_jmp
 	; Skip past locals on stack
 	and #$0f
 	sta z_local_var_count

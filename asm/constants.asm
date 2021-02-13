@@ -412,16 +412,6 @@ swr_ramtop = $c000
 } else {
 flat_ramtop = $f800
 }
-!ifdef ACORN_NO_SHADOW {
-vdu_status = $d0
-text_cursor_address = $34a
-bottom_of_screen_memory_high = $34e
-display_start_address = $350
-crtc_register = $fe00
-crtc_data = $fe01
-crtc_screen_start_high = 12
-crtc_cursor_start_high = 14
-}
 
 ; Acorn memory allocations
 ; SFTODO: It might be worth reordering/reallocating these so the order is a
@@ -435,11 +425,9 @@ zp_temp               = $75 ; 5 bytes
 cursor_row            = $7a ; 2 bytes
 cursor_column         = $7c ; 2 bytes
 !if 0 { ; SFTODO: DELETE
-!ifndef ACORN_NO_SHADOW {
 screen_width          = $54 ; 1 byte
 screen_height         = $89 ; 1 byte
 screen_height_minus_1 = $8a ; 1 byte
-}
 }
 
 vmem_temp			  = $00 ; 2 bytes
@@ -473,10 +461,8 @@ z_trace_index = $400 ; !byte 0
 s_stored_x = $401 ; !byte 0
 s_stored_y = $402 ; !byte 0
 !if 0 { ; SFTODO: DELETE
-!ifndef ACORN_NO_SHADOW {
 screen_width_minus_1 = $403 ; !byte 0
 screen_width_plus_1 = $404 ; !byte 0
-}
 }
 game_disc_crc = $405 ; 2 bytes
 num_rows = $407 ; !byte 0

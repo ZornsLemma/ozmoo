@@ -1,6 +1,3 @@
-!ifdef ACORN_NO_SHADOW {
-!error "SFTODO TEMP CHECK"
-}
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
 ; Z1, Z2, Z6 and Z7 will (probably) never be supported
@@ -1145,7 +1142,6 @@ vmem_cache_count = vmem_cache_size / 256
 }
 }
 
-+make_acorn_screen_hole_before_stack
 stack_start
 
 deletable_screen_init_1
@@ -2151,10 +2147,6 @@ vmem_start = story_start
 !ifndef config_load_address {
 	config_load_address = SCREEN_ADDRESS
 }
-}
-
-!ifdef ACORN_NO_SHADOW {
-    +check_acorn_screen_hole
 }
 
 ; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways

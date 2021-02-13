@@ -470,10 +470,6 @@ deletable_init_start
     ldx #1
     jsr do_osbyte_rw_escape_key
 
-!ifdef ACORN_NO_SHADOW {
-    +set_up_mode_7_3c00_inline
-}
-
     jsr screenkernal_init
 
     ; Now screenkernal_init has been executed, it's safe to call s_printchar, so
@@ -1567,17 +1563,6 @@ SFTODOLABEL4
 ; quite late in the initialization process - in particular it happens after the
 ; lengthy loading process in acorn_deletable_init_inline.
 !macro acorn_deletable_screen_init_2_inline {
-!ifdef ACORN_NO_SHADOW {
-    ; It's not safe to do vdu_cls without having a text window in effect.
-    ; Normally the one set up when we first entered this version of mode 7 is
-    ; in effect, but if there's been any output (e.g. due to disc errors) via
-    ; s_printchar between then and now we may no longer have one in effect.
-    ; s_printchar normally takes care of creating one as needed, but since we're
-    ; going to do vdu_cls directly we need to take care of this.
-    +define_mode_7_3c00_text_window_inline
-    lda #vdu_cls
-    jsr oswrch
-} else {
     ; Set the desired mode. If we're already in the right mode we don't reselect
     ; it, to avoid the screen flashing briefly to black. This is deletable init
     ; code so we can afford minor luxuries like this.
@@ -1605,7 +1590,6 @@ SFTODOLABEL4
     ; We must also reset the window sizes; we do this by re-executing
     ; deletable_screen_init_1.
     jsr deletable_screen_init_1
-}
 
 !ifdef ACORN_HW_SCROLL {
     ldx #1
@@ -1629,9 +1613,6 @@ SFTODOLABEL4
     ; the house being demolished gave me the BASIC prompt at the top left of an
     ; un-cleared screen when I chose QUIT. Is this a bug? Or at least an
     ; unfortunate glitch I should do something to try to avoid.
-!ifdef ACORN_NO_SHADOW {
-    jsr undo_mode_7_3c00
-}
     jsr set_os_normal_video
     jsr turn_on_cursor
     ldx #0
@@ -1851,242 +1832,6 @@ kernal_readtime
     ldx .current_clock+1
     lda .current_clock+0
     rts
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; ACORN_NO_SHADOW support (mode 7 screen at $3c00 instead of $7c00)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; If we have no shadow RAM, we need to relocate the mode 7 screen to $3c00 to
-; create a contiguous area of RAM from $4000-$c000. See
-; https://stardot.org.uk/forums/viewtopic.php?f=54&t=20149 for more discussion
-; on this.
-!ifdef ACORN_NO_SHADOW {
-
-!ifndef ACORN_SWR {
-    !error "ACORN_NO_SHADOW only makes sense with ACORN_SWR"
-}
-
-!ifdef ACORN_HW_SCROLL {
-    ; The OS can't hardware scroll the mode 7 screen at this non-standard
-    ; location.
-    !error "ACORN_HW_SCROLL is not compatible with ACORN_NO_SHADOW"
-}
-
-!macro make_acorn_screen_hole {
-.tolerance = 256
-    !if * <= $3c00 {
-        !if ($3c00 - *) <= .tolerance {
-acorn_screen_hole_start = *
-            !fill $4000 - *, 'X'
-acorn_screen_hole_end
-        }
-    }
-}
-
-!macro make_acorn_screen_hole_jmp {
-.jmp_size = 3
-.tolerance = 256
-    !if * <= ($3c00 - .jmp_size) {
-        !if ($3c00 - *) <= .tolerance {
-            jmp acorn_screen_hole_end
-acorn_screen_hole_start = *
-            !fill $4000 - *, 'X'
-acorn_screen_hole_end
-        }
-    }
-}
-
-; On $e00 builds the binary is likely to fit entirely below the screen at $3c00.
-; We need the stack and story to be contiguous, so we must insert a large enough
-; hole at this point even if we're not close to $3c00.
-;
-; .swap_pointers_for_save will temporarily corrupt the last few bytes of the
-; screen memory just below the start of the stack (i.e. just below $4000), but
-; this shouldn't actually be visible because we're using software scrolling and
-; the mode 7 screen data actually only occupies the first 40*25 bytes at $3c00,
-; so it's not necessary to include some extra padding at $4000 to avoid this.
-; SFTODO: BE GOOD TO TEST THIS!
-!macro make_acorn_screen_hole_before_stack {
-    !if * <= $3c00 {
-acorn_screen_hole_start = *
-        !fill $4000 - *, 'X'
-acorn_screen_hole_end
-    }
-}
-
-!macro check_acorn_screen_hole {
-    ; This check is important to ensure the no shadow RAM build doesn't crash,
-    ; but when the check fails, we need to be able to disable it in order to
-    ; allow assembly to complete so we can look at the acme report output and
-    ; decide where to add a +make_acorn_screen_hole invocation.
-    !ifndef ACORN_DISABLE_SCREEN_HOLE_CHECK {
-        !ifndef acorn_screen_hole_start {
-            !error "Acorn screen hole has not been added"
-        } else {
-            !if acorn_screen_hole_start > $3c00 {
-                !error "Acorn screen hole starts too late"
-            }
-            !if acorn_screen_hole_end < $4000 {
-                !error "Acorn screen hole ends too soon"
-            }
-        }
-    }
-}
-
-; This macro is like an initialization subroutine, but by using a macro we
-; can place it in the discardable init code while still having it in this file
-; where it logically belongs. SFTODO: That comment seems a little odd, discardable init is in this file too - the idea is probably fine, just check and tweak comment.
-!macro set_up_mode_7_3c00_inline {
-    ; In reality we don't expect to be called with our handlers already
-    ; installed, but be paranoid - this is deletable init code so it's mostly
-    ; free.
-    lda wrchv
-    cmp #<our_wrchv
-    bne +
-    lda wrchv + 1
-    cmp #>our_wrchv
-    beq .set_up_mode_7_3c00_done
-+
-
-    ; Copy the contents of the current screen for neatness.
-    ldx #$7c
-    ldy #$3c
-    jsr screen_copy
-
-    ; Reprogram the CRTC and poke the OS variables to mostly compensate.
-    lda #crtc_screen_start_high
-    sta crtc_register
-    lda #$20
-    sta crtc_data
-    lda #$3c
-    sta bottom_of_screen_memory_high
-    sta display_start_address + 1
-
-    ; Define a text window and reposition the cursor; doing this forces the OS
-    ; to notice the changes we just made. The text window also prevents hardware
-    ; scrolling; all the output from the main Ozmoo code will be protected using
-    ; text windows anyway since ACORN_HW_SCROLL is not defined, but having one
-    ; in place straight away is useful insurance.
-    lda #osbyte_read_cursor_position
-    jsr osbyte
-    +define_mode_7_3c00_text_window_inline
-    jsr do_oswrch_vdu_goto_xy
-
-    ; Install our handlers to fix some problems with the OS's handling of this
-    ; unofficial mode.
-    lda wrchv
-    sta call_old_wrchv + 1
-    lda wrchv + 1
-    sta call_old_wrchv + 2
-    lda #<our_wrchv
-    sta wrchv
-    lda #>our_wrchv
-    sta wrchv + 1
-    lda keyv
-    sta call_old_keyv + 1
-    lda keyv + 1
-    sta call_old_keyv + 2
-    lda #<our_keyv
-    sta keyv
-    lda #>our_keyv
-    sta keyv + 1
-
-.set_up_mode_7_3c00_done
-}
-
-!macro define_mode_7_3c00_text_window_inline {
-    lda #vdu_define_text_window
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    lda #24
-    jsr oswrch
-    lda #39
-    jsr oswrch
-    lda #0
-    jsr oswrch
-}
-
-!macro adjust_cursor_inline {
-    lda #crtc_cursor_start_high
-    sta crtc_register
-    lda text_cursor_address + 1
-    sec
-    sbc #$1c
-    sta crtc_data
-}
-
-our_wrchv
-call_old_wrchv
-    jsr $ffff ; patched during initialization
-    pha
-    +adjust_cursor_inline
-    pla
-    rts
-
-our_keyv
-    bcc call_old_keyv
-    bvc call_old_keyv
-    ; keyboard timer interrupt entry
-    jsr call_old_keyv
-    php
-    pha
-    bit vdu_status
-    bvc .not_cursor_editing
-    +adjust_cursor_inline
-.not_cursor_editing
-    pla
-    plp
-    rts
-call_old_keyv
-    jmp $ffff ; patched during initialization
-
-undo_mode_7_3c00
-    ; Reset the vectors we fiddled with.
-    lda call_old_wrchv + 1
-    sta wrchv
-    lda call_old_wrchv + 2
-    sta wrchv + 1
-    lda call_old_keyv + 1
-    sta keyv
-    lda call_old_keyv + 2
-    sta keyv + 1
-
-    ; Switch to normal mode 7. This clears the screen, so we copy the contents
-    ; back and restore the cursor position. This is maybe overkill, but it's
-    ; important any final message shown when the game quits can be seen by the
-    ; user.
-    lda #osbyte_read_cursor_position
-    jsr osbyte
-    lda #vdu_set_mode
-    jsr oswrch
-    lda #7
-    jsr oswrch
-    jsr do_oswrch_vdu_goto_xy
-
-    ldx #$3c
-    ldy #$7c
-    ; fall through to screen_copy
-
-screen_copy
-    stx .screen_copy_lda_abs_y + 2
-    sty .screen_copy_sta_abs_y + 2
-    ldx #4
-.screen_copy_loop
-    ldy #0
-.screen_copy_loop2
-.screen_copy_lda_abs_y
-    lda $ff00,y ; patched
-.screen_copy_sta_abs_y
-    sta $ff00,y ; patched
-    iny
-    bne .screen_copy_loop2
-    inc .screen_copy_lda_abs_y + 2
-    inc .screen_copy_sta_abs_y + 2
-    dex
-    bne .screen_copy_loop
-    rts
-} ; End of !ifdef ACORN_NO_SHADOW
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Miscellaneous utility routines

@@ -1036,20 +1036,4 @@ divide16
 	rts
 }
 
-; These macros are called at strategically chosen points where it might be
-; appropriate to insert the screen hole for ACORN_NO_SHADOW builds. To minimise
-; clutter they aren't protected by !ifndef everywhere they occur; on all other
-; builds (including non-Acorn builds) they are just defined here as no-ops.
-!ifndef ACORN_NO_SHADOW {
-!macro make_acorn_screen_hole {
-    ; no-op
-}
-!macro make_acorn_screen_hole_jmp {
-    ; no-op
-}
-!macro make_acorn_screen_hole_before_stack {
-    ; no-op
-}
-}
-
 ; screen update routines

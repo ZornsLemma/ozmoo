@@ -56,7 +56,6 @@ parse_terminating_characters
 }
 
 !ifdef BENCHMARK {
-; SFTODO +make_acorn_screen_hole
 ; SFTODO: Annoying duplication here...
 benchmark_commands
 !ifndef ACORN {
@@ -212,7 +211,6 @@ z_ins_tokenise_text
 	lda z_operand_value_high_arr + 1
 	jmp tokenise_text
 
-; SFTODO +make_acorn_screen_hole
 z_ins_encode_text
 	; encode_text zscii-text length from coded-text
 	; setup string_array
@@ -684,7 +682,6 @@ encode_text
 	sta zword + 4
 	rts
 
-; SFTODO +make_acorn_screen_hole
 find_word_in_dictionary
 	; convert word to zchars and find it in the dictionary
 	; see: http://inform-fiction.org/zmachine/standards/z1point1/sect13.html
@@ -1270,7 +1267,6 @@ reset_cursor_blink
 }
 }
 
-; SFTODO +make_acorn_screen_hole - SFTODO: note that even if the screen hole lives, any existing invocations of screen hole macros are probably no longer in useful places and I should maybe comment them all out and only re-enable them as they prove useful
 read_text
 	; read line from keyboard into an array (address: a/x)
 	; See also: http://inform-fiction.org/manual/html/s2.html#p54
@@ -1572,7 +1568,6 @@ read_text
 }
 }
 
-; SFTODO +make_acorn_screen_hole
 tokenise_text
 	; divide read_line input into words and look up them in the dictionary
 	; input: string_array should be pointing to the text array

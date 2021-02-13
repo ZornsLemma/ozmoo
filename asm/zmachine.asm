@@ -627,7 +627,6 @@ read_operand
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
 
-+make_acorn_screen_hole
 !zone {
 z_set_variable_reference_to_value
 	; input: Value in a,x.
@@ -992,8 +991,6 @@ z_ins_not_supported
 	rts
 }
 
-; SFTODO: Prob already have a note elsewhere but jic: with the new model where dynmem accesses in the Ozmoo code are relatively "isolated" and have macros around them, it may be possible for the bigdyn model to keep the Z-machine PC bank paged in by default, just like the smalldyn model - it would then use these macros to temporarily page in the first SWR bank when dynmem being accessed. This might offer a performance improvement. And *if* it did, it would make the smalldyn and bigdyn models more similar, probably reducing code complexity. Note that this is completely independent of memory hole support.
-+make_acorn_screen_hole
 !zone z_division {
 z_divide
 	; input: Dividend in arg 0, divisor in arg 1, y = signed? 0 = unsigned, $ff = signed
@@ -1342,7 +1339,6 @@ make_branch_true
 	bit zp_temp + 1
 +	bpl -
 .choose_jumptype
-    +make_acorn_screen_hole_jmp
 	; We have decided to jump
 	bvc .two_byte_jump
 	; This is a single byte jump
@@ -1395,7 +1391,6 @@ z_jump_to_offset_in_zp_temp
 	lda z_pc + 2
 	clc
 	adc zp_temp + 2
-    +make_acorn_screen_hole_jmp
 	tay
 	lda z_pc + 1
 	adc zp_temp + 1
@@ -1419,7 +1414,6 @@ z_jump_to_offset_in_zp_temp
 
 ; z_ins_jin (moved to objecttable.asm)
 
-+make_acorn_screen_hole
 z_ins_test
 	lda z_operand_value_low_arr
 	and z_operand_value_low_arr + 1
@@ -1531,7 +1525,6 @@ z_ins_sub
 .mul_product = memory_buffer ; 5 bytes (4 for product + 1 for last bit)
 .mul_inv_multiplicand = memory_buffer + 5 ; 2 bytes
 
-+make_acorn_screen_hole
 z_ins_mul
 	lda #0
 	ldy #16
@@ -1723,8 +1716,7 @@ z_ins_set_true_colour
 }
 	rts
 
-+make_acorn_screen_hole
-z_ins_random	
+z_ins_random
 	lda z_operand_value_high_arr
 	beq .random_highbyte_empty
 	bpl .random_wordsize

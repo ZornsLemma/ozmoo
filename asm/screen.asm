@@ -278,7 +278,6 @@ start_buffering
 	sty last_break_char_buffer_pos
 	rts
 
-+make_acorn_screen_hole
 z_ins_split_window
 	; split_window lines
 	ldx z_operand_value_low_arr
@@ -385,7 +384,6 @@ z_ins_set_text_style
 }
 
 
-+make_acorn_screen_hole
 z_ins_get_cursor
 	; get_cursor array
 	ldx z_operand_value_low_arr
@@ -480,7 +478,6 @@ vdc_hide_more
 	jmp VDCWriteReg
 }
 
-+make_acorn_screen_hole
 increase_num_rows
 	lda current_window
 	bne .increase_num_rows_done ; Upper window is never buffered
@@ -636,7 +633,6 @@ printchar_flush
 	; We have re-selected the upper window, restore cursor position
 	jmp restore_cursor
 
-+make_acorn_screen_hole
 printchar_buffered
 	; a is PETSCII character to print
 	sta .buffer_char
@@ -766,7 +762,6 @@ printchar_buffered
 	inx
 	bne .copy_loop ; Always branch
 .after_copy_loop
-    +make_acorn_screen_hole_jmp
 	sty buffer_index
 	lda #0
 	sta first_buffered_column
@@ -840,7 +835,6 @@ restore_cursor
 
 !ifdef Z3 {
 
-+make_acorn_screen_hole
 z_ins_show_status
 	; show_status (hardcoded size)
 ;    jmp draw_status_line
@@ -1035,7 +1029,6 @@ draw_status_line
 	ora #$30
 	jmp s_printchar
 
-+make_acorn_screen_hole
 !ifndef ACORN {
 .score_str !pet "Score: ",0
 .time_str !pet "Time: ",0

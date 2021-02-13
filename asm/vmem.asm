@@ -260,7 +260,6 @@ vmem_swap_count !byte 0,0
 }
 }
 
-+make_acorn_screen_hole
 !ifdef DEBUG {
 !ifdef PREOPT {
 print_optimized_vm_map
@@ -651,7 +650,6 @@ load_blocks_from_index_using_cache
 }
 }
 
-+make_acorn_screen_hole
 ; SF: Note that this is allowed to corrupt X and Y. SFTODO PROBABLY STILL TRUE IN 5.3 BUT MAYBE CHECK
 read_byte_at_z_address
 	; Subroutine: Read the contents of a byte address in the Z-machine
@@ -814,7 +812,6 @@ read_byte_at_z_address
 	jmp .index_found
 	
 .no_quick_index_match
-    +make_acorn_screen_hole_jmp
 	lda vmem_temp
 
 	; is there a block with this address in map?

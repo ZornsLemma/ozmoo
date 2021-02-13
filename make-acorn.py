@@ -646,8 +646,6 @@ class Executable(object):
         cache_definition = (start_addr, set(args))
         cache_entry = Executable.cache.get(cache_key, None)
         if cache_entry is not None:
-            print("Y", cache_key)
-            print("X", cache_entry[0], cache_definition)
             assert cache_entry[0] == cache_definition
             e = cache_entry[1]
             self.labels = e.labels
@@ -1358,7 +1356,6 @@ def parse_args():
     group.add_argument("--trace-floppy", action="store_true", help="trace disc access (implies -d)")
     group.add_argument("--trace-vm", action="store_true", help="trace virtual memory (implies -d)")
     group.add_argument("--speed", action="store_true", help="enable speed printing (implies -d)")
-    group.add_argument("--no-hole-check", action="store_true", help="disable screen hole check")
     group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
     group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
     group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
@@ -1522,8 +1519,6 @@ def make_disc_image():
         ozmoo_base_args += ["-DPRINTSPEED=1"]
     if cmd_args.print_swaps:
         ozmoo_base_args += ["-DPRINT_SWAPS=1"]
-    if cmd_args.no_hole_check:
-        ozmoo_base_args += ["-DACORN_DISABLE_SCREEN_HOLE_CHECK=1"]
     if cmd_args.no_dynmem_adjust:
         ozmoo_base_args += ["-DACORN_NO_DYNMEM_ADJUST=1"]
     if cmd_args.fake_read_errors:
