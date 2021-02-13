@@ -808,7 +808,7 @@ SFTODO33
 -   ; compare with low byte
 	; TODO: It would be helpful to ensure vmap_z_l - 1 is near the start of
 	; a page, so the following frequently executed instruction doesn't
-	; incur too many extra page-crossing cycles.
+	; incur too many extra page-crossing cycles. SFTODONOW
 	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 - 
 	beq +
 .check_next_block

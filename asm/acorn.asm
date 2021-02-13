@@ -82,8 +82,8 @@
 
 ; Control a few small debug assertions and similar.
 ; SFTODO: Make this controllable via the build script?
-; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
-ACORN_DEBUG_ASSERT = 1
+; ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
+; DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
@@ -300,7 +300,6 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 ; Debugging macro to check that the SWR bank containing the upper part of dynmem
 ; is paged in when it should be.
-DEBUG_BIG_DYNMEM = 1 ; SFTODO TEMP
 !macro debug_dynmem preserve {
 !ifdef DEBUG_BIG_DYNMEM { ; SFTODO!
     !if preserve {
