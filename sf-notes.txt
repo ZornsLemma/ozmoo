@@ -5,8 +5,10 @@ Tweaking read_byte_at_z_address to reduce paging:
 - smalldyn $004733 (0.36% saving, not bad for ~4 lines of code)
 - bigdyn $0048ae (0.4% saving, not bad for ~4 lines of code)
 Putting z_pc_mempointer_ram_bank in zero page:
-- smalldyn $00472a (0.05% saving, worth having if I don't run out of zp but not mindblowing, code size saving may be useful)
-- bigdyn $00489d (0.09% saving, ditto)
+- smalldyn $00472a (0.05% saving, worth having if I don't run out of zp but not mindblowing, code size saving may be useful) - got $00472d on a repeat
+- bigdyn $00489d (0.09% saving, ditto) - worth noting *smalldyn* took $00483f in 3.7f!
+Hackily arranging for vmap_z_l to be page-aligned+1:
+- smalldyn $00472f - so within noise of before this change, *but* by chance the first ~188 vmap_z_l entries would incur no page-crossing penalty and that's enough for 96K read-only memory, so it makes sense that on this run it's not making any difference
 
 Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
 - baseline is $004b71 for bigdyn, probably (not double-checked) $004787 for smalldyn

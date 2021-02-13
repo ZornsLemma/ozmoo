@@ -535,6 +535,10 @@ scratch_page = $500
 !ifdef ACORN_SWR {
 scratch_double_page = scratch_page
 ; SFTODO: $700-$800 is currently wasted
+; SFTODO: THIS IS A HACK - I NEED TO MOVE vmap_z_l FOR 2P BUILDS TOO, BUT THIS WILL DO FOR NOW
+vmap_z_l = $701 ; not $700, because we use "vmap_z_l -1,x" addressing in a hot loop
+
+
 ; SFTODO: There's no advantage for second processor builds, but on ACORN_SWR
 ; builds we could potentially put vmap_z_[hl] somewhere in $400-800 (we'd probably
 ; have the VVVVVV identifier in the discardable init code for the build script

@@ -838,7 +838,8 @@ class OzmooExecutable(Executable):
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
-        vmap_offset = self.labels['vmap_z_l'] - self.labels['program_start']
+        # SFTODO: As part of hack have changed vmap_z_l to vmap_buffer_start in next line
+        vmap_offset = self.labels['vmap_buffer_start'] - self.labels['program_start']
         vmap_max_size = self.labels['vmap_max_size']
         assert self._asm_output[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
         blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []

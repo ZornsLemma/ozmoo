@@ -185,8 +185,10 @@ ACORN_LARGE_RUNTIME_VMAP = 1
 vmap_blocks_preloaded !byte 0
 }
 ; SFTODO: want to make vmap_z_l avoid page-crossing cycle penalties on Acorn - perhaps it's worth locating it somewhere in $400-$800 and copying it down there from its place in the binary during initialisation
+!ifndef ACORN_SWR { ; SFTODO HACKY
 vmap_z_l = vmap_buffer_start
-vmap_z_h = vmap_z_l + vmap_max_size
+}
+vmap_z_h = vmap_buffer_start + vmap_max_size ; SFTODO: WAS vmap_z_h = vmap_z_l + vmap_max_size
 
 !ifndef ACORN {
 vmap_first_ram_page		!byte 0
@@ -1316,6 +1318,7 @@ convert_index_x_to_ram_bank_and_address
 ; SFTODO: Do I need to tweak the make-acorn.py code which pre-fills this to take account of the "shifted right one bit" approach now used in 5.3?
 !ifdef ACORN {
 !ifdef VMEM {
+; SFTODO: THIS NEEDS DOING PROPERLY - WE NEED vmap_z_l NEAR-PAGE-ALIGNED ON ALL BUILDS, AND THAT MEANS WE ONLY NEED HALF THIS BUFFER HERE FOR vmap_z_h, *BUT* BUILD SYSTEM WANTS IT TO BE CONTIGUOUS SO WE NEED TO PUT THE WHOLE THING IN DISCARDABLE INIT AND COPY IT TO RELEVANT LOCATIONS ON INIT - FOR NOW I AM JUST HACKING THIGS FOR SWR
 vmap_buffer_start
     !FILL vmap_max_size * 2, 'V'
 }

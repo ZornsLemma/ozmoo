@@ -542,6 +542,14 @@ deletable_init_start
 .dont_enable_turbo
 }
 
+!ifdef ACORN_SWR { ; SFTODO HACKY
+    ldx #vmap_max_size
+-   lda vmap_buffer_start - 1,x
+    sta vmap_z_l - 1,x
+    dex
+    bne -
+}
+
     +init_readtime_inline
     jmp init_cursor_control
 
