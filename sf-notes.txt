@@ -15,6 +15,10 @@ So we are currently at:
 - smalldyn mode 7 +64K SWR 16-entry quicklist $004764
 - smalldyn mode 7 +64K SWR 12-entry quicklist $004745
 - smalldyn mode 7 12-entry quicklist $004708!
+- smalldyn mode 3 +64K SWR $0054de
+- smalldyn mode 0 +64K SWR $0054e1
+- initial time output at start of benchmark is $003cd (mode 7), $003da (mode 3), $003e0 (mode 0) - so all the same within noise limits I think
+- so with 64K extra SWR (despite the superficial penalty; lack of disc access during play makes me fairly confident this would be reproducible on real hardware, whereas emulator disc access is artifically fast in general) we see "within benchmark" times of 414.86s (mode 0), 414.8s (mode 3), 347.86s (mode 7)
 
 Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
 - baseline is $004b71 for bigdyn, probably (not double-checked) $004787 for smalldyn
