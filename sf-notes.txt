@@ -4,6 +4,9 @@ Latest code, M128 mode 7
 Tweaking read_byte_at_z_address to reduce paging:
 - smalldyn $004733 (0.36% saving, not bad for ~4 lines of code)
 - bigdyn $0048ae (0.4% saving, not bad for ~4 lines of code)
+Putting z_pc_mempointer_ram_bank in zero page:
+- smalldyn $00472a (0.05% saving, worth having if I don't run out of zp but not mindblowing, code size saving may be useful)
+- bigdyn $00489d (0.09% saving, ditto)
 
 Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
 - baseline is $004b71 for bigdyn, probably (not double-checked) $004787 for smalldyn
