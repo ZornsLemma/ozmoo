@@ -9,6 +9,9 @@ Putting z_pc_mempointer_ram_bank in zero page:
 - bigdyn $00489d (0.09% saving, ditto) - worth noting *smalldyn* took $00483f in 3.7f!
 Hackily arranging for vmap_z_l to be page-aligned+1:
 - smalldyn $00472f - so within noise of before this change, *but* by chance the first ~188 vmap_z_l entries would incur no page-crossing penalty and that's enough for 96K read-only memory, so it makes sense that on this run it's not making any difference
+So we are currently at:
+- smalldyn mode 7 $00472f (drive noises on $004731; just possibly broken audio on the virt means this is having no effect)
+- smalldyn mode 7 +64K SWR (no disc access during play) $0047cb (repeat $0047c6)
 
 Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
 - baseline is $004b71 for bigdyn, probably (not double-checked) $004787 for smalldyn
