@@ -162,10 +162,9 @@ write_next_byte
 	clc
 	adc #>story_start
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-	cmp #ACORN_SCREEN_HOLE_START_PAGE
+	cmp acorn_screen_hole_start_page
 	bcc +
-	clc
-	adc #ACORN_SCREEN_HOLE_PAGES ; SFTODO: MIGHT AS WELL DO -1 TRICK TO AVOID CLC
+	adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
 +
 }
 	sta .write_byte + 2

@@ -746,10 +746,9 @@ read_byte_at_z_address
 	txa
 	adc #>story_start
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-    cmp #ACORN_SCREEN_HOLE_START_PAGE
+    cmp acorn_screen_hole_start_page
     bcc +
-    clc
-    adc #ACORN_SCREEN_HOLE_PAGES ; SFTODO: MIGHT AS WELL DO THE -1 TRICK TO AVOID THE CLC
+    adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
 +   sta mempointer + 1
 } else {
 	sta mempointer + 1
@@ -1295,14 +1294,10 @@ convert_index_x_to_ram_bank_and_address
     ; actual start.
     asl
     ; Carry is set
-!ifndef ACORN_SCREEN_HOLE {
-!ifndef ACORN_ELECTRON_SWR {
     adc #(>flat_ramtop)-1
-} else {
-    adc screen_ram_start_minus_1
-}
-} else {
-    adc #($80-1)-ACORN_SCREEN_HOLE_PAGES
+!ifdef ACORN_SCREEN_HOLE {
+    sec ; SFTODO: can we in fact rely on carry having a known state here and avoid this?
+    sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
 }
     rts
 }

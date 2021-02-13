@@ -6,6 +6,11 @@ M128 mode 7 bigdyn:
 - 1K screen hole with $7c held in zp - $00494f, so 0.13% slower
 I think I "have" to go with using zp, otherwise a) Electron build won't take advantage of shadow RAM b) a single B-no-shadow executable won't be able to support mode 6 or 7 c) as with Electron, might be desirable to have a single BBC executable which handles shadow and no shadow
 
+M128 mode 7 bigdyn:
+- screen hole support but should be disabled at runtime - $004960
+- ditto but with acorn_screen_hole_start_page in zp - $00495a
+
+
 
 
 Latest code, M128 mode 7

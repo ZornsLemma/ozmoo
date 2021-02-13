@@ -93,6 +93,7 @@
 ACORN_SWR_BIG_DYNMEM = 1
 } else { ; ACORN_SWR_SMALL_DYNMEM
 !ifdef ACORN_ELECTRON_SWR {
+; SFTODO: THIS IS PROB BROKEN AT THE MOMENT, BUT ONCE THINGS SETTLE DOWN I IMAGINE ACORN_ELECTRON_SWR WILL GO - WELL, IT WILL STAY (SINCE WE NEDE TO CONTORL ROM PAGING METHOD) BUT IT WON'T CONTROL ANYTHING ELSE
 !error "ACORN_ELECTRON_SWR is not compatible with ACORN_SWR_SMALL_DYNMEM"
 }
 }
@@ -102,11 +103,11 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; Screen hole support
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; SFTODO TEMP HACK START
-; SFTODO: Instead of just checking !ifdef ACORN_SCREEN_HOLE, a *lot* of code should actually be checking for that defined *and* bigdyn - smalldyn probably requires very little explicit support for a screen hole, and I can imagine it will be virtually free (so for games where "B-no-shadow" builds as smalldyn, we'll not bother putting a separate "BBC shadow" executable on the disc.)
-;ACORN_SCREEN_HOLE = 1
-ACORN_SCREEN_HOLE_START_PAGE = $7c ; SFTODO: AT RISK OF STATING THE OBVIOUS, IF WE WANT TO DO A BUILD FOR SHADOW+NON-SHADOW AND THIS IS A ZP ADDRESS, BY SETTING THAT ZP ADDRESS TO $FF THE SCREEN HOLE CODE WILL BE MOSTLY DISABLED "FAIRLY EFFICIENTLY"
-ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NOW
+!ifdef ACORN_SCREEN_HOLE {
+!ifndef ACORN_SWR {
+!error "ACORN_SCREEN_HOLE is only compatible with ACORN_SWR"
+}
+}
 
 ; The screen hole mostly "just works" for the small dynamic memory model;
 ; because the hole always comes *after* all dynamic memory, only read-only VM
@@ -129,7 +130,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 
 !macro lda_dynmem_ind_y zp {
     lda zp + 1
-    cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
+    cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
     bne .zp_y_not_ok
     ; We need to add Y to (zp) to see if it's going to cause the high byte to
@@ -141,7 +142,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
     lda zp + 1
 .zp_y_not_ok
     ; A holds zp + 1, C is set.
-    adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 because carry is set
+    adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
     sta $91 ; SFTODO: PROPER ADDRESS
     lda zp
     sta $90
@@ -189,7 +190,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
 !macro sta_dynmem_ind_y zp {
     sta $94 ; SFTODO PROPER ADDRESS
     lda zp + 1
-    cmp #(ACORN_SCREEN_HOLE_START_PAGE - 1)
+    cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
     bne .zp_y_not_ok
     ; We need to add Y to (zp) to see if it's going to cause the high byte to
@@ -201,7 +202,7 @@ ACORN_SCREEN_HOLE_PAGES = 2 ; SFTODO: SHOULD BE 4, BUT LET'S STICK WITH 2 FOR NO
     lda zp + 1
 .zp_y_not_ok
     ; A holds zp + 1, C is set.
-    adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 because carry is set
+    adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
     sta $91 ; SFTODO: PROPER ADDRESS
     lda zp
     sta $90
@@ -550,6 +551,35 @@ deletable_init_start
     bne -
 }
 
+!ifdef ACORN_SCREEN_HOLE {
+SFTODOBB9
+    lda screen_mode
+    ora #128 ; force shadow mode on SFTODO  MAGIC CONSTANT IN A FEW PLACES NOW?
+    tax
+    lda #osbyte_read_screen_address_for_mode
+    jsr osbyte
+    cpy #$80
+    bcc .not_shadow_mode
+    ; If we're in a shadow mode, the screen hole isn't needed; by setting the
+    ; start page as high as possible, code which implements the screen hole will
+    ; realise ASAP that it's not necessary. (If we didn't do this, we'd end up
+    ; with a zero-size screen hole at $8000, which would work but but slower.)
+    ldy #$ff
+.not_shadow_mode
+    sty acorn_screen_hole_start_page
+    dey
+    sty acorn_screen_hole_start_page_minus_one
+    sec
+    lda #>flat_ramtop
+    sbc acorn_screen_hole_start_page
+    bcs +
+    lda #0 ; shadow RAM case (>flat_ramtop - $ff caused a borrow)
++   sta acorn_screen_hole_pages
+    tax
+    dex
+    stx acorn_screen_hole_pages_minus_one
+}
+
     +init_readtime_inline
     jmp init_cursor_control
 
@@ -813,13 +843,13 @@ SFTODOLABELX1
     ; deletable init code so it doesn't really cost anything b) if we don't,
     ; the relocation code fails because we have a variation which doesn't follow
     ; the simple fixed relationship we expect.
-!ifndef ACORN_SCREEN_HOLE {
     lda #(>flat_ramtop)
-} else {
-    lda #(>flat_ramtop) - ACORN_SCREEN_HOLE_PAGES
-}
     sec
     sbc #>story_start
+!ifdef ACORN_SCREEN_HOLE {
+    sec
+    sbc acorn_screen_hole_pages
+}
     clc
     adc .ram_blocks
     sta .ram_blocks
@@ -829,11 +859,11 @@ SFTODOLABELX1
 
 !ifdef ACORN_ELECTRON_SWR {
     ; We also have some blocks free between extra_vmem_start and the screen RAM.
-    lda #osbyte_read_screen_address
+    lda #osbyte_read_screen_address ; SFTODO: SHOULDN'T WE BE READING FOR MODE WE'RE GOING TO CHANGE TO, NOT CURRENT MODE? IN PRACTICE THEY ARE THE SAME AT THE MOMENT, BUT STILL...
     jsr osbyte
     tya
     dey
-    sty screen_ram_start_minus_1
+    sty screen_ram_start_minus_1 ; SFTODO: INCONSISTENT minus_1 VS minus_one ON SOME VARS
     sec
     sbc #>extra_vmem_start
     tax
@@ -1126,10 +1156,10 @@ SFTODOLABEL5
 .dynmem_load_loop
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
     lda readblocks_mempos + 1
-    cmp #ACORN_SCREEN_HOLE_START_PAGE
+    cmp acorn_screen_hole_start_page
     bne +
     clc
-    adc #ACORN_SCREEN_HOLE_PAGES
+    adc acorn_screen_hole_pages
     sta readblocks_mempos + 1
 +
 }
@@ -1151,10 +1181,10 @@ SFTODOLABEL5
     ldx #0
     stx vmem_blocks_stolen_in_first_bank
     sec
-!ifndef ACORN_SCREEN_HOLE {
     sbc #(>flat_ramtop)
-} else {
-    sbc #(>flat_ramtop) - ACORN_SCREEN_HOLE_PAGES
+!ifdef ACORN_SCREEN_HOLE {
+    sec
+    sbc acorn_screen_hole_pages
 }
     bcc .some_vmem_in_main_ram
     lsr

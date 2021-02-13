@@ -669,7 +669,7 @@ z_set_variable_reference_to_value
 	; SFTODO: BE GOOD TO ENSURE ALL THE DIFFERENT CASES HERE DO GET TESTED
 !zone { ; SFTODO TEMP
 	ldy zp_temp + 1
-	cpy #ACORN_SCREEN_HOLE_START_PAGE
+	cpy acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
 	ldy #0
 	sta (zp_temp),y
@@ -684,7 +684,7 @@ z_set_variable_reference_to_value
 .zp_y_not_ok
 	tay
 	lda zp_temp + 1
-	adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 because carry is set
+	adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
 	; SFTODO: EXPERIMENTALLY TRAMPLING ON zp_temp, I AM *NOT* SURE THIS IS SAFE - WOULD NEED TO CODE REVIEW IF IT DOES SEEM TO WORK
 	sta $91 ; SFTODO PROPER
 	lda zp_temp
@@ -810,7 +810,7 @@ z_get_referenced_value
 SFTODOTEMP
 	; SFTODO END TEMP MEASUREMENT HACK
 }
-	cmp #ACORN_SCREEN_HOLE_START_PAGE
+	cmp acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
 	ldy #0
 	lda (zp_temp),y
@@ -825,7 +825,7 @@ SFTODOTEMP
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_not_ok
-	adc #(ACORN_SCREEN_HOLE_PAGES - 1) ; -1 as carry is set
+	adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
 	sta $91 ; SFTODO PROPER
 	lda zp_temp
 	sta $90
