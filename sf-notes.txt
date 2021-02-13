@@ -1,6 +1,9 @@
 Latest code, M128 mode 7
 - smalldyn $004776 (previous baseline was $004787, I think this is due to getting rid of a few bits of debug code, but very reasonable value)
 - bigdyn $004900 (previous baseline was $004b71, this is a whisker faster than experimental bigdyn rework so that's reasonable)
+Tweaking read_byte_at_z_address to reduce paging:
+- smalldyn $004733 (0.36% saving, not bad for ~4 lines of code)
+- bigdyn $0048ae (0.4% saving, not bad for ~4 lines of code)
 
 Experimental rework so bigdyn keeps Z-machine PC bank paged in by default:
 - baseline is $004b71 for bigdyn, probably (not double-checked) $004787 for smalldyn

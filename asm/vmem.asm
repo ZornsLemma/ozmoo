@@ -685,14 +685,26 @@ read_byte_at_z_address
 	cmp zp_pc_h
 	bne .read_new_byte
 	; same 256 byte segment, just return
-    ; SFTODO: I *HAVEN'T* REFAMILIARISED MYSELF FULLY WITH THE DIFFERENT SWR MODELS, BUT IS IT NOT POSSIBLE THAT AT LEAST IN THE SMALLDYN MODEL, WE *DON'T* NEED TO DO THIS PAGING OPERATION HERE? I THINK IT'S ACTUALLY NOT SO MUCH ABOUT BIGDYN VS SMALLDYN - IN ANY SWR BUILD, WE *MAY* BE READING NON-DYNMEM HERE (WHICH IS WHY WE DON'T USE before_dynmem_read_corrupt_a). IT WOULD I BELEIVE BE *CORRECT* TO CHECK HIGH BYTE OF MEMPOINTER AND AVOID PAGING IF IT'S <$80, THE QUESTION IS WHETHER THAT'S A NET WIN. (WE WOULD SAVE *TWO* LOTS OF PAGING WHEN IT IS USEFUL, AT THE COST OF AN EXTRA CHECK EVERY TIME).
-!ifdef ACORN_SWR { ; SFTODO: SHOULD THIS BE AFTER THE (NEW IN 5.3) READ_AND_RETURN_VALUE LABEL?? I THINK THAT LABEL IS MERELY A NAMED LABEL WHERE THERE USED TO BE A "-" LABEL, FWIW
-!if 0 { ; SFTODO TEMP PROFILING
+!ifdef ACORN_SWR {
+    ; In either the big or small dynamic memory model, at this point we could be
+    ; accessing dynamic or read-only memory and needing to page in the relevant
+    ; SWR bank is a possibility. However, if we're accessing main RAM, we don't
+    ; need to page in mempointer_ram_bank to do the read or revert the paging
+    ; afterwards. This is obviously a saving when it happens, but it comes at
+    ; the cost of checking the high bit of mempointer. Playing around with the
+    ; benchmark and HHGTTG, >70% of executions of this code are accessing main
+    ; RAM, so it's a win to pay 5 cycles for the test in order to save 20 cycles
+    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.)
     lda mempointer + 1
-    bmi SFTODO33
-    nop ; SFTODO BENCHMARK M128 84% OF EXECUTIONS HIT THIS NOP, HHGTTGSG M128 83% OF EXECUTIONS HIT THIS NOP (WHICH SURPRISED ME A BIT MORE, AS THIS IS A BIGDYN GAME - MAYBE TRY IT ON A B+ WITH PAGE AT 1900?) - SO THE OPTIMISATION NOTED IN SFTODO JUST ABOVE MAY BE WORTH TRYING - SFTODO: FWIW, RIGHT NOW I TRIED HHGTTG ON A B+128 AND IT HUNG AT THE GAME PROMPT, NO OBVIOUS REASON - COME BACK TO THIS! - 72% OF EXECUTIONS HIT THIS NOP ON HHGTTGSG ON A B+128K WITH PAGE &1900
-SFTODO33
+    bmi .not_main_ram
+    lda (mempointer),y
+!ifdef ACORN_DEBUG_ASSERT {
+    ; Let's just prove it's OK to be corrupting X and Y.
+    ldx #42
+    ldy #86
 }
+    rts
+.not_main_ram
     +acorn_page_in_bank_using_a mempointer_ram_bank
 }
 .read_and_return_value
@@ -716,6 +728,7 @@ SFTODO33
 }
 
 	rts
+    ; SFTODONOW: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND RAM_BANK_LIST AND DEFAULT_BANK_USING_Y
 .read_new_byte
 	sta zp_pc_h
 	stx zp_pc_l
