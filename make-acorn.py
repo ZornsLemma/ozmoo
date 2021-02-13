@@ -646,6 +646,8 @@ class Executable(object):
         cache_definition = (start_addr, set(args))
         cache_entry = Executable.cache.get(cache_key, None)
         if cache_entry is not None:
+            print("Y", cache_key)
+            print("X", cache_entry[0], cache_definition)
             assert cache_entry[0] == cache_definition
             e = cache_entry[1]
             self.labels = e.labels
@@ -792,7 +794,7 @@ class OzmooExecutable(Executable):
             else:
                 if "-DACORN_SWR=1" in args:
                     s = "bbc_swr"
-                    if "-DACORN_NO_SHADOW=1" not in args:
+                    if "-DACORN_SCREEN_HOLE=1" not in args:
                         s += "_shr"
                 else:
                     s = "tube"
@@ -803,8 +805,9 @@ class OzmooExecutable(Executable):
             s += "_" + ourhex(start_addr)
             return s
 
-        if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
-            args += ["-DACORN_HW_SCROLL=1"]
+        if False: # SFTODO GET RID OF THIS CASE
+            if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
+                args += ["-DACORN_HW_SCROLL=1"]
         if cmd_args.preload_opt and "-DVMEM=1" in args:
             args += ["-DPREOPT=1"]
         Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_addr, args)
@@ -999,45 +1002,35 @@ def make_shr_swr_executable():
 
 
 def make_bbc_swr_executable():
-    # Because of the screen hole needed to work around not having shadow RAM,
-    # this executable is not relocatable. (It would be possible to use the same
-    # strategy as the Electron and generate a relocatable executable with no
-    # screen hole, but that would limit dynamic memory to 16K, whereas using
-    # ACORN_NO_SHADOW allows dynamic memory comparable to other BBC versions.)
-    # SFTODO: We *could* potentially switch between the two strategies - if
-    # dynmem required is <=16K, use an Electron-style approach with no screen
-    # hole and relocatable code. OTOH, that would force use of at least 16K
-    # SWR and I think there's some prospect that we could make a stab at
-    # running small games with no SWR and I don't really like ruling that out.
-    #
-    # We prefer to build to run at bbc_swr_start_addr, but we will build to run
-    # at bbc_swr_start_addr_low if a) that allows us to use the small dynamic
-    # memory model and small_dynmem_page_threshold permits this b) we couldn't build
-    # at all otherwise. Because the screen hole requires judicious placement of
-    # macros in the source code depending on the exact start address of the code
-    # as well as the precise build options selected, we don't build at arbitrary
-    # addresses to try to run as high as possible; that way madness lies. This
-    # isn't a huge loss in practice, as once a user disables any extra ROMs
-    # claiming workspace PAGE will either be &E00, &1900 or &1D00 depending on
-    # the filing system.
+    # SFTODO: THIS IS A COPY AND PASTE OF MAKE_SHR_SWR_EXECUTABLE()
     leafname = "OZMOOB"
-    args = ozmoo_base_args + ozmoo_swr_args + ["-DACORN_NO_SHADOW=1"]
-    have_low_addr = bbc_swr_start_addr_low < bbc_swr_start_addr
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_SCREEN_HOLE=1"]
+
+    small_e = None
     if not cmd_args.force_big_dynmem:
-        small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args + small_dynmem_args)
+        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
+        # Some systems may have PAGE too high to run small_e, but those systems
+        # would be able to run the game if built with the big dynamic memory model.
+        # small_dynmem_page_threshold determines whether we're willing to prevent a system
+        # running the game in order to get the benefits of the small dynamic memory
+        # model.
         if small_e is not None:
-            info("BBC B sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
-            return small_e
-        if have_low_addr and bbc_swr_start_addr_low >= small_dynmem_page_threshold:
-            small_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args + small_dynmem_args)
-            if small_e is not None:
-                info("BBC B sideways RAM executable uses small dynamic memory model by requiring " + page_le(small_e.start_addr))
+            if small_e.start_addr >= small_dynmem_page_threshold:
+                info("BBC B sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
-    big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr, args, None if have_low_addr else "BBC B sideways RAM")
-    if big_e is None and have_low_addr:
-        big_e = make_ozmoo_executable(leafname, bbc_swr_start_addr_low, args, "BBC B sideways RAM")
+
+    # Note that we don't respect small_dynmem_page_threshold when generating a big
+    # dynamic memory executable; unlike the above decision about whether or not
+    # to use the small dynamic memory model, we're not trading off performance
+    # against available main RAM - if a system has PAGE too high to run the big
+    # dynamic memory executable we generate, it just can't run the game at all
+    # and there's nothing we can do about it.
+    big_e = make_highest_possible_executable(leafname, args, "BBC B sideways RAM")
     if big_e is not None:
-        info("BBC B sideways RAM executable uses big dynamic memory model and requires " + page_le(big_e.start_addr))
+        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
+            info("BBC B sideways RAM executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
+        else:
+            info("BBC B sideways RAM executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
     return big_e
 
 

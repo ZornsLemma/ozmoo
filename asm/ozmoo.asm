@@ -1,6 +1,5 @@
-; SFTODO TEMP HACK - BUILD SYSTEM SHOULD SET THIS WHEN APPROPRIATE
-!ifdef ACORN_SWR {
-ACORN_SCREEN_HOLE = 1
+!ifdef ACORN_NO_SHADOW {
+!error "SFTODO TEMP CHECK"
 }
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)

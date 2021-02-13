@@ -1174,18 +1174,18 @@ SFTODOLABEL5
     ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
     ; SFTODO: Would it be more natural to tweak the next few instructions to do
     ; >story_start + nonstored_blocks not the other way round?
+    lda #0
+    sta vmem_blocks_stolen_in_first_bank
+    ; Set A = (>story_start + nonstored_blocks) - (>flat_ramtop - acorn_screen_hole_pages)
     lda nonstored_blocks
     clc
     adc #>story_start
-    ; SFTODO: Move this ldx/stx a few lines up and just use A not X?
-    ldx #0
-    stx vmem_blocks_stolen_in_first_bank
+!ifdef ACORN_SCREEN_HOLE {
+    clc
+    adc acorn_screen_hole_pages
+}
     sec
     sbc #(>flat_ramtop)
-!ifdef ACORN_SCREEN_HOLE {
-    sec
-    sbc acorn_screen_hole_pages
-}
     bcc .some_vmem_in_main_ram
     lsr
     sta vmem_blocks_stolen_in_first_bank

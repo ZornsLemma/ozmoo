@@ -9,6 +9,7 @@ I think I "have" to go with using zp, otherwise a) Electron build won't take adv
 M128 mode 7 bigdyn:
 - screen hole support but should be disabled at runtime - $004960
 - ditto but with acorn_screen_hole_start_page in zp - $00495a
+BBC B mode 7 bigdyn - $004aea
 
 
 
