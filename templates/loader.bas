@@ -197,7 +197,7 @@ IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocata
 } else {
 REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
 REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
-REM else.
+REM else. SFTODO: NO LONGER TRUE, THIS ALL NEEDS TWEAKING
 IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 }
 !ifdef OZMOOB_BINARY {

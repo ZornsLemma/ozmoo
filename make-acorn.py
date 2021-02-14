@@ -871,6 +871,7 @@ class OzmooExecutable(Executable):
             self._asm_output[vmap_offset + i + vmap_max_size] = (vmap_entry >> 8) & 0xff
 
     def pseudo_ramtop(self):
+        # SFTODO: I THINK THIS MAY NEED TO ALLOW FOR SCREEN RAM NOW
         if "ACORN_SWR" in self.labels:
             return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
         else:
