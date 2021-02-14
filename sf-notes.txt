@@ -1,3 +1,12 @@
+M128 mode 7 smalldyn "shadow only build" $004715
+ditto but forcing use of "B no shadow capable build" $004733 so 0.16% slower (repeat $004731)
+- this is about what I expected, as the screen hole code has a fairly small impact on smalldyn
+- I am leaning towards only generating a single "BBC" executable for games which run in smalldyn on a B-no-shadow and other-BBC, since the penalty is so small
+- *however* the "only" gain is a saving of ~12K on one executable, which frees up disc space for saves and/or a larger game file, but games running in smalldyn are likely to be fairly small anyway - still, albeit without compression, Tristam Island *probably* (not checked) runs in smalldyn but had to go onto a .dsd before I introduced compression (not entirely sure about this), so it maybe not worthless (and it is extra space for saves)
+- OTOH, I may - probably not til after first public alpha, but still - be introducing support for using "spare" shadow memory. That will hopefully not complicate the code too much, but it will be extra code which is useless on the most memory constrained BBC, i.e. the B-no-shadow. So arguably it would be worth keeping separate no-shadow-BBC and shadow-BBC binaries anyway.
+- OT3H, what about the Electron? I don't really want to have Electron-shadow and Electron-no-shadow binaries. Then again, I suppose nothing stops me adding the use-spare-shadow-memory code to the Electron build and the BBC-shadow without forcing it into the BBC-no-shadow build, so this is probably irrelevant.
+- gut feeling is that *for now* I will avoid possibly-wasted work tweaking the build system to generate a single all-BBC executable now and then maybe reverse it later, I can always choose to go to a single-all-BBC executable later once I've done the use-spare-shadow-memory work and have a better view of the final list of tradeoffs.
+
 M128 mode 7 smalldyn:
 - 1K screen hole with $7c as immediate constant - $004747
 - 1K screen hole with $7c held in zp - $00474b, so 0.02% slower (makes sense, smalldyn has nearly-free memory hole)
