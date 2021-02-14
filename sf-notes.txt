@@ -1,4 +1,4 @@
-M128 mode 7 smalldyn "shadow only build" $004715
+M128 mode 7 smalldyn "shadow only build" $004715 (repeat $00471d)
 ditto but forcing use of "B no shadow capable build" $004733 so 0.16% slower (repeat $004731)
 - this is about what I expected, as the screen hole code has a fairly small impact on smalldyn
 - I am leaning towards only generating a single "BBC" executable for games which run in smalldyn on a B-no-shadow and other-BBC, since the penalty is so small
