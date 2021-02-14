@@ -170,6 +170,7 @@ REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
+REM SFTODO: If all builds are now relocatable, I can simplify things a bit (here and in build script) by not allowing for non-relocatable builds.
 IF relocatable THEN extra_main_ram=max_page-PAGE:p=PAGE:?${ozmoo_relocate_target}=p DIV 256 ELSE extra_main_ram=0
 swr_dynmem_needed=swr_dynmem_needed-&4000*?${ram_bank_count}
 REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
