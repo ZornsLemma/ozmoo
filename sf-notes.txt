@@ -7,6 +7,9 @@ Timings with auto build (all bigdyn, mode 7):
 - Electron (MAME, 64K SWR) $00d1b6 - this seems slow, but I am not sure the self-timing can be trusted on Electron (but key thing right now is it completed OK) - repeat, screen cleared to start game play at 19:28:01, finished, 19:46:07 at final prompt -> 1086 seconds (the self-reported time $00d1cc similar to previous run and corresponds to 1074.16 seconds, so this is artificially low, especially as it also includes the initial load, but not *that* artificially low)
 - Electron (Elkulator, 16K SWR) $00fd32 - not sure I trust this self-timing, but it worked
 
+For reference:
+3.7f MAME 64k SWR 20:05:25 - 20:19:44 (incidentally very visible flickering on status bar in MAME, as I'd expect) - reported at $00a598 - manual times give 859 seconds (compared to 847.84 seconds for the self-timing)
+
 M128 mode 7 smalldyn "shadow only build" $004715 (repeat $00471d)
 ditto but forcing use of "B no shadow capable build" $004733 so 0.16% slower (repeat $004731)
 - this is about what I expected, as the screen hole code has a fairly small impact on smalldyn
