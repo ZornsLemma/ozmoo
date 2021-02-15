@@ -2121,12 +2121,7 @@ story_start
 !if (end_of_routines_in_stack_space - stack_start) > stack_size {
     !error "Routines in stack space have overflowed stack"
 }
-!ifndef ACORN_ELECTRON_SWR {
 story_start = stack_start + stack_size
-} else {
-extra_vmem_start = stack_start + stack_size
-story_start = $8000
-}
 !if (story_start & 0xff) != 0 {
     !error "story_start must be page-aligned"
 }

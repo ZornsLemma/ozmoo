@@ -91,11 +91,6 @@
 !ifdef ACORN_SWR {
 !ifndef ACORN_SWR_SMALL_DYNMEM {
 ACORN_SWR_BIG_DYNMEM = 1
-} else { ; ACORN_SWR_SMALL_DYNMEM
-!ifdef ACORN_ELECTRON_SWR {
-; SFTODO: THIS IS PROB BROKEN AT THE MOMENT, BUT ONCE THINGS SETTLE DOWN I IMAGINE ACORN_ELECTRON_SWR WILL GO - WELL, IT WILL STAY (SINCE WE NEDE TO CONTORL ROM PAGING METHOD) BUT IT WON'T CONTROL ANYTHING ELSE
-!error "ACORN_ELECTRON_SWR is not compatible with ACORN_SWR_SMALL_DYNMEM"
-}
 }
 }
 
@@ -602,14 +597,7 @@ screenkernal_init
 
 .dir_ptr = zp_temp ; 2 bytes
 .game_blocks = zp_temp + 2 ; 2 bytes
-; We can't always use story_start to store the catalogue sectors because on an
-; ACORN_ELECTRON_SWR build that's in sideways RAM, and we can't always use
-; scratch_double_page because second processor builds don't have it.
-!ifdef scratch_double_page {
-.catalogue = scratch_double_page
-} else {
 .catalogue = story_start
-}
 !ifndef ACORN_ADFS {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game.
@@ -853,30 +841,10 @@ SFTODOLABELX1
     inc .ram_blocks + 1
 +
 
-!ifdef ACORN_ELECTRON_SWR {
-    ; We also have some blocks free between extra_vmem_start and the screen RAM.
-    lda #osbyte_read_screen_address ; SFTODO: SHOULDN'T WE BE READING FOR MODE WE'RE GOING TO CHANGE TO, NOT CURRENT MODE? IN PRACTICE THEY ARE THE SAME AT THE MOMENT, BUT STILL...
-    jsr osbyte
-    tya
-    dey
-    sty screen_ram_start_minus_1 ; SFTODO: INCONSISTENT minus_1 VS minus_one ON SOME VARS
-    sec
-    sbc #>extra_vmem_start
-    tax
-    clc
-    adc .ram_blocks
-    sta .ram_blocks
-    bcc +
-    inc .ram_blocks + 1
-+   txa
-    lsr
-    sta vmem_blocks_in_main_ram
-} else {
 !ifdef ACORN_SWR {
     ; This value might be changed below.
     lda #0
     sta vmem_blocks_in_main_ram
-}
 }
 
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have

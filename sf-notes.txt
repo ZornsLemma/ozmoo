@@ -1,3 +1,12 @@
+Timings with auto build (all bigdyn, mode 7):
+- M128 $0048a0
+- BBC B 144K SWR $004adb
+- B+128K (PAGE=&1F00) $00485b ("should" be slower than M128, but maybe artefact of fast drive access!?)
+- M128+3MHz copro $002cd3 (no drive access during play)
+- M128+256K copro $0025aa (no drive access during play)
+- Electron (MAME, 64K SWR) $00d1b6 - this seems slow, but I am not sure the self-timing can be trusted on Electron (but key thing right now is it completed OK)
+- Electron (Elkulator, 16K SWR) 
+
 M128 mode 7 smalldyn "shadow only build" $004715 (repeat $00471d)
 ditto but forcing use of "B no shadow capable build" $004733 so 0.16% slower (repeat $004731)
 - this is about what I expected, as the screen hole code has a fairly small impact on smalldyn

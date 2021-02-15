@@ -1042,9 +1042,36 @@ def make_bbc_swr_executable():
 
 
 def make_electron_swr_executable():
-    # SFTODONOW: THIS NEEDS TO BE MORE LIKE THE BBC B CASE NOW
-    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
-    return make_optimally_aligned_executable("OZMOOE", electron_swr_start_addr, args, "Electron")
+    # SFTODO: THIS IS A COPY AND PASTE OF MAKE_SHR_SWR_EXECUTABLE()
+    leafname = "OZMOOE"
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
+
+    small_e = None
+    if not cmd_args.force_big_dynmem:
+        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
+        # Some systems may have PAGE too high to run small_e, but those systems
+        # would be able to run the game if built with the big dynamic memory model.
+        # small_dynmem_page_threshold determines whether we're willing to prevent a system
+        # running the game in order to get the benefits of the small dynamic memory
+        # model.
+        if small_e is not None:
+            if small_e.start_addr >= small_dynmem_page_threshold:
+                info("Electron executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
+                return small_e
+
+    # Note that we don't respect small_dynmem_page_threshold when generating a big
+    # dynamic memory executable; unlike the above decision about whether or not
+    # to use the small dynamic memory model, we're not trading off performance
+    # against available main RAM - if a system has PAGE too high to run the big
+    # dynamic memory executable we generate, it just can't run the game at all
+    # and there's nothing we can do about it.
+    big_e = make_highest_possible_executable(leafname, args, "Electron")
+    if big_e is not None:
+        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
+            info("Electron executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
+        else:
+            info("Electron executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
+    return big_e
 
 
 def make_tube_executables():
