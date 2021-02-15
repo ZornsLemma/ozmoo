@@ -874,7 +874,14 @@ class OzmooExecutable(Executable):
     def pseudo_ramtop(self):
         # SFTODO: I THINK THIS MAY NEED TO ALLOW FOR SCREEN RAM NOW
         if "ACORN_SWR" in self.labels:
-            return 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
+            result = 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
+            # SFTODO: This adjustment for screen memory is correct as long as
+            # the screen hole executables always run on machines with a fixed
+            # screen hole, which is currently true but won't be eventually (e.g.
+            # when a B-no-shadow has the option to run in mode 6).
+            if "ACORN_SCREEN_HOLE" in self.labels:
+                result -= 0x2000 if "ACORN_ELECTRON_SWR" in self.labels else 0x400
+            return result
         else:
             return self.labels["flat_ramtop"]
 
@@ -1035,6 +1042,7 @@ def make_bbc_swr_executable():
 
 
 def make_electron_swr_executable():
+    # SFTODONOW: THIS NEEDS TO BE MORE LIKE THE BBC B CASE NOW
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1"]
     return make_optimally_aligned_executable("OZMOOE", electron_swr_start_addr, args, "Electron")
 
