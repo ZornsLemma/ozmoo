@@ -825,7 +825,7 @@ class OzmooExecutable(Executable):
             # some main RAM free after loading dynamic memory when loaded at the
             # build addr. For relocatable builds the loader will also take
             # account of the actual value of PAGE.
-            # SFTODO: THINKING OUT LOUD - in the new "no 3c00 hack" model, what we probably mostly want is for swr_dynmem to be calculated like this, then the loader bumps up swr_dynmem_needed by any "unavoidable" screen RAM consumption. The build system needs some sort of option to allow the user to control whether we will accept a smalldyn build which won't work at max PAGE with no shadow RAM. I need to think this through a bit TBH.
+            # SFTODO: THINKING OUT LOUD - in the new "no 3c00 hack" model, what we probably mostly want is for swr_dynmem to be calculated like this, then the loader bumps up swr_dynmem_needed by any "unavoidable" screen RAM consumption. The build system needs some sort of option to allow the user to control whether we will accept a smalldyn build which won't work at max PAGE with no shadow RAM. I need to think this through a bit TBH. - I *think* for now, where I am going to keep a separate B-no-shadow executable and not offer the option to run in a non-default mode on no-shadow machines, all I need to do here is make pseudo_ramtop() return its current value less the screen size for non-shadow builds, but come back to that fresh
             self.swr_dynmem = nonstored_blocks_up_to - 0x8000
             assert self.swr_dynmem <= 16 * 1024
 
