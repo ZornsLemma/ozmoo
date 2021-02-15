@@ -1,4 +1,3 @@
-; SFTODO: Is the Electron defaulting to software scrolling? I can't see any flicker on status line  running benchmark on MAME.
 ; z_extended_opcode 	!byte 0
 ; z_operand_count		!byte 0
 ; z_operand_type_arr  !byte 0, 0, 0, 0, 0, 0, 0, 0

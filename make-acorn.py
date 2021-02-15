@@ -803,9 +803,6 @@ class OzmooExecutable(Executable):
             s += "_" + ourhex(start_addr)
             return s
 
-        if False: # SFTODO GET RID OF THIS CASE
-            if "-DACORN_NO_SHADOW=1" not in args and "-DACORN_HW_SCROLL=1" not in args:
-                args += ["-DACORN_HW_SCROLL=1"]
         if cmd_args.preload_opt and "-DVMEM=1" in args:
             args += ["-DPREOPT=1"]
         Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_addr, args)
@@ -1522,6 +1519,7 @@ def make_disc_image():
         "-DSTACK_PAGES=4",
         "-DSMALLBLOCK=1",
         "-DSPLASHWAIT=0",
+        "-DACORN_HW_SCROLL=1",
         "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
     ]

@@ -1,4 +1,3 @@
-; SFTODO: DON'T FORGET BUILD SYSTEM PROB NEEDS TWEAKING FOR SCREEN HOLE - BEFORE "MAIN RAM" STILL ENDED AT 8000 BECAUSE OF THE 3C00 SCREEN, NOW IT NEEDS TO RECOGNISE SCREEN RAM STARTS AT 6000/7C00
 ; SFTODO: Note that if I do a graphical "loading bar", I need to "do something" to make it work when we're restarting rather than loading from the loading screen, and I also need to make it work even if the user has specified a custom loading screen (ie not assume things about the layout which aren't guaranteed)
 ; Acorn-specific code factored out into its own file for readability.
 
