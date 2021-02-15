@@ -4,7 +4,7 @@ Timings with auto build (all bigdyn, mode 7):
 - B+128K (PAGE=&1F00) $00485b ("should" be slower than M128, but maybe artefact of fast drive access!?)
 - M128+3MHz copro $002cd3 (no drive access during play)
 - M128+256K copro $0025aa (no drive access during play)
-- Electron (MAME, 64K SWR) $00d1b6 - this seems slow, but I am not sure the self-timing can be trusted on Electron (but key thing right now is it completed OK)
+- Electron (MAME, 64K SWR) $00d1b6 - this seems slow, but I am not sure the self-timing can be trusted on Electron (but key thing right now is it completed OK) - repeat, screen cleared to start game play at 19:28:01, finished, 19:46:07 at final prompt -> 1086 seconds (the self-reported time $00d1cc similar to previous run and corresponds to 1074.16 seconds, so this is artificially low, especially as it also includes the initial load, but not *that* artificially low)
 - Electron (Elkulator, 16K SWR) $00fd32 - not sure I trust this self-timing, but it worked
 
 M128 mode 7 smalldyn "shadow only build" $004715 (repeat $00471d)
