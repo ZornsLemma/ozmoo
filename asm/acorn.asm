@@ -856,6 +856,7 @@ SFTODOLABELX1
 
     ; In order to avoid accessing nonexistent game data in an attempt to use all
     ; that RAM, set .ram_blocks = min(.ram_blocks, .game_blocks).
+SFTODOEE2
     ldx .game_blocks + 1
     lda .game_blocks
     cpx .ram_blocks + 1
