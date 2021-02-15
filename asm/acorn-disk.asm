@@ -447,7 +447,8 @@ z_ins_save
 ; some kind, we can still use OSFILE if the actual dynamic memory fits into main
 ; RAM. At the price of some extra complexity and trial builds in the build
 ; script, we could have it set ACORN_SAVE_RESTORE_OSFIND instead of tying it to
-; ACORN_SWR_BIG_DYNMEM like this.
+; ACORN_SWR_BIG_DYNMEM like this. (Or we can just use the size of dynamic memory
+; passed in by the build script to make this decision without any fuss...)
 !ifndef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
 }
