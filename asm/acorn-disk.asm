@@ -1,3 +1,4 @@
+; SFTODO: DON'T FORGET I AM GOING TO NEED TO TWEAK SAVE/RESTORE TO HANDLE MEMORY HOLE (ALTHOUGH ON THE SIMPLIFYING SIDE, I THINK ELECTRON IS NO LONGER A SPECIAL CASE AND ITS STACK AND LOW PART OF DYNMEM WILL ALWAYS BE CONTIGUOUS, JUST AS ON B-NO-SHADOW)
 ; Acorn version of disk.asm. There are a few brief bits of code here which are
 ; duplicates of code in disk.asm, but on the whole things are so different it
 ; seems better to keep this completely separate and accept the duplication.
