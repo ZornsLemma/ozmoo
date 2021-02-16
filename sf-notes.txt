@@ -2,6 +2,7 @@ Fixed probable bug which meant no use of HW scrolling (although it always defaul
 - M128 $00489d (same, as expected)
 - M128 mode 3 - initial time $0002ee - final $0055bb - so 423.94 seconds (cf 414 seconds with extra 64K in e-mail to Fredrik, although that was a smalldyn build and this is bigdyn) - with an extra 64K SWR final is $oops, game is completely broken!
 - Electron (MAME, 64K SWR) 20:27:47-20:41:33, self-reported $009f6f (816.3 seconds), manual times give 826 seconds, so this is 3.8% faster than 3.7f
+- Elkulator (shadow mode, 16K SWR) - $0058be
 
 Timings with auto build (all bigdyn, mode 7):
 - M128 $0048a0
