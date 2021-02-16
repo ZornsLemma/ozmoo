@@ -1547,7 +1547,7 @@ SFTODOLABEL4
 .already_in_right_mode
     ; Clear the screen; this is mostly unnecessary, but for Z3 games which are
     ; loading from the loader in mode 7 it clears any leftover text on the top
-    ; line of the screen.
+    ; line of the screen. SFTODO: This is probably still true, but check - the Commodore code no longer does a cls at the top of deletable_screen_init_2 (but of course it has a different loader style) - it may be that we don't need this and the erase_window call at deletable_screen_init_2 will do the job.
     lda #vdu_cls
     jsr oswrch
 .mode_set

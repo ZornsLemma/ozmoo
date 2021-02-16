@@ -853,7 +853,7 @@ calculate_property_length_number
 	sta .property_number
 	sta .property_length
 	jsr read_next_byte ; size of property block (# data | property number)
-	cmp #0 ; SFTODO!? FIXES BREAKAGE (ONLY BIGDYN?) IF SWR IN BANK 0, BUT WAITING TO SEE WHAT UPSTREAM THINK
+	cmp #0 ; can't trust the zero flag after a call to read_next_byte
 	beq .end_pf_property_list
 !ifdef Z4PLUS {
 	pha
