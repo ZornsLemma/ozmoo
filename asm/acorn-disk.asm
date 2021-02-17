@@ -1,3 +1,4 @@
+; SFTODO - I THINK I'M GOING TO HAVE JUST TWO VERSIONS, OSFILE FOR SIMPLE CASES AND OSFIND-WITH-ZP-WRITE-THEN-PAGE_ALIGNED-WITH-OPTIONAL-HOLE_SKIPPING - THE EXTRA PENALTY IS NEGLIGIBLE ON NON-HOLE BIGMEM AND IT WILL SIMPLIFY TH ECODE, NOTE I DON'T NEED ZP SWAP CODE ON THE NON-OSFILE VERSION AT ALL
 ; SFTODO: DON'T FORGET I AM GOING TO NEED TO TWEAK SAVE/RESTORE TO HANDLE MEMORY HOLE (ALTHOUGH ON THE SIMPLIFYING SIDE, I THINK ELECTRON IS NO LONGER A SPECIAL CASE AND ITS STACK AND LOW PART OF DYNMEM WILL ALWAYS BE CONTIGUOUS, JUST AS ON B-NO-SHADOW)
 ; SFTODO: JUST CHECK WHY THE ELECTRON VERSION CORRUPTS THE LOADER SCREEN - IS THE GAME LOADING UNNCESSARILY HIGH?
 ; Acorn version of disk.asm. There are a few brief bits of code here which are
@@ -324,13 +325,6 @@ wait_for_space
 
 WANT_RESTART = 1
 z_ins_restart
-!ifdef ACORN_NO_SHADOW {
-    jsr undo_mode_7_3c00
-    ; Turn the cursor off during the restart; switching to proper mode 7 will
-    ; have re-enabled it without updating cursor_status, so we just call
-    ; init_cursor_control and that will turn it off again.
-    jsr init_cursor_control
-}
 
     ; SFTODO: We should probably check the game disc is in the drive here,
     ; although really the user shouldn't have taken it out anyway. Is this that
@@ -429,6 +423,9 @@ z_ins_save
 }
 
 !zone save_restore {
+; We don't need this code if we're saving piecemeal; it works out better to just
+; save the zero page addresses directly.
+!ifndef ACORN_SAVE_RESTORE_OSFILE {
 .swap_pointers_for_save
 	ldx #zp_bytes_to_save - 1
 -	lda zp_save_start,x
@@ -439,6 +436,7 @@ z_ins_save
 	bpl -
 .swap_pointers_for_save_rts
 	rts
+}
 
 ; It's faster and simpler to save/restore using OSFILE but it can't access
 ; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
@@ -448,7 +446,7 @@ z_ins_save
 ; some kind, we can still use OSFILE if the actual dynamic memory fits into main
 ; RAM. At the price of some extra complexity and trial builds in the build
 ; script, we could have it set ACORN_SAVE_RESTORE_OSFIND instead of tying it to
-; ACORN_SWR_BIG_DYNMEM like this. (Or we can just use the size of dynamic memory
+; ACORN_SWR_BIG_DYNMEM like this. (SFTODO: Or we can just use the size of dynamic memory
 ; passed in by the build script to make this decision without any fuss...)
 !ifndef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
@@ -700,10 +698,8 @@ save_game
 .osfile_or_osfind_op = zp_temp ; 1 byte
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
 !ifndef ACORN_SAVE_RESTORE_OSFILE {
-    .start_ptr = zp_temp + 2 ; 2 bytes
-!ifdef ACORN_ELECTRON_SWR {
-    .bytes_to_read = zp_temp + 4 ; 2 bytes
-}
+; SFTODO!?    .osgbpb_data_ptr = zp_temp + 2 ; 2 bytes
+; SFTODO!?    .osgbpb_length = zp_temp + 4 ; 2 bytes
 }
     sta .osfile_or_osfind_op
 
@@ -727,9 +723,8 @@ save_game
     jsr .get_filename
     beq .save_restore_game_cleanup_partial ; user aborted 
 
-	; Swap in z_pc and stack_ptr
-    ; We need to normalise z_local_vars_ptr and stack_ptr first so saves are
-    ; compatible between different builds.
+    ; We need to normalise z_local_vars_ptr and stack_ptr first before saving so
+    ; saves are compatible between different builds.
     lda z_local_vars_ptr + 1
     sec
     sbc #>stack_start
@@ -738,7 +733,10 @@ save_game
     sec
     sbc #>stack_start
     sta stack_ptr + 1
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
+	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
+}
 
 	; Perform save or load
     ldx #1
@@ -776,10 +774,10 @@ save_game
     ; ask the user if that's OK.
     lda .osfile_or_osfind_op
     cmp #.save_op
-    bne .not_save
+    bne .no_overwrite_check
     jsr .check_for_overwrite
     bne .save_restore_game_cleanup_full
-.not_save
+.no_overwrite_check
     ; SFTODO: This code has changed and !ifdef/!ifndef blocks can be combined/made into elses
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
     ; The OSFILE block is updated after the call, so we have to reset it via code
@@ -789,35 +787,40 @@ save_game
     sta .osfile_save_load_block,x
     dex
     bpl -
-} else {
-    lda #<(stack_start - zp_bytes_to_save)
-    sta .start_ptr
-    lda #>(stack_start - zp_bytes_to_save)
-    sta .start_ptr + 1
-!ifndef ACORN_ELECTRON_SWR {
-.save_length = ACORN_DYNAMIC_SIZE_BYTES + stack_size + zp_bytes_to_save
-    lda #<.save_length
-    sta .osgbpb_save_length
-    lda #>.save_length
-    sta .osgbpb_save_length + 1
-} else {
-    ; On the Electron build, .osfile_pseudo_emulation sets .osgbpb_save_length.
-}
-}
     lda .osfile_or_osfind_op
-!ifdef ACORN_SAVE_RESTORE_OSFILE {
     ldx #<.osfile_save_load_block
     ldy #>.osfile_save_load_block
     jsr osfile
 } else {
-    jsr .osfile_pseudo_emulation
+    jsr .open_file ; SFTODO: I THINK THIS IS ONLY CALLER, SO INLINE THIS IF SO
+    lda #zp_start_save
+    sta .osgbpb_data_ptr
+    lda #zp_bytes_to_save
+    sta .osgbpb_length
+    lda #0
+    sta .osgbpb_data_ptr + 1
+    sta .osgbpb_length + 1
+    jsr .osgbpb_save_or_load
+    lda #<stack_start
+    sta .osgbpb_data_ptr
+    lda #>stack_start
+    sta .osgbpb_data_ptr + 1
+.non_zp_length = stack_size + ACORN_DYNAMIC_SIZE_BYTES
+    lda #<.non_zp_length
+    sta .osgbpb_length
+    lda #>.non_zp_length
+    sta .osgbpb_length + 1
+    jsr .osgbpb_save_or_load
+    jsr close_osgbpb_block_handle
 }
     lda #1
     sta .result
 
 .save_restore_game_cleanup_full
 	; Swap out z_pc and stack_ptr
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
 	jsr .swap_pointers_for_save
+}
     ; We need to un-normalise z_local_vars_ptr and stack_ptr now.
     lda z_local_vars_ptr + 1
     clc
@@ -899,6 +902,7 @@ save_game
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
 .osfile_save_load_block_master
     !word .filename_buffer ; filename
+    ; SFTODO: stack_start - zp_bytes_to_save occurs in many places, perhaps make it a named constant
     !word stack_start - zp_bytes_to_save ; load address low
     !word 0 ; load address high
     !word 0 ; exec address low: 0 => use specified load address (on load)
@@ -923,12 +927,9 @@ save_game
     ldy #>osgbpb_block
     jmp osgbpb
 
-; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
-; it can handle data located in sideways RAM. A contains the OSFIND operation
-; code on entry.
-.osfile_pseudo_emulation
-.chunk_size = 256 ; for documentation; we hard-code assumptions about this too
+.open_file
     ; Open the file
+    lda .osfile_or_osfind_op
     ldx #<.filename_buffer
     ldy #>.filename_buffer
     jsr osfind
@@ -939,75 +940,61 @@ save_game
     !text "Not found"
     !byte 0
 +   sta osgbpb_block_handle
+.open_file_rts
+    rts
 
-    ; Is this a load or save?
+; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
+; it can handle data located in sideways RAM. A contains the OSFIND operation
+; code on entry. SFTODO UPDATE COMMENTS
+.chunk_size = 256 ; for documentation; we hard-code assumptions about this too
+
+.osgbpb_save_or_load
     lda .osfile_or_osfind_op
     cmp #osfind_open_input
-    beq .osfile_pseudo_emulation_load
+    beq .osgbpb_load
 
-    ; It's a save.
-!ifdef ACORN_ELECTRON_SWR {
-    ; On this build the "zero page"+stack area isn't contiguous with dynamic
-    ; memory, so we need to do two separate invocations of
-    ; .osfile_pseudo_emulation_save_internal.
-    lda #<(zp_bytes_to_save + stack_size)
-    sta .osgbpb_save_length
-    lda #>(zp_bytes_to_save + stack_size)
-    sta .osgbpb_save_length + 1
-    jsr .osfile_pseudo_emulation_save_internal
-    lda #<story_start
-    sta .start_ptr
-    lda #>story_start
-    sta .start_ptr + 1
-    lda #<ACORN_DYNAMIC_SIZE_BYTES
-    sta .osgbpb_save_length
-    lda #>ACORN_DYNAMIC_SIZE_BYTES
-    sta .osgbpb_save_length + 1
-    jsr .osfile_pseudo_emulation_save_internal
-    jmp close_osgbpb_block_handle
-
-.osfile_pseudo_emulation_save_internal
-}
-
-.osgbpb_save_length = memory_buffer ; 2 bytes
+; SFTODO!?!?!? .osgbpb_length = memory_buffer ; 2 bytes
 .osgbpb_save_loop
-    ; Save the smaller of .chunk_size and .osgbpb_save_length bytes. If
-    ; .osgbpb_save_length is 0, we're done.
+    ; Save the smaller of .chunk_size and .osgbpb_length bytes. If
+    ; .osgbpb_length is 0, we're done.
     ldx #<.chunk_size
     ldy #>.chunk_size
-    lda .osgbpb_save_length + 1
+    lda .osgbpb_length + 1
     bne +
     tay
-    ldx .osgbpb_save_length
-    beq .osgbpb_save_done
+    ldx .osgbpb_length
+    beq .open_file_rts
 +   stx osgbpb_block_transfer_length
     sty osgbpb_block_transfer_length + 1
 
-    ; Subtract the number of bytes to save from .osgbpb_save_length.
+    ; Subtract the number of bytes to save from .osgbpb_length.
     sec
-    lda .osgbpb_save_length
+    lda .osgbpb_length
     sbc osgbpb_block_transfer_length
-    sta .osgbpb_save_length
-    lda .osgbpb_save_length + 1
+    sta .osgbpb_length
+    lda .osgbpb_length + 1
     sbc osgbpb_block_transfer_length + 1
-    sta .osgbpb_save_length + 1
+    sta .osgbpb_length + 1
 
     ; Copy the data into the bounce buffer.
     ldy #0
--   lda (.start_ptr),y
+-   lda (.osgbpb_data_ptr),y
     sta scratch_page,y
     iny
     cpy osgbpb_block_transfer_length
     bne -
 
-    ; Advance .start_ptr.
+    ; Advance .osgbpb_data_ptr.
     clc
-    lda .start_ptr
+    lda .osgbpb_data_ptr
     adc osgbpb_block_transfer_length
-    sta .start_ptr
-    lda .start_ptr + 1
+    sta .osgbpb_data_ptr
+    lda .osgbpb_data_ptr + 1
     adc osgbpb_block_transfer_length + 1
-    sta .start_ptr + 1
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+    !error "SFTODO CMP AND SKIP SCREEN HOLE"
+}
+    sta .osgbpb_data_ptr + 1
 
     ; Write the bounce buffer out.
     lda #osgbpb_write_ignoring_ptr
@@ -1016,111 +1003,66 @@ save_game
     ; Loop round until we're done.
     jmp .osgbpb_save_loop
 
-.osgbpb_save_done
-!ifndef ACORN_ELECTRON_SWR {
-    jmp close_osgbpb_block_handle
-} else {
-    rts
-}
-
-    ; It's a load.
-.osfile_pseudo_emulation_load
-!ifdef ACORN_ELECTRON_SWR {
-    ; On this build the "zero page"+stack area isn't contiguous with dynamic
-    ; memory, so we need to do two separate invocations of
-    ; .osfile_pseudo_emulation_load_internal.
-    lda #<(zp_bytes_to_save + stack_size)
-    sta .bytes_to_read
-    lda #>(zp_bytes_to_save + stack_size)
-    sta .bytes_to_read + 1
-    jsr .osfile_pseudo_emulation_load_internal
-    lda #<story_start
-    sta .start_ptr
-    lda #>story_start
-    sta .start_ptr + 1
-    lda #$ff
-    sta .bytes_to_read
-    sta .bytes_to_read + 1
-    jsr .osfile_pseudo_emulation_load_internal
-    jmp close_osgbpb_block_handle
-
-.osfile_pseudo_emulation_load_internal
-}
-
+    ; Read a maximum of .osgbpb_length bytes SFTODO - MAYBE RENMAE "SAVE_LENGTH" AS IT IS USED FOR LOADS TOO
+    ; Read some data into the bounce buffer and work out how much we read; if we
+    ; read nothing, it's EOF and we're done. On builds with non-contiguous
+    ; dynamic memory we read a maximum of .osgbpb_length bytes; on other builds
+    ; we just read until EOF.SFTODO UPDATE COMMENT
+.osgbpb_load
 .bytes_read = memory_buffer ; 2 bytes
 .osgbpb_load_loop
-    ; Read some data into the bounce buffer and work out how much we read; if we
-    ; read nothing, it's EOF and we're done. On the Electron we read a maximum
-    ; of .bytes_to_read bytes; on other builds we just read until EOF.
-!ifndef ACORN_ELECTRON_SWR {
-    ldx #<.chunk_size
-    stx osgbpb_block_transfer_length
-    ldx #>.chunk_size
-    stx osgbpb_block_transfer_length + 1
-} else {
     ldx #<.chunk_size
     ldy #>.chunk_size
-    lda .bytes_to_read + 1
+    lda .osgbpb_length + 1
     bne .read_full_chunk
     tay
-    ldx .bytes_to_read
+    ldx .osgbpb_length
 .read_full_chunk
     stx osgbpb_block_transfer_length
     stx .lda_imm_this_chunk_size_low + 1
     sty osgbpb_block_transfer_length + 1
     sty .lda_imm_this_chunk_size_high + 1
-}
     lda #osgbpb_read_ignoring_ptr
     jsr .osgbpb_wrapper
     sec
-!ifdef ACORN_ELECTRON_SWR {
 .lda_imm_this_chunk_size_low
-}
     lda #<.chunk_size
     sbc osgbpb_block_transfer_length
     sta .bytes_read
-!ifdef ACORN_ELECTRON_SWR {
 .lda_imm_this_chunk_size_high
-}
     lda #>.chunk_size
     sbc osgbpb_block_transfer_length + 1
     sta .bytes_read + 1
     ora .bytes_read
-    beq .osgbpb_load_done
+    beq .open_file_rts
 
     ; Copy the data out of the bounce buffer.
     ldy #0
 -   lda scratch_page,y
-    sta (.start_ptr),y
+    sta (.osgbpb_data_ptr),y
     iny
     cpy .bytes_read
     bne -
 
-    ; If we read fewer than .chunk_size bytes, we've hit EOF and we're done.
-    ; (On ACORN_ELECTRON_SWR builds we may have tried to read fewer than
+    ; If we read fewer than .chunk_size bytes, we've hit EOF and we're done. (On
+    ; non-contiguous dynamic memory builds we may have tried to read fewer than
     ; .chunk_size bytes, but it's still true that reading fewer than .chunk_size
     ; bytes means we're done - it's either EOF, or we've read exactly as many
-    ; bytes as we requested.)
+    ; bytes as we requested.) SFTODO UPDATE COMMENT
     lda .bytes_read + 1
     beq .osgbpb_load_done
 
-!ifdef ACORN_ELECTRON_SWR {
-    ; Decrement .bytes_to_read by .chunk_size.
-    dec .bytes_to_read + 1
-}
+    ; Decrement .osgbpb_length by .chunk_size.
+    dec .osgbpb_length + 1
 
-    ; Advance .start_ptr by .chunk_size.
-    inc .start_ptr + 1
+    ; Advance .osgbpb_data_ptr by .chunk_size.
+    inc .osgbpb_data_ptr + 1
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+    !error "SFTODO"
+}
 
     ; Loop round until we're done.
     bne .osgbpb_load_loop ; Always branch
-
-.osgbpb_load_done
-!ifndef ACORN_ELECTRON_SWR {
-    ; fall through to close_osgbpb_block_handle
-} else {
-    rts
-}
 }
 
 !ifdef ACORN_ADFS {

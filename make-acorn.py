@@ -1,3 +1,4 @@
+# SFTODO: PROB NOT, BUT WOULD THERE BE ANY SAVIG IN REMOVING MODE_7_STATUS FROM ELECTRON BUILD? CHECK...
 from __future__ import print_function
 import argparse
 import base64
