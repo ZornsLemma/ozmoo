@@ -423,6 +423,20 @@ z_ins_save
 }
 
 !zone save_restore {
+; It's faster and simpler to save/restore using OSFILE but it can't access
+; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
+; SF: ENHANCEMENT: This is bit too pessimistic - since we only save precisely
+; the number of bytes in dynamic memory as specified by the game's header, even
+; if nonstored_blocks has overflowed into sideways RAM due to rounding up of
+; some kind, we can still use OSFILE if the actual dynamic memory fits into main
+; RAM. At the price of some extra complexity and trial builds in the build
+; script, we could have it set ACORN_SAVE_RESTORE_OSFIND instead of tying it to
+; ACORN_SWR_BIG_DYNMEM like this. (SFTODO: Or we can just use the size of dynamic memory
+; passed in by the build script to make this decision without any fuss...)
+!ifndef ACORN_SWR_BIG_DYNMEM {
+ACORN_SAVE_RESTORE_OSFILE = 1
+}
+
 ; We don't need this code if we're saving piecemeal; it works out better to just
 ; save the zero page addresses directly.
 !ifndef ACORN_SAVE_RESTORE_OSFILE {
@@ -436,20 +450,6 @@ z_ins_save
 	bpl -
 .swap_pointers_for_save_rts
 	rts
-}
-
-; It's faster and simpler to save/restore using OSFILE but it can't access
-; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
-; SF: ENHANCEMENT: This is bit too pessimistic - since we only save precisely
-; the number of bytes in dynamic memory as specified by the game's header, even
-; if nonstored_blocks has overflowed into sideways RAM due to rounding up of
-; some kind, we can still use OSFILE if the actual dynamic memory fits into main
-; RAM. At the price of some extra complexity and trial builds in the build
-; script, we could have it set ACORN_SAVE_RESTORE_OSFIND instead of tying it to
-; ACORN_SWR_BIG_DYNMEM like this. (SFTODO: Or we can just use the size of dynamic memory
-; passed in by the build script to make this decision without any fuss...)
-!ifndef ACORN_SWR_BIG_DYNMEM {
-ACORN_SAVE_RESTORE_OSFILE = 1
 }
 
 !ifndef ACORN_SAVE_RESTORE_OSFILE {
