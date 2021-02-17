@@ -687,6 +687,9 @@ restore_game
     plp
 .restore_game_rts
     rts
+
+.save_restore_game_cleanup_partial_indirect
+    jmp .save_restore_game_cleanup_partial ; SFTODO CAN I AVOID THIS?
     
 save_game
     lda #>.save_prompt
@@ -695,6 +698,7 @@ save_game
     sta .filename_prompt_loads + 3
     lda #.save_op
     ; fall through to .save_restore_game
+
 .save_restore_game
 .osfile_or_osfind_op = zp_temp ; 1 byte
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
@@ -722,7 +726,15 @@ save_game
     lda #0
     sta .result
     jsr .get_filename
-    beq .save_restore_game_cleanup_partial ; user aborted 
+    beq .save_restore_game_cleanup_partial_indirect ; user aborted
+
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ; Now we know we won't be doing a partial cleanup, we can page in the SWR
+    ; bank containing dynamic memory, so the load/save using bounce buffers
+    ; will access it correctly. We don't need to explicitly undo this; calling
+    ; get_page_at_z_pc with zp_pc_h set to $ff below will do it for us.
+    +acorn_page_in_bank_using_a ram_bank_list
+}
 
     ; We need to normalise z_local_vars_ptr and stack_ptr first before saving so
     ; saves are compatible between different builds.
@@ -993,8 +1005,10 @@ save_game
     lda .osgbpb_data_ptr + 1
     adc osgbpb_block_transfer_length + 1
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+    ; Note that we check for equality here, because we're looping round and we
+    ; only want to apply the adjustment when we first hit the screen hole.
     cmp acorn_screen_hole_start_page
-    bcc +
+    bne +
     adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
 +
 }
@@ -1062,10 +1076,13 @@ save_game
     ; Advance .osgbpb_data_ptr by .chunk_size.
     inc .osgbpb_data_ptr + 1
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+    ; Note that we check for equality here, because we're looping round and we
+    ; only want to apply the adjustment when we first hit the screen hole.
     lda .osgbpb_data_ptr + 1
     cmp acorn_screen_hole_start_page
-    bcc +
+    bne +
     adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
+    sta .osgbpb_data_ptr + 1
 +   ; Z flag is clear however we get here
 }
 
