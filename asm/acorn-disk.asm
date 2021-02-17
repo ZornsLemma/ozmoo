@@ -439,7 +439,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 
 ; We don't need this code if we're saving piecemeal; it works out better to just
 ; save the zero page addresses directly.
-!ifndef ACORN_SAVE_RESTORE_OSFILE {
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
 .swap_pointers_for_save
 	ldx #zp_bytes_to_save - 1
 -	lda zp_save_start,x
@@ -448,11 +448,11 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 	sty zp_save_start,x
 	dex
 	bpl -
-.swap_pointers_for_save_rts
+; SFTODO DELETE LABEL? .swap_pointers_for_save_rts
 	rts
 }
 
-!ifndef ACORN_SAVE_RESTORE_OSFILE {
+!ifndef ACORN_SAVE_RESTORE_OSFILE { ; SFTODO: Swap branches here for clarity?
 .save_op = osfind_open_output
 .load_op = osfind_open_input
 } else {
@@ -528,7 +528,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     beq - 
     ; Check for empty string or * command.
     cmp #13
-    beq .swap_pointers_for_save_rts
+    beq .get_filename_rts
     cmp #'*'
     beq .oscli
     ; It's a filename. We could just return it and let the filing system do what
@@ -543,6 +543,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     cmp #13
     bne -
     tax ; clear Z
+.get_filename_rts
     rts
 .space_in_filename
     lda #>.space_in_filename_msg
@@ -698,8 +699,8 @@ save_game
 .osfile_or_osfind_op = zp_temp ; 1 byte
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
 !ifndef ACORN_SAVE_RESTORE_OSFILE {
-; SFTODO!?    .osgbpb_data_ptr = zp_temp + 2 ; 2 bytes
-; SFTODO!?    .osgbpb_length = zp_temp + 4 ; 2 bytes
+    .osgbpb_data_ptr = zp_temp + 2 ; 2 bytes
+    .osgbpb_length = zp_temp + 4 ; 2 bytes
 }
     sta .osfile_or_osfind_op
 
@@ -793,7 +794,7 @@ save_game
     jsr osfile
 } else {
     jsr .open_file ; SFTODO: I THINK THIS IS ONLY CALLER, SO INLINE THIS IF SO
-    lda #zp_start_save
+    lda #zp_save_start
     sta .osgbpb_data_ptr
     lda #zp_bytes_to_save
     sta .osgbpb_length
@@ -992,7 +993,10 @@ save_game
     lda .osgbpb_data_ptr + 1
     adc osgbpb_block_transfer_length + 1
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-    !error "SFTODO CMP AND SKIP SCREEN HOLE"
+    cmp acorn_screen_hole_start_page
+    bcc +
+    adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
++
 }
     sta .osgbpb_data_ptr + 1
 
@@ -1034,7 +1038,7 @@ save_game
     sbc osgbpb_block_transfer_length + 1
     sta .bytes_read + 1
     ora .bytes_read
-    beq .open_file_rts
+    beq .close_osgbpb_block_handle_rts
 
     ; Copy the data out of the bounce buffer.
     ldy #0
@@ -1050,7 +1054,7 @@ save_game
     ; bytes means we're done - it's either EOF, or we've read exactly as many
     ; bytes as we requested.) SFTODO UPDATE COMMENT
     lda .bytes_read + 1
-    beq .osgbpb_load_done
+    beq .close_osgbpb_block_handle_rts
 
     ; Decrement .osgbpb_length by .chunk_size.
     dec .osgbpb_length + 1
@@ -1058,7 +1062,11 @@ save_game
     ; Advance .osgbpb_data_ptr by .chunk_size.
     inc .osgbpb_data_ptr + 1
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-    !error "SFTODO"
+    lda .osgbpb_data_ptr + 1
+    cmp acorn_screen_hole_start_page
+    bcc +
+    adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
++   ; Z flag is clear however we get here
 }
 
     ; Loop round until we're done.
@@ -1082,6 +1090,7 @@ close_osgbpb_block_handle
     lda #osfind_close ; 0
     sta osgbpb_block_handle
     jmp osfind
+.close_osgbpb_block_handle_rts
 +   rts ; SFTODO: Can we move this and share a nearby rts?
 
 ; This block may be shared by both ADFS readblocks and OSFIND+OSGBPB save/
