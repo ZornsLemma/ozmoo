@@ -18,7 +18,6 @@ header_screen_height_lines = $20
 header_screen_width_chars = $21
 header_screen_width_units = $22
 header_screen_height_units = $24
-; SFTODO: NEXT TWO ARE *PROBABLY* RELEVANT FOR ACORN PORT, BUT CHECK AND IFDEF OUT IF THEY'RE NOT
 header_font_width_units = $26
 header_font_height_units = $27
 !ifndef ACORN {

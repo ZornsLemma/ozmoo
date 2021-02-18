@@ -423,12 +423,17 @@ z_ins_save
 !zone save_restore {
 ; It's faster and simpler to save/restore using OSFILE but it can't access
 ; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
-; SFTODO: This is bit too pessimistic - since we only save precisely
-; the number of bytes in dynamic memory as specified by the game's header, even
-; if nonstored_blocks has overflowed into sideways RAM due to rounding up of
-; some kind, we can still use OSFILE if the actual dynamic memory fits into main
-; RAM. The build system already passes this in as ACORN_DYNAMIC_SIZE_BYTES, so this
-; isn't even hard.
+; SFTODO: This is bit too pessimistic - since we only save precisely the number
+; of bytes in dynamic memory as specified by the game's header, even if
+; nonstored_blocks has overflowed into sideways RAM due to rounding up of some
+; kind, we can still use OSFILE if the actual dynamic memory fits into main RAM.
+; The build system already passes this in as ACORN_DYNAMIC_SIZE_BYTES, so this
+; isn't even hard. (Or is it? What would the condition be here? !if
+; !ACORN_SWR_BIG_DYNMEM or (story_start + ACORN_DYNAMIC_SIZE_BYTES <= $8000) {
+; ACORN_SAVE_RESTORE_OSFILE = 1 }), and I think things might get circular
+; because story_start will move depending on the result of this test. Maybe I'm
+; getting confused, but I think the build system would have to be responsible
+; for doing two trial builds.)
 !ifndef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
 }

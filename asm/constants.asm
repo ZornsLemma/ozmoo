@@ -383,7 +383,6 @@ osbyte_read_vdu_status = $75
 osbyte_reflect_keyboard_status = $76
 osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
-osbyte_read_screen_address = $84 ; SFTODO: GET RID OF THIS
 osbyte_read_screen_address_for_mode = $85
 osbyte_read_cursor_position = $86
 osbyte_read_screen_mode = $87
@@ -424,7 +423,7 @@ zp_temp               = $75 ; 5 bytes
 ; matters most of the time.
 cursor_row            = $7a ; 2 bytes
 cursor_column         = $7c ; 2 bytes
-!if 0 { ; SFTODO: DELETE
+!if 0 { ; SFTODONOW: DELETE
 screen_width          = $54 ; 1 byte
 screen_height         = $89 ; 1 byte
 screen_height_minus_1 = $8a ; 1 byte
@@ -460,7 +459,7 @@ stack = $100
 z_trace_index = $400 ; !byte 0
 s_stored_x = $401 ; !byte 0
 s_stored_y = $402 ; !byte 0
-!if 0 { ; SFTODO: DELETE
+!if 0 { ; SFTODONOW: DELETE
 screen_width_minus_1 = $403 ; !byte 0
 screen_width_plus_1 = $404 ; !byte 0
 }
@@ -518,18 +517,18 @@ scratch_page = $500
 !ifdef ACORN_SWR {
 scratch_double_page = scratch_page
 ; SFTODO: $700-$800 is currently wasted
-; SFTODO: THIS IS A HACK - I NEED TO MOVE vmap_z_l FOR 2P BUILDS TOO, BUT THIS WILL DO FOR NOW
+; SFTODONOW: THIS IS A HACK - I NEED TO MOVE vmap_z_l FOR 2P BUILDS TOO, BUT THIS WILL DO FOR NOW
 vmap_z_l = $701 ; not $700, because we use "vmap_z_l - 1,x" addressing in a hot loop
 
 ; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page = $41f ; $9e ; SFTODO TEMP EXPERIMENTAL $41f ; SFTODO TEMP ADDRESS, EXPERIMENTAL - THIS DOESN'T REALLY NEED TO BE IN ZP (BUT MAYBE DO COMPARATIVE MEASUREMENTS) - OK, I REALLY DON'T THINK THIS BENEFITS SIGNIFICANTLY FROM ZP
-acorn_screen_hole_start_page_minus_one = $9f ; SFTODO TEMP ADDRESS, EXPERIMENTAL, THIS ONE WILL BENEFIT MOST FROM BEING IN ZP - BUT WE CAN'T USE $9F, WE ONLY HAVE UP TO $8F INCLUSIVE, BUT THIS WILL DO UNTIL I RE-WORK ZP
+acorn_screen_hole_start_page_minus_one = $9f ; SFTODONOW TEMP ADDRESS, EXPERIMENTAL, THIS ONE WILL BENEFIT MOST FROM BEING IN ZP - BUT WE CAN'T USE $9F, WE ONLY HAVE UP TO $8F INCLUSIVE, BUT THIS WILL DO UNTIL I RE-WORK ZP
 acorn_screen_hole_pages = $420 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 acorn_screen_hole_pages_minus_one = $421 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 }
 
-; SFTODO: There's no advantage for second processor builds, but on ACORN_SWR
+; SFTODONOW: There's no advantage for second processor builds, but on ACORN_SWR
 ; builds we could potentially put vmap_z_[hl] somewhere in $400-800 (we'd probably
 ; have the VVVVVV identifier in the discardable init code for the build script
 ; to patch and copy that down to $400-800 in the discardable init code). Perhaps
