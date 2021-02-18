@@ -1,4 +1,3 @@
-# SFTODO: As long as the B-no-shadow build *is* mode 7 only, we should perhaps build it without ACORN_HW_SCROLL to save a few bytes. (This assumes - as I am thinking of doing - I disable HW scroll in mode 7 on all machines, since it's ugly and more trouble than it's worth to fix.)
 from __future__ import print_function
 import argparse
 import base64
@@ -1019,7 +1018,12 @@ def make_shr_swr_executable():
 
 def make_bbc_swr_executable():
     leafname = "OZMOOB"
+    # SFTODO: We could shave a few bytes off this executable by having an
+    # ACORN_MODE_7_ONLY build flag which would disable some unnecessary mode
+    # support. We get most of the benefit by removing "-DACORN_HW_SCROLL=1";
+    # hardware scrolling is always disabled in mode 7 anyway.
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
+    args = [x for x in args if x != "-DACORN_HW_SCROLL=1"]
     return make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM")
 
 
