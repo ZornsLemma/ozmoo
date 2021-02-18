@@ -91,6 +91,10 @@ def write_le(data, i, v, n):
         n -= 1
 
 
+def init_cap(s):
+    return s[0].upper() + s[1:]
+
+
 def divide_round_up(x, y):
     if x % y == 0:
         return x // y
@@ -978,10 +982,7 @@ def make_optimally_aligned_executable(leafname, initial_start_addr, args, report
             return make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
 
 
-def make_shr_swr_executable():
-    leafname = "OZMOOSH"
-    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args
-
+def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     small_e = None
     if not cmd_args.force_big_dynmem:
         small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
@@ -992,7 +993,7 @@ def make_shr_swr_executable():
         # model.
         if small_e is not None:
             if small_e.start_addr >= small_dynmem_page_threshold:
-                info("Shadow+sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
+                info(init_cap(report_failure_prefix) + " executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
 
     # Note that we don't respect small_dynmem_page_threshold when generating a big
@@ -1001,79 +1002,31 @@ def make_shr_swr_executable():
     # against available main RAM - if a system has PAGE too high to run the big
     # dynamic memory executable we generate, it just can't run the game at all
     # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable(leafname, args, "shadow+sideways RAM")
+    big_e = make_highest_possible_executable(leafname, args, report_failure_prefix)
     if big_e is not None:
         if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
-            info("Shadow+sideways RAM executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
+            info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
         else:
-            info("Shadow+sideways RAM executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
+            info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
     return big_e
+
+
+def make_shr_swr_executable():
+    leafname = "OZMOOSH"
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + bbc_args
+    return make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM")
 
 
 def make_bbc_swr_executable():
-    # SFTODO: THIS IS A COPY AND PASTE OF MAKE_SHR_SWR_EXECUTABLE()
     leafname = "OZMOOB"
-    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_SCREEN_HOLE=1"]
-
-    small_e = None
-    if not cmd_args.force_big_dynmem:
-        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
-        # Some systems may have PAGE too high to run small_e, but those systems
-        # would be able to run the game if built with the big dynamic memory model.
-        # small_dynmem_page_threshold determines whether we're willing to prevent a system
-        # running the game in order to get the benefits of the small dynamic memory
-        # model.
-        if small_e is not None:
-            if small_e.start_addr >= small_dynmem_page_threshold:
-                info("BBC B sideways RAM executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
-                return small_e
-
-    # Note that we don't respect small_dynmem_page_threshold when generating a big
-    # dynamic memory executable; unlike the above decision about whether or not
-    # to use the small dynamic memory model, we're not trading off performance
-    # against available main RAM - if a system has PAGE too high to run the big
-    # dynamic memory executable we generate, it just can't run the game at all
-    # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable(leafname, args, "BBC B sideways RAM")
-    if big_e is not None:
-        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
-            info("BBC B sideways RAM executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
-        else:
-            info("BBC B sideways RAM executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
-    return big_e
+    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
+    return make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM")
 
 
 def make_electron_swr_executable():
-    # SFTODO: THIS IS A COPY AND PASTE OF MAKE_SHR_SWR_EXECUTABLE()
     leafname = "OZMOOE"
     args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
-
-    small_e = None
-    if not cmd_args.force_big_dynmem:
-        small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
-        # Some systems may have PAGE too high to run small_e, but those systems
-        # would be able to run the game if built with the big dynamic memory model.
-        # small_dynmem_page_threshold determines whether we're willing to prevent a system
-        # running the game in order to get the benefits of the small dynamic memory
-        # model.
-        if small_e is not None:
-            if small_e.start_addr >= small_dynmem_page_threshold:
-                info("Electron executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
-                return small_e
-
-    # Note that we don't respect small_dynmem_page_threshold when generating a big
-    # dynamic memory executable; unlike the above decision about whether or not
-    # to use the small dynamic memory model, we're not trading off performance
-    # against available main RAM - if a system has PAGE too high to run the big
-    # dynamic memory executable we generate, it just can't run the game at all
-    # and there's nothing we can do about it.
-    big_e = make_highest_possible_executable(leafname, args, "Electron")
-    if big_e is not None:
-        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
-            info("Electron executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
-        else:
-            info("Electron executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
-    return big_e
+    return make_small_or_big_dynmem_executable(leafname, args, "Electron")
 
 
 def make_tube_executables():
@@ -1518,6 +1471,7 @@ def make_preload_blocks_list(config_filename):
 
 def make_disc_image():
     global ozmoo_base_args
+    global bbc_args
     ozmoo_base_args = [
         "-DACORN=1",
         "-DACORN_CURSOR_PASS_THROUGH=1",
@@ -1534,14 +1488,9 @@ def make_disc_image():
     # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
     if cmd_args.adfs:
         ozmoo_base_args += ["-DACORN_ADFS=1"]
-    # SFTODO: I should probably stop defining MODE_7_STATUS in Electron builds;
-    # it would save a few bytes. This might change if someone asks for mode 7
-    # add-on support later, of course. I am not doing this just yet because I
-    # need to tweak the rest of this script to rationalise how the different
-    # builds are performed first, at the moment they're rather copy-and-paste.
     # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
     if not cmd_args.no_mode_7_colour:
-        ozmoo_base_args += ["-DMODE_7_STATUS=1"]
+        bbc_args += ["-DMODE_7_STATUS=1"]
     if cmd_args.interpreter_num:
         ozmoo_base_args += ["-DTERPNO=%d" % cmd_args.interpreter_num]
     if cmd_args.function_keys:
@@ -1758,6 +1707,7 @@ if not os.path.exists("temp"):
 
 ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
+bbc_args = []
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
