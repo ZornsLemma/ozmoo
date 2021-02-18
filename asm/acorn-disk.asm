@@ -1,5 +1,4 @@
 ; SFTODO - I THINK I'M GOING TO HAVE JUST TWO VERSIONS, OSFILE FOR SIMPLE CASES AND OSFIND-WITH-ZP-WRITE-THEN-PAGE_ALIGNED-WITH-OPTIONAL-HOLE_SKIPPING - THE EXTRA PENALTY IS NEGLIGIBLE ON NON-HOLE BIGMEM AND IT WILL SIMPLIFY TH ECODE, NOTE I DON'T NEED ZP SWAP CODE ON THE NON-OSFILE VERSION AT ALL
-; SFTODO: DON'T FORGET I AM GOING TO NEED TO TWEAK SAVE/RESTORE TO HANDLE MEMORY HOLE (ALTHOUGH ON THE SIMPLIFYING SIDE, I THINK ELECTRON IS NO LONGER A SPECIAL CASE AND ITS STACK AND LOW PART OF DYNMEM WILL ALWAYS BE CONTIGUOUS, JUST AS ON B-NO-SHADOW)
 ; SFTODO: JUST CHECK WHY THE ELECTRON VERSION CORRUPTS THE LOADER SCREEN - IS THE GAME LOADING UNNCESSARILY HIGH?
 ; Acorn version of disk.asm. There are a few brief bits of code here which are
 ; duplicates of code in disk.asm, but on the whole things are so different it
@@ -78,11 +77,11 @@ readblocks
     ; loop, and if you had a * prompt you could do a *MOUNT and (I think) fix
     ; things. In reality no one is really likely to get caught by this, but
     ; all else being equal it might be nice to allow a way out.
-    !text 13, "Press SPACE to retry...", 0
+    !text cr, "Press SPACE to retry...", 0
     jsr wait_for_space
-    lda #13
+    lda #cr
     jsr s_printchar
-    lda #13
+    lda #cr
     jsr s_printchar
 .no_error
 
@@ -354,7 +353,7 @@ game_data_filename = game_data_filename_or_restart_command
     cmp #'.'
     bne +
     stx .last_dot
-+   cmp #13
++   cmp #cr
     bne -
     ldx .last_dot
     ldy #255
@@ -362,7 +361,7 @@ game_data_filename = game_data_filename_or_restart_command
     iny
     lda .executable_leafname,y
     sta scratch_page,x
-    cmp #13
+    cmp #cr
     bne -
     ldx #<scratch_page
     ldy #>scratch_page
@@ -372,16 +371,16 @@ game_data_filename = game_data_filename_or_restart_command
 !ifdef ACORN_ADFS {
 .executable_leafname
 !ifndef ACORN_SWR {
-    !text "OZMOO2P", 13
+    !text "OZMOO2P", cr
 } else {
     !ifndef ACORN_ELECTRON_SWR {
         !ifndef ACORN_NO_SHADOW {
-            !text "OZMOOSH", 13
+            !text "OZMOOSH", cr
         } else {
-            !text "OZMOOB", 13
+            !text "OZMOOB", cr
         }
     } else { ; ACORN_ELECTRON_SWR
-        !text "OZMOOE", 13
+        !text "OZMOOE", cr
     }
 }
 }
@@ -425,14 +424,12 @@ z_ins_save
 !zone save_restore {
 ; It's faster and simpler to save/restore using OSFILE but it can't access
 ; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
-; SF: ENHANCEMENT: This is bit too pessimistic - since we only save precisely
+; SFTODO: This is bit too pessimistic - since we only save precisely
 ; the number of bytes in dynamic memory as specified by the game's header, even
 ; if nonstored_blocks has overflowed into sideways RAM due to rounding up of
 ; some kind, we can still use OSFILE if the actual dynamic memory fits into main
-; RAM. At the price of some extra complexity and trial builds in the build
-; script, we could have it set ACORN_SAVE_RESTORE_OSFIND instead of tying it to
-; ACORN_SWR_BIG_DYNMEM like this. (SFTODO: Or we can just use the size of dynamic memory
-; passed in by the build script to make this decision without any fuss...)
+; RAM. The build system already passes this in as ACORN_DYNAMIC_SIZE_BYTES, so this
+; isn't even hard.
 !ifndef ACORN_SWR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
 }
@@ -448,16 +445,15 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 	sty zp_save_start,x
 	dex
 	bpl -
-; SFTODO DELETE LABEL? .swap_pointers_for_save_rts
 	rts
 }
 
-!ifndef ACORN_SAVE_RESTORE_OSFILE { ; SFTODO: Swap branches here for clarity?
-.save_op = osfind_open_output
-.load_op = osfind_open_input
-} else {
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
 .save_op = osfile_save
 .load_op = osfile_load
+} else {
+.save_op = osfind_open_output
+.load_op = osfind_open_input
 }
 
 .filename_buffer = scratch_page
@@ -500,7 +496,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     ;   it is a big faff and quite a lot of code for very little real benefit.
     cmp #cr
     beq .input_loop_done
-    cmp #32
+    cmp #' '
     bcc .input_loop
     cmp #del
     beq .delete
@@ -527,7 +523,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     cmp #' '
     beq - 
     ; Check for empty string or * command.
-    cmp #13
+    cmp #cr
     beq .get_filename_rts
     cmp #'*'
     beq .oscli
@@ -540,7 +536,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     lda .filename_buffer,y
     cmp #' '
     beq .space_in_filename
-    cmp #13
+    cmp #cr
     bne -
     tax ; clear Z
 .get_filename_rts
@@ -579,19 +575,19 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 .filename_msg
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
-    !text "Please enter a filename or * command or just press RETURN to carry on playing.", 13
+    !text "Please enter a filename or * command or just press RETURN to carry on playing.", cr
     ; SFTODO: We could omit the following message (don't forget all builds would
     ; need the 0!) on a non-VMEM build, where you never need to keep the game disc
     ; in. Arguably it's clearer to say it, and it's harmless except for using
     ; a few bytes of memory. (But as I've said elsewhere, you do need the game
     ; disc in for RESTART when I support this on non-VMEM.)
-    !text "You can safely remove the game disc now.", 13, 0
+    !text "You can safely remove the game disc now.", cr, 0
 .save_prompt
     !text "save>", 0
 .restore_prompt
     !text "restore>", 0
 .space_in_filename_msg
-    !text "Sorry, no spaces allowed in filenames.", 13, 0
+    !text "Sorry, no spaces allowed in filenames.", cr, 0
 
 !ifdef VMEM {
     ; This uses s_printchar for output; we've reverted to the normal Ozmoo
@@ -645,7 +641,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 .reinsert_prompt
     ; This message is tweaked to work nicely in 40 or 80 column mode without
     ; needing word wrapping code.
-    !text 13, "Please put the game disc in drive 0 and press SPACE...", 13, 0
+    !text cr, "Please put the game disc in drive 0 and press SPACE...", cr, 0
 }
 
 .io_restore_output
@@ -670,7 +666,9 @@ restore_game
     jsr .save_restore_game
     ; As described in section 8.4 of the Z-machine standards document, we need
     ; to update the header in case the screen dimensions have changed compared
-    ; to when this game was saved.
+    ; to when this game was saved. (HHGTTG SG, at least, still seems to generate
+    ; the status bar using the "original" width, but I can reproduce this is
+    ; frotz so I guess it's a small bug in the game itself.)
     php
     pha
     +lda_screen_height
@@ -730,9 +728,9 @@ save_game
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
     ; Now we know we won't be doing a partial cleanup, we can page in the SWR
-    ; bank containing dynamic memory, so the load/save using bounce buffers
-    ; will access it correctly. We don't need to explicitly undo this; calling
-    ; get_page_at_z_pc with zp_pc_h set to $ff below will do it for us.
+    ; bank containing dynamic memory, so the load/save can see it. We don't need
+    ; to explicitly undo this; calling get_page_at_z_pc with zp_pc_h set to $ff
+    ; below will do it for us.
     +acorn_page_in_bank_using_a ram_bank_list
 }
 
