@@ -921,8 +921,8 @@ def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = No
 def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_RELOCATABLE=1" in args
 
-    # Because of Ozmoo's liking for 512-byte alignment and the variable 256-byte
-    # value of PAGE:
+    # Because of Ozmoo's liking for 512-byte alignment and the 256-byte
+    # alignment of PAGE:
     # - max_nonstored_blocks() can only return even values on a VMEM build.
     # - nonstored_blocks (i.e. for this specific game) will always be even.
     # - There are two possible start addresses 256 bytes apart which will
@@ -1331,7 +1331,7 @@ def parse_args():
     parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
     parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
     parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
-    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR")
+    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR") # SFTODO: Rename to --max-page?
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
@@ -1712,16 +1712,6 @@ small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
 tube_start_addr = 0x600
-if not cmd_args.adfs:
-    bbc_swr_start_addr = 0x1900
-else:
-    # SFTODO: Should I be using 0x1f00? That's what a model B with DFS+ADFS
-    # has PAGE at. Maybe stick with this for now and see if anyone has problems,
-    # so we don't pay a small performance penalty unless there's some evidence
-    # it's useful.
-    bbc_swr_start_addr = 0x1d00
-bbc_swr_start_addr_low = 0xe00
-electron_swr_start_addr = 0x1d00
 small_dynmem_page_threshold = 0x2000
 bbc_max_start_addr = 0x3000
 # On the Electron, we'd like to avoid the executable overwriting the mode 6
@@ -1729,14 +1719,11 @@ bbc_max_start_addr = 0x3000
 # relatively low address which should be >=PAGE on nearly all systems.
 # SFTODO: We might be able to avoid screen corruption during load on DFS builds if we set this to 0x1900.
 electron_max_start_addr = 0x1d00
-# SFTODO: It might be useful to allow finer-grained control over these build
-# addresses from the command line than --page, but this isn't a bad start and
-# may really be all we need.
+# We use --page to control this partly for historical reasons, but also because
+# it's conceivable a user-expressed belief about the maximum value of PAGE might
+# be useful something other than deciding between small and big dynamic memory
+# models in the future.
 if cmd_args.page is not None:
-    # SFTODO: Next three values are no longer used, what to do? Need to think about what --page is trying to accomplish. It *may* be useless now all builds are relocatable, though at minimum we want to make small_dynmem_page_threshold variable from command line.
-    bbc_swr_start_addr = cmd_args.page
-    bbc_swr_start_addr_low = cmd_args.page
-    electron_swr_start_addr = cmd_args.page
     small_dynmem_page_threshold = cmd_args.page
 
 
