@@ -871,10 +871,6 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
-    ; SFTODO: HW scroll looks ugly in mode 7, because we don't redraw the colour
-    ; control code every time. Fix this or just disable HW scroll in mode 7.
-    ; (I *think* this happens because we no longer pass the colour code through
-    ; s_printchar as per TODO elsewhere.)
     ldy zp_screenrow
     bne +
     sta .top_line_buffer,x
@@ -1790,11 +1786,25 @@ update_colours
     jsr oswrch
     jmp oswrch
 
-    ; SFTODO: It might be worth (for games like Border Zone where - check I'm not confused - hardware scrolling is not an option) allowing the build system to avoid showing CTRL-S on the loader screen and avoid having code for it in the Ozmoo binary. This might already be possible, I haven't checked. I suspect the user would have to specify a command line option for this, we can't really examine the game ourselves and infer it "always" uses a >1 line status area.
+    ; SFTODO: It might be worth (for games like Border Zone where - check I'm not confused - hardware scrolling is not an option) allowing the build system to avoid showing CTRL-S on the loader screen and avoid having code for it in the Ozmoo binary. This might already be possible, I haven't checked. I suspect the user would have to specify a command line option for this, we can't really examine the game ourselves and infer it "always" uses a >1 line status area. - I guess this would come down to providing a --no-hw-scroll option in the build system
+    ; SFTODO: This only has one caller, we could inline it (via a macro), but it may be the ability to rts early is worth having.
 check_user_interface_controls
+    ldx #0
+    cmp #'F' - ctrl_key_adjust
+    beq .change_colour_x
+    ; We can't change the background colour in mode 7, and we don't allow
+    ; toggling hardware scrolling on (it defaults to off) because it looks ugly.
+    ; Hardware scrolling looks ugly because the status line colour code isn't
+    ; output via s_printchar so it doesn't get redrawn automatically; we could
+    ; work round this, but it's extra code and complexity, software scrolling
+    ; would still look nicer and it doesn't slow things down much in mode 7
+    ; (which is why it's the default).
+    ldy screen_mode
+    cpy #7
+    beq .done
 !ifdef ACORN_HW_SCROLL {
     cmp #'S' - ctrl_key_adjust
-    bne +
+    bne .not_scroll
     lda use_hw_scroll
     eor #1
     sta use_hw_scroll
@@ -1804,22 +1814,24 @@ check_user_interface_controls
     lda #0
     rts
 }
-+   ldx screen_mode
-    ldy #0
-    cpx #7
-    bne +
-    ldy #1
-+   ldx #0
-    cmp #'F' - ctrl_key_adjust
-    beq +
-    inx
+.not_scroll
     cmp #'B' - ctrl_key_adjust
     bne .done
-+   inc fg_colour,x
+    inx
+.change_colour_x
+    inc fg_colour,x
     lda fg_colour,x
+    ; Wrap colour numbers from 8->0 in modes 0-6 and 8->1 in mode 7.
+    ; SFTODO: This mode 7 handling (and displaying CTRL-F in loader) and other
+    ; mode 7 colour status support in the assembly source should be omitted if
+    ; we're building without MODE_7_STATUS defined.
     cmp #8
     bne +
-    tya
+    lda #0
+    ldy screen_mode
+    cpy #7
+    bne +
+    lda #1
 +   sta fg_colour,x
     jsr update_colours
     lda #0
