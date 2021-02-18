@@ -1,4 +1,3 @@
-# SFTODO: PROB NOT, BUT WOULD THERE BE ANY SAVIG IN REMOVING MODE_7_STATUS FROM ELECTRON BUILD? CHECK...
 # SFTODO: NOW WE DON'T USE SCREEN-AT-3C00 HACK, WE CAN ALLOW HARD/SOFT SCROLLING TOGGLE BY CTRL-S ON THE MODEL B BUILD - CURRENTLY THIS ISN'T OFFERED IN LOADER, NOT SURE IF IT WORKS IN GAME OR NOT
 from __future__ import print_function
 import argparse
@@ -1535,6 +1534,11 @@ def make_disc_image():
     # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
     if cmd_args.adfs:
         ozmoo_base_args += ["-DACORN_ADFS=1"]
+    # SFTODO: I should probably stop defining MODE_7_STATUS in Electron builds;
+    # it would save a few bytes. This might change if someone asks for mode 7
+    # add-on support later, of course. I am not doing this just yet because I
+    # need to tweak the rest of this script to rationalise how the different
+    # builds are performed first, at the moment they're rather copy-and-paste.
     # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
     if not cmd_args.no_mode_7_colour:
         ozmoo_base_args += ["-DMODE_7_STATUS=1"]
