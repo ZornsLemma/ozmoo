@@ -974,7 +974,9 @@ s_printchar
 } else { ; ACORN
     ; OSWRCH may cause the screen to scroll if we're at the bottom right
     ; character. We therefore don't use .s_scroll to do the scroll, we just
-    ; define a text window to tell the OS what to scroll.
+    ; define a text window to tell the OS what to scroll. SFTODO: That comment
+    ; is out of date and has been for ages, *if* we're using hardware scrolling
+    ; we do things differently.
 
     pha
     jsr s_cursor_to_screenrowcolumn
