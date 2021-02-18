@@ -800,7 +800,7 @@ s_printchar
 } else {
     jsr s_cursor_to_screenrowcolumn
     jsr s_reverse_to_os_reverse
-    lda #127
+    lda #del
     jsr oswrch
     dec zp_screencolumn ; move back
     bpl ++
