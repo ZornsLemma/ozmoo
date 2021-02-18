@@ -1787,8 +1787,17 @@ update_colours
     jmp oswrch
 
     ; SFTODO: It might be worth (for games like Border Zone where - check I'm not confused - hardware scrolling is not an option) allowing the build system to avoid showing CTRL-S on the loader screen and avoid having code for it in the Ozmoo binary. This might already be possible, I haven't checked. I suspect the user would have to specify a command line option for this, we can't really examine the game ourselves and infer it "always" uses a >1 line status area. - I guess this would come down to providing a --no-hw-scroll option in the build system
+    ; SFTODO: Following on from that, for such games the mode 7 status line colouring won't work either, so we might want to have a --multiline-status-line option which is shorthand for --no-mode-7-colour and --no-hw-scroll.
     ; SFTODO: This only has one caller, we could inline it (via a macro), but it may be the ability to rts early is worth having.
 check_user_interface_controls
+    ; SFTODO: CTRL-F has no effect in mode 7 unless MODE_7_STATUS is defined,
+    ; but we don't currently have the concept of a "mode 7 only" build so we
+    ; need to include this code to handle modes 0-6 whether MODE_7_STATUS is
+    ; defined or not. CTRL-F will be silently "processed with no effect" in mode
+    ; 7 without MODE_7_STATUS, which looks like it being a no-op to the user. We
+    ; could save a few bytes by omitting all this code in a mode 7 only build
+    ; without MODE_7_STATUS, or omitting the CTRL-B/CTRL-S code in a mode 7 only
+    ; build with MODE_7_STATUS.
     ldx #0
     cmp #'F' - ctrl_key_adjust
     beq .change_colour_x
@@ -1798,7 +1807,10 @@ check_user_interface_controls
     ; output via s_printchar so it doesn't get redrawn automatically; we could
     ; work round this, but it's extra code and complexity, software scrolling
     ; would still look nicer and it doesn't slow things down much in mode 7
-    ; (which is why it's the default).
+    ; (which is why it's the default). (We could allow CTRL-B to be processed in
+    ; mode 7, as it would just silently have no effect, but since we need to
+    ; check explicitly to avoid CTRL-S making a beep when it hasn't done
+    ; anything we might as well protect CTRL-B behind the same check.)
     ldy screen_mode
     cpy #7
     beq .done
@@ -1821,17 +1833,17 @@ check_user_interface_controls
 .change_colour_x
     inc fg_colour,x
     lda fg_colour,x
-    ; Wrap colour numbers from 8->0 in modes 0-6 and 8->1 in mode 7.
-    ; SFTODO: This mode 7 handling (and displaying CTRL-F in loader) and other
-    ; mode 7 colour status support in the assembly source should be omitted if
-    ; we're building without MODE_7_STATUS defined.
+    ; Wrap colour numbers; we need to wrap to 0 in modes 0-6, but if we support
+    ; a coloured status line in mode 7 we need to wrap to 1.
     cmp #8
     bne +
     lda #0
+!ifdef MODE_7_STATUS {
     ldy screen_mode
     cpy #7
     bne +
     lda #1
+}
 +   sta fg_colour,x
     jsr update_colours
     lda #0
