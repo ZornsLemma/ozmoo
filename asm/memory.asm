@@ -22,7 +22,6 @@ inc_z_pc_page
 }
 } else {
 ; No vmem
-; SFTODO: Probably correct we don't need this for Acorn, but need to rethink as 5.3 port develops
 !ifndef ACORN {
 	!ifndef TARGET_PLUS4 {
 		lda z_pc + 1
@@ -70,7 +69,6 @@ set_z_pc
 	sta z_pc_mempointer + 1
 } else {
 ; No vmem 
-; SFTODO: Prob correct we don't need this for any ACORN, but rethink later as 5.3 progresses
 !ifndef ACORN {
 !ifndef TARGET_PLUS4 {
 	cpx #(first_banked_memory_page - (>story_start))
@@ -154,7 +152,7 @@ get_page_at_z_pc_did_pha
     ; inefficient, but it only happens when the Z-machine PC crosses a page
     ; boundary and the contortions required to avoid it are not worth it.
 	; SFTODO: Just possibly it's not hard to avoid it with the new 5.x code,
-	; maybe check. But I doubt this is performace-critical anyway.
+	; maybe check. But I doubt this is performance-critical anyway.
     +acorn_page_in_bank_using_y mempointer_ram_bank ; leaves bank in Y
     sty z_pc_mempointer_ram_bank
 } else { ; !ACORN_SWR
