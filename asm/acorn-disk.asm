@@ -459,7 +459,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 .filename_buffer = scratch_page
 .osfile_check_buffer = scratch_page + 0x100 - 0x12
 .filename_buffer_size = (.osfile_check_buffer - .filename_buffer) - 1
-; Returns with Z set iff user wants to abort the save/restore.
+; On exit beq will branch iff user wants to abort the save/restore.
 ; SFTODO: Should we save the current filesystem number before user enters any
 ; * commands and reselect that filesystem afterwards before we access any game
 ; data?
@@ -701,6 +701,7 @@ save_game
 .osfile_or_osfind_op = zp_temp ; 1 byte
 .result = zp_temp + 1 ; 1 byte, 0 for failure, 1 for success
 !ifndef ACORN_SAVE_RESTORE_OSFILE {
+    ; SFTODO: Rename these variables?? They're not that bad, just a thought.
     .osgbpb_data_ptr = zp_temp + 2 ; 2 bytes
     .osgbpb_length = zp_temp + 4 ; 2 bytes
 }
@@ -789,7 +790,6 @@ save_game
     jsr .check_for_overwrite
     bne .save_restore_game_cleanup_full
 .no_overwrite_check
-    ; SFTODO: This code has changed and !ifdef/!ifndef blocks can be combined/made into elses
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
     ; The OSFILE block is updated after the call, so we have to reset it via code
     ; every time.
@@ -804,6 +804,11 @@ save_game
     jsr osfile
 } else {
     jsr .open_file ; SFTODO: I THINK THIS IS ONLY CALLER, SO INLINE THIS IF SO
+    ; We save/load the handful of bytes at zp_save_start as a separate
+    ; operation; this saves us having to use .swap_pointers_for_save and makes
+    ; it easy to skip over the screen hole (if we have one) because the second
+    ; save/load operation is working with page-aligned data starting at
+    ; stack_start.
     lda #zp_save_start
     sta .osgbpb_data_ptr
     lda #zp_bytes_to_save
@@ -828,8 +833,8 @@ save_game
     sta .result
 
 .save_restore_game_cleanup_full
-	; Swap out z_pc and stack_ptr
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
+	; Swap out z_pc and stack_ptr
 	jsr .swap_pointers_for_save
 }
     ; We need to un-normalise z_local_vars_ptr and stack_ptr now.
@@ -868,10 +873,8 @@ save_game
     ldx .result ; must be last as caller will check Z flag
 	rts
 
-; On exit, beq will branch if it's OK to save the file.
+; On exit, beq will branch iff it's OK to save the file.
 .check_for_overwrite
-    ; We don't use .osfile_save_load_block here (even if it's in this build)
-    ; because we don't want to trample over the load address in there.
     lda #<.filename_buffer
     sta .osfile_check_buffer
     lda #>.filename_buffer
@@ -913,7 +916,6 @@ save_game
 !ifdef ACORN_SAVE_RESTORE_OSFILE {
 .osfile_save_load_block_master
     !word .filename_buffer ; filename
-    ; SFTODO: stack_start - zp_bytes_to_save occurs in many places, perhaps make it a named constant
     !word stack_start - zp_bytes_to_save ; load address low
     !word 0 ; load address high
     !word 0 ; exec address low: 0 => use specified load address (on load)
@@ -954,17 +956,19 @@ save_game
 .open_file_rts
     rts
 
-; This code pseudo-emulates OSFILE using OSFIND+OSGBPB, using a bounce buffer so
-; it can handle data located in sideways RAM. A contains the OSFIND operation
-; code on entry. SFTODO UPDATE COMMENTS
+
 .chunk_size = 256 ; for documentation; we hard-code assumptions about this too
 
+; Use OSGBPB to to save or load (specified by an OSFIND operation code in A on
+; entry) .osgbpb_length bytes at address .osgbpb_data_ptr. A bounce buffer is
+; used so data can be located in sideways RAM, which the caller should have
+; ensured is paged in appropriately. Any screen hole is automatically skipped,
+; provided (as will be the case) .osgbpb_data_ptr is page-aligned.
 .osgbpb_save_or_load
     lda .osfile_or_osfind_op
     cmp #osfind_open_input
     beq .osgbpb_load
 
-; SFTODO!?!?!? .osgbpb_length = memory_buffer ; 2 bytes
 .osgbpb_save_loop
     ; Save the smaller of .chunk_size and .osgbpb_length bytes. If
     ; .osgbpb_length is 0, we're done.
@@ -1019,14 +1023,10 @@ save_game
     ; Loop round until we're done.
     jmp .osgbpb_save_loop
 
-    ; Read a maximum of .osgbpb_length bytes SFTODO - MAYBE RENMAE "SAVE_LENGTH" AS IT IS USED FOR LOADS TOO
-    ; Read some data into the bounce buffer and work out how much we read; if we
-    ; read nothing, it's EOF and we're done. On builds with non-contiguous
-    ; dynamic memory we read a maximum of .osgbpb_length bytes; on other builds
-    ; we just read until EOF.SFTODO UPDATE COMMENT
 .osgbpb_load
-.bytes_read = memory_buffer ; 2 bytes
+.bytes_read = memory_buffer ; 2 bytes SFTODO: can we find some zp for this?
 .osgbpb_load_loop
+    ; Load the smaller of .chunk_size and .osgbpb_length bytes.
     ldx #<.chunk_size
     ldy #>.chunk_size
     lda .osgbpb_length + 1
@@ -1035,11 +1035,14 @@ save_game
     ldx .osgbpb_length
 .read_full_chunk
     stx osgbpb_block_transfer_length
+    ; SFTODO: Do we have some zp handy so we could avoid self-modifying code without making the code longer?
     stx .lda_imm_this_chunk_size_low + 1
     sty osgbpb_block_transfer_length + 1
     sty .lda_imm_this_chunk_size_high + 1
     lda #osgbpb_read_ignoring_ptr
     jsr .osgbpb_wrapper
+    ; Set .bytes_read to the number of bytes read; if it's zero, this is EOF and
+    ; we're done.
     sec
 .lda_imm_this_chunk_size_low
     lda #<.chunk_size
@@ -1060,11 +1063,8 @@ save_game
     cpy .bytes_read
     bne -
 
-    ; If we read fewer than .chunk_size bytes, we've hit EOF and we're done. (On
-    ; non-contiguous dynamic memory builds we may have tried to read fewer than
-    ; .chunk_size bytes, but it's still true that reading fewer than .chunk_size
-    ; bytes means we're done - it's either EOF, or we've read exactly as many
-    ; bytes as we requested.) SFTODO UPDATE COMMENT
+    ; If we read fewer than .chunk_size bytes, we're done - this is either EOF or
+    ; we requested fewer than .chunk_size bytes in the first place.
     lda .bytes_read + 1
     beq .close_osgbpb_block_handle_rts
 
