@@ -1440,7 +1440,9 @@ read_text
 ;!ifdef USE_BLINKING_CURSOR {
 ;	jsr reset_cursor_blink
 ;}
+!ifndef ACORN {
 	jsr turn_on_cursor
+}
 !ifdef Z5PLUS {
 	ldy #1
 	+macro_string_array_read_byte
