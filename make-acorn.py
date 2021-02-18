@@ -940,6 +940,10 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     # calculation may cause us to load so high there's no room for the
     # relocation data before &8000, so we never load much higher than
     # max_start_addr.
+    max_start_addr = electron_max_start_addr if "-DACORN_ELECTRON_SWR=1" in args else bbc_max_start_addr
+    # SFTODO: Not too sure about next if, but this whole area is a little up-in-the-air given near-inevitable (AIUI) corruption of screen on Electron.
+    if not same_double_page_alignment(e_e00.start_addr, max_start_addr):
+        max_start_addr += 256
     # SFTODO: I believe (not checked too carefully right now) this means the executable can't load higher than max_start_addr + 0x100 (if the optimal alignment forces an extra page) in - this may give us a value we can pass into the assembly as a define which would allow the assembler to say "even if PAGE is as high as possibly supported, we know that for this game the global variables can never live higher than &XXXX and that will be below the screen hole (if appropriate) or below $8000 and therefore we can avoid screen hole checks and/or avoid before/after_dynmem_read calls for bigdyn accesses - although the executable needs to know its own story_start value to infer the one for this max possible PAGE, and I suspect things will go circular if we try to generate different code based on that - still, food for thought
     approx_max_start_addr = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
     e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, report_failure_prefix, e_e00)
@@ -1763,18 +1767,18 @@ else:
     # it's useful.
     bbc_swr_start_addr = 0x1d00
 bbc_swr_start_addr_low = 0xe00
-# On the Electron, no main RAM is used for dynamic RAM so there's no
-# disadvantage to loading high in memory as far as the game itself is concerned.
-# However, we'd like to avoid the executable overwriting the mode 6 screen RAM
-# and corrupting the loading screen if we can, so we pick a relatively low addr
-# which should be >=PAGE on nearly all systems.
 electron_swr_start_addr = 0x1d00
 small_dynmem_page_threshold = 0x2000
-max_start_addr = 0x3000
+bbc_max_start_addr = 0x3000
+# On the Electron, we'd like to avoid the executable overwriting the mode 6
+# screen RAM and corrupting the loading screen if we can, so we pick a
+# relatively low address which should be >=PAGE on nearly all systems.
+electron_max_start_addr = 0x1d00
 # SFTODO: It might be useful to allow finer-grained control over these build
 # addresses from the command line than --page, but this isn't a bad start and
 # may really be all we need.
 if cmd_args.page is not None:
+    # SFTODO: Next three values are no longer used, what to do? Need to think about what --page is trying to accomplish. It *may* be useless now all builds are relocatable, though at minimum we want to make small_dynmem_page_threshold variable from command line.
     bbc_swr_start_addr = cmd_args.page
     bbc_swr_start_addr_low = cmd_args.page
     electron_swr_start_addr = cmd_args.page
