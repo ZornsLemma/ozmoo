@@ -871,6 +871,8 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
+    ; SFTODO: HW scroll looks ugly in mode 7, because we don't redraw the colour
+    ; control code every time. Fix this or just disable HW scroll in mode 7.
     ldy zp_screenrow
     bne +
     sta .top_line_buffer,x
