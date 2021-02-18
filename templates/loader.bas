@@ -361,10 +361,6 @@ DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+m
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF PROCshow_mode_keys
-mode_7_no_hw_scroll=NOT (shadow OR tube OR electron)
-!ifndef MODE_7_STATUS {
-IF mode_7_no_hw_scroll THEN ENDPROC
-}
 mode_keys_last_max_y=mode_keys_last_max_y:REM set variable to 0 if it doesn't exist
 IF mode_keys_last_max_y=0 THEN PRINTTAB(0,mode_keys_vpos);CHR$header_fg;"In-game controls:" ELSE PRINTTAB(0,mode_keys_vpos+1);
 REM The odd indentation on the next few lines is so a) it's easy to see all the
@@ -377,7 +373,7 @@ REM indentation as it's at the start of the line.
 }
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "
-IF NOT mode_7_no_hw_scroll THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
+                                PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
 REM Clear any additional rows which we used last time but haven't used this time.
 IF VPOS<mode_keys_last_max_y THEN PRINT SPC(40*(mode_keys_last_max_y-VPOS));
 mode_keys_last_max_y=VPOS
