@@ -137,7 +137,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 .zp_y_not_ok
     ; A holds zp + 1, C is set.
     adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
-    sta $91 ; SFTODO: PROPER ADDRESS
+    sta $91 ; SFTODONOW: PROPER ADDRESS
     lda zp
     sta $90
     lda ($90),y
@@ -182,7 +182,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; corrupted, but few callers (and no performance-critical ones) would be able to
 ; take advantage, so it's not worth providing an X-corrupting version.
 !macro sta_dynmem_ind_y zp {
-    sta $94 ; SFTODO PROPER ADDRESS
+    sta $94 ; SFTODONOW PROPER ADDRESS
     lda zp + 1
     cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
@@ -197,7 +197,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 .zp_y_not_ok
     ; A holds zp + 1, C is set.
     adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
-    sta $91 ; SFTODO: PROPER ADDRESS
+    sta $91 ; SFTODONOW: PROPER ADDRESS
     lda zp
     sta $90
     lda $94
@@ -241,7 +241,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 
 lda_dynmem_ind_y_slow_object_tree_ptr_sub
-	; SFTODO: This (all of them) will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
+	; SFTODONOW: This (all of them) will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
 	+lda_dynmem_ind_y object_tree_ptr
 	rts
 
@@ -296,7 +296,7 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 ; Debugging macro to check that the SWR bank containing the upper part of dynmem
 ; is paged in when it should be.
 !macro debug_dynmem preserve {
-!ifdef DEBUG_BIG_DYNMEM { ; SFTODO!
+!ifdef DEBUG_BIG_DYNMEM {
     !if preserve {
         pha
     }
@@ -533,7 +533,7 @@ deletable_init_start
 .dont_enable_turbo
 }
 
-!ifdef ACORN_SWR { ; SFTODO HACKY
+!ifdef ACORN_SWR { ; SFTODONOW HACKY - NEED TO DO THIS PROPERLY AND FIX IT FOR TUBE BUILDS TOO
     ldx #vmap_max_size
 -   lda vmap_buffer_start - 1,x
     sta vmap_z_l - 1,x
@@ -542,7 +542,6 @@ deletable_init_start
 }
 
 !ifdef ACORN_SCREEN_HOLE {
-SFTODOBB9
     lda screen_mode
     ora #128 ; force shadow mode on SFTODO  MAGIC CONSTANT IN A FEW PLACES NOW?
     tax
@@ -1058,6 +1057,7 @@ SFTODOLABEL1
     ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
 vmap_sort_entries = vmem_temp ; 1 byte
 SFTODOLABEL5
+; SFTODONOW: NEED TO SORT OUT DYNMEM ADJUST
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; If we've adjusted nonstored_blocks, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
@@ -1116,7 +1116,6 @@ SFTODOLABEL5
     +acorn_page_in_bank_using_a ram_bank_list
 }
 
-; SFTODO: NOTE THAT AT PRESENT (OF COURSE) THE VMAP SET UP BY THE BUILD SCRIPT HAS NO IDEA ABOUT THE MEMORY HOLE AND SO THE INITIAL LOAD WON'T CORRESPOND PROPERLY WITH THE VMAP (I THINK) - IT MAY BE WE NEED TO PATCH THIS UP AT RUNTIME, NOT THOUGHT IT THROUGH PROPERLY YET - ACTUALLY MAYBE THIS IS FINE, ANYWAY, SINCE THE MEM HOLE IS "TRANSPARENTLY" HIDDEN BELOW THE LEVEL OF THE VMAP - JUST THINK ABOUT IT LATER!
 .dynmem_load_loop
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
     lda readblocks_mempos + 1
@@ -1136,14 +1135,12 @@ SFTODOLABEL5
 
 !ifdef ACORN_SWR {
     ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
-    ; SFTODO: Would it be more natural to tweak the next few instructions to do
-    ; >story_start + nonstored_blocks not the other way round?
     lda #0
     sta vmem_blocks_stolen_in_first_bank
     ; Set A = (>story_start + nonstored_blocks) - (>flat_ramtop - acorn_screen_hole_pages)
-    lda nonstored_blocks
+    lda #>story_start
     clc
-    adc #>story_start
+    adc nonstored_blocks
 !ifdef ACORN_SCREEN_HOLE {
     clc
     adc acorn_screen_hole_pages
@@ -1263,7 +1260,7 @@ SFTODOLABEL2
     and #vmem_highbyte_mask
     bne .found_first_non_promoted_entry
     lda vmap_z_l,x
-    !error "SFTODO: I think we need to account for the shift-right tweak in 5.3 here - we could probably just store nonstored_blocks>>1 in a temp location and compare with that"
+    !error "SFTODONOW: I think we need to account for the shift-right tweak in 5.3 here - we could probably just store nonstored_blocks>>1 in a temp location and compare with that"
     cmp nonstored_blocks
     bcc .find_first_non_promoted_entry_loop
 .found_first_non_promoted_entry
@@ -1286,7 +1283,7 @@ SFTODOLABEL2
     ; to be dynamic memory so we will never search the vmap for it. But it seems
     ; a little clearer to use $0101, and this needs to execute on all machines
     ; so we can't micro-optimise by using stz.)
-    !error "SFTODO: THIS LOW-BIT-NON-ZERO TRICK ISN'T VALID ANY MORE, SO WE PROBABLY NEED TO USE 0 INSTEAD"
+    !error "SFTODONOW: THIS LOW-BIT-NON-ZERO TRICK ISN'T VALID ANY MORE, SO WE PROBABLY NEED TO USE 0 INSTEAD"
     lda #1
     sta vmap_z_h,y
 +   sta vmap_z_l,y
@@ -1547,7 +1544,7 @@ SFTODOLABEL4
 .already_in_right_mode
     ; Clear the screen; this is mostly unnecessary, but for Z3 games which are
     ; loading from the loader in mode 7 it clears any leftover text on the top
-    ; line of the screen. SFTODO: This is probably still true, but check - the Commodore code no longer does a cls at the top of deletable_screen_init_2 (but of course it has a different loader style) - it may be that we don't need this and the erase_window call at deletable_screen_init_2 will do the job.
+    ; line of the screen. SFTODONOW: This is probably still true, but check - the Commodore code no longer does a cls at the top of deletable_screen_init_2 (but of course it has a different loader style) - it may be that we don't need this and the erase_window call at deletable_screen_init_2 will do the job.
     lda #vdu_cls
     jsr oswrch
 .mode_set
