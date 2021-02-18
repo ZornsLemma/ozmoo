@@ -1,3 +1,4 @@
+# SFTODO: As long as the B-no-shadow build *is* mode 7 only, we should perhaps build it without ACORN_HW_SCROLL to save a few bytes. (This assumes - as I am thinking of doing - I disable HW scroll in mode 7 on all machines, since it's ugly and more trouble than it's worth to fix.)
 from __future__ import print_function
 import argparse
 import base64

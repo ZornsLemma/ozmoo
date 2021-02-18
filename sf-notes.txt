@@ -1,3 +1,9 @@
+Is HW scroll worth it in mode 7?
+- BBC B 144K SWR sw scroll $004ac7
+- BBC B 144K SWR hw scroll (with ugly colour code glitch) $0048e3
+- so 2.6% slower with software scrolling
+- remember mode 7 *benchmark* is already quite badly slowed down (in a not-human-perceptible way, I believe) by vsync stuff to avoid cursor on/off glitches, so there is precedent for minor slowdown in pursuit of decent appearance
+
 Fixed probable bug which meant no use of HW scrolling (although it always defaults to SW scroll in mode 7 anyway):
 - M128 $00489d (same, as expected)
 - M128 mode 3 - initial time $0002ee - final $0055bb - so 423.94 seconds (cf 414 seconds with extra 64K in e-mail to Fredrik, although that was a smalldyn build and this is bigdyn) - with an extra 64K SWR final is $oops, game is completely broken!
