@@ -1777,6 +1777,7 @@ bbc_max_start_addr = 0x3000
 # On the Electron, we'd like to avoid the executable overwriting the mode 6
 # screen RAM and corrupting the loading screen if we can, so we pick a
 # relatively low address which should be >=PAGE on nearly all systems.
+# SFTODO: We might be able to avoid screen corruption during load on DFS builds if we set this to 0x1900.
 electron_max_start_addr = 0x1d00
 # SFTODO: It might be useful to allow finer-grained control over these build
 # addresses from the command line than --page, but this isn't a bad start and
