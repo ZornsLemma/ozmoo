@@ -200,7 +200,7 @@ def check_if_special_game():
     is_beyond_zork = (z_machine_version == 5) and game_key in beyond_zork_releases
     if is_beyond_zork:
         info("Game recognised as 'Beyond Zork'")
-        # SFTODO: Should probably offer a command line option to disable this special case handling of BZ
+        # SFTODO: Should probably offer a command line option to disable this special case handling of BZ (with a generic name, in case other games can be patched later - eg "--no-special-game-check")
         if cmd_args.interpreter_num is None:
             cmd_args.interpreter_num = 2
         cmd_args.function_keys = True
@@ -852,7 +852,7 @@ class OzmooExecutable(Executable):
         blocks = blocks[:vmap_max_size]
         # vmap entries should normally addr a 512-byte aligned block; invalid_addr
         # is odd so it won't ever match when the virtual memory code is searching the map.
-        invalid_addr = 0x1 # SFTODO: NO LONGER AN INVALID ADDR
+        invalid_addr = 0x1 # SFTODONOW: NO LONGER AN INVALID ADDR
         for i, block_index in enumerate(blocks):
             timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
             if cmd_args.preload_opt:
@@ -873,7 +873,6 @@ class OzmooExecutable(Executable):
             self._asm_output[vmap_offset + i + vmap_max_size] = (vmap_entry >> 8) & 0xff
 
     def pseudo_ramtop(self):
-        # SFTODO: I THINK THIS MAY NEED TO ALLOW FOR SCREEN RAM NOW
         if "ACORN_SWR" in self.labels:
             result = 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
             # SFTODO: This adjustment for screen memory is correct as long as
@@ -1016,6 +1015,7 @@ def make_shr_swr_executable():
     return make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM")
 
 
+# SFTODONOW: Maybe first alpha of 5.x is a good point to bite the bullet on "we're hardcoding everything about the game that helps build a tight binary"
 def make_bbc_swr_executable():
     leafname = "OZMOOB"
     # SFTODO: We could shave a few bytes off this executable by having an
@@ -1335,7 +1335,7 @@ def parse_args():
     parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
     parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
     parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
-    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR") # SFTODO: Rename to --max-page?
+    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR") # SFTODONOW: Rename to --max-page?
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
@@ -1460,7 +1460,7 @@ def make_preload_blocks_list(config_filename):
         # again.) Note that just as when we don't use preload_config, the
         # initial vmap entries will be assigned timestamps based on their order;
         # the timestamp in preload_config are ignored.
-        # SFTODO: As per SFTODOs in asm code, need to update this for new 5.3 shifted-right-one-bit vmap
+        # SFTODONOW: As per SFTODOs in asm code, need to update this for new 5.3 shifted-right-one-bit vmap
         addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
         if addr & 1 == 1:
             # This is an odd address so it's invalid; we expect to see one of
@@ -1721,8 +1721,12 @@ bbc_max_start_addr = 0x3000
 # On the Electron, we'd like to avoid the executable overwriting the mode 6
 # screen RAM and corrupting the loading screen if we can, so we pick a
 # relatively low address which should be >=PAGE on nearly all systems.
-# SFTODO: We might be able to avoid screen corruption during load on DFS builds if we set this to 0x1900.
-electron_max_start_addr = 0x1d00
+# SFTODO: The fuzziness around interpretation of max_start_addr means in
+# practice we may slip *two* pages above this, which isn't ideal.
+if not cmd_args.adfs:
+    electron_max_start_addr = 0x1900
+else:
+    electron_max_start_addr = 0x1d00
 # We use --page to control this partly for historical reasons, but also because
 # it's conceivable a user-expressed belief about the maximum value of PAGE might
 # be useful something other than deciding between small and big dynamic memory
