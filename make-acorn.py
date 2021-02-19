@@ -1340,7 +1340,7 @@ def parse_args():
     parser.add_argument("--electron-only", action="store_true", help="only support the Electron")
     parser.add_argument("--bbc-only", action="store_true", help="only support the BBC B/B+/Master")
     parser.add_argument("--no-tube", action="store_true", help="don't support second processor")
-    parser.add_argument("--page", metavar="ADDR", type=str, help="assume PAGE<=ADDR") # SFTODONOW: Rename to --max-page?
+    parser.add_argument("--max-page", metavar="ADDR", type=str, help="assume PAGE<=ADDR")
     parser.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
@@ -1443,8 +1443,8 @@ def parse_args():
     if cmd_args.title is None:
         cmd_args.title = title_from_filename(cmd_args.input_file, 40)
 
-    if cmd_args.page is not None:
-        cmd_args.page = our_parse_int(cmd_args.page)
+    if cmd_args.max_page is not None:
+        cmd_args.max_page = our_parse_int(cmd_args.max_page)
 
     if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
         cmd_args.debug = True
@@ -1732,12 +1732,11 @@ if not cmd_args.adfs:
     electron_max_start_addr = 0x1900
 else:
     electron_max_start_addr = 0x1d00
-# We use --page to control this partly for historical reasons, but also because
-# it's conceivable a user-expressed belief about the maximum value of PAGE might
-# be useful something other than deciding between small and big dynamic memory
-# models in the future.
-if cmd_args.page is not None:
-    small_dynmem_page_threshold = cmd_args.page
+# This is controlled via --max-page rather than (say) --small-dynmem-threshold
+# because in principle we might want to make other decisions based on the
+# user-supplied value. models in the future.
+if cmd_args.max_page is not None:
+    small_dynmem_page_threshold = cmd_args.max_page
 
 
 common_labels = {}
