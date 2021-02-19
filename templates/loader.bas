@@ -166,8 +166,8 @@ PROCchoose_non_tube_version
 
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
-REM SFTODO: The Electron code here is likely to go away soon; the Electron is just like a BBC B which happens to have a larger screen now.
-REM SFTODO: This code needs to take account of memory used by the screen on non-shadow machines; this "just worked" on the old screen relocation stuff (or the Electron-specific hacks) but on the new model it won't. I don't think the change is hard but need to think about it clearly.
+REM SFTODONOW: The Electron code here is likely to go away soon; the Electron is just like a BBC B which happens to have a larger screen now.
+REM SFTODO: This code needs to take account of memory used by the screen on non-shadow machines. For the moment this is handled entirely by the build script, but later it may need special handling here.
 REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
@@ -197,7 +197,7 @@ IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocata
 } else {
 REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
 REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
-REM else. SFTODO: NO LONGER TRUE, THIS ALL NEEDS TWEAKING
+REM else. SFTODONOW: NO LONGER TRUE, THIS ALL NEEDS TWEAKING
 IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 }
 !ifdef OZMOOB_BINARY {
