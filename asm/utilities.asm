@@ -359,7 +359,7 @@ parse_array_write_byte
 !ifdef TARGET_C128 {
 convert_byte_to_two_digits = $f9fb
 } else {
-!ifndef ACORN { ; SFTODO: IS THIS NEEDED ON ACORN?
+!ifndef ACORN {
 convert_byte_to_two_digits
 ; In: A (value 0-99)
 ; Out: X: top digit, A: Bottom digit
@@ -494,10 +494,11 @@ fatalerror
 !ifndef ACORN {
 	jsr kernal_readchar   ; read keyboard
 	jmp kernal_reset      ; reset
+.fatal_error_string !pet "fatal error: ",0
 } else {
 -   jmp -
+.fatal_error_string !text "fatal error: ",0
 }
-.fatal_error_string !pet "fatal error: ",0 ; SFTODO: THIS SHOULD USE !TEXT ON ACORN
 } else {
 	pha
 	jsr print_following_string

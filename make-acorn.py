@@ -1,3 +1,8 @@
+#SFTODONOW:
+#$ python make-acorn.py -v --no-dynmem-adjust  calypso.z3
+#Electron executable uses big dynamic memory model because small model would require PAGE<=&1B00; big model requires PAGE<=&1B00
+# SFTODONOW: This makes no sense, does it? We should be using smalldyn if this is true, see what's going on.
+
 from __future__ import print_function
 import argparse
 import base64

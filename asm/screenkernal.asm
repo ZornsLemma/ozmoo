@@ -33,14 +33,14 @@
 ; Acorn builds have a variable screen size. We don't want to penalise the
 ; former so we use these macros which assemble using either immediate values
 ; or memory accesses as appropriate.
-; SFTODO: This probably needs tweaking/simplifying for 5.3 port; I shouldn't
+; SFTODONOW: This probably needs tweaking/simplifying for 5.3 port; I shouldn't
 ; be gratuitously different from Commodore port now it has support for non-40x25 screens
 
 !ifndef ACORN {
-    ; SFTODO: THIS IS NOT TRUE ANY MORE, OF COURSE
+    ; SFTODONOW: THIS IS NOT TRUE ANY MORE, OF COURSE
     FIXED_SCREEN_SIZE = 1
 } else {
-    !ifdef ACORN_SCREEN_HOLE { ; SFTODO: MAY OR MAY NOT WANT TO KEEP THIS - IT IS SEMI-TRUE IF WE ASSUME WE'LL ALWAYS BE IN MODE 6 OR 7
+    !ifdef ACORN_SCREEN_HOLE { ; SFTODONOW: MAY OR MAY NOT WANT TO KEEP THIS - IT IS SEMI-TRUE IF WE ASSUME WE'LL ALWAYS BE IN MODE 6 OR 7
         FIXED_SCREEN_SIZE = 1
     }
 }
@@ -456,7 +456,7 @@ s_screen_width_minus_one !byte 0
 s_screen_height_minus_one !byte 0
 s_screen_size !byte 0, 0
 
-!ifndef ACORN { ; SFTODO: THIS IS WHAT MY OLD ACORN PORT DID, MAY WANT TO CHANGE THIS BUT LET'S TRY TO MINIMISE COMPLEXITY DURING INITIAL MERGE FOR NOW
+!ifndef ACORN {
 s_init
 	; set up screen_width and screen_width_minus_one
 !ifdef TARGET_C128 {
@@ -509,7 +509,7 @@ s_init
 	rts
 } else {
 !macro screenkernal_init_inline {
-; SFTODO: PROB ALL ACORN BUILDS WANT THIS NOW !ifndef ACORN_NO_SHADOW {
+; SFTODONOW: PROB ALL ACORN BUILDS WANT THIS NOW !ifndef ACORN_NO_SHADOW {
     ; We don't want to be querying the OS for the screen resolution all the
     ; time, so initialise the relevant variables here. (The Commodore versions
     ; do the same; note that story_start + header_screen_{width,height}* aren't
@@ -525,7 +525,7 @@ s_init
     sty s_screen_width
     iny
     sty s_screen_width_plus_one
-; SFTODO: SEE ABOVE }
+; SFTODONOW: SEE ABOVE }
 
     ; Pick up the current OS cursor position; this will improve readability if
     ; any errors occuring during initialization, and it doesn't affect the game
@@ -760,7 +760,7 @@ s_printchar
 	bne +
 	; delete
 !ifndef ACORN {
-	ldy zp_screencolumn ; SFTODO THIS IS NEW IN 5.3, DO I NEED IT FOR ACORN CODE PATH?
+	ldy zp_screencolumn
 	jsr s_delete_cursor
 	dec zp_screencolumn ; move back
 	bpl ++
@@ -1789,7 +1789,7 @@ update_colours
     jmp oswrch
 
     ; SFTODO: It might be worth (for games like Border Zone where - check I'm not confused - hardware scrolling is not an option) allowing the build system to avoid showing CTRL-S on the loader screen and avoid having code for it in the Ozmoo binary. This might already be possible, I haven't checked. I suspect the user would have to specify a command line option for this, we can't really examine the game ourselves and infer it "always" uses a >1 line status area. - I guess this would come down to providing a --no-hw-scroll option in the build system
-    ; SFTODO: Following on from that, for such games the mode 7 status line colouring won't work either, so we might want to have a --multiline-status-line option which is shorthand for --no-mode-7-colour and --no-hw-scroll.
+    ; SFTODO: Following on from that, for such games the mode 7 status line colouring won't work either, so we might want to have a --multiline-status-area option which is shorthand for --no-mode-7-colour and --no-hw-scroll.
     ; SFTODO: This only has one caller, we could inline it (via a macro), but it may be the ability to rts early is worth having.
 check_user_interface_controls
     ; SFTODO: CTRL-F has no effect in mode 7 unless MODE_7_STATUS is defined,

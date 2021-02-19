@@ -711,7 +711,7 @@ c128_border_phase1
 } else { ; SFTODO: As per SFTODO elsewhere, note that it looks like constants-c128.asm is *alternative* to constants.asm, whereas currently acorn-constants.asm is an addition (plus acorn-constants.asm is only constants common to all the executables)
 !source "constants.asm"
 !ifdef ACORN {
-!source "acorn-constants.asm" ; SFTODO: rename constants-acorn.asm?
+!source "acorn-constants.asm" ; SFTODO: rename constants-acorn.asm? But that is already in use for the small "generic" constants header, so I'd need to rename that. And then again I have other acorn-* files. Think about it.
 }
 }
 !source "constants-header.asm"
@@ -734,7 +734,6 @@ game_id		!byte 0,0,0,0
 }
 }
 
-; SFTODO: PREV ACORN PORT HAD THE INCLUDES RE-ORDERED, I MAY OR MAY NOT WANT TO DO THAT FOR THIS PORT (THIS WAS ALL RELATED TO SCREEN HOLE AND STOPPING THE BENCHMARK CHUNK OF UNBREAKABLE TEXT IN TEXT.ASM ENDING UP NEAR THE SCREEN HOLE)
 
 .initialize
 !ifdef ACORN_RELOCATABLE {
@@ -890,7 +889,6 @@ initialize
 !source "text.asm"
 !source "dictionary.asm"
 !source "objecttable.asm"
-; SFTODO: PROB NEED TO ADD SOME !SOURCE LINES FOR ACORN-ONLY FILES
 
 
 !ifndef ACORN {
@@ -1646,7 +1644,7 @@ deletable_init
 	jsr load_suggested_pages
 .dont_preload
 } ; ifndef NOSECTORPRELOAD
-} ; SFTODO!?!?
+}
 
 } ; End of !ifdef VMEM
 }
@@ -1989,7 +1987,7 @@ prepare_static_high_memory
 	dex
 	bpl -
 	
-!ifndef ACORN { ; SFTODO!?!?!
+!ifndef ACORN {
 	lda #6
 	clc
 	adc config_load_address + 4

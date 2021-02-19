@@ -110,7 +110,7 @@ erase_window
 -   jsr s_erase_line
 	inc zp_screenrow
 	lda zp_screenrow
-	+cmp_screen_height ; SFTODO: *SOME* OF MY CMP_SCREEN_* MACROS MAY NO LONGER BE NEEDED
+	+cmp_screen_height ; SFTODONOW: *SOME* OF MY CMP_SCREEN_* MACROS MAY NO LONGER BE NEEDED
 	bcc -
 	jsr clear_num_rows
 	; set cursor to top left (or, if Z4, bottom left)
@@ -873,7 +873,9 @@ draw_status_line
     ; workaround, output using oswrch instead.
     ; SFTODO: It's just possible - need to check - that in 5.3 s_printchar
     ; doesn't exhibit this behaviour and I can revert to outputting the colour
-    ; code via s_printchar.
+    ; code via s_printchar. (*If* this is the case, may want to re-enable
+	; hardware scrolling in mode 7; I disabled it as I believed this was the
+	; cause of the ugly status line colour loss during scrolling.)
     lda #vdu_home
     sta s_cursors_inconsistent
     jsr oswrch
@@ -1058,10 +1060,6 @@ init_cursor_control
     ; when telling the OS to turn the cursor on or off to try to avoid visual
     ; artefacts from doing so, we want to avoid this unless cursor_status has
     ; just transitioned from negative to non-negative or vice versa.
-	; SFTODO: It's probably just an emulation/VM glitch, *but* just typing
-	; "LOOK" at the prompt in HH seems to cause the cursor to flick to bottom
-	; right and generally be more visible than I'd expect. Come back to this
-	; later, compare it with Ozmoo 4.4, see if something's broken.
 turn_on_cursor
     inc cursor_status
     beq .really_turn_on_cursor
