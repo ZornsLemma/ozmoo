@@ -362,6 +362,13 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 }
 
+!macro before_dynmem_read_corrupt_y {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    +acorn_page_in_bank_using_y ram_bank_list
+}
+}
+
+
 !macro after_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_BIG_DYNMEM {
     +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank

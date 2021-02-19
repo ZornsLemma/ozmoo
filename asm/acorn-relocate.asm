@@ -21,7 +21,11 @@ reloc_start = program_start
 ; locations. I can't find any official documentation to say what zero page we
 ; can and can't use, but looking at the different versions of the tube host code
 ; on mdfs.net I can't see any problem with transient use of these in practice.
-; SFTODONOW: I have a feeling JGH may have posted about this recently (Jan 2021-ish, no later than 7 Feb 2021) on stardot, maybe check and reference thread here.
+; JGH says at https://stardot.org.uk/forums/viewtopic.php?p=304350#p304350 that:
+; "No known Tube Host code uses &70-&8F, so just as Basic assigns that part of
+; its language workspace to code running in its environment, I think we could
+; declare that the Tube Host shall have assigned &70-&8F to code running in the
+; Tube Host environment."
 .delta = $70
 .codep = $71 ; 2 bytes
 .deltap = $73 ; 2 bytes
