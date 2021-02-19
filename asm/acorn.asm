@@ -137,10 +137,10 @@ ACORN_SWR_BIG_DYNMEM = 1
 .zp_y_not_ok
     ; A holds zp + 1, C is set.
     adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
-    sta $91 ; SFTODONOW: PROPER ADDRESS
+    sta screen_hole_zp_ptr + 1
     lda zp
-    sta $90
-    lda ($90),y
+    sta screen_hole_zp_ptr
+    lda (screen_hole_zp_ptr),y
 !if use_rts = 0 {
     jmp .done
 } else {
@@ -194,7 +194,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; corrupted, but few callers (and no performance-critical ones) would be able to
 ; take advantage, so it's not worth providing an X-corrupting version.
 !macro sta_dynmem_ind_y_internal zp, use_rts {
-    sta $94 ; SFTODONOW PROPER ADDRESS
+    sta screen_hole_tmp
     lda zp + 1
     cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
@@ -209,18 +209,18 @@ ACORN_SWR_BIG_DYNMEM = 1
 .zp_y_not_ok
     ; A holds zp + 1, C is set.
     adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
-    sta $91 ; SFTODONOW: PROPER ADDRESS
+    sta screen_hole_zp_ptr + 1
     lda zp
-    sta $90
-    lda $94
-    sta ($90),y
+    sta screen_hole_zp_ptr
+    lda screen_hole_tmp
+    sta (screen_hole_zp_ptr),y
 !if use_rts = 0 {
     jmp .done
 } else {
     rts
 }
 .zp_y_ok
-    lda $94
+    lda screen_hole_tmp
     sta (zp),y
 !if use_rts = 0 {
 .done

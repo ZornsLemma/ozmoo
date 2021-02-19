@@ -654,8 +654,7 @@ z_set_variable_reference_to_value
 	pha ; SFTODONOW: TO WORK AROUND MY +before_dynmem_read_corrupt_a CORRUPTING IT - I THINK THIS NEEDS MOVING INTO MACRO OR A NON-CORRUPT VSN OF MACRO USING, OR A CORRUPT Y VERSION, BECAUSE WE DON'T WANT TO PHA/PLA IF THE MACRO IS EMPTY
 	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	pla
-	; SFTODONOW: IS THIS TOO WEAK? CAN'T I USE THIS SIMPLE CODE IN SMALLDYN+HOLE CASE? THIS IS *WRITING* TO THE DYNAMIC MEMORY, SO IT SHOULDN'T BE AFFECTED BY SCREEN HOLE ON SMALLDYN.
-!ifndef ACORN_SCREEN_HOLE {
+!ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	ldy #0
     +sta_dynmem_ind_y zp_temp
 	iny
@@ -683,15 +682,15 @@ z_set_variable_reference_to_value
 	tay
 	lda zp_temp + 1
 	adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
-	sta $91 ; SFTODONOW PROPER
+	sta screen_hole_zp_ptr + 1
 	lda zp_temp
-	sta $90
+	sta screen_hole_zp_ptr
 	tya
 	ldy #0
-	sta ($90),y
+	sta (screen_hole_zp_ptr),y
 	iny
 	txa
-	sta ($90),y
+	sta (screen_hole_zp_ptr),y
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .zp_y_maybe_no_longer_ok
@@ -811,26 +810,26 @@ SFTODOTEMP
 	bcs .zp_y_not_ok
 	ldy #0
 	lda (zp_temp),y
-	sta $96 ; SFTODONOW PROPER
+	sta screen_hole_tmp
 	ldy zp_temp
 	iny
 	beq .zp_y_maybe_no_longer_ok
 	ldy #1
 	lda (zp_temp),y
 	tax
-	lda $96
+	lda screen_hole_tmp
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_not_ok
 	adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
-	sta $91 ; SFTODONOW PROPER
+	sta screen_hole_zp_ptr + 1
 	lda zp_temp
-	sta $90
+	sta screen_hole_zp_ptr
 	ldy #1
-	lda ($90),y
+	lda (screen_hole_zp_ptr),y
 	tax
 	dey
-	lda ($90),y
+	lda (screen_hole_zp_ptr),y
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_maybe_no_longer_ok
@@ -838,7 +837,7 @@ SFTODOTEMP
 	ldy #1
 	+lda_dynmem_ind_y zp_temp
 	tax
-	lda $96
+	lda screen_hole_tmp
 	+after_dynmem_read_corrupt_y
 	rts
 }
