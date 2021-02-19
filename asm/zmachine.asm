@@ -660,8 +660,8 @@ z_set_variable_reference_to_value
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } else {
-	; SFTODONOW: BE GOOD TO ENSURE ALL THE DIFFERENT CASES HERE DO GET TESTED
 !zone { ; SFTODO TEMP
+SFTODOQQ4
 	ldy zp_temp + 1
 	cpy acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
@@ -676,6 +676,8 @@ z_set_variable_reference_to_value
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .zp_y_not_ok
+	; SF: I have forced this case to execute by manually fiddling around with
+	; the screen hole location.
 	tay
 	lda zp_temp + 1
 	adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
@@ -691,6 +693,8 @@ z_set_variable_reference_to_value
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .zp_y_maybe_no_longer_ok
+	; SF: I have forced this case to execute by changing the beq to this code
+	; above to a jmp; this isn't ideal, but it's better than nothing.
 	; SFTODO: WE COULD CHECK ZP_TEMP+1 BUT FOR NOW LET'S JUST FALL BACK ON THIS DEFINITELY-OK IF SLOWER THAN NEC CODE
 	ldy #1
 	txa
@@ -818,6 +822,8 @@ SFTODOTEMP
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_not_ok
+	; SF: I have forced this case to execute by manually fiddling around with
+	; the screen hole location.
 	adc acorn_screen_hole_pages_minus_one ; -1 as carry is set
 	sta screen_hole_zp_ptr + 1
 	lda zp_temp
@@ -830,6 +836,8 @@ SFTODOTEMP
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_maybe_no_longer_ok
+	; SF: I have forced this case to execute by changing the beq to this code
+	; above to a jmp; this isn't ideal, but it's better than nothing.
 	; SFTODO: IT MIGHT BE OK IF WE CHECK HIGH BYTE, BUT LET'S JUST DO THIS FOR NOW
 	ldy #1
 	+lda_dynmem_ind_y zp_temp
