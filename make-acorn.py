@@ -1734,7 +1734,7 @@ else:
     electron_max_start_addr = 0x1d00
 # This is controlled via --max-page rather than (say) --small-dynmem-threshold
 # because in principle we might want to make other decisions based on the
-# user-supplied value. models in the future.
+# user-supplied value.
 if cmd_args.max_page is not None:
     small_dynmem_page_threshold = cmd_args.max_page
 
