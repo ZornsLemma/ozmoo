@@ -654,6 +654,7 @@ z_set_variable_reference_to_value
 	pha ; SFTODONOW: TO WORK AROUND MY +before_dynmem_read_corrupt_a CORRUPTING IT - I THINK THIS NEEDS MOVING INTO MACRO OR A NON-CORRUPT VSN OF MACRO USING, OR A CORRUPT Y VERSION, BECAUSE WE DON'T WANT TO PHA/PLA IF THE MACRO IS EMPTY
 	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	pla
+	; SFTODONOW: IS THIS TOO WEAK? CAN'T I USE THIS SIMPLE CODE IN SMALLDYN+HOLE CASE? THIS IS *WRITING* TO THE DYNAMIC MEMORY, SO IT SHOULDN'T BE AFFECTED BY SCREEN HOLE ON SMALLDYN.
 !ifndef ACORN_SCREEN_HOLE {
 	ldy #0
     +sta_dynmem_ind_y zp_temp
@@ -682,7 +683,6 @@ z_set_variable_reference_to_value
 	tay
 	lda zp_temp + 1
 	adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
-	; SFTODONOW: EXPERIMENTALLY TRAMPLING ON zp_temp, I AM *NOT* SURE THIS IS SAFE - WOULD NEED TO CODE REVIEW IF IT DOES SEEM TO WORK
 	sta $91 ; SFTODONOW PROPER
 	lda zp_temp
 	sta $90

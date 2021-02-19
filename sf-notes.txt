@@ -1,3 +1,9 @@
+ZP requirements for my bigdyn support:
+- lda_dynmem_ind_y_internal - 2 consecutive
+- sta_dynmem_ind_y_internal - 3, of which 2 consecutive
+- z_set_variable_reference_to_value - 3, of which 2 consecutive
+- z_get_referenced_value - 3, of which 2 consecutive
+
 Is HW scroll worth it in mode 7?
 - BBC B 144K SWR sw scroll $004ac7
 - BBC B 144K SWR hw scroll (with ugly colour code glitch) $0048e3
