@@ -122,7 +122,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; SF: These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
 ; macros will also alter N and Z. In practice this isn't a problem.
 
-!macro lda_dynmem_ind_y zp {
+!macro lda_dynmem_ind_y_internal zp, use_rts {
     lda zp + 1
     cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
@@ -141,10 +141,22 @@ ACORN_SWR_BIG_DYNMEM = 1
     lda zp
     sta $90
     lda ($90),y
+!if use_rts = 0 {
     jmp .done
+} else {
+    rts
+}
 .zp_y_ok
     lda (zp),y
+!if use_rts = 0 {
 .done
+} else {
+    rts
+}
+}
+
+!macro lda_dynmem_ind_y zp {
+    +lda_dynmem_ind_y_internal zp, 0
 }
 
 ; Dynamic memory reads which aren't performance critical use this macro, which
@@ -181,7 +193,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; SF: There would be some small performance gains here from allowing X to be
 ; corrupted, but few callers (and no performance-critical ones) would be able to
 ; take advantage, so it's not worth providing an X-corrupting version.
-!macro sta_dynmem_ind_y zp {
+!macro sta_dynmem_ind_y_internal zp, use_rts {
     sta $94 ; SFTODONOW PROPER ADDRESS
     lda zp + 1
     cmp acorn_screen_hole_start_page_minus_one
@@ -202,11 +214,23 @@ ACORN_SWR_BIG_DYNMEM = 1
     sta $90
     lda $94
     sta ($90),y
+!if use_rts = 0 {
     jmp .done
+} else {
+    rts
+}
 .zp_y_ok
     lda $94
     sta (zp),y
+!if use_rts = 0 {
 .done
+} else {
+    rts
+}
+}
+
+!macro sta_dynmem_ind_y zp {
+    +sta_dynmem_ind_y_internal zp, 0
 }
 
 ; Dynamic memory writes which aren't performance critical use this macro, which
@@ -241,53 +265,40 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 
 lda_dynmem_ind_y_slow_object_tree_ptr_sub
-	; SFTODONOW: This (all of them) will contain a jmp to the rts; we could add a parameter to the macro to allow it to just rts in place, for a small code size and speed saving.
-	+lda_dynmem_ind_y object_tree_ptr
-	rts
+	+lda_dynmem_ind_y_internal object_tree_ptr, 1
 
 lda_dynmem_ind_y_slow_zp_mempos_sub
-	+lda_dynmem_ind_y zp_mempos
-	rts
+	+lda_dynmem_ind_y_internal zp_mempos, 1
 
 lda_dynmem_ind_y_slow_string_array_sub
-	+lda_dynmem_ind_y string_array
-	rts
+	+lda_dynmem_ind_y_internal string_array, 1
 
 lda_dynmem_ind_y_slow_parse_array_sub
-	+lda_dynmem_ind_y parse_array
-	rts
+	+lda_dynmem_ind_y_internal parse_array, 1
 
 lda_dynmem_ind_y_slow_default_properties_ptr_sub
-	+lda_dynmem_ind_y default_properties_ptr
-	rts
+	+lda_dynmem_ind_y_internal default_properties_ptr, 1
 
 lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+lda_dynmem_ind_y z_low_global_vars_ptr
-	rts
+	+lda_dynmem_ind_y_internal z_low_global_vars_ptr, 1
 
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
-	+sta_dynmem_ind_y object_tree_ptr
-	rts
+	+sta_dynmem_ind_y_internal object_tree_ptr, 1
 
 sta_dynmem_ind_y_slow_zp_mempos_sub
-	+sta_dynmem_ind_y zp_mempos
-	rts
+	+sta_dynmem_ind_y_internal zp_mempos, 1
 
 sta_dynmem_ind_y_slow_string_array_sub
-	+sta_dynmem_ind_y string_array
-	rts
+	+sta_dynmem_ind_y_internal string_array, 1
 
 sta_dynmem_ind_y_slow_parse_array_sub
-	+sta_dynmem_ind_y parse_array
-	rts
+	+sta_dynmem_ind_y_internal parse_array, 1
 
 sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+sta_dynmem_ind_y z_low_global_vars_ptr
-	rts
+	+sta_dynmem_ind_y_internal z_low_global_vars_ptr, 1
 
 sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
-	+sta_dynmem_ind_y z_high_global_vars_ptr
-	rts
+	+sta_dynmem_ind_y_internal z_high_global_vars_ptr, 1
 
 } else { ; !ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
