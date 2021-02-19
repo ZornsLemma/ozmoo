@@ -856,16 +856,21 @@ class OzmooExecutable(Executable):
             if i not in blocks:
                 blocks.append(i)
         blocks = blocks[:vmap_max_size]
-        # vmap entries should normally addr a 512-byte aligned block; invalid_addr
-        # is odd so it won't ever match when the virtual memory code is searching the map.
-        invalid_addr = 0x1 # SFTODONOW: NO LONGER AN INVALID ADDR
+        # We use 0 as an "invalid" address in vmap; since a Z-address &0000xx will always
+        # be in dynamic memory, we will never get to the point of trying to load this
+        # block via the virtual memory code. In practice it shouldn't matter but we always
+        # specify a timestamp of 0 (the oldest possible timestamp) when using invalid_addr
+        # in a vmap entry, so the entry will be replaced by something useful ASAP in the
+        # unexpected case that the entry is used at runtime.
+        invalid_addr = 0
+        invalid_timestamp = 0
         for i, block_index in enumerate(blocks):
             timestamp = int(max_timestamp + ((float(i) / vmap_max_size) * (min_timestamp - max_timestamp))) & ~vmem_highbyte_mask
             if cmd_args.preload_opt:
                 # Most of the vmap will be ignored, but we have to have at least one entry
                 # and by making it an invalid addr we don't need to worry about loading
                 # any "suggested" blocks.
-                addr = invalid_addr
+                addr, timestamp = invalid_addr, invalid_timestamp
             else:
                 addr = (nonstored_blocks + block_index * vmem_block_pagecount) >> 1
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
@@ -873,7 +878,7 @@ class OzmooExecutable(Executable):
                 # such a block.
                 # SFTODO: Warn? It's harmless but it means we could have clawed back a few
                 # bytes by shrinking vmap_max_size.
-                addr = 0
+                addr, timestamp = invalid_addr, invalid_timestamp
             vmap_entry = (timestamp << 8) | addr
             self._asm_output[vmap_offset + i + 0            ] = vmap_entry & 0xff
             self._asm_output[vmap_offset + i + vmap_max_size] = (vmap_entry >> 8) & 0xff
@@ -1460,20 +1465,20 @@ def make_preload_blocks_list(config_filename):
     for i in range(len(preload_config) // 2):
         # We don't care about the timestamp on the entries in preload_config;
         # they are in order of insertion and that's what we're really interested
-        # in. (This isn't the *same* as the order based on timestamp; a block
+        # in. (This isn't the same as the order based on timestamp; a block
         # loaded early may of course be used again later and therefore have a
         # newer timestamp than another block loaded after it but never used
         # again.) Note that just as when we don't use preload_config, the
         # initial vmap entries will be assigned timestamps based on their order;
-        # the timestamp in preload_config are ignored.
-        # SFTODONOW: As per SFTODOs in asm code, need to update this for new 5.3 shifted-right-one-bit vmap
+        # the timestamps in preload_config are ignored.
         addr = ((preload_config[i*2] & vmem_highbyte_mask) << 8) | preload_config[i*2 + 1]
-        if addr & 1 == 1:
-            # This is an odd address so it's invalid; we expect to see one of
-            # these as the first block and we just ignore it.
+        if addr == 0:
+            # This is an zero address, which is in dynamic memory and wouldn't normally
+            # be seen in vmap. We put one of these as the first entry when building the
+            # preopt executable, which we just ignore.
             assert i == 0
             continue
-        block_index = (addr - nonstored_blocks) // vmem_block_pagecount
+        block_index = ((addr << 1) - nonstored_blocks) // vmem_block_pagecount
         assert block_index >= 0
         blocks.append(block_index)
     return blocks

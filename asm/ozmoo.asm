@@ -1596,7 +1596,9 @@ deletable_init
 }
 	stx dynmem_size
 	sta dynmem_size + 1
+}
 !ifdef VMEM {
+!ifndef ACORN {
 	tay
 	cpx #0
 	beq .maybe_inc_nonstored_blocks
@@ -1619,10 +1621,17 @@ deletable_init
 	cmp #vmap_max_size ; Maximum space available
 	bcc ++
 	lda #vmap_max_size
-	; SFTODO: OLD CODE USED TO STA vmap_max_entries HERE, DO I NEED THAT?!?!?
 ++
+} ; ifndef ACORN
+	; SFTODONOW: CHECK VMEM_STRESS WORKS (IN A BUILD, AND PASSING THE TEST, SENSE) ON ACORN
 !ifdef VMEM_STRESS {
 	lda #2 ; one block for PC, one block for data
+!ifdef ACORN {
+	sta vmap_max_entries
+}
+}
+!ifndef ACORN {
+	sta vmap_max_entries
 }
 
 !ifdef TARGET_C128 {
@@ -1644,10 +1653,9 @@ deletable_init
 	jsr load_suggested_pages
 .dont_preload
 } ; ifndef NOSECTORPRELOAD
-}
+} ; ifndef ACORN
 
 } ; End of !ifdef VMEM
-}
 
 !ifndef UNSAFE {
 	; check z machine version
@@ -1975,6 +1983,7 @@ print_reu_progress_bar
 
 
 }
+}
 prepare_static_high_memory
 	lda #$ff
 	sta zp_pc_h
@@ -2054,7 +2063,6 @@ prepare_static_high_memory
 }
 	rts
 
-}
 
 !ifdef HAS_SID {
 init_sid

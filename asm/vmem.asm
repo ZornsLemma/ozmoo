@@ -295,11 +295,14 @@ print_optimized_vm_map
 	sta streams_output_selected + 2
 	sta is_buffered_window
 	jsr print_following_string
+!ifndef ACORN {
 	!pet 13,"$po$:",0
+} else {
+	!text 13,"$po$:",0
+}
 
 	ldx #0
 -	lda vmap_z_h,x
-; SFTODONOW: I SUSPECT MAKE-ACORN.PY PREOPT PARSING CODE NEEDS UPDATING TO ACOMMDATE THE "SHIFT RIGHT ONE BIT" OF VMAP_Z_[LH], OR WE NEED TO UNDO THE SHIFT HERE - SOMETHING LIKE THAT
 !ifdef ACORN {
     ldy .handle
     jsr osbput
@@ -319,15 +322,21 @@ print_optimized_vm_map
 	lda zp_temp
 	bne +++
 	; Print block that was just to be read
-    ; SFTODONOW: NOTE THAT ZP_PC_H IS *NOT* SHIFTED RIGHT 1 BIT, UNLIKE ALL THE VMAP_Z_[LH] VALUES WE JUST OUTPUT - NEED TO BE CONSISTENT
+    ; SF: Entries in vmap are shifted right one bit (to avoid wasting a bit which is always
+    ; zero because blocks are aligned on 512-byte boundaries); for consistency, we do the
+    ; same to zp_pc as we output it.
 	lda zp_pc_h
 !ifdef ACORN {
+    lsr
+    php
     ldy .handle
     jsr osbput
 }
 	jsr print_byte_as_hex
 	lda zp_pc_l
 !ifdef ACORN {
+    plp
+    ror
     ldy .handle
     jsr osbput
 }
@@ -709,10 +718,11 @@ read_byte_at_z_address
 }
 .read_and_return_value
 !ifndef ACORN_SWR {
-    ; We're *not* necessarily reading dynamic memory here - we may be, but we
-    ; may be reading from a read-only VM page. We therefore control the sideways
-    ; RAM paging explicitly in this code; before_dynmem_read_corrupt_a might incorrectly
-    ; page in the bank containing dynamic memory.
+    ; SF: On ACORN_SWR builds, we're *not* necessarily reading dynamic memory
+    ; here - we may be, but we may be reading from a read-only VM page. We
+    ; therefore control the sideways RAM paging explicitly in this code;
+    ; before_dynmem_read_corrupt_a might incorrectly page in the bank containing
+    ; dynamic memory.
 	+before_dynmem_read_corrupt_a
 }
 	lda (mempointer),y
@@ -778,6 +788,7 @@ read_byte_at_z_address
 }
 }
 .non_dynmem
+SFTODOLL8
 	sty mempointer_y
 	lsr
 	sta vmem_temp + 1
@@ -790,6 +801,7 @@ read_byte_at_z_address
 	ror
 	sta vmem_temp
 	; Check quick index first
+    ; SFTODO: Would it be worth asserting/ensuring the following loop doesn't incur a page-crossing penalty?
 	ldx #vmap_quick_index_length - 1
 -	ldy vmap_quick_index,x
 	cmp vmap_z_l,y ; zmachine mem offset ($0 -
@@ -871,7 +883,7 @@ read_byte_at_z_address
 	bne .block_chosen ; Always branch
 }
 
-; SFTODO: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised.
+; SFTODO: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised. - I believe on Acorn the bcc can only occur when we're in PREOPT mode
 .not_initial_reu_loading
 	ldx vmap_used_entries
 	cpx vmap_max_entries
