@@ -1513,7 +1513,10 @@ SFTODOLABEL4
 
 !ifdef ACORN_SWR {
     ; The load loop may have left the last bank of sideways RAM paged in; we
-    ; need to page the default bank back in.
+    ; need to page the default bank back in. SFTODO: I am not sure this is
+    ; necessary, as we should page in the right bank when we first try to get
+    ; the page containing the initial Z-machine PC, but it doesn't really hurt
+    ; to do this anyway.
     +acorn_swr_page_in_default_bank_using_y
 }
 } ; End of !ifndef PREOPT

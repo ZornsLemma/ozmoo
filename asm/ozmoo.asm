@@ -2045,10 +2045,8 @@ prepare_static_high_memory
     ; vmap_used_entries can't be 0. SFTODO: I think?
     lda #1
     sta vmap_used_entries
-    sta vmap_clock_index
 } else {
-    ; +acorn_deletable_init_inline will initialise vmap_used_entries and we can
-    ; just leave vmap_clock_index at its default value of 0.
+    ; +acorn_deletable_init_inline will initialise vmap_used_entries.
 }
 }
 !ifdef TRACE_VM {
