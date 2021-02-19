@@ -10,7 +10,7 @@ vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 ; SFTODO: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
 
-!ifndef ACORN { ; SFTODO!?
+!ifndef ACORN {
 !ifndef TARGET_PLUS4 {
 get_free_vmem_buffer
 	; Protect buffer which z_pc points to
@@ -65,7 +65,7 @@ read_byte_at_z_address
 	+after_dynmem_read_corrupt_y
 	rts
 .read_new_byte
-!ifndef TARGET_PLUS4 { ; SFTODO: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANCE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
+!ifndef TARGET_PLUS4 { ; SFTODO: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANGE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
 	sty mempointer_y
 }
 	txa
@@ -134,11 +134,11 @@ read_byte_at_z_address
 
 ; vmap_max_size determines the memory allocated for the vmap; vmap_max_entries
 ; is the actual run-time limit, which may be less than vmap_max_size but
-; obviously can't be larger. SFTODO: ALMOST CERTAINLY STILL TRUE IN 5.3 BUT CHECK
+; obviously can't be larger.
 ; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
 ; too large. Not necessarily a problem, but think about it - will there be a
 ; problem? Are we wasting (a few bytes only) of RAM for no good reason?
-; SFTODO: If we're willing (as per other SFTODOs, I believe) to "commit" to building a
+; SFTODONOW: If we're willing (as per other SFTODOs, I believe) to "commit" to building a
 ; more game-specific executable, the build system *knows* the size of the game's dynmem and
 ; how many 512-byte read-only blocks it has, so it could pass in a "max useful vmap_max_size" value for us - no waste and no compromise. (Or, equivalently, if - it may already do so - it passes in dynmem size - careful with any rounding - and game size, we can computer this ourselves very easily at assembly time)
 vmem_blocksize = 512
@@ -184,17 +184,17 @@ ACORN_LARGE_RUNTIME_VMAP = 1
 !ifndef ACORN {
 vmap_blocks_preloaded !byte 0
 }
-; SFTODO: want to make vmap_z_l avoid page-crossing cycle penalties on Acorn - perhaps it's worth locating it somewhere in $400-$800 and copying it down there from its place in the binary during initialisation
-!ifndef ACORN_SWR { ; SFTODO HACKY
+; SFTODONOW: want to make vmap_z_l avoid page-crossing cycle penalties on Acorn - perhaps it's worth locating it somewhere in $400-$800 and copying it down there from its place in the binary during initialisation
+!ifndef ACORN_SWR { ; SFTODONOW HACKY
 vmap_z_l = vmap_buffer_start
 }
-vmap_z_h = vmap_buffer_start + vmap_max_size ; SFTODO: WAS vmap_z_h = vmap_z_l + vmap_max_size
+vmap_z_h = vmap_buffer_start + vmap_max_size ; SFTODONOW: WAS vmap_z_h = vmap_z_l + vmap_max_size
 
 !ifndef ACORN {
 vmap_first_ram_page		!byte 0
 } else {
 !ifndef ACORN_SWR {
-; SFTODO: THIS IS FROM OLD ACORN PORT, IS IT USEFUL/RELEVANT ANY MORE?
+; SFTODONOW: THIS IS FROM OLD ACORN PORT, IS IT USEFUL/RELEVANT ANY MORE?
 vmap_first_ram_page		!byte ACORN_INITIAL_NONSTORED_BLOCKS + >story_start
 }
 }
@@ -299,7 +299,7 @@ print_optimized_vm_map
 
 	ldx #0
 -	lda vmap_z_h,x
-; SFTODO: I SUSPECT MAKE-ACORN.PY PREOPT PARSING CODE NEEDS UPDATING TO ACOMMDATE THE "SHIFT RIGHT ONE BIT" OF VMAP_Z_[LH], OR WE NEED TO UNDO THE SHIFT HERE - SOMETHING LIKE THAT
+; SFTODONOW: I SUSPECT MAKE-ACORN.PY PREOPT PARSING CODE NEEDS UPDATING TO ACOMMDATE THE "SHIFT RIGHT ONE BIT" OF VMAP_Z_[LH], OR WE NEED TO UNDO THE SHIFT HERE - SOMETHING LIKE THAT
 !ifdef ACORN {
     ldy .handle
     jsr osbput
@@ -319,7 +319,7 @@ print_optimized_vm_map
 	lda zp_temp
 	bne +++
 	; Print block that was just to be read
-    ; SFTODO: NOTE THAT ZP_PC_H IS *NOT* SHIFTED RIGHT 1 BIT, UNLIKE ALL THE VMAP_Z_[LH] VALUES WE JUST OUTPUT - NEED TO BE CONSISTENT
+    ; SFTODONOW: NOTE THAT ZP_PC_H IS *NOT* SHIFTED RIGHT 1 BIT, UNLIKE ALL THE VMAP_Z_[LH] VALUES WE JUST OUTPUT - NEED TO BE CONSISTENT
 	lda zp_pc_h
 !ifdef ACORN {
     ldy .handle
@@ -728,7 +728,7 @@ read_byte_at_z_address
 }
 
 	rts
-    ; SFTODONOW: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND RAM_BANK_LIST AND DEFAULT_BANK_USING_Y
+    ; SFTODO: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND RAM_BANK_LIST AND DEFAULT_BANK_USING_Y
 .read_new_byte
 	sta zp_pc_h
 	stx zp_pc_l
@@ -817,14 +817,14 @@ read_byte_at_z_address
 	; is there a block with this address in map?
 	ldx vmap_used_entries
 -   ; compare with low byte
-	; TODO: It would be helpful to ensure vmap_z_l - 1 is near the start of
+	; SFTODONOW: It would be helpful to ensure vmap_z_l - 1 is near the start of
 	; a page, so the following frequently executed instruction doesn't
-	; incur too many extra page-crossing cycles. SFTODONOW
+	; incur too many extra page-crossing cycles.
 	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 - 
 	beq +
 .check_next_block
 	dex
-	bne - ; SFTODO: Just might be worth asserting this branch doesn't suffer page-crossing penalty
+	bne - ; SFTODO: Just might be worth asserting this branch doesn't suffer page-crossing penalty (or perhaps just silently inserting some padding after the "jmp .index_found" above if necessary to ensure it's not - but do some timings first to see how much difference it really makes)
 	beq .no_such_block ; Always branch
 	; is the highbyte correct?
 +
@@ -1099,9 +1099,9 @@ read_byte_at_z_address
     sta osword_cache_index_offered
 !if vmem_highbyte_mask > 0 {
     lda vmap_z_h,x
-    and #vmem_highbyte_mask ; SFTODO: THIS MAY BE 0, IN WHICH CASE WE CAN CONDITIONALLY NOT ASSEMBLE THIS INSTRUCTION - TINY SAVING, BUT WHY NOT?
+    and #vmem_highbyte_mask
 } else {
-    ; SFTODO: It *may* be that osword_cache_index_offered + 1 would simply always be 0 and we could move the sta into the > 0 block and do nothin in this else. However, the way the initial load modified index_offered+1 a lot makes me a bit nervous about this - of course, it could simply make sure it explicitly zeroes this at the end if highbyte_mask is 0. But for now let's just go with this.
+    ; SFTODO: It *may* be that osword_cache_index_offered + 1 would simply always be 0 and we could move the sta into the > 0 block and do nothin in this else. However, the way the initial load modifies index_offered+1 a lot makes me a bit nervous about this - of course, it could simply make sure it explicitly zeroes this at the end if highbyte_mask is 0. But for now let's just go with this.
     lda #0
 }
     sta osword_cache_index_offered + 1
@@ -1154,7 +1154,7 @@ read_byte_at_z_address
 } else {
     +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
-.store_offset	 ; SFTODO THERE DIDN'T USED TO BE A LABEL HERE, DOES ITS PRESENCE MEAN I NEED TO CHANGE ANYTHING?
+.store_offset
 	sta vmap_c64_offset
 
 !ifndef ACORN {
@@ -1304,16 +1304,17 @@ convert_index_x_to_ram_bank_and_address
 ; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
-; SFTODO: Is there any value in page-aligning this? Although since the two halves
+; SFTODONOW: Is there any value in page-aligning this? Although since the two halves
 ; are not exactly page-aligned we'd end up having to waste a couple of bytes so
 ; each half was page-aligned. Profile this before doing anything. I think we really should be page-aligning-plus-1 (note the -1 in the hot code accessing it) vmap_z_l.
-; SFTODO: Do I need to tweak the make-acorn.py code which pre-fills this to take account of the "shifted right one bit" approach now used in 5.3?
 !ifdef ACORN {
 !ifdef VMEM {
-; SFTODO: THIS NEEDS DOING PROPERLY - WE NEED vmap_z_l NEAR-PAGE-ALIGNED ON ALL BUILDS, AND THAT MEANS WE ONLY NEED HALF THIS BUFFER HERE FOR vmap_z_h, *BUT* BUILD SYSTEM WANTS IT TO BE CONTIGUOUS SO WE NEED TO PUT THE WHOLE THING IN DISCARDABLE INIT AND COPY IT TO RELEVANT LOCATIONS ON INIT - FOR NOW I AM JUST HACKING THIGS FOR SWR
+; SFTODONOW: THIS NEEDS DOING PROPERLY - WE NEED vmap_z_l NEAR-PAGE-ALIGNED ON ALL BUILDS, AND THAT MEANS WE ONLY NEED HALF THIS BUFFER HERE FOR vmap_z_h, *BUT* BUILD SYSTEM WANTS IT TO BE CONTIGUOUS SO WE NEED TO PUT THE WHOLE THING IN DISCARDABLE INIT AND COPY IT TO RELEVANT LOCATIONS ON INIT - FOR NOW I AM JUST HACKING THIGS FOR SWR
 vmap_buffer_start
     !FILL vmap_max_size * 2, 'V'
 }
 }
 
-; SFTODO: WHEN I COME TO TRY TO SUPPORT THE UP-TO-19K FREE IN THE SHADOW BANK, IT MAY BE POSSIBLE TO SUPPORT THIS ON THE B+ BY USING OSRDSC
+; SFTODO: WHEN I COME TO TRY TO SUPPORT THE UP-TO-19K FREE IN THE SHADOW BANK, IT MAY BE POSSIBLE TO SUPPORT THIS ON THE B+ BY USING OSRDSC. (We could in principle put copy code in the special RAM at $Axxx or wherever, but since it needs to be able to copy to/from arbitrary SWR banks I don't think that's very practical. We could potentially copy like that via a bounce buffer in main RAM, but it's an extra copy - it would depend how slow OSWRSC/OSRDSC are/if they can do what we need.)
+
+; SFTODO: Could/should we identify any free memory in the "private 12K" on a Master and use it as vmem cache? I suspect we'd need to treat it a bit like shadow RAM and copy it to/from main memory, but maybe not. This might be a bit too hacky anyway, but worth a thought. Definitely something to do only after adding use of spare shadow RAM.
