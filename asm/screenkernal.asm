@@ -33,8 +33,12 @@
 ; Acorn builds have a variable screen size. We don't want to penalise the
 ; former so we use these macros which assemble using either immediate values
 ; or memory accesses as appropriate.
-; SFTODONOW: This probably needs tweaking/simplifying for 5.3 port; I shouldn't
-; be gratuitously different from Commodore port now it has support for non-40x25 screens
+; SFTODO: This probably needs tweaking/simplifying for 5.3 port; I shouldn't be
+; gratuitously different from Commodore port now it has support for non-40x25
+; screens. Probably best to avoid making any changes in this area until I look
+; at supporting extra modes on non-shadow machines if they happen to have enough
+; spare RAM (e.g. mode 6 on a model B, maybe even mode 3 on a B/Electron with an
+; E00 DFS and a small game)
 
 !ifndef ACORN {
     ; SFTODONOW: THIS IS NOT TRUE ANY MORE, OF COURSE
