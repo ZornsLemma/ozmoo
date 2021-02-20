@@ -515,6 +515,8 @@ jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probab
 ; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
 
 !ifdef ACORN_TURBO_SUPPORTED {
+; SFTODO: It might be possible to use an entire 64K bank for dynmem on a turbo copro,
+; instead of using what's left of bank 0 after the OS and Ozmoo binary take their share.
 turbo_control = $fef0
 turbo_bank_base = $301
 mempointer_turbo_bank = turbo_bank_base + mempointer

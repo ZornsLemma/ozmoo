@@ -1,3 +1,8 @@
+vmap_z_l page-alignment waffling:
+- currently we have hacked this to be at $701 on SWR builds - that page was wasted before, so this (with a proper implementation) is a win, as we will save ~254 bytes inside the binary (remember the initial vmap can be in discardable init code)
+- tube build currently (except in non-default cases, like no host cache support, which is only an option for debugging really) has ~255 byte vmap_z_l inside the main binary, but it loads at $600. If we load at $700 but save that ~255 byte vmap_z_l we're no worse off. We'd only be worse off if vmap_max_size was typically under 255, but for tube+host cache or turbo tube it's not, and those are the primary cases.
+- for simplicitly I think I could make $500 be the vmap_z_l buffer on all builds, relocating scratch (double) page to $600, with the tube build now loading at $700.
+
 ZP requirements for my bigdyn support:
 - lda_dynmem_ind_y_internal - 2 consecutive
 - sta_dynmem_ind_y_internal - 3, of which 2 consecutive
