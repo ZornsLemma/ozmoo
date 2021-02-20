@@ -216,7 +216,10 @@ vmap_z_h = vmap_z_l + vmap_max_size
 vmap_first_ram_page		!byte 0
 } else {
 !ifndef ACORN_SWR {
-; SFTODONOW: THIS IS FROM OLD ACORN PORT, IS IT USEFUL/RELEVANT ANY MORE?
+; SFTODO: I believe this is constant on Acorn and except for conditional compilation
+; pain we could just replace its uses with an immediate constant. Not sure if it's
+; worth it for performance, but using a macro to encapsulate the Acorn/Commodore
+; difference would be not too bad.
 vmap_first_ram_page		!byte ACORN_INITIAL_NONSTORED_BLOCKS + >story_start
 }
 }
