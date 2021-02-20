@@ -41,10 +41,10 @@
 ; E00 DFS and a small game)
 
 !ifndef ACORN {
-    ; SFTODONOW: THIS IS NOT TRUE ANY MORE, OF COURSE
+    ; SFTODO: THIS IS NOT TRUE ANY MORE, OF COURSE
     FIXED_SCREEN_SIZE = 1
 } else {
-    !ifdef ACORN_SCREEN_HOLE { ; SFTODONOW: MAY OR MAY NOT WANT TO KEEP THIS - IT IS SEMI-TRUE IF WE ASSUME WE'LL ALWAYS BE IN MODE 6 OR 7
+    !ifdef ACORN_SCREEN_HOLE { ; SFTODO: MAY OR MAY NOT WANT TO KEEP THIS - IT IS SEMI-TRUE IF WE ASSUME WE'LL ALWAYS BE IN MODE 6 OR 7
         FIXED_SCREEN_SIZE = 1
     }
 }
@@ -513,7 +513,7 @@ s_init
 	rts
 } else {
 !macro screenkernal_init_inline {
-; SFTODONOW: PROB ALL ACORN BUILDS WANT THIS NOW !ifndef ACORN_NO_SHADOW {
+; SFTODO: PROB ALL ACORN BUILDS WANT THIS NOW !ifndef ACORN_NO_SHADOW {
     ; We don't want to be querying the OS for the screen resolution all the
     ; time, so initialise the relevant variables here. (The Commodore versions
     ; do the same; note that story_start + header_screen_{width,height}* aren't
@@ -529,7 +529,7 @@ s_init
     sty s_screen_width
     iny
     sty s_screen_width_plus_one
-; SFTODONOW: SEE ABOVE }
+; SFTODO: SEE ABOVE }
 
     ; Pick up the current OS cursor position; this will improve readability if
     ; any errors occuring during initialization, and it doesn't affect the game
