@@ -163,47 +163,50 @@ read_byte_at_z_address
 ; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
 ; too large. Not necessarily a problem, but think about it - will there be a
 ; problem? Are we wasting (a few bytes only) of RAM for no good reason?
-; SFTODONOW: If we're willing (as per other SFTODOs, I believe) to "commit" to building a
-; more game-specific executable, the build system *knows* the size of the game's dynmem and
-; how many 512-byte read-only blocks it has, so it could pass in a "max useful vmap_max_size" value for us - no waste and no compromise. (Or, equivalently, if - it may already do so - it passes in dynmem size - careful with any rounding - and game size, we can computer this ourselves very easily at assembly time)
 vmem_blocksize = 512
 vmem_indiv_block_mask = >(vmem_blocksize - 1)
 vmem_block_pagecount = vmem_blocksize / 256
 !ifndef ACORN {
 vmap_max_size = (vmap_buffer_end - vmap_buffer_start) / 2
 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
-} else {
+} else { ; ACORN
 !ifndef ACORN_SWR {
-!ifndef ACORN_TUBE_CACHE {
-!ifdef ACORN_TURBO_SUPPORTED {
-; A turbo second processor has enough RAM to hold 255 512-byte blocks.
-vmap_max_size = 255
-ACORN_LARGE_RUNTIME_VMAP = 1
+    !ifndef ACORN_TUBE_CACHE {
+        !ifdef ACORN_TURBO_SUPPORTED {
+            ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
+            max_vmap_max_size = 255
+        } else { ; !ACORN_TURBO_SUPPORTED
+            max_vmap_max_size = (flat_ramtop - story_start) / 512
+        }
+    } else { ; ACORN_TUBE_CACHE
+        ; The host cache is initialised using "extra" entries in the vmap.
+        max_vmap_max_size = 255
+        !ifndef ACORN_TURBO_SUPPORTED {
+            ; During execution (after the initial preload of the host cache),
+            ; vmap_max_entries only covers the second processor's own 64K, so we
+            ; don't need large vmap support.
+            ACORN_SMALL_RUNTIME_VMAP = 1
+        }
+    }
+} else { ; ACORN_SWR
+    ; We might have enough main+sideways RAM to hold 255 512-byte blocks.
+    max_vmap_max_size = 255
+}
+
+; Set vmap_max_size = min(max_vmap_max_size, ACORN_VMEM_BLOCKS) - there's no
+; point allocating space for more vmem blocks than the game can ever use.
+!if max_vmap_max_size < ACORN_VMEM_BLOCKS {
+    vmap_max_size = max_vmap_max_size
 } else {
-; If a game had no dynamic memory we'd have room for about 100 512-byte VM
-; blocks on the second processor. Let's say every game will have at least 6K of
-; dynamic memory, so we've got room for about 88 512-byte VM blocks.
-; SFTODO: AM I BEING NEEDLESSLY TIGHT HERE? MAYBE JUST SAY 100 (OR WHATEVER WOULD ACTUALLY FIT, JUST CALCULATE IT) IF WE HAD *NO* DYNMEM. WE'RE LOOKING AT A HANDFUL OF BYTES FOR THE VMAP AND WE'RE RUNNING A SMALL RISK OF LEAVING SOME MEMORY UNUSED WHEN IT COULD BE USFEULLY EMPLOYED IF A GAME DOES HAVE <6K DYNMEM. OTOH, MAYBE IT'S WORTH DOING SOME ANALYSIS/ASKING SOME PEOPLE WHAT THE SMALLEST REALISTIC DYNMEM IS (FOR A DECENTLY SIZED GAME; A TINY GAME WOULD FIT IN 88 VM BLOCKS ANYWAY)
-vmap_max_size = 88
+    vmap_max_size = ACORN_VMEM_BLOCKS
 }
-} else {
-; The host cache is initialised using "extra" entries in the vmap.
-vmap_max_size = 255
-!ifdef ACORN_TURBO_SUPPORTED {
-; A turbo second processor has enough RAM to hold 255 512-byte blocks.
-ACORN_LARGE_RUNTIME_VMAP = 1
-} else {
-; We *don't* set ACORN_LARGE_RUNTIME_VMAP; after the initial preload of the host
-; cache, vmap_max_entries will be approximately 88 because the vmap is only
-; concerned with the second processor's own 64K.
+
+!if vmap_max_size < 128 {
+    !ifndef ACORN_SMALL_RUNTIME_VMAP {
+        ACORN_SMALL_RUNTIME_VMAP = 1
+    }
 }
-}
-} else {
-; We might have enough main+sideways RAM to hold 255 512-byte blocks.
-vmap_max_size = 255
-ACORN_LARGE_RUNTIME_VMAP = 1
-}
-}
+} ; end of ACORN
 ; vmap_max_entries	!byte 0 ; Moved to ZP
 ; vmap_used_entries	!byte 0 ; Moved to ZP
 !ifndef ACORN {
@@ -1119,7 +1122,7 @@ SFTODOLL8
 	and #vmem_highbyte_mask
 ++	sta vmap_z_h,x
 	dex
-!ifndef ACORN_LARGE_RUNTIME_VMAP {
+!ifdef ACORN_SMALL_RUNTIME_VMAP {
 	bpl -
 } else {
     cpx #255
@@ -1342,9 +1345,6 @@ convert_index_x_to_ram_bank_and_address
 ; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
 ; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
 ; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
-; SFTODONOW: Is there any value in page-aligning this? Although since the two halves
-; are not exactly page-aligned we'd end up having to waste a couple of bytes so
-; each half was page-aligned. Profile this before doing anything. I think we really should be page-aligning-plus-1 (note the -1 in the hot code accessing it) vmap_z_l.
 !ifdef ACORN {
 !ifdef VMEM {
 ; vmap_z_l lives in low workspace so we never incur page-crossing penalties when

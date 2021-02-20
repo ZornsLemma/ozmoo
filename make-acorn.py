@@ -1497,6 +1497,7 @@ def make_disc_image():
         "-DACORN_HW_SCROLL=1",
         "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
+        "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_blocks - nonstored_blocks, 2),
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():

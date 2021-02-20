@@ -1,3 +1,9 @@
+vmap_max_size tweak
+- BBC B 144K SWR $0047e0 (before: $00481c)
+- M128 $004897 (before: $004889)
+- M128+3MHz copro $002ccc (before: $002cd9)
+- OK, I don't think this is having a big effect (nor did I expect it to, it just seemed to at first)
+
 vmap_z_l page-alignment waffling:
 - currently we have hacked this to be at $701 on SWR builds - that page was wasted before, so this (with a proper implementation) is a win, as we will save ~254 bytes inside the binary (remember the initial vmap can be in discardable init code)
 - tube build currently (except in non-default cases, like no host cache support, which is only an option for debugging really) has ~255 byte vmap_z_l inside the main binary, but it loads at $600. If we load at $700 but save that ~255 byte vmap_z_l we're no worse off. We'd only be worse off if vmap_max_size was typically under 255, but for tube+host cache or turbo tube it's not, and those are the primary cases.
