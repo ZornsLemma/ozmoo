@@ -1658,10 +1658,10 @@ deletable_init
 	lda #vmap_max_size
 ++
 } ; ifndef ACORN
-	; SFTODONOW: CHECK VMEM_STRESS WORKS (IN A BUILD, AND PASSING THE TEST, SENSE) ON ACORN
 !ifdef VMEM_STRESS {
 	lda #2 ; one block for PC, one block for data
 !ifdef ACORN {
+	sta vmap_used_entries
 	sta vmap_max_entries
 }
 }

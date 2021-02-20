@@ -209,7 +209,7 @@ ACORN_LARGE_RUNTIME_VMAP = 1
 !ifndef ACORN {
 vmap_blocks_preloaded !byte 0
 vmap_z_l = vmap_buffer_start
-vmap_z_h = vmap_buffer_start + vmap_max_size ; SFTODONOW: WAS vmap_z_h = vmap_z_l + vmap_max_size
+vmap_z_h = vmap_z_l + vmap_max_size
 vmap_first_ram_page		!byte 0
 } else {
 !ifndef ACORN_SWR {
@@ -848,10 +848,7 @@ SFTODOLL8
 	; is there a block with this address in map?
 	ldx vmap_used_entries
 -   ; compare with low byte
-	; SFTODONOW: It would be helpful to ensure vmap_z_l - 1 is near the start of
-	; a page, so the following frequently executed instruction doesn't
-	; incur too many extra page-crossing cycles.
-	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 - 
+	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 -
 	beq +
 .check_next_block
 	dex
@@ -936,9 +933,19 @@ SFTODOLL8
 	; Check all indexes to find something older
 	ldx vmap_used_entries
 	dex
--	lda vmap_z_h,x
+-
+!ifdef VMEM_STRESS {
+    ; In the vmem stress test, we have very few blocks and it's possible they
+    ; all have timestamp $ff. The code assumes there will be at least one block
+    ; older than that, so we need to tweak the behaviour in this case.
+    lda vmem_oldest_index
+    cmp #$ff
+    beq .no_index_found_yet
+}
+ 	lda vmap_z_h,x
 	cmp vmem_oldest_age
 	bcs +
+.no_index_found_yet
 	; Found older
 	; Skip if z_pc points here; it could be in either page of the block.
 	ldy vmap_z_l,x
