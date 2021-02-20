@@ -453,6 +453,7 @@ colour1k
 	rts
 }
 
+; SFTODO: I should move these into page 4 to save a few bytes in main RAM.
 s_screen_width !byte 0
 s_screen_height !byte 0
 s_screen_width_plus_one !byte 0

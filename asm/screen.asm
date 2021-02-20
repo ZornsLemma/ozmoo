@@ -110,7 +110,7 @@ erase_window
 -   jsr s_erase_line
 	inc zp_screenrow
 	lda zp_screenrow
-	+cmp_screen_height ; SFTODONOW: *SOME* OF MY CMP_SCREEN_* MACROS MAY NO LONGER BE NEEDED
+	+cmp_screen_height ; SFTODO: *SOME* OF MY CMP_SCREEN_* MACROS MAY NO LONGER BE NEEDED
 	bcc -
 	jsr clear_num_rows
 	; set cursor to top left (or, if Z4, bottom left)

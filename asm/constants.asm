@@ -423,8 +423,8 @@ zp_temp               = $75 ; 5 bytes
 ; matters most of the time.
 cursor_row            = $7a ; 2 bytes
 cursor_column         = $7c ; 2 bytes
-!if 0 { ; SFTODONOW: DELETE
-screen_width          = $54 ; 1 byte
+!if 0 { ; SFTODO: These zp locations can be re-used now; I suspect (but obviously can test) there's no real value to using zp for text output related things
+;screen_width          = $54 ; 1 byte ; SFTODO: I have re-used this one already
 screen_height         = $89 ; 1 byte
 screen_height_minus_1 = $8a ; 1 byte
 }
@@ -467,7 +467,7 @@ stack = $100
 z_trace_index = $400 ; !byte 0
 s_stored_x = $401 ; !byte 0
 s_stored_y = $402 ; !byte 0
-!if 0 { ; SFTODONOW: DELETE
+!if 0 { ; SFTODO: These can be re-used now
 screen_width_minus_1 = $403 ; !byte 0
 screen_width_plus_1 = $404 ; !byte 0
 }
@@ -535,7 +535,7 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 ; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page = $41f ; $9e ; SFTODO TEMP EXPERIMENTAL $41f ; SFTODO TEMP ADDRESS, EXPERIMENTAL - THIS DOESN'T REALLY NEED TO BE IN ZP (BUT MAYBE DO COMPARATIVE MEASUREMENTS) - OK, I REALLY DON'T THINK THIS BENEFITS SIGNIFICANTLY FROM ZP
-acorn_screen_hole_start_page_minus_one = $9f ; SFTODONOW TEMP ADDRESS, EXPERIMENTAL, THIS ONE WILL BENEFIT MOST FROM BEING IN ZP - BUT WE CAN'T USE $9F, WE ONLY HAVE UP TO $8F INCLUSIVE, BUT THIS WILL DO UNTIL I RE-WORK ZP
+acorn_screen_hole_start_page_minus_one = $54
 acorn_screen_hole_pages = $420 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 acorn_screen_hole_pages_minus_one = $421 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 }
