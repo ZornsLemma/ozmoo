@@ -1030,7 +1030,6 @@ def make_shr_swr_executable():
     return make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM")
 
 
-# SFTODONOW: Maybe first alpha of 5.x is a good point to bite the bullet on "we're hardcoding everything about the game that helps build a tight binary"
 def make_bbc_swr_executable():
     leafname = "OZMOOB"
     # SFTODO: We could shave a few bytes off this executable by having an
