@@ -612,7 +612,7 @@ z_ins_jin
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 	cmp z_operand_value_high_arr + 1
-	bne .branch_false
+	bne .branch_false ; SFTODONOW IF WE TAKE THIS BRANCH WE WON'T DO AFTER_DYNMEM...
 	iny
 	+lda_dynmem_ind_y_slow object_tree_ptr
 	cmp z_operand_value_low_arr + 1
