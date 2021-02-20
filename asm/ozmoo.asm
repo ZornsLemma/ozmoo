@@ -10,10 +10,21 @@
 ; C64 is default and currently the only supported target, but
 ; future versions may include new targets such as Mega65, Plus/4 etc.
 !ifndef ACORN { ; SFTODO!?
+!ifndef VMEM {
+!ifndef SLOW {
+	SLOW = 1
+}
+}
+
 !ifdef TARGET_MEGA65 {
 	TARGET_ASSIGNED = 1
 	HAS_SID = 1
 	SUPPORT_REU = 0
+	!ifdef SLOW {
+		!ifndef VMEM {
+			SKIP_BUFFER = 1
+		}
+	}
 }
 !ifdef TARGET_PLUS4 {
 	TARGET_PLUS4_OR_C128 = 1
@@ -52,6 +63,11 @@
 
 !ifdef TARGET_C64 {
 	HAS_SID = 1
+	!ifdef SLOW {
+		!ifndef VMEM {
+			SKIP_BUFFER = 1
+		}
+	}
 }
 
 !ifndef ACORN { ; SFTODO!?

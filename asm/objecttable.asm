@@ -582,10 +582,10 @@ z_ins_jin
 	lda z_operand_value_high_arr
 	jsr calculate_object_address
 
+	+before_dynmem_read_corrupt_a
 !ifndef Z4PLUS {
 	ldy #4  ; parent
 
-	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	sta $02aa
@@ -594,7 +594,6 @@ z_ins_jin
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-	+after_dynmem_read_corrupt_y
 
 	cmp z_operand_value_low_arr + 1
 	bne .branch_false
@@ -602,7 +601,6 @@ z_ins_jin
 } else {
 	ldy #6  ; parent
 
-	+before_dynmem_read_corrupt_a
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	jsr read_word_from_bank_1_c128
@@ -612,14 +610,11 @@ z_ins_jin
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 	cmp z_operand_value_high_arr + 1
-	bne .branch_false ; SFTODONOW IF WE TAKE THIS BRANCH WE WON'T DO AFTER_DYNMEM...
+	bne .branch_false
 	iny
 	+lda_dynmem_ind_y_slow object_tree_ptr
 	cmp z_operand_value_low_arr + 1
 }
-	php ; SFTODONOW: NECESSARY BUT DON'T LIKE DOING IT LIKE THIS - NEEDS TO BE INSIDE MACRO SO BUILDS WHICH HAVE NULL MACRO DON'T WASTE THIS PHP/PLP
-	+after_dynmem_read_corrupt_a
-	plp
 
 	bne .branch_false
 	beq .branch_true ; Always branch
@@ -640,13 +635,14 @@ z_ins_test_attr
 } else {
 	+lda_dynmem_ind_y_slow object_tree_ptr
 }
-	+after_dynmem_read_corrupt_y
 
 	and .bitmask,x
 	beq .branch_false
 .branch_true 
+	+after_dynmem_read_corrupt_a
 	jmp make_branch_true
 .branch_false
+	+after_dynmem_read_corrupt_a
 	jmp make_branch_false
 
 z_ins_set_attr

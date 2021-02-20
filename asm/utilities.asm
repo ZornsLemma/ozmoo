@@ -136,8 +136,10 @@ plus4_enable_rom = $ff3e
 }
 }
 
-; !ifdef SLOW {
-!ifdef TARGET_PLUS4 {
+
+
+; SFTODONOW: TEST "SLOW" ON ACORN/REVIEW THIS CODE, WHICH USED TO BE PLUS/4 ONLY INSTEAD OF SLOW SO I HAVE PROB IGNORED IT UP TO NOW
+!ifdef SLOW {
 read_next_byte_at_z_pc_sub
     jsr restart_read_next_byte_at_z_pc_unsafe_sub
 	ldy #0
@@ -148,7 +150,15 @@ read_next_byte_at_z_pc_sub
 	sta plus4_enable_rom
 	cli
 } else {
+!ifdef SKIP_BUFFER {
+	+disable_interrupts
+	+set_memory_all_ram_unsafe
 	lda (z_pc_mempointer),y
+	+set_memory_no_basic
+	+enable_interrupts
+} else {
+	lda (z_pc_mempointer),y
+}
 }
 	inc z_pc_mempointer ; Also increases z_pc
 	beq ++
