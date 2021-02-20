@@ -847,10 +847,11 @@ class OzmooExecutable(Executable):
 
         # Generate initial virtual memory map. We just populate the entire table; if the
         # game is smaller than this we will just never use the other entries.
-        # SFTODO: As part of hack have changed vmap_z_l to vmap_buffer_start in next line
-        vmap_offset = self.labels['vmap_buffer_start'] - self.labels['program_start']
+        vmap_z_l_offset = self.labels['initial_vmap_z_l'] - self.labels['program_start']
+        vmap_z_h_offset = self.labels['vmap_z_h'        ] - self.labels['program_start']
         vmap_max_size = self.labels['vmap_max_size']
-        assert self._asm_output[vmap_offset:vmap_offset+vmap_max_size*2] == b'V'*vmap_max_size*2
+        assert self._asm_output[vmap_z_l_offset:vmap_z_l_offset+vmap_max_size] == b'V'*vmap_max_size
+        assert self._asm_output[vmap_z_h_offset:vmap_z_h_offset+vmap_max_size] == b'V'*vmap_max_size
         blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []
         for i in range(vmap_max_size):
             if i not in blocks:
@@ -880,8 +881,8 @@ class OzmooExecutable(Executable):
                 # bytes by shrinking vmap_max_size.
                 addr, timestamp = invalid_addr, invalid_timestamp
             vmap_entry = (timestamp << 8) | addr
-            self._asm_output[vmap_offset + i + 0            ] = vmap_entry & 0xff
-            self._asm_output[vmap_offset + i + vmap_max_size] = (vmap_entry >> 8) & 0xff
+            self._asm_output[vmap_z_l_offset + i] = vmap_entry & 0xff
+            self._asm_output[vmap_z_h_offset + i] = (vmap_entry >> 8) & 0xff
 
     def pseudo_ramtop(self):
         if "ACORN_SWR" in self.labels:
@@ -1726,7 +1727,7 @@ bbc_args = []
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
-tube_start_addr = 0x600
+tube_start_addr = 0x700
 small_dynmem_page_threshold = 0x2000
 bbc_max_start_addr = 0x3000
 # On the Electron, we'd like to avoid the executable overwriting the mode 6

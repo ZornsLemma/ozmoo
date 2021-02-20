@@ -208,14 +208,8 @@ ACORN_LARGE_RUNTIME_VMAP = 1
 ; vmap_used_entries	!byte 0 ; Moved to ZP
 !ifndef ACORN {
 vmap_blocks_preloaded !byte 0
-}
-; SFTODONOW: want to make vmap_z_l avoid page-crossing cycle penalties on Acorn - perhaps it's worth locating it somewhere in $400-$800 and copying it down there from its place in the binary during initialisation
-!ifndef ACORN_SWR { ; SFTODONOW HACKY
 vmap_z_l = vmap_buffer_start
-}
 vmap_z_h = vmap_buffer_start + vmap_max_size ; SFTODONOW: WAS vmap_z_h = vmap_z_l + vmap_max_size
-
-!ifndef ACORN {
 vmap_first_ram_page		!byte 0
 } else {
 !ifndef ACORN_SWR {
@@ -1346,9 +1340,10 @@ convert_index_x_to_ram_bank_and_address
 ; each half was page-aligned. Profile this before doing anything. I think we really should be page-aligning-plus-1 (note the -1 in the hot code accessing it) vmap_z_l.
 !ifdef ACORN {
 !ifdef VMEM {
-; SFTODONOW: THIS NEEDS DOING PROPERLY - WE NEED vmap_z_l NEAR-PAGE-ALIGNED ON ALL BUILDS, AND THAT MEANS WE ONLY NEED HALF THIS BUFFER HERE FOR vmap_z_h, *BUT* BUILD SYSTEM WANTS IT TO BE CONTIGUOUS SO WE NEED TO PUT THE WHOLE THING IN DISCARDABLE INIT AND COPY IT TO RELEVANT LOCATIONS ON INIT - FOR NOW I AM JUST HACKING THIGS FOR SWR
-vmap_buffer_start
-    !FILL vmap_max_size * 2, 'V'
+; vmap_z_l lives in low workspace so we never incur page-crossing penalties when
+; accessing it in hot loops. vmap_z_h isn't so sensitive.
+vmap_z_h
+    !FILL vmap_max_size, 'V'
 }
 }
 

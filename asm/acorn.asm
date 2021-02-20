@@ -551,9 +551,10 @@ deletable_init_start
 .dont_enable_turbo
 }
 
-!ifdef ACORN_SWR { ; SFTODONOW HACKY - NEED TO DO THIS PROPERLY AND FIX IT FOR TUBE BUILDS TOO
+!ifdef VMEM {
+    ; Copy the low bytes of the vmap at initial_vmap_z_l to vmap_z_l.
     ldx #vmap_max_size
--   lda vmap_buffer_start - 1,x
+-   lda initial_vmap_z_l - 1,x
     sta vmap_z_l - 1,x
     dex
     bne -
@@ -592,6 +593,11 @@ deletable_init_start
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we
 ; start to put data at story_start.
+
+!ifdef VMEM {
+initial_vmap_z_l
+    !FILL vmap_max_size, 'V'
+}
 } ; End of acorn_init_code_overlapping_game_data_inline
 
 ; Initialization subroutines which will be placed inside the Z-machine stack.

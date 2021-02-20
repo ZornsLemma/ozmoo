@@ -512,7 +512,16 @@ memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 filename_size = 49 ; this takes us from inside K% to end of W%
 game_data_filename_or_restart_command = $42f
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
-; SFTODO: The remaining space in $400-$500 is wasted on an over-large jmp_buf.
+; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf.
+
+; The byte at $500 is free if we need it
+vmap_z_l = $501 ; not $500, because we use "vmap_z_l - 1,x" addressing in a hot loop
+scratch_page = $600
+!ifdef ACORN_SWR {
+scratch_double_page = scratch_page
+} else {
+; Second processor builds load at $700, so this page isn't wasted.
+}
 
 !ifdef ACORN_TURBO_SUPPORTED {
 ; SFTODO: It might be possible to use an entire 64K bank for dynmem on a turbo copro,
@@ -523,31 +532,12 @@ mempointer_turbo_bank = turbo_bank_base + mempointer
 z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 }
 
-scratch_page = $500
-!ifdef ACORN_SWR {
-scratch_double_page = scratch_page
-; SFTODO: $700-$800 is currently wasted
-; SFTODONOW: THIS IS A HACK - I NEED TO MOVE vmap_z_l FOR 2P BUILDS TOO, BUT THIS WILL DO FOR NOW
-vmap_z_l = $701 ; not $700, because we use "vmap_z_l - 1,x" addressing in a hot loop
-
 ; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page = $41f ; $9e ; SFTODO TEMP EXPERIMENTAL $41f ; SFTODO TEMP ADDRESS, EXPERIMENTAL - THIS DOESN'T REALLY NEED TO BE IN ZP (BUT MAYBE DO COMPARATIVE MEASUREMENTS) - OK, I REALLY DON'T THINK THIS BENEFITS SIGNIFICANTLY FROM ZP
 acorn_screen_hole_start_page_minus_one = $9f ; SFTODONOW TEMP ADDRESS, EXPERIMENTAL, THIS ONE WILL BENEFIT MOST FROM BEING IN ZP - BUT WE CAN'T USE $9F, WE ONLY HAVE UP TO $8F INCLUSIVE, BUT THIS WILL DO UNTIL I RE-WORK ZP
 acorn_screen_hole_pages = $420 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 acorn_screen_hole_pages_minus_one = $421 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
-}
-
-; SFTODONOW: There's no advantage for second processor builds, but on ACORN_SWR
-; builds we could potentially put vmap_z_[hl] somewhere in $400-800 (we'd probably
-; have the VVVVVV identifier in the discardable init code for the build script
-; to patch and copy that down to $400-800 in the discardable init code). Perhaps
-; easiest (not competing for discardable init code space) would be to have it
-; right at the end of the binary, and first thing (perhaps even before relocating
-; if we're in a reloctable build) copy it down to somewhere in $400-800. That's
-; if I think this is a good thing to do, not saying it is.
-; SFTODO: It just *might* be possible and worthwhile (at least on some builds,
-; maybe only COMPLEX_MEMORY ones) to use some memory in $400-$800 as VM cache.
 }
 
 }
