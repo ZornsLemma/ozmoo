@@ -138,10 +138,8 @@ plus4_enable_rom = $ff3e
 
 
 
-; SFTODONOW: TEST "SLOW" ON ACORN/REVIEW THIS CODE, WHICH USED TO BE PLUS/4 ONLY INSTEAD OF SLOW SO I HAVE PROB IGNORED IT UP TO NOW
 !ifdef SLOW {
 read_next_byte_at_z_pc_sub
-    jsr restart_read_next_byte_at_z_pc_unsafe_sub
 	ldy #0
 !ifdef TARGET_PLUS4 { ; SF: Upstream has this, but it's redundant because it's inside another ifdef TARGET_PLUS4
 	sei
