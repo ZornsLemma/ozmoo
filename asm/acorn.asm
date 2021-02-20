@@ -943,6 +943,10 @@ SFTODOLABEL1
 } else {
     lda #>flat_ramtop
 }
+!ifdef ACORN_SCREEN_HOLE {
+    sec
+    sbc acorn_screen_hole_pages
+}
     sec
     sbc #>story_start
     sta .max_dynmem
@@ -1075,12 +1079,23 @@ SFTODOLABEL1
     ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
 vmap_sort_entries = vmem_temp ; 1 byte
 SFTODOLABEL5
-; SFTODONOW: NEED TO SORT OUT DYNMEM ADJUST
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; If we've adjusted nonstored_blocks, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
     ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
     ; blocks of virtual memory cache or we have enough RAM for the entire game.
+    ; (Note that we're only talking about *sorting* here; it's important we
+    ; don't sort "useful" things into parts of the vmap we don't have the memory
+    ; to load. We're not talking about *how much of the vmap contains useful
+    ; entries* - that is specified by vmap_max_entries.)
+    ; SFTODO: We *will* sort the dummy 0 entries put at the end of vmap by the
+    ; build script into the initial positions if the game didn't use the entire
+    ; vmap. This is "wrong" but they will be pruned away when we discard vmap
+    ; entries for memory promoted to dynmem (since 0 entries represent the first
+    ; page of dynmem) and start using only the first vmap_max_entries; since
+    ; this is a sort (we're just reordering things) they haven't actually
+    ; displaced anything useful in the meantime. All the same, it might be
+    ; neater to make the build script use $ffff for the dummy entries.
     lda nonstored_blocks
     cmp #ACORN_INITIAL_NONSTORED_BLOCKS
     beq +
@@ -1273,12 +1288,17 @@ SFTODOLABEL5
 SFTODOLABEL2
     ldx #255
 .find_first_non_promoted_entry_loop
+    ; We need to shift the 16-bit vmap entry left one bit before comparing it
+    ; against nonstored_blocks.
     inx
+    lda vmap_z_l,x
+    asl
     lda vmap_z_h,x
     and #vmem_highbyte_mask
+    rol
     bne .found_first_non_promoted_entry
     lda vmap_z_l,x
-    !error "SFTODONOW: I think we need to account for the shift-right tweak in 5.3 here - we could probably just store nonstored_blocks>>1 in a temp location and compare with that"
+    asl
     cmp nonstored_blocks
     bcc .find_first_non_promoted_entry_loop
 .found_first_non_promoted_entry
@@ -1294,15 +1314,10 @@ SFTODOLABEL2
     inx
     bne + ; Always branch
 .use_dummy_entry
-    ; We use $0101 as a dummy entry; this has the oldest possible timestamp so
-    ; the entry will be re-used ASAP and because it has the low bit of the
-    ; address set it can never accidentally match a lookup. (We could use 0 in
-    ; practice; that would never match a lookup because address 0 is guaranteed
-    ; to be dynamic memory so we will never search the vmap for it. But it seems
-    ; a little clearer to use $0101, and this needs to execute on all machines
-    ; so we can't micro-optimise by using stz.)
-    !error "SFTODONOW: THIS LOW-BIT-NON-ZERO TRICK ISN'T VALID ANY MORE, SO WE PROBABLY NEED TO USE 0 INSTEAD"
-    lda #1
+    ; We use $0000 as a dummy entry; this has the oldest possible timestamp so
+    ; the entry will be re-used ASAP and because $0000xx is always dynamic
+    ; memory the virtual memory code will never match against the dummy entry.
+    lda #0
     sta vmap_z_h,y
 +   sta vmap_z_l,y
     iny
