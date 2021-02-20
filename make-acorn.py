@@ -1023,7 +1023,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
 
 def make_shr_swr_executable():
     leafname = "OZMOOSH"
-    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + bbc_args
+    args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
     return make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM")
 
 
@@ -1034,34 +1034,30 @@ def make_bbc_swr_executable():
     # ACORN_MODE_7_ONLY build flag which would disable some unnecessary mode
     # support. We get most of the benefit by removing "-DACORN_HW_SCROLL=1";
     # hardware scrolling is always disabled in mode 7 anyway.
-    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
+    args = ozmoo_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
     args = [x for x in args if x != "-DACORN_HW_SCROLL=1"]
     return make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM")
 
 
 def make_electron_swr_executable():
     leafname = "OZMOOE"
-    args = ozmoo_base_args + ozmoo_swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
+    args = ozmoo_base_args + swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
     return make_small_or_big_dynmem_executable(leafname, args, "Electron")
 
 
 def make_tube_executables():
     leafname = "OZMOO2P"
-    tube_args = ozmoo_base_args
-    if not cmd_args.no_turbo:
-        tube_args += ["-DACORN_TURBO_SUPPORTED=1"]
-    if not cmd_args.force_6502:
-        tube_args += ["-DCMOS=1"]
-    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args)
+    args = ozmoo_base_args + tube_args
+    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, args)
     if game_blocks <= tube_no_vmem.max_nonstored_blocks():
         info("Game is small enough to run without virtual memory on second processor")
         return [tube_no_vmem]
-    tube_args += ["-DVMEM=1"]
+    args += ["-DVMEM=1"]
     if not cmd_args.no_tube_cache:
-        tube_args += ["-DACORN_TUBE_CACHE=1"]
-        tube_args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
-        tube_args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
-    tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, tube_args, "second processor")
+        args += ["-DACORN_TUBE_CACHE=1"]
+        args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
+        args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
+    tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, args, "second processor")
     if tube_vmem is not None:
         info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
@@ -1488,6 +1484,7 @@ def make_preload_blocks_list(config_filename):
 def make_disc_image():
     global ozmoo_base_args
     global bbc_args
+    global tube_args
     ozmoo_base_args = [
         "-DACORN=1",
         "-DACORN_CURSOR_PASS_THROUGH=1",
@@ -1507,6 +1504,11 @@ def make_disc_image():
     # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
     if not cmd_args.no_mode_7_colour:
         bbc_args += ["-DMODE_7_STATUS=1"]
+        tube_args += ["-DMODE_7_STATUS=1"]
+    if not cmd_args.no_turbo:
+        tube_args += ["-DACORN_TURBO_SUPPORTED=1"]
+    if not cmd_args.force_6502:
+        tube_args += ["-DCMOS=1"]
     if cmd_args.interpreter_num:
         ozmoo_base_args += ["-DTERPNO=%d" % cmd_args.interpreter_num]
     if cmd_args.function_keys:
@@ -1721,9 +1723,10 @@ max_timestamp = 0xe0 # initial tick value
 if not os.path.exists("temp"):
     os.makedirs("temp")
 
-ozmoo_swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
-relocatable_args = ["-DACORN_RELOCATABLE=1"]
 bbc_args = []
+tube_args = []
+swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
+relocatable_args = ["-DACORN_RELOCATABLE=1"]
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 
 host = 0xffff0000
