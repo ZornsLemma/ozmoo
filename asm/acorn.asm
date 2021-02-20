@@ -103,16 +103,6 @@ ACORN_SWR_BIG_DYNMEM = 1
 }
 }
 
-; The screen hole mostly "just works" for the small dynamic memory model;
-; because the hole always comes *after* all dynamic memory, only read-only VM
-; block access needs to take it into account. Define an extra constant to allow for
-; easy testing of the combination of the big dynamic memory model and screen hole.
-!ifdef ACORN_SCREEN_HOLE {
-!ifdef ACORN_SWR_BIG_DYNMEM {
-    ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE = 1
-}
-}
-
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 
 ; We don't support DEBUG_BIG_DYNMEM here; these macros are already quite bloated
@@ -122,7 +112,6 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; SF: These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
 ; macros will also alter N and Z. In practice this isn't a problem.
 
-; SFTODONOW: -vv BUILD SHOWS WARNINGS COMING FROM HERE, INVESTIGATE - AND MAYBE STOP BUILD SCRIPT HIDING WARNINGS SO EASILY
 !macro lda_dynmem_ind_y_internal zp, use_rts {
     lda zp + 1
     cmp acorn_screen_hole_start_page_minus_one

@@ -246,6 +246,25 @@
 	SPLASHWAIT = 3
 }
 
+; To improve readability of code and avoid double-nesting so we can test for
+; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
+; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this.
+!ifdef ACORN_SWR {
+!ifndef ACORN_SWR_SMALL_DYNMEM {
+ACORN_SWR_BIG_DYNMEM = 1
+}
+}
+
+; The screen hole mostly "just works" for the small dynamic memory model;
+; because the hole always comes *after* all dynamic memory, only read-only VM
+; block access needs to take it into account. Define an extra constant to allow
+; for easy testing of the combination of the big dynamic memory model and screen
+; hole where more extensive screen hole support is required.
+!ifdef ACORN_SCREEN_HOLE {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE = 1
+}
+}
 
 ;  * = $0801 ; This must now be set on command line: --setpc $0801
 

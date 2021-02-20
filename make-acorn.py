@@ -140,17 +140,20 @@ def test_executable(name):
         die("Can't execute '" + name + "'; is it on your PATH?")
 
 
-def run_and_check(args, output_filter=None):
+def run_and_check(args, output_filter=None, warning_filter=None):
     if output_filter is None:
         output_filter = lambda x: True
+    if warning_filter is None:
+        warning_filter = lambda x: False
     if cmd_args.verbose_level >= 2:
         print(" ".join(args))
     child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     child.wait()
     child_output = [line for line in child.stdout.readlines() if output_filter(line)]
+    child_warnings = [line for line in child_output if warning_filter(line)]
     # The child's stdout and stderr will both be output to our stdout, but that's not
     # a big deal.
-    if (child.returncode != 0 or cmd_args.verbose_level >= 2) and len(child_output) > 0:
+    if (child.returncode != 0 or len(child_warnings) > 0 or cmd_args.verbose_level >= 2) and len(child_output) > 0:
         if cmd_args.verbose_level < 2:
             print(" ".join(args))
         print("".join(x.decode(encoding="ascii") for x in child_output))
@@ -670,7 +673,7 @@ class Executable(object):
         def up(path):
             return os.path.join("..", path)
         cpu = "65c02" if "-DCMOS=1" in args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename])
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], None, lambda x: x.startswith("Warning"))
         os.chdir("..")
         self.labels = self._parse_labels()
 
