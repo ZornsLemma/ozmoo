@@ -1,3 +1,20 @@
+More timings, all in b-em with drive noises off and using mode 7 bigdyn unless otherwise noted (bigdyn is the "default" for HH built in benchmark mode) - note that Elkulator *does* have drive noises on:
+
+    					4.x		5.x
+B 144K SWR+3MHz copro 			$002cc3		$002c58 (0.9% faster)
+B 144K SWR				$004a22		$0047e1 (3.0% faster)
+B 144K SWR+256K turbo copro		$002328		$002334 (0.1% slower)
+M128 smalldyn				$00483f		$004715 (1.6% faster)
+M128 bigdyn				$004c0e		$004899 (4.5% faster)
+B+ 16K SWR 				$009852		$0093c6 (3.0% faster)
+Electron Elkulator 16K SWR		$00c025		$00c92f (!!!)
+					22:05:48-22:43:21=2255s
+							21:25:05-22:05:14=2409s damn! 6.8% slower
+
+(Electron timings expressed in $xxxxxx format are as reported by Ozmoo; these are a bit inaccurate - presumably due to interrupts gettnig disabled during disc access - but I am assuming it makes some sort of sense to compare them.)
+
+
+
 vmap_max_size tweak
 - BBC B 144K SWR $0047e0 (before: $00481c)
 - M128 $004897 (before: $004889)

@@ -944,6 +944,8 @@ SFTODOLL8
     ; In the vmem stress test, we have very few blocks and it's possible they
     ; all have timestamp $ff. The code assumes there will be at least one block
     ; older than that, so we need to tweak the behaviour in this case.
+    ; SFTODONOW: Does this mean the build system should be creating a check for
+    ; more than just the bare minimum 2x512-byte blocks at runtime?
     lda vmem_oldest_index
     cmp #$ff
     beq .no_index_found_yet
