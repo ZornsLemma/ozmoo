@@ -1,8 +1,3 @@
-#SFTODONOW:
-#$ python make-acorn.py -v --no-dynmem-adjust  calypso.z3
-#Electron executable uses big dynamic memory model because small model would require PAGE<=&1B00; big model requires PAGE<=&1B00
-# SFTODONOW: This makes no sense, does it? We should be using smalldyn if this is true, see what's going on.
-
 from __future__ import print_function
 import argparse
 import base64
@@ -944,12 +939,13 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     # - We want to use the higher of those two possible start addresses, because
     #   it means we won't need to waste 256 bytes before the start of the code
     #   if PAGE happens to have the right alignment.
-    e_e00 = make_ozmoo_executable(leafname, 0xe00, args, report_failure_prefix)
-    # If we can't fit build successfully with a start of 0xe00 we can't ever
-    # manage it.
-    if e_e00 is None:
+    e_low = make_optimally_aligned_executable(leafname, 0xe00, args, report_failure_prefix)
+    # If we can't build successfully with a start of 0xe00 we can't ever manage
+    # it.
+    if e_low is None:
         return None
-    surplus_nonstored_blocks = e_e00.max_nonstored_blocks() - nonstored_blocks
+    assert e_low.start_addr in (0xe00, 0xf00)
+    surplus_nonstored_blocks = e_low.max_nonstored_blocks() - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     assert surplus_nonstored_blocks % 2 == 0
     # There's no point loading really high, and doing a totally naive
@@ -957,17 +953,12 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     # relocation data before &8000, so we never load much higher than
     # max_start_addr.
     max_start_addr = electron_max_start_addr if "-DACORN_ELECTRON_SWR=1" in args else bbc_max_start_addr
-    # SFTODO: Not too sure about next if, but this whole area is a little up-in-the-air given near-inevitable (AIUI) corruption of screen on Electron.
-    if not same_double_page_alignment(e_e00.start_addr, max_start_addr):
+    if not same_double_page_alignment(e_low.start_addr, max_start_addr):
         max_start_addr += 256
-    # SFTODO: I believe (not checked too carefully right now) this means the executable can't load higher than max_start_addr + 0x100 (if the optimal alignment forces an extra page) in - this may give us a value we can pass into the assembly as a define which would allow the assembler to say "even if PAGE is as high as possibly supported, we know that for this game the global variables can never live higher than &XXXX and that will be below the screen hole (if appropriate) or below $8000 and therefore we can avoid screen hole checks and/or avoid before/after_dynmem_read calls for bigdyn accesses - although the executable needs to know its own story_start value to infer the one for this max possible PAGE, and I suspect things will go circular if we try to generate different code based on that - still, food for thought
-    approx_max_start_addr = min(0xe00 + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
-    e = make_optimally_aligned_executable(leafname, approx_max_start_addr, args, report_failure_prefix, e_e00)
+    max_start_addr = min(e_low.start_addr + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
+    e = make_optimally_aligned_executable(leafname, max_start_addr, args, report_failure_prefix, e_low)
     assert e is not None
-    if same_double_page_alignment(e.start_addr, 0xe00):
-        assert e.size() == e_e00.size()
-    else:
-        assert e.size() == e_e00.size() - 256
+    assert same_double_page_alignment(e.start_addr, e_low.start_addr)
     assert 0 <= e.max_nonstored_blocks() - nonstored_blocks
     return e
 
@@ -996,6 +987,14 @@ def make_optimally_aligned_executable(leafname, initial_start_addr, args, report
 
 
 def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
+    # Calculate adjusted_small_dynmem_page_threshold; it doesn't make sense to refuse to
+    # build using the small model because it requires assuming PAGE>=max_start_addr.
+    if "-DACORN_ELECTRON_SWR=1" in args:
+        max_start_addr = electron_max_start_addr
+    else:
+        max_start_addr = bbc_max_start_addr
+    adjusted_small_dynmem_page_threshold = min(small_dynmem_page_threshold, max_start_addr)
+
     small_e = None
     if not cmd_args.force_big_dynmem:
         small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
@@ -1005,7 +1004,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
         # running the game in order to get the benefits of the small dynamic memory
         # model.
         if small_e is not None:
-            if small_e.start_addr >= small_dynmem_page_threshold:
+            if small_e.start_addr >= adjusted_small_dynmem_page_threshold:
                 info(init_cap(report_failure_prefix) + " executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
 
@@ -1017,7 +1016,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # and there's nothing we can do about it.
     big_e = make_highest_possible_executable(leafname, args, report_failure_prefix)
     if big_e is not None:
-        if small_e is not None and small_e.start_addr < small_dynmem_page_threshold:
+        if small_e is not None and small_e.start_addr < adjusted_small_dynmem_page_threshold:
             info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
         else:
             info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
@@ -1745,11 +1744,10 @@ if not cmd_args.adfs:
     electron_max_start_addr = 0x1900
 else:
     electron_max_start_addr = 0x1d00
-# This is controlled via --max-page rather than (say) --small-dynmem-threshold
-# because in principle we might want to make other decisions based on the
-# user-supplied value.
 if cmd_args.max_page is not None:
     small_dynmem_page_threshold = cmd_args.max_page
+    bbc_max_start_addr = max(bbc_max_start_addr, cmd_args.max_page)
+    electron_max_start_addr = max(electron_max_start_addr, cmd_args.max_page)
 
 
 common_labels = {}
