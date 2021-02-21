@@ -10,6 +10,9 @@ B+ 16K SWR 				$009852		$0093c6 (3.0% faster)
 Electron Elkulator 16K SWR		$00c025		$00c92f (!!!)
 					22:05:48-22:43:21=2255s
 							21:25:05-22:05:14=2409s damn! 6.8% slower
+Electron Elkulator 16K SWR+shadow	$005677		$0056dd
+- so it's a smidge worse on 16K+shadow Electron, but tolerably so
+- the worrying thing is the straight 16K Electron performance - my *suspicion* is this is caused because the binary is that bit bigger so there's less vmem cache available, but I may be wrong
 
 (Electron timings expressed in $xxxxxx format are as reported by Ozmoo; these are a bit inaccurate - presumably due to interrupts gettnig disabled during disc access - but I am assuming it makes some sort of sense to compare them.)
 
