@@ -215,6 +215,7 @@ vmap_z_l = vmap_buffer_start
 vmap_z_h = vmap_z_l + vmap_max_size
 vmap_first_ram_page		!byte 0
 } else {
+; SFTODODATA 8-ish
 !ifndef ACORN_SWR {
 ; SFTODO: I believe this is constant on Acorn and except for conditional compilation
 ; pain we could just replace its uses with an immediate constant. Not sure if it's

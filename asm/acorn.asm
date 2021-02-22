@@ -340,6 +340,7 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 ; SFTODO: MAY BE WORTH USING ZP (COPYING RAM_BANK_LIST ON STARTUP, AS IT "CAN'T" BE IN ZP) FOR THE BANKS IN THESE TWO MACROS, THEY *MIGHT* BE PERFORMANCE CRTICAL BUT EVEN IF THEY'RE NOT, THE REDUCED CODE SIZE (AND IMPROVED BRANCH RANGE AS A RESULT) IS PROBABLY WORTH IT
 
+; SFTODONOW: Don't forget these macros will "hide" some paging operations in the acme report, when assessing space and time impact of the paging macros.
 !macro before_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_BIG_DYNMEM {
     +acorn_page_in_bank_using_a ram_bank_list
@@ -387,6 +388,10 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 ; may be tricky. There's also some sort of unlock stuff to contend with, I think.
 
 ; These macros must leave the selected bank number in A or Y as appropriate.
+; SFTODONOW: These macros are probably quite space-consuming on the Electron,
+; and I think they are used more in code now we don't just leave bigdyn bank
+; paged in by default, but on the flip side they are probably executed less.
+; Would it be worthwhile making them subroutine calls?
 
 !ifndef ACORN_ELECTRON_SWR {
 

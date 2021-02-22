@@ -770,6 +770,7 @@ game_id		!byte 0,0,0,0
 }
 
 
+; SFTODONOW: Can we move this code into the deletable init space on Acorn? If we just moved the (.)initialize label I think it would mostly "just work".
 .initialize
 !ifdef ACORN_RELOCATABLE {
 initialize
