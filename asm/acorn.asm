@@ -261,6 +261,7 @@
 ; SF: There would be some small performance gains here from allowing X to be
 ; corrupted, but few callers (and no performance-critical ones) would be able to
 ; take advantage, so it's not worth providing an X-corrupting version.
+; SFTODONOW: DO WE STILL NEED THE _INTERNAL VARIANT NOW WE HAVE THE SLOW SUBROUINTES DONE DIFFERENTLY?
 !macro sta_dynmem_ind_y_internal zp, use_rts {
     sta screen_hole_tmp
     lda zp + 1
@@ -333,6 +334,7 @@
 }
 
 ; SFTODONOW: Of the various versions of these subroutines, the lda object_tree_ptr one is by far the most commonly executed.
+!zone {
 lda_dynmem_ind_y_slow_object_tree_ptr_sub
     stx screen_hole_tmp
     ldx #object_tree_ptr
@@ -361,8 +363,9 @@ lda_dynmem_ind_y_slow_x_sub
     stx .SFTODO344LDA_ZP_IND_Y+1
     ldx screen_hole_tmp
 .SFTODO344LDA_ZP_IND_Y
-    lda (zp),y
+    lda ($00),y ; patched at runtime
     rts
+}
 
 !macro SFTODORENAMEME zp {
     stx screen_hole_tmp
@@ -389,23 +392,67 @@ lda_dynmem_ind_y_slow_default_properties_ptr_sub
 lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
 	+SFTODORENAMEME z_low_global_vars_ptr
 
+    SFTODO = $90 ; SFTODONOW TEMP HACK, NOT SUITABLE ZP (ECONET)
+!zone {
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
-	+sta_dynmem_ind_y_internal object_tree_ptr, 1
+    stx SFTODO
+    ldx #object_tree_ptr
+SFTODO3X1
+    sta screen_hole_tmp
+    lda $01,x
+    cmp acorn_screen_hole_start_page_minus_one
+    bcc .zp_y_ok
+    bne .zp_y_not_ok
+    ; We need to add Y to (zp) to see if it's going to cause the high byte to
+    ; increase and point into the screen hole.
+    clc
+    tya
+    adc $00,x
+    bcc .zp_y_ok
+    lda $01,x
+.zp_y_not_ok
+    ; A holds zp + 1, C is set.
+    adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
+    sta screen_hole_zp_ptr + 1
+    lda $00,x
+    sta screen_hole_zp_ptr
+    ldx SFTODO
+    lda screen_hole_tmp
+    sta (screen_hole_zp_ptr),y
+    rts
+.zp_y_ok
+    stx .SFTODO344STA_ZP_IND_Y + 1
+    ldx SFTODO
+    lda screen_hole_tmp
+.SFTODO344STA_ZP_IND_Y
+    sta ($00),y ; patched at runtime
+    rts
+}
+
+!macro SFTODOALSORENAMEME zp {
+    stx SFTODO
+    ldx #zp
+    !if zp = 0 {
+        beq SFTODO3X1 ; always branch
+    } else {
+        bne SFTODO3X1 ; always branch
+    }
+}
 
 sta_dynmem_ind_y_slow_zp_mempos_sub
-	+sta_dynmem_ind_y_internal zp_mempos, 1
+	+SFTODOALSORENAMEME zp_mempos
 
 sta_dynmem_ind_y_slow_string_array_sub
-	+sta_dynmem_ind_y_internal string_array, 1
+	+SFTODOALSORENAMEME string_array
 
 sta_dynmem_ind_y_slow_parse_array_sub
-	+sta_dynmem_ind_y_internal parse_array, 1
+	+SFTODOALSORENAMEME parse_array
 
 sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+sta_dynmem_ind_y_internal z_low_global_vars_ptr, 1
+	+SFTODOALSORENAMEME z_low_global_vars_ptr
 
 sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
-	+sta_dynmem_ind_y_internal z_high_global_vars_ptr, 1
+	+SFTODOALSORENAMEME z_high_global_vars_ptr
 
 } else { ; !ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
