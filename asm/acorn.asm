@@ -143,6 +143,9 @@
 ; Dynamic memory reads which aren't performance critical use this macro, which
 ; calls a subroutine instead of inlining the code. We need to call a different
 ; version of the subroutine for each zero page address.
+; SFTODO: The subroutines take up a surprisingly large chunk of memory - IIRC
+; over 400 bytes on an Electron. If these really aren't performance critical it
+; may be better to write them to use zp,x addressing to avoid duplication.
 !macro lda_dynmem_ind_y_slow zp {
     !if zp = object_tree_ptr {
         jsr lda_dynmem_ind_y_slow_object_tree_ptr_sub
