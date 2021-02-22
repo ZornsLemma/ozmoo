@@ -1,3 +1,11 @@
+With WIP code compression via less macros:
+- B 144K SWR completes in $00481a, which isn't too much slower than before (and this machine has so much SWR it won't get any benefit from extra memory free)
+- M128 bigdyn $0048d9 - again, a bit worse, but not that much so
+- both the above are 0.3% slower than 5.x used to be
+- B+ 16K SWR $0093f6 - 0.1% slower than 5.x used to be
+- I won't test Electron yet as it's slow, but the Electron build is 512 bytes better off than before this change, so we haven't clawed all the memory back yet, but we're definitely moving in the right direction. I might *guess* this extra 512 bytes is also present (it depends on alignment of course) on other builds, and may account for the reduced slowdown on a B+ 16K SWR compared to the other machines with more memory.
+
+
 On 4.x, Electron ($e00 build) has extra_vmem_start at $4c00 in benchmark
 On 5.x, story_start is $5000
 So we're 1K worse off - which is likely to be significant. 5.x has 20K game RAM, 4.x has 21K game RAM - a 5% increase, and since we're probably struggling to keep the working set in memory that's probably disproprtionately significant. The fact I see comparable or slightly better performance for 5.x with "lots" of sideways RAM also suggests the code itself is not really slower on the Electron, though I haven't confirmed this.

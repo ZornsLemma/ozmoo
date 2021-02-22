@@ -48,7 +48,7 @@ z_ins_get_child
 	pla
 	tay
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifndef Z4PLUS {
 
 !ifdef TARGET_C128 {
@@ -97,7 +97,7 @@ z_ins_get_child
 }
 }
 }
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 
 	jsr z_store_result
 	pla ; Value is zero if object is zero, non-zero if object is non-zero
@@ -112,7 +112,7 @@ z_ins_get_parent
 	lda z_operand_value_high_arr
 	jsr calculate_object_address
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifndef Z4PLUS {
 	ldy #4
 
@@ -143,7 +143,7 @@ z_ins_get_parent
 }
 
 }
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 	jmp z_store_result
 
 z_ins_get_prop_len
@@ -222,7 +222,7 @@ z_ins_remove_obj_body
 	sta .zp_object + 1
 	
 	; get parent number
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef Z4PLUS {
 	ldy #6  ; parent
 
@@ -256,7 +256,7 @@ z_ins_remove_obj_body
 
 	sta .parent_num + 1
 }
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 
 	; is there a parent?
 	lda .parent_num
@@ -272,7 +272,7 @@ z_ins_remove_obj_body
 	jsr calculate_object_address
 
 	; get child number
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef Z4PLUS {
 	ldy #10  ; child
 
@@ -306,7 +306,7 @@ z_ins_remove_obj_body
 
 	sta .child_num + 1
 }
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 
 	; child_num == object_num?
 	lda .child_num
@@ -319,7 +319,7 @@ z_ins_remove_obj_body
 	; object is the child of parent
 	; set child of parent to object's sibling
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef Z4PLUS {
 	ldy #8  ; sibling
 
@@ -368,7 +368,7 @@ z_ins_remove_obj_body
 }
 
 }
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 
 	jmp .remove_obj_done
 .not_child
@@ -378,7 +378,7 @@ z_ins_remove_obj_body
 	sta .sibling_num
 	stx .sibling_num + 1
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 -
 	lda .sibling_num
 	ldx .sibling_num + 1
@@ -465,11 +465,11 @@ z_ins_remove_obj_body
 
 
 }
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 
 .remove_obj_done
 	; always set obj.parent and obj.sibling to 0
-	+before_dynmem_read_corrupt_a ; SFTODO: I added this, but think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this, but think it's correct/necessary
 	lda #0
 !ifdef Z4PLUS {
 	ldy #6  ; parent
@@ -513,7 +513,7 @@ z_ins_remove_obj_body
 }
 
 }
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this, but think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this, but think it's correct/necessary
 	rts
 
 find_attr
@@ -558,7 +558,7 @@ print_obj
 	ldy #8
 }
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	dey
 	lda #object_tree_ptr
@@ -570,7 +570,7 @@ print_obj
 	dey
 	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 
 	jsr set_z_address
 	jsr read_next_byte ; length of object short name
@@ -582,7 +582,7 @@ z_ins_jin
 	lda z_operand_value_high_arr
 	jsr calculate_object_address
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifndef Z4PLUS {
 	ldy #4  ; parent
 
@@ -624,7 +624,7 @@ z_ins_test_attr
 	; test_attr object attribute ?(label)
 	jsr find_attr
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	stx object_temp
 	lda #object_tree_ptr
@@ -639,10 +639,10 @@ z_ins_test_attr
 	and .bitmask,x
 	beq .branch_false
 .branch_true 
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 	jmp make_branch_true
 .branch_false
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 	jmp make_branch_false
 
 z_ins_set_attr
@@ -657,7 +657,7 @@ z_ins_set_attr
 .do_set_attr
 	ldy .attribute_index
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	sta $02aa
@@ -679,7 +679,7 @@ z_ins_set_attr
 	+sta_dynmem_ind_y_slow object_tree_ptr
 }
 +
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 	rts
 
 z_ins_clear_attr
@@ -694,7 +694,7 @@ z_ins_clear_attr
 .do_clear_attr
 	ldy .attribute_index
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	lda #object_tree_ptr
 	sta $02aa
@@ -719,7 +719,7 @@ z_ins_clear_attr
 	+sta_dynmem_ind_y_slow object_tree_ptr
 }
 +
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 	rts
 
 z_ins_insert_obj
@@ -742,7 +742,7 @@ z_ins_insert_obj
 	; object.parent = destination
 	ldy #6 ; parent
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	lda #.zp_object
 	sta write_word_c128_zp_1
@@ -787,13 +787,13 @@ z_ins_insert_obj
 	iny
 	lda object_num + 1
 	+sta_dynmem_ind_y_slow .zp_dest
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 	rts
 }
 
 } else {
 
-	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's necessary/correct
+	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's necessary/correct
 !ifdef TARGET_C128 {
 	; object.parent = destination
 	lda #.zp_object
@@ -834,7 +834,7 @@ z_ins_insert_obj
 	ldy #6 ; child
 	lda object_num + 1
 	+sta_dynmem_ind_y_slow .zp_dest
-	+after_dynmem_read_corrupt_a
+	+after_dynmem_read_corrupt_a_slow
 	rts
 }
 
@@ -903,7 +903,7 @@ find_first_prop
 	ldy #8
 }
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	dey
 	lda #object_tree_ptr
@@ -914,7 +914,7 @@ find_first_prop
 	dey
 	+lda_dynmem_ind_y_slow object_tree_ptr ; high byte
 }
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 
 	pha ; a is destroyed by set_z_address
 	jsr set_z_address
@@ -974,7 +974,7 @@ z_ins_get_prop
 	tay
 	dey
 
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 !ifdef TARGET_C128 {
 	dey
 	lda #default_properties_ptr
@@ -985,7 +985,7 @@ z_ins_get_prop
 	dey
 	+lda_dynmem_ind_y_slow default_properties_ptr
 }
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 	jmp .return_property_result
 .property_found
 	lda .property_length

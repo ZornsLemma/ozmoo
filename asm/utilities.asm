@@ -305,31 +305,31 @@ parse_array_write_byte
 ; {before,after}_dynmem_read macro calls around these macro invocations.
 
 string_array_read_byte
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 	+lda_dynmem_ind_y_slow string_array
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_preserve_axy_slow
 	rts
 
 string_array_write_byte
 	pha
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 	pla
 	+sta_dynmem_ind_y_slow string_array
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_preserve_axy_slow
 	rts
 
 parse_array_read_byte
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 	+lda_dynmem_ind_y_slow parse_array
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_preserve_axy_slow
 	rts
 
 parse_array_write_byte
 	pha
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 	pla
 	+sta_dynmem_ind_y_slow parse_array
-	+after_dynmem_read_preserve_axy
+	+after_dynmem_read_preserve_axy_slow
 	rts
 
 !macro macro_string_array_read_byte {

@@ -699,6 +699,7 @@ SFTODOQQ4
 	ldy #1
 	txa
 	+sta_dynmem_ind_y zp_temp
+	; SFTODONOW: Make this next one slow? Seems a bit "unfair", what about the game+machine that happens to hit this case?
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 }
@@ -796,6 +797,7 @@ z_get_referenced_value
 	cmp #>story_start
 	bcc z_get_referenced_value_simple
 	; SFTODO: IS IT STILL WORTH OPTIMISING THE REMAINING CASES? QUITE POSSIBLY IT IS...
+	; SFTODONOW: USE SLOW VARIANT?
 	+before_dynmem_read_corrupt_a
 	; SFTODO: THIS CODE MIGHT BE USABLE (FACTORED OUT AS A MACRO) FOR GLOBAL VAR ACCESS TOO
 	lda zp_temp + 1
@@ -819,6 +821,7 @@ SFTODOTEMP
 	lda (zp_temp),y
 	tax
 	lda screen_hole_tmp
+	; SFTODONOW: USE SLOW VARIANT?
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_not_ok
@@ -833,6 +836,7 @@ SFTODOTEMP
 	tax
 	dey
 	lda (screen_hole_zp_ptr),y
+	; SFTODONOW: USE SLOW VARIANT?
 	+after_dynmem_read_corrupt_y
 	rts
 .zp_y_maybe_no_longer_ok
@@ -843,6 +847,7 @@ SFTODOTEMP
 	+lda_dynmem_ind_y zp_temp
 	tax
 	lda screen_hole_tmp
+	; SFTODONOW: USE SLOW VARIANT?
 	+after_dynmem_read_corrupt_y
 	rts
 }
@@ -900,12 +905,12 @@ z_get_low_global_variable_value
 } else {
 	; Not TARGET_C128
 	iny
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	tax
 	dey
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 	; SFTODO: Permanent comment if true - caller *doesn't* assume carry clear if ACORN_SWR_BIG_DYNMEM, so we're OK
 	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not TARGET_C128
@@ -959,25 +964,25 @@ HANG	bcs HANG
 	bcs .write_high_global_var
 	asl
 	tay
-	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .write_high_global_var
 ;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will remove top bit
 	asl
 	tay
-	+before_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } ; Not SLOW
 } ; Zone

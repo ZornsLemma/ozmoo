@@ -85,6 +85,89 @@
 ; DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Sideways RAM paging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+!ifdef ACORN_SWR {
+
+; SF: ENHANCEMENT: It would probably be possible (even easy) to use an AQR
+; cartridge for all sideways RAM on a Master or Electron; it has its own special
+; paging register though, so we'd need a separate build to support it, and auto-
+; detecting it in a way that doesn't interfere with the user's other use of it
+; may be tricky. There's also some sort of unlock stuff to contend with, I think.
+
+; These macros must leave the selected bank number in A or Y as appropriate.
+; SFTODONOW: These macros are probably quite space-consuming on the Electron,
+; and I think they are used more in code now we don't just leave bigdyn bank
+; paged in by default, but on the flip side they are probably executed less.
+; Would it be worthwhile making them subroutine calls?
+
+!ifndef ACORN_ELECTRON_SWR {
+
+!macro acorn_page_in_bank_using_a .operand {
+    lda .operand
+    sta romsel_copy
+    sta bbc_romsel
+}
+
+!macro acorn_page_in_bank_using_a_comma_x .operand {
+    lda .operand,x
+    sta romsel_copy
+    sta bbc_romsel
+}
+
+!macro acorn_page_in_bank_using_a_comma_y .operand {
+    lda .operand,y
+    sta romsel_copy
+    sta bbc_romsel
+}
+
+!macro acorn_page_in_bank_using_y .operand {
+    ldy .operand
+    sty romsel_copy
+    sty bbc_romsel
+}
+} else { ; ACORN_ELECTRON_SWR
+
+!macro acorn_page_in_bank_using_a .operand {
+    lda #12
+    sta romsel_copy
+    sta electron_romsel
+    lda .operand
+    sta romsel_copy
+    sta electron_romsel
+}
+
+!macro acorn_page_in_bank_using_a_comma_x .operand {
+    lda #12
+    sta romsel_copy
+    sta electron_romsel
+    lda .operand,x
+    sta romsel_copy
+    sta electron_romsel
+}
+
+!macro acorn_page_in_bank_using_a_comma_y .operand {
+    lda #12
+    sta romsel_copy
+    sta electron_romsel
+    lda .operand,y
+    sta romsel_copy
+    sta electron_romsel
+}
+
+!macro acorn_page_in_bank_using_y .operand {
+    ldy #12
+    sty romsel_copy
+    sty electron_romsel
+    ldy .operand
+    sty romsel_copy
+    sty electron_romsel
+}
+}
+}
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Screen hole support
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -143,7 +226,7 @@
 ; Dynamic memory reads which aren't performance critical use this macro, which
 ; calls a subroutine instead of inlining the code. We need to call a different
 ; version of the subroutine for each zero page address.
-; SFTODO: The subroutines take up a surprisingly large chunk of memory - IIRC
+; SFTODONOW: The subroutines take up a surprisingly large chunk of memory - IIRC
 ; over 400 bytes on an Electron. If these really aren't performance critical it
 ; may be better to write them to use zp,x addressing to avoid duplication.
 !macro lda_dynmem_ind_y_slow zp {
@@ -248,6 +331,7 @@
     }
 }
 
+; SFTODONOW: Of the various versions of these subroutines, the lda object_tree_ptr one is by far the most commonly executed.
 lda_dynmem_ind_y_slow_object_tree_ptr_sub
 	+lda_dynmem_ind_y_internal object_tree_ptr, 1
 
@@ -347,12 +431,23 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 }
 
+!macro before_dynmem_read_corrupt_a_slow {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    jsr before_dynmem_read_corrupt_a_slow_sub
+}
+}
+
 !macro before_dynmem_read_corrupt_y {
 !ifdef ACORN_SWR_BIG_DYNMEM {
     +acorn_page_in_bank_using_y ram_bank_list
 }
 }
 
+!macro before_dynmem_read_corrupt_y_slow {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    jsr before_dynmem_read_corrupt_y_slow_sub
+}
+}
 
 !macro after_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_BIG_DYNMEM {
@@ -360,9 +455,21 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 }
 
+!macro after_dynmem_read_corrupt_a_slow {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    jsr after_dynmem_read_corrupt_a_slow_sub
+}
+}
+
 !macro after_dynmem_read_corrupt_y {
 !ifdef ACORN_SWR_BIG_DYNMEM {
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
+}
+}
+
+!macro after_dynmem_read_corrupt_y_slow {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    jsr after_dynmem_read_corrupt_y_slow_sub
 }
 }
 
@@ -375,87 +482,32 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 }
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Sideways RAM paging
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-!ifdef ACORN_SWR {
-
-; SF: ENHANCEMENT: It would probably be possible (even easy) to use an AQR
-; cartridge for all sideways RAM on a Master or Electron; it has its own special
-; paging register though, so we'd need a separate build to support it, and auto-
-; detecting it in a way that doesn't interfere with the user's other use of it
-; may be tricky. There's also some sort of unlock stuff to contend with, I think.
-
-; These macros must leave the selected bank number in A or Y as appropriate.
-; SFTODONOW: These macros are probably quite space-consuming on the Electron,
-; and I think they are used more in code now we don't just leave bigdyn bank
-; paged in by default, but on the flip side they are probably executed less.
-; Would it be worthwhile making them subroutine calls?
-
-!ifndef ACORN_ELECTRON_SWR {
-
-!macro acorn_page_in_bank_using_a .operand {
-    lda .operand
-    sta romsel_copy
-    sta bbc_romsel
-}
-
-!macro acorn_page_in_bank_using_a_comma_x .operand {
-    lda .operand,x
-    sta romsel_copy
-    sta bbc_romsel
-}
-
-!macro acorn_page_in_bank_using_a_comma_y .operand {
-    lda .operand,y
-    sta romsel_copy
-    sta bbc_romsel
-}
-
-!macro acorn_page_in_bank_using_y .operand {
-    ldy .operand
-    sty romsel_copy
-    sty bbc_romsel
-}
-} else { ; ACORN_ELECTRON_SWR
-
-!macro acorn_page_in_bank_using_a .operand {
-    lda #12
-    sta romsel_copy
-    sta electron_romsel
-    lda .operand
-    sta romsel_copy
-    sta electron_romsel
-}
-
-!macro acorn_page_in_bank_using_a_comma_x .operand {
-    lda #12
-    sta romsel_copy
-    sta electron_romsel
-    lda .operand,x
-    sta romsel_copy
-    sta electron_romsel
-}
-
-!macro acorn_page_in_bank_using_a_comma_y .operand {
-    lda #12
-    sta romsel_copy
-    sta electron_romsel
-    lda .operand,y
-    sta romsel_copy
-    sta electron_romsel
-}
-
-!macro acorn_page_in_bank_using_y .operand {
-    ldy #12
-    sty romsel_copy
-    sty electron_romsel
-    ldy .operand
-    sty romsel_copy
-    sty electron_romsel
+!macro after_dynmem_read_preserve_axy_slow {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    jsr after_dynmem_read_preserve_axy_slow_sub
 }
 }
+
+!ifdef ACORN_SWR_BIG_DYNMEM {
+before_dynmem_read_corrupt_a_slow_sub
+    +before_dynmem_read_corrupt_a
+    rts
+
+before_dynmem_read_corrupt_y_slow_sub
+    +before_dynmem_read_corrupt_y
+    rts
+
+after_dynmem_read_corrupt_a_slow_sub
+    +after_dynmem_read_corrupt_a
+    rts
+
+after_dynmem_read_corrupt_y_slow_sub
+    +after_dynmem_read_corrupt_y
+    rts
+
+after_dynmem_read_preserve_axy_slow_sub
+    +after_dynmem_read_preserve_axy
+    rts
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1767,6 +1819,8 @@ setjmp
     bne -
 +   
 !ifdef ACORN_SWR {
+    ; SFTODONOW: This could use a "slow" version of the paging macro, but it would be the
+    ; only such user with this ram bank so probably no point?
     +acorn_page_in_bank_using_a jmp_buf_ram_bank
 }
     lda #1 ; Z flag is clear
