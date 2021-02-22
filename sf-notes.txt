@@ -1,3 +1,6 @@
+With lda_dynmem_ind_y_slow subroutine compacted:
+- B 144K SWR completes in $00479e - a bit *faster* than before!? but it's at the level of noise, main thing is it works (pure speculation, but even on a machine with more SWR than the game needs, freeing up some main RAM will probably be a small win, e.g. because of the "don't bother paging" code in main RAM, plus a little more data gets shifted to before the screen hole on a B-no-shadow so the slower cases in the bigdyn+screen hole code don't trigger as much
+
 With WIP code compression via less macros:
 - B 144K SWR completes in $00481a, which isn't too much slower than before (and this machine has so much SWR it won't get any benefit from extra memory free)
 - M128 bigdyn $0048d9 - again, a bit worse, but not that much so
