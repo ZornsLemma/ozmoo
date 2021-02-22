@@ -4,6 +4,11 @@ So we're 1K worse off - which is likely to be significant. 5.x has 20K game RAM,
 
 On 5.x, program_end is at 0x4adb and stack_start is at 0x4c00 due to padding and alignment. So I think we'd need to save 731 bytes to claw back that 1K, although (I haven't checked) probably to be truly comparable we'd need to claw back some extra, as 4.x is *probably* not getting lucky and wasting no memory to alignment. Let's just check - it has 93 bytes of free space before stack_start, so a truly comparable 5.x would require saving 824 bytes.
 
+egrep '[0-9a-f][0-9a-f][0-9a-f][0-9a-f].*(\+before_dynmem|\+after_dynmem|\+acorn_page)' temp-5.x/acme_report_ozmoo_electron_swr_e00|wc -l
+- shows 70 expansions of the page in macros on Electron 5.x. Simplifying a bit, each one will be about 14 bytes so that's 980 bytes! Of course we can't possibly get rid of all these bytes, but if we replaced each with a jsr and ignore the small overhead of implementing those subroutines, we'd be saving 770 bytes.
+- worth noting that if I do keep some/all of these as macros, we might save ~35 bytes by having a zp copy of ram_bank_list.
+- the equivalent macros in 4.x are (assuming I didn't miss any; acorn_swr_page... and acorn_page...) invoked only six times - this will be the new "less often at runtime, more often in the code" bigdyn paging model
+
 
 More timings, all in b-em with drive noises off and using mode 7 bigdyn unless otherwise noted (bigdyn is the "default" for HH built in benchmark mode) - note that Elkulator *does* have drive noises on:
 
