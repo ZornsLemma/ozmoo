@@ -1,3 +1,10 @@
+On 4.x, Electron ($e00 build) has extra_vmem_start at $4c00 in benchmark
+On 5.x, story_start is $5000
+So we're 1K worse off - which is likely to be significant. 5.x has 20K game RAM, 4.x has 21K game RAM - a 5% increase, and since we're probably struggling to keep the working set in memory that's probably disproprtionately significant. The fact I see comparable or slightly better performance for 5.x with "lots" of sideways RAM also suggests the code itself is not really slower on the Electron, though I haven't confirmed this.
+
+On 5.x, program_end is at 0x4adb and stack_start is at 0x4c00 due to padding and alignment. So I think we'd need to save 731 bytes to claw back that 1K, although (I haven't checked) probably to be truly comparable we'd need to claw back some extra, as 4.x is *probably* not getting lucky and wasting no memory to alignment. Let's just check - it has 93 bytes of free space before stack_start, so a truly comparable 5.x would require saving 824 bytes.
+
+
 More timings, all in b-em with drive noises off and using mode 7 bigdyn unless otherwise noted (bigdyn is the "default" for HH built in benchmark mode) - note that Elkulator *does* have drive noises on:
 
     					4.x		5.x
