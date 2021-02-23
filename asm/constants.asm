@@ -438,6 +438,9 @@ vmem_temp			  = $00 ; 2 bytes
 screen_hole_zp_ptr    = vmem_temp ; 2 bytes
 screen_hole_tmp       = z_address_temp ; 1 byte
 }
+!ifdef ACORN_SWR_BIG_DYNMEM {
+dynmem_ram_bank       = $91; 1 byte SFTODONOW TEMP ALLOCATION
+}
 ; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway - I have now used $7e FWIW, $7f has also now been used but it's only experimental
 
 window_start_row	  = $80; 4 bytes

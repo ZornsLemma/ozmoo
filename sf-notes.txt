@@ -1,3 +1,6 @@
+ram_bank_list copied into zp:
+- B 144K SWR $0047a5 - but I didn't this for the performance gains at this point, so not disappointed they're not huge
+
 With sta_dynmem_ind_y_slow subroutine compacted:
 - B 144K SWR $0047c0
 

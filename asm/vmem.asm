@@ -764,7 +764,7 @@ read_byte_at_z_address
 }
 
 	rts
-    ; SFTODO: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND RAM_BANK_LIST AND DEFAULT_BANK_USING_Y
+    ; SFTODO: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND DEFAULT_BANK_USING_Y
 .read_new_byte
 	sta zp_pc_h
 	stx zp_pc_l
@@ -807,7 +807,7 @@ read_byte_at_z_address
     ; We have to page in the first SWR bank now, and we have to set
     ; mempointer_ram_bank correctly so subsequent calls to
     ; read_byte_at_z_address don't page in the wrong bank.
-    +acorn_page_in_bank_using_a ram_bank_list
+    +acorn_page_in_bank_using_a dynmem_ram_bank
     sta mempointer_ram_bank
     bpl .read_and_return_value ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
 }

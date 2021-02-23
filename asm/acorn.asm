@@ -508,12 +508,10 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 ; don't modify any registers or flags (except I), but that would cost time
 ; and space on the Acorn port.
 
-; SFTODO: MAY BE WORTH USING ZP (COPYING RAM_BANK_LIST ON STARTUP, AS IT "CAN'T" BE IN ZP) FOR THE BANKS IN THESE TWO MACROS, THEY *MIGHT* BE PERFORMANCE CRTICAL BUT EVEN IF THEY'RE NOT, THE REDUCED CODE SIZE (AND IMPROVED BRANCH RANGE AS A RESULT) IS PROBABLY WORTH IT
-
 ; SFTODONOW: Don't forget these macros will "hide" some paging operations in the acme report, when assessing space and time impact of the paging macros.
 !macro before_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_a ram_bank_list
+    +acorn_page_in_bank_using_a dynmem_ram_bank
 }
 }
 
@@ -525,7 +523,7 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 !macro before_dynmem_read_corrupt_y {
 !ifdef ACORN_SWR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_y ram_bank_list
+    +acorn_page_in_bank_using_y dynmem_ram_bank
 }
 }
 
@@ -713,6 +711,14 @@ deletable_init_start
     tax
     dex
     stx acorn_screen_hole_pages_minus_one
+}
+
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    ; This is used enough it's worth - if only for the code size saving -
+    ; copying it into zero page. (Well, it saves 10 bytes at the time of
+    ; writing; not huge, but not too bad. SFTODO: Maybe reconsider this later.)
+    lda ram_bank_list
+    sta dynmem_ram_bank
 }
 
     +init_readtime_inline
@@ -1279,7 +1285,7 @@ SFTODOLABEL5
 
 !ifdef ACORN_SWR_BIG_DYNMEM {
     ; Page in the first bank as dynamic memory may overflow into it.
-    +acorn_page_in_bank_using_a ram_bank_list
+    +acorn_page_in_bank_using_a dynmem_ram_bank
 }
 
 .dynmem_load_loop

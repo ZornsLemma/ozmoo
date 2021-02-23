@@ -738,7 +738,7 @@ save_game
     ; below will do it for us.
     ; SFTODONOW: This could use a "slow" version of the paging macro, but it would be the
     ; only such user with this ram bank so probably no point?
-    +acorn_page_in_bank_using_a ram_bank_list
+    +acorn_page_in_bank_using_a dynmem_ram_bank
 }
 
     ; We need to normalise z_local_vars_ptr and stack_ptr first before saving so
