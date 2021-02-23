@@ -1,3 +1,7 @@
+extra before/after slow uses:
+- B 144K SWR $0047b5 - not looking like a big loss
+- Elkulator 16K SWR $00c3d5 - better than before, but still worse than 4.x :-( (1.9% slower) - story_start is now at $4c00 to "match" extra_vmem_start in 4.x, although I think we're still a handful of bytes larger which don't matter in this specific build due to alignment
+
 ram_bank_list copied into zp:
 - B 144K SWR $0047a5 - but I didn't this for the performance gains at this point, so not disappointed they're not huge
 

@@ -539,6 +539,7 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 }
 
+; SFTODONOW: A lot of the after_dynmem_*_slow calls are followed by rts; it may be worth introducing special wrappers to do after_dynmem_*+rts, it is a bit of extra complexity but not much and it would save time and space on bigdyn builds at a small complexity cost for other builds
 !macro after_dynmem_read_corrupt_a_slow {
 !ifdef ACORN_SWR_BIG_DYNMEM {
     jsr after_dynmem_read_corrupt_a_slow_sub

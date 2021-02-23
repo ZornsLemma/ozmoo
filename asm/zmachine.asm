@@ -798,7 +798,7 @@ z_get_referenced_value
 	bcc z_get_referenced_value_simple
 	; SFTODO: IS IT STILL WORTH OPTIMISING THE REMAINING CASES? QUITE POSSIBLY IT IS...
 	; SFTODONOW: USE SLOW VARIANT?
-	+before_dynmem_read_corrupt_a
+	+before_dynmem_read_corrupt_a_slow
 	; SFTODO: THIS CODE MIGHT BE USABLE (FACTORED OUT AS A MACRO) FOR GLOBAL VAR ACCESS TOO
 	lda zp_temp + 1
 !if 0 { ; SFTODO: ON BENCHMARK 2/3 OF CALLS TO THIS CODE ARE FOR STACK VARS
@@ -822,7 +822,7 @@ SFTODOTEMP
 	tax
 	lda screen_hole_tmp
 	; SFTODONOW: USE SLOW VARIANT?
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 	rts
 .zp_y_not_ok
 	; SF: I have forced this case to execute by manually fiddling around with
@@ -837,7 +837,7 @@ SFTODOTEMP
 	dey
 	lda (screen_hole_zp_ptr),y
 	; SFTODONOW: USE SLOW VARIANT?
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 	rts
 .zp_y_maybe_no_longer_ok
 	; SF: I have forced this case to execute by changing the beq to this code
@@ -848,7 +848,7 @@ SFTODOTEMP
 	tax
 	lda screen_hole_tmp
 	; SFTODONOW: USE SLOW VARIANT?
-	+after_dynmem_read_corrupt_y
+	+after_dynmem_read_corrupt_y_slow
 	rts
 }
 } ; end ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
