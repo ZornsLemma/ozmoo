@@ -1,3 +1,12 @@
+OK, profiling a M128 masquerading as an Electron (non-shadow mode 6, PAGE=&E00, 16K SWR), ~2.8% of the runtime is taken up in the four instruction SWR bounce buffer copy loop. So what I think's happening is that because it's swapping so much (probably precisely as much as 4.x, but that's a lot), the CPU overhead of copying the data (which we read over and over again) into SWR is measurable, whereas in 4.x we were doing at least some of the reads into vmem cache in main RAM and avoiding that.
+
+M128 16K SWR non-shadow mode 6 (using M128 as it's easy to have PAGE=&E00, for a "2MHz Electron" environment - though note there's no drive noises here unlike Elkulator) BUT THIS SEEMS TO BE USING SW SCROLLING!? $011e6d
+OK, trying again with sw scroll - $0100b3 (repeat $0100af)
+
+M128 8K SWR shadow mode 6 - so this is (if I didn't mess up) equivalent in terms of free RAM to the previous case, but we're not paying the cost of working around the screen hole $00f529
+
+M128 16K SWR shadow mode 6 - mainly to see it's faster and "prove" I did restrict to 8K correctly before - $006fb3
+
 extra before/after slow uses:
 - B 144K SWR $0047b5 - not looking like a big loss
 - Elkulator 16K SWR $00c3d5 - better than before, but still worse than 4.x :-( (1.9% slower) - story_start is now at $4c00 to "match" extra_vmem_start in 4.x, although I think we're still a handful of bytes larger which don't matter in this specific build due to alignment
