@@ -884,16 +884,20 @@ class OzmooExecutable(Executable):
             self._asm_output[vmap_z_l_offset + i] = vmap_entry & 0xff
             self._asm_output[vmap_z_h_offset + i] = (vmap_entry >> 8) & 0xff
 
+    def screen_hole_size(self):
+        # SFTODO: This adjustment for screen memory is correct as long as
+        # the screen hole executables always run on machines with a fixed
+        # screen hole, which is currently true but won't be eventually (e.g.
+        # when a B-no-shadow has the option to run in mode 6).
+        if "ACORN_SCREEN_HOLE" in self.labels:
+            return 0x2000 if "ACORN_ELECTRON_SWR" in self.labels else 0x400
+        return 0
+
     def pseudo_ramtop(self):
         if "ACORN_SWR" in self.labels:
             result = 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
-            # SFTODO: This adjustment for screen memory is correct as long as
-            # the screen hole executables always run on machines with a fixed
-            # screen hole, which is currently true but won't be eventually (e.g.
-            # when a B-no-shadow has the option to run in mode 6).
             if "ACORN_SWR_MEDIUM_DYNMEM" not in self.labels:
-                if "ACORN_SCREEN_HOLE" in self.labels:
-                    result -= 0x2000 if "ACORN_ELECTRON_SWR" in self.labels else 0x400
+                result -= self.screen_hole_size()
             return result
         else:
             return self.labels["flat_ramtop"]
@@ -931,9 +935,10 @@ def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = No
 # high as the worst case we assume here.
 def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_RELOCATABLE=1" in args
+    assert "-DACORN_SWR=1" in args
 
     # Because of Ozmoo's liking for 512-byte alignment and the 256-byte
-    # alignment of PAGE:
+    # alignment of PAGE: SFTODO: THIS COMMENT IGNORES MEDIUM DYNMEM MODEL
     # - max_nonstored_blocks() can only return even values on a VMEM build.
     # - nonstored_blocks (i.e. for this specific game) will always be even.
     # - There are two possible start addresses 256 bytes apart which will
@@ -948,10 +953,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     if e_low is None:
         return None
     assert e_low.start_addr in (0xe00, 0xf00)
-    #assert False # SFTODONOW NEED TO HANDLE THIS STUFF DIFFERENTLY FOR MEDIUM MODEL - WE ARE NOT LOADING ANYWHERE NEAR AS HIGH AS WE COULD, I CAN'T THINK STRAIGHT NOW BUT WE DON'T NEED TO ALLOW *ANY* DYNMEM SPACE FOR MEDIUM
-    surplus_nonstored_blocks = e_low.max_nonstored_blocks() - nonstored_blocks
-    assert surplus_nonstored_blocks >= 0
-    assert surplus_nonstored_blocks % 2 == 0
     # There's no point loading really high, and doing a totally naive
     # calculation may cause us to load so high there's no room for the
     # relocation data before &8000, so we never load much higher than
@@ -959,7 +960,17 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     max_start_addr = electron_max_start_addr if "-DACORN_ELECTRON_SWR=1" in args else bbc_max_start_addr
     if not same_double_page_alignment(e_low.start_addr, max_start_addr):
         max_start_addr += 256
-    max_start_addr = min(e_low.start_addr + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
+    if "-DACORN_SWR_MEDIUM_DYNMEM=1" not in args:
+        surplus_nonstored_blocks = e_low.max_nonstored_blocks() - nonstored_blocks
+        assert surplus_nonstored_blocks >= 0
+        assert surplus_nonstored_blocks % 2 == 0
+        max_start_addr = min(e_low.start_addr + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
+    else:
+        main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
+        main_ram_vmem -= e_low.screen_hole_size()
+        assert main_ram_vmem >= 0
+        assert main_ram_vmem % (2 * bytes_per_block) == 0
+        max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
     e = make_optimally_aligned_executable(leafname, max_start_addr, args, report_failure_prefix, e_low)
     assert e is not None
     assert same_double_page_alignment(e.start_addr, e_low.start_addr)
