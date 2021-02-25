@@ -1821,3 +1821,5 @@ show_deferred_output()
 # SFTODO: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy.
 
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
+
+# SFTODONOW: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics

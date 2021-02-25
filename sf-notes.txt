@@ -1,5 +1,6 @@
-M128 medium dyn $004912 - as on B 144K SWR, that is *slower* than bigdyn going by timings below - running now, bigdyn $0048cd
-B 144K SWR medium $004968 - that is *slower* than bigdyn going by timings below TODO: MAYBE FORCE BIGDYN AND CHECK - bigdyn $004a32 - I have no idea why bigdyn is slower than it used to be, but anyway it looks like medium is faster than bigdyn
+M128 medium dyn $004912 - as on B 144K SWR, that is *slower* than bigdyn going by timings below - running now, bigdyn $0048cd, consistent-ish with time below
+B 144K SWR medium $004968 - that is *slower* than bigdyn going by timings below - bigdyn $004a32 - I have no idea why bigdyn is slower than it used to be, but anyway it looks like medium is faster than bigdyn
+- OK, that was with the dynmem adjust disabled - with that back on, medium dyn $004919 (not too surprising, adjust has little headroom in medium dyn), bigdyn $0047b3 - that's more like it
 Elkulator 16K SWR medium $00b622 (note we have an extra 512 bytes of vmem cache compared to 4.x as well here)
 
 

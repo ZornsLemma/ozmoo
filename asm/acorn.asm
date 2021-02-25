@@ -1079,22 +1079,23 @@ SFTODOLABEL1
     ; It may be useful to increase nonstored_blocks to promote some additional
     ; data into dynamic memory, either for performance or to make use of more
     ; sideways RAM. We must not make it too large for the memory model we're
-    ; using. (This optimisation has relatively limited scope in the small model,
-    ; but it's trivial to support it anyway. It's just conceivable some games
-    ; and/or machines might benefit from --force-big-dynmem to give this
-    ; optimisation more headroom, but of course the big model has its own
+    ; using. (This optimisation has relatively limited scope in the small or
+    ; medium model, but it's trivial to support it anyway. It's just conceivable
+    ; some games and/or machines might benefit from --force-big-dynmem to give
+    ; this optimisation more headroom, but of course the big model has its own
     ; performance drawbacks so it's probably best not using it unless we're
     ; forced to.)
 .max_dynmem = zp_temp + 4 ; 1 byte
-!error "SFTODONOW MEDIUM"
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     lda #>swr_ramtop
 } else {
     lda #>flat_ramtop
 }
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
 !ifdef ACORN_SCREEN_HOLE {
     sec
     sbc acorn_screen_hole_pages
+}
 }
     sec
     sbc #>story_start
