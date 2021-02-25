@@ -21,6 +21,16 @@ digraph memory {
 	    <td border="1" cellpadding="10">OS ROM</td>
         </tr>
 	<tr>
+	    <td border="0" cellpadding="10"></td>
+	</tr>
+	<tr>
+	    <td></td>
+	    <td border="0">SWR bank 0</td>
+	    <td border="0">SWR bank 0</td>
+	    <td border="0">SWR bank 0</td>
+	    <td border="0">SWR bank 1, 2, ...</td>
+	</tr>
+	<tr>
 	    <td valign="bottom"><sub>~$a400</sub></td>
 	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	    <td border="1" cellpadding="10">vmem cache</td>
@@ -32,6 +42,9 @@ digraph memory {
 	    <td border="1" cellpadding="10">dynamic memory</td>
 	    <td border="1" cellpadding="10">dynamic memory</td>
         </tr>
+	<tr>
+	    <td border="0" cellpadding="10"></td>
+	</tr>
         <tr>
             <td valign="bottom"><sub>~$7c00</sub></td>
             <td border="1" cellpadding="10">screen RAM</td>
