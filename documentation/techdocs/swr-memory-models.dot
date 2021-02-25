@@ -11,6 +11,10 @@ digraph memory {
 	    <td colspan="1" border="0">Big memory model</td>
         </tr>
         <tr>
+            <td colspan="4" border="0">First sideways RAM bank at $8000-$c000</td>
+            <td colspan="4" border="0">Second sideways RAM bank at $8000-$c000</td>
+        </tr>
+        <tr>
             <td align="text" valign="bottom"><sub>$c000</sub><br align="right" /></td>
             <td border="1" cellpadding="10">OS ROM</td>
             <td border="1" cellpadding="10">OS ROM</td>
@@ -21,6 +25,7 @@ digraph memory {
 	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	    <td border="1" cellpadding="10">vmem cache</td>
 	    <td border="1" cellpadding="10">vmem cache</td>
+	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	</tr>
         <tr>
             <td valign="bottom"><sub>$8000</sub></td>
@@ -34,9 +39,13 @@ digraph memory {
             <td border="1" cellpadding="10">screen RAM</td>
         </tr>
         <tr>
+            <td valign="bottom"><sub>~$7000</sub></td>
+            <td border="1" cellpadding="10">vmem cache</td>
+            <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
+            <td border="1" rowspan="2" cellpadding="10">dynamic memory</td>
+        </tr>
+        <tr>
             <td valign="bottom"><sub>data_start=~$5000</sub></td>
-            <td border="1" cellpadding="10">vmem cache</td>
-            <td border="1" cellpadding="10">vmem cache</td>
             <td border="1" cellpadding="10">dynamic memory</td>
         </tr>
         <tr>
