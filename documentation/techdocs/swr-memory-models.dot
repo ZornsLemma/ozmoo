@@ -24,21 +24,21 @@ digraph memory {
 	    <td border="0" cellpadding="10"></td>
 	</tr>
 	<tr>
-	    <td></td>
+	    <td align="text" valign="bottom"><sub>$c000</sub><br align="right" /></td>
 	    <td border="0">SWR bank 0</td>
 	    <td border="0">SWR bank 0</td>
 	    <td border="0">SWR bank 0</td>
 	    <td border="0">SWR bank 1, 2, ...</td>
 	</tr>
 	<tr>
-	    <td valign="bottom"><sub>~$a400</sub></td>
+	    <td align="text" valign="bottom"><sub>~$a400</sub><br align="right" /></td>
 	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	    <td border="1" cellpadding="10">vmem cache</td>
 	    <td border="1" cellpadding="10">vmem cache</td>
 	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	</tr>
         <tr>
-            <td valign="bottom"><sub>$8000</sub></td>
+            <td align="text" valign="bottom"><sub>$8000</sub><br align="right" /></td>
 	    <td border="1" cellpadding="10">dynamic memory</td>
 	    <td border="1" cellpadding="10">dynamic memory</td>
         </tr>
@@ -46,35 +46,35 @@ digraph memory {
 	    <td border="0" cellpadding="10"></td>
 	</tr>
         <tr>
-            <td valign="bottom"><sub>~$7c00</sub></td>
+            <td align="text" valign="bottom"><sub>~$7c00</sub><br align="right" /></td>
             <td border="1" cellpadding="10">screen RAM</td>
             <td border="1" cellpadding="10">screen RAM</td>
             <td border="1" cellpadding="10">screen RAM</td>
         </tr>
         <tr>
-            <td valign="bottom"><sub>~$7000</sub></td>
+            <td align="text" valign="bottom"><sub>~$7000</sub><br align="right" /></td>
             <td border="1" cellpadding="10">vmem cache</td>
             <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
             <td border="1" rowspan="2" cellpadding="10">dynamic memory</td>
         </tr>
         <tr>
-            <td valign="bottom"><sub>data_start=~$5000</sub></td>
+            <td align="text" valign="bottom"><sub>data_start ~$5000</sub><br align="right" /></td>
             <td border="1" cellpadding="10">dynamic memory</td>
         </tr>
         <tr>
-            <td valign="bottom"><sub>stack_start=~$4c00</sub></td>
+            <td align="text" valign="bottom"><sub>stack_start ~$4c00</sub><br align="right" /></td>
             <td border="1" cellpadding="10">Z-machine stack</td>
             <td border="1" cellpadding="10">Z-machine stack</td>
             <td border="1" cellpadding="10">Z-machine stack</td>
         </tr>
         <tr>
-            <td valign="bottom"><sub>PAGE=~$1900</sub></td>
+            <td align="text" valign="bottom"><sub>PAGE=~$1900</sub></td>
             <td border="1" cellpadding="10">Ozmoo executable</td>
             <td border="1" cellpadding="10">Ozmoo executable</td>
             <td border="1" cellpadding="10">Ozmoo executable</td>
         </tr>
         <tr>
-            <td valign="bottom"><sub>$0000</sub></td>
+            <td align="text" valign="bottom"><sub>$0000</sub></td>
             <td border="1" cellpadding="10">OS/sideways ROM workspace</td>
             <td border="1" cellpadding="10">OS/sideways ROM workspace</td>
             <td border="1" cellpadding="10">OS/sideways ROM workspace</td>
