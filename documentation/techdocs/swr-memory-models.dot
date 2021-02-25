@@ -34,25 +34,33 @@ digraph memory {
 	</tr>
 	<tr>
 	    <td align="text" valign="bottom"><sub>~$a400</sub><br align="right" /></td>
-	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
+	    <td border="1" rowspan="2" cellpadding="10" bgcolor="deepskyblue1">vmem cache</td>
 	    <td></td>
-	    <td border="1" cellpadding="10">vmem cache<br />(if room)</td>
+	    <td border="1" cellpadding="10" bgcolor="deepskyblue1">vmem cache<br />(if room)</td>
 	    <td></td>
-	    <td border="1" cellpadding="10">vmem cache<br />(if room)</td>
+	    <td border="1" cellpadding="10" bgcolor="deepskyblue1">vmem cache<br />(if room)</td>
 	    <td></td>
-	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
+	    <td border="1" rowspan="2" cellpadding="10" bgcolor="deepskyblue1">vmem cache</td>
 	    <td></td>
-	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
+	    <td border="1" rowspan="2" cellpadding="10" bgcolor="deepskyblue1">vmem cache</td>
 	</tr>
         <tr>
             <td align="text" valign="bottom"><sub>$8000</sub><br align="right" /></td>
 	    <td></td>
-	    <td border="1" cellpadding="10">dynamic memory</td>
+	    <td border="1" cellpadding="10" bgcolor="gold1">dynamic memory</td>
 	    <td></td>
-	    <td border="1" cellpadding="10">dynamic memory</td>
+	    <td border="1" cellpadding="10" bgcolor="gold1">dynamic memory</td>
         </tr>
 	<tr>
 	    <td border="0" cellpadding="10"></td>
+	</tr>
+	<tr>
+	    <td></td>
+	    <td border="0">Main RAM</td>
+	    <td></td>
+	    <td border="0">Main RAM</td>
+	    <td></td>
+	    <td border="0">Main RAM</td>
 	</tr>
         <tr>
             <td align="text" valign="bottom"><sub>~$7c00</sub><br align="right" /></td>
@@ -64,18 +72,18 @@ digraph memory {
         </tr>
         <tr>
             <td align="text" valign="bottom"><sub>~$7000</sub><br align="right" /></td>
-            <td border="1" cellpadding="10">vmem cache<br />(if room)</td>
+            <td border="1" cellpadding="10" bgcolor="deepskyblue1">vmem cache<br />(if room)</td>
 	    <td></td>
-            <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
+            <td border="1" rowspan="2" cellpadding="10" bgcolor="deepskyblue1">vmem cache</td>
 	    <td></td>
-            <td border="1" rowspan="2" cellpadding="10">dynamic memory</td>
+            <td border="1" rowspan="2" cellpadding="10" bgcolor="gold1">dynamic memory</td>
         </tr>
         <tr>
-            <td align="text" valign="bottom"><sub>data_start ~$4000</sub><br align="right" /></td>
-            <td border="1" cellpadding="10">dynamic memory</td>
+            <td align="text" valign="bottom"><sub>data_start ~$4400</sub><br align="right" /></td>
+            <td border="1" cellpadding="10" bgcolor="gold1">dynamic memory</td>
         </tr>
         <tr>
-            <td align="text" valign="bottom"><sub>stack_start ~$3c00</sub><br align="right" /></td>
+            <td align="text" valign="bottom"><sub>stack_start ~$4000</sub><br align="right" /></td>
             <td border="1" cellpadding="10">Z-machine stack</td>
 	    <td></td>
             <td border="1" cellpadding="10">Z-machine stack</td>
