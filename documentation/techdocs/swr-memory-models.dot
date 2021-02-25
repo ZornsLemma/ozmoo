@@ -36,9 +36,9 @@ digraph memory {
 	    <td align="text" valign="bottom"><sub>~$a400</sub><br align="right" /></td>
 	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	    <td></td>
-	    <td border="1" cellpadding="10">vmem cache</td>
+	    <td border="1" cellpadding="10">vmem cache<br />(if room)</td>
 	    <td></td>
-	    <td border="1" cellpadding="10">vmem cache</td>
+	    <td border="1" cellpadding="10">vmem cache<br />(if room)</td>
 	    <td></td>
 	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	    <td></td>
@@ -64,7 +64,7 @@ digraph memory {
         </tr>
         <tr>
             <td align="text" valign="bottom"><sub>~$7000</sub><br align="right" /></td>
-            <td border="1" cellpadding="10">vmem cache</td>
+            <td border="1" cellpadding="10">vmem cache<br />(if room)</td>
 	    <td></td>
             <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
 	    <td></td>
