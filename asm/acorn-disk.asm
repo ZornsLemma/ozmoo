@@ -673,6 +673,7 @@ restore_game
     ; to when this game was saved. (HHGTTG SG, at least, still seems to generate
     ; the status bar using the "original" width, but I can reproduce this is
     ; frotz so I guess it's a small bug in the game itself.)
+    ; SFTODONOW: I SHOULD BE USING WRITE_HEADER_BYTE HERE, SINCE ON MEDIUM DYNMEM THIS WILL BE IN SWR
     php
     pha
     +lda_screen_height

@@ -1,3 +1,8 @@
+M128 medium dyn $004912 - as on B 144K SWR, that is *slower* than bigdyn going by timings below - running now, bigdyn $0048cd
+B 144K SWR medium $004968 - that is *slower* than bigdyn going by timings below TODO: MAYBE FORCE BIGDYN AND CHECK - bigdyn $004a32 - I have no idea why bigdyn is slower than it used to be, but anyway it looks like medium is faster than bigdyn
+Elkulator 16K SWR medium $00b622 (note we have an extra 512 bytes of vmem cache compared to 4.x as well here)
+
+
 OK, profiling a M128 masquerading as an Electron (non-shadow mode 6, PAGE=&E00, 16K SWR), ~2.8% of the runtime is taken up in the four instruction SWR bounce buffer copy loop. So what I think's happening is that because it's swapping so much (probably precisely as much as 4.x, but that's a lot), the CPU overhead of copying the data (which we read over and over again) into SWR is measurable, whereas in 4.x we were doing at least some of the reads into vmem cache in main RAM and avoiding that.
 
 M128 16K SWR non-shadow mode 6 (using M128 as it's easy to have PAGE=&E00, for a "2MHz Electron" environment - though note there's no drive noises here unlike Elkulator) BUT THIS SEEMS TO BE USING SW SCROLLING!? $011e6d

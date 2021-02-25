@@ -585,7 +585,7 @@ read_operand
     +lda_dynmem_ind_y z_low_global_vars_ptr
 	+after_dynmem_read_corrupt_y
 }
-!ifndef ACORN_SWR_BIG_DYNMEM {
+!ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 !ifdef ACORN_DEBUG_ASSERT {
 -	bcs -
 }
@@ -604,7 +604,7 @@ read_operand
 	dey
 	+lda_dynmem_ind_y z_high_global_vars_ptr
 	+after_dynmem_read_corrupt_y
-!ifndef ACORN_SWR_BIG_DYNMEM {
+!ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 !ifdef ACORN_DEBUG_ASSERT {
 -	bcc -
 }
@@ -911,7 +911,7 @@ z_get_low_global_variable_value
 	dey
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	+after_dynmem_read_corrupt_y_slow
-	; SFTODO: Permanent comment if true - caller *doesn't* assume carry clear if ACORN_SWR_BIG_DYNMEM, so we're OK
+	; SFTODO: Permanent comment if true - caller *doesn't* assume carry clear if ACORN_SWR_BIG_DYNMEM, so we're OK (also need to describe MEDIUM situation in this comment)
 	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not TARGET_C128
 }

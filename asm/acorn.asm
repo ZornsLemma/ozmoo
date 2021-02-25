@@ -460,21 +460,21 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 ; Debugging macro to check that the SWR bank containing the upper part of dynmem
 ; is paged in when it should be.
-!macro debug_dynmem preserve {
+!macro debug_dynmem .preserve {
 !ifdef DEBUG_BIG_DYNMEM {
-    !if preserve {
+    !if .preserve {
         pha
     }
     lda romsel_copy
     cmp ram_bank_list
 -   bne -
-    !if preserve {
+    !if .preserve {
         pla
     }
 }
 }
 } else {
-!macro debug_dynmem preserve {
+!macro debug_dynmem .preserve {
 }
 }
 
@@ -510,57 +510,57 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 ; SFTODONOW: Don't forget these macros will "hide" some paging operations in the acme report, when assessing space and time impact of the paging macros.
 !macro before_dynmem_read_corrupt_a {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     +acorn_page_in_bank_using_a dynmem_ram_bank
 }
 }
 
 !macro before_dynmem_read_corrupt_a_slow {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     jsr before_dynmem_read_corrupt_a_slow_sub
 }
 }
 
 !macro before_dynmem_read_corrupt_y {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     +acorn_page_in_bank_using_y dynmem_ram_bank
 }
 }
 
 !macro before_dynmem_read_corrupt_y_slow {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     jsr before_dynmem_read_corrupt_y_slow_sub
 }
 }
 
 !macro after_dynmem_read_corrupt_a {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
 }
 }
 
 ; SFTODONOW: A lot of the after_dynmem_*_slow calls are followed by rts; it may be worth introducing special wrappers to do after_dynmem_*+rts, it is a bit of extra complexity but not much and it would save time and space on bigdyn builds at a small complexity cost for other builds
 !macro after_dynmem_read_corrupt_a_slow {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     jsr after_dynmem_read_corrupt_a_slow_sub
 }
 }
 
 !macro after_dynmem_read_corrupt_y {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
 }
 
 !macro after_dynmem_read_corrupt_y_slow {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     jsr after_dynmem_read_corrupt_y_slow_sub
 }
 }
 
 ; SFTODO: IT'S POSSIBLE SOME CALLERS OF THIS NON-A-CORRUPTING VERSION COULD USE AN X OR Y CORRUPTING VERSION - I HAVE REVIEWED MOST, BUT THINGS ARE STILL WIP SO WORTH RE-REVIEWING ANY REMAINING CALLERS OF THIS VERSION LATER
 !macro after_dynmem_read_preserve_axy {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     pha
     +after_dynmem_read_corrupt_a
     pla
@@ -568,12 +568,12 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 
 !macro after_dynmem_read_preserve_axy_slow {
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     jsr after_dynmem_read_preserve_axy_slow_sub
 }
 }
 
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 before_dynmem_read_corrupt_a_slow_sub
     +before_dynmem_read_corrupt_a
     rts
@@ -714,7 +714,7 @@ deletable_init_start
     stx acorn_screen_hole_pages_minus_one
 }
 
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; This is used enough it's worth - if only for the code size saving -
     ; copying it into zero page. (Well, it saves 10 bytes at the time of
     ; writing; not huge, but not too bad. SFTODO: Maybe reconsider this later.)
@@ -753,7 +753,15 @@ screenkernal_init
 
 .dir_ptr = zp_temp ; 2 bytes
 .game_blocks = zp_temp + 2 ; 2 bytes
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
 .catalogue = story_start
+} else {
+; story_start will be in sideways RAM; we could make this work, but we'd need to
+; make sure the right bank was paged in and it's simpler just to use
+; scratch_double_page. We can't simply always use that, because it doesn't exist
+; on second processor builds.
+.catalogue = scratch_double_page
+}
 !ifndef ACORN_ADFS {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game.
@@ -978,14 +986,14 @@ SFTODOLABELX1
 .dont_count_turbo_ram
 }
 
-    ; We also have some blocks between flat_ramtop and story_start.
+    ; We also have some blocks between flat_ramtop and data_start.
     ; SF: We're doing a constant subtraction in code here, but a) this is
     ; deletable init code so it doesn't really cost anything b) if we don't,
     ; the relocation code fails because we have a variation which doesn't follow
     ; the simple fixed relationship we expect.
     lda #(>flat_ramtop)
     sec
-    sbc #>story_start
+    sbc #>data_start
 !ifdef ACORN_SCREEN_HOLE {
     sec
     sbc acorn_screen_hole_pages
@@ -1078,6 +1086,7 @@ SFTODOLABEL1
     ; performance drawbacks so it's probably best not using it unless we're
     ; forced to.)
 .max_dynmem = zp_temp + 4 ; 1 byte
+!error "SFTODONOW MEDIUM"
 !ifdef ACORN_SWR_BIG_DYNMEM {
     lda #>swr_ramtop
 } else {
@@ -1196,7 +1205,7 @@ SFTODOLABEL1
 !ifndef ACORN_SWR {
     ; vmap_first_ram_page is set at build time to suit a normal second processor
     ; and it's not used on a turbo second processor, so we don't need any code
-    ; to initialise it.
+    ; to initialise it. SFTODO: BUT WE COULD MOVE IT INTO PAGE 4 AND INITIALISE IT IN DISCARDABLE INIT CODE (IE HERE)
 }
 
     ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
@@ -1284,7 +1293,7 @@ SFTODOLABEL5
 }
     sta .blocks_to_read
 
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; Page in the first bank as dynamic memory may overflow into it.
     +acorn_page_in_bank_using_a dynmem_ram_bank
 }
@@ -1308,6 +1317,7 @@ SFTODOLABEL5
 
 !ifdef ACORN_SWR {
     ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
     lda #0
     sta vmem_blocks_stolen_in_first_bank
     ; Set A = (>story_start + nonstored_blocks) - (>flat_ramtop - acorn_screen_hole_pages)
@@ -1331,6 +1341,20 @@ SFTODOLABEL5
     lsr
     sta vmem_blocks_in_main_ram
 +
+} else {
+    lda nonstored_blocks
+    lsr
+    sta vmem_blocks_stolen_in_first_bank
+    lda #>flat_ramtop
+    sec
+    sbc #>vmem_start
+!ifdef ACORN_SCREEN_HOLE {
+    sec
+    sbc acorn_screen_hole_pages
+}
+    lsr
+    sta vmem_blocks_in_main_ram
+}
 }
 
 !ifdef VMEM {
@@ -1679,7 +1703,7 @@ SFTODOLABEL4
     ; necessary, as we should page in the right bank when we first try to get
     ; the page containing the initial Z-machine PC, but it doesn't really hurt
     ; to do this anyway.
-    +acorn_swr_page_in_default_bank_using_y
+    +acorn_swr_page_in_default_bank_using_y ; SFTODO: Should prob remove _swr_ from this macro for consistency
 }
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
@@ -1694,9 +1718,14 @@ SFTODOLABEL4
     sty game_disc_crc + 1
 } ; End of acorn_deletable_init_inline
 
+; SFTODO: Move this to be with the other paging macros?
 !ifdef ACORN_SWR {
+; SFTODO: Don't define these in smalldyn? Any code using it is wasting time/space, I think.
 !macro acorn_swr_page_in_default_bank_using_y {
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
+}
+!macro acorn_swr_page_in_default_bank_using_a {
+    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
 }
 }
 

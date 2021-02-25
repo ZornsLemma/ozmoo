@@ -248,10 +248,15 @@
 
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
-; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this.
+; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this. SFTODO: COMMENT IS OUTDATED WITH INTRODUCTION OF MEDIUM
 !ifdef ACORN_SWR {
 !ifndef ACORN_SWR_SMALL_DYNMEM {
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
 ACORN_SWR_BIG_DYNMEM = 1
+ACORN_SWR_MEDIUM_OR_BIG_DYNMEM = 1
+} else {
+ACORN_SWR_MEDIUM_OR_BIG_DYNMEM = 1
+}
 }
 }
 
@@ -259,7 +264,7 @@ ACORN_SWR_BIG_DYNMEM = 1
 ; because the hole always comes *after* all dynamic memory, only read-only VM
 ; block access needs to take it into account. Define an extra constant to allow
 ; for easy testing of the combination of the big dynamic memory model and screen
-; hole where more extensive screen hole support is required.
+; hole where more extensive screen hole support is required. SFTODO: COMMENT IS OUTDATED WITH INTRODUCTION OF MEDIUM
 !ifdef ACORN_SCREEN_HOLE {
 !ifdef ACORN_SWR_BIG_DYNMEM {
     ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE = 1
@@ -2152,15 +2157,15 @@ story_start
 !if (end_of_routines_in_stack_space - stack_start) > stack_size {
     !error "Routines in stack space have overflowed stack"
 }
-story_start = stack_start + stack_size
-!if (story_start & 0xff) != 0 {
-    !error "story_start must be page-aligned"
+data_start = stack_start + stack_size
+!if (data_start & 0x1ff) != 0 {
+    !error "data_start must be at a 512-byte boundary"
 }
-!ifdef VMEM {
-vmem_start = story_start
-!if (vmem_start & 0x1ff) != 0 {
-    !error "vmem_start must be at a 512-byte boundary"
-}
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
+	story_start = data_start
+} else {
+	story_start = $8000
+	vmem_start = data_start
 }
 }
 

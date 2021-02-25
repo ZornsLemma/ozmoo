@@ -297,7 +297,7 @@ parse_array_write_byte
 
 } else { ; Not COMPLEX_MEMORY
 
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 
 ; SF: These aren't performance critical and they're quite large so it seems
 ; better to put them in subroutines to avoid bloating the code. Similarly, it
@@ -345,7 +345,7 @@ parse_array_write_byte
 	jsr parse_array_write_byte
 }
 
-} else { ; Not ACORN_SWR_BIG_DYNMEM
+} else { ; Not ACORN_SWR_MEDIUM_OR_BIG_DYNMEM
 !macro macro_string_array_read_byte {
 	lda (string_array),y
 }

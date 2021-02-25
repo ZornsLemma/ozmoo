@@ -322,7 +322,7 @@ copy_page
 
 
 
-; SFTODO: The following subroutines effectively assume the memory hole doesn't start until story_start+256; this is not going to be a problem, but the build system should check this constraint isn't violated.
+; SF: On Acorn SWR builds, the following subroutines for small and big dynmamic memory models assume the memory hole doesn't start until story_start+256. SFTODO: The build system and/or loader maybe need to enforce this once we start allowing non-default modes on screen hole builds - in mode 6/7 this just isn't going to happen.
 read_header_word
 ; y contains the address in the header
 ; Returns: Value in a,x
@@ -335,11 +335,19 @@ read_header_word
 	lda #mem_temp
 	jmp read_word_from_bank_1_c128
 } else {
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+	+acorn_page_in_bank_using_a dynmem_ram_bank
+}
 	iny
 	lda story_start,y
 	tax
 	dey
 	lda story_start,y
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+	pha
+	+acorn_swr_page_in_default_bank_using_a
+	pla
+}
 	rts
 }
 
@@ -356,10 +364,18 @@ write_header_word
 	ldx .tmp
 	jmp write_word_to_bank_1_c128
 } else {
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+	pha
+	+acorn_page_in_bank_using_a dynmem_ram_bank
+	pla
+}
 	sta story_start,y
 	iny
 	txa
 	sta story_start,y
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+	+acorn_swr_page_in_default_bank_using_a
+}
 	rts
 }
 
@@ -379,7 +395,17 @@ write_header_byte
 	ldx .tmp + 1
 	rts
 } else {
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+	pha
+	+acorn_page_in_bank_using_a dynmem_ram_bank
+	pla
+}
 	sta story_start,y
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+	pha
+	+acorn_swr_page_in_default_bank_using_a
+	pla
+}
 	rts
 }
 

@@ -808,6 +808,8 @@ class OzmooExecutable(Executable):
                 s += "_novmem"
             if "-DACORN_SWR_SMALL_DYNMEM=1" in args:
                 s += "_smalldyn"
+            elif "-DACORN_SWR_MEDIUM_DYNMEM=1" in args:
+                s += "_mediumdyn"
             s += "_" + ourhex(start_addr)
             return s
 
@@ -889,8 +891,9 @@ class OzmooExecutable(Executable):
             # the screen hole executables always run on machines with a fixed
             # screen hole, which is currently true but won't be eventually (e.g.
             # when a B-no-shadow has the option to run in mode 6).
-            if "ACORN_SCREEN_HOLE" in self.labels:
-                result -= 0x2000 if "ACORN_ELECTRON_SWR" in self.labels else 0x400
+            if "ACORN_SWR_MEDIUM_DYNMEM" not in self.labels:
+                if "ACORN_SCREEN_HOLE" in self.labels:
+                    result -= 0x2000 if "ACORN_ELECTRON_SWR" in self.labels else 0x400
             return result
         else:
             return self.labels["flat_ramtop"]
@@ -945,6 +948,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     if e_low is None:
         return None
     assert e_low.start_addr in (0xe00, 0xf00)
+    #assert False # SFTODONOW NEED TO HANDLE THIS STUFF DIFFERENTLY FOR MEDIUM MODEL - WE ARE NOT LOADING ANYWHERE NEAR AS HIGH AS WE COULD, I CAN'T THINK STRAIGHT NOW BUT WE DON'T NEED TO ALLOW *ANY* DYNMEM SPACE FOR MEDIUM
     surplus_nonstored_blocks = e_low.max_nonstored_blocks() - nonstored_blocks
     assert surplus_nonstored_blocks >= 0
     assert surplus_nonstored_blocks % 2 == 0
@@ -986,6 +990,7 @@ def make_optimally_aligned_executable(leafname, initial_start_addr, args, report
             return make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
 
 
+# SFTODO: RENAME THIS FUNCTION NOW WE HAVE MEDIUM
 def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # Calculate adjusted_small_dynmem_page_threshold; it doesn't make sense to refuse to
     # build using the small model because it requires assuming PAGE>=max_start_addr.
@@ -1007,6 +1012,14 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
             if small_e.start_addr >= adjusted_small_dynmem_page_threshold:
                 info(init_cap(report_failure_prefix) + " executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
+
+    medium_e = None
+    if not cmd_args.force_big_dynmem and nonstored_blocks * bytes_per_block <= 16 * 1024:
+        medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
+        # SFTODONOW: THIS NEEDS THE SAME LOGIC AS BIGDYN TO SAY WHETHER WE ARE USING THIS OUT OF NECESSITY OR BECAUSE SMALLDYN WOULD CROSS THRESHOLD - AND ARGUABLY THE BIGDYN MESSAGES SHOULD BE TWEAKED ACCORDINGLY NOW WE HAVE MEDIUMDYN
+        if medium_e is not None:
+            info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
+            return medium_e
 
     # Note that we don't respect small_dynmem_page_threshold when generating a big
     # dynamic memory executable; unlike the above decision about whether or not
@@ -1364,6 +1377,7 @@ def parse_args():
     group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
     group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
     group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
+    # SFTODO: We probably want some sort of force-medium-dynmem and/or disable-medium-dynmem etc options now, but I'm not rushing into this until it becomes clearer which models are sometimes desirable/undesirable and which the automatic selection can't get right in all cases.
     group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
     group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
@@ -1730,6 +1744,7 @@ tube_args = []
 swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
+medium_dynmem_args = ["-DACORN_SWR_MEDIUM_DYNMEM=1"]
 
 host = 0xffff0000
 tube_start_addr = 0x700
@@ -1804,3 +1819,5 @@ show_deferred_output()
 # SFTODO: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
 
 # SFTODO: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy.
+
+# SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".

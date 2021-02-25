@@ -729,7 +729,7 @@ read_byte_at_z_address
     ; the cost of checking the high bit of mempointer. Playing around with the
     ; benchmark and HHGTTG, >70% of executions of this code are accessing main
     ; RAM, so it's a win to pay 5 cycles for the test in order to save 20 cycles
-    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.)
+    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.) SFTODONOW: COMMENT IS OUTDATED NOW WE HAVE MEDIUM MODEL - THE POINT IS POSSIBLY STILL VALID, BUT WOULD BE GOOD TO PROFILE IT
     lda mempointer + 1
     bmi .not_main_ram
     lda (mempointer),y
@@ -795,14 +795,14 @@ read_byte_at_z_address
     stz mempointer_turbo_bank
     bra .read_and_return_value
 } else {
-!ifndef ACORN_SWR_BIG_DYNMEM {
+!ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
     ; RAM so it doesn't matter what the value of mempointer_ram_bank is or which
     ; bank is currently paged in.
     ; SFTODO: I think we could just do the lda+rts here; since we haven't paged out the
     ; current bank there's no need to page it back in afterwards, as read_and_return_value will.
 	bne .read_and_return_value ; Always branch
-} else { ; ACORN_SWR_BIG_DYNMEM
+} else { ; ACORN_SWR_MEDIUM_OR_BIG_DYNMEM
     ; SFTODO: WE COULD POSSIBLY DO "bpl read_and_return_value" or "bmi +:lda:rts:+" HERE, SINCE IF THE ADDRESS ISN'T IN SWR WE DON'T NEED TO PAGE ANYTHING IN OR OUT TO GET TO THE DATA
     ; We have to page in the first SWR bank now, and we have to set
     ; mempointer_ram_bank correctly so subsequent calls to

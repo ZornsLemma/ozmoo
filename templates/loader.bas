@@ -373,6 +373,7 @@ REM indentation as it's at the start of the line.
 }
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "
+REM SFTODO: Should the next one be conditional on ACORN_HW_SCROLL?
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
 REM Clear any additional rows which we used last time but haven't used this time.
 IF VPOS<mode_keys_last_max_y THEN PRINT SPC(40*(mode_keys_last_max_y-VPOS));
@@ -419,3 +420,4 @@ REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 =s$
 
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
+REM SFTODONOW: FOR MEDIUM DYNMEM MODEL, I THINK THE LOADER NEEDS TO ADDITIONALLY CHECK THERE IS AT LEAST 16K OF SWR, AND THEN DO EXACTLY THE SAME CHECKS AS FOR OTHER MODELS - NOT QUITE, ON A MEDIUMDYN BUILD THE *ONLY* CHECKS ARE a) 16k SWR b) ENOUGH MEMORY IN TOTAL AFTER DYNMEM TO MEET THE MIN VMEM CACHE REQT
