@@ -7,33 +7,54 @@ digraph memory {
     <table border="0" cellspacing="0">
         <tr>
             <td colspan="2" border="0">Small memory model</td>
+            <td colspan="1" border="0">Medium memory model</td>
+	    <td colspan="1" border="0">Big memory model</td>
         </tr>
         <tr>
             <td align="text" valign="bottom"><sub>$c000</sub><br align="right" /></td>
             <td border="1" cellpadding="10">OS ROM</td>
+            <td border="1" cellpadding="10">OS ROM</td>
+	    <td border="1" cellpadding="10">OS ROM</td>
         </tr>
+	<tr>
+	    <td valign="bottom"><sub>~$a400</sub></td>
+	    <td border="1" rowspan="2" cellpadding="10">vmem cache</td>
+	    <td border="1" cellpadding="10">vmem cache</td>
+	    <td border="1" cellpadding="10">vmem cache</td>
+	</tr>
         <tr>
             <td valign="bottom"><sub>$8000</sub></td>
-            <td border="1" cellpadding="10">vmem cache</td>
+	    <td border="1" cellpadding="10">dynamic memory</td>
+	    <td border="1" cellpadding="10">dynamic memory</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>~$7c00</sub></td>
+            <td border="1" cellpadding="10">screen RAM</td>
+            <td border="1" cellpadding="10">screen RAM</td>
             <td border="1" cellpadding="10">screen RAM</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>data_start=~$5000</sub></td>
             <td border="1" cellpadding="10">vmem cache</td>
+            <td border="1" cellpadding="10">vmem cache</td>
+            <td border="1" cellpadding="10">dynamic memory</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>stack_start=~$4c00</sub></td>
+            <td border="1" cellpadding="10">Z-machine stack</td>
+            <td border="1" cellpadding="10">Z-machine stack</td>
             <td border="1" cellpadding="10">Z-machine stack</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>PAGE=~$1900</sub></td>
             <td border="1" cellpadding="10">Ozmoo executable</td>
+            <td border="1" cellpadding="10">Ozmoo executable</td>
+            <td border="1" cellpadding="10">Ozmoo executable</td>
         </tr>
         <tr>
             <td valign="bottom"><sub>$0000</sub></td>
+            <td border="1" cellpadding="10">OS/sideways ROM workspace</td>
+            <td border="1" cellpadding="10">OS/sideways ROM workspace</td>
             <td border="1" cellpadding="10">OS/sideways ROM workspace</td>
         </tr>
     </table>>];
