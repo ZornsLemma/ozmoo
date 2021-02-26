@@ -97,10 +97,11 @@
 ; may be tricky. There's also some sort of unlock stuff to contend with, I think.
 
 ; These macros must leave the selected bank number in A or Y as appropriate.
-; SFTODONOW: These macros are probably quite space-consuming on the Electron,
-; and I think they are used more in code now we don't just leave bigdyn bank
-; paged in by default, but on the flip side they are probably executed less.
-; Would it be worthwhile making them subroutine calls?
+; SFTODO These macros are probably quite space-consuming on the Electron; it's
+; tempting to move them into subroutines. However, most of them *have* been
+; moved indirectly, as part of the various dynamic memory *_slow* subroutines,
+; so the remaining ones are mostly going to be performance-sensitive. So this is
+; probably fine, but maybe worth thinking over later.
 
 !ifndef ACORN_ELECTRON_SWR {
 
@@ -186,42 +187,29 @@
 ; SF: These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
 ; macros will also alter N and Z. In practice this isn't a problem.
 
-; SFTODONOW: DO WE STILL NEED THE _INTERNAL VARIANT NOW WE HAVE THE SLOW SUBROUINTES DONE DIFFERENTLY?
-!macro lda_dynmem_ind_y_internal zp, use_rts {
-    lda zp + 1
+!macro lda_dynmem_ind_y .zp {
+    lda .zp + 1
     cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
     bne .zp_y_not_ok
-    ; We need to add Y to (zp) to see if it's going to cause the high byte to
+    ; We need to add Y to (.zp) to see if it's going to cause the high byte to
     ; increase and point into the screen hole.
     clc
     tya
-    adc zp
+    adc .zp
     bcc .zp_y_ok
-    lda zp + 1
+    lda .zp + 1
 .zp_y_not_ok
-    ; A holds zp + 1, C is set.
+    ; A holds .zp + 1, C is set.
     adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
     sta screen_hole_zp_ptr + 1
-    lda zp
+    lda .zp
     sta screen_hole_zp_ptr
     lda (screen_hole_zp_ptr),y
-!if use_rts = 0 {
     jmp .done
-} else {
-    rts
-}
 .zp_y_ok
-    lda (zp),y
-!if use_rts = 0 {
+    lda (.zp),y
 .done
-} else {
-    rts
-}
-}
-
-!macro lda_dynmem_ind_y zp {
-    +lda_dynmem_ind_y_internal zp, 0
 }
 
 ; Dynamic memory reads which aren't performance critical use this macro, which
@@ -230,23 +218,23 @@
 ; SFTODONOW: The subroutines take up a surprisingly large chunk of memory - IIRC
 ; over 400 bytes on an Electron. If these really aren't performance critical it
 ; may be better to write them to use zp,x addressing to avoid duplication.
-!macro lda_dynmem_ind_y_slow zp {
-    !if zp = object_tree_ptr {
+!macro lda_dynmem_ind_y_slow .zp {
+    !if .zp = object_tree_ptr {
         jsr lda_dynmem_ind_y_slow_object_tree_ptr_sub
     } else {
-        !if zp = zp_mempos {
+        !if .zp = zp_mempos {
             jsr lda_dynmem_ind_y_slow_zp_mempos_sub
         } else {
-            !if zp = default_properties_ptr {
+            !if .zp = default_properties_ptr {
                 jsr lda_dynmem_ind_y_slow_default_properties_ptr_sub
             } else {
-                !if zp = string_array {
+                !if .zp = string_array {
                     jsr lda_dynmem_ind_y_slow_string_array_sub
                 } else {
-                    !if zp = parse_array {
+                    !if .zp = parse_array {
                         jsr lda_dynmem_ind_y_slow_parse_array_sub
                     } else {
-                        !if zp = z_low_global_vars_ptr {
+                        !if .zp = z_low_global_vars_ptr {
                             jsr lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
                         } else {
                             !error "Unsupported zp"
@@ -261,45 +249,32 @@
 ; SF: There would be some small performance gains here from allowing X to be
 ; corrupted, but few callers (and no performance-critical ones) would be able to
 ; take advantage, so it's not worth providing an X-corrupting version.
-; SFTODONOW: DO WE STILL NEED THE _INTERNAL VARIANT NOW WE HAVE THE SLOW SUBROUINTES DONE DIFFERENTLY?
-!macro sta_dynmem_ind_y_internal zp, use_rts {
+!macro sta_dynmem_ind_y .zp {
     sta screen_hole_tmp
-    lda zp + 1
+    lda .zp + 1
     cmp acorn_screen_hole_start_page_minus_one
     bcc .zp_y_ok
     bne .zp_y_not_ok
-    ; We need to add Y to (zp) to see if it's going to cause the high byte to
+    ; We need to add Y to (.zp) to see if it's going to cause the high byte to
     ; increase and point into the screen hole.
     clc
     tya
-    adc zp
+    adc .zp
     bcc .zp_y_ok
-    lda zp + 1
+    lda .zp + 1
 .zp_y_not_ok
-    ; A holds zp + 1, C is set.
+    ; A holds .zp + 1, C is set.
     adc acorn_screen_hole_pages_minus_one ; -1 because carry is set
     sta screen_hole_zp_ptr + 1
-    lda zp
+    lda .zp
     sta screen_hole_zp_ptr
     lda screen_hole_tmp
     sta (screen_hole_zp_ptr),y
-!if use_rts = 0 {
     jmp .done
-} else {
-    rts
-}
 .zp_y_ok
     lda screen_hole_tmp
-    sta (zp),y
-!if use_rts = 0 {
+    sta (.zp),y
 .done
-} else {
-    rts
-}
-}
-
-!macro sta_dynmem_ind_y zp {
-    +sta_dynmem_ind_y_internal zp, 0
 }
 
 ; Dynamic memory writes which aren't performance critical use this macro, which
