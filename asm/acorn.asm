@@ -308,8 +308,10 @@
     }
 }
 
-; SFTODONOW: Of the various versions of these subroutines, the lda object_tree_ptr one is by far the most commonly executed.
 !zone {
+; This version of the lda/sta_dynmem_* subroutines is executed far more than the
+; others, so we optimise it slightly by making it the one which has the code
+; inline.
 lda_dynmem_ind_y_slow_object_tree_ptr_sub
     stx screen_hole_tmp
     ldx #object_tree_ptr
@@ -367,10 +369,9 @@ lda_dynmem_ind_y_slow_default_properties_ptr_sub
 lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
 	+SFTODORENAMEME z_low_global_vars_ptr
 
-    SFTODO = $90 ; SFTODONOW TEMP HACK, NOT SUITABLE ZP (ECONET)
 !zone {
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
-    stx SFTODO
+    stx screen_hole_tmp_slow
     ldx #object_tree_ptr
 SFTODO3X1
     sta screen_hole_tmp
@@ -391,13 +392,13 @@ SFTODO3X1
     sta screen_hole_zp_ptr + 1
     lda $00,x
     sta screen_hole_zp_ptr
-    ldx SFTODO
+    ldx screen_hole_tmp_slow
     lda screen_hole_tmp
     sta (screen_hole_zp_ptr),y
     rts
 .zp_y_ok
     stx .SFTODO344STA_ZP_IND_Y + 1
-    ldx SFTODO
+    ldx screen_hole_tmp_slow
     lda screen_hole_tmp
 .SFTODO344STA_ZP_IND_Y
     sta ($00),y ; patched at runtime
@@ -405,7 +406,7 @@ SFTODO3X1
 }
 
 !macro SFTODOALSORENAMEME zp {
-    stx SFTODO
+    stx screen_hole_tmp_slow
     ldx #zp
     !if zp = 0 {
         beq SFTODO3X1 ; always branch

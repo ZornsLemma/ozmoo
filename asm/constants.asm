@@ -517,7 +517,11 @@ game_data_filename_or_restart_command = $42f
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 ; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf.
 
-; The byte at $500 is free if we need it
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+; SFTODO: I'm fairly sure this isn't performance critical, but it might be worth
+; doing a comparison with it in zero page at some point just to be safe.
+screen_hole_tmp_slow = $500 ; 1 byte
+}
 vmap_z_l = $501 ; not $500, because we use "vmap_z_l - 1,x" addressing in a hot loop
 scratch_page = $600
 !ifdef ACORN_SWR {
