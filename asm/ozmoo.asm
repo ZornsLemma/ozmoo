@@ -902,6 +902,22 @@ initialize
 }
 
 
+; SF: This is upstream code but moved so I can put it in a macro and inline it
+; in a different place on Acorn.
+!macro prepare_static_high_memory_inline {
+	lda #$ff
+	sta zp_pc_h
+	sta zp_pc_l
+
+; Clear quick index
+	lda #0
+	ldx #vmap_quick_index_length
+-	sta vmap_next_quick_index,x ; Sets next quick index AND all entries in quick index to 0
+	dex
+	bpl -
+}
+
+
 ; include other assembly files
 !ifdef ACORN {
 	!source "acorn.asm"
@@ -2026,18 +2042,9 @@ print_reu_progress_bar
 }
 }
 prepare_static_high_memory
-	lda #$ff
-	sta zp_pc_h
-	sta zp_pc_l
-
-; Clear quick index
-	lda #0
-	ldx #vmap_quick_index_length
--	sta vmap_next_quick_index,x ; Sets next quick index AND all entries in quick index to 0
-	dex
-	bpl -
-	
 !ifndef ACORN {
+	+prepare_static_high_memory_inline
+
 	lda #6
 	clc
 	adc config_load_address + 4
@@ -2091,6 +2098,7 @@ prepare_static_high_memory
 	bne -
 .no_entries
 } else { ; ACORN
+; SFTODO: We're very close to being able to just remove prepare_static_high_memory on Acorn, including the jsr to it
 !ifdef PREOPT {
     ; vmap_used_entries can't be 0. SFTODO: I think?
     lda #1
@@ -2150,7 +2158,6 @@ end_of_routines_in_stack_space
 end_of_routines
 }
 
-; SFTODONOW: It's a slightly silly build but python make-acorn.py -v --benchmark hhggSG.z5 is overflowing stack space by 4 bytes on tube. Is this new? Why does --benchmark bloat it? This feels a bit tight, can I trim anything?
 !ifndef ACORN {
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 story_start

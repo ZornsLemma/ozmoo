@@ -725,6 +725,7 @@ deletable_init_start
     sta dynmem_ram_bank
 }
 
+    +prepare_static_high_memory_inline
     +init_readtime_inline
     jmp init_cursor_control
 
