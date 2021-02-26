@@ -729,7 +729,7 @@ read_byte_at_z_address
     ; the cost of checking the high bit of mempointer. Playing around with the
     ; benchmark and HHGTTG, >70% of executions of this code are accessing main
     ; RAM, so it's a win to pay 5 cycles for the test in order to save 20 cycles
-    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.) SFTODONOW: COMMENT IS OUTDATED NOW WE HAVE MEDIUM MODEL - THE POINT IS POSSIBLY STILL VALID, BUT WOULD BE GOOD TO PROFILE IT
+    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.) SFTODO: COMMENT IS OUTDATED NOW WE HAVE MEDIUM MODEL - THE POINT IS POSSIBLY STILL VALID, BUT WOULD BE GOOD TO PROFILE IT
     lda mempointer + 1
     bmi .not_main_ram
     lda (mempointer),y
