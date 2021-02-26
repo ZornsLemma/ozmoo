@@ -673,18 +673,25 @@ restore_game
     ; to when this game was saved. (HHGTTG SG, at least, still seems to generate
     ; the status bar using the "original" width, but I can reproduce this is
     ; frotz so I guess it's a small bug in the game itself.)
-    ; SFTODONOW: I SHOULD BE USING WRITE_HEADER_BYTE HERE, SINCE ON MEDIUM DYNMEM THIS WILL BE IN SWR
+    ; SFTODO: Not just here specifically, I can't help feeling read/write_header_*
+    ; could be optimised (for space; I don't think they're performance critical)
+    ; on Acorn. If nothing else, on non-medium-SWR builds, they boil down to
+    ; trivial reads/writes of main RAM.
     php
     pha
     +lda_screen_height
-	sta story_start + header_screen_height_lines
+    ldy #header_screen_height_lines
+    jsr write_header_byte
 !ifdef Z5PLUS {
-	sta story_start + header_screen_height_units + 1
+    ldy #header_screen_height_units + 1
+    jsr write_header_byte
 }
     +lda_screen_width
-	sta story_start + header_screen_width_chars
+    ldy #header_screen_width_chars
+    jsr write_header_byte
 !ifdef Z5PLUS {
-	sta story_start + header_screen_width_units + 1
+    ldy #header_screen_width_units + 1
+    jsr write_header_byte
 }
     pla
     plp
@@ -737,7 +744,7 @@ save_game
     ; bank containing dynamic memory, so the load/save can see it. We don't need
     ; to explicitly undo this; calling get_page_at_z_pc with zp_pc_h set to $ff
     ; below will do it for us.
-    ; SFTODONOW: This could use a "slow" version of the paging macro, but it would be the
+    ; SFTODO: This could use a "slow" version of the paging macro, but it would be the
     ; only such user with this ram bank so probably no point?
     +acorn_page_in_bank_using_a dynmem_ram_bank
 }
