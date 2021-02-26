@@ -2150,16 +2150,19 @@ end_of_routines_in_stack_space
 end_of_routines
 }
 
+; SFTODONOW: It's a slightly silly build but python make-acorn.py -v --benchmark hhggSG.z5 is overflowing stack space by 4 bytes on tube. Is this new? Why does --benchmark bloat it? This feels a bit tight, can I trim anything?
 !ifndef ACORN {
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 story_start
 } else {
 !if (end_of_routines_in_stack_space - stack_start) > stack_size {
-    !error "Routines in stack space have overflowed stack"
+    !error "Routines in stack space have overflowed stack by ", end_of_routines_in_stack_space - stack_start - stack_size, " bytes"
 }
 data_start = stack_start + stack_size
+!ifdef VMEM {
 !if (data_start & 0x1ff) != 0 {
     !error "data_start must be at a 512-byte boundary"
+}
 }
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
 	story_start = data_start

@@ -684,6 +684,9 @@ deletable_init_start
     sta vmap_z_l - 1,x
     dex
     bne -
+
+    ; SFTODO: We could also do the initialisation of quick_index here, saving a few
+    ; bytes of stack space code.
 }
 
 !ifdef ACORN_SCREEN_HOLE {

@@ -1023,14 +1023,17 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
             if small_e.start_addr >= adjusted_small_dynmem_page_threshold:
                 info(init_cap(report_failure_prefix) + " executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
+        info(init_cap(report_failure_prefix) + " executable can't use small dynamic memory model as it would require " + page_le(0xe00 if small_e is None else small_e.start_addr))
 
     medium_e = None
-    if not cmd_args.force_big_dynmem and nonstored_blocks * bytes_per_block <= 16 * 1024:
-        medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
-        # SFTODONOW: THIS NEEDS THE SAME LOGIC AS BIGDYN TO SAY WHETHER WE ARE USING THIS OUT OF NECESSITY OR BECAUSE SMALLDYN WOULD CROSS THRESHOLD - AND ARGUABLY THE BIGDYN MESSAGES SHOULD BE TWEAKED ACCORDINGLY NOW WE HAVE MEDIUMDYN
-        if medium_e is not None:
-            info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
-            return medium_e
+    if not cmd_args.force_big_dynmem:
+        if nonstored_blocks * bytes_per_block <= 16 * 1024:
+            medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
+            if medium_e is not None:
+                info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
+                return medium_e
+        else:
+            info(init_cap(report_failure_prefix) + " executable can't use medium dynamic memory model as the game's dynamic memory is >16K")
 
     # Note that we don't respect small_dynmem_page_threshold when generating a big
     # dynamic memory executable; unlike the above decision about whether or not
@@ -1040,10 +1043,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # and there's nothing we can do about it.
     big_e = make_highest_possible_executable(leafname, args, report_failure_prefix)
     if big_e is not None:
-        if small_e is not None and small_e.start_addr < adjusted_small_dynmem_page_threshold:
-            info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model because small model would require %s; big model requires %s" % (page_le(small_e.start_addr), page_le(big_e.start_addr)))
-        else:
-            info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
+        info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
     return big_e
 
 
