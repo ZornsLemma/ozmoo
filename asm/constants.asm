@@ -425,7 +425,7 @@ cursor_row            = $7a ; 2 bytes
 cursor_column         = $7c ; 2 bytes
 !if 0 { ; SFTODO: These zp locations can be re-used now; I suspect (but obviously can test) there's no real value to using zp for text output related things
 ;screen_width          = $54 ; 1 byte ; SFTODO: I have re-used this one already
-screen_height         = $89 ; 1 byte
+;screen_height         = $89 ; 1 byte ; SFTODO: I have re-used this one already
 screen_height_minus_1 = $8a ; 1 byte
 }
 
@@ -439,7 +439,7 @@ screen_hole_zp_ptr    = vmem_temp ; 2 bytes
 screen_hole_tmp       = z_address_temp ; 1 byte
 }
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-dynmem_ram_bank       = $91; 1 byte SFTODONOW TEMP ALLOCATION
+dynmem_ram_bank       = $89; 1 byte
 }
 ; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway - I have now used $7e FWIW, $7f has also now been used but it's only experimental
 
