@@ -699,7 +699,7 @@ SFTODOQQ4
 	ldy #1
 	txa
 	+sta_dynmem_ind_y zp_temp
-	; SFTODONOW: Make this next one slow? Seems a bit "unfair", what about the game+machine that happens to hit this case?
+	; SFTODO: Make this next one slow? Seems a bit "unfair", what about the game+machine that happens to hit this case?
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 }
@@ -797,7 +797,6 @@ z_get_referenced_value
 	cmp #>story_start
 	bcc z_get_referenced_value_simple
 	; SFTODO: IS IT STILL WORTH OPTIMISING THE REMAINING CASES? QUITE POSSIBLY IT IS...
-	; SFTODONOW: USE SLOW VARIANT?
 	+before_dynmem_read_corrupt_a_slow
 	; SFTODO: THIS CODE MIGHT BE USABLE (FACTORED OUT AS A MACRO) FOR GLOBAL VAR ACCESS TOO
 	lda zp_temp + 1
@@ -821,7 +820,6 @@ SFTODOTEMP
 	lda (zp_temp),y
 	tax
 	lda screen_hole_tmp
-	; SFTODONOW: USE SLOW VARIANT?
 	+after_dynmem_read_corrupt_y_slow
 	rts
 .zp_y_not_ok
@@ -836,7 +834,6 @@ SFTODOTEMP
 	tax
 	dey
 	lda (screen_hole_zp_ptr),y
-	; SFTODONOW: USE SLOW VARIANT?
 	+after_dynmem_read_corrupt_y_slow
 	rts
 .zp_y_maybe_no_longer_ok
@@ -847,7 +844,6 @@ SFTODOTEMP
 	+lda_dynmem_ind_y zp_temp
 	tax
 	lda screen_hole_tmp
-	; SFTODONOW: USE SLOW VARIANT?
 	+after_dynmem_read_corrupt_y_slow
 	rts
 }
