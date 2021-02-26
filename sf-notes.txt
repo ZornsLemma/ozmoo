@@ -1,3 +1,5 @@
+Electron benchmark vmem_start has now slipped back to $4c00; this is no worse than 4.x and I'm not planning to try to squeeze this back out right now unless the benchmark suffers.
+
 M128 medium dyn $004912 - as on B 144K SWR, that is *slower* than bigdyn going by timings below - running now, bigdyn $0048cd, consistent-ish with time below
 B 144K SWR medium $004968 - that is *slower* than bigdyn going by timings below - bigdyn $004a32 - I have no idea why bigdyn is slower than it used to be, but anyway it looks like medium is faster than bigdyn
 - OK, that was with the dynmem adjust disabled - with that back on, medium dyn $004919 (not too surprising, adjust has little headroom in medium dyn), bigdyn $0047b3 - that's more like it

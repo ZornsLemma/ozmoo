@@ -422,7 +422,7 @@ z_ins_save
 
 !zone save_restore {
 ; It's faster and simpler to save/restore using OSFILE but it can't access
-; sideways RAM, so we can only use if it's we're not using ACORN_SWR_BIG_DYNMEM.
+; sideways RAM, so we can only use if it's we're not using ACORN_SWR_MEDIUM_OR_BIG_DYNMEM.
 ; SFTODO: This is bit too pessimistic - since we only save precisely the number
 ; of bytes in dynamic memory as specified by the game's header, even if
 ; nonstored_blocks has overflowed into sideways RAM due to rounding up of some
@@ -434,7 +434,8 @@ z_ins_save
 ; because story_start will move depending on the result of this test. Maybe I'm
 ; getting confused, but I think the build system would have to be responsible
 ; for doing two trial builds.)
-!ifndef ACORN_SWR_BIG_DYNMEM {
+; SFTODO: Comment a bit outdated now we have medium model
+!ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
 }
 
@@ -739,7 +740,7 @@ save_game
     jsr .get_filename
     beq .save_restore_game_cleanup_partial_indirect ; user aborted
 
-!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; Now we know we won't be doing a partial cleanup, we can page in the SWR
     ; bank containing dynamic memory, so the load/save can see it. We don't need
     ; to explicitly undo this; calling get_page_at_z_pc with zp_pc_h set to $ff
@@ -835,12 +836,32 @@ save_game
     sta .osgbpb_data_ptr
     lda #>stack_start
     sta .osgbpb_data_ptr + 1
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
+    ; Save the stack and dynamic memory in one go, as they're adjacent.
 .non_zp_length = stack_size + ACORN_DYNAMIC_SIZE_BYTES
     lda #<.non_zp_length
     sta .osgbpb_length
     lda #>.non_zp_length
     sta .osgbpb_length + 1
     jsr .osgbpb_save_or_load
+} else {
+    ; Save the stack.
+    lda #<stack_size
+    sta .osgbpb_length
+    lda #>stack_size
+    sta .osgbpb_length + 1
+    jsr .osgbpb_save_or_load
+    ; Save the dynamic memory.
+    lda #<story_start
+    sta .osgbpb_data_ptr
+    lda #>story_start
+    sta .osgbpb_data_ptr + 1
+    lda #<ACORN_DYNAMIC_SIZE_BYTES
+    sta .osgbpb_length
+    lda #>ACORN_DYNAMIC_SIZE_BYTES
+    sta .osgbpb_length + 1
+    jsr .osgbpb_save_or_load
+}
     jsr close_osgbpb_block_handle
 }
     lda #1

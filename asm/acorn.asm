@@ -1674,25 +1674,29 @@ SFTODOLABEL4
 }
 .all_loading_done
 
-!ifdef ACORN_SWR {
-    ; The load loop may have left the last bank of sideways RAM paged in; we
-    ; need to page the default bank back in. SFTODO: I am not sure this is
-    ; necessary, as we should page in the right bank when we first try to get
-    ; the page containing the initial Z-machine PC, but it doesn't really hurt
-    ; to do this anyway.
-    +acorn_swr_page_in_default_bank_using_y ; SFTODO: Should prob remove _swr_ from this macro for consistency
-}
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
 
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+    +acorn_page_in_bank_using_a dynmem_ram_bank
+}
     lda #0
     ldx #<story_start
     ldy #>story_start
     jsr calculate_crc ; corrupts some zp_temp locations
     stx game_disc_crc
     sty game_disc_crc + 1
+
+!ifdef ACORN_SWR {
+    ; The load loop or the above CRC may have left a non-defaultbank of sideways
+    ; RAM paged in; we need to page the default bank back in. SFTODO: I am not
+    ; sure this is necessary, as we should page in the right bank when we first
+    ; try to get the page containing the initial Z-machine PC, but it doesn't
+    ; really hurt to do this anyway.
+    +acorn_swr_page_in_default_bank_using_y ; SFTODO: Should prob remove _swr_ from this macro for consistency
+}
 } ; End of acorn_deletable_init_inline
 
 ; SFTODO: Move this to be with the other paging macros?
@@ -2085,3 +2089,5 @@ do_oswrch_vdu_goto_xy
 ; SFTODO: If the bigdyn model where Z-machine PC bank is paged in by default works out, it may be a worthwhile saving for global variable accesses to avoid paging in the dynmem bank if we know the global variables live below $8000. ("know" might ultimately mean an initialisation-time check and dynamic code patching, but before that it might mean a cheap check in the code doing the global var access to avoid the paging. although the paging is maybe - do the cycle counting - cheap enough that by the time we do even a cheap check, we're not going to come out ahead.)
 
 }
+
+; SFTODO: Once things settle down and I don't have immediate plans to add new features, it would be good to look for opportunities to shrink the code - particularly on builds for smaller machines - as squeezing out an extra one or two 512 byte blocks of vmem cache in main RAM might make all the difference. Due to alignment it doesn't always need that much, a few bytes may tip it over the next alignment boundary.
