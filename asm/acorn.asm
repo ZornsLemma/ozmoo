@@ -215,9 +215,6 @@
 ; Dynamic memory reads which aren't performance critical use this macro, which
 ; calls a subroutine instead of inlining the code. We need to call a different
 ; version of the subroutine for each zero page address.
-; SFTODONOW: The subroutines take up a surprisingly large chunk of memory - IIRC
-; over 400 bytes on an Electron. If these really aren't performance critical it
-; may be better to write them to use zp,x addressing to avoid duplication.
 !macro lda_dynmem_ind_y_slow .zp {
     !if .zp = object_tree_ptr {
         jsr lda_dynmem_ind_y_slow_object_tree_ptr_sub
@@ -484,7 +481,6 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 ; don't modify any registers or flags (except I), but that would cost time
 ; and space on the Acorn port.
 
-; SFTODONOW: Don't forget these macros will "hide" some paging operations in the acme report, when assessing space and time impact of the paging macros.
 !macro before_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     +acorn_page_in_bank_using_a dynmem_ram_bank
@@ -515,7 +511,7 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 }
 
-; SFTODONOW: A lot of the after_dynmem_*_slow calls are followed by rts; it may be worth introducing special wrappers to do after_dynmem_*+rts, it is a bit of extra complexity but not much and it would save time and space on bigdyn builds at a small complexity cost for other builds
+; SFTODO: A lot of the after_dynmem_*_slow calls are followed by rts; it may be worth introducing special wrappers to do after_dynmem_*+rts, it is a bit of extra complexity but not much and it would save time and space on bigdyn builds at a small complexity cost for other builds
 !macro after_dynmem_read_corrupt_a_slow {
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     jsr after_dynmem_read_corrupt_a_slow_sub
@@ -1922,7 +1918,7 @@ setjmp
     bne -
 +   
 !ifdef ACORN_SWR {
-    ; SFTODONOW: This could use a "slow" version of the paging macro, but it would be the
+    ; SFTODO: This could use a "slow" version of the paging macro, but it would be the
     ; only such user with this ram bank so probably no point?
     +acorn_page_in_bank_using_a jmp_buf_ram_bank
 }
