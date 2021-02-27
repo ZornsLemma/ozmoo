@@ -29,19 +29,19 @@ ON ERROR PROCerror
 
 A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
 !ifndef SPLASH {
-REM With third-party shadow RAM on an Electron or BBC B, we *may* experience
-REM corruption of memory from &3000 upwards when changing between shadow and
-REM non-shadow modes. Normally !BOOT selects a shadow mode to avoid this
-REM problem, but as a fallback (e.g. if we've been copied to a hard drive and
-REM our !BOOT isn't in use any more) we re-execute ourself after switching to
-REM shadow mode if we're not already in a shadow mode. This line of the program
-REM will almost certainly be below &3000 so won't be corrupted by the switch.
-IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
+    REM With third-party shadow RAM on an Electron or BBC B, we *may* experience
+    REM corruption of memory from &3000 upwards when changing between shadow and
+    REM non-shadow modes. Normally !BOOT selects a shadow mode to avoid this
+    REM problem, but as a fallback (e.g. if we've been copied to a hard drive and
+    REM our !BOOT isn't in use any more) we re-execute ourself after switching to
+    REM shadow mode if we're not already in a shadow mode. This line of the program
+    REM will almost certainly be below &3000 so won't be corrupted by the switch.
+    IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 } else {
-REM If we have a splash screen, the preloader has taken care of these issues.
-REM We might be very tight for memory though; if we are, change to mode 135
-REM early.
-IF HIMEM-TOP<512 THEN MODE 135:VDU 23,1,0;0;0;0;
+    REM If we have a splash screen, the preloader has taken care of these issues.
+    REM We might be very tight for memory though; if we are, change to mode 135
+    REM early.
+    IF HIMEM-TOP<512 THEN MODE 135:VDU 23,1,0;0;0;0;
 }
 
 REM In a few places in the loader (not the Ozmoo binary) we assume printing at
@@ -87,22 +87,22 @@ die_top_y=VPOS
 PROCchoose_version_and_check_ram
 
 !ifdef SPLASH {
-REM Flush the keyboard buffer to reduce confusion if the user held down SPACE
-REM or RETURN for a while in order to dismiss the loader screen.
-*FX21
+    REM Flush the keyboard buffer to reduce confusion if the user held down SPACE
+    REM or RETURN for a while in order to dismiss the loader screen.
+    *FX21
 }
 
 !ifdef AUTO_START {
-IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
-mode_keys_vpos=VPOS:PROCshow_mode_keys
+    IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
+    mode_keys_vpos=VPOS:PROCshow_mode_keys
 } else {
-IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
+    IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
 IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
 PRINTTAB(0,space_y);CHR$normal_fg;"Loading, please wait...                ";
 !ifdef CACHE2P_BINARY {
-IF tube THEN */${CACHE2P_BINARY}
+    IF tube THEN */${CACHE2P_BINARY}
 }
 fs=FNfs
 IF fs<>4 THEN path$=FNpath
@@ -143,7 +143,7 @@ IF POS=0 THEN VDU 30,11 ELSE VDU 30
 PRINT "${TITLE}";:IF POS>0 THEN PRINT
 PRINTSTRING$(40,CHR$128);
 !ifdef SUBTITLE {
-PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
+    PRINT "${SUBTITLE}";:IF POS>0 THEN PRINT
 }
 PRINT:space_y=22
 ENDPROC
@@ -158,9 +158,9 @@ ENDPROC
 DEF PROCchoose_version_and_check_ram
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
-IF tube THEN binary$="${OZMOO2P_BINARY}":ENDPROC
+    IF tube THEN binary$="${OZMOO2P_BINARY}":ENDPROC
 } else {
-IF tube THEN PROCunsupported_machine("a second processor")
+    IF tube THEN PROCunsupported_machine("a second processor")
 }
 PROCchoose_non_tube_version
 
@@ -186,118 +186,117 @@ IF free_ram<0 THEN PROCdie_ram(-free_ram,"main or sideways RAM")
 ENDPROC
 
 DEF PROCchoose_non_tube_version
-REM SFTODO: Can/should I indent these ifdefs? I believe the build system would
-REM strip leading spaces off so there'd be no runtime penalty.
 !ifdef ONLY_80_COLUMN {
-IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
+    IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
 }
 !ifdef OZMOOE_BINARY {
-IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:medium_dynmem=${OZMOOE_SWR_MEDIUM_DYNMEM}:ENDPROC
+    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:medium_dynmem=${OZMOOE_SWR_MEDIUM_DYNMEM}:ENDPROC
 } else {
-IF electron THEN PROCunsupported_machine("an Electron")
+    IF electron THEN PROCunsupported_machine("an Electron")
 }
+REM SFTODO: Should I make the loader support some sort of line-continuation character, then I could split up some of these very long lines?
 !ifdef OZMOOSH_BINARY {
-IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:medium_dynmem=${OZMOOSH_SWR_MEDIUM_DYNMEM}:ENDPROC
+    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:medium_dynmem=${OZMOOSH_SWR_MEDIUM_DYNMEM}:ENDPROC
 } else {
-REM If - although I don't believe this is currently possible - we don't have
-REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
-REM BBC.
-!ifndef OZMOOB_BINARY {
-IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
-}
+    REM If - although I don't believe this is currently possible - we don't have
+    REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
+    REM BBC.
+    !ifndef OZMOOB_BINARY {
+        IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
+    }
 }
 !ifdef OZMOOB_BINARY {
-binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:medium_dynmem=${OZMOOB_SWR_MEDIUM_DYNMEM}
+    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:medium_dynmem=${OZMOOB_SWR_MEDIUM_DYNMEM}
 } else {
-!ifdef OZMOOSH_BINARY {
-PROCunsupported_machine("a BBC B without shadow RAM")
-} else {
-PROCunsupported_machine("a BBC B")
-}
+    !ifdef OZMOOSH_BINARY {
+        PROCunsupported_machine("a BBC B without shadow RAM")
+    } else {
+        PROCunsupported_machine("a BBC B")
+    }
 }
 ENDPROC
 
 !ifndef AUTO_START {
-DEF PROCmode_menu
-DIM mode_x(8),mode_y(8)
-REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
-REM trouble than it's worth, because it's shown (with inserted "/" characters)
-REM on screen and for neatness we want it to be sorted into numerical order.
-!ifdef ONLY_80_COLUMN {
-max_x=1
-max_y=0
-DIM menu$(max_x,max_y),menu_x(max_x)
-menu$(0,0)="0) 80x32"
-menu$(1,0)="3) 80x25"
-mode_list$="03"
-}
-!ifdef ONLY_40_COLUMN {
-max_x=1
-max_y=1
-DIM menu$(max_x,max_y),menu_x(max_x)
-IF electron THEN max_y=0:menu$(0,0)="4) 40x32":menu$(1,0)="6) 40x25":mode_list$="46" ELSE menu$(0,0)="4) 40x32":menu$(0,1)="6) 40x25":menu$(1,0)="7) 40x25   ":menu$(1,1)="   teletext":mode_list$="467"
-}
-!ifdef NO_ONLY_COLUMN {
-max_x=2
-max_y=1
-DIM menu$(max_x,max_y),menu_x(max_x)
-menu$(0,0)="0) 80x32"
-menu$(0,1)="3) 80x25"
-menu$(1,0)="4) 40x32"
-menu$(1,1)="6) 40x25"
-menu$(2,0)="7) 40x25   "
-menu$(2,1)="   teletext"
-IF electron THEN max_x=1:mode_list$="0346" ELSE mode_list$="03467"
-}
-REM The y loop here is done in reverse as VAL(" ") is 0 and we want to get the
-REM second line of the mode 7 entry over with before it can corrupt the mode 0
-REM entry, which will always be in the first line if it's present.
-FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
-PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
-menu_top_y=VPOS
-IF max_x=2 THEN gutter=0 ELSE gutter=5
-FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
-mode_keys_vpos=menu_top_y+max_y+2
-mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
-x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE):PROCspace
-REPEAT
-old_x=x:old_y=y
-key=GET
-IF key=136 AND x>0 THEN x=x-1
-IF key=137 AND x<max_x THEN x=x+1
-IF key=138 AND y<max_y THEN y=y+1
-IF key=139 AND y>0 THEN y=y-1
-REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
-REM with cursor keys remembers the old y position.
-key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
-IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
-UNTIL FNhandle_common_key(key)
-ENDPROC
+    DEF PROCmode_menu
+    DIM mode_x(8),mode_y(8)
+    REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
+    REM trouble than it's worth, because it's shown (with inserted "/" characters)
+    REM on screen and for neatness we want it to be sorted into numerical order.
+    !ifdef ONLY_80_COLUMN {
+        max_x=1
+        max_y=0
+        DIM menu$(max_x,max_y),menu_x(max_x)
+        menu$(0,0)="0) 80x32"
+        menu$(1,0)="3) 80x25"
+        mode_list$="03"
+    }
+    !ifdef ONLY_40_COLUMN {
+        max_x=1
+        max_y=1
+        DIM menu$(max_x,max_y),menu_x(max_x)
+        IF electron THEN max_y=0:menu$(0,0)="4) 40x32":menu$(1,0)="6) 40x25":mode_list$="46" ELSE menu$(0,0)="4) 40x32":menu$(0,1)="6) 40x25":menu$(1,0)="7) 40x25   ":menu$(1,1)="   teletext":mode_list$="467"
+    }
+    !ifdef NO_ONLY_COLUMN {
+        max_x=2
+        max_y=1
+        DIM menu$(max_x,max_y),menu_x(max_x)
+        menu$(0,0)="0) 80x32"
+        menu$(0,1)="3) 80x25"
+        menu$(1,0)="4) 40x32"
+        menu$(1,1)="6) 40x25"
+        menu$(2,0)="7) 40x25   "
+        menu$(2,1)="   teletext"
+        IF electron THEN max_x=1:mode_list$="0346" ELSE mode_list$="03467"
+    }
+    REM The y loop here is done in reverse as VAL(" ") is 0 and we want to get the
+    REM second line of the mode 7 entry over with before it can corrupt the mode 0
+    REM entry, which will always be in the first line if it's present.
+    FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
+    PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
+    menu_top_y=VPOS
+    IF max_x=2 THEN gutter=0 ELSE gutter=5
+    FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
+    mode_keys_vpos=menu_top_y+max_y+2
+    mode$="${default_mode}":IF INSTR(mode_list$,mode$)=0 THEN mode$=RIGHT$(mode_list$,1)
+    x=mode_x(VALmode$):y=mode_y(VALmode$):PROChighlight(x,y,TRUE):PROCspace
+    REPEAT
+    old_x=x:old_y=y
+    key=GET
+    IF key=136 AND x>0 THEN x=x-1
+    IF key=137 AND x<max_x THEN x=x+1
+    IF key=138 AND y<max_y THEN y=y+1
+    IF key=139 AND y>0 THEN y=y-1
+    REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
+    REM with cursor keys remembers the old y position.
+    key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
+    IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+    UNTIL FNhandle_common_key(key)
+    ENDPROC
 
-DEF FNhandle_common_key(key)
-IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
-IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
-=key=32 OR key=13
+    DEF FNhandle_common_key(key)
+    IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
+    IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
+    =key=32 OR key=13
 
-DEF PROChighlight(x,y,on)
-IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
-IF on THEN PROCshow_mode_keys
-IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
-IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
-DEF PROChighlight_internal(x,y,on)
-REM We put the "normal background" code in at the right hand side first before
-REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
-REM to reduce visual glitches.
-IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
-PRINTTAB(menu_x(x)-1,menu_top_y+y);
-IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
-ENDPROC
-DEF PROChighlight_internal_electron(x,y,on)
-PRINTTAB(menu_x(x),menu_top_y+y);
-IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
-PRINT SPC(2);menu$(x,y);SPC(2);
-COLOUR 128:COLOUR 7
-ENDPROC
+    DEF PROChighlight(x,y,on)
+    IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
+    IF on THEN PROCshow_mode_keys
+    IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
+    IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
+    DEF PROChighlight_internal(x,y,on)
+    REM We put the "normal background" code in at the right hand side first before
+    REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
+    REM to reduce visual glitches.
+    IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
+    PRINTTAB(menu_x(x)-1,menu_top_y+y);
+    IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
+    ENDPROC
+    DEF PROChighlight_internal_electron(x,y,on)
+    PRINTTAB(menu_x(x),menu_top_y+y);
+    IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
+    PRINT SPC(2);menu$(x,y);SPC(2);
+    COLOUR 128:COLOUR 7
+    ENDPROC
 }
 
 REM This is not a completely general pretty-print routine, e.g. it doesn't make
@@ -348,7 +347,7 @@ RTS
 turbo=(USR(block%+1) AND &FF)=0
 IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
 !ifdef ACORN_TURBO_SUPPORTED {
-?${is_turbo}=turbo:REM we only care about bit 7 being set
+    ?${is_turbo}=turbo:REM we only care about bit 7 being set
 }
 ENDPROC
 
