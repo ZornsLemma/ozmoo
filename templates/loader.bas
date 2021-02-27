@@ -166,42 +166,48 @@ PROCchoose_non_tube_version
 
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
-REM SFTODONOW: The Electron code here is likely to go away soon; the Electron is just like a BBC B which happens to have a larger screen now.
-REM SFTODO: This code needs to take account of memory used by the screen on non-shadow machines. For the moment this is handled entirely by the build script, but later it may need special handling here.
-REM SFTODO: We shouldn't emit this block of code if we *only* support tube.
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-REM SFTODO: If all builds are now relocatable, I can simplify things a bit (here and in build script) by not allowing for non-relocatable builds. (Tube build is not relocatable, but that's irrelevant as this code is only for non-tube.)
-IF relocatable THEN extra_main_ram=max_page-PAGE:p=PAGE:?${ozmoo_relocate_target}=p DIV 256 ELSE extra_main_ram=0
-swr_dynmem_needed=swr_dynmem_needed-&4000*?${ram_bank_count}
-REM On the BBC extra_main_ram will reduce the need for sideways RAM for dynamic
-REM memory, but on the Electron it is used as swappable memory only.
-vmem_needed=${MIN_VMEM_BYTES}-extra_main_ram
-IF electron AND swr_dynmem_needed>0 THEN PROCdie_ram(swr_dynmem_needed+FNmax(vmem_needed,0),"sideways RAM")
-mem_needed=swr_dynmem_needed+vmem_needed
-IF mem_needed>0 THEN PROCdie_ram(mem_needed,"main or sideways RAM")
+extra_main_ram=max_page-PAGE:p=PAGE:?${ozmoo_relocate_target}=p DIV 256
+REM Small dynamic memory model builds must have enough main RAM free for dynamic
+REM memory, but the build system takes care of this by knowing the worst-case
+REM start of screen RAM and choosing max_page accordingly. SFTODO: This won't be
+REM true once we allow runtime choice of screen mode; the loader will have to be
+REM involved in the decision.
+swr_size=&4000*?${ram_bank_count}
+REM Builds using the medium dynamic memory model must have enough sideways RAM
+REM for dynamic memory.
+IF medium_dynmem AND swr_dynmem_needed>swr_size THEN PROCdie_ram(swr_dynmem_needed,"sideways RAM")
+REM At this point, we need enough main and/or sideways RAM for swr_dynmem_needed
+REM and the minimum vmem cache.
+free_ram=swr_size+extra_main_ram-swr_dynmem_needed-${MIN_VMEM_BYTES}
+IF free_ram<0 THEN PROCdie_ram(-free_ram,"main or sideways RAM")
 ENDPROC
 
 DEF PROCchoose_non_tube_version
+REM SFTODO: Can/should I indent these ifdefs? I believe the build system would
+REM strip leading spaces off so there'd be no runtime penalty.
 !ifdef ONLY_80_COLUMN {
 IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
 }
 !ifdef OZMOOE_BINARY {
-IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:relocatable=${OZMOOE_RELOCATABLE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:ENDPROC
+IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:medium_dynmem=${OZMOOE_SWR_MEDIUM_DYNMEM}:ENDPROC
 } else {
 IF electron THEN PROCunsupported_machine("an Electron")
 }
 !ifdef OZMOOSH_BINARY {
-IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:relocatable=${OZMOOSH_RELOCATABLE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:ENDPROC
+IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:medium_dynmem=${OZMOOSH_SWR_MEDIUM_DYNMEM}:ENDPROC
 } else {
-REM OZMOOB_BINARY only works on a model B because of the mode-7-at-&3C00 trick,
-REM so if we don't have OZMOOSH_BINARY we must refuse to work on anything
-REM else. SFTODONOW: NO LONGER TRUE, THIS ALL NEEDS TWEAKING
+REM If - although I don't believe this is currently possible - we don't have
+REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
+REM BBC.
+!ifndef OZMOOB_BINARY {
 IF host_os<>1 THEN PROCunsupported_machine("a BBC B+/Master")
 }
+}
 !ifdef OZMOOB_BINARY {
-binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:relocatable=${OZMOOB_RELOCATABLE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}
+binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:medium_dynmem=${OZMOOB_SWR_MEDIUM_DYNMEM}
 } else {
 !ifdef OZMOOSH_BINARY {
 PROCunsupported_machine("a BBC B without shadow RAM")
@@ -420,4 +426,3 @@ REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 =s$
 
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
-REM SFTODONOW: FOR MEDIUM DYNMEM MODEL, I THINK THE LOADER NEEDS TO ADDITIONALLY CHECK THERE IS AT LEAST 16K OF SWR, AND THEN DO EXACTLY THE SAME CHECKS AS FOR OTHER MODELS - NOT QUITE, ON A MEDIUMDYN BUILD THE *ONLY* CHECKS ARE a) 16k SWR b) ENOUGH MEMORY IN TOTAL AFTER DYNMEM TO MEET THE MIN VMEM CACHE REQT

@@ -918,6 +918,7 @@ class OzmooExecutable(Executable):
         symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_addr)
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
+        symbols[self.leafname + "_SWR_MEDIUM_DYNMEM"] = basic_string("ACORN_SWR_MEDIUM_DYNMEM" in self.labels)
 
 
 def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = None):
