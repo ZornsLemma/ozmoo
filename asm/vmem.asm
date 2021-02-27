@@ -888,6 +888,23 @@ SFTODOLL8
 +	stx vmap_next_quick_index
 ++	jmp .index_found
 
+.timestamp_equal
+    ; SF: If vmap_z_h,x == vmem_oldest_age, consider this index if we haven't
+    ; yet found one. (This is mostly unnecessary, but VMEM_STRESS can easily
+    ; trigger this, and I believe it could in principle happen with more vmap
+    ; entries, although of course the more you have the less likely it becomes.
+    ; SFTODO: It might be worth mentioning this to upstream if it works out OK
+    ; here, although the Acorn port is more at risk, because there are
+    ; situations like a small game running on a B-no-SWR where we might end up
+    ; with a very small number of vmap entries.)
+    ; SFTODO: I don't believe this will significantly hit performance, but it
+    ; might be worth profiling it at some point. (We can just remove the branch
+    ; to this code, and it's very unlikely to break things.)
+    ldy vmem_oldest_index
+    iny
+    bne .try_next_index ; branch if vmem_oldest_index != $ff
+    beq .found_older ; always branch
+
 ; no index found, add last
 .no_such_block
 
@@ -930,31 +947,20 @@ SFTODOLL8
 	sta vmap_temp + 2
 
 	; Store very recent oldest_age so the first valid index in the following
-	; loop will be picked as the first candidate.
+	; loop will be picked as the first candidate. SFTODO: COMMENT IS OUT OF DATE NOW
 	lda #$ff
-!ifdef DEBUG {
 	sta vmem_oldest_index
-}
 	sta vmem_oldest_age
 	
 	; Check all indexes to find something older
 	ldx vmap_used_entries
 	dex
 -
-!ifdef VMEM_STRESS {
-    ; In the vmem stress test, we have very few blocks and it's possible they
-    ; all have timestamp $ff. The code assumes there will be at least one block
-    ; older than that, so we need to tweak the behaviour in this case.
-    ; SFTODONOW: Does this mean the build system should be creating a check for
-    ; more than just the bare minimum 2x512-byte blocks at runtime?
-    lda vmem_oldest_index
-    cmp #$ff
-    beq .no_index_found_yet
-}
  	lda vmap_z_h,x
 	cmp vmem_oldest_age
-	bcs +
-.no_index_found_yet
+    beq .timestamp_equal
+	bcs .try_next_index
+.found_older
 	; Found older
 	; Skip if z_pc points here; it could be in either page of the block.
 	ldy vmap_z_l,x
@@ -964,14 +970,15 @@ SFTODOLL8
 	tay
 	and #vmem_highbyte_mask
 	cmp vmap_temp + 1
-	beq +
+	beq .try_next_index
 	tya
 } else {
-	beq +
+	beq .try_next_index
 }
 ++	sta vmem_oldest_age
 	stx vmem_oldest_index
-+	dex
+.try_next_index
+	dex
 	cpx #$ff
 	bne -
 
