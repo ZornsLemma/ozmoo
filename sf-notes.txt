@@ -19,17 +19,18 @@ B+ 32K SWR meddyn					$004bf2 slightly worse than bigdyn
 B 32K SWR 8271 bigdyn					$004c3e
 B 32K SWR 8271 meddyn					$004af8 1.7% faster than 5.x bigdyn
 Electron Elkulator 16K SWR		$00c025		
-							$00b8a3			(3.9% faster, iffy)
+							$00b8a3	3.9% faster, iffy
 					22:05:48-22:43:21=2255s
 							18:14:23-18:51:12=2209s (2.0% faster)
-Electron Elkulator 16K SWR+shadow	$005677		$00524c			(4.8% faster, iffy)
+Electron Elkulator 16K SWR+shadow	$005677		$00524c	4.8% faster, iffy
 Electron Elkulator 16K SWR ADFS		$00fe96		$00ef5d
-MAME Electron 64K SWR bigdyn		TODO		$009f1e
-MAME Electron 64K SWR meddyn		        	$009ba8
+MAME Electron 64K SWR bigdyn		$00a535		$009f1e 3.7% faster, iffy
+MAME Electron 64K SWR meddyn		        	$009ba8 2.2% faster than 5.x bigdyn
 
 5.x Electron DFS build does have vmem_start at $4c00, so same as 4.x.
 
 I do wonder if meddyn is only an advantage on systems which are swapping so badly that in practice they're mostly unusable and/or the extra slowdown caused by bigdyn would be imperceptible. I can't help feeling that meddyn should offer a small improvement over bigdyn in general, since it avoids the need for the complex screen hole skipping code - I guess that would only manifest on a B or Electron though. OK, having added B 32K SWR timings above, I am seeing meddyn offering an advantage over bigdyn on a system not starved for RAM. It is tempting to not use meddyn on shadow builds, but the B+ 16K SWR timings do show an improvement, although this is *probably* due to reduced copying via bounce buffer and may in real use be swamped by disc access times and be imperceptible.
+- Am now also seeing an improvement on 64K electron for meddyn vs bigdyn, which would make sense since it has a screen hole
 
 
 
