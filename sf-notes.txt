@@ -8,12 +8,16 @@ B 144K SWR				$004a22
 B 144K SWR+256K turbo copro		$002328		
 M128 smalldyn				$00483f		
 M128 bigdyn				$004c0e		
+M128 meddyn
+M128 meddyn ADFS					$0049d8
 B+ 16K SWR 				$009852		
 Electron Elkulator 16K SWR		$00c025		
 							$00b8a3			(3.9% faster, iffy)
 					22:05:48-22:43:21=2255s
 							18:14:23-18:51:12=2209s (2.0% faster)
 Electron Elkulator 16K SWR+shadow	$005677		$00524c			(4.8% faster, iffy)
+Electron Elkulator 16K SWR ADFS				$
+TODO MAME ELECRTON WITH MORE SWR
 
 5.x Electron DFS build does have vmem_start at $4c00, so same as 4.x.
 

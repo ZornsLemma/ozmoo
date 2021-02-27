@@ -1109,12 +1109,12 @@ def make_boot():
     ]
     if cmd_args.splash_image:
         boot += [
-            'CLOSE #0:CHAIN "PRELOAD"'
+            'CHAIN "PRELOAD"'
         ]
     else:
         boot += [
             'MODE 135',
-            'CLOSE #0:CHAIN "LOADER"',
+            'CHAIN "LOADER"',
         ]
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 

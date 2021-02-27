@@ -7,6 +7,10 @@ MODE ${splash_mode}:VDU 23,1,0;0;0;0;
 *FX229,1
 *FX4,1
 
+REM See comment in loader.bas for more on this.
+*EXEC
+CLOSE #0
+
 tube=PAGE<&E00
 host_os=FNusr_osbyte_x(0,1,0)
 

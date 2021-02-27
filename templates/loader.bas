@@ -27,6 +27,17 @@ REM *not* the top half of some double-height text.)
 *FX4,1
 ON ERROR PROCerror
 
+REM We need to ensure the !BOOT file is cleanly closed. (SFTODO: Why, exactly?
+REM But I think we do.) We can't do CLOSE #0 in the last line of !BOOT because
+REM it doesn't work (sometimes; it's maddeningly variable) on a Master. We don't
+REM want to assume BASIC 2, so we can't do OSCLI "EXEC":CHAIN "BLAH" in !BOOT,
+REM so we do this instead. I don't know if the CLOSE #0 line is needed but it
+REM certainly doesn't hurt. See the discussion at
+REM https://stardot.org.uk/forums/viewtopic.php?f=54&t=19324 for some more
+REM details.
+*EXEC
+CLOSE #0
+
 A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
 !ifndef SPLASH {
     REM With third-party shadow RAM on an Electron or BBC B, we *may* experience
