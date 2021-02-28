@@ -826,7 +826,7 @@ screenkernal_init
     ; Determine the length of the DATA file in blocks.
     ldy #6
     lda (.dir_ptr),y
-    and #%110000
+    and #%00110000
     lsr
     lsr
     lsr
