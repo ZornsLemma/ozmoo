@@ -668,7 +668,7 @@ class Executable(object):
         def up(path):
             return os.path.join("..", path)
         cpu = "65c02" if "-DCMOS=1" in args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], None, lambda x: x.startswith("Warning"))
+        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], None, lambda x: x.startswith(b"Warning"))
         os.chdir("..")
         self.labels = self._parse_labels()
 
