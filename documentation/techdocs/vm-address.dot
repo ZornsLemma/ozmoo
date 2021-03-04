@@ -1,13 +1,12 @@
 digraph memory {
-    graph [nodesep=1, label="TODO", fontsize=20, labelloc=t];
+    graph [nodesep=1, label="vmap_entry format for Z3 games in Ozmoo 4.x and 5.x", fontsize=20, labelloc=t];
     forcelabels=true;
     node [shape=plaintext];
 
     zaddress [label=<
     <table border="0" cellborder="1" cellspacing="0">
         <tr>
-	    <td></td>
-	    <td>b17</td>
+	    <td border="0"></td>
 	    <td>b16</td>
 	    <td>b15</td>
 	    <td>b14</td>
@@ -45,7 +44,6 @@ digraph memory {
 	    <td>o</td>
 	    <td>p</td>
 	    <td>q</td>
-	    <td>r</td>
 	</tr>
 	<tr>
 	    <td>512-byte VM block Z-address</td>
@@ -57,7 +55,6 @@ digraph memory {
 	    <td>f</td>
 	    <td>g</td>
 	    <td>h</td>
-	    <td>i</td>
 	    <td>0</td>
 	    <td>0</td>
 	    <td>0</td>
@@ -73,8 +70,72 @@ digraph memory {
     vmap4 [label=<
     <table border="0" cellborder="1" cellspacing="0">
 	<tr>
+	    <td colspan="17" border="0">vmap entry format</td>
+	</tr>
+	<tr>
+	    <td border="0"></td>
+	    <td>b15</td>
+	    <td>b14</td>
+	    <td>b13</td>
+	    <td>b12</td>
+	    <td>b11</td>
+	    <td>b10</td>
+	    <td>b9</td>
+	    <td>b8</td>
+	    <td>b7</td>
+	    <td>b6</td>
+	    <td>b5</td>
+	    <td>b4</td>
+	    <td>b3</td>
+	    <td>b2</td>
+	    <td>b1</td>
+	    <td>b0</td>
+	</tr>
+	<tr>
+	    <td rowspan="2">Ozmoo 4.x</td>
 	    <td colspan="7">timestamp</td>
 	    <td colspan="9">block Z-address</td>
+	</tr>
+	<tr>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>a</td>
+	    <td>b</td>
+	    <td>c</td>
+	    <td>d</td>
+	    <td>e</td>
+	    <td>f</td>
+	    <td>g</td>
+	    <td>h</td>
+	    <td>0</td>
+	</tr>
+	<tr>
+	    <td rowspan="2">Ozmoo 5.x</td>
+	    <td colspan="8">timestamp</td>
+	    <td colspan="8">block Z-address</td>
+	</tr>
+	<tr>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>t</td>
+	    <td>a</td>
+	    <td>b</td>
+	    <td>c</td>
+	    <td>d</td>
+	    <td>e</td>
+	    <td>f</td>
+	    <td>g</td>
+	    <td>h</td>
 	</tr>
     </table>>];
 }
