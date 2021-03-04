@@ -1121,12 +1121,8 @@ load_suggested_pages
 	jsr $fd15 ; set I/O vectors
 	jsr $ff5b ; more init
     jmp ($a000)
-} else {
-; SFTODO: THIS MIGHT BE RIGHT, BUT CHECK
-clean_up_and_quit
-    +clean_up_and_quit_inline
 }
-	
+
 program_end
 
 ; SF: It can be helpful for testing paged RAM builds to burn some non-paged RAM.

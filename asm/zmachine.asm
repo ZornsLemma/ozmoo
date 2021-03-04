@@ -1166,7 +1166,7 @@ z_ins_quit
 }
 	jmp kernal_reset
 } else {
-    jmp clean_up_and_quit
+    +clean_up_and_quit_inline ; never returns
 }
 
 ; z_ins_restart (moved to disk.asm)
