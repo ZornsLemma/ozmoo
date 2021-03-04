@@ -614,16 +614,17 @@ deletable_init_start
     jsr do_osbyte_y_0
 }
 
+    ldx #0
+    stx mempointer
+!ifndef ACORN_SWR {
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
-    ldx #0
-    stx mempointer
+    ; X is already 0
     ldy #$ff
     jsr osbyte
     stx re_enter_language_ldx_imm + 1
 
-!ifndef ACORN_SWR {
     ; On a second processor, a soft break will transfer control back to our
     ; execution address. We will have thrown away our initialization code by
     ; that point and can't restart properly. In order to avoid random behaviour
@@ -1754,38 +1755,21 @@ SFTODOLABEL4
 } ; End of acorn_deletable_screen_init_2_inline
 
 !macro clean_up_and_quit_inline {
-    ; TODO: Should this print something like "[Press SPACE]", flush keyboard
-    ; buffer and wait for SPACE before continuing? Maybe also adding a blank
-    ; line of output before we call osbyte_enter_language for neatness. Apart
-    ; from looking nicer, this might have a useful gameplay function as entering
-    ; BASIC could cause text to scroll which the user hasn't read yet, whereas
-    ; our "[Press SPACE]" prompt would be done under control of Ozmoo's paging.
-    ; SFTODO: At least once, in HHGTTG SG, returning to BASIC when dead after
-    ; the house being demolished gave me the BASIC prompt at the top left of an
-    ; un-cleared screen when I chose QUIT. Is this a bug? Or at least an
-    ; unfortunate glitch I should do something to try to avoid.
-    jsr set_os_normal_video
-    jsr turn_on_cursor
-    ldx #0
-    jsr do_osbyte_rw_escape_key
-!ifdef ACORN_CURSOR_PASS_THROUGH {
-    jsr do_osbyte_set_cursor_editing_x_0
+    lda #<.press_break_string
+    ldy #>.press_break_string
+    jsr printstring
+-   jmp -
+.press_break_string
+    !text cr, "[Press BREAK]", cr, 0
 }
-!ifdef ACORN_FUNCTION_KEY_PASS_THROUGH {
-    lda #osbyte_rw_function_key_status
-    ldx #1 ; default - expand as normal soft key
-    jsr do_osbyte_y_0
-    lda #osbyte_rw_shift_function_key_status
-    ldx #$80 ; default - generate $80+n
-    jsr do_osbyte_y_0
-}
+
+!ifndef ACORN_SWR {
     ; Re-enter the current language.
 re_enter_language
     lda #osbyte_enter_language
 re_enter_language_ldx_imm
     ldx #$ff
-    jsr osbyte
-    ; never returns
+    jsr osbyte ; never returns
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1817,7 +1801,7 @@ default_error_handler_newlines = 2
     ; We don't use print_following_string here because we don't want to assume
     ; Ozmoo's own printing mechanisms are properly initialized.
     jsr error_print_following_string
-    !text " - press BREAK",0
+    !text " - press BREAK",0 ; SFTODONOW CAN I SHARE THIS STRING WITH NEW BREAK CASE?
 -   jmp -
 
 ; Depending on what's happening when an error occurs, we need to output using
