@@ -91,6 +91,9 @@ digraph memory {
 	    <td>b1</td>
 	    <td>b0</td>
 	</tr>
+	<tr cellspacing="10">
+	    <td colspan="17" border="0"></td>
+	</tr>
 	<tr>
 	    <td rowspan="2">Ozmoo 4.x</td>
 	    <td colspan="7">timestamp</td>
@@ -113,6 +116,9 @@ digraph memory {
 	    <td>g</td>
 	    <td>h</td>
 	    <td>0</td>
+	</tr>
+	<tr cellspacing="10">
+	    <td colspan="17" border="0"></td>
 	</tr>
 	<tr>
 	    <td rowspan="2">Ozmoo 5.x</td>
