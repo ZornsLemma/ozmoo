@@ -27,7 +27,7 @@ zaddress [label=<
 	    <td>b0</td>
 	</tr>
 	<tr>
-	    <td>Z-address</td>
+	    <td align="right">arbitrary Z-address</td>
 	    <td bgcolor="gold1">a</td>
 	    <td bgcolor="gold1">b</td>
 	    <td bgcolor="gold1">c</td>
@@ -36,19 +36,18 @@ zaddress [label=<
 	    <td bgcolor="gold1">f</td>
 	    <td bgcolor="gold1">g</td>
 	    <td bgcolor="gold1">h</td>
-	    <!-- TODO: Should these be gold1? They *are* useful in a general address, just not in a block address -->
-	    <td bgcolor="firebrick1">i</td>
-	    <td bgcolor="firebrick1">j</td>
-	    <td bgcolor="firebrick1">k</td>
-	    <td bgcolor="firebrick1">l</td>
-	    <td bgcolor="firebrick1">m</td>
-	    <td bgcolor="firebrick1">n</td>
-	    <td bgcolor="firebrick1">o</td>
-	    <td bgcolor="firebrick1">p</td>
-	    <td bgcolor="firebrick1">q</td>
+	    <td bgcolor="gold1">i</td>
+	    <td bgcolor="gold1">j</td>
+	    <td bgcolor="gold1">k</td>
+	    <td bgcolor="gold1">l</td>
+	    <td bgcolor="gold1">m</td>
+	    <td bgcolor="gold1">n</td>
+	    <td bgcolor="gold1">o</td>
+	    <td bgcolor="gold1">p</td>
+	    <td bgcolor="gold1">q</td>
 	</tr>
 	<tr>
-	    <td>512-byte VM block Z-address</td>
+	    <td align="right">512-byte VM block Z-address</td>
 	    <td bgcolor="gold1">a</td>
 	    <td bgcolor="gold1">b</td>
 	    <td bgcolor="gold1">c</td>
