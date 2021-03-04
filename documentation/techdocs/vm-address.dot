@@ -2,8 +2,9 @@ digraph memory {
     graph [nodesep=1, label="vmap_entry format for Z3 games in Ozmoo 4.x and 5.x", fontsize=20, labelloc=t];
     forcelabels=true;
     node [shape=plaintext];
+    rankdir=TB;
 
-    zaddress [label=<
+zaddress [label=<
     <table border="0" cellborder="1" cellspacing="0">
         <tr>
 	    <td border="0"></td>
@@ -27,47 +28,48 @@ digraph memory {
 	</tr>
 	<tr>
 	    <td>Z-address</td>
-	    <td>a</td>
-	    <td>b</td>
-	    <td>c</td>
-	    <td>d</td>
-	    <td>e</td>
-	    <td>f</td>
-	    <td>g</td>
-	    <td>h</td>
-	    <td>i</td>
-	    <td>j</td>
-	    <td>k</td>
-	    <td>l</td>
-	    <td>m</td>
-	    <td>n</td>
-	    <td>o</td>
-	    <td>p</td>
-	    <td>q</td>
+	    <td bgcolor="gold1">a</td>
+	    <td bgcolor="gold1">b</td>
+	    <td bgcolor="gold1">c</td>
+	    <td bgcolor="gold1">d</td>
+	    <td bgcolor="gold1">e</td>
+	    <td bgcolor="gold1">f</td>
+	    <td bgcolor="gold1">g</td>
+	    <td bgcolor="gold1">h</td>
+	    <!-- TODO: Should these be gold1? They *are* useful in a general address, just not in a block address -->
+	    <td bgcolor="firebrick1">i</td>
+	    <td bgcolor="firebrick1">j</td>
+	    <td bgcolor="firebrick1">k</td>
+	    <td bgcolor="firebrick1">l</td>
+	    <td bgcolor="firebrick1">m</td>
+	    <td bgcolor="firebrick1">n</td>
+	    <td bgcolor="firebrick1">o</td>
+	    <td bgcolor="firebrick1">p</td>
+	    <td bgcolor="firebrick1">q</td>
 	</tr>
 	<tr>
 	    <td>512-byte VM block Z-address</td>
-	    <td>a</td>
-	    <td>b</td>
-	    <td>c</td>
-	    <td>d</td>
-	    <td>e</td>
-	    <td>f</td>
-	    <td>g</td>
-	    <td>h</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
-	    <td>0</td>
+	    <td bgcolor="gold1">a</td>
+	    <td bgcolor="gold1">b</td>
+	    <td bgcolor="gold1">c</td>
+	    <td bgcolor="gold1">d</td>
+	    <td bgcolor="gold1">e</td>
+	    <td bgcolor="gold1">f</td>
+	    <td bgcolor="gold1">g</td>
+	    <td bgcolor="gold1">h</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
+	    <td bgcolor="firebrick1">0</td>
 	</tr>
     </table>>];
 
-    vmap4 [label=<
+    vmap [label=<
     <table border="0" cellborder="1" cellspacing="0">
 	<tr>
 	    <td colspan="17" border="0">vmap entry format</td>
@@ -100,22 +102,22 @@ digraph memory {
 	    <td colspan="9">block Z-address</td>
 	</tr>
 	<tr>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>a</td>
-	    <td>b</td>
-	    <td>c</td>
-	    <td>d</td>
-	    <td>e</td>
-	    <td>f</td>
-	    <td>g</td>
-	    <td>h</td>
-	    <td>0</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="gold1">a</td>
+	    <td bgcolor="gold1">b</td>
+	    <td bgcolor="gold1">c</td>
+	    <td bgcolor="gold1">d</td>
+	    <td bgcolor="gold1">e</td>
+	    <td bgcolor="gold1">f</td>
+	    <td bgcolor="gold1">g</td>
+	    <td bgcolor="gold1">h</td>
+	    <td bgcolor="firebrick1">0</td>
 	</tr>
 	<tr cellspacing="10">
 	    <td colspan="17" border="0"></td>
@@ -126,22 +128,22 @@ digraph memory {
 	    <td colspan="8">block Z-address</td>
 	</tr>
 	<tr>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>t</td>
-	    <td>a</td>
-	    <td>b</td>
-	    <td>c</td>
-	    <td>d</td>
-	    <td>e</td>
-	    <td>f</td>
-	    <td>g</td>
-	    <td>h</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="deepskyblue1">t</td>
+	    <td bgcolor="gold1">a</td>
+	    <td bgcolor="gold1">b</td>
+	    <td bgcolor="gold1">c</td>
+	    <td bgcolor="gold1">d</td>
+	    <td bgcolor="gold1">e</td>
+	    <td bgcolor="gold1">f</td>
+	    <td bgcolor="gold1">g</td>
+	    <td bgcolor="gold1">h</td>
 	</tr>
     </table>>];
 }
