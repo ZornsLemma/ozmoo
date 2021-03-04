@@ -1,5 +1,5 @@
 digraph memory {
-    graph [nodesep=1, label="vmap_entry format for Z3 games in Ozmoo 4.x and 5.x", fontsize=20, labelloc=t];
+    graph [nodesep=1, label="vmap entry format for Z3 games in Ozmoo 4.x and 5.x", fontsize=20, labelloc=t];
     forcelabels=true;
     node [shape=plaintext];
     rankdir=TB;
