@@ -715,7 +715,16 @@ initial_vmap_z_l
 !macro acorn_init_code_in_stack {
 screenkernal_init
     +screenkernal_init_inline
+.screenkernal_init_rts
     rts
+
+update_progress_indicator ; SFTODO!
+    dec progress_indicator_blocks_left_in_chunk
+    bne .screenkernal_init_rts
+    lda progress_indicator_blocks_per_chunk
+    sta progress_indicator_blocks_left_in_chunk
+    lda #'x'
+    jmp oswrch
 }
 
 ; Initialization performed shortly after startup, just after
@@ -1286,6 +1295,7 @@ SFTODOLABEL5
     sta readblocks_mempos + 1
 +
 }
+    jsr update_progress_indicator
     jsr readblocks
     lda .blocks_to_read
     sec
@@ -1502,6 +1512,7 @@ SFTODOLABEL2
     sta osword_cache_index_offered + 1
 }
 .turbo_load_loop
+    jsr update_progress_indicator
     jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
@@ -1596,6 +1607,7 @@ SFTODOLABELX3
     sta vmap_z_l,y
     lda vmap_z_h,x
     sta vmap_z_h,y
+    jsr update_progress_indicator ; SFTODONOW WORTH FACTORING OUT THESE TWO JSRS INTO A SINGLE SUBROUTINE? CAREFUL AS NOT ALL BUILDS INCLUDE ALL CALLS, SO IT MAY LOOK MORE USEFUL THAN IT IS
     jsr load_blocks_from_index
     ldy to_index
     lda vmap_z_h,y
@@ -1653,6 +1665,7 @@ SFTODOLABELX3
     sta vmap_z_l,y
     lda vmap_z_h,x
     sta vmap_z_h,y
+    jsr update_progress_indicator
     jsr load_blocks_from_index
     inc from_index
     jmp .second_load_loop
@@ -1665,7 +1678,8 @@ SFTODOLABELX3
     ; Load the blocks in vmap.
     lda #0
     sta vmap_index
--   jsr load_blocks_from_index
+-   jsr update_progress_indicator
+    jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
     cmp vmap_max_entries
@@ -1691,7 +1705,7 @@ SFTODOLABEL4
     sty game_disc_crc + 1
 
 !ifdef ACORN_SWR {
-    ; The load loop or the above CRC may have left a non-defaultbank of sideways
+    ; The load loop or the above CRC may have left a non-default bank of sideways
     ; RAM paged in; we need to page the default bank back in. SFTODO: I am not
     ; sure this is necessary, as we should page in the right bank when we first
     ; try to get the page containing the initial Z-machine PC, but it doesn't
