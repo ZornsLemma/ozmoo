@@ -79,8 +79,8 @@ MODE 135:VDU 23,1,0;0;0;0;
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
 
-normal_fg=${NORMAL_FG}:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
-IF electron THEN normal_fg=0:header_fg=0:electron_space=32
+normal_fg=${NORMAL_FG}:normal_graphics_fg=normal_fg+16:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
+IF electron THEN normal_fg=0:normal_graphics_fg=0:header_fg=0:electron_space=32
 
 REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
 REM second processor and the game fits entirely in RAM or the host cache isn't
@@ -111,7 +111,9 @@ PROCchoose_version_and_check_ram
 }
 
 IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
-PRINTTAB(0,space_y);CHR$normal_fg;"Loading, please wait...                ";
+PRINTTAB(0,space_y);CHR$normal_fg;"Loading:";:pos=POS:PRINT "                               ";
+REM Leave the cursor positioned ready for the loading progress indicator.
+PRINTTAB(pos,space_y);CHR$normal_graphics_fg;
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
 }
@@ -148,7 +150,7 @@ DEF PROCfinalise
 END
 
 DEF PROCelectron_header_footer
-VDU 23,128,0;0,255,255,0,0;
+VDU 23,128,0;0,255,255,0,0;23,255,-1;-1;-1;-1;
 PRINTTAB(0,23);STRING$(40,CHR$128);"${OZMOO}";
 IF POS=0 THEN VDU 30,11 ELSE VDU 30
 PRINT "${TITLE}";:IF POS>0 THEN PRINT

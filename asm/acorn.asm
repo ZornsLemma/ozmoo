@@ -1310,7 +1310,7 @@ update_progress_indicator ; SFTODO!
     bne .screenkernal_init_rts
     lda progress_indicator_blocks_per_chunk
     sta progress_indicator_blocks_left_in_chunk
-    lda #'x'
+    lda #255 ; solid block graphic
     jmp oswrch
 }
 
