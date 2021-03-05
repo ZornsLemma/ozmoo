@@ -1305,6 +1305,7 @@ screenkernal_init
 .screenkernal_init_rts
     rts
 
+    ; SFTODONOW: DON'T FORGET I NEED TO HAVE PROGRESS INDICATOR WORKING CORRECTLY ON RESTART TOO
 update_progress_indicator ; SFTODO!
     dec progress_indicator_blocks_left_in_chunk
     bne .screenkernal_init_rts
