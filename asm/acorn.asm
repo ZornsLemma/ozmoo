@@ -84,6 +84,25 @@
 ; ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 ; DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
+; Zero page allocations for the initial load of game data.
+; SFTODONOW DEAL WITH "DOT" PREFIX
+DOTdir_ptr = zp_temp ; 2 bytes
+DOTgame_blocks = zp_temp + 2 ; 2 bytes
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
+DOTcatalogue = story_start + 0x2000 ; SFTODONOW: +0x2000 IS A TEMP HACK TO WORK AROUND THE FACT THIS IS NOW BEING USED IN CODE WHICH MAY OVERLAP GAME DATA, NEED TO BE CAREFUL HERE - HOW MUCH SPACE ARE WE GUARANTEED TO HAVE AVAILABLE?
+} else {
+; story_start will be in sideways RAM; we could make this work, but we'd need to
+; make sure the right bank was paged in and it's simpler just to use
+; scratch_double_page. We can't simply always use that, because it doesn't exist
+; on second processor builds.
+DOTcatalogue = scratch_double_page
+}
+; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache loading code?
+vmap_sort_entries = vmem_temp ; 1 byte
+!ifdef ACORN_TUBE_CACHE {
+DOThost_cache_size = memory_buffer
+}
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Sideways RAM paging
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -702,52 +721,15 @@ deletable_init_start
     +init_readtime_inline
     jmp init_cursor_control
 
-; SFTODO: Don't forget more code can go here if it can be executed before we
-; start to put data at story_start.
-
-!ifdef VMEM {
-initial_vmap_z_l
-    !FILL vmap_max_size, 'V'
-}
-} ; End of acorn_init_code_overlapping_game_data_inline
-
-; Initialization subroutines which will be placed inside the Z-machine stack.
-!macro acorn_init_code_in_stack {
-screenkernal_init
-    +screenkernal_init_inline
-.screenkernal_init_rts
-    rts
-
-update_progress_indicator ; SFTODO!
-    dec progress_indicator_blocks_left_in_chunk
-    bne .screenkernal_init_rts
-    lda progress_indicator_blocks_per_chunk
-    sta progress_indicator_blocks_left_in_chunk
-    lda #'x'
-    jmp oswrch
-}
-
-; Initialization performed shortly after startup, just after
-; acorn_deletable_init_start. (The distinction is not that important on Acorn
-; as the Ozmoo executable itself doesn't generate a splash screen.)
-!macro acorn_deletable_init_inline {
+; Do as much as we can to prepare for the initial load of game data from disk,
+; without actually loading anything (which would overwrite this code).
+prepare_for_initial_load
 !ifdef TRACE_FLOPPY {
     ; Call streams_init so the tracing is able to show the readblocks calls
     ; performed here.
 	jsr streams_init
 }
 
-.dir_ptr = zp_temp ; 2 bytes
-.game_blocks = zp_temp + 2 ; 2 bytes
-!ifndef ACORN_SWR_MEDIUM_DYNMEM {
-.catalogue = story_start
-} else {
-; story_start will be in sideways RAM; we could make this work, but we'd need to
-; make sure the right bank was paged in and it's simpler just to use
-; scratch_double_page. We can't simply always use that, because it doesn't exist
-; on second processor builds.
-.catalogue = scratch_double_page
-}
 !ifndef ACORN_ADFS {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game.
@@ -761,14 +743,14 @@ update_progress_indicator ; SFTODO!
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    sta readblocks_mempos ; .catalogue is page-aligned
+    sta readblocks_mempos ; DOTcatalogue is page-aligned
 !ifdef ACORN_TURBO_SUPPORTED {
     ; In reality this is redundant but let's play it safe.
     sta readblocks_mempos + 2
 }
 }
-    lda #>.catalogue
-    sta .dir_ptr + 1
+    lda #>DOTcatalogue
+    sta DOTdir_ptr + 1
     sta readblocks_mempos + 1
     lda #0
     sta readblocks_base
@@ -779,12 +761,12 @@ update_progress_indicator ; SFTODO!
     ; correctly whether this is an ACORN_DSD build or not.
     jsr readblocks
     lda #8
-    sta .dir_ptr
+    sta DOTdir_ptr
 .find_file_loop
     ldy #0
     ldx #(-8 & $ff)
 .name_compare_loop
-    lda (.dir_ptr),y
+    lda (DOTdir_ptr),y
     ; The directory name will have the top bit set iff the file is locked; we
     ; don't care about that here, so we need to strip it off. It's harmless to
     ; just do this for all characters.
@@ -799,9 +781,9 @@ update_progress_indicator ; SFTODO!
     !text "DATA   $"
 .file_not_found
     clc
-    lda .dir_ptr
+    lda DOTdir_ptr
     adc #8
-    sta .dir_ptr
+    sta DOTdir_ptr
     bne .find_file_loop
     brk
     !byte 0
@@ -809,21 +791,21 @@ update_progress_indicator ; SFTODO!
     !byte 0
 .file_found
     ; We found the file's name using sector 0, we now want to look at the
-    ; corresponding part of sector 1. Adjust .dir_ptr for convenience.
-    inc .dir_ptr + 1
+    ; corresponding part of sector 1. Adjust DOTdir_ptr for convenience.
+    inc DOTdir_ptr + 1
     ; Determine the start sector of the DATA file and set readblocks_base.
     ldy #6
-    lda (.dir_ptr),y
+    lda (DOTdir_ptr),y
     and #$3
 !ifndef ACORN_DSD {
     sta readblocks_base + 1
     iny
-    lda (.dir_ptr),y
+    lda (DOTdir_ptr),y
     sta readblocks_base
 } else {
     sta dividend + 1
     iny
-    lda (.dir_ptr),y
+    lda (DOTdir_ptr),y
     sta dividend
     lda #0
     sta divisor + 1
@@ -835,45 +817,45 @@ update_progress_indicator ; SFTODO!
 }
     ; Determine the length of the DATA file in blocks.
     ldy #6
-    lda (.dir_ptr),y
+    lda (DOTdir_ptr),y
     and #%00110000
     lsr
     lsr
     lsr
     lsr
-    sta .game_blocks + 1 ; high byte of length in blocks
+    sta DOTgame_blocks + 1 ; high byte of length in blocks
     dey
-    lda (.dir_ptr),y
-    sta .game_blocks ; low byte of length in blocks
+    lda (DOTdir_ptr),y
+    sta DOTgame_blocks ; low byte of length in blocks
     dey
-    lda (.dir_ptr),y ; low byte of length in bytes
+    lda (DOTdir_ptr),y ; low byte of length in bytes
     beq +
-    inc .game_blocks
+    inc DOTgame_blocks
     bne +
-    inc .game_blocks + 1
+    inc DOTgame_blocks + 1
 +
 !ifdef ACORN_DSD {
     ; If this is a double-sided game, there will be *approximately* (definitely
     ; no more, possibly a track's worth of data less) the same amount of data
     ; on the second side. We don't look up :2.$.DATA and determine its length,
-    ; we just double .game_blocks. The absolute worst case here is we read a
+    ; we just double DOTgame_blocks. The absolute worst case here is we read a
     ; track's worth of junk which won't be accessed because it's past the end
     ; of the game.
-    asl .game_blocks
-    rol .game_blocks + 1
+    asl DOTgame_blocks
+    rol DOTgame_blocks + 1
 !ifndef VMEM {
-    ; If we don't have virtual memory, the logic below to cap .game_blocks at
-    ; .ram_blocks won't kick in. Since we don't have virtual memory, we know the
-    ; game will fit in RAM - but due to the doubling of .game_blocks we just did,
+    ; If we don't have virtual memory, the logic below to cap DOTgame_blocks at
+    ; DOTram_blocks won't kick in. Since we don't have virtual memory, we know the
+    ; game will fit in RAM - but due to the doubling of DOTgame_blocks we just did,
     ; it might be larger than RAM, causing us to read too much and corrupt
     ; things. TODO: If we simply passed in the game size as a build parameter
     ; this sort of thing would go away.
     lda #0
-    sta .game_blocks + 1
+    sta DOTgame_blocks + 1
     lda #>(flat_ramtop - story_start)
-    cmp .game_blocks
+    cmp DOTgame_blocks
     bcs +
-    sta .game_blocks
+    sta DOTgame_blocks
 +
 }
 }
@@ -897,40 +879,40 @@ update_progress_indicator ; SFTODO!
     bne +
     inc scratch_page + $c
 +   lda scratch_page + $b
-    sta .game_blocks
+    sta DOTgame_blocks
     lda scratch_page + $c
-    sta .game_blocks + 1
+    sta DOTgame_blocks + 1
 }
 
-    ; If .game_blocks is odd, increment it by one so the game data is always
+    ; If DOTgame_blocks is odd, increment it by one so the game data is always
     ; considered to be a multiple of 512 bytes. This avoids having to worry
     ; about some corner cases and doesn't cause any problems; on DFS we're doing
     ; raw sector reads and the extra sector will always exist, on ADFS we may try
     ; to do a 512-byte read when only 256 bytes are available but that's fine.
-    lda .game_blocks
+    lda DOTgame_blocks
     and #1
     beq +
-    inc .game_blocks
+    inc DOTgame_blocks
     bne +
-    inc .game_blocks + 1
+    inc DOTgame_blocks + 1
 +
 
 !ifdef VMEM {
-.ram_blocks = .dir_ptr ; 2 bytes
+DOTram_blocks = DOTdir_ptr ; 2 bytes
 
     ; How much RAM do we have available for game data?
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
-    sta .ram_blocks + 1
+    sta DOTram_blocks + 1
 !ifdef ACORN_SWR {
     lda ram_bank_count
     ldx #6
 -   asl
-    rol .ram_blocks + 1
+    rol DOTram_blocks + 1
     dex
     bne -
 }
-    sta .ram_blocks
+    sta DOTram_blocks
 
 !ifdef ACORN_TUBE_CACHE {
     ; We have some blocks of cache in the host, which aren't directly accessible
@@ -938,13 +920,12 @@ update_progress_indicator ; SFTODO!
     ; preloading if we're on a normal second processor. We count them for now so
     ; we process more of the initial vmap and fix up the inflated value of
     ; vmap_max_entries later.
-.host_cache_size = memory_buffer
     lda screen_mode
     ora #128 ; force shadow mode on
     tax
     lda #osbyte_initialise_cache
     jsr osbyte
-    stx .host_cache_size
+    stx DOThost_cache_size
 !ifdef ACORN_TURBO_SUPPORTED {
     ; A turbo second processor has enough RAM to preload everything in vmap
     ; without touching the host cache. The host cache will still work, but we
@@ -956,8 +937,8 @@ update_progress_indicator ; SFTODO!
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
-    rol .ram_blocks + 1
-    sta .ram_blocks
+    rol DOTram_blocks + 1
+    sta DOTram_blocks
 .host_cache_initialised
 SFTODOLABELX1
 }
@@ -967,8 +948,8 @@ SFTODOLABELX1
     ; virtual memory cache.
     bit is_turbo
     bpl .dont_count_turbo_ram
-    inc .ram_blocks + 1
-    inc .ram_blocks + 1
+    inc DOTram_blocks + 1
+    inc DOTram_blocks + 1
 .dont_count_turbo_ram
 }
 
@@ -985,10 +966,10 @@ SFTODOLABELX1
     sbc acorn_screen_hole_pages
 }
     clc
-    adc .ram_blocks
-    sta .ram_blocks
+    adc DOTram_blocks
+    sta DOTram_blocks
     bcc +
-    inc .ram_blocks + 1
+    inc DOTram_blocks + 1
 +
 
 !ifdef ACORN_SWR {
@@ -997,25 +978,25 @@ SFTODOLABELX1
     sta vmem_blocks_in_main_ram
 }
 
-    ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
+    ; DOTram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
-    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2*vmem_block_pagecount,
+    ; - DOTram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2*vmem_block_pagecount,
     ;   i.e. that we have enough RAM for the game's dynamic memory and two
     ;   512-byte blocks of virtual memory cache.
     ; - the game always has at least one block of non-dynamic memory.
 
     ; In order to avoid accessing nonexistent game data in an attempt to use all
-    ; that RAM, set .ram_blocks = min(.ram_blocks, .game_blocks).
+    ; that RAM, set DOTram_blocks = min(DOTram_blocks, DOTgame_blocks).
 SFTODOEE2
-    ldx .game_blocks + 1
-    lda .game_blocks
-    cpx .ram_blocks + 1
+    ldx DOTgame_blocks + 1
+    lda DOTgame_blocks
+    cpx DOTram_blocks + 1
     bne +
-    cmp .ram_blocks
+    cmp DOTram_blocks
 +   bcs +
-    stx .ram_blocks + 1
-    sta .ram_blocks
+    stx DOTram_blocks + 1
+    sta DOTram_blocks
 +
 
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
@@ -1046,18 +1027,18 @@ SFTODOEE2
     bit is_turbo
     bpl .no_turbo_dynmem_adjust
 SFTODOLABEL1
-    lda .game_blocks
+    lda DOTgame_blocks
     sec
     sbc #vmem_block_pagecount
     tax
-    lda .game_blocks + 1
+    lda DOTgame_blocks + 1
     sbc #0
     bne .available_blocks_is_smaller
     cpx #>(flat_ramtop - story_start)
-    bcc .game_blocks_is_smaller
+    bcc DOTgame_blocks_is_smaller
 .available_blocks_is_smaller
     ldx #>(flat_ramtop - story_start)
-.game_blocks_is_smaller
+DOTgame_blocks_is_smaller
     stx nonstored_blocks
 .no_turbo_dynmem_adjust
 }
@@ -1087,17 +1068,17 @@ SFTODOLABEL1
     sbc #>story_start
     sta .max_dynmem
 
-    ; If .game_blocks == .ram_blocks, we want to set nonstored_blocks as high as
+    ; If DOTgame_blocks == DOTram_blocks, we want to set nonstored_blocks as high as
     ; possible; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
-    ; faster dynamic memory code path. Set nonstored_blocks = min(.game_blocks -
+    ; faster dynamic memory code path. Set nonstored_blocks = min(DOTgame_blocks -
     ; vmem_block_pagecount, .max_dynmem).
-    ldy .ram_blocks + 1
-    lda .ram_blocks
-    cpy .game_blocks + 1
-    bne .game_blocks_ne_ram_blocks
-    cmp .game_blocks
-    bne .game_blocks_ne_ram_blocks
+    ldy DOTram_blocks + 1
+    lda DOTram_blocks
+    cpy DOTgame_blocks + 1
+    bne DOTgame_blocks_ne_ram_blocks
+    cmp DOTgame_blocks
+    bne DOTgame_blocks_ne_ram_blocks
     sec
     sbc #vmem_block_pagecount
     tax
@@ -1105,20 +1086,20 @@ SFTODOLABEL1
     sbc #0
     bne .max_dynmem_is_smaller
     cpx .max_dynmem
-    bcc .game_blocks_is_smaller
+    bcc DOTgame_blocks_is_smaller
 .max_dynmem_is_smaller
     ldx .max_dynmem
-.game_blocks_is_smaller
+DOTgame_blocks_is_smaller
     bne .dynmem_adjust_done ; Always branch
 
-.game_blocks_ne_ram_blocks
-    ; Note that we can't have .game_blocks < .ram_blocks because we reduced
-    ; .ram_blocks to match earlier, so .game_blocks > .ram_blocks. We don't want
+DOTgame_blocks_ne_ram_blocks
+    ; Note that we can't have DOTgame_blocks < DOTram_blocks because we reduced
+    ; DOTram_blocks to match earlier, so DOTgame_blocks > DOTram_blocks. We don't want
     ; to reduce flexibility by locking parts of the game into RAM instead of
     ; allowing the virtual memory system to choose what lives in RAM. It's only
     ; a clear win to increase nonstored_blocks if it brings otherwise unusable
     ; RAM into play. Set nonstored_blocks =
-    ; max(min(.ram_blocks - vmap_max_size * vmem_block_pagecount, .max_dynmem),
+    ; max(min(DOTram_blocks - vmap_max_size * vmem_block_pagecount, .max_dynmem),
     ;     ACORN_INITIAL_NONSTORED_BLOCKS)
 .min_lhs_sub = vmap_max_size * vmem_block_pagecount
     sec
@@ -1143,48 +1124,48 @@ SFTODOLABEL1
 }
 }
 
-    ; Set .ram_blocks -= nonstored_blocks, i.e. set .ram_blocks to the number of
+    ; Set DOTram_blocks -= nonstored_blocks, i.e. set DOTram_blocks to the number of
     ; RAM blocks we have available as virtual memory cache.
-    lda .ram_blocks
+    lda DOTram_blocks
     sec
     sbc nonstored_blocks
-    sta .ram_blocks
+    sta DOTram_blocks
     bcs +
-    dec .ram_blocks + 1
+    dec DOTram_blocks + 1
 +
     ; SFTODO: REVIEW ALL THE FOLLOWING FRESH, ESP "NEW" SWR CASE
-    ; It's important .ram_blocks >= vmem_block_pagecount now so that we will set
+    ; It's important DOTram_blocks >= vmem_block_pagecount now so that we will set
     ; vmap_max_entries >= 1 below. Conceptually it makes sense for
     ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
     ;
     ; The build system and loader work together to guarantee (initial)
-    ; .ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount.
+    ; DOTram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount.
     ; If nonstored_blocks has not been adjusted, there are two cases:
-    ; a) If we didn't set .ram_blocks = .game_blocks above, the build system and
-    ;    loader guarantee means we now have .ram_blocks >= 2 *
+    ; a) If we didn't set DOTram_blocks = DOTgame_blocks above, the build system and
+    ;    loader guarantee means we now have DOTram_blocks >= 2 *
     ;    vmem_block_pagecount. QED.
-    ; b) If we did set .ram_blocks = .game_blocks above, we know that the
+    ; b) If we did set DOTram_blocks = DOTgame_blocks above, we know that the
     ;    game has at least one block of non-dynamic memory, so before the
-    ;    subtraction we had .ram_blocks = .game_blocks >=
+    ;    subtraction we had DOTram_blocks = DOTgame_blocks >=
     ;    ACORN_INITIAL_NONSTORED_BLOCKS + vmem_block_pagecount. QED.
     ;
     ; On a turbo second processor, we may have adjusted nonstored_blocks. There are
     ; two cases:
-    ; a) If we didn't set .ram_blocks = .game_blocks above, as nonstored_blocks
+    ; a) If we didn't set DOTram_blocks = DOTgame_blocks above, as nonstored_blocks
     ;    lives in bank 0 and we also have banks 1 and 2 for virtual memory
-    ;    cache, after the subtraction we have .ram_blocks ~= 128K >=
+    ;    cache, after the subtraction we have DOTram_blocks ~= 128K >=
     ;    vmem_block_pagecount. QED.
-    ; b) If we did set .ram_blocks = .game_blocks above, combine that with the
+    ; b) If we did set DOTram_blocks = DOTgame_blocks above, combine that with the
     ;    fact the adjustment to nonstored_blocks left nonstored_blocks <=
-    ;    .game_blocks - vmem_block_pagecount. QED.
+    ;    DOTgame_blocks - vmem_block_pagecount. QED.
     ;
     ; On a sideways RAM build, we may have adjusted nonstored_blocks. There are
     ; two cases:
-    ; a) If we didn't set .ram_blocks = .game_blocks above, we either:
+    ; a) If we didn't set DOTram_blocks = DOTgame_blocks above, we either:
     ;    1) set nonstored_blocks = ACORN_INITIAL_NONSTORED_BLOCKS; see the "not
     ;       been adjusted" case above.
-    ;    2) set nonstored_blocks <= .ram_blocks - vmap_max_size *
-    ;       vmem_block_pagecount, so after the subtraction we have .ram_blocks
+    ;    2) set nonstored_blocks <= DOTram_blocks - vmap_max_size *
+    ;       vmem_block_pagecount, so after the subtraction we have DOTram_blocks
     ;       >= vmap_max_size * vmem_block_pagecount. QED
     ; b) exactly the same as for the turbo second processor
 }
@@ -1195,15 +1176,15 @@ SFTODOLABEL1
     ; to initialise it. SFTODO: BUT WE COULD MOVE IT INTO PAGE 4 AND INITIALISE IT IN DISCARDABLE INIT CODE (IE HERE)
 }
 
-    ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
+    ; Now set vmap_max_entries = min(DOTram_blocks / vmem_block_pagecount,
     ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
     ; (If we're in the ACORN_TUBE_CACHE case on a normal second processor, we
     ; have that much RAM in total but the number of vmap entries we can support
     ; is lower. It's convenient to work with this larger value while we do the
     ; initial load, then vmap_max_entries is fixed up later.)
     ldx #vmap_max_size
-    lda .ram_blocks
-    lsr .ram_blocks + 1
+    lda DOTram_blocks
+    lsr DOTram_blocks + 1
     bne .cap_at_vmap_max_size
     ror
     cmp #vmap_max_size
@@ -1212,8 +1193,6 @@ SFTODOLABEL1
 .cap_at_vmap_max_size
     stx vmap_max_entries
 
-    ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache case?
-vmap_sort_entries = vmem_temp ; 1 byte
 SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; If we've adjusted nonstored_blocks, we may need to sort more than
@@ -1241,6 +1220,38 @@ SFTODOLABEL5
     stx vmap_sort_entries
 }
 
+    rts
+
+; SFTODO: Don't forget more code can go here if it can be executed before we
+; start to put data at story_start.
+
+!ifdef VMEM {
+initial_vmap_z_l
+    !FILL vmap_max_size, 'V'
+}
+} ; End of acorn_init_code_overlapping_game_data_inline
+
+; Initialization subroutines which will be placed inside the Z-machine stack.
+!macro acorn_init_code_in_stack {
+screenkernal_init
+    +screenkernal_init_inline
+.screenkernal_init_rts
+    rts
+
+update_progress_indicator ; SFTODO!
+    dec progress_indicator_blocks_left_in_chunk
+    bne .screenkernal_init_rts
+    lda progress_indicator_blocks_per_chunk
+    sta progress_indicator_blocks_left_in_chunk
+    lda #'x'
+    jmp oswrch
+}
+
+; Initialization performed shortly after startup, just after
+; acorn_deletable_init_start. (The distinction is not that important on Acorn
+; as the Ozmoo executable itself doesn't generate a splash screen.)
+!macro acorn_deletable_init_inline {
+    jsr prepare_for_initial_load
     ; Load the nonstored blocks, or all the blocks if we're not using virtual
     ; memory. We don't need to worry about reading past the end of the game data
     ; here, because at worst we will read a final 512-byte block when we don't
@@ -1276,7 +1287,7 @@ SFTODOLABEL5
 !ifdef VMEM {
     lda nonstored_blocks
 } else {
-    lda .game_blocks
+    lda DOTgame_blocks
 }
     sta .blocks_to_read
 
@@ -1538,7 +1549,7 @@ SFTODOLABELX2
     ; SFTODO: Worth noting that here - and might be useful in some other code
     ; too - we are calculating using known-at-build-time values. I could
     ; potentially simplify/shorten the code in a few places by not treating this
-    ; dynamically, e.g. we wouldn't need the code to populate .game_blocks in
+    ; dynamically, e.g. we wouldn't need the code to populate DOTgame_blocks in
     ; the first place. (on SWR builds the dynmem growth optimisation means
     ; nonstored_blocks is not precisely known at build time, but that's not an
     ; issue for a tube build) This might also simplify some corner cases in the
@@ -1550,17 +1561,17 @@ SFTODOLABELX2
     lda vmap_max_entries
     sta inflated_vmap_max_entries
     lda #>(flat_ramtop - story_start)
-    ldx .game_blocks + 1
+    ldx DOTgame_blocks + 1
     bne +
-    cmp .game_blocks
+    cmp DOTgame_blocks
     bcc +
-    lda .game_blocks
+    lda DOTgame_blocks
 +   sec
     sbc nonstored_blocks
     lsr
     sta vmap_max_entries
     sta vmap_used_entries
-    ; Adjust .host_cache_size so the following load loop won't try to put "too
+    ; Adjust DOThost_cache_size so the following load loop won't try to put "too
     ; much" into the host cache; if this happens we might not have enough blocks
     ; to load into the local virtual memory cache and so some vmap entries would
     ; be present but not have actually been loaded. (This can happen because the
@@ -1572,7 +1583,7 @@ SFTODOLABELX3
     lda inflated_vmap_max_entries
     sec
     sbc vmap_max_entries
-    sta .host_cache_size
+    sta DOThost_cache_size
 
     ; We now need to load the inflated_vmap_max_entries blocks in the vmap from
     ; disk; vmap_max_entries blocks will go into our local memory as normal, the
@@ -1614,9 +1625,9 @@ SFTODOLABELX3
     ; and #$ff xor vmem_highbyte_mask ; not necessary as we're doing a >= test
     cmp #.cutover_timestamp + 1
     bcs .dont_put_in_cache
-+   ldx .host_cache_size
++   ldx DOThost_cache_size
     beq .dont_put_in_cache
-    dec .host_cache_size
+    dec DOThost_cache_size
     and #$ff xor vmem_highbyte_mask
     sta osword_cache_index_offered_timestamp_hint
     ; load_blocks_from_index will have set osword_cache_index_requested
