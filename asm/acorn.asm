@@ -102,6 +102,9 @@ vmap_sort_entries = vmem_temp ; 1 byte
 !ifdef ACORN_TUBE_CACHE {
 DOThost_cache_size = memory_buffer
 }
+!ifdef VMEM {
+DOTram_blocks = DOTdir_ptr ; 2 bytes
+}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Sideways RAM paging
@@ -898,8 +901,6 @@ prepare_for_initial_load
 +
 
 !ifdef VMEM {
-DOTram_blocks = DOTdir_ptr ; 2 bytes
-
     ; How much RAM do we have available for game data?
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
@@ -998,6 +999,10 @@ SFTODOEE2
     stx DOTram_blocks + 1
     sta DOTram_blocks
 +
+
+    ; Now we know how much data we are going to load (DOTram_blocks' worth), we can
+    ; calculate how many blocks correspond to each progress indicator position.
+    jsr init_progress_indicator
 
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
@@ -1218,8 +1223,70 @@ SFTODOLABEL5
 +
 }
     stx vmap_sort_entries
+} else { ; !VMEM
+    ; Now we know how much data we are going to load (DOTgame_blocks' worth), we can
+    ; calculate how many blocks correspond to each progress indicator position.
+    ; SFTODO: It would be possible to pre-calculate this at build time, but it's
+    ; probably best for consistency just to always use this code.
+    jsr init_progress_indicator
 }
 
+    rts
+
+; Initialise progress_indicator_blocks_left_in_chunk and
+; progress_indicator_blocks_per_chunk. This is only called once so we could
+; inline it, but since this code overlaps the game data we're not under that
+; much memory pressure and it's more readable to keep it separate.
+init_progress_indicator
+!ifdef VMEM {
+.blocks_to_load = DOTram_blocks
+} else {
+.blocks_to_load = DOTgame_blocks
+}
+    ; We haven't called screenkernal_init yet; that would be wrong because we might
+    ; be in mode 6/7 from the loader and not yet have changed into the final mode
+    ; for running the game. So we can't use s_screen_width here.
+    ;
+    ; Set divisor = screen_width - 1 - cursor_x; we like the fact there's a -1 in
+    ; there as it means we won't print in the final character position and therefore
+    ; don't have to worry about causing the screen to scroll. No one should have time
+    ; to notice the fact the last block is never filled in, and it's less ugly than
+    ; maybe letting the screen scroll. (SFTODO: Although in practice after a restart a
+    ; scroll is not particularly ugly, and the default loader screen doesn't place this
+    ; on the bottom line of the screen anyway. So maybe get rid of the - 1?)
+    lda #osbyte_read_cursor_position
+    jsr osbyte
+    stx divisor
+    lda #osbyte_read_vdu_variable
+    ldx #vdu_variable_text_window_bottom
+    jsr osbyte ; set Y=screen width - 1
+    tya
+    sec
+    sbc divisor
+    sta divisor
+    lda #0
+    sta divisor + 1
+    ; .blocks_to_load is expressed in 256-byte blocks, but loading is done in
+    ; 512-byte blocks, so divide .blocks_to_load by two.
+    lda .blocks_to_load + 1
+    lsr
+    sta dividend + 1
+    lda .blocks_to_load
+    ror
+    sta dividend
+SFTODOOOL
+    jsr divide16
+    ; We need to round the result up so we don't generate more progress
+    ; indicator blocks than will fit on the line. We don't care about the high
+    ; byte of the result; we will have at least 30 characters to play with, and
+    ; 30*255*512=3.7MB. We also know the high byte of the remainder will be 0 as
+    ; divisor was an 8-bit value.
+    ldx division_result
+    lda remainder
+    beq +
+    inx
++   stx progress_indicator_blocks_per_chunk
+    stx progress_indicator_blocks_left_in_chunk
     rts
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we

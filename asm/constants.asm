@@ -515,10 +515,10 @@ memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 filename_size = 49 ; this takes us from inside K% to end of W%
 game_data_filename_or_restart_command = $42f
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
-; The following two locations are only used during the initial data load when we
-; know jmp_buf is not going to used. SFTODONOW: CHECK THIS IS TRUE
-progress_indicator_blocks_per_chunk = jmp_buf ; 1 byte
-progress_indicator_blocks_left_in_chunk = jmp_buf + 1 ; 1 byte
+; The following two locations re-use game_disc_crc's storage; we only use them during
+; loading so we won't calculate the CRC until after we've finished with them.
+progress_indicator_blocks_per_chunk = game_disc_crc ; 1 byte
+progress_indicator_blocks_left_in_chunk = game_disc_crc + 1 ; 1 byte
 ; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf.
 
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
