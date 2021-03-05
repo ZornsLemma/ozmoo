@@ -1799,11 +1799,11 @@ default_error_handler_newlines = 2
     ; We don't use print_following_string here because we don't want to assume
     ; Ozmoo's own printing mechanisms are properly initialized.
     jsr error_print_following_string
-    !text cr
     ; The following string is re-used by clean_up_and_quit_inline; this means a
     ; slight compromise on the punctuation of the output here, but it's not a
     ; big deal and normally this message should never be visible.
 press_break_string
+    !text cr
     !text "[Press BREAK]", cr, 0
 -   jmp -
 
