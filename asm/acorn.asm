@@ -87,7 +87,7 @@
 dir_ptr = zp_temp ; 2 bytes
 game_blocks = zp_temp + 2 ; 2 bytes
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
-catalogue = story_start + 0x2000 ; SFTODONOW: +0x2000 IS A TEMP HACK TO WORK AROUND THE FACT THIS IS NOW BEING USED IN CODE WHICH MAY OVERLAP GAME DATA, NEED TO BE CAREFUL HERE - HOW MUCH SPACE ARE WE GUARANTEED TO HAVE AVAILABLE?
+catalogue = scratch_overlapping_game_start
 } else {
 ; story_start will be in sideways RAM; we could make this work, but we'd need to
 ; make sure the right bank was paged in and it's simpler just to use
