@@ -2224,3 +2224,5 @@ do_oswrch_vdu_goto_xy
 }
 
 ; SFTODO: Once things settle down and I don't have immediate plans to add new features, it would be good to look for opportunities to shrink the code - particularly on builds for smaller machines - as squeezing out an extra one or two 512 byte blocks of vmem cache in main RAM might make all the difference. Due to alignment it doesn't always need that much, a few bytes may tip it over the next alignment boundary.
+
+; SFTODO: It's maybe a bit hacky, but perhaps we could offer an option to use pages 9 and &A on a B/B+ and those plus pages &B and &C on a Master as vmem cache if the user wants.
