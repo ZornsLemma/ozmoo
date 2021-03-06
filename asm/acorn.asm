@@ -1737,7 +1737,7 @@ SFTODOLABELX3
     sta vmap_z_l,y
     lda vmap_z_h,x
     sta vmap_z_h,y
-    jsr update_progress_indicator ; SFTODONOW WORTH FACTORING OUT THESE TWO JSRS INTO A SINGLE SUBROUTINE? CAREFUL AS NOT ALL BUILDS INCLUDE ALL CALLS, SO IT MAY LOOK MORE USEFUL THAN IT IS
+    jsr update_progress_indicator
     jsr load_blocks_from_index
     ldy to_index
     lda vmap_z_h,y
@@ -1822,7 +1822,6 @@ SFTODOLABEL4
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
 
-;SFTODONOWHANG jmp SFTODONOWHANG
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
