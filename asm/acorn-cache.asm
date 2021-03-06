@@ -161,7 +161,8 @@ cache_entries_high = zp_temp ; 1 byte
 ;
 ; In practice a block ID of $ABCD will correspond to the 512-byte block of
 ; Z-machine address space starting at $ABCD00, but this code doesn't actually
-; care.
+; care. SFTODO: We still don't care, but this is not quite true on 5.x due to
+; shfited vmap entry.
 ;
 ; The implementation removes blocks from the cache when they are provided to the
 ; caller. This means that a block is either in this cache or in the caller's own
