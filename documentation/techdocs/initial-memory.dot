@@ -1,0 +1,30 @@
+digraph memory {
+    graph [nodesep=1, label="Acorn Ozmoo low RAM use during initialisation and play", fontsize=20, labelloc=t];
+    forcelabels=true;
+    node [shape=plaintext];
+
+    memory [label=<
+    <table border="0" cellspacing="0">
+	<tr>
+	    <td></td>
+	    <td border="1" colspan="2">...</td>
+	</tr>
+	<tr>
+	    <td align="text" valign="bottom"><sub>data_start ~= $3800</sub><br align="right" /></td>
+	    <td border="1" bgcolor="firebrick1">Initialisation code<br/>overlapping game data</td>
+	    <td border="1" bgcolor="seagreen1">Game data</td>
+	</tr>
+	<tr>
+	    <td align="text" valign="bottom"><sub>stack_start ~= $3400</sub><br align="right" /></td>
+	    <td border="1" bgcolor="gold1">Initialisation code<br/>in stack</td>
+	    <td border="1" bgcolor="seagreen1">Z-machine stack</td>
+	</tr>
+	<tr>
+	    <td align="text" valign="bottom"><sub>PAGE ~= $e00</sub><br align="right" /></td>
+	    <td border="1" colspan="2" bgcolor="seagreen1">Runtime code</td>
+	</tr>
+    </table>>];
+
+}
+
+# vi: sw=4 sts=4
