@@ -331,6 +331,11 @@ z_ins_restart
 
     ; Since we discarded our initialisation code on startup, we have to
     ; re-execute the Ozmoo binary from disc to restart.
+
+    ; The re-executed binary will display a loading progress bar, so put the
+    ; OS cursor in the right place ready for it.
+    jsr s_cursor_to_screenrowcolumn
+
 !ifndef ACORN_ADFS {
     ; On DFS, the loader puts the restart command at this address; this saves a
     ; tiny bit of space in the binary and (more importantly) means the binary

@@ -1252,22 +1252,47 @@ init_progress_indicator
 } else {
 .blocks_to_load = DOTgame_blocks
 }
-    ; Set divisor = screen_width - cursor_x. We don't worry about printing in
-    ; the rightmost column causing a scroll; unless the user has used a custom
-    ; title page *and* put the loading line on the bottom line of the screen
-    ; this won't happen from the loader, and if it happens during a restart it
-    ; won't look particularly ugly. SFTODO: CHECK THIS
+    ; If we're not on the bottom line of the screen, set divisor = screen_width
+    ; - cursor_x, otherwise set divisor = (screen_width - 1) - cursor_x. This
+    ; way we don't have to worry about causing a mildly ugly scroll if we print
+    ; in the bottom right position on the screen.
     ;
     ; (We haven't called screenkernal_init yet; that would be wrong because we
     ; might be in mode 6/7 from the loader and not yet have changed into the
     ; final mode for running the game. So we can't use s_screen_width here.)
     lda #osbyte_read_cursor_position
-    jsr osbyte ; set X=cursor X
+    jsr osbyte ; set X=cursor X, Y=cursor Y
+    cpx #0
+    bne .cursor_not_in_first_column
+    ; The cursor's in the first column, so this is a restart; the loader prints
+    ; the "Loading: " prefix for us but a restart doesn't, so do it now. By
+    ; doing this here instead of in the restart code, this can be discardable
+    ; init code.
+    ldx #<.loading_string
+    lda #>.loading_string
+    jsr printstring_os
+    lda #osbyte_read_screen_mode
+    jsr osbyte ; set Y=current screen mode
+    lda #' '
+    cpy #7
+    bne .not_mode_7
+    ; Text on the lower part of the screen is always white in mode 7, so we
+    ; follow suit with the graphics for the progress bar.
+    lda #mode_7_graphics_colour_base + 7
+.not_mode_7
+    jsr oswrch
+    lda #osbyte_read_cursor_position
+    jsr osbyte ; set X=cursor X, Y=cursor Y
+.cursor_not_in_first_column
     stx divisor
+    sty divisor + 1
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
-    jsr osbyte ; set Y=screen width - 1
+    jsr osbyte ; set X=screen_height - 1, Y=screen width - 1
+    cpx divisor + 1
+    beq .cursor_on_bottom_line
     iny
+.cursor_on_bottom_line
     tya
     sec
     sbc divisor
@@ -1298,6 +1323,9 @@ SFTODOOOL
     sta progress_indicator_blocks_per_chunk + 1
     sta progress_indicator_blocks_left_in_chunk + 1
     rts
+
+.loading_string
+    !text "Loading:", 0
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we
 ; start to put data at story_start.
