@@ -1244,6 +1244,9 @@ progress_indicator_fractional_bits=7
 ; build so we could make it a macro and inline it, but since this code overlaps
 ; the game data we're not under that much memory pressure and it's more readable
 ; to just use a subroutine.
+; SFTODO: It might be nice to use "half steps" to double the resolution of the
+; progress bar; we'd just need to alternate between "print a half-width
+; character" and "print backspace-then-full-width-character".
 init_progress_indicator
 !ifdef VMEM {
 .blocks_to_load = ram_blocks
