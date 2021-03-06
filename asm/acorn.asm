@@ -1,4 +1,3 @@
-; SFTODO: Note that if I do a graphical "loading bar", I need to "do something" to make it work when we're restarting rather than loading from the loading screen, and I also need to make it work even if the user has specified a custom loading screen (ie not assume things about the layout which aren't guaranteed)
 ; Acorn-specific code factored out into its own file for readability.
 
 ; Note that the code macros defined in here have the suffix "_inline" if control
@@ -1304,7 +1303,7 @@ init_progress_indicator
     ; 512-byte blocks, so we want to divide by two to convert this. We want to
     ; shift right by 1 for the division by two, then left by
     ; progress_indicator_fractional_bits bits.
-    ldx #progress_indicator_fractional_bits-1
+    ldx #progress_indicator_fractional_bits - 1
     ; Set dividend = .blocks_to_load << X.
     lda .blocks_to_load + 1
     sta dividend + 1
@@ -1343,7 +1342,6 @@ screenkernal_init
 .screenkernal_init_rts
     rts
 
-    ; SFTODONOW: DON'T FORGET I NEED TO HAVE PROGRESS INDICATOR WORKING CORRECTLY ON RESTART TOO
 update_progress_indicator
 progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     sec
