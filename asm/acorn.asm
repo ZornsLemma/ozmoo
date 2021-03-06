@@ -1233,60 +1233,70 @@ SFTODOLABEL5
 
     rts
 
+; We use 16-bit fixed point arithmetic to represent the number of blocks per
+; progress bar step, in order to get avoid the bar under-filling or over-filling
+; the screen width. .blocks_to_load can't be more than 64K dynamic memory plus
+; 128K virtual memory cache (and that's not going to happen in practice), so it
+; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
+; bits for the fractional component.
+progress_indicator_fractional_bits=7
+
 ; Initialise progress_indicator_blocks_left_in_chunk and
-; progress_indicator_blocks_per_chunk. This is only called once so we could
-; inline it, but since this code overlaps the game data we're not under that
-; much memory pressure and it's more readable to keep it separate.
+; progress_indicator_blocks_per_chunk. This is only called once in any given
+; build so we could make it a macro and inline it, but since this code overlaps
+; the game data we're not under that much memory pressure and it's more readable
+; to just use a subroutine.
 init_progress_indicator
 !ifdef VMEM {
 .blocks_to_load = DOTram_blocks
 } else {
 .blocks_to_load = DOTgame_blocks
 }
-    ; We haven't called screenkernal_init yet; that would be wrong because we might
-    ; be in mode 6/7 from the loader and not yet have changed into the final mode
-    ; for running the game. So we can't use s_screen_width here.
+    ; Set divisor = screen_width - cursor_x. We don't worry about printing in
+    ; the rightmost column causing a scroll; unless the user has used a custom
+    ; title page *and* put the loading line on the bottom line of the screen
+    ; this won't happen from the loader, and if it happens during a restart it
+    ; won't look particularly ugly. SFTODO: CHECK THIS
     ;
-    ; Set divisor = screen_width - 1 - cursor_x; we like the fact there's a -1 in
-    ; there as it means we won't print in the final character position and therefore
-    ; don't have to worry about causing the screen to scroll. No one should have time
-    ; to notice the fact the last block is never filled in, and it's less ugly than
-    ; maybe letting the screen scroll. (SFTODO: Although in practice after a restart a
-    ; scroll is not particularly ugly, and the default loader screen doesn't place this
-    ; on the bottom line of the screen anyway. So maybe get rid of the - 1?)
+    ; (We haven't called screenkernal_init yet; that would be wrong because we
+    ; might be in mode 6/7 from the loader and not yet have changed into the
+    ; final mode for running the game. So we can't use s_screen_width here.)
     lda #osbyte_read_cursor_position
-    jsr osbyte
+    jsr osbyte ; set X=cursor X
     stx divisor
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
     jsr osbyte ; set Y=screen width - 1
+    iny
     tya
     sec
     sbc divisor
     sta divisor
     lda #0
     sta divisor + 1
+
     ; .blocks_to_load is expressed in 256-byte blocks, but loading is done in
-    ; 512-byte blocks, so divide .blocks_to_load by two.
+    ; 512-byte blocks, so we want to divide by two to convert this. We want to
+    ; shift right by 1 for the division by two, then left by
+    ; progress_indicator_fractional_bits bits.
+    ldx #progress_indicator_fractional_bits-1
+    ; Set dividend = .blocks_to_load << X.
     lda .blocks_to_load + 1
-    lsr
     sta dividend + 1
     lda .blocks_to_load
-    ror
+-   asl
+    rol dividend + 1
+    dex
+    bne -
     sta dividend
 SFTODOOOL
     jsr divide16
-    ; We need to round the result up so we don't generate more progress
-    ; indicator blocks than will fit on the line. We don't care about the high
-    ; byte of the result; we will have at least 30 characters to play with, and
-    ; 30*255*512=3.7MB. We also know the high byte of the remainder will be 0 as
-    ; divisor was an 8-bit value.
-    ldx division_result
-    lda remainder
-    beq +
-    inx
-+   stx progress_indicator_blocks_per_chunk
-    stx progress_indicator_blocks_left_in_chunk
+    lda division_result
+    sta progress_indicator_blocks_per_chunk
+    sta progress_indicator_blocks_left_in_chunk
+    lda division_result + 1
+    sta progress_indicator_blocks_per_chunk + 1
+    sta progress_indicator_blocks_left_in_chunk + 1
     rts
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we
@@ -1306,11 +1316,26 @@ screenkernal_init
     rts
 
     ; SFTODONOW: DON'T FORGET I NEED TO HAVE PROGRESS INDICATOR WORKING CORRECTLY ON RESTART TOO
-update_progress_indicator ; SFTODO!
-    dec progress_indicator_blocks_left_in_chunk
-    bne .screenkernal_init_rts
-    lda progress_indicator_blocks_per_chunk
+update_progress_indicator
+progress_indicator_block_size = 1 << progress_indicator_fractional_bits
+    sec
+    lda progress_indicator_blocks_left_in_chunk
+    sbc #<progress_indicator_block_size
     sta progress_indicator_blocks_left_in_chunk
+    lda progress_indicator_blocks_left_in_chunk + 1
+    sbc #>progress_indicator_block_size
+    sta progress_indicator_blocks_left_in_chunk + 1
+    bcc +
+    ora progress_indicator_blocks_left_in_chunk
+    bne .screenkernal_init_rts
++   ; progress_indicator_blocks_left_in_chunk <= 0
+    clc
+    lda progress_indicator_blocks_left_in_chunk
+    adc progress_indicator_blocks_per_chunk
+    sta progress_indicator_blocks_left_in_chunk
+    lda progress_indicator_blocks_left_in_chunk + 1
+    adc progress_indicator_blocks_per_chunk + 1
+    sta progress_indicator_blocks_left_in_chunk + 1
     lda #255 ; solid block graphic
     jmp oswrch
 }
@@ -1771,6 +1796,7 @@ SFTODOLABEL4
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
 
+;SFTODONOWHANG jmp SFTODONOWHANG
     ; Calculate CRC of block 0 before it gets modified, so we can use it later
     ; to identify the game disc after a save or restore.
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {

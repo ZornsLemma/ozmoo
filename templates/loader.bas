@@ -114,6 +114,7 @@ IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
 PRINTTAB(0,space_y);CHR$normal_fg;"Loading:";:pos=POS:PRINT "                               ";
 REM Leave the cursor positioned ready for the loading progress indicator.
 PRINTTAB(pos,space_y);CHR$normal_graphics_fg;
+VDU 23,255,-1;-1;-1;-1;:REM block UDG for progress indicator in modes 0-6
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
 }
@@ -150,7 +151,7 @@ DEF PROCfinalise
 END
 
 DEF PROCelectron_header_footer
-VDU 23,128,0;0,255,255,0,0;23,255,-1;-1;-1;-1;
+VDU 23,128,0;0,255,255,0,0;
 PRINTTAB(0,23);STRING$(40,CHR$128);"${OZMOO}";
 IF POS=0 THEN VDU 30,11 ELSE VDU 30
 PRINT "${TITLE}";:IF POS>0 THEN PRINT
