@@ -80,7 +80,7 @@ IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
 
 normal_fg=${NORMAL_FG}:normal_graphics_fg=normal_fg+16:header_fg=${HEADER_FG}:highlight_fg=${HIGHLIGHT_FG}:highlight_bg=${HIGHLIGHT_BG}:electron_space=0
-IF electron THEN normal_fg=0:normal_graphics_fg=0:header_fg=0:electron_space=32
+IF electron THEN normal_fg=0:normal_graphics_fg=32:header_fg=0:electron_space=32
 
 REM We always report sideways RAM, even if it's irrelevant (e.g. we're on a
 REM second processor and the game fits entirely in RAM or the host cache isn't
