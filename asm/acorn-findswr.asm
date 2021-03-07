@@ -7,6 +7,7 @@
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
 max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
+opcode_cmp_immediate = $c9
 
 ; We arrange for the output to be near the start of this binary so the loader
 ; can access it at fixed addresses.
@@ -198,17 +199,17 @@ find_type_lp
 found_watford_romram
     LDA #6
     STA swr_type
-    JMP end
+    BNE end ; always branch
 
 found_rom_sel
     LDA #2
     STA swr_type
-    JMP end
+    BNE end ; always branch
 
 found_ram_sel
     LDA #3
     STA swr_type
-    JMP end
+    BNE end ; always branch
 
 found_soli
     LDA #4
@@ -221,7 +222,7 @@ found_soli
 soli_3bits
     ; remove factor 2 from solidisk's incomplete address decoding
     LSR swr_banks
-    JMP end
+    ; JMP end - just fall through
 
 end
     ; restore swr, using method found
@@ -258,7 +259,19 @@ not_usable
     BNE derive_loop
 derive_done
     STX ram_bank_count
-    RTS
+    ; Re-select the current filing system. This should always be harmless and
+    ; will cause SD card filing systems to re-initialise cards which may have
+    ; been upset by our probing at the user port looking for Solidisk-style
+    ; sideways RAM. See the sub-thread starting at
+    ; https://stardot.org.uk/forums/viewtopic.php?p=311717#p311717 for an
+    ; example of learning this lesson the hard way.
+    LDA #0
+    TAY
+    JSR osargs ; A now contains the current filing system number
+    TAY
+    LDA #osbyte_issue_service_request
+    LDX #$12 ; select filing system
+    JMP osbyte
 
 ; Utilities
 
@@ -273,8 +286,7 @@ set_solidisk ; for old solidisk swr
 set_only_romsel
     JSR set_all_to_wrong_bank
 set_romsel
-    JSR page_in_y_preserve_a
-    RTS
+    JMP page_in_y_preserve_a
 
 ; RAMSEL may not exist, in which case it is equivalent to ROMSEL
 ; (incomplete address decoding), therefore this code
@@ -326,7 +338,7 @@ page_in_y_preserve_a
     RTS
 page_in_x_corrupt_a
     TXA
-    JMP page_in_a
+    !byte opcode_cmp_immediate ; skip following TYA
 page_in_y_corrupt_a
     TYA
 page_in_a
