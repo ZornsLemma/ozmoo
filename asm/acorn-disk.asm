@@ -169,6 +169,11 @@ readblocks
 +
 }
 
+; START TEMP HACK
+    lda #'X'
+    jsr oswrch
+    jsr osrdch
+; END TEMP HACK
     lda #osword_floppy_op
     ldx #<.osword_7f_block
     ldy #>.osword_7f_block
