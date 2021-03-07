@@ -20,6 +20,11 @@ LZSA_DST_LO     =       lzsa_dstptr
 LZSA_DST_HI     =       lzsa_dstptr + 1
 
 decompress
+; SFTODO START TEMP HACK
+    lda #'@'
+    jsr $ffee ; oswrch
+    jsr $ffe0 ; osrdch
+; SFTODO END TEMP HACK
     lda #<data_start
     sta LZSA_SRC_LO
     lda #>data_start

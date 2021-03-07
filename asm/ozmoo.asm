@@ -294,6 +294,11 @@ initial_jmp ; SFTODO: IF THIS ISN'T USED, GET RID OF IT - I MERGED THIS LABEL, I
 !ifndef ACORN_RELOCATABLE {
 	jmp .initialize
 } else {
+; SFTODO TEMP HACK
+	lda #'A'
+	jsr oswrch
+	jsr osrdch
+; SFTODO END TEMP HACK
     jmp relocate
 }
 
@@ -779,6 +784,11 @@ game_id		!byte 0,0,0,0
 .initialize
 !ifdef ACORN_RELOCATABLE {
 initialize
+; SFTODO TEMP HACK
+	lda #'B'
+	jsr oswrch
+	jsr osrdch
+; SFTODO END TEMP HACK
 }
 ; SFTODO: CAN WE GET RID OF CLD/CLI FOR ACORN?
 	cld
