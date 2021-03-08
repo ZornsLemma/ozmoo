@@ -100,8 +100,9 @@ bank_lp_y
     ; Skip banks with a valid ROM header; we check this instead of using the table
     ; at $2A1 so we don't use banks which contain valid ROM images temporarily
     ; disabled by a ROM manager.
-    LDA copyright_offset
-    STA check_copyright_string_lda_abs_x+1
+    LDX copyright_offset
+    INX
+    STX check_copyright_string_lda_abs_x+1
     LDX #2
 check_copyright_string
 check_copyright_string_lda_abs_x
