@@ -68,6 +68,17 @@ DIM block% 256
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
 REM detection as that requires running a separate executable) before we change
 REM screen mode; this way if there's a splash screen it's visible during this delay.
+REM
+REM FINDSWR will play around with the user VIA as it probes for Solidisk-style
+REM sideways RAM. It does its best to reset things afterwards, but it's not enough
+REM for (at least) the TurboMMC filing system. We therefore deliberately generate and
+REM ignore an error afterwards, which has the side effect of forcing a reset (and is
+REM harmless if this wasn't necessary). See
+REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on this.
+*/FINDSWR
+ON ERROR GOTO 500
+*INFO XYZZY1
+500ON ERROR PROCerror
 PROCdetect_swr
 shadow=potential_himem=&8000
 tube=PAGE<&E00
@@ -366,7 +377,6 @@ IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
 ENDPROC
 
 DEF PROCdetect_swr
-*/FINDSWR
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on
 REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
