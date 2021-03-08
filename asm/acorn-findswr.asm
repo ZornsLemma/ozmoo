@@ -52,10 +52,12 @@ start
     ; We're on a BBC. Save the user VIA state so we can restore it after probing
     ; for Solidisk-style sideways RAM. See
     ; https://stardot.org.uk/forums/viewtopic.php?p=311955&sid=7a8cb62ccfe0b519342f67d1880cb5e5#p311955.
+!if 0 { ; SFTODO!?
     LDA user_via_ddrb
     STA original_user_via_ddrb
     LDA user_via_orb_irb
     STA original_user_via_orb_irb
+}
     LDX #$FF
 +   STX bbc ; $FF for BBC, 0 for Electron
     
@@ -261,6 +263,7 @@ restore_lp
 end2
     LDA $F4
     JSR page_in_a
+!if 0 { ; SFTODO!?
     BIT bbc
     BPL no_user_via
     LDA original_user_via_ddrb
@@ -268,6 +271,7 @@ end2
     LDA original_user_via_orb_irb
     STA user_via_orb_irb
 no_user_via
+}
     CLI
     ; Now derive a list of banks which have usable sideways RAM.
     ; We don't trust swr_banks because ROM write through can make it misleading.
