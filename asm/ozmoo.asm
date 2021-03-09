@@ -274,6 +274,12 @@ ACORN_SWR_MEDIUM_OR_BIG_DYNMEM = 1
 ;  * = $0801 ; This must now be set on command line: --setpc $0801
 
 program_start
+	jmp initial_jmp ; SFTODO HACK TO WORK AROUND RELOCATION ALWAYS WANTING TO START EXECUTION HERE
+vmem_cache_start ; SFTODOHACK
+vmem_cache_count = 4 ; SFTODOHACK
+cache_pages = vmem_cache_count ; SFTODOHACK
+	; SFTODOHACK
+	!fill vmem_cache_count * 256 - 3
 
 ;	lda #4
 ;	sta $d020

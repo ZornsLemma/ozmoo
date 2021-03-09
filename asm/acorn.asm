@@ -913,6 +913,22 @@ prepare_for_initial_load
 }
     sta ram_blocks
 
+!ifdef ACORN_SWR {
+    ; SFTODOHACK - ASSUME 19K SHADOW RAM FREE (ALL OVER THE PLACE, NOT JUST HERE)
+    lda ram_blocks + 1
+    lsr
+    lda ram_blocks
+    ror
+    sta swr_size_in_blocks
+    clc
+    lda ram_blocks
+    adc #19*4
+    sta ram_blocks
+    lda ram_blocks + 1
+    adc #0
+    sta ram_blocks + 1
+}
+
 !ifdef ACORN_TUBE_CACHE {
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
@@ -1475,6 +1491,11 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     lsr
     sta vmem_blocks_in_main_ram
 }
+    ; SFTODOHACK
+    sec
+    lda swr_size_in_blocks
+    sbc vmem_blocks_stolen_in_first_bank
+    sta swr_size_in_blocks
 }
 
 !ifdef VMEM {

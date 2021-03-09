@@ -1,16 +1,18 @@
 
 !ifndef ACORN {
 dynmem_size !byte 0, 0
+} ; SFTODOHACK
 
+swr_size_in_blocks !byte 0 ; SFTODO HACK - SHOULD PROB BE IN PAGE 4
 vmem_cache_cnt !byte 0         ; current execution cache
 vmem_cache_page_index !fill cache_pages + 1, 0
 !ifdef TARGET_C128 {
 vmem_cache_bank_index !fill cache_pages + 1, 0
 }
-}
+; SFTODOHACK }
 ; SFTODO: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
 
-!ifndef ACORN {
+; SFTODOHACK !ifndef ACORN {
 !ifdef TARGET_PLUS4 {
 	SKIP_VMEM_BUFFERS = 1
 } else {
@@ -35,6 +37,7 @@ get_free_vmem_buffer
 +	cmp mempointer + 1
 	bne +
 	; mempointer points to this page. Store $ff in zp_pc_h so mempointer won't be used
+    ; SFTODO: I assume this works given it's upstream code, but I don't really understand it right now.
 	pha
 	lda #$ff
 	sta zp_pc_h
@@ -53,7 +56,7 @@ inc_vmem_cache_cnt
 
 
 }
-}
+;SFTODOHACK}
 
 !ifndef VMEM {
 ; Non-virtual memory
@@ -556,6 +559,23 @@ load_blocks_from_index
 } else { ; ACORN_SWR
     ldx vmap_index
     jsr convert_index_x_to_ram_bank_and_address
+    ; SFTODO START COPY AND PASTE OF CODE FROM ELSEWHERE ON COMMODORE
+    bvc .cant_be_in_cache
+    sta $90 ; SFTODO BAD ADDRESS
+	; Forget any cache pages belonging to the old block at this position.
+	ldy #vmem_cache_count - 1
+-	lda vmem_cache_page_index,y
+	and #(255 - vmem_indiv_block_mask)
+	cmp $90
+	bne +
+	lda #0
+	sta vmem_cache_page_index,y
++	dey
+	bpl -
+    ; SFTODO: WE COULD PROB LOAD DIRECTLY INTO SHADOW ON SOME MACHINES, BUT LET'S DO THIS FOR NOW
+    lda #>scratch_double_page
+.cant_be_in_cache
+    ; SFTODO END COPY AND PASTE
 }
 
 !ifdef TRACE_FLOPPY {
@@ -592,6 +612,20 @@ load_blocks_from_index
 	rol
 	sta readblocks_currentblock + 1
 	jsr readblocks
+!ifdef ACORN_SWR {
+    ; Did we just load into scratch_double_page? If so we need to copy to shadow.
+    lda readblocks_mempos + 1
+    cmp #(>scratch_double_page) + vmem_block_pagecount
+    bne .not_shadow_load
+    lda #>scratch_double_page
+    ldy $90
+    jsr copy_page
+    lda #(>scratch_double_page) + 1
+    ldy $90
+    iny
+    jsr copy_page
+.not_shadow_load
+}
 load_blocks_from_index_done ; except for any tracing
 !ifdef TRACE_VM {
 	jsr print_following_string
@@ -621,6 +655,7 @@ osword_cache_result
     !byte 0  ; result
 }
 
+; SFTODO: What's happening here is that we're loading a 512-byte block of VM in two 256-byte chunks using one of the cache pages as a bounce buffer. This is OK because we set the corresponding entry in vmem_cache_page_index on exit to reflect what's left there. On Acorn we don't *need* to do this, because we apart from the fact we have scratch_double_page, we don't even need it because  (at least on M128, which is all I'm worrying about for now) we can page in shadow RAM and read directly into it without any bounce buffer. Of course, if we're loading this 512-byte block we *will* want to access one half of it immediately, so there's a 50% chance the Commodore code's behaviour will save a copy later on. But I guess we also *have* to have this data copied into the actual shadow RAM (for when the cache is flushed), so on Acorn we will always do a 512-byte read and a 256 byte copy, and on Commodore there will always be 2x256 byte reads, 2x256 byte copies *into* the underlying memory and 50% of the time a 256 byte copy of the other half back into cache (though the other data in cache may be helpful). So if I have this right there is no value in imitating the Commodore approach here. (*Unless* we get rid of scratch_double_page and steal pages from the cache when we'd used it, but that's probably more faff than it's worth, especially as scratch_double_page is *not* in main contiguous RAM and so isn't all that easy to re-use.)
 !ifndef ACORN {
 !ifndef TARGET_PLUS4 {
 load_blocks_from_index_using_cache
@@ -1073,7 +1108,7 @@ SFTODOLL8
 	cpx vmap_used_entries
 	bcs .printswaps_part_2
 	lda vmap_z_h,x
-    ; SF: I altered the mask here, I think it's correct but it's a divergence
+    ; SFTODO: I altered the mask here, I think it's correct but it's a divergence
     ; from upstream. - it was "and #$7" - if this is correct, maybe suggest change to upstream?
 	and #vmem_highbyte_mask
 	jsr dollar
@@ -1282,6 +1317,43 @@ SFTODOLL8
 	adc vmap_c64_offset
 } else {
     jsr convert_index_x_to_ram_bank_and_address
+    ; SFTODO START COPY AND PASTE OF CODE ABOVE; WOULD NEED TO FACTOR THIS OUT MORE NEATLY IN A FINAL VERSION (IF IT'S BIG AND SIMILAR)
+	bvc .unswappable ; SFTODO: RETURNING STATUS VIA V MAY NOT BE BEST, BUT LET'S GO WITH IT FOR NOW
+.swappable_memory
+	; this is swappable memory
+	; update vmem_cache if needed
+	clc
+	adc vmem_offset_in_block
+	; Check if this page is in cache
+	ldx #vmem_cache_count - 1
+	tay
+-	tya
+	cmp vmem_cache_page_index,x
+	beq .cache_updated
+	dex
+	bpl -
+	; The requested page was not found in the cache
+	; copy vmem to vmem_cache (banking as needed)
+	sty vmem_temp
+	jsr get_free_vmem_buffer
+	tay
+	lda vmem_temp
+	sta vmem_cache_page_index,x
+	jsr copy_page
+	lda vmem_cache_cnt
+	jsr inc_vmem_cache_cnt
+	tax
+.cache_updated
+	; x is now vmem_cache (0-3) where current z_pc is
+	txa
+	clc
+	adc #>vmem_cache_start
+	sta mempointer + 1
+	ldx vmap_index
+	bne .return_result ; always true SFTODO: PROBABLY, BUT IS IT?
+.unswappable
+    ; SFTODO END COPY AND PASTE
+    ; SFTODO: THE NEXT COUPLE OF INSTRUCTIONS MIGHT BE COMMON TO SWAPPABLE AND UNSWAPPED CASES AND COULD BE SHARE IF SO
     clc
     adc vmem_offset_in_block
 }
@@ -1314,6 +1386,9 @@ convert_index_x_to_ram_bank_and_address
     sec
     sbc vmem_blocks_in_main_ram
     bcc .in_main_ram
+    ; SFTODOHACK
+    cmp swr_size_in_blocks ; SFTODO: NOTE AFTER TAKING OFF ANY STOLEN BLOCKS
+    bcs .SFTODOHACKSHADOW
     clc
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
@@ -1337,6 +1412,19 @@ convert_index_x_to_ram_bank_and_address
     asl
     ; Carry is already clear
     adc #$80
+    clv ; SFTODOHACK
+    rts
+.SFTODOHACKSHADOW
+    sec ; SFTODO REDUNDANT BUT PLAY IT SAFE FOR NOW
+    sbc swr_size_in_blocks
+    asl
+    clc ; SFTODO PROB REDUNDANT BUT PLAY IT SAFE FOR NOW
+    adc #$30
+    ; SFTODO PAGE IN SHADOW - AH, BUT THIS CODE MAY NOT BE BELOW $3000
+    ; SFTODO WHENEVER WE PAGE IN, WE NEED TO MAKE SURE WE PAGE BACK OUT AFTER COPYING
+    ; SFTODO DO WE JUST NEED TO RETURN THIS ADDRESS IN A AND SET SOME KIND OF FLAG TO TELL THE CALLER TO "DEAL WITH" SHADOW PAGING ITSELF? AND I GUESS COPY_PAGE WILL BE RESPONSIBLE FOR TEMP PAGING SHADOW IN AND THEN BACK OUT - IT DOESN'T MATTER WHICH WAY WE'RE COPYING AS THE NON-SHADOW ADDRESS WILL ALWAYS BE OUTSIDE 3000-8000 - CURRENTLY IT WILL BE <3000, BUT I SUPPOSE IN PRINCIPLE WE *MIGHT* (C128-STYLE?) END UP EVENTUALLY COPYING INTO SWR, BUT THAT'S >=8000 OF COURSE - FOLLOWING ON FROM THIS, WE DON'T STRICTLY SPEAKING *NEED* TO RETURN A FLAG TO SAY "THIS IS A SHADOW ADDRESS", BECAUSE THE FACT IT'S IN 3000-8000 IMPLIES THAT - BUT IT *MAY* BE EASIER FOR OUR CALLERS TO DECIDE WHAT TO DO IF THERE IS A FLAG, IT'S NOT *NECESSARY* THO AND UNTIL I WRITE THE CALLERS I WON'T KNOW WHAT WOULD BE BEST - OK, THAT'S NOT TRUE IS IT? SUCH AN ADDRESS MIGHT BE VMEM-IN-MAIN-RAM AND THAT COULD VERY WELL HAVE AN ADDRESS IN RANGE 3000-8000 (PROB HIGHER END OF THAT, BUT STILL, THERE IS A BIG OVERLAP)
+    bit .SFTODORTS ; set V
+.SFTODORTS
     rts
 .in_main_ram
     ; A contains a negative block offset from the top of main RAM (BBC sideways
@@ -1350,6 +1438,7 @@ convert_index_x_to_ram_bank_and_address
     sec ; SFTODO: can we in fact rely on carry having a known state here and avoid this?
     sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
 }
+    clv ; SFTODOHACK
     rts
 }
 }

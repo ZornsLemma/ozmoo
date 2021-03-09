@@ -56,12 +56,12 @@ set_z_pc
 	eor z_pc + 1
 	and #(255 - vmem_indiv_block_mask)
 	bne .unsafe_2
-!ifndef ACORN {
+; SFTODOHACK !ifndef ACORN {
 	; z_pc is in same vmem_block unless it's in vmem_cache
 	lda z_pc_mempointer + 1
 	cmp #>story_start
 	bcc .unsafe_2
-}
+;}
 	; z_pc is in same vmem_block, but different page.
 	stx z_pc + 1
 	lda z_pc_mempointer + 1
@@ -292,7 +292,6 @@ copy_page_c128_src_end
 
 } else { ; not TARGET_C128
 
-!ifndef ACORN {
 copy_page
 ; a = source
 ; y = destination
@@ -303,20 +302,32 @@ copy_page
 ; }
 	sta .copy + 2
 	sty .copy + 5
+!ifndef ACORN {
 	sei
 	+set_memory_all_ram_unsafe
 	+before_dynmem_read_corrupt_a
+} else {
+	; SFTODO HACK
+	lda $fe34
+	pha
+	ora #%00000100
+	sta $fe34
+}
 -   ldy #0
 .copy
 	lda $8000,y
 	sta $8000,y
 	iny
 	bne .copy
+!ifndef ACORN {
 	+after_dynmem_read_preserve_axy
 	+set_memory_no_basic_unsafe
 	cli
-	rts
+} else {
+	pla
+	sta $fe34
 }
+	rts
 } ; not TARGET_C128
 }
 
