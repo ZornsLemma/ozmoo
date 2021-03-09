@@ -15,6 +15,10 @@ With 16 and 32K SWR, the extra shadow RAM makes a difference, albeit smallish at
 
 I think it is working correctly; the very nice performance improvement with 16K SWR is mainly why I say this.
 
+Profiling the 16K+19K case, the to/from shadow copy loop is hot - the four instructions in the loop are 4*1.07% of the instructions executed overall (this is an instruction not a cycle count, FWIW). Taking 4.28% (which ignores the cycle-vs-instruction business) off the 16K+19K time above gives $4b01, which is maybe getting closer to the 32K SWR time.
+
+TODO: Would probably be a good idea to try --page 0xe00 to get a smalldyn build; that would allow running with 0K SWR and if/when I do an alternate version using my swap-not-copy idea, it would be a case where dynmem is filling most/all of cheap access RAM
+
 
 
 
