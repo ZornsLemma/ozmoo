@@ -1326,6 +1326,7 @@ SFTODOLL8
 	adc vmem_offset_in_block
 	; Check if this page is in cache
 	ldx #vmem_cache_count - 1
+    ; SFTODO: I don't think we need this tay/tya manipulation - it's there to support C128 code which we're never going to call (and have removed in this copy and paste)
 	tay
 -	tya
 	cmp vmem_cache_page_index,x
@@ -1351,6 +1352,7 @@ SFTODOLL8
 	sta mempointer + 1
 	ldx vmap_index
 	bne .return_result ; always true SFTODO: PROBABLY, BUT IS IT?
+SFTODOHANGKK jmp SFTODOHANGKK
 .unswappable
     ; SFTODO END COPY AND PASTE
     ; SFTODO: THE NEXT COUPLE OF INSTRUCTIONS MIGHT BE COMMON TO SWAPPABLE AND UNSWAPPED CASES AND COULD BE SHARE IF SO
