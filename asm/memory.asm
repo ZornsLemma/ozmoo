@@ -16,10 +16,10 @@ inc_z_pc_page
 	and #vmem_indiv_block_mask
 	beq get_page_at_z_pc_did_pha
 	lda z_pc_mempointer + 1
-!ifndef ACORN {
-	cmp #>story_start
+; SFTODOHACK !ifndef ACORN {
+	cmp #>data_start ; SFTODO COMMODORE NEEDS THIS: cmp #>story_start
 	bcc get_page_at_z_pc_did_pha
-}
+; SFTODOHACK }
 } else {
 ; No vmem
 !ifndef ACORN {

@@ -1,3 +1,10 @@
+Experimental spare shadow RAM use - all with M128 benchmark meddyn mode 7
+
+32K SWR + 19K shadow $004976
+
+
+
+
 Latest 5.x timings pre-alpha release:
 
 More timings, all in b-em with drive noises off and using mode 7 bigdyn unless otherwise noted (bigdyn is the "default" for HH built in benchmark mode) - note that Elkulator *does* have drive noises on:
