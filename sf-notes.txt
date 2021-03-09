@@ -1,6 +1,19 @@
-Experimental spare shadow RAM use - all with M128 benchmark meddyn mode 7
+Experimental spare shadow RAM use - all with M128 benchmark meddyn mode 7 4 cache pages
+(no shadow timings done with "proper" 5.x code, not experimental code with shadow disabled, so they have the shadow cache pages available for vmem as normal)
 
+sorted slowest->fastest
+16K SWR		     $0068ae
+16K SWR + 19K shadow $004e5c
+32K SWR		     $004a51
+64K SWR + 19K shadow $0049ef (slightly slower than 32K+19K!)
+48K SWR + 19K shadow $0049ba (slightly slower than 32K+19K!)
 32K SWR + 19K shadow $004976
+64K SWR		     $004901 (slightly slower than 48K!)
+48K SWR		     $0048f2 (faster than 48K+19K!)
+
+With 16 and 32K SWR, the extra shadow RAM makes a difference, albeit smallish at the 32K level. Beyond that things get a little chaotic, although all the times are broadly similar and the shadow RAM starts to actually be a bit of a hindrance, I suspect because we're doing extra copying round due to "hot" pages getting stuck in the "expensive-ish" shadow RAM and not offering enough advantage in terms of reducing disc access.
+
+I think it is working correctly; the very nice performance improvement with 16K SWR is mainly why I say this.
 
 
 
