@@ -59,7 +59,7 @@ set_z_pc
 ; SFTODOHACK !ifndef ACORN {
 	; z_pc is in same vmem_block unless it's in vmem_cache
 	lda z_pc_mempointer + 1
-	cmp #>story_start
+	cmp #>data_start ; SFTODO HACK - COMMODORE NEEDS THIS: cmp #>story_start
 	bcc .unsafe_2
 ;}
 	; z_pc is in same vmem_block, but different page.
