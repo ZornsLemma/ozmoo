@@ -920,6 +920,7 @@ prepare_for_initial_load
     lda ram_blocks
     ror
     sta swr_size_in_blocks
+!if 1 { ; SFTODO! - DISABLING THIS BLOCK OF CODE ALLOWS THE BENCHMARK TO COMPLETE, WHICH ISN'T SAYING THAT MUCH BUT DOES SUGGEST I HAVEN'T BROKEN SOMETHING UNRELATED TO SHADOW ACCESS
     clc
     lda ram_blocks
     adc #19*4
@@ -927,6 +928,7 @@ prepare_for_initial_load
     lda ram_blocks + 1
     adc #0
     sta ram_blocks + 1
+}
 }
 
 !ifdef ACORN_TUBE_CACHE {
