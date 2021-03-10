@@ -1375,6 +1375,8 @@ def parse_args():
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
     parser.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
     parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard")
+    parser.add_argument("--on-quit-command", metavar="COMMAND", type=str, help="execute COMMAND when game quits")
+    parser.add_argument("--on-quit-command-silent", metavar="COMMAND", type=str, help="execute COMMAND invisibly when game quits")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1415,6 +1417,8 @@ def parse_args():
             die("--splash-image and --splash-mode must both be specified")
     if cmd_args.splash_palette and not cmd_args.splash_image:
         die("--splash-palette only works with --splash-image")
+    if cmd_args.on_quit_command is not None and cmd_args.on_quit_command_silent is not None:
+        die("--on-quit-command and --on-quit-command-silent are incompatible")
 
     def validate_colour(colour, default = None, mode_7 = False):
         if colour is None:
@@ -1569,11 +1573,23 @@ def make_disc_image():
         ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
     if cmd_args.osrdch:
         ozmoo_base_args += ["-DACORN_OSRDCH=1"]
+    if cmd_args.on_quit_command:
+        ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND=1"]
+    if cmd_args.on_quit_command_silent:
+        ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND=1"]
+        ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND_SILENT=1"]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
     else:
         die("Unsupported Z-machine version: %d" % (z_machine_version,))
+
+    if cmd_args.on_quit_command or cmd_args.on_quit_command_silent:
+        command = cmd_args.on_quit_command
+        if command is None:
+            command = cmd_args.on_quit_command_silent
+        with open(os.path.join("temp", "on-quit-command.asm"), "w") as f:
+            f.write("    !byte %s, cr ; %s\n" % (", ".join(str(ord(c)) for c in command), command))
 
     want_electron = True
     want_bbc_swr = True

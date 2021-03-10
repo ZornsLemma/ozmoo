@@ -1901,10 +1901,27 @@ SFTODOLABEL4
 } ; End of acorn_deletable_screen_init_2_inline
 
 !macro clean_up_and_quit_inline {
+!ifndef ACORN_ON_QUIT_COMMAND {
     lda #<press_break_string
     ldy #>press_break_string
     jsr printstring
 -   jmp -
+} else {
+    !ifdef ACORN_ON_QUIT_COMMAND_SILENT {
+        lda #vdu_disable
+        jsr oswrch
+    }
+    ldx #<.on_quit_command
+    ldy #>.on_quit_command
+    jsr oscli
+    ldx #<.basic_command
+    ldy #>.basic_command
+    jmp oscli ; never returns
+.on_quit_command
+    !source "../temp/on-quit-command.asm"
+.basic_command
+    !text "BASIC", 13
+}
 }
 
 !ifndef ACORN_SWR {

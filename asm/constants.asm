@@ -353,6 +353,7 @@ vdu_cls = 12
 vdu_cr = 13
 vdu_set_text_colour = 17
 vdu_redefine_colour = 19
+vdu_disable = 21
 vdu_set_mode = 22
 vdu_miscellaneous = 23
 vdu_reset_text_window = 26
