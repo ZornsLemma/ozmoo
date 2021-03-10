@@ -99,9 +99,8 @@ bank_lp_y
     ; at $2A1 so we don't use banks which contain valid ROM images temporarily
     ; disabled by a ROM manager.
     LDX copyright_offset
-    INX
     STX check_copyright_string_lda_abs_x+1
-    LDX #2
+    LDX #(copyright_string_prefix_end - copyright_string_prefix) - 1
 check_copyright_string
 check_copyright_string_lda_abs_x
     LDA $8000,X ; patched to address copyright_offset,X
@@ -111,7 +110,8 @@ check_copyright_string_lda_abs_x
     BPL check_copyright_string
     BMI cmp_next_y
 copyright_string_prefix
-    !text "(C)"
+    !text 0, "(C)"
+copyright_string_prefix_end
 invalid_header
     TYA
     EOR swr_byte_value1
