@@ -1388,15 +1388,17 @@ SFTODOHANG3J    bne SFTODOHANG3J
     clc
     lda vmem_blocks_in_main_ram
     adc vmem_blocks_stolen_in_first_bank
-    sta $93 ; SFTODO TEMP ADDRESS
+    sta $93 ; SFTODO TEMP ADDRESS - NOTE ALSO WE COULD CALCULATE THIS ONCE DURING INIT
     lda #$ff
 	sta vmem_oldest_index
     sta vmem_oldest_age
-    lda vmem_blocks_in_main_ram
-    sta vmem_oldest_index ; SFTODO FOR IF WE BEQ IN NEXT LINE
     lda vmap_used_entries
     ; SFTODO: During initial data load vmap_used_entries is 0; we just swap with the first entry in vmap
-    beq SFTODOJUSTUSE0
+    bne SFTODODONTJUSTUSE0
+    lda vmem_blocks_in_main_ram ; SFTODO "SHOULD" BE 0 BUT HACKING TO AVOID SWAPPING WITH MAIN RAM
+    sta vmem_oldest_index
+    jmp SFTODOJUSTUSE0
+SFTODODONTJUSTUSE0
     ldx SFTODOLASTVMAPINDEXINSWR
 -   lda vmap_z_h,x
     cmp vmem_oldest_age
@@ -1419,6 +1421,7 @@ SFTODOFOUNDOLDER
 	cmp vmap_temp + 1
 	beq SFTODOTRYNEXTINDEX
 	tya
+++
 } else {
 	beq SFTODOTRYNEXTINDEX
 }
@@ -1433,6 +1436,10 @@ SFTODOTRYNEXTINDEX
 }
 	bne -
 SFTODOJUSTUSE0
+; SFTODO PARANOIA
+lda vmem_oldest_index
+cmp #$ff
+- beq -
     ; SFTODO We've found oldest block, let's swap.
     ; SFTODO: THIS CODE MUST LIVE BELOW $3000 OF COURSE...
     lda $fe34
