@@ -276,7 +276,7 @@ ACORN_SWR_MEDIUM_OR_BIG_DYNMEM = 1
 program_start
 	jmp initial_jmp ; SFTODO HACK TO WORK AROUND RELOCATION ALWAYS WANTING TO START EXECUTION HERE
 vmem_cache_start ; SFTODOHACK
-vmem_cache_count = 4 ; SFTODOHACK
+vmem_cache_count = 5 ; SFTODOHACK
 cache_pages = vmem_cache_count ; SFTODOHACK
 	; SFTODOHACK
 	!fill vmem_cache_count * 256 - 3

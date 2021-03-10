@@ -1761,7 +1761,7 @@ medium_dynmem_args = ["-DACORN_SWR_MEDIUM_DYNMEM=1"]
 host = 0xffff0000
 tube_start_addr = 0x700
 small_dynmem_page_threshold = 0x2000
-bbc_max_start_addr = 0x3000
+bbc_max_start_addr = 0x2000 # SFTODO TEMP HACK WAS 3000
 # On the Electron, we'd like to avoid the executable overwriting the mode 6
 # screen RAM and corrupting the loading screen if we can, so we pick a
 # relatively low address which should be >=PAGE on nearly all systems.
