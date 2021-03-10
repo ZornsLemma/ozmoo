@@ -935,12 +935,13 @@ initialize
 	!source "reu.asm"
 	}
 }
-!source "screen.asm"
-!source "memory.asm"
-!source "stack.asm"
+; SFTODOHACK REARRANGED TO GET SHADOW-MANIP CODE BELOW 3000
 ;##!ifdef VMEM {
 !source "vmem.asm"
 ;##}
+!source "screen.asm"
+!source "memory.asm"
+!source "stack.asm"
 !source "zmachine.asm"
 !source "zaddress.asm"
 !source "text.asm"

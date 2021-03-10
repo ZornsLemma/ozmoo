@@ -9,6 +9,10 @@ vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 }
 ; SFTODO: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
+!ifdef ACORN_SWR {
+; SFTODO HACK
+swr_size_in_blocks !byte 0 ; SFTODO: SHOULD PROB BE IN PAGE 4
+}
 
 !ifndef ACORN {
 !ifdef TARGET_PLUS4 {
@@ -59,6 +63,9 @@ inc_vmem_cache_cnt
 ; Non-virtual memory
 
 read_byte_at_z_address
+; SFTODO HACK
+lda #0
+sta $9a
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
@@ -1314,7 +1321,10 @@ convert_index_x_to_ram_bank_and_address
     sec
     sbc vmem_blocks_in_main_ram
     bcc .in_main_ram
-    clc
+    ; SFTODOHACK
+    cmp swr_size_in_blocks ; SFTODO NOTE AFTER TAKING OFF ANY STOLEN BLOCKS
+    bcs .SFTODOHACKSHADOW
+    clc ; SFTODO REDUNDANT IF CODE STAYS AS IS BUT PLAY SAFE FOR NOW
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
@@ -1350,6 +1360,138 @@ convert_index_x_to_ram_bank_and_address
     sec ; SFTODO: can we in fact rely on carry having a known state here and avoid this?
     sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
 }
+    rts
+.SFTODOHACKSHADOW
+    ; We want to access a block which is in shadow RAM, which is normally paged out and
+    ; can't be left paged in as Ozmoo code/data will be living in the same address space
+    ; in main RAM. So we find the oldest block of vmem cache which is not in shadow RAM
+    ; and swap it with this block.
+    sec ; SFTODO PROB REDUNDANT
+    sbc swr_size_in_blocks
+    asl
+    clc ; SFTODO: PROB REDUNDANT BUT PLAY IT SAFE FOR NOW
+    adc #$30
+    pha
+    lda $9a ; SFTODO HACK
+-   bne -
+!if 0 { ; SFTODO: THIS WAS JUST PARANOIA, AND IT'S NOT TRUE WHEN WE RE-ENTER OURSELF
+    ; SFTODO JUST BEING PARANOID - WOULDN'T HAVE THIS IN A FINAL VSN BUT WOULD COMMENT TO THIS EFFECT
+    cpx vmap_index
+SFTODOHANG3J    bne SFTODOHANG3J
+}
+	; Create a copy of the block z_pc points to, shifted one step to the right,
+	; to be comparable to vmap entries
+	lda z_pc
+	lsr
+	sta vmap_temp + 1
+	lda z_pc + 1
+	ror
+	sta vmap_temp + 2
+    clc
+    lda vmem_blocks_in_main_ram
+    adc vmem_blocks_stolen_in_first_bank
+    sta $93 ; SFTODO TEMP ADDRESS
+    ; SFTODO: FOR NOW COMPLETELY IGNORING THE ".timestamp_equal" POSSIBILITY IN THE OTHER LOOP DOING THIS - THIS WILL BE NECESSARY HERE TOO THOUGH IN FINAL VERSION
+    lda #$ff
+    sta vmem_oldest_age
+    lda vmem_blocks_in_main_ram
+    sta vmem_oldest_index ; SFTODO FOR IF WE BEQ IN NEXT LINE
+    lda vmap_used_entries
+    ; SFTODO: During initial data load vmap_used_entries is 0; we just swap with the first entry in vmap
+    beq SFTODOJUSTUSE0
+    sec
+    sbc #19*4 ; SFTODOHACK - SIZE OF SHADOW RAM
+SFHANG38 bcc SFHANG38    ; SFTODO: DO WE NEED TO WORRY ABOUT THIS SUBTRACTION GOING NEGATIVE? PROB NOT NORMALLY, BUT MAYBE IN A PREOPT BUILT - JUST MAYBE IF VMAP HAS BEEN TRUNCATED DUE TO NOT NEEDING ALL OF IT??? NOT AT ALL SURE RIGHT NOW AND DON'T WANT TO GET SIDETRACKED YET, BUT THIS MIGHT SUGGEST WE PERHAPS SOMETIMES NEED TO SUBTRACT LESS THAN ACTUAL SHADOW RAM SIZE
+    tax
+    dex
+-   lda vmap_z_h,x
+    cmp vmem_oldest_age
+    bcs SFTODOTRYNEXTINDEX
+	; Found older
+	; Skip if z_pc points here; it could be in either page of the block.
+	ldy vmap_z_l,x
+	cpy vmap_temp + 2
+!if vmem_highbyte_mask > 0 {
+	bne ++
+	tay
+	and #vmem_highbyte_mask
+	cmp vmap_temp + 1
+	beq SFTODOTRYNEXTINDEX
+	tya
+} else {
+	beq SFTODOTRYNEXTINDEX
+}
+  	sta vmem_oldest_age
+	stx vmem_oldest_index ; SFTODO: REDUNDANT?
+SFTODOTRYNEXTINDEX
+	dex
+!if 0 { ; SFTODO HACK
+	cpx #$ff
+} else {
+    cpx $93
+}
+	bne -
+SFTODOJUSTUSE0
+    ; SFTODO We've found oldest block, let's swap.
+    ; SFTODO: THIS CODE MUST LIVE BELOW $3000 OF COURSE...
+    lda $fe34
+    sta $92 ; SFTODO TEMP ADDRESS
+    ora #%00000100
+    sta $fe34
+    ldx vmem_oldest_index
+    ldy vmap_index
+    lda vmap_z_l,x
+    pha
+    lda vmap_z_l,y
+    sta vmap_z_l,x
+    pla
+    sta vmap_z_l,y
+    lda vmap_z_h,x
+    pha
+    lda vmap_z_h,y
+    sta vmap_z_h,x
+    pla
+    sta vmap_z_h,y
+    ;!error "SFTODO This won't work as-is because in medium dynmem block 0 is probably in main RAM and probably lives in 3000-8000, so we can't see it at the same time as shadow - aargh, and that is also a problem in general at runtime with our find-the-oldest-non-shadow-to-swap-with algorithm" - let's force bigdyn for now and see what happens then - gah, even with bigdyn of course some vmem cache may be in main RAM - the right fix is probably a complex swap via scratch_double_page, but for the moment I'll hack it to only consider SWR-held blocks for swapping, so I can get the code working apart from that
+    inc $9a ; SFTODO HACK TO CHECK FOR RECURSION
+    jsr convert_index_x_to_ram_bank_and_address
+    dec $9a ; SFTODO HACK TO CHECK FOR RECURSION
+!if 1 { ; SFTODO PARANOIA
+    cmp #$80
+-   bcc -
+}
+    sta $91 ; SFTODO TEMP ADDRESS
+    sta .lda_a + 2
+    sta .sta_a + 2
+    pla
+    sta .ldx_b + 2
+    sta .sta_b + 2
+    lda #2
+    sta $90 ; SFTODO TEMP ADDRESS
+    ldy #0
+-
+.lda_a
+    lda $ff00,y
+.ldx_b
+    ldx $ff00,y
+.sta_b
+    sta $ff00,y
+    txa
+.sta_a
+    sta $ff00,y
+    dey
+    bne -
+    inc .lda_a + 2
+    inc .sta_a + 2
+    inc .ldx_b + 2
+    inc .sta_b + 2
+    dec $90
+    bne -
+    lda $92
+    sta $fe34
+    ldx vmem_oldest_index
+    stx vmap_index ; SFTODO PROB REDUNDANT BUT PLAY IT SAFE FOR NOW
+    lda $91
     rts
 }
 }
