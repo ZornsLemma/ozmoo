@@ -1853,8 +1853,6 @@ SFTODOLABEL4
     lda vmem_blocks_in_main_ram
     clc
     adc swr_size_in_blocks
-    sec
-    sbc vmem_blocks_stolen_in_first_bank
     cmp vmap_used_entries
     bcc +
     lda vmap_used_entries

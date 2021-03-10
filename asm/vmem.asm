@@ -1473,6 +1473,7 @@ swap_double_page_shadow_a_main_y
     sta .shadow_page
     sty .non_shadow_page
     tya ; SFTODO: TWEAKING SUBROUTINE API WOULD SAVE THIS TYA
+    bmi .no_overlap
     ldy #>scratch_double_page
     jsr copy_double_page_from_a_to_y
     lda $fe34
@@ -1487,6 +1488,20 @@ swap_double_page_shadow_a_main_y
     lda #>scratch_double_page
     ldy .non_shadow_page
     jmp copy_double_page_from_a_to_y ; SFTODO COULD FALL THRU
+.no_overlap
+    ; We're not swapping between shadow and main RAM, so we can do a straight swap without using
+    ; scratch_double_page.
+    ; SFTODO: PROB CODE DUPLICATION ETC BUT THIS IS A PROTOTTYPE NOT SUPER OPTIMISED
+    lda $fe34
+    pha
+    ora #%00000100
+    sta $fe34
+    lda .shadow_page
+    ldy .non_shadow_page
+    jsr swap_double_page_a_y
+    pla
+    sta $fe34
+    rts
 
 copy_double_page_from_a_to_y
     sta .lda_abs_y + 2
