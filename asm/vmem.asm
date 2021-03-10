@@ -1395,7 +1395,7 @@ SFTODOHANG3J    bne SFTODOHANG3J
     lda vmap_used_entries
     ; SFTODO: During initial data load vmap_used_entries is 0; we just swap with the first entry in vmap
     bne SFTODODONTJUSTUSE0
-    lda vmem_blocks_in_main_ram ; SFTODO "SHOULD" BE 0 BUT HACKING TO AVOID SWAPPING WITH MAIN RAM
+    lda #0
     sta vmem_oldest_index
     jmp SFTODOJUSTUSE0
 SFTODODONTJUSTUSE0
@@ -1429,11 +1429,7 @@ SFTODOFOUNDOLDER
 	stx vmem_oldest_index ; SFTODO: REDUNDANT?
 SFTODOTRYNEXTINDEX
 	dex
-!if 0 { ; SFTODO HACK
 	cpx #$ff
-} else {
-    cpx $93
-}
 	bne -
 SFTODOJUSTUSE0
 ; SFTODO PARANOIA
@@ -1441,11 +1437,6 @@ lda vmem_oldest_index
 cmp #$ff
 - beq -
     ; SFTODO We've found oldest block, let's swap.
-    ; SFTODO: THIS CODE MUST LIVE BELOW $3000 OF COURSE...
-    lda $fe34
-    sta $92 ; SFTODO TEMP ADDRESS
-    ora #%00000100
-    sta $fe34
     ldx vmem_oldest_index
     ldy vmap_index
     lda vmap_z_l,x
@@ -1460,46 +1451,89 @@ cmp #$ff
     sta vmap_z_h,x
     pla
     sta vmap_z_h,y
-    ;!error "SFTODO This won't work as-is because in medium dynmem block 0 is probably in main RAM and probably lives in 3000-8000, so we can't see it at the same time as shadow - aargh, and that is also a problem in general at runtime with our find-the-oldest-non-shadow-to-swap-with algorithm" - let's force bigdyn for now and see what happens then - gah, even with bigdyn of course some vmem cache may be in main RAM - the right fix is probably a complex swap via scratch_double_page, but for the moment I'll hack it to only consider SWR-held blocks for swapping, so I can get the code working apart from that
     inc $9a ; SFTODO HACK TO CHECK FOR RECURSION
     jsr convert_index_x_to_ram_bank_and_address
     dec $9a ; SFTODO HACK TO CHECK FOR RECURSION
-!if 1 { ; SFTODO PARANOIA
-    cmp #$80
--   bcc -
-}
-    sta $91 ; SFTODO TEMP ADDRESS
-    sta .lda_a + 2
-    sta .sta_a + 2
+    ; SFTODO: This subroutine is only called in one place and there's no reason not to inline
+    ; it, but I think it will help me keep my head straight while writing the code to have it.
+    sta $91
+    tay
     pla
-    sta .ldx_b + 2
-    sta .sta_b + 2
-    lda #2
-    sta $90 ; SFTODO TEMP ADDRESS
-    ldy #0
--
-.lda_a
-    lda $ff00,y
-.ldx_b
-    ldx $ff00,y
-.sta_b
-    sta $ff00,y
-    txa
-.sta_a
-    sta $ff00,y
-    dey
-    bne -
-    inc .lda_a + 2
-    inc .sta_a + 2
-    inc .ldx_b + 2
-    inc .sta_b + 2
-    dec $90
-    bne -
-    lda $92
-    sta $fe34
+    jsr swap_double_page_shadow_a_main_y
     ldx vmem_oldest_index
     stx vmap_index ; SFTODO PROB REDUNDANT BUT PLAY IT SAFE FOR NOW
     lda $91
+    rts
+
+    ; Swap the two pages starting at A in shadow RAM with the two pages start at Y in main or sideways RAM. (If Y is in sideways RAM, the relevant bank should be paged in on entry.)
+    ; SFTODO: This assumes the worst case; if Y is in sideways RAM we can and probably should avoid going via scratch_double_page.
+swap_double_page_shadow_a_main_y
+.shadow_page = $98 ; SFTODO TEMP ADDRESS
+.non_shadow_page = $99 ; SFTODO TEMP ADDRESS
+    sta .shadow_page
+    sty .non_shadow_page
+    tya ; SFTODO: TWEAKING SUBROUTINE API WOULD SAVE THIS TYA
+    ldy #>scratch_double_page
+    jsr copy_double_page_from_a_to_y
+    lda $fe34
+    pha
+    ora #%00000100
+    sta $fe34
+    lda .shadow_page
+    ldy #>scratch_double_page
+    jsr swap_double_page_a_y
+    pla
+    sta $fe34
+    lda #>scratch_double_page
+    ldy .non_shadow_page
+    jmp copy_double_page_from_a_to_y ; SFTODO COULD FALL THRU
+
+copy_double_page_from_a_to_y
+    sta .lda_abs_y + 2
+    sty .sta_abs_y + 2
+    lda #2
+    sta $9c ; SFTODO TEMP ADDRESS
+    ldy #0
+-
+.lda_abs_y
+    lda $ff00,y ; patched
+.sta_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne -
+    inc .lda_abs_y + 2
+    inc .sta_abs_y + 2
+    dec $9c
+    bne -
+    rts
+
+    ; SFTODO SINGLE CALLER COULD PROB INLINE
+swap_double_page_a_y
+    sta .ldx_lhs_abs_y + 2
+    sta .sta_lhs_abs_y + 2
+    sty .lda_rhs_abs_y + 2
+    sty .sta_rhs_abs_y + 2
+    lda #2
+    sta $9c ; SFTODO TEMP ADDRESS
+    ldy #0
+-
+.ldx_lhs_abs_y
+    ldx $ff00,y ; patched
+.lda_rhs_abs_y
+    lda $ff00,y ; patched
+.sta_lhs_abs_y
+    sta $ff00,y ; patched
+    txa
+.sta_rhs_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne -
+    inc .ldx_lhs_abs_y + 2
+    inc .lda_rhs_abs_y + 2
+    inc .sta_lhs_abs_y + 2
+    inc .sta_rhs_abs_y + 2
+    dec $9c
+    bne -
     rts
 }
 }
