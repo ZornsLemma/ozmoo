@@ -1849,6 +1849,19 @@ SFTODOLABELX3
     bne -
 SFTODOLABEL4
     sta vmap_used_entries
+    ; SFTODO START HACK
+    lda vmem_blocks_in_main_ram
+    clc
+    adc swr_size_in_blocks
+    sec
+    sbc vmem_blocks_stolen_in_first_bank
+    cmp vmap_used_entries
+    bcc +
+    lda vmap_used_entries
++   tax
+    dex
+    stx SFTODOLASTVMAPINDEXINSWR
+    ; SFTODO END HACK
 }
 .all_loading_done
 

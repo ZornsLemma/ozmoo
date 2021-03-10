@@ -780,6 +780,11 @@ game_id		!byte 0,0,0,0
 !ifdef ACORN_RELOCATABLE {
 initialize
 }
+; SFTODO HACK
+lda #0
+sta $9a
+; SFTODO: MODERATE HACK - THIS MAY BE NEEDED IN SOME FORM (OTHERWISE WE'RE ASSUMING vmap_used_entries IS 0 WHEN IT MIGHT NOT HAVE BEEN INITIALISED YET)
+sta vmap_used_entries
 ; SFTODO: CAN WE GET RID OF CLD/CLI FOR ACORN?
 	cld
 	cli

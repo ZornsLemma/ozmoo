@@ -12,6 +12,7 @@ vmem_cache_bank_index !fill cache_pages + 1, 0
 !ifdef ACORN_SWR {
 ; SFTODO HACK
 swr_size_in_blocks !byte 0 ; SFTODO: SHOULD PROB BE IN PAGE 4
+SFTODOLASTVMAPINDEXINSWR !byte 0 ; SFTODO DITTO
 }
 
 !ifndef ACORN {
@@ -63,9 +64,6 @@ inc_vmem_cache_cnt
 ; Non-virtual memory
 
 read_byte_at_z_address
-; SFTODO HACK
-lda #0
-sta $9a
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
@@ -1391,22 +1389,25 @@ SFTODOHANG3J    bne SFTODOHANG3J
     lda vmem_blocks_in_main_ram
     adc vmem_blocks_stolen_in_first_bank
     sta $93 ; SFTODO TEMP ADDRESS
-    ; SFTODO: FOR NOW COMPLETELY IGNORING THE ".timestamp_equal" POSSIBILITY IN THE OTHER LOOP DOING THIS - THIS WILL BE NECESSARY HERE TOO THOUGH IN FINAL VERSION
     lda #$ff
+	sta vmem_oldest_index
     sta vmem_oldest_age
     lda vmem_blocks_in_main_ram
     sta vmem_oldest_index ; SFTODO FOR IF WE BEQ IN NEXT LINE
     lda vmap_used_entries
     ; SFTODO: During initial data load vmap_used_entries is 0; we just swap with the first entry in vmap
     beq SFTODOJUSTUSE0
-    sec
-    sbc #19*4 ; SFTODOHACK - SIZE OF SHADOW RAM
-SFHANG38 bcc SFHANG38    ; SFTODO: DO WE NEED TO WORRY ABOUT THIS SUBTRACTION GOING NEGATIVE? PROB NOT NORMALLY, BUT MAYBE IN A PREOPT BUILT - JUST MAYBE IF VMAP HAS BEEN TRUNCATED DUE TO NOT NEEDING ALL OF IT??? NOT AT ALL SURE RIGHT NOW AND DON'T WANT TO GET SIDETRACKED YET, BUT THIS MIGHT SUGGEST WE PERHAPS SOMETIMES NEED TO SUBTRACT LESS THAN ACTUAL SHADOW RAM SIZE
-    tax
-    dex
+    ldx SFTODOLASTVMAPINDEXINSWR
 -   lda vmap_z_h,x
     cmp vmem_oldest_age
+    bne SFTODOTIMESTAMPNOTEQUAL
+    ldy vmem_oldest_index
+    iny
+    bne SFTODOTRYNEXTINDEX ; branch if vmem_oldest_index != $ff
+    beq SFTODOFOUNDOLDER
+SFTODOTIMESTAMPNOTEQUAL
     bcs SFTODOTRYNEXTINDEX
+SFTODOFOUNDOLDER
 	; Found older
 	; Skip if z_pc points here; it could be in either page of the block.
 	ldy vmap_z_l,x
