@@ -64,6 +64,7 @@ fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 DIM block% 256
+A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
 REM detection as that requires running a separate executable) before we change
@@ -89,7 +90,6 @@ IF tube THEN PROCdetect_turbo
 IF shadow AND NOT tube THEN PROCassemble_shadow_driver
 }
 
-A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=${DEFAULT_FG_COLOUR}:?bg_colour=${DEFAULT_BG_COLOUR}
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
@@ -427,10 +427,56 @@ REM FINDSWR runs at &900, checks the hardware and installs the right driver,
 REM but this will do for now. (Doing it via a separate binary would allow us to
 REM install this code in the host even if we're on a second processor, so CACHE2P
 REM can use it to access shadow RAM.)
+REM SFTODONOW: IS ALL THIS CODE GOING TO CAUSE PROBLEMS (IF ONLY HAVING TO CHANGE
+REM TO MODE 7 BEFORE CHAIN "LOADER", WHICH SHOULD HAPPEN AUTOMATICALLY) WITH A
+REM SPLASH SCREEN? THIS MAY BE ACCEPTABLE FOR NOW UNTIL I THINK ABOUT SOMETHING
+REM LIKE THE APPROACH OUTLINED IN PREVIOUS SFTODO
+IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
+IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
+REM SFTODONOW: Support other machines
+REM SFTODONOW: Do something to record we haven't assembled anything!
+ENDPROC
+
+DEF PROCassemble_shadow_driver_bbc_b_plus
+REM SFTODO: In principle we could put some code in the &Axxx region of the
+REM private RAM which has direct read/write access to shadow RAM. We probably
+REM need this code as a fallback anyway, because I wouldn't want to prevent
+REM Ozmoo working with things like the B+ private RAM version of MMFS which
+REM use all of the private 12K for themselves.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
-\ SFTODONOW: This is Master only - we need to take the machine we're running on into account, that's the whole point
+CMP #&30:BCS copy_from_shadow
+\ We're copying to shadow RAM.
+STA lda_abs_y+2:STY &D7
+LDY #0:STY &D6
+.copy_to_shadow_loop
+.lda_abs_y
+LDA &FF00,Y \ patched
+JSR &FFB3 \ OSWRSC, preserves Y - equivalent to STA (&D6),Y - note Y is used!
+INY
+BNE copy_to_shadow_loop
+RTS
+.copy_from_shadow
+\ We're copying from shadow RAM.
+STA &F7:STY sta_abs+2
+LDY #0:STY &F6
+.copy_from_shadow_loop
+JSR &FFB9 \ OSRDSC, corrupts Y
+.sta_abs
+STA &FF00 \ patched
+INC &F6
+INC sta_abs+1
+BNE copy_from_shadow_loop
+RTS
+]
+NEXT
+ENDPROC
+
+DEF PROCassemble_shadow_driver_master
+FOR opt%=0 TO 2 STEP 2
+P%=${shadow_ram_copy}
+[OPT opt%
 STA lda_abs_y+2:STY sta_abs_y+2
 LDA #4:TSB &FE34 \ page in shadow RAM
 LDY #0

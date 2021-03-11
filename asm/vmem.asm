@@ -1388,7 +1388,7 @@ SFTODOLL8
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
 ; adjust_dynamic_memory_inline also relies on the RAM bank index being returned
-; in Y. On ACORN_SHADOW_VMEM build this also returns with V set iff A is an
+; in Y. On ACORN_SHADOW_VMEM builds this also returns with V set iff A is an
 ; address in shadow RAM.
 convert_index_x_to_ram_bank_and_address
     ; 0<=X<=254 is the index of the 512-byte virtual memory block we want to
