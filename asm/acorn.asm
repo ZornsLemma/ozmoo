@@ -1282,36 +1282,6 @@ SFTODOLABEL5
     ; probably best for consistency just to always use this code.
     jsr init_progress_indicator
 }
-
-!ifdef ACORN_SHADOW_VMEM {
-    ; Calculate vmem_blocks_in_sideways_ram = 32 * ram_bank_count -
-    ; vmem_blocks_stolen_in_first_bank. (Each 16K bank has 32 512-byte blocks.)
-    ; This is used in convert_index_x_to_ram_bank_and_address to decide when a
-    ; vmem block is in shadow RAM and it doesn't matter if we actually use fewer
-    ; blocks than this. This value is just used to ensure that if a vmem block
-    ; index *would* access past the end of sideways RAM, it's handled via shadow
-    ; RAM. SFTODONOW: I think that's true, but revisit later.
-    lda #0
-    sta scratch_page
-    lda ram_bank_count
-    ldx #5 ; 32 = 2^5
--   asl
-    rol scratch_page
-    dex
-    bne -
-    sec
-    sbc vmem_blocks_stolen_in_first_bank
-    sta vmem_blocks_in_sideways_ram
-    lda scratch_page
-    sbc #0
-    beq +
-    ; We have a result which won't fit in a single byte, but since we know the
-    ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
-    ; 255.
-    lda #255
-    sta vmem_blocks_in_sideways_ram
-+
-}
     rts
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
@@ -1557,6 +1527,36 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
 }
     lsr
     sta vmem_blocks_in_main_ram
+}
+
+!ifdef ACORN_SHADOW_VMEM {
+    ; Calculate vmem_blocks_in_sideways_ram = 32 * ram_bank_count -
+    ; vmem_blocks_stolen_in_first_bank. (Each 16K bank has 32 512-byte blocks.)
+    ; This is used in convert_index_x_to_ram_bank_and_address to decide when a
+    ; vmem block is in shadow RAM and it doesn't matter if we actually use fewer
+    ; blocks than this. This value is just used to ensure that if a vmem block
+    ; index *would* access past the end of sideways RAM, it's handled via shadow
+    ; RAM. SFTODONOW: I think that's true, but revisit later.
+    lda #0
+    sta scratch_page
+    lda ram_bank_count
+    ldx #5 ; 32 = 2^5
+-   asl
+    rol scratch_page
+    dex
+    bne -
+    sec
+    sbc vmem_blocks_stolen_in_first_bank
+    sta vmem_blocks_in_sideways_ram
+    lda scratch_page
+    sbc #0
+    beq +
+    ; We have a result which won't fit in a single byte, but since we know the
+    ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
+    ; 255.
+    lda #255
+    sta vmem_blocks_in_sideways_ram
++
 }
 }
 

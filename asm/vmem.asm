@@ -1395,7 +1395,7 @@ SFTODOLL8
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
 ; adjust_dynamic_memory_inline also relies on the RAM bank index being returned
 ; in Y. On ACORN_SHADOW_VMEM build this also returns with V set iff A is an
-; address in shadoW RAM.
+; address in shadow RAM.
 convert_index_x_to_ram_bank_and_address
     ; 0<=X<=254 is the index of the 512-byte virtual memory block we want to
     ; access. Index 0 may be in main RAM or sideways RAM, depending on the size
@@ -1426,6 +1426,9 @@ convert_index_x_to_ram_bank_and_address
     tay
     +acorn_page_in_bank_using_a_comma_y ram_bank_list ; leaves bank in A
     sta mempointer_ram_bank
+    ; SFTODONOWHACK
+    cmp #0
+-   beq -
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
