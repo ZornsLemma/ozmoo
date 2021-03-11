@@ -82,7 +82,12 @@ ON ERROR GOTO 500
 PROCdetect_swr
 shadow=potential_himem=&8000
 tube=PAGE<&E00
+REM SFTODO: We should get rid of this line and PROCdetect_turbo itself if turbo is
+REM not supported via build options.
 IF tube THEN PROCdetect_turbo
+!ifdef ACORN_SHADOW_VMEM {
+IF shadow AND NOT tube THEN PROCassemble_shadow_driver
+}
 
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
 MODE 135:VDU 23,1,0;0;0;0;
@@ -100,6 +105,7 @@ REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
 IF tube THEN PRINT CHR$normal_fg;"  Second processor (";tube_ram$;")"
+REM SFTODONOW: We should probably say something like "Shadow RAM (screen only)" if we've detected shadow RAM but we don't have a driver to use the spare shadow RAM as vmem cache.
 IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
@@ -129,6 +135,7 @@ VDU 23,255,-1;-1;-1;-1;:REM block UDG for progress indicator in modes 0-6
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
 }
+IF NOT tube THEN PROCSFTODONOW
 fs=FNfs
 IF fs<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
@@ -194,12 +201,12 @@ REM main RAM and/or sideways RAM to run successfully.
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-extra_main_ram=max_page-PAGE:p=PAGE:?${ozmoo_relocate_target}=p DIV 256
+extra_main_ram=max_page-PAGE
 REM Small dynamic memory model builds must have enough main RAM free for dynamic
 REM memory, but the build system takes care of this by knowing the worst-case
 REM start of screen RAM and choosing max_page accordingly. SFTODO: This won't be
-REM true once we allow runtime choice of screen mode; the loader will have to be
-REM involved in the decision.
+REM true once we allow runtime choice of screen mode on non-shadow systems; the
+REM loader will have to be involved in the decision.
 swr_size=&4000*?${ram_bank_count}
 REM Builds using the medium dynamic memory model must have enough sideways RAM
 REM for dynamic memory.
@@ -209,6 +216,21 @@ REM and the minimum vmem cache.
 free_ram=swr_size+extra_main_ram-swr_dynmem_needed-${MIN_VMEM_BYTES}
 IF free_ram<0 THEN PROCdie_ram(-free_ram,"main or sideways RAM")
 ENDPROC
+
+DEF PROCSFTODONOW
+code_start=PAGE
+!ifdef ACORN_SHADOW_VMEM {
+    REM SFTODO: This logic may not be ideal, see how things work out.
+    REM SFTODONOW: THE 4 IN THE NEXT LINE SHOULD PROBABLY BE OVERRIDABLE FROM BUILD COMMAND LINE
+    IF shadow AND ?screen_mode<>0 AND free_ram>0 THEN code_start=code_start+FNmin(4*256,extra_main_ram)
+}
+?${ozmoo_relocate_target}=code_start DIV 256
+ENDPROC
+
+!ifdef ACORN_SHADOW_VMEM {
+    DEF FNmin(a,b)
+    IF a<b THEN =a ELSE =b
+}
 
 DEF PROCchoose_non_tube_version
 !ifdef ONLY_80_COLUMN {
@@ -375,6 +397,34 @@ IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
     ?${is_turbo}=turbo:REM we only care about bit 7 being set
 }
 ENDPROC
+
+!ifdef ACORN_SHADOW_VMEM {
+DEF PROCassemble_shadow_driver
+REM SFTODO: This might be handled differently eventually, perhaps a binary like
+REM FINDSWR runs at &900, checks the hardware and installs the right driver,
+REM but this will do for now. (Doing it via a separate binary would allow us to
+REM install this code in the host even if we're on a second processor, so CACHE2P
+REM can use it to access shadow RAM.)
+FOR opt%=0 TO 2 STEP 2
+P%=${shadow_ram_copy}
+[OPT opt%
+\ SFTODONOW: This is Master only - we need to take the machine we're running on into account, that's the whole point
+STA lda_abs_y+2:STY sta_abs_y+2
+LDA #4:TSB &FE34 \ page in shadow RAM
+LDY #0
+.copy_loop
+.lda_abs_y
+LDA &FF00,Y \ patched
+.sta_abs_y
+STA &FF00,Y \ patched
+DEY
+BNE copy_loop
+LDA #4:TRB &FE34 \ page out shadow RAM
+RTS
+]
+NEXT
+ENDPROC
+}
 
 DEF PROCdetect_swr
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on

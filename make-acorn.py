@@ -1051,6 +1051,8 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
 def make_shr_swr_executable():
     leafname = "OZMOOSH"
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
+    if not cmd_args.no_shadow_vmem:
+        args += ["-DACORN_SHADOW_VMEM=1"]
     return make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM")
 
 
@@ -1401,6 +1403,7 @@ def parse_args():
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
+    group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
 
     cmd_args = parser.parse_args()
 
