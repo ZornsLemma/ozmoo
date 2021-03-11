@@ -229,7 +229,7 @@ p=PAGE
     =p
 } else {
     REM If we have spare shadow RAM after the screen uses what it needs, we can
-    REM use it to as virtual memory cache. We need some cache pages in main RAM
+    REM use it as virtual memory cache. We need some cache pages in main RAM
     REM to do this, which we create by relocating to an address higher than PAGE;
     REM the executable then notices this space and uses it.
     REM SFTODO: This logic may not be ideal, see how things work out.
