@@ -9,6 +9,7 @@ vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 } else { ; ACORN
 !ifdef ACORN_SHADOW_VMEM {
+!error "SFTODO: This is working but it's way slower than the prototype - need to investigate. Perhaps we're halving a value when we shouldn't be and not using all available shadow RAM? Perhaps we're not using all the cache pages we have allocated? Not gone into this yet."
 ; SFTODONOW: THESE SHOULD PROBABLY LIVE IN PAGE 4, THOUGH THEY DO PROB NEED TO BE 0-INITED
 vmem_cache_cnt !byte 0         ; current execution cache
 ; SFTODONOW: I SHOULD WORK TOGETHER WITH BUILD SYSTEM TO ENSURE THERE WILL NEVER BE MORE CACHE PAGES THAN CAN FIT HERE - JUST HACK IT FOR NOW
@@ -1426,9 +1427,11 @@ convert_index_x_to_ram_bank_and_address
     tay
     +acorn_page_in_bank_using_a_comma_y ram_bank_list ; leaves bank in A
     sta mempointer_ram_bank
+!if 0 {
     ; SFTODONOWHACK
     cmp #0
 -   beq -
+}
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
