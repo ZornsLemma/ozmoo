@@ -577,7 +577,28 @@ load_blocks_from_index
 } else { ; ACORN_SWR
     ldx vmap_index
     jsr convert_index_x_to_ram_bank_and_address
-    !error "SFTODO"
+!ifdef ACORN_SHADOW_VMEM {
+    bvc .block_not_in_cache
+    sta vmem_temp
+    ; Forget any cache pages belonging to the old block at this position.
+    ldy vmem_cache_count_mem
+    dey
+-   lda vmem_cache_page_index,y
+    and #(255 - vmem_indiv_block_mask)
+    cmp vmem_temp
+    bne +
+    lda #0
+    sta vmem_cache_page_index,y
++   dey
+    bpl -
+    ; We need to load into scratch_double_page; we'll copy into shadow RAM later.
+    ; SFTODO: On some machines we could probably load directly into shadow RAM, but
+    ; I am not sure it's worth the extra complication. (On a Master, for example, the
+    ; OS is likely to adjust ACCCON during this process; would it leave it as it found
+    ; it, given we'd have played around with it directly to page in shadow RAM?)
+    lda #>scratch_double_page
+.block_not_in_cache
+}
 }
 
 !ifdef TRACE_FLOPPY {
@@ -614,7 +635,21 @@ load_blocks_from_index
 	rol
 	sta readblocks_currentblock + 1
 	jsr readblocks
-    !error "SFTODO"
+!ifdef ACORN_SHADOW_VMEM {
+    ; Did we just load into scratch_double_page? If so, we need to copy this
+    ; block into shadow RAM.
+    lda readblocks_mempos + 1
+    cmp #(>scratch_double_page) + vmem_block_pagecount ; readblocks advanced this
+    bne .not_shadow_load
+    lda #>scratch_double_page
+    ldy vmem_temp
+    jsr shadow_ram_copy ; SFTODO: RENAME THIS shadow_ram_copy_a_to_y?
+    lda #(>scratch_double_page) + 1
+    ldy vmem_temp
+    iny
+    jsr shadow_ram_copy
+.not_shadow_load
+}
 load_blocks_from_index_done ; except for any tracing
 !ifdef TRACE_VM {
 	jsr print_following_string
@@ -1305,7 +1340,37 @@ SFTODOLL8
 	adc vmap_c64_offset
 } else {
     jsr convert_index_x_to_ram_bank_and_address
-    !error "SFTODO"
+!ifdef ACORN_SHADOW_VMEM {
+    bvc .block_directly_accessible
+    ; This block is held in shadow RAM. Is it already in the cache?
+    clc
+    adc vmem_offset_in_block
+    ldx vmem_cache_count_mem
+    dex
+-   cmp vmem_cache_page_index,x
+    beq .cache_updated
+    dex
+    bpl -
+    ; No, it's not in the cache. Copy it in.
+    sta vmem_temp
+    jsr get_free_vmem_buffer
+    tay
+    lda vmem_temp
+    jsr shadow_ram_copy
+    lda vmem_cache_cnt
+    jsr inc_vmem_cache_cnt
+    tax
+.cache_updated
+    ; X now identifies the page in vmem_cache containing this block.
+    txa
+    clc
+    adc vmem_cache_start_mem
+    sta mempointer + 1
+    ldx vmap_index
+    bne .return_result ; always true SFTODONOW: IS IT? WHAT IF WE HAVE *NO* SIDEWAYS RAM AND *NO* VMEM-IN-MAIN RAM? VMAP_INDEX 0 COULD THEN BE A SHADOW RAM BLOCK COULDN'T IT?
+-   jmp - ; SFTODO: TO CATCH FAILURE AS PER ABOVE SFTODONOW
+.block_directly_accessible
+}
     clc
     adc vmem_offset_in_block
 }
@@ -1329,7 +1394,8 @@ SFTODOLL8
 ; like this to help me think about it. For the moment it returns page of physical
 ; memory in A and ram bank is selected and stored at mempointer_ram_bank.
 ; adjust_dynamic_memory_inline also relies on the RAM bank index being returned
-; in Y.
+; in Y. On ACORN_SHADOW_VMEM build this also returns with V set iff A is an
+; address in shadoW RAM.
 convert_index_x_to_ram_bank_and_address
     ; 0<=X<=254 is the index of the 512-byte virtual memory block we want to
     ; access. Index 0 may be in main RAM or sideways RAM, depending on the size
@@ -1367,6 +1433,9 @@ convert_index_x_to_ram_bank_and_address
     asl
     ; Carry is already clear
     adc #$80
+!ifdef ACORN_SHADOW_VMEM {
+    clv
+}
     rts
 .in_main_ram
     ; A contains a negative block offset from the top of main RAM (BBC sideways
@@ -1380,6 +1449,9 @@ convert_index_x_to_ram_bank_and_address
     sec ; SFTODO: can we in fact rely on carry having a known state here and avoid this?
     sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
 }
+!ifdef ACORN_SHADOW_VMEM {
+    clv
+}
     rts
 !ifdef ACORN_SHADOW_VMEM {
 .in_shadow_ram
@@ -1388,10 +1460,11 @@ convert_index_x_to_ram_bank_and_address
     asl ; convert to 256-byte blocks
     ; We have at most 19K of spare shadow RAM, so 0 <= A < 19*4 < 128.
     ; clc - carry is already clear
--   bcc - ; SFTODO TOTAL PARANOIA, DELETE LATER
+-   bcs - ; SFTODO TOTAL PARANOIA, DELETE LATER
     adc #$30 ; SFTODO: MAGIC CONSTANT IN A COUPLE OF PLACES, USE SOMETHING LIKE shadow_start = $3000 IN CONSTANTS FOR ACORN_SHADOW_VMEM BUILD
+    bit .in_shadow_ram_rts ; set V
+.in_shadow_ram_rts
     rts
-!error "SFTODO MAKE SURE ALL CODE PATHS SIGNAL SHADOW/NON SHADOW TO CALLER"
 }
 }
 }

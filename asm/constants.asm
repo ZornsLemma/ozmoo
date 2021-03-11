@@ -498,7 +498,8 @@ is_turbo = $40e ; !byte 0 SFTODO: RENAME turbo_flag?
 }
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SHADOW_VMEM {
-; We call use _mem suffixes on these variables to avoid accidental confusion with the Commodore values, which are assembly-time constants.
+; We use _mem suffixes on these variables to avoid accidental confusion with the
+; Commodore values, which are assembly-time constants.
 vmem_cache_count_mem = $410 ; !byte 0
 vmem_cache_start_mem = $411 ; byte 0
 vmem_blocks_in_sideways_ram = $412; !byte 0

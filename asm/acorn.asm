@@ -925,6 +925,7 @@ prepare_for_initial_load
     inc game_blocks + 1
 +
 
+SFTODOXX89
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
@@ -943,11 +944,11 @@ prepare_for_initial_load
 !ifdef ACORN_SHADOW_VMEM {
     ; We may have some additional RAM blocks in shadow RAM not being used for the
     ; screen display.
+SFTODOLM2
     lda vmem_cache_count_mem
     beq .no_spare_shadow
-    lda screen_mode ; note we don't force shadow mode on here
-    tax
     lda #osbyte_read_screen_address_for_mode
+    ldx screen_mode ; note we don't force shadow mode on here
     jsr osbyte
     ; SFTODONOW: I wonder if this will go wrong for things like Electron Master RAM board, where shadow can't be turned off by software and so this OSBYTE probably always returns $8000. For now let me deliberately hang if this happens - if this is the case, we just need to use a hard-coded table of start addresses rather than this OSBYTE, not a big deal.
     tya
@@ -955,8 +956,7 @@ prepare_for_initial_load
 -   bmi -
 }
     sec
-    sbc #$30
-    lsr ; convert to 512-byte blocks
+    sbc #$30 ; SFTODO MAGIC NUMBER USED IN COUPLE OF PLACES
     clc
     adc ram_blocks
     sta ram_blocks
