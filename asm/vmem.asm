@@ -1420,11 +1420,6 @@ convert_index_x_to_ram_bank_and_address
     tay
     +acorn_page_in_bank_using_a_comma_y ram_bank_list ; leaves bank in A
     sta mempointer_ram_bank
-!if 0 {
-    ; SFTODONOWHACK
-    cmp #0
--   beq -
-}
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
