@@ -719,6 +719,7 @@ deletable_init_start
 }
 
 !ifdef ACORN_SHADOW_VMEM {
+    ; SFTODONOW: IF WE HAVE "UNSUPPORTED" SHADOW RAM, WE MUST NOT TRY TO USE IT. I DON'T KNOW IF THE LOADER WILL INDICAT THIS TO US (BY SETTING VMEM_CACHE_CNT_MEM TO 0, AND WE MUSTN'T TRAMPLE OVER IT AS WE CURRENTLY DO JUST BELOW) OR IF WE WILL DECIDE, BUT NEED TO DO SOMETHING.
     ; Set vmem_cache_cnt_mem to the number of 256-byte cache entries we have for
     ; holding data copied out of shadow RAM.
     ;
@@ -939,6 +940,32 @@ prepare_for_initial_load
 }
     sta ram_blocks
 
+!ifdef ACORN_SHADOW_VMEM {
+    ; We may have some additional RAM blocks in shadow RAM not being used for the
+    ; screen display.
+    lda vmem_cache_cnt_mem
+    beq .no_spare_shadow
+    lda screen_mode ; note we don't force shadow mode on here
+    tax
+    lda #osbyte_read_screen_address_for_mode
+    jsr osbyte
+    ; SFTODONOW: I wonder if this will go wrong for things like Electron Master RAM board, where shadow can't be turned off by software and so this OSBYTE probably always returns $8000. For now let me deliberately hang if this happens - if this is the case, we just need to use a hard-coded table of start addresses rather than this OSBYTE, not a big deal.
+    tya
+!if 1 { ; SFTODO TEMP
+-   bmi -
+}
+    sec
+    sbc #$30
+    lsr ; convert to 512-byte blocks
+    clc
+    adc ram_blocks
+    sta ram_blocks
+    bcc +
+    inc ram_blocks + 1
++
+.no_spare_shadow
+}
+
 !ifdef ACORN_TUBE_CACHE {
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
@@ -1026,6 +1053,7 @@ SFTODOEE2
 
     ; Now we know how much data we are going to load (ram_blocks' worth), we can
     ; calculate how many blocks correspond to each progress indicator position.
+    ; SFTODONOW: ISN'T THERE A RISK HERE (AND WAS EVEN BEFORE I ADDED THE SHADOW VMEM STUFF) THAT RAM_BLOCKS-ADJUSTED_NONSTORED_BLOCKS IS MORE MEMORY THAN THE VMAP CAN ADDRESS, AND THEREFORE WE *AREN'T* NEC GOING TO LOAD RAM_BLOCKS' WORTH OF DATA? IF I'M RIGHT, IS THIS ONLY AN ISSUE FOR THE PROGRESS BAR OR DOES IT HAVE MORE SERIOUS CONSEQUENCES? THIS WOULD PROBABLY ONLY SHOW UP FOR GAMES>=127K+THEIRDYNMEM LONG, AND I PROBABLY HAVEN'T TESTED WITH SUCH A GAME RECENTLY, IF AT ALL.
     jsr init_progress_indicator
 
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
