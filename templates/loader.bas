@@ -222,6 +222,7 @@ code_start=PAGE
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: This logic may not be ideal, see how things work out.
     REM SFTODONOW: THE 4 IN THE NEXT LINE SHOULD PROBABLY BE OVERRIDABLE FROM BUILD COMMAND LINE
+    REM SFTODONOW: DO WE NEED TO HAVE AT LEAST *2* PAGES AVAILABLE? I THINK WE MIGHT, BECAUSE ONE MIGHT CONTAIN Z-PC AND IF IT DOES WE'LL NEED ANOTHER ONE TO FALL BACK TO
     IF shadow AND ?screen_mode<>0 AND free_ram>0 THEN code_start=code_start+FNmin(4*256,extra_main_ram)
 }
 ?${ozmoo_relocate_target}=code_start DIV 256

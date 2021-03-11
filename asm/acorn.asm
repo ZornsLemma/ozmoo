@@ -725,12 +725,12 @@ deletable_init_start
     ; If we're in mode 0, there's no spare shadow RAM anyway. The loader won't have
     ; allocated any space, but we might have one page available if we happened to
     ; load at PAGE+256, and we mustn't let that mislead us.
-    ; SFTODONOW: MAKE SURE WE RESPECT THIS BEING 0 AND DON'T DO UNNECESSARY WORK OR CRASH IF IT IS 0! REVIEW CODE REFERENCING vmem_cache_cnt_mem AFTERWARDS TO CHECK...
+    ; SFTODONOW: MAKE SURE WE RESPECT THIS BEING 0 AND DON'T DO UNNECESSARY WORK OR CRASH IF IT IS 0! REVIEW CODE REFERENCING vmem_cache_cnt_mem AFTERWARDS TO CHECK... WHILE I'M AT IT, REVIEW TO CHECK HAVING JUST 1 OR 2 PAGES OF CACHE WILL ALSO WORK (NOT CRASH, THE PERFORMANCE MIGHT BE TERRIBLE OF COURSE)
     lda #0
     sta vmem_cache_cnt_mem
     lda screen_mode
     beq .mode_0
-    ; We have however many pages of cache as there are between PAGE and
+    ; We have as many pages of cache as there are between PAGE and
     ; program_start. In practice this is whatever the loader deliberately set
     ; aside for us plus maybe an extra page if we had to relocate down to
     ; PAGE+256 to keep the right alignment.
