@@ -1,4 +1,5 @@
-
+"Proper" shadow RAM vmem support timings
+meddyn 5 cache pages $005ac1 - this is way too slow, prototype took $004e2e
 
 
 

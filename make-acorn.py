@@ -979,6 +979,15 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     return e
 
 
+# If cmd_args.extra_build_at is not None, rebuild e at that address. This
+# executable isn't used any further, but it's useful for debugging to be able to
+# force it to happen in order to have acme output for the actual address the
+# code will run at after relocation and/or introduction of shadow RAM cache.
+def extra_build_wrapper(e):
+    if e is not None and cmd_args.extra_build_at is not None:
+        e.rebuild_at(cmd_args.extra_build_at)
+    return e
+
 # Build an Ozmoo executable which loads at whichever of initial_start_addr
 # and initial_start_addr+256 gives the least wasted space. If provided
 # base_executable is a pre-built executable which shares the same double-page
@@ -1053,7 +1062,7 @@ def make_shr_swr_executable():
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
     if not cmd_args.no_shadow_vmem:
         args += ["-DACORN_SHADOW_VMEM=1"]
-    return make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM")
+    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM"))
 
 
 def make_bbc_swr_executable():
@@ -1064,13 +1073,13 @@ def make_bbc_swr_executable():
     # hardware scrolling is always disabled in mode 7 anyway.
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
     args = [x for x in args if x != "-DACORN_HW_SCROLL=1"]
-    return make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM")
+    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM"))
 
 
 def make_electron_swr_executable():
     leafname = "OZMOOE"
     args = ozmoo_base_args + swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
-    return make_small_or_big_dynmem_executable(leafname, args, "Electron")
+    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "Electron"))
 
 
 def make_tube_executables():
@@ -1085,6 +1094,8 @@ def make_tube_executables():
         args += ["-DACORN_TUBE_CACHE=1"]
         args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
         args += ["-DACORN_TUBE_CACHE_MAX_TIMESTAMP=%d" % max_timestamp]
+    # We don't pay attention to cmd_args.extra_build_at here; tube builds have a fixed
+    # address anyway.
     tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, args, "second processor")
     if tube_vmem is not None:
         info("Game will be run using virtual memory on second processor")
@@ -1404,6 +1415,7 @@ def parse_args():
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
+    group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at a fixed address")
 
     cmd_args = parser.parse_args()
 
@@ -1485,6 +1497,9 @@ def parse_args():
 
     if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
         cmd_args.debug = True
+
+    if cmd_args.extra_build_at is not None:
+        cmd_args.extra_build_at = our_parse_int(cmd_args.extra_build_at)
 
     return cmd_args
 
