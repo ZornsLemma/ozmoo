@@ -7,8 +7,12 @@ M128 mode 7
 64K SWR meddyn 5 cache pages $0049f1
 
 B+128K PAGE=&1F00 mode 7 (5 *recommended* cache pages)
-16K SWR meddyn $00690e ($0091f2 with no SWR in 5.x pre-first-alpha timings below!)
+16K SWR meddyn $00690e ($0091f2 with 16K SWR in 5.x pre-first-alpha timings below!)
 64K SWR meddyn $004a37
+
+B+128K PAGE=&1F00 mode 7 (5 *recommended* cache pages) using shadow copy code at &AF00
+16K SWR meddyn $0053e7
+64K SWR meddyn $0049d3
 
 
 

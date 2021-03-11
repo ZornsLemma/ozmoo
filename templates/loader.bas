@@ -438,6 +438,50 @@ REM SFTODONOW: Do something to record we haven't assembled anything!
 ENDPROC
 
 DEF PROCassemble_shadow_driver_bbc_b_plus
+REM SFTODONOW EXPERIMENTAL
+shadow_copy_private_ram=&AF00
+FOR opt%=0 TO 2 STEP 2
+P%=${shadow_ram_copy}
+[OPT opt%
+LDX &F4:STX lda_imm_bank+1
+LDX #128:STX &F4:STX &FE30
+JMP shadow_copy_private_ram
+.stub_finish
+.lda_imm_bank
+LDA #0 \ patched
+STA &F4:STA &FE30
+RTS
+]
+O%=block%:P%=shadow_copy_private_ram
+shadow_copy_low_ram=O%
+[OPT opt%+4
+STA lda_abs_y+2:STY sta_abs_y+2
+LDY #0
+.copy_loop
+.lda_abs_y
+LDA &FF00,Y \ patched
+.sta_abs_y
+STA &FF00,Y \ patched
+DEY
+BNE copy_loop
+JMP stub_finish
+]
+shadow_copy_low_ram_end=O%
+P%=O%
+[OPT opt%
+.copy_to_private_ram
+LDA &F4:STA &70
+LDA #128:STA &F4:STA &FE30
+LDY #shadow_copy_low_ram_end-shadow_copy_low_ram-1
+.copy_to_private_ram_loop
+LDA shadow_copy_low_ram,Y:STA shadow_copy_private_ram,Y
+DEY:CPY #&FF:BNE copy_to_private_ram_loop
+LDA &70:STA &F4:STA &FE30
+RTS
+]
+NEXT
+CALL copy_to_private_ram
+ENDPROC
 REM SFTODO: In principle we could put some code in the &Axxx region of the
 REM private RAM which has direct read/write access to shadow RAM. We probably
 REM need this code as a fallback anyway, because I wouldn't want to prevent
