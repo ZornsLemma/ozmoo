@@ -462,7 +462,7 @@ RTS
 STA &F7:STY sta_abs+2
 LDY #0:STY &F6
 .copy_from_shadow_loop
-JSR &FFB9 \ OSRDSC, corrupts Y
+JSR &FFB9 \ OSRDSC, ignores and corrupts Y
 .sta_abs
 STA &FF00 \ patched
 INC &F6
