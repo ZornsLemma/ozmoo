@@ -1053,7 +1053,7 @@ SFTODOEE2
 
     ; Now we know how much data we are going to load (ram_blocks' worth), we can
     ; calculate how many blocks correspond to each progress indicator position.
-    ; SFTODONOW: ISN'T THERE A RISK HERE (AND WAS EVEN BEFORE I ADDED THE SHADOW VMEM STUFF) THAT RAM_BLOCKS-ADJUSTED_NONSTORED_BLOCKS IS MORE MEMORY THAN THE VMAP CAN ADDRESS, AND THEREFORE WE *AREN'T* NEC GOING TO LOAD RAM_BLOCKS' WORTH OF DATA? IF I'M RIGHT, IS THIS ONLY AN ISSUE FOR THE PROGRESS BAR OR DOES IT HAVE MORE SERIOUS CONSEQUENCES? THIS WOULD PROBABLY ONLY SHOW UP FOR GAMES>=127K+THEIRDYNMEM LONG, AND I PROBABLY HAVEN'T TESTED WITH SUCH A GAME RECENTLY, IF AT ALL.
+    ; SFTODONOW: ISN'T THERE A RISK HERE (AND WAS EVEN BEFORE I ADDED THE SHADOW VMEM STUFF? OR DID THE RESTRICTION TO 9 BANKS OF SWR PLUS DYNMEM ADJUST - ALTHO THAT COULD BE DISABLED FROM CMDLINE! - MEAN THIS *WAS* SAFE BEFORE, BUT ISN'T NOW?????) THAT RAM_BLOCKS-ADJUSTED_NONSTORED_BLOCKS IS MORE MEMORY THAN THE VMAP CAN ADDRESS, AND THEREFORE WE *AREN'T* NEC GOING TO LOAD RAM_BLOCKS' WORTH OF DATA? IF I'M RIGHT, IS THIS ONLY AN ISSUE FOR THE PROGRESS BAR OR DOES IT HAVE MORE SERIOUS CONSEQUENCES? THIS WOULD PROBABLY ONLY SHOW UP FOR GAMES>=127K+THEIRDYNMEM LONG (PROB NEED TO BE LONGER, TO ALLOW FOR OUR DYNMEM ADJUST), AND I PROBABLY HAVEN'T TESTED WITH SUCH A GAME RECENTLY, IF AT ALL.
     jsr init_progress_indicator
 
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
@@ -1283,6 +1283,35 @@ SFTODOLABEL5
     jsr init_progress_indicator
 }
 
+!ifdef ACORN_SHADOW_VMEM {
+    ; Calculate vmem_blocks_in_sideways_ram = 32 * ram_bank_count -
+    ; vmem_blocks_stolen_in_first_bank. (Each 16K bank has 32 512-byte blocks.)
+    ; This is used in convert_index_x_to_ram_bank_and_address to decide when a
+    ; vmem block is in shadow RAM and it doesn't matter if we actually use fewer
+    ; blocks than this. This value is just used to ensure that if a vmem block
+    ; index *would* access past the end of sideways RAM, it's handled via shadow
+    ; RAM. SFTODONOW: I think that's true, but revisit later.
+    lda #0
+    sta scratch_page
+    lda ram_bank_count
+    ldx #5 ; 32 = 2^5
+-   asl
+    rol scratch_page
+    dex
+    bne -
+    sec
+    sbc vmem_blocks_stolen_in_first_bank
+    sta vmem_blocks_in_sideways_ram
+    lda scratch_page
+    sbc #0
+    beq +
+    ; We have a result which won't fit in a single byte, but since we know the
+    ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
+    ; 255.
+    lda #255
+    sta vmem_blocks_in_sideways_ram
++
+}
     rts
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
