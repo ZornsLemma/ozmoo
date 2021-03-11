@@ -734,12 +734,17 @@ deletable_init_start
     ; We have as many pages of cache as there are between PAGE and
     ; program_start. In practice this is whatever the loader deliberately set
     ; aside for us plus maybe an extra page if we had to relocate down to
-    ; PAGE+256 to keep the right alignment.
+    ; PAGE+256 to keep the right alignment. (That extra page must be below
+    ; $3000; the loader enforces this in general, but we have to do it here as
+    ; the loader doesn't know about the extra page.)
     lda #osbyte_read_oshwm
     jsr osbyte
     sty vmem_cache_start_mem
     lda #>program_start
-    sec
+    cmp #$30 ; SFTODO MAGIC CONSTANT
+    bcc +
+    lda #$30 ; SFTODO MAGIC CONSTANT
++   sec
     sbc vmem_cache_start_mem
     ; We mustn't have just one page; the loader shouldn't allow this to happen
     ; but let's be paranoid as this is discardable init code.

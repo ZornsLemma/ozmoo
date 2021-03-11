@@ -135,7 +135,7 @@ VDU 23,255,-1;-1;-1;-1;:REM block UDG for progress indicator in modes 0-6
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
 }
-IF NOT tube THEN PROCSFTODONOW
+IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
 fs=FNfs
 IF fs<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
@@ -221,24 +221,33 @@ free_main_ram=FNmin(extra_main_ram,free_ram)
 }
 ENDPROC
 
-DEF PROCSFTODONOW
-code_start=PAGE
-!ifdef ACORN_SHADOW_VMEM {
+DEF FNcode_start
+REM 'p' is used to work around a beebasm tokenisation bug.
+REM (https://github.com/stardot/beebasm/issues/45)
+p=PAGE
+!ifndef ACORN_SHADOW_VMEM {
+    =p
+} else {
+    REM If we have spare shadow RAM after the screen uses what it needs, we can
+    REM use it to as virtual memory cache. We need some cache pages in main RAM
+    REM to do this, which we create by relocating to an address higher than PAGE;
+    REM the executable then notices this space and uses it.
     REM SFTODO: This logic may not be ideal, see how things work out.
-    REM SFTODONOW: It's unlikely, but something - probably make-acorn.py - needs to guard against it being possible for PAGE to be so high that some of these vmem cache pages are above $3000
-    REM If we have shadow RAM and we're not using mode 0, there will be some
-    REM spare shadow RAM which we can use as virtual memory cache. We need some
-    REM cache pages in main RAM to work with shadow RAM; these are located at PAGE
-    REM and the executable is relocated to start after them. We must have at
-    REM least two of these pages, since if one contains the Z-machine PC it
-    REM can't be touched and we'd crash if we failed to find another cache page when we needed one.
-    REM The executable's relocation code takes care of maintaining 512-byte
-    REM alignment when relocating, which may mean there's an extra page of
-    REM cache available.
-    IF shadow AND ?screen_mode<>0 AND free_main_ram>=512 THEN code_start=code_start+FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
+    IF NOT shadow THEN =p
+    REM In mode 0, all shadow RAM is used for the screen.
+    IF ?screen_mode=0 THEN =p
+    shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
+    REM The shadow cache must not overlap with shadow RAM.
+    REM SFTODO: Strictly speaking this could be allowed on machines where we use
+    REM an API call to transfer data instead of paging shadow RAM into the
+    REM memory map, but it's not a very likely case anyway.
+    IF p+shadow_cache>=&3000 THEN shadow_cache=&3000-p
+    REM The shadow cache must have at least two pages, since one might be locked
+    REM while it contains the Z-machine PC and we need another one available
+    REM when that happens.
+    IF shadow_cache<512 THEN shadow_cache=0
+    =p+shadow_cache
 }
-?${ozmoo_relocate_target}=code_start DIV 256
-ENDPROC
 
 !ifdef ACORN_SHADOW_VMEM {
     DEF FNmin(a,b)
