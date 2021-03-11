@@ -1,5 +1,9 @@
 "Proper" shadow RAM vmem support timings
+0K SWR smalldyn 5 cache pages $006af8 (this didn't fit in prototype!?)
 16K SWR meddyn 5 cache pages $004e39 - prototype took $004e2e but that's probably noise
+32K SWR meddyn 5 cache pages $004976
+48K SWR meddyn 5 cache pages $00499b
+64K SWR meddyn 5 cache pages $0049f1
 
 
 
