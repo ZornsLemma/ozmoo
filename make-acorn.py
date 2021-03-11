@@ -1260,6 +1260,7 @@ def make_tokenised_loader(symbols):
         symbols["SPLASH"] = "1"
     symbols.update({k: basic_string(v) for k, v in common_labels.items()})
     symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
+    symbols["RECOMMENDED_SHADOW_CACHE_PAGES"] = basic_int(cmd_args.recommended_shadow_cache_pages)
     loader_text_basic = make_text_basic("templates/loader.bas", symbols)
     return make_tokenised_basic("loader", loader_text_basic)
 
@@ -1390,6 +1391,7 @@ def parse_args():
     parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard")
     parser.add_argument("--on-quit-command", metavar="COMMAND", type=str, help="execute COMMAND when game quits")
     parser.add_argument("--on-quit-command-silent", metavar="COMMAND", type=str, help="execute COMMAND invisibly when game quits")
+    parser.add_argument("--recommended-shadow-cache-pages", metavar="N", type=int, help="try to allocate N pages for shadow cache")
     parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
     group = parser.add_argument_group("advanced/developer arguments (not normally needed)")
@@ -1500,6 +1502,12 @@ def parse_args():
 
     if cmd_args.extra_build_at is not None:
         cmd_args.extra_build_at = our_parse_int(cmd_args.extra_build_at)
+
+    if cmd_args.recommended_shadow_cache_pages is not None:
+        if cmd_args.recommended_shadow_cache_pages < 2:
+            die("--recommended-shadow-cache-pages must be at least 2")
+    else:
+        cmd_args.recommended_shadow_cache_pages = 4
 
     return cmd_args
 

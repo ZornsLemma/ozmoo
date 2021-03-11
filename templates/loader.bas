@@ -215,16 +215,27 @@ REM At this point, we need enough main and/or sideways RAM for swr_dynmem_needed
 REM and the minimum vmem cache.
 free_ram=swr_size+extra_main_ram-swr_dynmem_needed-${MIN_VMEM_BYTES}
 IF free_ram<0 THEN PROCdie_ram(-free_ram,"main or sideways RAM")
+!ifdef ACORN_SHADOW_VMEM {
+REM SFTODO: I think this is right, but think about it fresh!
+free_main_ram=FNmin(extra_main_ram,free_ram)
+}
 ENDPROC
 
 DEF PROCSFTODONOW
 code_start=PAGE
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: This logic may not be ideal, see how things work out.
-    REM SFTODONOW: THE 4 IN THE NEXT LINE SHOULD PROBABLY BE OVERRIDABLE FROM BUILD COMMAND LINE
-    REM SFTODONOW: DO WE NEED TO HAVE AT LEAST *2* PAGES AVAILABLE? I THINK WE MIGHT, BECAUSE ONE MIGHT CONTAIN Z-PC AND IF IT DOES WE'LL NEED ANOTHER ONE TO FALL BACK TO
     REM SFTODONOW: It's unlikely, but something - probably make-acorn.py - needs to guard against it being possible for PAGE to be so high that some of these vmem cache pages are above $3000
-    IF shadow AND ?screen_mode<>0 AND free_ram>0 THEN code_start=code_start+FNmin(4*256,extra_main_ram)
+    REM If we have shadow RAM and we're not using mode 0, there will be some
+    REM spare shadow RAM which we can use as virtual memory cache. We need some
+    REM cache pages in main RAM to work with shadow RAM; these are located at PAGE
+    REM and the executable is relocated to start after them. We must have at
+    REM least two of these pages, since if one contains the Z-machine PC it
+    REM can't be touched and we'd crash if we failed to find another cache page when we needed one.
+    REM The executable's relocation code takes care of maintaining 512-byte
+    REM alignment when relocating, which may mean there's an extra page of
+    REM cache available.
+    IF shadow AND ?screen_mode<>0 AND free_main_ram>=512 THEN code_start=code_start+FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
 }
 ?${ozmoo_relocate_target}=code_start DIV 256
 ENDPROC
