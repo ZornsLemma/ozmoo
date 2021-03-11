@@ -503,6 +503,14 @@ cursor_status = $40f ; !byte 0
 vmem_cache_count_mem = $410 ; !byte 0
 vmem_cache_start_mem = $411 ; byte 0
 vmem_blocks_in_sideways_ram = $412; !byte 0
+vmem_cache_cnt = $414 ; !byte 0
+vmem_cache_page_index = $415
+; We add one in the next line because PAGE alignment may add an extra cache page
+; on top of the recommended number of pages.
+vmem_cache_page_index_end = vmem_cache_page_index + ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
+!if vmem_cache_page_index_end >= $41c {
+	!error "Not enough space for vmem_cache_page_index"
+}
 }
 !ifdef ACORN_SWR {
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.

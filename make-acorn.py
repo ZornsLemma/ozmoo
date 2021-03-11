@@ -1061,7 +1061,7 @@ def make_shr_swr_executable():
     leafname = "OZMOOSH"
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
     if not cmd_args.no_shadow_vmem:
-        args += ["-DACORN_SHADOW_VMEM=1"]
+        args += ["-DACORN_SHADOW_VMEM=1", "-DACORN_RECOMMENDED_SHADOW_CACHE_PAGES=%d" % cmd_args.recommended_shadow_cache_pages]
     return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM"))
 
 

@@ -753,6 +753,22 @@ deletable_init_start
     lda #0
 +   sta vmem_cache_count_mem
 .mode_0
+
+    ; Zero vmem_cache_cnt and vmem_cache_page_index.
+    ; SFTODO: In principle we could arrange a contiguous chunk of page 4 which we
+    ; put zero-inited stuff in and just zero the whole block. We can't do the whole
+    ; of page 4 because we use resident integer variables to pass information in
+    ; from the loader. This might help move some minor bits of data out of main
+    ; RAM down into page 4.
+    !if vmem_cache_cnt + 1 != vmem_cache_page_index {
+        !error "vmem_cache_cnt is not just before vmem_cache_page_index"
+    }
+SFTODOQH3
+    lda #0
+    ldx #vmem_cache_page_index_end - vmem_cache_cnt - 1
+-   sta vmem_cache_cnt,x
+    dex
+    bpl -
 }
 
     +prepare_static_high_memory_inline
