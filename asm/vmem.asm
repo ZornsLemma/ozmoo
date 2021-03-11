@@ -7,6 +7,13 @@ vmem_cache_page_index !fill cache_pages + 1, 0
 !ifdef TARGET_C128 {
 vmem_cache_bank_index !fill cache_pages + 1, 0
 }
+} else { ; ACORN
+!ifdef ACORN_SHADOW_VMEM {
+; SFTODONOW: THESE SHOULD PROBABLY LIVE IN PAGE 4, THOUGH THEY DO PROB NEED TO BE 0-INITED
+vmem_cache_cnt !byte 0         ; current execution cache
+; SFTODONOW: I SHOULD WORK TOGETHER WITH BUILD SYSTEM TO ENSURE THERE WILL NEVER BE MORE CACHE PAGES THAN CAN FIT HERE - JUST HACK IT FOR NOW
+vmem_cache_page_index !fill 8, 0
+}
 }
 ; SFTODO: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
 
@@ -18,6 +25,11 @@ vmem_cache_bank_index !fill cache_pages + 1, 0
 	SKIP_VMEM_BUFFERS = 1
 }
 }
+} else { ; ACORN
+!ifndef ACORN_SHADOW_VMEM {
+	SKIP_VMEM_BUFFERS = 1
+}
+}
 
 !ifndef SKIP_VMEM_BUFFERS {
 get_free_vmem_buffer
@@ -25,13 +37,21 @@ get_free_vmem_buffer
 	lda vmem_cache_cnt
 	tax
 	clc
+!ifndef ACORN {
 	adc #>vmem_cache_start
+} else {
+    adc vmem_cache_start_mem
+}
 	cmp z_pc_mempointer + 1
 	bne +
 	jsr inc_vmem_cache_cnt
 	txa
 	clc
+!ifndef ACORN {
 	adc #>vmem_cache_start ; start of cache
+} else {
+	adc vmem_cache_start_mem ; start of cache
+}
 +	cmp mempointer + 1
 	bne +
 	; mempointer points to this page. Store $ff in zp_pc_h so mempointer won't be used
@@ -45,14 +65,15 @@ get_free_vmem_buffer
 inc_vmem_cache_cnt
 	ldx vmem_cache_cnt
 	inx
+!ifndef ACORN {
 	cpx #vmem_cache_count
+} else {
+    cpx vmem_cache_count_mem
+}
 	bcc +
 	ldx #0
 +	stx vmem_cache_cnt
 	rts
-
-
-}
 }
 
 !ifndef VMEM {
@@ -556,6 +577,7 @@ load_blocks_from_index
 } else { ; ACORN_SWR
     ldx vmap_index
     jsr convert_index_x_to_ram_bank_and_address
+    !error "SFTODO"
 }
 
 !ifdef TRACE_FLOPPY {
@@ -592,6 +614,7 @@ load_blocks_from_index
 	rol
 	sta readblocks_currentblock + 1
 	jsr readblocks
+    !error "SFTODO"
 load_blocks_from_index_done ; except for any tracing
 !ifdef TRACE_VM {
 	jsr print_following_string
@@ -1073,7 +1096,7 @@ SFTODOLL8
 	cpx vmap_used_entries
 	bcs .printswaps_part_2
 	lda vmap_z_h,x
-    ; SF: I altered the mask here, I think it's correct but it's a divergence
+    ; SFTODO: I altered the mask here, I think it's correct but it's a divergence
     ; from upstream. - it was "and #$7" - if this is correct, maybe suggest change to upstream?
 	and #vmem_highbyte_mask
 	jsr dollar
@@ -1282,6 +1305,7 @@ SFTODOLL8
 	adc vmap_c64_offset
 } else {
     jsr convert_index_x_to_ram_bank_and_address
+    !error "SFTODO"
     clc
     adc vmem_offset_in_block
 }
@@ -1314,7 +1338,13 @@ convert_index_x_to_ram_bank_and_address
     sec
     sbc vmem_blocks_in_main_ram
     bcc .in_main_ram
+!ifdef ACORN_SHADOW_VMEM {
+    cmp vmem_blocks_in_sideways_ram
+    bcs .in_shadow_ram
+    ; clc - carry is already clear
+} else {
     clc
+}
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
@@ -1351,6 +1381,18 @@ convert_index_x_to_ram_bank_and_address
     sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
 }
     rts
+!ifdef ACORN_SHADOW_VMEM {
+.in_shadow_ram
+    ; sec - carry is already set
+    sbc vmem_blocks_in_sideways_ram
+    asl ; convert to 256-byte blocks
+    ; We have at most 19K of spare shadow RAM, so 0 <= A < 19*4 < 128.
+    ; clc - carry is already clear
+-   bcc - ; SFTODO TOTAL PARANOIA, DELETE LATER
+    adc #$30 ; SFTODO: MAGIC CONSTANT IN A COUPLE OF PLACES, USE SOMETHING LIKE shadow_start = $3000 IN CONSTANTS FOR ACORN_SHADOW_VMEM BUILD
+    rts
+!error "SFTODO MAKE SURE ALL CODE PATHS SIGNAL SHADOW/NON SHADOW TO CALLER"
+}
 }
 }
 

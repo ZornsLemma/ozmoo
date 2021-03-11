@@ -719,16 +719,16 @@ deletable_init_start
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-    ; SFTODONOW: IF WE HAVE "UNSUPPORTED" SHADOW RAM, WE MUST NOT TRY TO USE IT. I DON'T KNOW IF THE LOADER WILL INDICAT THIS TO US (BY SETTING VMEM_CACHE_CNT_MEM TO 0, AND WE MUSTN'T TRAMPLE OVER IT AS WE CURRENTLY DO JUST BELOW) OR IF WE WILL DECIDE, BUT NEED TO DO SOMETHING.
-    ; Set vmem_cache_cnt_mem to the number of 256-byte cache entries we have for
+    ; SFTODONOW: IF WE HAVE "UNSUPPORTED" SHADOW RAM, WE MUST NOT TRY TO USE IT. I DON'T KNOW IF THE LOADER WILL INDICAT THIS TO US (BY SETTING VMEM_CACHE_COUNT_MEM TO 0, AND WE MUSTN'T TRAMPLE OVER IT AS WE CURRENTLY DO JUST BELOW) OR IF WE WILL DECIDE, BUT NEED TO DO SOMETHING.
+    ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have for
     ; holding data copied out of shadow RAM.
     ;
     ; If we're in mode 0, there's no spare shadow RAM anyway. The loader won't have
     ; allocated any space, but we might have one page available if we happened to
     ; load at PAGE+256, and we mustn't let that mislead us.
-    ; SFTODONOW: MAKE SURE WE RESPECT THIS BEING 0 AND DON'T DO UNNECESSARY WORK OR CRASH IF IT IS 0! REVIEW CODE REFERENCING vmem_cache_cnt_mem AFTERWARDS TO CHECK... WHILE I'M AT IT, REVIEW TO CHECK HAVING JUST 1 OR 2 PAGES OF CACHE WILL ALSO WORK (NOT CRASH, THE PERFORMANCE MIGHT BE TERRIBLE OF COURSE)
+    ; SFTODONOW: MAKE SURE WE RESPECT THIS BEING 0 AND DON'T DO UNNECESSARY WORK OR CRASH IF IT IS 0! REVIEW CODE REFERENCING vmem_cache_count_mem AFTERWARDS TO CHECK... WHILE I'M AT IT, REVIEW TO CHECK HAVING JUST 1 OR 2 PAGES OF CACHE WILL ALSO WORK (NOT CRASH, THE PERFORMANCE MIGHT BE TERRIBLE OF COURSE)
     lda #0
-    sta vmem_cache_cnt_mem
+    sta vmem_cache_count_mem
     lda screen_mode
     beq .mode_0
     ; We have as many pages of cache as there are between PAGE and
@@ -737,11 +737,11 @@ deletable_init_start
     ; PAGE+256 to keep the right alignment.
     lda #osbyte_read_oshwm
     jsr osbyte
-    sty zp_temp
+    sty vmem_cache_start_mem
     lda #>program_start
     sec
-    sbc zp_temp
-    sta vmem_cache_cnt_mem
+    sbc vmem_cache_start_mem
+    sta vmem_cache_count_mem
 .mode_0
 }
 
@@ -943,7 +943,7 @@ prepare_for_initial_load
 !ifdef ACORN_SHADOW_VMEM {
     ; We may have some additional RAM blocks in shadow RAM not being used for the
     ; screen display.
-    lda vmem_cache_cnt_mem
+    lda vmem_cache_count_mem
     beq .no_spare_shadow
     lda screen_mode ; note we don't force shadow mode on here
     tax

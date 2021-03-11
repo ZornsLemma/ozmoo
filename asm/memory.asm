@@ -19,6 +19,11 @@ inc_z_pc_page
 !ifndef ACORN {
 	cmp #>story_start
 	bcc get_page_at_z_pc_did_pha
+} else {
+!ifdef ACORN_SHADOW_VMEM {
+	cmp #>data_start
+	bcc get_page_at_z_pc_did_pha
+}
 }
 } else {
 ; No vmem
@@ -61,6 +66,13 @@ set_z_pc
 	lda z_pc_mempointer + 1
 	cmp #>story_start
 	bcc .unsafe_2
+} else {
+!ifdef ACORN_SHADOW_VMEM {
+	; z_pc is in same vmem_block unless it's in vmem_cache
+	lda z_pc_mempointer + 1
+	cmp #>data_start
+	bcc .unsafe_2
+}
 }
 	; z_pc is in same vmem_block, but different page.
 	stx z_pc + 1

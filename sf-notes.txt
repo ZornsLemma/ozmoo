@@ -1,3 +1,85 @@
+
+
+
+
+Notes from experiments with the two alternate spare shadow RAM strategies
+
+cache=shadow RAM backed by dedicated cache (upstream)
+swap=shadow RAM swapped with non-shadow RAM (mine)
+
+All M128 mode 7 19K shadow RAM
+
+cache tuning, 16K SWR:
+meddyn 3 cache pages $004e8b
+meddyn 4 cache pages $004e5d
+meddyn 5 cache pages $004e2e <-- joint best meddyn
+meddyn 6 cache pages $004e2e
+smalldyn 3 cache pages $004c93
+smalldyn 4 cache pages $004c5a
+smalldyn 5 cache page $004c20 <-- best smalldyn
+smalldyn 6 cache pages $004c48
+bigdyn 3 cache pages $004e64
+bigdyn 4 cache pages $004e29
+bigdyn 5 cache pages $004de0 <-- best bigdyn
+bigdyn 6 cache pages $004de4
+
+(As "usual" - this is all a bit fuzzy - meddyn is maybe suboptimal for a machine with shadow RAM, although saving on bounce buffer copies does help with machines with very little RAM, e.g. a B+ with 16K SWR and not using any shadow. But maybe I should forget about meddyn here, where we have 16K SWR+19K shadow.)
+
+cache tuning, 32K SWR: (not trying so many values here)
+bigdyn 4 cache pages $00493a
+bigdyn 5 cache pages $004924
+meddyn 5 cache pages $00496e
+smalldyn 5 cache pages $004797
+
+cache tuning, 64K SWR: (not trying so many values here)
+bigdyn 5 cache pages $004991
+meddyn 5 cache pages $0049df
+smalldyn 5 cache pages $00483c
+
+cache tuning, *no* SWR:
+smalldyn 3 cache pages $006a93
+smalldyn 4 cache pages - won't fit (256 bytes short)
+
+
+
+
+swap, *no* SWR:
+smalldyn swap $0134ed (!) - profiling shows huge amounts of time spent on copy and swap loops, not too surprising
+
+swap, 16K SWR:
+smalldyn swap $004cca
+meddyn swap $005060
+bigdyn swap $004f27
+
+swap, 32K SWR:
+smalldyn swap $0047a3
+meddyn swap $0049d6
+bigdyn swap $004955
+
+swap, 64K SWR:
+smalldyn swap $004820
+meddyn swap $0049eb
+bigdyn swap $004988
+
+
+
+
+nothing to do with shadow RAM, testing main 5.x branch now to see how "too large" memory (in the form of SWR, but don't think that's key) has an effect and if tweaking quick index size helps. M128, mode 7, smalldyn.
+        qil=6 (default)              qil=7
+32K SWR $004858
+48K SWR $004702                      $00470a worse
+64K SWR $004712 tiny bit slower!     $004711
+80K SWR $0047a2 slower still!        $004793
+96K SWR $004790 slower than 48/64K   $00477f
+
+qil=6 again but with drive noises on:
+48K SWR $004702
+64K SWR $004713
+I really thought drive noises would make a difference. Oh well. I still suspect that while searching the larger vmap slows things down a bit, on real hardware with slower drives the reduced access time will help. But it may be the extra accesses are pretty much one-offs anyway and so there's no real reduction in drive access in this optimised playthrough from the extra 16K of SWR going from 48->64.
+
+
+
+
 Latest 5.x timings pre-alpha release:
 
 More timings, all in b-em with drive noises off and using mode 7 bigdyn unless otherwise noted (bigdyn is the "default" for HH built in benchmark mode) - note that Elkulator *does* have drive noises on:

@@ -498,11 +498,10 @@ is_turbo = $40e ; !byte 0 SFTODO: RENAME turbo_flag?
 }
 cursor_status = $40f ; !byte 0
 !ifdef ACORN_SHADOW_VMEM {
-; We call this vmem_cache_cnt_mem because the Commodore vmem_cache_cnt is a
-; constant, not an address containing a value. This way we avoid accidentally
-; mixing them up.
-vmem_cache_cnt_mem = $410; !byte 0
-vmem_blocks_in_sideways_ram = $411; !byte 0
+; We call use _mem suffixes on these variables to avoid accidental confusion with the Commodore values, which are assembly-time constants.
+vmem_cache_count_mem = $410 ; !byte 0
+vmem_cache_start_mem = $411 ; byte 0
+vmem_blocks_in_sideways_ram = $412; !byte 0
 }
 !ifdef ACORN_SWR {
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.
