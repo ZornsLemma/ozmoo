@@ -9,7 +9,6 @@ vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 } else { ; ACORN
 !ifdef ACORN_SHADOW_VMEM {
-;!error "SFTODO: This is working but it's way slower than the prototype - need to investigate. Perhaps we're halving a value when we shouldn't be and not using all available shadow RAM? Perhaps we're not using all the cache pages we have allocated? Not gone into this yet."
 ; SFTODONOW: THESE SHOULD PROBABLY LIVE IN PAGE 4, THOUGH THEY DO PROB NEED TO BE 0-INITED
 vmem_cache_cnt !byte 0         ; current execution cache
 ; SFTODONOW: I SHOULD WORK TOGETHER WITH BUILD SYSTEM TO ENSURE THERE WILL NEVER BE MORE CACHE PAGES THAN CAN FIT HERE - JUST HACK IT FOR NOW
@@ -1357,11 +1356,11 @@ SFTODOLL8
     jsr get_free_vmem_buffer
     tay
     lda vmem_temp
+    sta vmem_cache_page_index,x
     jsr shadow_ram_copy
     lda vmem_cache_cnt
     jsr inc_vmem_cache_cnt
     tax
-    ; SFTODONOW I'M NOT UPDATING vmem_cache_page_index,x!
 .cache_updated
     ; X now identifies the page in vmem_cache containing this block.
     txa
