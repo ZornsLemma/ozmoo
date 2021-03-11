@@ -384,6 +384,7 @@ osbyte_read_vdu_status = $75
 osbyte_reflect_keyboard_status = $76
 osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
+osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 osbyte_read_cursor_position = $86
 osbyte_read_screen_mode = $87
@@ -496,6 +497,12 @@ use_hw_scroll = $40d ; !byte 0
 is_turbo = $40e ; !byte 0 SFTODO: RENAME turbo_flag?
 }
 cursor_status = $40f ; !byte 0
+!ifdef ACORN_SHADOW_VMEM {
+; We call this vmem_cache_cnt_mem because the Commodore vmem_cache_cnt is a
+; constant, not an address containing a value. This way we avoid accidentally
+; mixing them up.
+vmem_cache_cnt_mem = $410; ! byte 0
+}
 !ifdef ACORN_SWR {
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.
 mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
