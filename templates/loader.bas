@@ -82,6 +82,7 @@ ON ERROR GOTO 500
 500ON ERROR PROCerror
 PROCdetect_swr
 shadow=potential_himem=&8000
+shadow_extra$=""
 tube=PAGE<&E00
 REM SFTODO: We should get rid of this line and PROCdetect_turbo itself if turbo is
 REM not supported via build options.
@@ -106,7 +107,7 @@ PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
 IF tube THEN PRINT CHR$normal_fg;"  Second processor (";tube_ram$;")"
 REM SFTODONOW: We should probably say something like "Shadow RAM (screen only)" if we've detected shadow RAM but we don't have a driver to use the spare shadow RAM as vmem cache.
-IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM"
+IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM";shadow_extra$
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
@@ -438,7 +439,23 @@ REM SFTODONOW: Do something to record we haven't assembled anything!
 ENDPROC
 
 DEF PROCassemble_shadow_driver_bbc_b_plus
-REM SFTODONOW EXPERIMENTAL
+REM Determine if the private 12K is free on a B+ by checking for any extended
+REM vectors pointing into it.
+REM SFTODO: This may or may not be acceptable in practice, but I'd really rather
+REM not have to ask the user about using the private 12K. If SWMMFS+ is in use
+REM but is *not* the current filing system, this won't detect it and there might
+REM be "Sum?" errors or worse on BREAK. CTRL-BREAK should fix this. Have a play
+REM around with this on an emulator at some point.
+private_ram_in_use=FALSE
+extended_vector_table=&D9F
+FOR vector=0 TO 26
+IF extended_vector_table?(vector*3+2)>=128 THEN private_ram_in_use=TRUE
+NEXT
+IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
+REM The private 12K is free, so we can use this much faster implementation which
+REM takes advantage of the ability of code running at &Axxxx in the 12K private
+REM RAM to access shadow RAM directly.
+shadow_extra$=" (fast)"
 shadow_copy_private_ram=&AF00
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
@@ -482,11 +499,8 @@ RTS
 NEXT
 CALL copy_to_private_ram
 ENDPROC
-REM SFTODO: In principle we could put some code in the &Axxx region of the
-REM private RAM which has direct read/write access to shadow RAM. We probably
-REM need this code as a fallback anyway, because I wouldn't want to prevent
-REM Ozmoo working with things like the B+ private RAM version of MMFS which
-REM use all of the private 12K for themselves.
+DEF PROCassemble_shadow_driver_bbc_b_plus_os
+shadow_extra$=" (slow)"
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
