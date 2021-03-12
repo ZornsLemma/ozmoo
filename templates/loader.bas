@@ -25,6 +25,13 @@ REM *not* the top half of some double-height text.)
 
 *FX229,1
 *FX4,1
+
+!ifdef ACORN_SHADOW_VMEM {
+    integra_b=FALSE
+    ON ERROR GOTO 100
+    integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
+    100
+}
 ON ERROR PROCerror
 
 REM We need to ensure the !BOOT file is cleanly closed. (SFTODO: Why, exactly?
@@ -64,7 +71,11 @@ fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 DIM block% 256
-A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:electron=host_os=0
+A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100
+!ifdef ACORN_SHADOW_VMEM {
+IF integra_b THEN host_os=1
+}
+electron=host_os=0
 
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
 REM detection as that requires running a separate executable) before we change
@@ -253,6 +264,9 @@ p=PAGE
 !ifdef ACORN_SHADOW_VMEM {
     DEF FNmin(a,b)
     IF a<b THEN =a ELSE =b
+
+    REM SFTODO: I could probably make use of this function in quite a few other places.
+    DEF FNusr_osbyte_x(A%,X%,Y%)=(USR&FFF4 AND &FF00) DIV &100
 }
 
 DEF PROCchoose_non_tube_version
@@ -433,10 +447,36 @@ REM TO MODE 7 BEFORE CHAIN "LOADER", WHICH SHOULD HAPPEN AUTOMATICALLY) WITH A
 REM SPLASH SCREEN? THIS MAY BE ACCEPTABLE FOR NOW UNTIL I THINK ABOUT SOMETHING
 REM LIKE THE APPROACH OUTLINED IN PREVIOUS SFTODO
 shadow_driver=TRUE
-REM SFTODONOW TEMP DISABLED IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
+IF integra_b THEN PROCassemble_shadow_driver_integra_b:ENDPROC
+REM SFTODO: I don't think it would be hard to support Watford/Aries shadow RAM
+REM on a BBC B, but unless/until I have an emulator which supports this or a
+REM user willing to test on real hardware I'm not going to write code and hope
+REM it works. As it stands Ozmoo will probably run in screen-only shadow RAM
+REM mode on a Watford/Aries machine.
+IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
 REM SFTODONOW: Support other machines
 shadow_driver=FALSE:shadow_extra$="(screen only)"
+ENDPROC
+
+DEF PROCassemble_shadow_driver_integra_b
+FOR opt%=0 TO 2 STEP 2
+P%=${shadow_ram_copy}
+[OPT opt%
+STA lda_abs_y+2:STY sta_abs_y+2
+LDA #&6C:LDX #1:JSR &FFF4 \ page in shadow RAM
+LDY #0
+.copy_loop
+.lda_abs_y
+LDA &FF00,Y \ patched
+.sta_abs_y
+STA &FF00,Y \ patched
+DEY
+BNE copy_loop
+LDA #&6C:LDX #0:JSR &FFF4 \ page out shadow RAM
+RTS
+]
+NEXT
 ENDPROC
 
 DEF PROCassemble_shadow_driver_bbc_b_plus
@@ -500,6 +540,7 @@ RTS
 NEXT
 CALL copy_to_private_ram
 ENDPROC
+
 DEF PROCassemble_shadow_driver_bbc_b_plus_os
 shadow_extra$="(slow)"
 FOR opt%=0 TO 2 STEP 2

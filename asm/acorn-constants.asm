@@ -11,12 +11,18 @@ bbc_romsel = $fe30
 electron_romsel = $fe05
 
 !ifdef ACORN_SHADOW_VMEM {
-    ; We steal the printer and envelope buffers in page 8 for the shadow RAM
-    ; driver.
-    ; page_in_shadow_ram_indirect = $880
-    ; page_out_shadow_ram_indirect = $883
-    ; SFTODO MAKE SURE THESE ARE ACTUALLY BOTH USED, OTHERWISE NO POINT HAVING THEM
-    shadow_ram_copy = $886
+    ; We steal the envelope buffers in page 8 for the shadow RAM driver. (It's
+    ; tempting to steal the printer buffer at $880 as well, but the Integra-B
+    ; seems to use that for its own purposes so we'll keep out of its way.)
+    ; SFTODO: Delete following if not used; the idea is these will be 0 or
+    ; point to routines to page shadow RAM in/out of main memory if possible,
+    ; and CACHE2P will use them if available.
+    ; page_in_shadow_ram_indirect = $8c0
+    ; page_out_shadow_ram_indirect = $8c2
+    shadow_ram_copy = $8c4
+    ; SFTODO: We should check the code doesn't spill past
+    ; shadow_ram_copy_max_end; this isn't really convenient when we're
+    ; assembling it in the BASIC loader, but this may well change later.
     shadow_ram_copy_max_end = $900
 }
 
