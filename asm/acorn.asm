@@ -1083,11 +1083,6 @@ SFTODOEE2
     sta ram_blocks
 +
 
-    ; Now we know how much data we are going to load (ram_blocks' worth), we can
-    ; calculate how many blocks correspond to each progress indicator position.
-    ; SFTODONOW: ISN'T THERE A RISK HERE (AND WAS EVEN BEFORE I ADDED THE SHADOW VMEM STUFF? OR DID THE RESTRICTION TO 9 BANKS OF SWR PLUS DYNMEM ADJUST - ALTHO THAT COULD BE DISABLED FROM CMDLINE! - MEAN THIS *WAS* SAFE BEFORE, BUT ISN'T NOW?????) THAT RAM_BLOCKS-ADJUSTED_NONSTORED_BLOCKS IS MORE MEMORY THAN THE VMAP CAN ADDRESS, AND THEREFORE WE *AREN'T* NEC GOING TO LOAD RAM_BLOCKS' WORTH OF DATA? IF I'M RIGHT, IS THIS ONLY AN ISSUE FOR THE PROGRESS BAR OR DOES IT HAVE MORE SERIOUS CONSEQUENCES? THIS WOULD PROBABLY ONLY SHOW UP FOR GAMES>=127K+THEIRDYNMEM LONG (PROB NEED TO BE LONGER, TO ALLOW FOR OUR DYNMEM ADJUST), AND I PROBABLY HAVEN'T TESTED WITH SUCH A GAME RECENTLY, IF AT ALL.
-    jsr init_progress_indicator
-
     ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
     ; memory rounded up to a 512-byte boundary, i.e.
@@ -1307,14 +1302,23 @@ SFTODOLABEL5
 +
 }
     stx vmap_sort_entries
-} else { ; !VMEM
-    ; Now we know how much data we are going to load (game_blocks' worth), we can
-    ; calculate how many blocks correspond to each progress indicator position.
-    ; SFTODO: It would be possible to pre-calculate this at build time, but it's
-    ; probably best for consistency just to always use this code.
-    jsr init_progress_indicator
+
+SFTODOXY7
+    ; Now we know how much data we are going to load, we can calculate how many
+    ; blocks correspond to each progress indicator position.
+    lda #0
+    sta .blocks_to_load + 1
+    lda vmap_max_entries
+    asl ; convert to 256-byte blocks
+    rol .blocks_to_load + 1
+    clc
+    adc nonstored_blocks ; already in 256-byte blocks
+    sta .blocks_to_load
+    bcc +
+    inc .blocks_to_load + 1
++
 }
-    rts
+    ; fall through to init_progress_indicator
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
 ; progress bar step, in order to get avoid the bar under-filling or over-filling
@@ -1334,7 +1338,7 @@ progress_indicator_fractional_bits=7
 ; character" and "print backspace-then-full-width-character".
 init_progress_indicator
 !ifdef VMEM {
-.blocks_to_load = ram_blocks
+.blocks_to_load = scratch_page
 } else {
 .blocks_to_load = game_blocks
 }
