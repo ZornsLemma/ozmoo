@@ -457,7 +457,6 @@ REM mode on a Watford/Aries machine.
 IF electron AND FNusr_osbyte_x(&EF,0,&FF)=&80 THEN PROCassemble_shadow_driver_electron_mrb:ENDPROC
 IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
-REM SFTODONOW: Support other machines
 shadow_driver=FALSE:shadow_extra$="(screen only)"
 ENDPROC
 
