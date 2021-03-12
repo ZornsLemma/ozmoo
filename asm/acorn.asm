@@ -719,14 +719,19 @@ deletable_init_start
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-    ; SFTODONOW: IF WE HAVE "UNSUPPORTED" SHADOW RAM, WE MUST NOT TRY TO USE IT. I DON'T KNOW IF THE LOADER WILL INDICAT THIS TO US (BY SETTING VMEM_CACHE_COUNT_MEM TO 0, AND WE MUSTN'T TRAMPLE OVER IT AS WE CURRENTLY DO JUST BELOW) OR IF WE WILL DECIDE, BUT NEED TO DO SOMETHING.
-    ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have for
-    ; holding data copied out of shadow RAM.
+    ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have
+    ; for holding data copied out of shadow RAM. If we set this to 0, it will
+    ; effectively disable the use of shadow RAM as virtual memory cache. The
+    ; loader will do this if it doesn't have a shadow RAM driver for this
+    ; machine; the fact that we get relocated up an additional page if PAGE has
+    ; the wrong 512-byte alignment won't cause a problem because we can't use
+    ; just one page of shadow cache anyway (we need a minimum of two, one for
+    ; the Z-machine PC and another one) so we'll set this to 0 below if that
+    ; happens.
     ;
     ; If we're in mode 0, there's no spare shadow RAM anyway. The loader won't have
     ; allocated any space, but we might have one page available if we happened to
     ; load at PAGE+256, and we mustn't let that mislead us.
-    ; SFTODONOW: MAKE SURE WE RESPECT THIS BEING 0 AND DON'T DO UNNECESSARY WORK OR CRASH IF IT IS 0! REVIEW CODE REFERENCING vmem_cache_count_mem AFTERWARDS TO CHECK...
     lda #0
     sta vmem_cache_count_mem
     lda screen_mode
@@ -746,8 +751,9 @@ deletable_init_start
     lda #$30 ; SFTODO MAGIC CONSTANT
 +   sec
     sbc vmem_cache_start_mem
-    ; We mustn't have just one page; the loader shouldn't allow this to happen
-    ; but let's be paranoid as this is discardable init code.
+    ; We mustn't have just one page; the loader won't deliberately bring this
+    ; about but it can happen if we get relocated one page higher because PAGE
+    ; has the wrong 512-byte alignment on this machine.
     cmp #2
     bcs +
     lda #0

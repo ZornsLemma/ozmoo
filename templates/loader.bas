@@ -107,7 +107,7 @@ PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
 IF tube THEN PRINT CHR$normal_fg;"  Second processor (";tube_ram$;")"
 REM SFTODONOW: We should probably say something like "Shadow RAM (screen only)" if we've detected shadow RAM but we don't have a driver to use the spare shadow RAM as vmem cache.
-IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM";shadow_extra$
+IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM ";shadow_extra$
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
@@ -234,7 +234,7 @@ p=PAGE
     REM to do this, which we create by relocating to an address higher than PAGE;
     REM the executable then notices this space and uses it.
     REM SFTODO: This logic may not be ideal, see how things work out.
-    IF NOT shadow THEN =p
+    IF NOT (shadow AND shadow_driver) THEN =p
     REM In mode 0, all shadow RAM is used for the screen.
     IF ?screen_mode=0 THEN =p
     shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
@@ -432,10 +432,11 @@ REM SFTODONOW: IS ALL THIS CODE GOING TO CAUSE PROBLEMS (IF ONLY HAVING TO CHANG
 REM TO MODE 7 BEFORE CHAIN "LOADER", WHICH SHOULD HAPPEN AUTOMATICALLY) WITH A
 REM SPLASH SCREEN? THIS MAY BE ACCEPTABLE FOR NOW UNTIL I THINK ABOUT SOMETHING
 REM LIKE THE APPROACH OUTLINED IN PREVIOUS SFTODO
-IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
+shadow_driver=TRUE
+REM SFTODONOW TEMP DISABLED IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
 REM SFTODONOW: Support other machines
-REM SFTODONOW: Do something to record we haven't assembled anything!
+shadow_driver=FALSE:shadow_extra$="(screen only)"
 ENDPROC
 
 DEF PROCassemble_shadow_driver_bbc_b_plus
@@ -455,7 +456,7 @@ IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
 REM The private 12K is free, so we can use this much faster implementation which
 REM takes advantage of the ability of code running at &Axxx in the 12K private
 REM RAM to access shadow RAM directly.
-shadow_extra$=" (fast)"
+shadow_extra$="(fast)"
 shadow_copy_private_ram=&AF00
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
@@ -500,7 +501,7 @@ NEXT
 CALL copy_to_private_ram
 ENDPROC
 DEF PROCassemble_shadow_driver_bbc_b_plus_os
-shadow_extra$=" (slow)"
+shadow_extra$="(slow)"
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
