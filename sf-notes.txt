@@ -1,3 +1,16 @@
+b-em
+                	with shadow		without shadow (rebuilt with --no-shadow-vmem)
+B+ 64K SWR mode 0 	$0053de
+B+ 64K SWR mode 3	$005402
+B+ 64K SWR mode 6	$004e02
+B+ 64K SWR mode 7	$00497d
+B+ 16K SWR mode 0	$00bb49			$00bb22
+B+ 16K SWR mode 3	$008bc1			$00bb1d
+B+ 16K SWR mode 6	$0062a4			$00b4ba
+B+ 16K SWR mode 7	$005a51			$00b002 *
+* I forgot to remove the ADFS ROM before doing any of these tests; with it removed this goes down to $0091f0, which is consistent with earlier timings. I'll do all these with ADFS present, I'm sanity checking more than getting absolute performance numbers here.
+- that looks good, just a whisker slower with the new code in mode 0 but I think very acceptable, in other modes the extra RAM really helps the 16K SWR machine, even an extra 4k from running in mode 3 helps.
+
 BeebEm B-no-shadow 16K SWR Acorn DFS 1.2 $006d1a
 ditto but MRM-E00 DFS $005b3c - so the extra RAM is probably helping a bit (and *is* being used)
 

@@ -529,7 +529,6 @@ IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
 REM The private 12K is free, so we can use this much faster implementation which
 REM takes advantage of the ability of code running at &Axxx in the 12K private
 REM RAM to access shadow RAM directly.
-shadow_extra$="(fast)"
 shadow_copy_private_ram=&AF00
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
@@ -575,7 +574,11 @@ CALL copy_to_private_ram
 ENDPROC
 
 DEF PROCassemble_shadow_driver_bbc_b_plus_os
-shadow_extra$="(slow)"
+REM SFTODO: Not sure I like this string, but I think it's better to leave the
+REM default case not saying anything (as opposed to "fast") and therefore I
+REM don't really like to call this case "slow". It's also proably bad
+REM marketing. :-) So I'm aiming for a more factual description here.
+shadow_extra$="(via OS)"
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
