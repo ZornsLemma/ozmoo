@@ -1079,6 +1079,9 @@ def make_bbc_swr_executable():
 def make_electron_swr_executable():
     leafname = "OZMOOE"
     args = ozmoo_base_args + swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
+    # SFTODO: Not sure if this is a good idea or not - it will slightly harm performance on some machines. If it *does* stay, factor out the duplicate code with make_shr_swr_executable.
+    if not cmd_args.no_shadow_vmem:
+        args += ["-DACORN_SHADOW_VMEM=1", "-DACORN_RECOMMENDED_SHADOW_CACHE_PAGES=%d" % cmd_args.recommended_shadow_cache_pages]
     return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "Electron"))
 
 

@@ -18,6 +18,13 @@ Integra B (BeebEm - performance is not comparable to b-em, probably due to disc 
 16K SWR meddyn $0051cf
 64K SWR meddyn $0049fd
 
+Elkulator (self-reported)
+MRB shadow mode 16K SWR meddyn $005cad (was $00524c in first 5.x public alpha) - so this is *slower*!?
+new code 04:43:28-04:53:09=581 seconds
+alpha-5.x branch no shadow support 04:54:17-05:07:18=781 seconds 
+- so shadow support makes things 25% faster
+- so I guess disc access time is probably "free" according to the self-reported time and thus highly misleading here
+
 
 
 Notes from experiments with the two alternate spare shadow RAM strategies

@@ -454,10 +454,42 @@ REM on a BBC B, but unless/until I have an emulator which supports this or a
 REM user willing to test on real hardware I'm not going to write code and hope
 REM it works. As it stands Ozmoo will probably run in screen-only shadow RAM
 REM mode on a Watford/Aries machine.
+IF electron AND FNusr_osbyte_x(&EF,0,&FF)=&80 THEN PROCassemble_shadow_driver_electron_mrb:ENDPROC
 IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
 REM SFTODONOW: Support other machines
 shadow_driver=FALSE:shadow_extra$="(screen only)"
+ENDPROC
+
+DEF PROCassemble_shadow_driver_electron_mrb
+FOR opt%=0 TO 2 STEP 2
+P%=${shadow_ram_copy}
+[OPT opt%
+CMP #&30:BCS copy_from_shadow
+\ We're copying to shadow RAM.
+STA lda_abs_x+2
+LDX #0
+.copy_to_shadow_loop
+.lda_abs_x
+LDA &FF00,X \ patched
+BIT our_rts:JSR &FBFD \ write to shadow RAM
+INX
+BNE copy_to_shadow_loop
+.our_rts
+RTS
+.copy_from_shadow
+\ We're copying from shadow RAM.
+STY sta_abs_x+2:TAY
+LDX #0
+.copy_from_shadow_loop
+CLV:JSR &FBFD \ read from shadow RAM
+.sta_abs_x
+STA &FF00,X \ patched
+INX
+BNE copy_from_shadow_loop
+RTS
+]
+NEXT
 ENDPROC
 
 DEF PROCassemble_shadow_driver_integra_b

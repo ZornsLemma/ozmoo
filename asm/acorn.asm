@@ -979,13 +979,19 @@ SFTODOXX89
 SFTODOLM2
     lda vmem_cache_count_mem
     beq .no_spare_shadow
+!if 0 { ; SFTODO: TIDY UP
     lda #osbyte_read_screen_address_for_mode
     ldx screen_mode ; note we don't force shadow mode on here
     jsr osbyte
-    ; SFTODONOW: I wonder if this will go wrong for things like Electron Master RAM board, where shadow can't be turned off by software and so this OSBYTE probably always returns $8000. For now let me deliberately hang if this happens - if this is the case, we just need to use a hard-coded table of start addresses rather than this OSBYTE, not a big deal.
+    ; SFTODO: I wonder if this will go wrong for things like Electron Master RAM board, where shadow can't be turned off by software and so this OSBYTE probably always returns $8000. For now let me deliberately hang if this happens - if this is the case, we just need to use a hard-coded table of start addresses rather than this OSBYTE, not a big deal. - yes, it does go wrong...
     tya
 !if 1 { ; SFTODO TEMP
 -   bmi -
+}
+} else {
+    ; On an Electron with a Master RAM Board in shadow mode, the shadow RAM can't be turned off under software control and osbyte_read_screen_address_for_mode will always return $8000. This makes sense, but it's not much use to us here. We use our own table of start addresses instead; we might as well do this on all platforms for consistency.
+    ldx screen_mode
+    lda screen_start_page_by_mode,x
 }
     sec
     sbc #$30 ; SFTODO MAGIC NUMBER USED IN COUPLE OF PLACES
@@ -1423,6 +1429,20 @@ SFTODOOOL
 !ifdef VMEM {
 initial_vmap_z_l
     !FILL vmap_max_size, 'V'
+}
+
+!ifdef ACORN_SHADOW_VMEM {
+; SFTODO: Get rid of this if it's not used
+screen_start_page_by_mode
+    !byte $30 ; mode 0
+    !byte $30 ; mode 1
+    !byte $30 ; mode 2
+    !byte $40 ; mode 3
+    !byte $40 ; mode 3
+    !byte $58 ; mode 4
+    !byte $58 ; mode 5
+    !byte $60 ; mode 6
+    !byte $7c ; mode 7
 }
 } ; End of acorn_init_code_overlapping_game_data_inline
 
