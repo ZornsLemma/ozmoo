@@ -442,10 +442,11 @@ REM FINDSWR runs at &900, checks the hardware and installs the right driver,
 REM but this will do for now. (Doing it via a separate binary would allow us to
 REM install this code in the host even if we're on a second processor, so CACHE2P
 REM can use it to access shadow RAM.)
-REM SFTODONOW: IS ALL THIS CODE GOING TO CAUSE PROBLEMS (IF ONLY HAVING TO CHANGE
-REM TO MODE 7 BEFORE CHAIN "LOADER", WHICH SHOULD HAPPEN AUTOMATICALLY) WITH A
-REM SPLASH SCREEN? THIS MAY BE ACCEPTABLE FOR NOW UNTIL I THINK ABOUT SOMETHING
-REM LIKE THE APPROACH OUTLINED IN PREVIOUS SFTODO
+REM SFTODO: All this code will bloat the LOADER program, which makes it more
+REM likely PRELOAD (if present) will have to change to mode 7 before doing
+REM CHAIN "LOADER", which is mildly ugly. For now this is OK, but this is another
+REM reason to consider an alternate way of installing the correct shadow RAM
+REM driver.
 shadow_driver=TRUE
 IF integra_b THEN PROCassemble_shadow_driver_integra_b:ENDPROC
 REM SFTODO: I don't think it would be hard to support Watford/Aries shadow RAM
