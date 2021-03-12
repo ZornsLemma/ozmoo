@@ -1420,7 +1420,7 @@ def parse_args():
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
-    group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at a fixed address")
+    group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
 
     cmd_args = parser.parse_args()
 
