@@ -233,7 +233,8 @@ p=PAGE
     REM to do this, which we create by relocating to an address higher than PAGE;
     REM the executable then notices this space and uses it.
     REM SFTODO: This logic may not be ideal, see how things work out.
-    IF NOT (shadow AND shadow_driver) THEN =p
+    IF NOT shadow THEN =p
+    IF NOT shadow_driver THEN =p
     REM In mode 0, all shadow RAM is used for the screen.
     IF ?screen_mode=0 THEN =p
     shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
