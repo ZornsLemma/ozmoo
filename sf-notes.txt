@@ -1,3 +1,7 @@
+BeebEm B-no-shadow 16K SWR Acorn DFS 1.2 $006d1a
+ditto but MRM-E00 DFS $005b3c - so the extra RAM is probably helping a bit (and *is* being used)
+
+
 "Proper" shadow RAM vmem support timings
 M128 mode 7
 0K SWR smalldyn 5 cache pages $006af8 (this didn't fit in prototype!?)

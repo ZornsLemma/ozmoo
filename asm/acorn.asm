@@ -1592,7 +1592,7 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     ; vmem block is in shadow RAM and it doesn't matter if we actually use fewer
     ; blocks than this. This value is just used to ensure that if a vmem block
     ; index *would* access past the end of sideways RAM, it's handled via shadow
-    ; RAM. SFTODONOW: I think that's true, but revisit later.
+    ; RAM.
     lda #0
     sta scratch_page
     lda ram_bank_count

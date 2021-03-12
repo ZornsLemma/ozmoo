@@ -1361,8 +1361,18 @@ SFTODOLL8
     adc vmem_cache_start_mem
     sta mempointer + 1
     ldx vmap_index
-    bne .return_result ; always true SFTODONOW: IS IT? WHAT IF WE HAVE *NO* SIDEWAYS RAM AND *NO* VMEM-IN-MAIN RAM? VMAP_INDEX 0 COULD THEN BE A SHADOW RAM BLOCK COULDN'T IT?
--   jmp - ; SFTODO: TO CATCH FAILURE AS PER ABOVE SFTODONOW
+    bne .return_result
+    ; SFTODO: That "always true" is from upstream code. It's less obviously true
+    ; on Acorn, where we could be very short on RAM and it's superficially
+    ; plausible vmap block 0 is in shadow RAM. I suspect this can't happen
+    ; because we always have two have at least two 512-byte blocks of vmem
+    ; guaranteed by the loader+build system and shadow isn't taken into account
+    ; there (and I don't intend to try to avoid that requirement and run the
+    ; game entirely from shadow cache...) so vmap_index>=2 for shadow RAM, but
+    ; I'm not 100% confident right now. It's only a byte saved so it might be as
+    ; well just to change it to a jmp but let's go with it for now and put this
+    ; guard code in and see if it ever triggers.
+-   jmp -
 .block_directly_accessible
 }
     clc
