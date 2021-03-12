@@ -453,7 +453,7 @@ IF extended_vector_table?(vector*3+2)>=128 THEN private_ram_in_use=TRUE
 NEXT
 IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
 REM The private 12K is free, so we can use this much faster implementation which
-REM takes advantage of the ability of code running at &Axxxx in the 12K private
+REM takes advantage of the ability of code running at &Axxx in the 12K private
 REM RAM to access shadow RAM directly.
 shadow_extra$=" (fast)"
 shadow_copy_private_ram=&AF00
