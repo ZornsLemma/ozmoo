@@ -106,7 +106,6 @@ REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
 IF tube THEN PRINT CHR$normal_fg;"  Second processor (";tube_ram$;")"
-REM SFTODONOW: We should probably say something like "Shadow RAM (screen only)" if we've detected shadow RAM but we don't have a driver to use the spare shadow RAM as vmem cache.
 IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM ";shadow_extra$
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
