@@ -497,6 +497,8 @@ NEXT
 ENDPROC
 
 DEF PROCassemble_shadow_driver_integra_b
+REM SFTODO: We could probably fiddle directly with the Integra-B hardware
+REM registers to optimise this a little.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
