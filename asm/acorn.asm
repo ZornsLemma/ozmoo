@@ -979,12 +979,29 @@ SFTODOXX89
     ; SFTODONOW COMMENT - IT'S 4K SMALLER THAN A FULL BANK, AND WE ALSO SET ASIDE LAST 512 BYTES FOR THE SHADOW RAM COPY CODE
     ldx ram_bank_count
     ldy ram_bank_list - 1,x
-    bpl +
+    bmi .b_plus_private_12k
+    cpy #64
+    bcc .not_private_12k
+    ; This is the Integra-B private 12K, so set up RAMSEL accordingly.
+    ; SFTODONOW: Is this OK? Ask Ken!
+    ; SFTODO: MAGIC CONSTANTS
+    pha
+    lda $37f
+    ora #%01110000
+    sta $37f
+    sta $fe34
+    pla
+    sec
+    sbc #4096 / 256 ; SFTODONOW MAGIC CONSTANT, ALSO NEEDS CHANGNIG IF WE DON'T HAVE ALL 12K AVAILABLE
+    jmp .subtract_private_ram_high_byte
+.b_plus_private_12k
     sec
     sbc #(4096 + 512) / 256
+.subtract_private_ram_high_byte
     bcs +
     dec ram_blocks + 1
 +
+.not_private_12k
     ; Save a copy of ram_blocks for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
     sta scratch_ram_blocks
@@ -1165,6 +1182,7 @@ game_blocks_is_smaller
 .max_dynmem = zp_temp + 4 ; 1 byte
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     lda #>swr_ramtop
+;    lda #$ae ; SFTODONOW TEMP HACK
 } else {
     lda #>flat_ramtop
 }
@@ -1217,7 +1235,9 @@ game_blocks_ne_ram_blocks
     tax
     tya
     sbc #>.min_lhs_sub
-    bmi .use_acorn_initial_nonstored_blocks
+    bcc .use_acorn_initial_nonstored_blocks
+    brk ; SFTODONOW TEMP
+    !text 0, "SFTODONOW", 0
     bne .use_min_rhs
     cpx .max_dynmem
     bcc .use_min_lhs

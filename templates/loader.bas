@@ -219,10 +219,10 @@ REM memory, but the build system takes care of this by knowing the worst-case
 REM start of screen RAM and choosing max_page accordingly. SFTODO: This won't be
 REM true once we allow runtime choice of screen mode on non-shadow systems; the
 REM loader will have to be involved in the decision.
-swr_size=&4000*?${ram_bank_count}
 REM Builds using the medium dynamic memory model must have enough sideways RAM
 REM for dynamic memory.
-IF medium_dynmem AND swr_dynmem_needed>swr_size THEN PROCdie_ram(swr_dynmem_needed,"sideways RAM")
+REM SFTODO: Next line is perhaps confusing if we need 12K sideways RAM and have reported "12K private RAM" (but we really only have 11.5K *as sideways RAM*, other 0.5K is for shadow copy code)
+IF medium_dynmem AND swr_dynmem_needed>swr_size THEN PROCdie_ram(swr_dynmem_needed-swr_size,"sideways RAM")
 REM At this point, we need enough main and/or sideways RAM for swr_dynmem_needed
 REM and the minimum vmem cache.
 free_ram=swr_size+extra_main_ram-swr_dynmem_needed-${MIN_VMEM_BYTES}
@@ -642,15 +642,18 @@ REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
 REM SFTODONOW: NEED TO USE A PROCpoke TO WRITE AS WE MAY ON A 2P BUT THIS WILL DO FOR NOW
 swr_adjust=0
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=4
+REM SFTODO: WE PROBABLY DON'T HAVE ALL 12K AVAILABLE ON THE INTEGRA B BUT LET'S JUST TRY THIS FOR NOW
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=4096
+REM SFTODOONOW: WE ACTUALLY NEED TO TAKE OFF 4.5K ON THE B+; THIS ISN'T JUST COSMETIC BECAUSE WE MAY AGREE TO RUN A GAME WHEN WE DON'T QUITE HAVE ENOUGH SHADOW RAM
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=4096+512
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
 IF swr_banks=0 THEN ENDPROC
-swr_size=swr_banks*16-swr_adjust
-REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it
-IF swr_size=12 THEN swr$="12K private RAM":ENDPROC
-swr$=STR$(swr_size)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
+swr_size=&4000*?${ram_bank_count}-swr_adjust
+REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
+IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
+swr$=STR$(swr_size/1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
-IF bank>=128 THEN bank$="+" ELSE bank$=STR$~bank
+IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 

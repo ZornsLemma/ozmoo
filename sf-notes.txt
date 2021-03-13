@@ -1,5 +1,15 @@
 Using the 12K private RAM:
 B+ 16K SWR+shadow+12K private mode 7 $004b40 nice! ($005a51 below without private 12K)
+Integra-B 64K $004a1f - slightly slower than before, but 64K is always a little iffy
+Integra-B 16K $004324
+Integra-B 16K disabling extra 12K 
+Integra-B 0K SWR 12K private $005593
+OK, these timings aren't making any sense, let's just start from scratch. I'll use total "SWR" as reported on Ozmoo loader screen.
+Integra-B 12K $00559b
+Integra-B 28K $004944
+Integra-B 44K $0042fc - maybe this is b-em vs BeebEm (at 100x speed) but a M128 with 64K SWR takes $004901 so I don't really believe this
+Integra-B 60K 
+BeebEm M128 $004db7
 
 
 b-em
