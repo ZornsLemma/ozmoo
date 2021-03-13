@@ -1,3 +1,7 @@
+Using the 12K private RAM:
+B+ 16K SWR+shadow+12K private mode 7 $004b40 nice! ($005a51 below without private 12K)
+
+
 b-em
                 	with shadow		without shadow (rebuilt with --no-shadow-vmem)
 B+ 64K SWR mode 0 	$0053de

@@ -91,16 +91,17 @@ REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on thi
 ON ERROR GOTO 500
 *INFO XYZZY1
 500ON ERROR PROCerror
-PROCdetect_swr
 shadow=potential_himem=&8000
 shadow_extra$=""
 tube=PAGE<&E00
 REM SFTODO: We should get rid of this line and PROCdetect_turbo itself if turbo is
 REM not supported via build options.
 IF tube THEN PROCdetect_turbo
+private_ram_in_use=FALSE:REM SFTODONOW: We really should be detecting this independently of assemble_shadow_driver in a tube-safe way but this will do for now
 !ifdef ACORN_SHADOW_VMEM {
 IF shadow AND NOT tube THEN PROCassemble_shadow_driver
 }
+PROCdetect_swr
 
 MODE 135:VDU 23,1,0;0;0;0;
 ?fg_colour=${DEFAULT_FG_COLOUR}:?bg_colour=${DEFAULT_BG_COLOUR}
@@ -637,10 +638,18 @@ DEF PROCdetect_swr
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on
 REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
+REM SFTODONOW: NEED TO USE A PROCpoke TO WRITE AS WE MAY ON A 2P BUT THIS WILL DO FOR NOW
+swr_adjust=0
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=4
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
 IF swr_banks=0 THEN ENDPROC
-swr$=STR$(swr_banks*16)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
-swr$=swr$+" &":FOR i=0 TO swr_banks-1:swr$=swr$+STR$~FNpeek(${ram_bank_list}+i):NEXT:swr$=swr$+")"
+swr_size=swr_banks*16-swr_adjust
+REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it
+IF swr_size=12 THEN swr$="12K private RAM":ENDPROC
+swr$=STR$(swr_size)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
+swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
+IF bank>=128 THEN bank$="+" ELSE bank$=STR$~bank
+swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")

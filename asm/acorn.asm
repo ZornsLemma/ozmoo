@@ -103,6 +103,12 @@ host_cache_size = memory_buffer
 !ifdef VMEM {
 ram_blocks = dir_ptr ; 2 bytes
 }
+; Allocation in scratch_page for the calculation before we start loading game
+; data.
+!ifdef VMEM {
+scratch_ram_blocks = scratch_page ; 2 bytes
+scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
+}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Sideways RAM paging
@@ -970,6 +976,20 @@ SFTODOXX89
     rol ram_blocks + 1
     dex
     bne -
+    ; SFTODONOW COMMENT - IT'S 4K SMALLER THAN A FULL BANK, AND WE ALSO SET ASIDE LAST 512 BYTES FOR THE SHADOW RAM COPY CODE
+    ldx ram_bank_count
+    ldy ram_bank_list - 1,x
+    bpl +
+    sec
+    sbc #(4096 + 512) / 256
+    bcs +
+    dec ram_blocks + 1
++
+    ; Save a copy of ram_blocks for later when we're calculating
+    ; vmem_blocks_in_sideways_ram.
+    sta scratch_ram_blocks
+    ldx ram_blocks + 1
+    stx scratch_ram_blocks + 1
 }
     sta ram_blocks
 
@@ -1309,6 +1329,73 @@ SFTODOLABEL5
 }
     stx vmap_sort_entries
 
+!ifdef ACORN_SWR {
+    ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
+    lda #0
+    sta vmem_blocks_stolen_in_first_bank
+    ; Set A = (>story_start + nonstored_blocks) - (>flat_ramtop - acorn_screen_hole_pages)
+    lda #>story_start
+    clc
+    adc nonstored_blocks
+!ifdef ACORN_SCREEN_HOLE {
+    clc
+    adc acorn_screen_hole_pages
+}
+    sec
+    sbc #(>flat_ramtop)
+    bcc .some_vmem_in_main_ram
+    lsr
+    sta vmem_blocks_stolen_in_first_bank
+    bpl + ; Always branch
+.some_vmem_in_main_ram
+    ; Carry is clear; negate A
+    eor #$ff
+    adc #1
+    lsr
+    sta vmem_blocks_in_main_ram
++
+} else {
+    lda nonstored_blocks
+    lsr
+    sta vmem_blocks_stolen_in_first_bank
+    lda #>flat_ramtop
+    sec
+    sbc #>vmem_start
+!ifdef ACORN_SCREEN_HOLE {
+    sec
+    sbc acorn_screen_hole_pages
+}
+    lsr
+    sta vmem_blocks_in_main_ram
+}
+
+!ifdef ACORN_SHADOW_VMEM {
+SFTODOTPP
+    ; Calculate vmem_blocks_in_sideways_ram. This is used in
+    ; convert_index_x_to_ram_bank_and_address to decide when a vmem block is in
+    ; shadow RAM and it doesn't matter if we actually use fewer blocks than
+    ; this. This value is just used to ensure that if a vmem block index *would*
+    ; access past the end of sideways RAM, it's handled via shadow RAM.
+    ; scratch_ram_blocks is in 256-byte blocks, so convert it to 512-byte blocks.
+    lsr scratch_ram_blocks + 1
+    lda scratch_ram_blocks
+    ror
+    sec
+    sbc vmem_blocks_stolen_in_first_bank
+    sta vmem_blocks_in_sideways_ram
+    lda scratch_ram_blocks + 1
+    sbc #0
+    beq +
+    ; We have a result which won't fit in a single byte, but since we know the
+    ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
+    ; 255.
+    lda #255
+    sta vmem_blocks_in_sideways_ram
++
+}
+}
+
 SFTODOXY7
     ; Now we know how much data we are going to load, we can calculate how many
     ; blocks correspond to each progress indicator position.
@@ -1344,7 +1431,7 @@ progress_indicator_fractional_bits=7
 ; character" and "print backspace-then-full-width-character".
 init_progress_indicator
 !ifdef VMEM {
-.blocks_to_load = scratch_page
+.blocks_to_load = scratch_blocks_to_load
 } else {
 .blocks_to_load = game_blocks
 }
@@ -1543,78 +1630,6 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     sbc readblocks_numblocks
     sta .blocks_to_read
     bne .dynmem_load_loop
-
-!ifdef ACORN_SWR {
-    ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
-!ifndef ACORN_SWR_MEDIUM_DYNMEM {
-    lda #0
-    sta vmem_blocks_stolen_in_first_bank
-    ; Set A = (>story_start + nonstored_blocks) - (>flat_ramtop - acorn_screen_hole_pages)
-    lda #>story_start
-    clc
-    adc nonstored_blocks
-!ifdef ACORN_SCREEN_HOLE {
-    clc
-    adc acorn_screen_hole_pages
-}
-    sec
-    sbc #(>flat_ramtop)
-    bcc .some_vmem_in_main_ram
-    lsr
-    sta vmem_blocks_stolen_in_first_bank
-    bpl + ; Always branch
-.some_vmem_in_main_ram
-    ; Carry is clear; negate A
-    eor #$ff
-    adc #1
-    lsr
-    sta vmem_blocks_in_main_ram
-+
-} else {
-    lda nonstored_blocks
-    lsr
-    sta vmem_blocks_stolen_in_first_bank
-    lda #>flat_ramtop
-    sec
-    sbc #>vmem_start
-!ifdef ACORN_SCREEN_HOLE {
-    sec
-    sbc acorn_screen_hole_pages
-}
-    lsr
-    sta vmem_blocks_in_main_ram
-}
-
-!ifdef ACORN_SHADOW_VMEM {
-    ; Calculate vmem_blocks_in_sideways_ram = 32 * ram_bank_count -
-    ; vmem_blocks_stolen_in_first_bank. (Each 16K bank has 32 512-byte blocks.)
-    ; This is used in convert_index_x_to_ram_bank_and_address to decide when a
-    ; vmem block is in shadow RAM and it doesn't matter if we actually use fewer
-    ; blocks than this. This value is just used to ensure that if a vmem block
-    ; index *would* access past the end of sideways RAM, it's handled via shadow
-    ; RAM.
-    lda #0
-    sta scratch_page
-    lda ram_bank_count
-    ldx #5 ; 32 = 2^5
--   asl
-    rol scratch_page
-    dex
-    bne -
-    sec
-    sbc vmem_blocks_stolen_in_first_bank
-    sta vmem_blocks_in_sideways_ram
-    lda scratch_page
-    sbc #0
-    beq +
-    ; We have a result which won't fit in a single byte, but since we know the
-    ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
-    ; 255.
-    lda #255
-    sta vmem_blocks_in_sideways_ram
-+
-}
-}
 
 !ifdef VMEM {
     ; vmem_highbyte_mask might be 0 and that enables some small optimisations, but
