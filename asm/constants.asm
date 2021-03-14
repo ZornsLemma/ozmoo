@@ -501,8 +501,8 @@ cursor_status = $40f ; !byte 0
 ; We use _mem suffixes on these variables to avoid accidental confusion with the
 ; Commodore values, which are assembly-time constants.
 vmem_cache_count_mem = $410 ; !byte 0
-vmem_cache_start_mem = $411 ; byte 0
-vmem_blocks_in_sideways_ram = $412; !byte 0
+vmem_cache_start_mem = $411 ; !byte 0
+vmem_blocks_in_sideways_ram = $412 ; !byte 0
 vmem_cache_cnt = $414 ; !byte 0
 vmem_cache_page_index = $415
 ; We add one in the next line because PAGE alignment may add an extra cache page
@@ -513,6 +513,9 @@ vmem_cache_page_index_end = vmem_cache_page_index + ACORN_RECOMMENDED_SHADOW_CAC
 }
 }
 !ifdef ACORN_SWR {
+; SFTODONOW: NEED TO DECIDE IF I'M GOING TO ALWAYS USE THE OS SHADOW RAM ACCESS AND USE ALL 12K OF PRIVATE RAM, OR ALWAYS USE 11.5K OF PRIVATE RAM FOR CACHE AND .5K FOR SHADOW RAM ACCESS, OR TRY (PROB NOT) TO ALLOW BOTH
+b_plus_private_ram_size = 12 * 1024 ; SFTODONOW: SHOULD WE HAVE -512 ON THIS?
+integra_b_private_ram_size = 12 * 1024 ; SFTODONOW: QUITE POSS INCORRECT
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.
 mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
 vmem_blocks_in_main_ram = $41d ; 1 byte

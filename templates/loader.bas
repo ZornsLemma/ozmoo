@@ -531,6 +531,7 @@ extended_vector_table=&D9F
 FOR vector=0 TO 26
 IF extended_vector_table?(vector*3+2)>=128 THEN private_ram_in_use=TRUE
 NEXT
+PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC:REM SFTODONOW TEMP HACK
 IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
 REM The private 12K is free, so we can use this much faster implementation which
 REM takes advantage of the ability of code running at &Axxx in the 12K private
@@ -642,13 +643,13 @@ REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
 REM SFTODONOW: NEED TO USE A PROCpoke TO WRITE AS WE MAY ON A 2P BUT THIS WILL DO FOR NOW
 swr_adjust=0
-REM SFTODO: WE PROBABLY DON'T HAVE ALL 12K AVAILABLE ON THE INTEGRA B BUT LET'S JUST TRY THIS FOR NOW
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=4096
+REM SFTODONOW: WE PROBABLY DON'T HAVE ALL 12K AVAILABLE ON THE INTEGRA B BUT LET'S JUST TRY THIS FOR NOW
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${intgra_b_private_ram_size}
 REM SFTODOONOW: WE ACTUALLY NEED TO TAKE OFF 4.5K ON THE B+; THIS ISN'T JUST COSMETIC BECAUSE WE MAY AGREE TO RUN A GAME WHEN WE DON'T QUITE HAVE ENOUGH SHADOW RAM
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=4096+512
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
-IF swr_banks=0 THEN ENDPROC
 swr_size=&4000*?${ram_bank_count}-swr_adjust
+IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
 swr$=STR$(swr_size/1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"

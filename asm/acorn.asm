@@ -976,12 +976,13 @@ SFTODOXX89
     rol ram_blocks + 1
     dex
     bne -
-    ; SFTODONOW COMMENT - IT'S 4K SMALLER THAN A FULL BANK, AND WE ALSO SET ASIDE LAST 512 BYTES FOR THE SHADOW RAM COPY CODE
+    ; The last RAM bank might be the B+ or Integra-B private RAM, which isn't
+    ; the full 16K.
     ldx ram_bank_count
     ldy ram_bank_list - 1,x
-    bmi .b_plus_private_12k
+    bmi .b_plus_private_ram
     cpy #64
-    bcc .not_private_12k
+    bcc .not_private_ram
     ; This is the Integra-B private 12K, so set up RAMSEL accordingly.
     ; SFTODONOW: Is this OK? Ask Ken!
     ; SFTODO: MAGIC CONSTANTS
@@ -992,16 +993,16 @@ SFTODOXX89
     sta $fe34
     pla
     sec
-    sbc #4096 / 256 ; SFTODONOW MAGIC CONSTANT, ALSO NEEDS CHANGNIG IF WE DON'T HAVE ALL 12K AVAILABLE
+    sbc #(16 * 1024 - integra_b_private_ram_size) / 256
     jmp .subtract_private_ram_high_byte
-.b_plus_private_12k
+.b_plus_private_ram
     sec
-    sbc #(4096 + 512) / 256
+    sbc #(16 * 1024 - b_plus_private_ram_size) / 256
 .subtract_private_ram_high_byte
     bcs +
     dec ram_blocks + 1
 +
-.not_private_12k
+.not_private_ram
     ; Save a copy of ram_blocks for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
     sta scratch_ram_blocks
@@ -1182,7 +1183,7 @@ game_blocks_is_smaller
 .max_dynmem = zp_temp + 4 ; 1 byte
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     lda #>swr_ramtop
-;    lda #$ae ; SFTODONOW TEMP HACK
+    ; lda #$ae ; SFTODONOW TEMP HACK - BUT WE DO NEED TO BE CAREFUL IF WE *ONLY* HAVE THE PRIVATE 12K-ISH BANK NOT TO END UP PROMOTING DYNMEM INTO NON-EXISTENT SWR
 } else {
     lda #>flat_ramtop
 }
@@ -1544,7 +1545,6 @@ screen_start_page_by_mode
     !byte $30 ; mode 0
     !byte $30 ; mode 1
     !byte $30 ; mode 2
-    !byte $40 ; mode 3
     !byte $40 ; mode 3
     !byte $58 ; mode 4
     !byte $58 ; mode 5

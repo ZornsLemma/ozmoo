@@ -860,7 +860,7 @@ read_byte_at_z_address
     ; read_byte_at_z_address don't page in the wrong bank.
     +acorn_page_in_bank_using_a dynmem_ram_bank
     sta mempointer_ram_bank
-    bpl .read_and_return_value ; Always branch SFTODO THIS WON'T WORK IF WE START SUPPORT 12K PRIVATE RAM ON B+
+    jmp .read_and_return_value
 }
 }
 }
