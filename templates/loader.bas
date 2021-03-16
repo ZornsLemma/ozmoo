@@ -502,6 +502,7 @@ REM registers to optimise this a little.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
+STX &90 \ SFTODONOW TEMP HACK
 STA lda_abs_y+2:STY sta_abs_y+2
 LDA #&6C:LDX #1:JSR &FFF4 \ page in shadow RAM
 LDY #0
@@ -513,6 +514,7 @@ STA &FF00,Y \ patched
 DEY
 BNE copy_loop
 LDA #&6C:LDX #0:JSR &FFF4 \ page out shadow RAM
+LDX &90 \ SFTODONOW TEMP HACK
 RTS
 ]
 NEXT
@@ -645,7 +647,7 @@ swr_banks=FNpeek(${ram_bank_count}):swr$=""
 REM SFTODONOW: NEED TO USE A PROCpoke TO WRITE AS WE MAY ON A 2P BUT THIS WILL DO FOR NOW
 swr_adjust=0
 REM SFTODONOW: WE PROBABLY DON'T HAVE ALL 12K AVAILABLE ON THE INTEGRA B BUT LET'S JUST TRY THIS FOR NOW
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${intgra_b_private_ram_size}
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${integra_b_private_ram_size}
 REM SFTODOONOW: WE ACTUALLY NEED TO TAKE OFF 4.5K ON THE B+; THIS ISN'T JUST COSMETIC BECAUSE WE MAY AGREE TO RUN A GAME WHEN WE DON'T QUITE HAVE ENOUGH SHADOW RAM
 IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"

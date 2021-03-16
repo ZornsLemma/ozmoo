@@ -1365,7 +1365,7 @@ SFTODOLL8
     ; SFTODO: That "always true" is from upstream code. It's less obviously true
     ; on Acorn, where we could be very short on RAM and it's superficially
     ; plausible vmap block 0 is in shadow RAM. I suspect this can't happen
-    ; because we always have two have at least two 512-byte blocks of vmem
+    ; because we always have to have at least two 512-byte blocks of vmem
     ; guaranteed by the loader+build system and shadow isn't taken into account
     ; there (and I don't intend to try to avoid that requirement and run the
     ; game entirely from shadow cache...) so vmap_index>=2 for shadow RAM, but
@@ -1429,10 +1429,18 @@ convert_index_x_to_ram_bank_and_address
     lsr
     tay
     +acorn_page_in_bank_using_a_comma_y ram_bank_list ; leaves bank in A
+!if 1 { ; SFTODO REALLY DON'T LIKE THE INEFFICIENCY OF THIS AND IT'S ALSO INTEGRA-B SPECIFIC WITH NO TEST, BUT LET'S JUST TRY IT THIS WAY FOR NOW AND SEE IF IT WORKS
+    cmp #64 ; set carry
+}
     sta mempointer_ram_bank
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
+!if 0 { ; SFTODO SCEOND PART OF ABOVE HACK - TEMP DISABLED TO SEE IF USING LOWER 11K RATHER THAN UPPER 11K BREAKS (AS I "HOPE" IT WILL) - NO, IT DOESN'T
+    bcc +
+    adc #1 ; carry is already set, skip 2x512-byte blocks i.e. first 1K of Integra-B private RAM
++
+}
     and #31
     asl
     ; Carry is already clear
