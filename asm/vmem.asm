@@ -741,6 +741,17 @@ read_byte_at_z_address
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
+!if 1 { ; SFTODONOW DEBUG HACK
+    cmp #1
+    bne .SFTODONOW
+    cpx #$1c
+    bne .SFTODONOW
+    cpy #$c4
+    bne .SFTODONOW
+SFTODOBOOM
+    nop
+.SFTODONOW
+}
 
 !ifdef TARGET_C128 {
 	; TODO: For C128, we do the dynmem check both here and 40 lines down. Make it better!
