@@ -1367,7 +1367,10 @@ def parse_args():
     parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
     parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
     parser.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
+    # SFTODO: If --no-mode-7-prompt or similar is a permanent addition, maybe
+    # rename the next one --no-mode-7-status instead of --no-mode-7-colour.
     parser.add_argument("-7", "--no-mode-7-colour", action="store_true", help="disable coloured status line in mode 7")
+    parser.add_argument("--no-mode-7-prompt", action="store_true", help="disable coloured status prompt in mode 7")
     parser.add_argument("--default-fg-colour", metavar="N", type=int, help="set the default foreground colour (0-7) for modes 0-6")
     parser.add_argument("--default-bg-colour", metavar="N", type=int, help="set the default background colour (0-7) for modes 0-6")
     parser.add_argument("--default-mode-7-status-colour", metavar="N", type=int, help="set the default colour (0-7) for the mode 7 status line")
@@ -1566,9 +1569,11 @@ def make_disc_image():
     if not cmd_args.no_mode_7_colour:
         bbc_args += ["-DMODE_7_STATUS=1"]
         tube_args += ["-DMODE_7_STATUS=1"]
-        # SFTODONOW: TEMP HACK, SHOULD BE SEPARATELY CONTROLLED
-        bbc_args += ["-DMODE_7_PROMPT=1"]
-        tube_args += ["-DMODE_7_PROMPT=1"]
+        # SFTODO: MODE_7_PROMPT should probably default to off, but let's show
+        # it off first...
+        if not cmd_args.no_mode_7_prompt:
+            bbc_args += ["-DMODE_7_PROMPT=1"]
+            tube_args += ["-DMODE_7_PROMPT=1"]
     if not cmd_args.no_turbo:
         tube_args += ["-DACORN_TURBO_SUPPORTED=1"]
     if not cmd_args.force_6502:
