@@ -1035,8 +1035,20 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
                 return small_e
         info(init_cap(report_failure_prefix) + " executable can't use small dynamic memory model as it would require " + page_le(0xe00 if small_e is None else small_e.start_addr))
 
+    # We don't do a medium build for the shadow executable. The medium memory
+    # model doesn't have that big an advantage over the big model when we have
+    # shadow RAM - the main one I've seen is the possibly artificial one from
+    # reducing the amount of copying via bounce buffer when we're thrashing the
+    # disc on machines which are tight on RAM. By not using the medium model, we
+    # avoid *requiring* at least one bank of sideways RAM, which is useful as a
+    # B+ or Integra-B actually has a fair bit of RAM (up to 19K of spare shadow
+    # RAM in mode 7 and the private 12K) available even if it has no sideways
+    # RAM.
+    # SFTODO: Should probably make this more controllable from command line; this
+    # whole area could be revamped, "--force-big-dynmem" is a bit of a clumsy
+    # hammer anyway.
     medium_e = None
-    if not cmd_args.force_big_dynmem:
+    if "-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem:
         if nonstored_blocks * bytes_per_block <= 16 * 1024:
             medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
             if medium_e is not None:
