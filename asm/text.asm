@@ -1320,6 +1320,34 @@ read_text
 }
 	sta .read_text_column
 	; turn on blinking cursor
+!ifdef MODE_7_PROMPT {
+	; SFTODO: If there's a space before the cursor, we should print the colour code over the top of that
+	lda screen_mode
+	cmp #7
+	bne .not_mode_7
+	; Check to see if there's a space before the current (Ozmoo) cursor
+	; position; if there is, we'll overwrite it with the colour control code via
+	; OSWRCH instead of printing a colour control code via s_printchar. The OS
+	; cursor is invisible at this point so we can move it around without it
+	; looking ugly.
+	ldx zp_screencolumn
+	beq .no_space_present
+	stx s_cursors_inconsistent
+	dex
+	ldy zp_screenrow
+	jsr do_oswrch_vdu_goto_xy
+	lda #osbyte_read_screen_mode ; SFTODO: ALSO READS CHAR AT CURSOR
+	jsr osbyte
+	cpx #' '
+	bne .no_space_present
+	lda #SFTODOPROMPTCOLOUR
+	jsr oswrch
+	jmp .not_mode_7 ; SFTODO CHANGE LABEL
+.no_space_present
+	lda #SFTODOPROMPTCOLOUR
+	jsr s_printchar_unfiltered
+.not_mode_7
+}
 	jsr turn_on_cursor
 .readkey
 	jsr get_cursor ; x=row, y=column
@@ -1437,6 +1465,21 @@ read_text
 }
 	lda .petscii_char_read
 	jsr s_printchar ; print the delete char
+!ifdef MODE_7_PROMPT {
+	ldx screen_mode
+	cpx #7
+	bne .not_mode_7_column_0
+	; On second and subsequent lines there will be an invisible colour control
+	; code in column 0. We want to leave that there when the user deletes the
+	; only *visible* character on the line, so subsequent input is coloured, but
+	; if the user deletes when the only character on the line is that control
+	; code we want to do an extra delete to delete the visible character at the
+	; end of the previous line and move the cursor back up.
+	ldx zp_screencolumn
+	bne .not_mode_7_column_0
+	jsr s_printchar ; print the delete char again to delete the colour code
+.not_mode_7_column_0
+}
 ;!ifdef USE_BLINKING_CURSOR {
 ;	jsr reset_cursor_blink
 ;}
@@ -1500,6 +1543,16 @@ read_text
 }
 	lda .petscii_char_read
 	jsr s_printchar
+!ifdef MODE_7_PROMPT {
+	lda screen_mode
+	cmp #7
+	bne .not_mode_7_new_line
+	lda zp_screencolumn
+	bne .not_mode_7_new_line
+	lda #SFTODOPROMPTCOLOUR
+	jsr s_printchar_unfiltered
+.not_mode_7_new_line
+}
 !ifndef ACORN {
 ;!ifdef USE_BLINKING_CURSOR {
 ;	jsr reset_cursor_blink

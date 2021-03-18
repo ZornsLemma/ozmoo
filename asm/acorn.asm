@@ -1238,8 +1238,10 @@ game_blocks_ne_ram_blocks
     tya
     sbc #>.min_lhs_sub
     bcc .use_acorn_initial_nonstored_blocks
+!if 0 { ; SFTODO GET RID OF THIS TEMP HACK
     brk ; SFTODONOW TEMP
     !text 0, "SFTODONOW", 0
+}
     bne .use_min_rhs
     cpx .max_dynmem
     bcc .use_min_lhs

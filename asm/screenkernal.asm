@@ -721,6 +721,13 @@ set_os_reverse_video
     jmp oswrch
 }
 
+!ifdef MODE_7_PROMPT {
+; SFTODONOW: Experimental - this might also be useful for mode 7 status line
+s_printchar_unfiltered
+	stx s_stored_x
+	sty s_stored_y
+    jmp .normal_char
+}
 s_printchar
 	; replacement for CHROUT ($ffd2)
 	; input: A = byte to write (PETASCII)

@@ -1,3 +1,7 @@
+!ifdef MODE_7_STATUS { ; SFTODONOW TEMP HACK
+MODE_7_PROMPT = 1
+SFTODOPROMPTCOLOUR = 131
+}
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
 ; Z1, Z2, Z6 and Z7 will (probably) never be supported
@@ -2201,3 +2205,5 @@ scratch_overlapping_game_start
 ; I think in practice "do any extended vectors point into a bank with top bit
 ; set?" might be a reliable way to detect private 12K use, I *think* the MMFS+
 ; variant will do that too.
+
+; SFTODO: MODE_7_STATUS and MODE_7_PROMPT should probably have ACORN_ prefix.
