@@ -1340,11 +1340,15 @@ read_text
 	jsr osbyte
 	cpx #' '
 	bne .no_space_present
-	lda #SFTODOPROMPTCOLOUR
+	lda #mode_7_text_colour_base
+	clc
+	adc prompt_colour
 	jsr oswrch
 	jmp .not_mode_7 ; SFTODO CHANGE LABEL
 .no_space_present
-	lda #SFTODOPROMPTCOLOUR
+	lda #mode_7_text_colour_base
+	clc
+	adc prompt_colour
 	jsr s_printchar_unfiltered
 .not_mode_7
 }
@@ -1549,7 +1553,9 @@ read_text
 	bne .not_mode_7_new_line
 	lda zp_screencolumn
 	bne .not_mode_7_new_line
-	lda #SFTODOPROMPTCOLOUR
+	lda #mode_7_text_colour_base
+	clc
+	adc prompt_colour
 	jsr s_printchar_unfiltered
 .not_mode_7_new_line
 }

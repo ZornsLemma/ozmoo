@@ -1566,6 +1566,9 @@ def make_disc_image():
     if not cmd_args.no_mode_7_colour:
         bbc_args += ["-DMODE_7_STATUS=1"]
         tube_args += ["-DMODE_7_STATUS=1"]
+        # SFTODONOW: TEMP HACK, SHOULD BE SEPARATELY CONTROLLED
+        bbc_args += ["-DMODE_7_PROMPT=1"]
+        tube_args += ["-DMODE_7_PROMPT=1"]
     if not cmd_args.no_turbo:
         tube_args += ["-DACORN_TURBO_SUPPORTED=1"]
     if not cmd_args.force_6502:

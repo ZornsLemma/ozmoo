@@ -1782,6 +1782,40 @@ update_colours
 +
 }
 }
+!ifdef MODE_7_PROMPT {
+    ; SFTODO: Not just here, there may be general code-saving opportunities by tidying up
+    ; the mode 7 prompt code (e.g. the repeated 128+colour code calculation) and combining
+    ; it with MODE_7_STATUS where applicable. But I want to see how well the mode 7 prompt
+    ; works before integrating it too deeply.
+    lda screen_mode
+    cmp #7
+    bne +
+    sta s_cursors_inconsistent
+    jsr turn_off_cursor
+    ; SFTODO: We "should" update previous lines of this same prompt, but let's keep the
+    ; code size and complexity down for now.
+    ; SFTODO: Is it safe to use zp_temp here?
+    lda #$ff
+    sta zp_temp
+-   inc zp_temp
+    ldx zp_temp
+    cpx #40
+    beq .prompt_change_done
+    ldy zp_screenrow
+    jsr do_oswrch_vdu_goto_xy
+    lda #osbyte_read_screen_mode ; SFTODO ALSO RETURN CHAR AT CURSOR
+    jsr osbyte
+    txa
+    bpl -
+    lda #mode_7_text_colour_base
+    clc
+    adc prompt_colour
+    jsr oswrch
+.prompt_change_done
+    jsr turn_on_cursor
+.not_colour_code
++
+}
     ldx #0
     ldy bg_colour
     jsr .redefine_colour
@@ -1815,6 +1849,12 @@ check_user_interface_controls
     ldx #0
     cmp #'F' - ctrl_key_adjust
     beq .change_colour_x
+!ifdef MODE_7_PROMPT {
+    ; SFTODO: Show this on the loader screen!
+    ldx #2
+    cmp #'P' - ctrl_key_adjust
+    beq .change_colour_x
+}
     ; We can't change the background colour in mode 7, and we don't allow
     ; toggling hardware scrolling on (it defaults to off) because it looks ugly.
     ; Hardware scrolling looks ugly because the status line colour code isn't

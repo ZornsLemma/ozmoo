@@ -69,6 +69,9 @@ VDU 23,16,0,254,0;0;0;
 
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
+!ifdef MODE_7_PROMPT {
+?${prompt_colour}=3:REM SFTODONOW: Default should be settable at build time
+}
 screen_mode=${screen_mode}
 DIM block% 256
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100

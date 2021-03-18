@@ -474,7 +474,7 @@ z_trace_index = $400 ; !byte 0
 s_stored_x = $401 ; !byte 0
 s_stored_y = $402 ; !byte 0
 !if 0 { ; SFTODO: These can be re-used now
-screen_width_minus_1 = $403 ; !byte 0
+screen_width_minus_1 = $403 ; !byte 0 SFTODO TEMP REUSED THIS
 screen_width_plus_1 = $404 ; !byte 0
 }
 game_disc_crc = $405 ; 2 bytes
@@ -484,9 +484,14 @@ relocate_target = $408 ; !byte 0, low byte of B%
 ozmoo_relocate_target = relocate_target ; SFTODO!?
 }
 ; fg_colour and bg_colour must be adjacent and in this order
+; SFTODONOW: If MODE_7_PROMPT is defined, prompt_colour must follow bg_colour too
 fg_colour = $409 ; !byte 0
 bg_colour = $40a ; !byte 0
-screen_mode = $40b ; !byte 0, high byte of B%
+!ifdef MODE_7_PROMPT {
+; SFTODONOW: LOADER MUST SET THIS TO AN INITIAL VALUE
+prompt_colour = $40b ; ! byte 0
+}
+screen_mode = $403 ; !byte 0, high byte of B%
 !ifdef VMEM {
 vmap_max_entries = $40c ; !byte 0
 }
