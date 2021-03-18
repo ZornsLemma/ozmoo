@@ -1883,7 +1883,7 @@ check_user_interface_controls
 .not_scroll
     cmp #'B' - ctrl_key_adjust
     bne .done
-    inx
+    ldx #1 ; SFTODO: Was inx, but with MODE_7_PROMPT code above we can't rely on this - can probably rationalise this later once MODE_7_PROMPT is not so experimental
 .change_colour_x
     inc fg_colour,x
     lda fg_colour,x
