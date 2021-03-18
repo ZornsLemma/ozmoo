@@ -1889,6 +1889,8 @@ check_user_interface_controls
     lda fg_colour,x
     ; Wrap colour numbers; we need to wrap to 0 in modes 0-6, but if we support
     ; a coloured status line in mode 7 we need to wrap to 1.
+    ; SFTODO: We also need this mode 7 wrapping if we have MODE_7_PROMPT without MODE_7_STATUS,
+    ; if that is possible.
     cmp #8
     bne +
     lda #0
