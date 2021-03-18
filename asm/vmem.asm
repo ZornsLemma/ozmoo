@@ -1429,6 +1429,12 @@ convert_index_x_to_ram_bank_and_address
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    cmp sideways_ram_hole_start
+    bcc +
+    adc #sideways_ram_hole_vmem_blocks - 1 ; -1 as carry is set
++
+}
     ; CA is now the 9-bit block offset of the required data from the start of
     ; our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so
     ; we need to divide by 32=2^5 to get the bank index.
@@ -1440,18 +1446,10 @@ convert_index_x_to_ram_bank_and_address
     lsr
     tay
     +acorn_page_in_bank_using_a_comma_y ram_bank_list ; leaves bank in A
-!if 1 { ; SFTODO REALLY DON'T LIKE THE INEFFICIENCY OF THIS AND IT'S ALSO INTEGRA-B SPECIFIC WITH NO TEST, BUT LET'S JUST TRY IT THIS WAY FOR NOW AND SEE IF IT WORKS
-    cmp #64 ; set carry
-}
     sta mempointer_ram_bank
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
-!if 0 { ; SFTODO SCEOND PART OF ABOVE HACK - TEMP DISABLED TO SEE IF USING LOWER 11K RATHER THAN UPPER 11K BREAKS (AS I "HOPE" IT WILL) - NO, IT DOESN'T
-    bcc +
-    adc #1 ; carry is already set, skip 2x512-byte blocks i.e. first 1K of Integra-B private RAM
-+
-}
     and #31
     asl
     ; Carry is already clear

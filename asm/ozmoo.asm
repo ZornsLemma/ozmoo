@@ -270,6 +270,13 @@ ACORN_SWR_MEDIUM_OR_BIG_DYNMEM = 1
     ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE = 1
 }
 }
+; We have some code to handle 12K private RAM on an Integra-B or B+; this is only
+; needed in sidewayS RAM+shadow RAM builds.
+!ifdef ACORN_SWR {
+!ifndef ACORN_SCREEN_HOLE {
+ACORN_PRIVATE_RAM_SUPPORTED = 1
+}
+}
 
 ;  * = $0801 ; This must now be set on command line: --setpc $0801
 

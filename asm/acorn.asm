@@ -969,7 +969,9 @@ SFTODOXX89
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta ram_blocks + 1
-!ifdef ACORN_SWR {
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    lda #$ff
+    sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
     lda ram_bank_count
     ldx #6
 -   asl
@@ -983,10 +985,34 @@ SFTODOXX89
     bmi .b_plus_private_ram
     cpy #64
     bcc .not_private_ram
-    ; This is the Integra-B private 12K, so set up RAMSEL accordingly.
-    ; SFTODONOW: Is this OK? Ask Ken!
-    ; SFTODO: MAGIC CONSTANTS
+    ; This is the Integra-B private 12K.
     pha
+    ; We need to skip 512 bytes of IBOS workspace in the private RAM at $8200.
+    ; Set sideways_ram_hole_start
+    ; = (RAM banks including private 12K - 1) * 32 + 1
+    ; = (RAM banks including private 12K * 32) - 32 + 1
+    ; = ((ram_blocks+1 A) >> 1) - 31
+    ; If this doesn't fit in a single byte, just set it to 255 as we will never
+    ; need to skip.
+    ; (Note that convert_index_x_to_ram_bank_and_address has already added back
+    ; vmem_blocks_stolen_in_first_blank before using this value, so we're just
+    ; calculating the vmem block index *from the start of sideways RAM* to skip.)
+SFTODOKOO
+    pha
+    lda ram_blocks + 1
+    lsr
+    tay
+    pla
+    ror
+    sec
+    sbc #31
+    cpy #0
+    beq +
+    lda #255
++   sta sideways_ram_hole_start
+    ; SFTODO: MAGIC CONSTANTS
+    ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of ROMSEL,
+    ; much as we can access it by setting b7 on the B+.
     lda $37f
     ora #%01110000
     sta $37f
@@ -1238,8 +1264,10 @@ game_blocks_ne_ram_blocks
     tya
     sbc #>.min_lhs_sub
     bcc .use_acorn_initial_nonstored_blocks
+!if 0 { ; SFTODO: DELETE THIS TEMP HACK
     brk ; SFTODONOW TEMP
     !text 0, "SFTODONOW", 0
+}
     bne .use_min_rhs
     cpx .max_dynmem
     bcc .use_min_lhs
