@@ -969,7 +969,9 @@ SFTODOXX89
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta ram_blocks + 1
-!ifdef ACORN_SWR {
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    lda #$ff
+    sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
     lda ram_bank_count
     ldx #6
 -   asl
@@ -983,16 +985,39 @@ SFTODOXX89
     bmi .b_plus_private_ram
     cpy #64
     bcc .not_private_ram
-    ; This is the Integra-B private 12K, so set up RAMSEL accordingly.
-    ; SFTODONOW: Is this OK? Ask Ken!
-    ; SFTODO: MAGIC CONSTANTS
+    ; This is the Integra-B private 12K.
     pha
+    ; We need to skip 512 bytes of IBOS workspace in the private RAM at $8200.
+    ; Set sideways_ram_hole_start
+    ; = (RAM banks including private 12K - 1) * 32 + 1
+    ; = (RAM banks including private 12K * 32) - 32 + 1
+    ; = ((ram_blocks+1 A) >> 1) - 31
+    ; If this doesn't fit in a single byte, just set it to 255 as we will never
+    ; need to skip.
+    ; (Note that convert_index_x_to_ram_bank_and_address has already added back
+    ; vmem_blocks_stolen_in_first_blank before using this value, so we're just
+    ; calculating the vmem block index *from the start of sideways RAM* to skip.)
+SFTODOKOO
+    pha
+    lda ram_blocks + 1
+    lsr
+    tay
+    pla
+    ror
+    sec
+    sbc #31
+    cpy #0
+    beq +
+    lda #255
++   sta sideways_ram_hole_start
+    ; SFTODO: MAGIC CONSTANTS
+    ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of ROMSEL,
+    ; much as we can access it by setting b7 on the B+.
     lda $37f
     ora #%01110000
     sta $37f
     sta $fe34
     pla
-    ; SFTODONOW: Arbitrary point for this comment - IntegraB completes OK someimtes but it depends how much sideways RAM the machine has - I suspect I'm getting lucky-ish in some configs with what/when the IntegraB OS clases with me on
     sec
     sbc #(16 * 1024 - integra_b_private_ram_size) / 256
     jmp .subtract_private_ram_high_byte
@@ -1183,8 +1208,25 @@ game_blocks_is_smaller
     ; forced to.)
 .max_dynmem = zp_temp + 4 ; 1 byte
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    ; It's not all that likely, but it's not impossible we don't actually have
+    ; any sideways RAM. (Perhaps we had to use the big model to fit on some
+    ; machines but on this one we have PAGE=&E00 and dynamic memory fits in
+    ; main RAM, for example.) We might also have a short sideways RAM bank;
+    ; if it's the Integra-B private 12K we mustn't promote dynmem into it as
+    ; it's not contiguous, but we can do so with the B+ private 12k.
+    ; SFTODONOW: Review/test this code when fresh!
+    lda #>flat_ramtop
+    ldy ram_bank_count
+    beq .upper_bound_in_a
+    ldy ram_bank_list
+    bmi .b_plus_private_12k
+    cpy #64 ; SFTODO: MAGIC NUMBER
+    bcs .upper_bound_in_a ; Integra-B private 12K
     lda #>swr_ramtop
-    ; lda #$ae ; SFTODONOW TEMP HACK - BUT WE DO NEED TO BE CAREFUL IF WE *ONLY* HAVE THE PRIVATE 12K-ISH BANK NOT TO END UP PROMOTING DYNMEM INTO NON-EXISTENT SWR
+    bne .upper_bound_in_a ; always branch
+.b_plus_private_12k
+    lda #>(flat_ramtop + b_plus_private_ram_size)
+.upper_bound_in_a
 } else {
     lda #>flat_ramtop
 }
@@ -1238,10 +1280,6 @@ game_blocks_ne_ram_blocks
     tya
     sbc #>.min_lhs_sub
     bcc .use_acorn_initial_nonstored_blocks
-!if 0 { ; SFTODO GET RID OF THIS TEMP HACK
-    brk ; SFTODONOW TEMP
-    !text 0, "SFTODONOW", 0
-}
     bne .use_min_rhs
     cpx .max_dynmem
     bcc .use_min_lhs
@@ -1255,6 +1293,7 @@ game_blocks_ne_ram_blocks
 .use_max_lhs
 .dynmem_adjust_done
     stx nonstored_blocks
+.no_dynmem_adjust
 }
 }
 
@@ -2424,5 +2463,3 @@ do_oswrch_vdu_goto_xy
 ; SFTODO: We could perhaps avoid a proliferation of versions because of ROM paging by writing the code as "JSR page_in_bank_a:NOP:NOP:..." etc (wrapped in macros of course) and have those subroutines peek the return address from the stack and patch the JSR up to do the correct paging for the current platform directly. Of course the code size might vary, so the most likely use of this would be a) a third party model B SWR system which required no more code than standard paging b) making a BBC+Electron joint executable which penalises the Electron by making it JSR to subroutines to do paging but does direct paging on BBC. (The original subroutines would patch the JSR to a JSR to the Electron-specific subroutine on the Electron or the direct hardware code on the BBC.) Maybe a worthwhile idea in some other cases too.
 
 ; SFTODO: Perhaps do some timings to see how much of an impact replacing direct SWR paging code with a JSR to that same code has. It's probably significant, but it may be that some of the optimisations in Ozmoo over time mean this actually isn't a huge performance overhead, which would help make executables more shareable across different machines.
-
-; SFTODONOW: ON INTEGRA-B WITH 2XSWR BANKS (LET'S SAY 4 & 5), BENCHMARK RELIABLY CRASHES ON GAME MOVE 406, BUT A B+ WITH SAME CONFIG AND EXACT SAME RAM WORKS FINE - ADDING OR REMOVING SWR ON INTEGRA-B MAKES IT WORK, SO THERE IS CLEARLY SOMETHING VERY SENSITIVE IN THIS, BUT THE B+ "SHOULD" BE IDENTICAL - IT HAS SAME PAGE (&1900) AND SAME RAM CONFIG - THIS IS USING BEEBEM FOR INTEGRA-B AND USUALLY B-EM FOR B+, BUT BEEBEM IN B+ MODE WITH SAME SETUP ALSO COMPLETES THE GAME JUST FINE

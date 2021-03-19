@@ -26,12 +26,11 @@ REM *not* the top half of some double-height text.)
 *FX229,1
 *FX4,1
 
-!ifdef ACORN_SHADOW_VMEM {
-    integra_b=FALSE
-    ON ERROR GOTO 100
-    integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
-    100
-}
+integra_b=FALSE
+ON ERROR GOTO 100
+integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
+100
+
 ON ERROR PROCerror
 
 REM We need to ensure the !BOOT file is cleanly closed. (SFTODO: Why, exactly?
@@ -75,9 +74,7 @@ bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 DIM block% 256
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100
-!ifdef ACORN_SHADOW_VMEM {
-IF integra_b THEN host_os=1
-}
+IF integra_b THEN host_os=1:REM override Integra-B OS version faking
 electron=host_os=0
 
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
@@ -211,29 +208,70 @@ REM The tube build works on both the BBC and Electron, so we check that first.
 }
 PROCchoose_non_tube_version
 
+REM SFTODO: Review all the following fresh; I think it's right but I got seriously
+REM agitated trying to write it.
+
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 extra_main_ram=max_page-PAGE
+
 REM Small dynamic memory model builds must have enough main RAM free for dynamic
 REM memory, but the build system takes care of this by knowing the worst-case
 REM start of screen RAM and choosing max_page accordingly. SFTODO: This won't be
 REM true once we allow runtime choice of screen mode on non-shadow systems; the
 REM loader will have to be involved in the decision.
-REM Builds using the medium dynamic memory model must have enough sideways RAM
-REM for dynamic memory.
-REM SFTODO: Next line is perhaps confusing if we need 12K sideways RAM and have reported "12K private RAM" (but we really only have 11.5K *as sideways RAM*, other 0.5K is for shadow copy code)
-IF medium_dynmem AND swr_dynmem_needed>swr_size THEN PROCdie_ram(swr_dynmem_needed-swr_size,"sideways RAM")
-REM At this point, we need enough main and/or sideways RAM for swr_dynmem_needed
-REM and the minimum vmem cache.
-free_ram=swr_size+extra_main_ram-swr_dynmem_needed-${MIN_VMEM_BYTES}
-IF free_ram<0 THEN PROCdie_ram(-free_ram,"main or sideways RAM")
+
+REM At this point we have three different kinds of memory available:
+REM - extra_main_ram bytes free in main RAM
+REM - flexible_swr bytes of normal, contiguous sideways RAM
+REM - vmem_only_swr bytes of non-contiguous sideways RAM
+IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
+flexible_swr=swr_size-vmem_only_swr
+
+IF medium_dynmem THEN PROCcheck_ram_medium_dynmem:ENDPROC
+
+REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
+REM calculation we prefer to take it from flexible_swr so we can use the result to
+REM determine the available main RAM for shadow vmem cache if that's enabled.
+flexible_swr=flexible_swr-swr_dynmem_needed
+IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
+PROCsubtract_ram(${MIN_VMEM_BYTES})
+IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
 !ifdef ACORN_SHADOW_VMEM {
-REM SFTODO: I think this is right, but think about it fresh!
-free_main_ram=FNmin(extra_main_ram,free_ram)
+    REM SFTODO: I think this is right, but think about it fresh!
+    free_main_ram=extra_main_ram
 }
+ENDPROC
+
+DEF PROCcheck_ram_medium_dynmem
+REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
+REM game's dynamic memory; nothing else can substitute.
+flexible_swr=flexible_swr-swr_dynmem_needed
+PROCsubtract_ram(${MIN_VMEM_BYTES})
+REM SFTODO: The errors we generate here are true but because they're separate it's
+REM possible a user would fix one, try again and get another. extra_main_ram<0 is
+REM very unlikely so this is probably OK.
+IF flexible_swr<0 THEN PROCdie_ram(-flexible_swr,"sideways RAM")
+IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main RAM")
+!ifdef ACORN_SHADOW_VMEM {
+    REM SFTODO: I think this is right, but think about it fresh!
+    REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
+    free_main_ram=extra_main_ram
+}
+ENDPROC
+
+REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
+REM preferring to take from them in that order. Only extra_main_ram will be allowed
+REM to go negative as a result of this subtraction. We prefer this order because
+REM vmem_only_swr is the least valuable memory type and we want to maximise
+REM extra_main_ram in case it can be used as shadow vmem cache.
+DEF PROCsubtract_ram(n)
+IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n=n-d
+IF flexible_swr>0 THEN d=FNmin(n,flexible_swr):flexible_swr=flexible_swr-d:n=n-d
+extra_main_ram=extra_main_ram-n
 ENDPROC
 
 DEF FNcode_start
@@ -467,6 +505,7 @@ IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
 shadow_driver=FALSE:shadow_extra$="(screen only)"
 ENDPROC
+REM SFTODO: Should we set shadow_extra$ to "(screen only)" or some other distinctive string if the game fits in memory but we have too little main RAM free to have a shadow cache? It might be prudent to offer some clue this is happening, because (e.g.) having ADFS+DFS vs DFS might be enough to tip us from one state to the other and performance would drop dramatically because we've suddenly lost access to the spare shadow RAM
 
 DEF PROCassemble_shadow_driver_electron_mrb
 FOR opt%=0 TO 2 STEP 2
@@ -505,16 +544,9 @@ REM registers to optimise this a little.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
-STX &90 \ SFTODONOW TEMP HACK
 STA lda_abs_y+2:STY sta_abs_y+2
-LDA &37F:STA &92:LDA &F4:STA &93 \ SFTODONOW DEBUG HACK
+\ SFTODONOW: DO THE PAGING DIRECTLY RATHER THAN GOING VIA OSBYTE - WE'RE ALREADY POKING THE HW DIRECTLY SO MIGHT AS WELL BE AS FAST AS POSS!
 LDA #&6C:LDX #1:JSR &FFF4 \ page in shadow RAM
-\ SFTODONOW START DEBUG
-LDA &37F:BPL SFTODOOK
-\ SFTODONOW - OK, THE PROBLEM IS THAT I'M TRAMPLING OVER &83XX ALONG WITH THE REST OF PRIVATE RAM, AND *IF* &833C (WHICH CONTAINS OSMODE) HAPPENS TO BE 0, OSBYTE &6C IS IGNORED. THIS ISN'T REALLY THAT UNREASONABLE! SO THE DECISION IS, I THINK A) LEAVE FIRST 1K ALONE B) USE THE WHOLE LOT BUT MAKE SURE I CONTROL THE HW DIRECTLY HERE TO AVOID THIS PROBLEM (BUT COULD ANYTHING *ELSE* GO WRONG?) OF COURSE EVEN IF I GO FOR OPTION A IT *MIGHT* BE WORTH IT FOR PERFORMACNE TO CONTROL HW DIRECTLY HERE ANYWAY. THIS IS GOING TO BE VERY SENSITIVE TO EXACT RAM CONFIG BECAUSE UNLESS YOU HAPPEN TO GET A 0 AT &833C EVERYTHING WILL WORK JUST FINE
-.HANG JMP HANG
-.SFTODOOK
-\ SFTODONOW END DEBUG
 LDY #0
 .copy_loop
 .lda_abs_y
@@ -524,7 +556,6 @@ STA &FF00,Y \ patched
 DEY
 BNE copy_loop
 LDA #&6C:LDX #0:JSR &FFF4 \ page out shadow RAM
-LDX &90 \ SFTODONOW TEMP HACK
 RTS
 ]
 NEXT
@@ -544,7 +575,6 @@ extended_vector_table=&D9F
 FOR vector=0 TO 26
 IF extended_vector_table?(vector*3+2)>=128 THEN private_ram_in_use=TRUE
 NEXT
-PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC:REM SFTODONOW TEMP HACK
 IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
 REM The private 12K is free, so we can use this much faster implementation which
 REM takes advantage of the ability of code running at &Axxx in the 12K private
@@ -654,14 +684,15 @@ DEF PROCdetect_swr
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on
 REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
-REM SFTODONOW: NEED TO USE A PROCpoke TO WRITE AS WE MAY ON A 2P BUT THIS WILL DO FOR NOW
+REM SFTODO: For now we only detect and include private RAM if we're not running on
+REM a second processor. We'd need to use a PROCpoke() instead of ? to write safely
+REM to host memory, but that's not a big deal. More to the point is that CACHE2P
+REM doesn't know how to skip the IBOS workspace on an Integra-B, so we'll just
+REM avoid this altogether for the moment.
 swr_adjust=0
-REM SFTODONOW: WE PROBABLY DON'T HAVE ALL 12K AVAILABLE ON THE INTEGRA B BUT LET'S JUST TRY THIS FOR NOW
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${integra_b_private_ram_size}
-REM SFTODOONOW: WE ACTUALLY NEED TO TAKE OFF 4.5K ON THE B+; THIS ISN'T JUST COSMETIC BECAUSE WE MAY AGREE TO RUN A GAME WHEN WE DON'T QUITE HAVE ENOUGH SHADOW RAM
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+IF NOT tube THEN PROCdetect_private_ram
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
-swr_size=&4000*?${ram_bank_count}-swr_adjust
+swr_size=&4000*FNpeek(${ram_bank_count})-swr_adjust
 IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
@@ -669,6 +700,11 @@ swr$=STR$(swr_size/1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
 IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
+ENDPROC
+
+DEF PROCdetect_private_ram
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${integra_b_private_ram_size}
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
 ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
