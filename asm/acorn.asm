@@ -1225,7 +1225,7 @@ game_blocks_is_smaller
     lda #>swr_ramtop
     bne .upper_bound_in_a ; always branch
 .b_plus_private_12k
-    lda #>$ae00 ; SFTODO: MAGIC NUMBER
+    lda #>(flat_ramtop + b_plus_private_ram_size)
 .upper_bound_in_a
 } else {
     lda #>flat_ramtop
