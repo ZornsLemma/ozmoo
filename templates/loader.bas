@@ -228,14 +228,14 @@ REM - vmem_only_swr bytes of non-contiguous sideways RAM
 IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
 flexible_swr=swr_size-vmem_only_swr
 
-IF medium_dynmem THEN PROCSFTODODYNMEM:ENDPROC
+IF medium_dynmem THEN PROCcheck_ram_medium_dynmem:ENDPROC
 
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
 REM calculation we prefer to take it from flexible_swr so we can use the result to
 REM determine the available main RAM for shadow vmem cache if that's enabled.
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
-PROCSFTODO(${MIN_VMEM_BYTES})
+PROCsubtract_ram(${MIN_VMEM_BYTES})
 IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
@@ -243,11 +243,11 @@ IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
 }
 ENDPROC
 
-DEF PROCSFTODODYNMEM
+DEF PROCcheck_ram_medium_dynmem
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; nothing else can substitute.
 flexible_swr=flexible_swr-swr_dynmem_needed
-PROCSFTODO(${MIN_VMEM_BYTES})
+PROCsubtract_ram(${MIN_VMEM_BYTES})
 REM SFTODO: The errors we generate here are true but because they're separate it's
 REM possible a user would fix one, try again and get another. extra_main_ram<0 is
 REM very unlikely so this is probably OK.
@@ -265,7 +265,7 @@ REM preferring to take from them in that order. Only extra_main_ram will be allo
 REM to go negative as a result of this subtraction. We prefer this order because
 REM vmem_only_swr is the least valuable memory type and we want to maximise
 REM extra_main_ram in case it can be used as shadow vmem cache.
-DEF PROCSFTODO(n)
+DEF PROCsubtract_ram(n)
 IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n=n-d
 IF flexible_swr>0 THEN d=FNmin(n,flexible_swr):flexible_swr=flexible_swr-d:n=n-d
 extra_main_ram=extra_main_ram-n
