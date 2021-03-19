@@ -681,12 +681,15 @@ DEF PROCdetect_swr
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on
 REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
-REM SFTODONOW: NEED TO USE A PROCpoke TO WRITE AS WE MAY ON A 2P BUT THIS WILL DO FOR NOW
+REM SFTODO: For now we only detect and include private RAM if we're not running on
+REM a second processor. We'd need to use a PROCpoke() instead of ? to write safely
+REM to host memory, but that's not a big deal. More to the point is that CACHE2P
+REM doesn't know how to skip the IBOS workspace on an Integra-B, so we'll just
+REM avoid this altogether for the moment.
 swr_adjust=0
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${integra_b_private_ram_size}
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+IF NOT tube THEN PROCdetect_private_ram
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
-swr_size=&4000*?${ram_bank_count}-swr_adjust
+swr_size=&4000*FNpeek(${ram_bank_count})-swr_adjust
 IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
@@ -694,6 +697,11 @@ swr$=STR$(swr_size/1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
 IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
+ENDPROC
+
+DEF PROCdetect_private_ram
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${integra_b_private_ram_size}
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
 ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
