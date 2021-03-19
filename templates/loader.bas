@@ -696,6 +696,7 @@ swr_size=&4000*FNpeek(${ram_bank_count})-swr_adjust
 IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
+REM SFTODO: With the possibility of having ".5" in the number, we can probably wrap around at the right hand edge of the screen if we have 7 or 8 sideways RAM banks. ("Wrapping" includes printing in the rightmost column and having an extra line feed.)
 swr$=STR$(swr_size/1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
 IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
@@ -726,7 +727,7 @@ REM SFTODO: "P" and "prompt" are maybe less than ideal here; the *prompt* isn't 
 REM it's the user's input which is coloured. Not sure if this is a problem, but maybe
 REM CTRL-I would be better, and change the wording, and the name of the make-acorn.py
 REM option, and MODE_7_PROMPT itself...
-         IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-P: change prompt colour"
+         IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-P: change prompt colour     "
 }
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "

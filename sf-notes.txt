@@ -1,3 +1,54 @@
+B 144K SWR meddyn $004963 fractionally slower than old 5.x, possibly teletext colour UI delay - not too worried (old 5.x was $004906)
+All shadow versions are bigdyn now (so not "fair" to compare with meddyn, but OK for sanity checks etc)
+B+ no SWR mode 7 $00592d
+B+ no SWR mode 3 $00c0c2
+B+ no SWR mode 0 $010b59
+B+ 16K SWR mode 7 $0049b4 better than below, poss due to fixing the himem table glitch? anyway, it's fine
+B+ 16K SWR mode 3 $0058bc
+B+ 16K SWR mode 0 $005aff
+B+ 32K SWR mode 7 $0048e5
+B+ 32K SWR mode 3 $005422
+B+ 32K SWR mode 0 $00544e
+B+ 48K SWR mode 7 $0049a7
+B+ 48K SWR mode 3 $0053a6
+B+ 48K SWR mode 0 $0053a7
+B+ 64K SWR mode 7 $00499b
+B+ 64K SWR mode 3 $00547a
+B+ 64K SWR mode 0 $005441
+B+ 80K SWR mode 7 $0046a8
+B+ 80K SWR mode 3 $0054dd
+B+ 80K SWR mode 0 $005451
+B+ 96K SWR mode 7 $0046a9
+B+ 96K SWR mode 3 $0051c1
+B+ 96K SWR mode 0 $005134
+B+ 112K SWR mode 7 $0046a8
+B+ 112K SWR mode 3 $0051bd
+B+ 112K SWR mode 0 $005134
+B+ 128K SWR mode 7 $0046a8
+B+ 128K SWR mode 3 $0051bc
+B+ 128K SWR mode 0 $005132
+B+ 144K SWR mode 7 $0046ac
+B+ 144K SWR mode 3 $0051be
+B+ 144K SWR mode 0 $005135
+M128 64K SWR mode 7 $0049c0
+M128 64K SWR mode 3 $005624
+M128 64K SWR mode 0 $00560f
+These Integra-B timings done at fixed speed 100 on BeebEm and I'm guessing disc access is free given the complete lack of difference caused by different RAM sizes, but I'm mainly testing for correctness here.
+Integra-B no SWR won't run
+Integra-B 16K SWR mode 7 $004944
+Integra-B 16K SWR mode 3 $005b2d
+Integra-B 16K SWR mode 0 $005b2c
+Integra-B 32K SWR mode 7 $00493a
+Integra-B 32K SWR mode 3 $005ad1
+Integra-B 32K SWR mode 0 $005ab2
+Integra-B 48K SWR mode 7 $0049d7
+Integra-B 48K SWR mode 3 $005b40
+Integra-B 48K SWR mode 0 $005b22
+Integra-B 64K SWR mode 7 $004a80
+Integra-B 64K SWR mode 3 $005bf2
+Integra-B 64K SWR mode 0 $005bca
+
+
 Using the 12K private RAM:
 B+ 16K SWR+shadow+12K private mode 7 $004b40 nice! ($005a51 below without private 12K)
 Integra-B 64K $004a1f - slightly slower than before, but 64K is always a little iffy

@@ -1321,7 +1321,6 @@ read_text
 	sta .read_text_column
 	; turn on blinking cursor
 !ifdef MODE_7_PROMPT {
-	; SFTODO: If there's a space before the cursor, we should print the colour code over the top of that
 	lda screen_mode
 	cmp #7
 	bne .not_mode_7
@@ -1329,7 +1328,8 @@ read_text
 	; position; if there is, we'll overwrite it with the colour control code via
 	; OSWRCH instead of printing a colour control code via s_printchar. The OS
 	; cursor is invisible at this point so we can move it around without it
-	; looking ugly.
+	; looking ugly. SFTODO: What if we're already in column 0? Unlikely but we
+	; should cope with that.
 	ldx zp_screencolumn
 	beq .no_space_present
 	stx s_cursors_inconsistent
