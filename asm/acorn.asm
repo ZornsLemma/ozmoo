@@ -1018,7 +1018,6 @@ SFTODOKOO
     sta $37f
     sta $fe34
     pla
-    ; SFTODONOW: Arbitrary point for this comment - IntegraB completes OK someimtes but it depends how much sideways RAM the machine has - I suspect I'm getting lucky-ish in some configs with what/when the IntegraB OS clases with me on
     sec
     sbc #(16 * 1024 - integra_b_private_ram_size) / 256
     jmp .subtract_private_ram_high_byte

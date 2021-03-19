@@ -26,12 +26,11 @@ REM *not* the top half of some double-height text.)
 *FX229,1
 *FX4,1
 
-!ifdef ACORN_SHADOW_VMEM {
-    integra_b=FALSE
-    ON ERROR GOTO 100
-    integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
-    100
-}
+integra_b=FALSE
+ON ERROR GOTO 100
+integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
+100
+
 ON ERROR PROCerror
 
 REM We need to ensure the !BOOT file is cleanly closed. (SFTODO: Why, exactly?
@@ -72,9 +71,7 @@ bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 DIM block% 256
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100
-!ifdef ACORN_SHADOW_VMEM {
-IF integra_b THEN host_os=1
-}
+IF integra_b THEN host_os=1:REM override Integra-B OS version faking
 electron=host_os=0
 
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
@@ -208,29 +205,70 @@ REM The tube build works on both the BBC and Electron, so we check that first.
 }
 PROCchoose_non_tube_version
 
+REM SFTODO: Review all the following fresh; I think it's right but I got seriously
+REM agitated trying to write it.
+
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
 REM The use of 'p' in the next line is to work around a beebasm bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 extra_main_ram=max_page-PAGE
+
 REM Small dynamic memory model builds must have enough main RAM free for dynamic
 REM memory, but the build system takes care of this by knowing the worst-case
 REM start of screen RAM and choosing max_page accordingly. SFTODO: This won't be
 REM true once we allow runtime choice of screen mode on non-shadow systems; the
 REM loader will have to be involved in the decision.
-REM Builds using the medium dynamic memory model must have enough sideways RAM
-REM for dynamic memory.
-REM SFTODO: Next line is perhaps confusing if we need 12K sideways RAM and have reported "12K private RAM" (but we really only have 11.5K *as sideways RAM*, other 0.5K is for shadow copy code)
-IF medium_dynmem AND swr_dynmem_needed>swr_size THEN PROCdie_ram(swr_dynmem_needed-swr_size,"sideways RAM")
-REM At this point, we need enough main and/or sideways RAM for swr_dynmem_needed
-REM and the minimum vmem cache.
-free_ram=swr_size+extra_main_ram-swr_dynmem_needed-${MIN_VMEM_BYTES}
-IF free_ram<0 THEN PROCdie_ram(-free_ram,"main or sideways RAM")
+
+REM At this point we have three different kinds of memory available:
+REM - extra_main_ram bytes free in main RAM
+REM - flexible_swr bytes of normal, contiguous sideways RAM
+REM - vmem_only_swr bytes of non-contiguous sideways RAM
+IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
+flexible_swr=swr_size-vmem_only_swr
+
+IF medium_dynmem THEN PROCSFTODODYNMEM:ENDPROC
+
+REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
+REM calculation we prefer to take it from flexible_swr so we can use the result to
+REM determine the available main RAM for shadow vmem cache if that's enabled.
+flexible_swr=flexible_swr-swr_dynmem_needed
+IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
+PROCSFTODO(${MIN_VMEM_BYTES})
+IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
 !ifdef ACORN_SHADOW_VMEM {
-REM SFTODO: I think this is right, but think about it fresh!
-free_main_ram=FNmin(extra_main_ram,free_ram)
+    REM SFTODO: I think this is right, but think about it fresh!
+    free_main_ram=extra_main_ram
 }
+ENDPROC
+
+DEF PROCSFTODODYNMEM
+REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
+REM game's dynamic memory; nothing else can substitute.
+flexible_swr=flexible_swr-swr_dynmem_needed
+PROCSFTODO(${MIN_VMEM_BYTES})
+REM SFTODO: The errors we generate here are true but because they're separate it's
+REM possible a user would fix one, try again and get another. extra_main_ram<0 is
+REM very unlikely so this is probably OK.
+IF flexible_swr<0 THEN PROCdie_ram(-flexible_swr,"sideways RAM")
+IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main RAM")
+!ifdef ACORN_SHADOW_VMEM {
+    REM SFTODO: I think this is right, but think about it fresh!
+    REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
+    free_main_ram=extra_main_ram
+}
+ENDPROC
+
+REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
+REM preferring to take from them in that order. Only extra_main_ram will be allowed
+REM to go negative as a result of this subtraction. We prefer this order because
+REM vmem_only_swr is the least valuable memory type and we want to maximise
+REM extra_main_ram in case it can be used as shadow vmem cache.
+DEF PROCSFTODO(n)
+IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n=n-d
+IF flexible_swr>0 THEN d=FNmin(n,flexible_swr):flexible_swr=flexible_swr-d:n=n-d
+extra_main_ram=extra_main_ram-n
 ENDPROC
 
 DEF FNcode_start
@@ -464,6 +502,7 @@ IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
 shadow_driver=FALSE:shadow_extra$="(screen only)"
 ENDPROC
+REM SFTODO: Should we set shadow_extra$ to "(screen only)" or some other distinctive string if the game fits in memory but we have too little main RAM free to have a shadow cache? It might be prudent to offer some clue this is happening, because (e.g.) having ADFS+DFS vs DFS might be enough to tip us from one state to the other and performance would drop dramatically because we've suddenly lost access to the spare shadow RAM
 
 DEF PROCassemble_shadow_driver_electron_mrb
 FOR opt%=0 TO 2 STEP 2
