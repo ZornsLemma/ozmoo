@@ -696,8 +696,10 @@ swr_size=&4000*FNpeek(${ram_bank_count})-swr_adjust
 IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
-REM SFTODO: With the possibility of having ".5" in the number, we can probably wrap around at the right hand edge of the screen if we have 7 or 8 sideways RAM banks. ("Wrapping" includes printing in the rightmost column and having an extra line feed.)
-swr$=STR$(swr_size/1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
+REM We use integer division here so that the 11.5K sideways RAM from the B+/
+REM Integra-B private RAM doesn't cause wrapping if we have a lot of sideways
+REM RAM banks. SFTODO: I'm not entirely happy with this, is there a better way?
+swr$=STR$(swr_size DIV 1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
 IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
