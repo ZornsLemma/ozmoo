@@ -1208,8 +1208,25 @@ game_blocks_is_smaller
     ; forced to.)
 .max_dynmem = zp_temp + 4 ; 1 byte
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    ; It's not all that likely, but it's not impossible we don't actually have
+    ; any sideways RAM. (Perhaps we had to use the big model to fit on some
+    ; machines but on this one we have PAGE=&E00 and dynamic memory fits in
+    ; main RAM, for example.) We might also have a short sideways RAM bank;
+    ; if it's the Integra-B private 12K we mustn't promote dynmem into it as
+    ; it's not contiguous, but we can do so with the B+ private 12k.
+    ; SFTODONOW: Review/test this code when fresh!
+    lda #>flat_ramtop
+    ldy ram_bank_count
+    beq .upper_bound_in_a
+    ldy ram_bank_list
+    bmi .b_plus_private_12k
+    cpy #64 ; SFTODO: MAGIC NUMBER
+    bcs .upper_bound_in_a ; Integra-B private 12K
     lda #>swr_ramtop
-    ; lda #$ae ; SFTODONOW TEMP HACK - BUT WE DO NEED TO BE CAREFUL IF WE *ONLY* HAVE THE PRIVATE 12K-ISH BANK NOT TO END UP PROMOTING DYNMEM INTO NON-EXISTENT SWR
+    bne .upper_bound_in_a ; always branch
+.b_plus_private_12k
+    lda #>$ae00 ; SFTODO: MAGIC NUMBER
+.upper_bound_in_a
 } else {
     lda #>flat_ramtop
 }
@@ -1263,10 +1280,6 @@ game_blocks_ne_ram_blocks
     tya
     sbc #>.min_lhs_sub
     bcc .use_acorn_initial_nonstored_blocks
-!if 0 { ; SFTODO: DELETE THIS TEMP HACK
-    brk ; SFTODONOW TEMP
-    !text 0, "SFTODONOW", 0
-}
     bne .use_min_rhs
     cpx .max_dynmem
     bcc .use_min_lhs
@@ -1280,6 +1293,7 @@ game_blocks_ne_ram_blocks
 .use_max_lhs
 .dynmem_adjust_done
     stx nonstored_blocks
+.no_dynmem_adjust
 }
 }
 
@@ -2449,5 +2463,3 @@ do_oswrch_vdu_goto_xy
 ; SFTODO: We could perhaps avoid a proliferation of versions because of ROM paging by writing the code as "JSR page_in_bank_a:NOP:NOP:..." etc (wrapped in macros of course) and have those subroutines peek the return address from the stack and patch the JSR up to do the correct paging for the current platform directly. Of course the code size might vary, so the most likely use of this would be a) a third party model B SWR system which required no more code than standard paging b) making a BBC+Electron joint executable which penalises the Electron by making it JSR to subroutines to do paging but does direct paging on BBC. (The original subroutines would patch the JSR to a JSR to the Electron-specific subroutine on the Electron or the direct hardware code on the BBC.) Maybe a worthwhile idea in some other cases too.
 
 ; SFTODO: Perhaps do some timings to see how much of an impact replacing direct SWR paging code with a JSR to that same code has. It's probably significant, but it may be that some of the optimisations in Ozmoo over time mean this actually isn't a huge performance overhead, which would help make executables more shareable across different machines.
-
-; SFTODONOW: ON INTEGRA-B WITH 2XSWR BANKS (LET'S SAY 4 & 5), BENCHMARK RELIABLY CRASHES ON GAME MOVE 406, BUT A B+ WITH SAME CONFIG AND EXACT SAME RAM WORKS FINE - ADDING OR REMOVING SWR ON INTEGRA-B MAKES IT WORK, SO THERE IS CLEARLY SOMETHING VERY SENSITIVE IN THIS, BUT THE B+ "SHOULD" BE IDENTICAL - IT HAS SAME PAGE (&1900) AND SAME RAM CONFIG - THIS IS USING BEEBEM FOR INTEGRA-B AND USUALLY B-EM FOR B+, BUT BEEBEM IN B+ MODE WITH SAME SETUP ALSO COMPLETES THE GAME JUST FINE

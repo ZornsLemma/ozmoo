@@ -741,16 +741,16 @@ read_byte_at_z_address
 	; Subroutine: Read the contents of a byte address in the Z-machine
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
-!if 1 { ; SFTODONOW DEBUG HACK
+!if 0 { ; SFTODO DEBUG HACK
     cmp #1
-    bne .SFTODONOW
+    bne .SFTODOK2323
     cpx #$1c
-    bne .SFTODONOW
+    bne .SFTODOK2323
     cpy #$c4
-    bne .SFTODONOW
+    bne .SFTODOK2323
 SFTODOBOOM
     nop
-.SFTODONOW
+.SFTODOK2323
 }
 
 !ifdef TARGET_C128 {
