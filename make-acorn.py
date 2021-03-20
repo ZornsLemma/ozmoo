@@ -824,8 +824,8 @@ class OzmooExecutable(Executable):
 
     def _patch_vmem(self):
         # Can we fit the nonstored blocks into memory?
-        nonstored_blocks_up_to = self.labels["story_start"] + nonstored_blocks * bytes_per_block
-        if nonstored_blocks_up_to > self.pseudo_ramtop():
+        nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_block
+        if nonstored_pages_up_to > self.pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
             # Note that swr_dynmem may be negative; this means there will be
@@ -833,7 +833,7 @@ class OzmooExecutable(Executable):
             # build addr. For relocatable builds the loader will also take
             # account of the actual value of PAGE.
             # SFTODO: THINKING OUT LOUD - in the new "no 3c00 hack" model, what we probably mostly want is for swr_dynmem to be calculated like this, then the loader bumps up swr_dynmem_needed by any "unavoidable" screen RAM consumption. The build system needs some sort of option to allow the user to control whether we will accept a smalldyn build which won't work at max PAGE with no shadow RAM. I need to think this through a bit TBH. - I *think* for now, where I am going to keep a separate B-no-shadow executable and not offer the option to run in a non-default mode on no-shadow machines, all I need to do here is make pseudo_ramtop() return its current value less the screen size for non-shadow builds, but come back to that fresh
-            self.swr_dynmem = nonstored_blocks_up_to - 0x8000
+            self.swr_dynmem = nonstored_pages_up_to - 0x8000
             assert self.swr_dynmem <= 16 * 1024
 
         # On a second processor build, we must also have at least
@@ -841,7 +841,7 @@ class OzmooExecutable(Executable):
         # to check at run time if we have enough main/sideways RAM for swappable
         # memory.
         if "ACORN_SWR" not in self.labels:
-            nsmv_up_to = nonstored_blocks_up_to + min_vmem_blocks * bytes_per_vmem_block
+            nsmv_up_to = nonstored_pages_up_to + min_vmem_blocks * bytes_per_vmem_block
             if nsmv_up_to > self.pseudo_ramtop():
                 raise GameWontFit("not enough free RAM for any swappable memory")
 
@@ -873,7 +873,7 @@ class OzmooExecutable(Executable):
                 # any "suggested" blocks.
                 addr, timestamp = invalid_addr, invalid_timestamp
             else:
-                addr = (nonstored_blocks + block_index * vmem_block_pagecount) >> 1
+                addr = (nonstored_pages + block_index * vmem_block_pagecount) >> 1
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
                 # such a block.
@@ -902,7 +902,7 @@ class OzmooExecutable(Executable):
         else:
             return self.labels["flat_ramtop"]
 
-    def max_nonstored_blocks(self):
+    def max_nonstored_pages(self):
         return (self.pseudo_ramtop() - self.labels["story_start"]) // bytes_per_block
 
     # Return the size of the binary, ignoring any relocation data (which isn't
@@ -940,10 +940,10 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
 
     # Because of Ozmoo's liking for 512-byte alignment and the 256-byte
     # alignment of PAGE: SFTODO: THIS COMMENT IGNORES MEDIUM DYNMEM MODEL
-    # - max_nonstored_blocks() can only return even values on a VMEM build.
-    # - nonstored_blocks (i.e. for this specific game) will always be even.
+    # - max_nonstored_pages() can only return even values on a VMEM build.
+    # - nonstored_pages (i.e. for this specific game) will always be even.
     # - There are two possible start addresses 256 bytes apart which will
-    #   generate the same value of max_nonstored_blocks(), as one will waste an
+    #   generate the same value of max_nonstored_pages(), as one will waste an
     #   extra 256 bytes on aligning story_start to a 512-byte boundary.
     # - We want to use the higher of those two possible start addresses, because
     #   it means we won't need to waste 256 bytes before the start of the code
@@ -962,10 +962,10 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     if not same_double_page_alignment(e_low.start_addr, max_start_addr):
         max_start_addr += 256
     if "-DACORN_SWR_MEDIUM_DYNMEM=1" not in args:
-        surplus_nonstored_blocks = e_low.max_nonstored_blocks() - nonstored_blocks
-        assert surplus_nonstored_blocks >= 0
-        assert surplus_nonstored_blocks % 2 == 0
-        max_start_addr = min(e_low.start_addr + surplus_nonstored_blocks * bytes_per_block, max_start_addr)
+        surplus_nonstored_pages = e_low.max_nonstored_pages() - nonstored_pages
+        assert surplus_nonstored_pages >= 0
+        assert surplus_nonstored_pages % 2 == 0
+        max_start_addr = min(e_low.start_addr + surplus_nonstored_pages * bytes_per_block, max_start_addr)
     else:
         main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
         main_ram_vmem -= e_low.screen_hole_size()
@@ -975,7 +975,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     e = make_optimally_aligned_executable(leafname, max_start_addr, args, report_failure_prefix, e_low)
     assert e is not None
     assert same_double_page_alignment(e.start_addr, e_low.start_addr)
-    assert 0 <= e.max_nonstored_blocks() - nonstored_blocks
+    assert 0 <= e.max_nonstored_pages() - nonstored_pages
     return e
 
 
@@ -1049,7 +1049,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # hammer anyway.
     medium_e = None
     if "-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem:
-        if nonstored_blocks * bytes_per_block <= 16 * 1024:
+        if nonstored_pages * bytes_per_block <= 16 * 1024:
             medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
             if medium_e is not None:
                 info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
@@ -1101,7 +1101,7 @@ def make_tube_executables():
     leafname = "OZMOO2P"
     args = ozmoo_base_args + tube_args
     tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, args)
-    if game_blocks <= tube_no_vmem.max_nonstored_blocks():
+    if game_blocks <= tube_no_vmem.max_nonstored_pages():
         info("Game is small enough to run without virtual memory on second processor")
         return [tube_no_vmem]
     args += ["-DVMEM=1"]
@@ -1550,7 +1550,7 @@ def make_preload_blocks_list(config_filename):
             # preopt executable, which we just ignore.
             assert i == 0
             continue
-        block_index = ((addr << 1) - nonstored_blocks) // vmem_block_pagecount
+        block_index = ((addr << 1) - nonstored_pages) // vmem_block_pagecount
         assert block_index >= 0
         blocks.append(block_index)
     return blocks
@@ -1567,9 +1567,9 @@ def make_disc_image():
         "-DSMALLBLOCK=1",
         "-DSPLASHWAIT=0",
         "-DACORN_HW_SCROLL=1",
-        "-DACORN_INITIAL_NONSTORED_BLOCKS=%d" % nonstored_blocks,
+        "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-        "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_blocks - nonstored_blocks, 2),
+        "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_blocks - nonstored_pages, 2),
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -1855,12 +1855,12 @@ else:
     vmem_highbyte_mask = 0x01
 game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = read_be_word(game_data, header_static_mem)
-nonstored_blocks = bytes_to_blocks(dynamic_size_bytes)
-while nonstored_blocks % vmem_block_pagecount != 0:
-    nonstored_blocks += 1
+nonstored_pages = bytes_to_blocks(dynamic_size_bytes)
+while nonstored_pages % vmem_block_pagecount != 0:
+    nonstored_pages += 1
 # The Acorn initialisation code assumes the game has at least one block of
 # non-dynamic memory. That's almost certainly the case anyway, but make sure.
-while game_blocks < nonstored_blocks + vmem_block_pagecount:
+while game_blocks < nonstored_pages + vmem_block_pagecount:
     game_data += bytearray(bytes_per_block)
     game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = read_be_word(game_data, header_static_mem)

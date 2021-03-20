@@ -1132,11 +1132,10 @@ SFTODOLABELX1
     sta vmem_blocks_in_main_ram
 }
 
-    ; SFTODO: ACORN_INITIAL_NONSTORED_BLOCKS should probably be renamed ACORN_INITIAL_NONSTORED_PAGES to match the change of name elsewhere
     ; ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
-    ; - ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2*vmem_block_pagecount,
+    ; - ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + 2*vmem_block_pagecount,
     ;   i.e. that we have enough RAM for the game's dynamic memory and two
     ;   512-byte blocks of virtual memory cache.
     ; - the game always has at least one block of non-dynamic memory.
@@ -1157,8 +1156,8 @@ SFTODOEE2
     ; Set nonstored_pages to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
     ; memory rounded up to a 512-byte boundary, i.e.
-    ; ACORN_INITIAL_NONSTORED_BLOCKS.
-    lda #ACORN_INITIAL_NONSTORED_BLOCKS
+    ; ACORN_INITIAL_NONSTORED_PAGES.
+    lda #ACORN_INITIAL_NONSTORED_PAGES
     sta nonstored_pages
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
@@ -1170,7 +1169,7 @@ SFTODOEE2
     ; have banks 1 and 2 for that. So we set nonstored_pages = min(game_blocks
     ; - vmem_block_pagecount, available blocks in bank 0); see below for why we
     ; subtract vmem_block_pagecount. This subtraction can't cause
-    ; nonstored_pages < ACORN_INITIAL_NONSTORED_BLOCKS because the build system
+    ; nonstored_pages < ACORN_INITIAL_NONSTORED_PAGES because the build system
     ; guarantees the game has at least one block of non-dynamic memory. The
     ; subtraction is otherwise harmless; it just means that for small games one
     ; 512-byte block of RAM will have to be accessed via the slower virtual
@@ -1273,7 +1272,7 @@ game_blocks_ne_ram_blocks
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
     ; RAM into play. Set nonstored_pages =
     ; max(min(ram_blocks - vmap_max_size * vmem_block_pagecount, .max_dynmem),
-    ;     ACORN_INITIAL_NONSTORED_BLOCKS)
+    ;     ACORN_INITIAL_NONSTORED_PAGES)
 .min_lhs_sub = vmap_max_size * vmem_block_pagecount
     sec
     sbc #<.min_lhs_sub
@@ -1287,10 +1286,10 @@ game_blocks_ne_ram_blocks
 .use_min_rhs
     ldx .max_dynmem
 .use_min_lhs
-    cpx #ACORN_INITIAL_NONSTORED_BLOCKS
+    cpx #ACORN_INITIAL_NONSTORED_PAGES
     bcs .use_max_lhs
 .use_acorn_initial_nonstored_pages
-    ldx #ACORN_INITIAL_NONSTORED_BLOCKS
+    ldx #ACORN_INITIAL_NONSTORED_PAGES
 .use_max_lhs
 .dynmem_adjust_done
     stx nonstored_pages
@@ -1313,7 +1312,7 @@ game_blocks_ne_ram_blocks
     ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
     ;
     ; The build system and loader work together to guarantee (initial)
-    ; ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount.
+    ; ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + 2 * vmem_block_pagecount.
     ; If nonstored_pages has not been adjusted, there are two cases:
     ; a) If we didn't set ram_blocks = game_blocks above, the build system and
     ;    loader guarantee means we now have ram_blocks >= 2 *
@@ -1321,7 +1320,7 @@ game_blocks_ne_ram_blocks
     ; b) If we did set ram_blocks = game_blocks above, we know that the
     ;    game has at least one block of non-dynamic memory, so before the
     ;    subtraction we had ram_blocks = game_blocks >=
-    ;    ACORN_INITIAL_NONSTORED_BLOCKS + vmem_block_pagecount. QED.
+    ;    ACORN_INITIAL_NONSTORED_PAGES + vmem_block_pagecount. QED.
     ;
     ; On a turbo second processor, we may have adjusted nonstored_pages. There are
     ; two cases:
@@ -1336,7 +1335,7 @@ game_blocks_ne_ram_blocks
     ; On a sideways RAM build, we may have adjusted nonstored_pages. There are
     ; two cases:
     ; a) If we didn't set ram_blocks = game_blocks above, we either:
-    ;    1) set nonstored_pages = ACORN_INITIAL_NONSTORED_BLOCKS; see the "not
+    ;    1) set nonstored_pages = ACORN_INITIAL_NONSTORED_PAGES; see the "not
     ;       been adjusted" case above.
     ;    2) set nonstored_pages <= ram_blocks - vmap_max_size *
     ;       vmem_block_pagecount, so after the subtraction we have ram_blocks
@@ -1386,7 +1385,7 @@ SFTODOLABEL5
     ; displaced anything useful in the meantime. All the same, it might be
     ; neater to make the build script use $ffff for the dummy entries.
     lda nonstored_pages
-    cmp #ACORN_INITIAL_NONSTORED_BLOCKS
+    cmp #ACORN_INITIAL_NONSTORED_PAGES
     beq +
     ldx #vmap_max_size
 +
@@ -1778,7 +1777,7 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; The initial vmap created by the build system assumes nonstored_pages ==
-    ; ACORN_INITIAL_NONSTORED_BLOCKS, so if we changed nonstored_pages earlier
+    ; ACORN_INITIAL_NONSTORED_PAGES, so if we changed nonstored_pages earlier
     ; we need to adjust the vmap to compensate. If we didn't adjust it, this
     ; code is a no-op. As the vmap is now sorted by address we just need to find
     ; the first entry which doesn't correspond to dynamic memory and move
@@ -1935,7 +1934,7 @@ SFTODOLABELX3
     ; incorrectly, we will still load everything we should, but newer blocks
     ; will tend to be in the host cache when we'd prefer them to be in local
     ; memory.)
-.vmem_blocks = ((>(flat_ramtop - story_start)) - ACORN_INITIAL_NONSTORED_BLOCKS) / vmem_block_pagecount
+.vmem_blocks = ((>(flat_ramtop - story_start)) - ACORN_INITIAL_NONSTORED_PAGES) / vmem_block_pagecount
 .cutover_timestamp = int(ACORN_TUBE_CACHE_MAX_TIMESTAMP + ((float(.vmem_blocks) / vmap_max_size) * (ACORN_TUBE_CACHE_MIN_TIMESTAMP - ACORN_TUBE_CACHE_MAX_TIMESTAMP))) and ($ff xor vmem_highbyte_mask)
 
     ; Work through the blocks in vmap, loading each in turn and offering it to
