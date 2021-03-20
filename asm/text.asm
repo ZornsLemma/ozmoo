@@ -1767,7 +1767,12 @@ get_input_from_history
 	ldx .read_text_column
 -	cpx #1
 	beq +
+!ifndef ACORN {
 	lda #$14 ; delete character
+} else {
+	; SFTODONOW: Not just here - what about mode 7 colour???
+	lda #del
+}
 	jsr s_printchar
 	dex
 	bne -
