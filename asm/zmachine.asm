@@ -1164,6 +1164,8 @@ z_ins_quit
 !ifdef TARGET_MEGA65 {
 	; TODO: how to reset without activating autoboot?
 }
+	jsr printchar_flush
+	jsr show_more_prompt
 	jmp kernal_reset
 } else {
     +clean_up_and_quit_inline ; never returns

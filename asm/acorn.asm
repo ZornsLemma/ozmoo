@@ -30,7 +30,7 @@
 ; Acorn Ozmoo uses two slightly different sideways RAM models. Both of them
 ; allow static/high memory to be spread over approximately 9 sideways RAM banks
 ; (indexed in 512-byte chunks with indexes from 0-254, with chunk 0 starting
-; at story_start+nonstored_blocks). The standard Ozmoo mempointer (data) and 
+; at story_start+nonstored_pages). The standard Ozmoo mempointer (data) and 
 ; z_pc_mempointer (Z-machine PC) pointers are extended to each have an associated
 ; RAM bank (mempointer_ram_bank and z_pc_mempointer_ram_bank respectively). (If
 ; the relevant byte of Z-machine memory lives in main RAM, the bank number is
@@ -1132,6 +1132,7 @@ SFTODOLABELX1
     sta vmem_blocks_in_main_ram
 }
 
+    ; SFTODO: ACORN_INITIAL_NONSTORED_BLOCKS should probably be renamed ACORN_INITIAL_NONSTORED_PAGES to match the change of name elsewhere
     ; ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
@@ -1153,23 +1154,23 @@ SFTODOEE2
     sta ram_blocks
 +
 
-    ; Set nonstored_blocks to the number of 256-byte blocks of RAM we are going
+    ; Set nonstored_pages to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
     ; memory rounded up to a 512-byte boundary, i.e.
     ; ACORN_INITIAL_NONSTORED_BLOCKS.
     lda #ACORN_INITIAL_NONSTORED_BLOCKS
-    sta nonstored_blocks
+    sta nonstored_pages
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_TURBO_SUPPORTED {
     ; SFTODO: REVIEW THIS FRESH
-    ; On a turbo second processor, we can increase nonstored_blocks to promote
+    ; On a turbo second processor, we can increase nonstored_pages to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
-    ; have banks 1 and 2 for that. So we set nonstored_blocks = min(game_blocks
+    ; have banks 1 and 2 for that. So we set nonstored_pages = min(game_blocks
     ; - vmem_block_pagecount, available blocks in bank 0); see below for why we
     ; subtract vmem_block_pagecount. This subtraction can't cause
-    ; nonstored_blocks < ACORN_INITIAL_NONSTORED_BLOCKS because the build system
+    ; nonstored_pages < ACORN_INITIAL_NONSTORED_BLOCKS because the build system
     ; guarantees the game has at least one block of non-dynamic memory. The
     ; subtraction is otherwise harmless; it just means that for small games one
     ; 512-byte block of RAM will have to be accessed via the slower virtual
@@ -1193,11 +1194,11 @@ SFTODOLABEL1
 .available_blocks_is_smaller
     ldx #>(flat_ramtop - story_start)
 game_blocks_is_smaller
-    stx nonstored_blocks
+    stx nonstored_pages
 .no_turbo_dynmem_adjust
 }
 !ifdef ACORN_SWR {
-    ; It may be useful to increase nonstored_blocks to promote some additional
+    ; It may be useful to increase nonstored_pages to promote some additional
     ; data into dynamic memory, either for performance or to make use of more
     ; sideways RAM. We must not make it too large for the memory model we're
     ; using. (This optimisation has relatively limited scope in the small or
@@ -1240,10 +1241,10 @@ game_blocks_is_smaller
     sbc #>story_start
     sta .max_dynmem
 
-    ; If game_blocks == ram_blocks, we want to set nonstored_blocks as high as
+    ; If game_blocks == ram_blocks, we want to set nonstored_pages as high as
     ; possible; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
-    ; faster dynamic memory code path. Set nonstored_blocks = min(game_blocks -
+    ; faster dynamic memory code path. Set nonstored_pages = min(game_blocks -
     ; vmem_block_pagecount, .max_dynmem).
     ldy ram_blocks + 1
     lda ram_blocks
@@ -1269,8 +1270,8 @@ game_blocks_ne_ram_blocks
     ; ram_blocks to match earlier, so game_blocks > ram_blocks. We don't want
     ; to reduce flexibility by locking parts of the game into RAM instead of
     ; allowing the virtual memory system to choose what lives in RAM. It's only
-    ; a clear win to increase nonstored_blocks if it brings otherwise unusable
-    ; RAM into play. Set nonstored_blocks =
+    ; a clear win to increase nonstored_pages if it brings otherwise unusable
+    ; RAM into play. Set nonstored_pages =
     ; max(min(ram_blocks - vmap_max_size * vmem_block_pagecount, .max_dynmem),
     ;     ACORN_INITIAL_NONSTORED_BLOCKS)
 .min_lhs_sub = vmap_max_size * vmem_block_pagecount
@@ -1279,7 +1280,7 @@ game_blocks_ne_ram_blocks
     tax
     tya
     sbc #>.min_lhs_sub
-    bcc .use_acorn_initial_nonstored_blocks
+    bcc .use_acorn_initial_nonstored_pages
     bne .use_min_rhs
     cpx .max_dynmem
     bcc .use_min_lhs
@@ -1288,20 +1289,20 @@ game_blocks_ne_ram_blocks
 .use_min_lhs
     cpx #ACORN_INITIAL_NONSTORED_BLOCKS
     bcs .use_max_lhs
-.use_acorn_initial_nonstored_blocks
+.use_acorn_initial_nonstored_pages
     ldx #ACORN_INITIAL_NONSTORED_BLOCKS
 .use_max_lhs
 .dynmem_adjust_done
-    stx nonstored_blocks
+    stx nonstored_pages
 .no_dynmem_adjust
 }
 }
 
-    ; Set ram_blocks -= nonstored_blocks, i.e. set ram_blocks to the number of
+    ; Set ram_blocks -= nonstored_pages, i.e. set ram_blocks to the number of
     ; RAM blocks we have available as virtual memory cache.
     lda ram_blocks
     sec
-    sbc nonstored_blocks
+    sbc nonstored_pages
     sta ram_blocks
     bcs +
     dec ram_blocks + 1
@@ -1313,7 +1314,7 @@ game_blocks_ne_ram_blocks
     ;
     ; The build system and loader work together to guarantee (initial)
     ; ram_blocks >= ACORN_INITIAL_NONSTORED_BLOCKS + 2 * vmem_block_pagecount.
-    ; If nonstored_blocks has not been adjusted, there are two cases:
+    ; If nonstored_pages has not been adjusted, there are two cases:
     ; a) If we didn't set ram_blocks = game_blocks above, the build system and
     ;    loader guarantee means we now have ram_blocks >= 2 *
     ;    vmem_block_pagecount. QED.
@@ -1322,22 +1323,22 @@ game_blocks_ne_ram_blocks
     ;    subtraction we had ram_blocks = game_blocks >=
     ;    ACORN_INITIAL_NONSTORED_BLOCKS + vmem_block_pagecount. QED.
     ;
-    ; On a turbo second processor, we may have adjusted nonstored_blocks. There are
+    ; On a turbo second processor, we may have adjusted nonstored_pages. There are
     ; two cases:
-    ; a) If we didn't set ram_blocks = game_blocks above, as nonstored_blocks
+    ; a) If we didn't set ram_blocks = game_blocks above, as nonstored_pages
     ;    lives in bank 0 and we also have banks 1 and 2 for virtual memory
     ;    cache, after the subtraction we have ram_blocks ~= 128K >=
     ;    vmem_block_pagecount. QED.
     ; b) If we did set ram_blocks = game_blocks above, combine that with the
-    ;    fact the adjustment to nonstored_blocks left nonstored_blocks <=
+    ;    fact the adjustment to nonstored_pages left nonstored_pages <=
     ;    game_blocks - vmem_block_pagecount. QED.
     ;
-    ; On a sideways RAM build, we may have adjusted nonstored_blocks. There are
+    ; On a sideways RAM build, we may have adjusted nonstored_pages. There are
     ; two cases:
     ; a) If we didn't set ram_blocks = game_blocks above, we either:
-    ;    1) set nonstored_blocks = ACORN_INITIAL_NONSTORED_BLOCKS; see the "not
+    ;    1) set nonstored_pages = ACORN_INITIAL_NONSTORED_BLOCKS; see the "not
     ;       been adjusted" case above.
-    ;    2) set nonstored_blocks <= ram_blocks - vmap_max_size *
+    ;    2) set nonstored_pages <= ram_blocks - vmap_max_size *
     ;       vmem_block_pagecount, so after the subtraction we have ram_blocks
     ;       >= vmap_max_size * vmem_block_pagecount. QED
     ; b) exactly the same as for the turbo second processor
@@ -1368,7 +1369,7 @@ game_blocks_ne_ram_blocks
 
 SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-    ; If we've adjusted nonstored_blocks, we may need to sort more than
+    ; If we've adjusted nonstored_pages, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
     ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
     ; blocks of virtual memory cache or we have enough RAM for the entire game.
@@ -1384,7 +1385,7 @@ SFTODOLABEL5
     ; this is a sort (we're just reordering things) they haven't actually
     ; displaced anything useful in the meantime. All the same, it might be
     ; neater to make the build script use $ffff for the dummy entries.
-    lda nonstored_blocks
+    lda nonstored_pages
     cmp #ACORN_INITIAL_NONSTORED_BLOCKS
     beq +
     ldx #vmap_max_size
@@ -1397,10 +1398,10 @@ SFTODOLABEL5
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
     lda #0
     sta vmem_blocks_stolen_in_first_bank
-    ; Set A = (>story_start + nonstored_blocks) - (>flat_ramtop - acorn_screen_hole_pages)
+    ; Set A = (>story_start + nonstored_pages) - (>flat_ramtop - acorn_screen_hole_pages)
     lda #>story_start
     clc
-    adc nonstored_blocks
+    adc nonstored_pages
 !ifdef ACORN_SCREEN_HOLE {
     clc
     adc acorn_screen_hole_pages
@@ -1419,7 +1420,7 @@ SFTODOLABEL5
     sta vmem_blocks_in_main_ram
 +
 } else {
-    lda nonstored_blocks
+    lda nonstored_pages
     lsr
     sta vmem_blocks_stolen_in_first_bank
     lda #>flat_ramtop
@@ -1468,7 +1469,7 @@ SFTODOXY7
     asl ; convert to 256-byte blocks
     rol .blocks_to_load + 1
     clc
-    adc nonstored_blocks ; already in 256-byte blocks
+    adc nonstored_pages ; already in 256-byte blocks
     sta .blocks_to_load
     bcc +
     inc .blocks_to_load + 1
@@ -1664,7 +1665,7 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     lda #>story_start
     sta readblocks_mempos + 1
 !ifdef VMEM {
-    lda nonstored_blocks
+    lda nonstored_pages
 } else {
     lda game_blocks
 }
@@ -1776,8 +1777,8 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     bne .outer_loop
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-    ; The initial vmap created by the build system assumes nonstored_blocks ==
-    ; ACORN_INITIAL_NONSTORED_BLOCKS, so if we changed nonstored_blocks earlier
+    ; The initial vmap created by the build system assumes nonstored_pages ==
+    ; ACORN_INITIAL_NONSTORED_BLOCKS, so if we changed nonstored_pages earlier
     ; we need to adjust the vmap to compensate. If we didn't adjust it, this
     ; code is a no-op. As the vmap is now sorted by address we just need to find
     ; the first entry which doesn't correspond to dynamic memory and move
@@ -1789,7 +1790,7 @@ SFTODOLABEL2
     ldx #255
 .find_first_non_promoted_entry_loop
     ; We need to shift the 16-bit vmap entry left one bit before comparing it
-    ; against nonstored_blocks.
+    ; against nonstored_pages.
     inx
     lda vmap_z_l,x
     asl
@@ -1799,7 +1800,7 @@ SFTODOLABEL2
     bne .found_first_non_promoted_entry
     lda vmap_z_l,x
     asl
-    cmp nonstored_blocks
+    cmp nonstored_pages
     bcc .find_first_non_promoted_entry_loop
 .found_first_non_promoted_entry
     txa
@@ -1837,7 +1838,7 @@ SFTODOLABEL2
     jsr s_printchar
     lda #>story_start
     jsr print_byte_as_hex
-    lda nonstored_blocks
+    lda nonstored_pages
     jsr print_byte_as_hex
     jsr newline
     jsr osrdch
@@ -1888,9 +1889,9 @@ SFTODOLABELX2
     ; potentially simplify/shorten the code in a few places by not treating this
     ; dynamically, e.g. we wouldn't need the code to populate game_blocks in
     ; the first place. (on SWR builds the dynmem growth optimisation means
-    ; nonstored_blocks is not precisely known at build time, but that's not an
+    ; nonstored_pages is not precisely known at build time, but that's not an
     ; issue for a tube build) This might also simplify some corner cases in the
-    ; "grow nonstored_blocks" logic, because the game size is no longer a
+    ; "grow nonstored_pages" logic, because the game size is no longer a
     ; runtime variable. I just worry a little bit about this breaking
     ; already-not-supposed-to-work-but-sort-of-does-just-about things where a
     ; game developer wants to switch in an updated data file without going
@@ -1904,7 +1905,7 @@ SFTODOLABELX2
     bcc +
     lda game_blocks
 +   sec
-    sbc nonstored_blocks
+    sbc nonstored_pages
     lsr
     sta vmap_max_entries
     sta vmap_used_entries

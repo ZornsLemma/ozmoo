@@ -10,7 +10,7 @@
 
 ; SFTODODATA 6
 !ifdef VMEM {
-nonstored_blocks		!byte 0
+nonstored_pages		!byte 0
 }
 readblocks_numblocks	!byte 2
 readblocks_currentblock	!byte 0,0 ; 257 = ff 1
@@ -430,7 +430,7 @@ z_ins_save
 ; sideways RAM, so we can only use if it's we're not using ACORN_SWR_MEDIUM_OR_BIG_DYNMEM.
 ; SFTODO: This is bit too pessimistic - since we only save precisely the number
 ; of bytes in dynamic memory as specified by the game's header, even if
-; nonstored_blocks has overflowed into sideways RAM due to rounding up of some
+; nonstored_pages has overflowed into sideways RAM due to rounding up of some
 ; kind, we can still use OSFILE if the actual dynamic memory fits into main RAM.
 ; The build system already passes this in as ACORN_DYNAMIC_SIZE_BYTES, so this
 ; isn't even hard. (Or is it? What would the condition be here? !if
