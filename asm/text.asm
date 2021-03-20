@@ -1524,19 +1524,7 @@ read_text
 	lda .petscii_char_read
 	jsr s_printchar ; print the delete char
 !ifdef MODE_7_PROMPT {
-	ldx screen_mode
-	cpx #7
-	bne .not_mode_7_column_0
-	; On second and subsequent lines there will be an invisible colour control
-	; code in column 0. We want to leave that there when the user deletes the
-	; only *visible* character on the line, so subsequent input is coloured, but
-	; if the user deletes when the only character on the line is that control
-	; code we want to do an extra delete to delete the visible character at the
-	; end of the previous line and move the cursor back up.
-	ldx zp_screencolumn
-	bne .not_mode_7_column_0
-	jsr s_printchar ; print the delete char again to delete the colour code
-.not_mode_7_column_0
+	jsr handle_mode_7_colour_prompt_delete
 }
 ;!ifdef USE_BLINKING_CURSOR {
 ;	jsr reset_cursor_blink
@@ -1605,16 +1593,7 @@ read_text
 }
 	jsr s_printchar
 !ifdef MODE_7_PROMPT {
-	lda screen_mode
-	cmp #7
-	bne .not_mode_7_new_line
-	lda zp_screencolumn
-	bne .not_mode_7_new_line
-	lda #mode_7_text_colour_base
-	clc
-	adc prompt_colour
-	jsr s_printchar_unfiltered
-.not_mode_7_new_line
+	jsr handle_mode_7_colour_prompt_new_line
 }
 !ifndef ACORN {
 ;!ifdef USE_BLINKING_CURSOR {
@@ -1764,16 +1743,21 @@ get_input_from_history
 	; used registers: 
 
 	; remove any old input first
+!ifdef ACORN {
+	jsr turn_off_cursor
+}
 	ldx .read_text_column
 -	cpx #1
 	beq +
 !ifndef ACORN {
 	lda #$14 ; delete character
 } else {
-	; SFTODONOW: Not just here - what about mode 7 colour???
 	lda #del
 }
 	jsr s_printchar
+!ifdef MODE_7_PROMPT {
+	jsr handle_mode_7_colour_prompt_delete
+}
 	dex
 	bne -
 +	; update string_array and write characters
@@ -1789,6 +1773,9 @@ get_input_from_history
 	; convert back to petscii
 	jsr translate_zscii_to_petscii
 	jsr s_printchar
+!ifdef MODE_7_PROMPT {
+	jsr handle_mode_7_colour_prompt_new_line
+}
 	iny
 	; x = (x + 1) % history_size
 	inx

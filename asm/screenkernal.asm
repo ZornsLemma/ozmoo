@@ -725,6 +725,31 @@ set_os_reverse_video
 }
 
 !ifdef MODE_7_PROMPT {
+; This must preserve X and Y.
+handle_mode_7_colour_prompt_delete
+	lda screen_mode
+	cmp #7
+	bne .rts
+	; On second and subsequent lines there will be an invisible colour control
+	; code in column 0. We want to leave that there when the user deletes the
+	; only *visible* character on the line, so subsequent input is coloured, but
+	; if the user deletes when the only character on the line is that control
+	; code we want to do an extra delete to delete the visible character at the
+	; end of the previous line and move the cursor back up.
+	lda zp_screencolumn
+	bne .rts
+    lda #del
+	bne s_printchar ; always branch - print the delete char again to delete the colour code
+handle_mode_7_colour_prompt_new_line
+	lda screen_mode
+	cmp #7
+	bne .rts
+	lda zp_screencolumn
+	bne .rts
+	lda #mode_7_text_colour_base
+	clc
+	adc prompt_colour
+	; fall through to s_printchar_unfiltered
 ; SFTODONOW: Experimental - this might also be useful for mode 7 status line
 s_printchar_unfiltered
 	stx s_stored_x
