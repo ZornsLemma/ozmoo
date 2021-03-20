@@ -1522,8 +1522,9 @@ read_text
 	jsr turn_off_cursor
 }
 	lda .petscii_char_read
+!ifndef MODE_7_PROMPT {
 	jsr s_printchar ; print the delete char
-!ifdef MODE_7_PROMPT {
+} else {
 	jsr handle_mode_7_colour_prompt_delete
 }
 ;!ifdef USE_BLINKING_CURSOR {
@@ -1591,9 +1592,10 @@ read_text
 !ifdef USE_HISTORY {
 	jsr disable_history_keys
 }
+!ifndef MODE_7_PROMPT {
 	jsr s_printchar
-!ifdef MODE_7_PROMPT {
-	jsr handle_mode_7_colour_prompt_new_line
+} else {
+	jsr s_printchar_and_handle_mode_7_colour_prompt_new_line
 }
 !ifndef ACORN {
 ;!ifdef USE_BLINKING_CURSOR {
@@ -1754,8 +1756,9 @@ get_input_from_history
 } else {
 	lda #del
 }
+!ifndef MODE_7_PROMPT {
 	jsr s_printchar
-!ifdef MODE_7_PROMPT {
+} else {
 	jsr handle_mode_7_colour_prompt_delete
 }
 	dex
@@ -1773,8 +1776,10 @@ get_input_from_history
 	; convert back to petscii
 	jsr translate_zscii_to_petscii
 	jsr s_printchar
-!ifdef MODE_7_PROMPT {
-	jsr handle_mode_7_colour_prompt_new_line
+!ifndef MODE_7_PROMPT {
+	jsr s_printchar
+} else {
+	jsr s_printchar_and_handle_mode_7_colour_prompt_new_line
 }
 	iny
 	; x = (x + 1) % history_size

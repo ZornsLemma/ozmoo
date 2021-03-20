@@ -727,6 +727,7 @@ set_os_reverse_video
 !ifdef MODE_7_PROMPT {
 ; This must preserve X and Y.
 handle_mode_7_colour_prompt_delete
+    jsr s_printchar
 	lda screen_mode
 	cmp #7
 	bne .rts
@@ -740,7 +741,8 @@ handle_mode_7_colour_prompt_delete
 	bne .rts
     lda #del
 	bne s_printchar ; always branch - print the delete char again to delete the colour code
-handle_mode_7_colour_prompt_new_line
+s_printchar_and_handle_mode_7_colour_prompt_new_line
+    jsr s_printchar
 	lda screen_mode
 	cmp #7
 	bne .rts
