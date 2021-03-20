@@ -1,3 +1,5 @@
+Playing around with TRACE_SETJMP to see how low S can get: $ea 
+
 B 144K SWR meddyn $004963 fractionally slower than old 5.x, possibly teletext colour UI delay - not too worried (old 5.x was $004906)
 All shadow versions are bigdyn now (so not "fair" to compare with meddyn, but OK for sanity checks etc)
 B+ no SWR mode 7 $00592d

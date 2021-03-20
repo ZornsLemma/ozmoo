@@ -603,6 +603,11 @@ after_dynmem_read_preserve_axy_slow_sub
 !macro acorn_init_code_overlapping_game_data {
 ; Initialization performed very early during startup.
 deletable_init_start
+!ifdef TRACE_SETJMP {
+    lda #$ff
+    sta setjmp_min_s
+}
+
     ldx #1
     jsr do_osbyte_rw_escape_key
 
@@ -2265,6 +2270,12 @@ setjmp
     ; for the sake of optimising use of a currently not-scare resource. Think
     ; about it, maybe convert this to an SF: comment.
     tsx
+!ifdef TRACE_SETJMP {
+    cpx setjmp_min_s
+    bcs +
+    stx setjmp_min_s
++
+}
     stx jmp_buf
     ldy #0
 -   inx

@@ -581,4 +581,9 @@ acorn_screen_hole_pages = $420 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT M
 acorn_screen_hole_pages_minus_one = $421 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 }
 
+!ifdef TRACE_SETJMP {
+; This address is owned by Econet but this is debug-only code.
+setjmp_min_s = $90
+}
+
 }
