@@ -564,6 +564,7 @@ ENDPROC
 DEF PROCassemble_shadow_driver_bbc_b_plus
 REM Determine if the private 12K is free on a B+ by checking for any extended
 REM vectors pointing into it.
+REM SFTODONOW: DO DO THE EXTENDED VECTOR CHECK ON INTEGRA-B
 REM SFTODO: We should probably do something similar (remember it's >=64 not 128 - we could use same code for both really) on Integra-B (although we may always find there is such a vector pointing into part of the private RAM we don't touch) - think about it anyway - OK, FWIW under normal circumstances no extended vectors point into bank 64+ on Integra-B, even after I enable printer buffer with "*BUFFER 0" - I suspect this is handled via the stub in page 8 rather than an extended vector - but in principle some other code *might* set an extended vector up to point into that RAM
 REM SFTODO: This may or may not be acceptable in practice, but I'd really rather
 REM not have to ask the user about using the private 12K. If SWMMFS+ is in use
@@ -701,6 +702,7 @@ REM Integra-B private RAM doesn't cause wrapping if we have a lot of sideways
 REM RAM banks. SFTODO: I'm not entirely happy with this, is there a better way?
 swr$=STR$(swr_size DIV 1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
+REM SFTODONOW: Use "P" instead of "+"
 IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
