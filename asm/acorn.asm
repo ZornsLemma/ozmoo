@@ -1019,7 +1019,7 @@ SFTODOKOO
     ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of ROMSEL,
     ; much as we can access it by setting b7 on the B+.
     lda $37f
-    ora #%01110000
+    ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
     sta $37f
     sta $fe34
     pla
