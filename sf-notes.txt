@@ -1,4 +1,6 @@
-Playing around with TRACE_SETJMP to see how low S can get: $ea 
+On C64 first_bnaked_memory_page=$d0, so it looks like the vmem cache stuff is used for 12K of RAM. Compare that with 0-19K of RAM on Acorn. I don't think this necessarily suggests I should add more cache compared to C64; my experiments (see below) with this suggest 5 cache pages was optimal, at least for HH. Just a note really.
+
+Playing around with TRACE_SETJMP to see how low S can get: $ea
 
 B 144K SWR meddyn $004963 fractionally slower than old 5.x, possibly teletext colour UI delay - not too worried (old 5.x was $004906)
 All shadow versions are bigdyn now (so not "fair" to compare with meddyn, but OK for sanity checks etc)
