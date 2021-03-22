@@ -1,3 +1,7 @@
+M128 96K SWR mode 7 $0045d8 alpha 14-wip
+ditto alpha 12 $004580 start $0003cc (that was at 500% but pretty much same at 100%)
+alpha 12 ditto but with internal copro $3d5 to $0025d1
+
 On C64 first_bnaked_memory_page=$d0, so it looks like the vmem cache stuff is used for 12K of RAM. Compare that with 0-19K of RAM on Acorn. I don't think this necessarily suggests I should add more cache compared to C64; my experiments (see below) with this suggest 5 cache pages was optimal, at least for HH. Just a note really.
 
 Playing around with TRACE_SETJMP to see how low S can get: $ea

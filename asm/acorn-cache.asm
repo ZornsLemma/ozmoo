@@ -318,6 +318,9 @@ tube_read_loop
 lda_abs_tube_data
     lda bbc_tube_data
     ; We now need a 10 microsecond/20 cycle delay.
+    ; SFTODO: Am I being over-conservative here? p9 of app note 4 just shows
+    ; 3 NOPs; I think because I am not counting the "lda bbc_tube_data" towards
+    ; the delay, and I could do.
     sta (our_cache_ptr),y ; 6 cycles
     lda (our_cache_ptr),y ; 5 cycles (dummy, cache is page-aligned so not 6)
     lda our_cache_ptr,x   ; 4 cycles (dummy)
@@ -393,6 +396,8 @@ copy_requested_block_loop
     ; We don't need an initial delay with this reason code.
     ldy #0
 tube_write_loop
+    ; SFTODO: Am I being over-conservative here? See the comment on the other
+    ; direction above.
     lda (our_cache_ptr),y    ; 5 cycles (dummy, cache is page-aligned so not 6)
     lda (our_cache_ptr),y    ; 5 cycles (dummy)
     lda (our_cache_ptr),y    ; 5 cycles
