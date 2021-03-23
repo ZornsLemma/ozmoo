@@ -13,8 +13,8 @@ electron_tube_data = $fce5
 tube_entry = $406
 tube_reason_claim = $c0
 tube_reason_release = $80
-tube_reason_multi_byte_to_io = 0
-tube_reason_multi_byte_from_io = 1
+tube_reason_256_byte_to_io = 6
+tube_reason_256_byte_from_io = 7
 osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 
@@ -300,33 +300,30 @@ timestamp_updated
     ; Copy the 512-byte block offered to the cache into the block pointed to by
     ; our_cache_ptr.
     jsr claim_tube
-    jsr set_yx_to_tube_transfer_block
-    lda #tube_reason_multi_byte_to_io
-    jsr tube_entry
-    ; We now need a 24 microsecond/48 cycle delay.
-    lda #2     ; 2 cycles
-    sta count  ; 3 cycles
-    ldx #8     ; 2 cycles
-wait_x
-    dex        ; 2*8=16 cycles
-    bne wait_x ; 3*7+2=23 cycles
-    +assert_no_page_crossing wait_x
+    lda #2
+    sta count
 copy_offered_block_loop
+    jsr set_yx_to_tube_transfer_block
+    lda #tube_reason_256_byte_to_io
+    jsr tube_entry
+    ; We now need a 19 microsecond/38 cycle delay.
+    ldx #7     ; 2 cycles
+wait_x
+    dex        ; 2*7=14 cycles
+    bne wait_x ; 3*6+2=20 cycles
+    +assert_no_page_crossing wait_x
     ldy #0     ; 2 cycles
     ; SFTODO: Kind of stating the obvious, but the tube loops obviously burn loads of CPU time, so even if it feels inefficient to be iterating over 255 cache entries once or twice per call to check timestamps or whatever, remember we have to do 512 iterations of this loop and/or the other similar tube loop, so that other code isn't negligible but is diluted. Plus of course we are saving a trip to disc.
 tube_read_loop
 lda_abs_tube_data
     lda bbc_tube_data
-    ; We now need a 24 microsecond/48 cycle delay.
-    ; SFTODO: Am I being over-conservative here? Can I include the cycles for
-    ; "lda bbc_tube_data"?
+    ; We now need a 10 microsecond/20 cycle delay.
+    ; SFTODO: Am I being over-conservative here? p9 of app note 4 just shows
+    ; 3 NOPs; I think because I am not counting the "lda bbc_tube_data" towards
+    ; the delay, and I could do.
     sta (our_cache_ptr),y ; 6 cycles
-    ldx #4                ; 2 cycles
-wait_x2
-    lda count,x           ; 4*4=16 cycles (dummy)
-    dex                   ; 2*4=8 cycles
-    bne wait_x2           ; 3*3+2=11 cycles
-    +assert_no_page_crossing wait_x2
+    lda (our_cache_ptr),y ; 5 cycles (dummy, cache is page-aligned so not 6)
+    lda our_cache_ptr,x   ; 4 cycles (dummy)
     iny                   ; 2 cycles
     bne tube_read_loop    ; 3 cycles if we branch
     +assert_no_page_crossing tube_read_loop
@@ -390,31 +387,23 @@ match
     ; Copy the 512-byte block in our cache pointed to by our_cache_ptr back to
     ; the caller.
     jsr claim_tube
-    jsr set_yx_to_tube_transfer_block
-    lda #tube_reason_multi_byte_from_io
-    jsr tube_entry
-    ; We don't need an initial delay with this reason code.
     lda #2
     sta count
-    ; SFTODO: Probably revert to the transfer type 6/7 code later, as that
-    ; was probably not causing the problems I suspected it was. (It was still
-    ; probably being a little over-conservative with its timings, so keep
-    ; TODOs for that, or fix that.)
 copy_requested_block_loop
+    jsr set_yx_to_tube_transfer_block
+    lda #tube_reason_256_byte_from_io
+    jsr tube_entry
+    ; We don't need an initial delay with this reason code.
     ldy #0
 tube_write_loop
-    ; SFTODO: Am I being over-conservative here? Can I include the cycles for
-    ; "sta bbc_tube_data"?
-    ldx #0                ; 2 cycles (dummy)
-    ldx #7                ; 2 cycles
-wait_x3
-    dex                   ; 2*7=14 cycles
-    bne wait_x3           ; 3*6+2=20 cycles
-    +assert_no_page_crossing wait_x3
-    lda (our_cache_ptr),y ; 5 cycles
+    ; SFTODO: Am I being over-conservative here? See the comment on the other
+    ; direction above.
+    lda (our_cache_ptr),y    ; 5 cycles (dummy, cache is page-aligned so not 6)
+    lda (our_cache_ptr),y    ; 5 cycles (dummy)
+    lda (our_cache_ptr),y    ; 5 cycles
 sta_abs_tube_data
     sta bbc_tube_data
-    ; We now need a 24 microsecond/48 cycle delay; the instructions in the loop
+    ; We now need a 10 microsecond/20 cycle delay; the instructions in the loop
     ; before the store to tube_data also form part of this delay.
     iny                      ; 2 cycles
     bne tube_write_loop      ; 3 cycles if we branch
