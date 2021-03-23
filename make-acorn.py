@@ -1137,7 +1137,9 @@ def make_boot():
     # SFTODO: Get rid of the VDU 21/VDU 6 stuff? I'm trying to hide the mildly
     # disconcerting error from running TURBO on a non-turbo second processor, but
     # maybe this is asking for trouble if there's a disc error or something of
-    # the sort.
+    # the sort. On the other hand, the *EXEC file will plough on regardless if
+    # any error occurs (other than a read error in !BOOT itself) and the MODE 135
+    # before running LOADER will hide errors anyway.
     boot = [
         '*BASIC',
         'VDU 21',
