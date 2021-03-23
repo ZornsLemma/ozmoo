@@ -634,7 +634,7 @@ class Executable(object):
         self.version_maker = version_maker
         self.start_addr = start_addr
         self.load_addr = start_addr
-        if leafname != "OZMOO2P":
+        if leafname not in ("TURBO", "OZMOO2P"):
             self.load_addr |= host
         self.exec_addr = self.load_addr
         self.args = args
@@ -1116,11 +1116,18 @@ def make_tube_executables():
         info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
         return [tube_vmem]
-    return [make_cache_executable(), tube_vmem]
+    if not cmd_args.no_turbo:
+        return [make_turbo_test_executable(), make_cache_executable(), tube_vmem]
+    else:
+        return [make_cache_executable(), tube_vmem]
 
 
 def make_findswr_executable():
     return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
+
+
+def make_turbo_test_executable():
+    return Executable("acorn-turbo-test.asm", "TURBO", None, 0x70, [])
 
 
 def make_cache_executable():
@@ -1132,16 +1139,27 @@ def make_cache_executable():
 def make_boot():
     boot = [
         '*BASIC',
+        'VDU 21',
         '*DIR $',
         '*FX21'
     ]
+    if not cmd_args.no_tube and not cmd_args.no_turbo:
+        # SFTODO: I don't really like this, but since running TURBO leaves us at the
+        # supervisor prompt if run on a non-turbo second processor, I don't see much
+        # alternative to running it from !BOOT in this way. (We can't just try
+        # setting the turbo bit at &FEF0 in the loader and testing for turbo-style
+        # paging, because the ReCo6502Mini uses that address for its speed control.)
+        boot += [
+            'IF PAGE<&E00 THEN */TURBO',
+            '*BASIC',
+        ]
     if cmd_args.splash_image:
         boot += [
-            'CHAIN "PRELOAD"'
+            'VDU 6:CHAIN "PRELOAD"'
         ]
     else:
         boot += [
-            'MODE 135',
+            'VDU 6:MODE 135',
             'CHAIN "LOADER"',
         ]
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")

@@ -94,9 +94,11 @@ ON ERROR GOTO 500
 shadow=potential_himem=&8000
 shadow_extra$=""
 tube=PAGE<&E00
-REM SFTODO: We should get rid of this line and PROCdetect_turbo itself if turbo is
-REM not supported via build options.
-IF tube THEN PROCdetect_turbo
+!ifdef OZMOO2P_BINARY {
+    IF tube THEN PROCdetect_turbo
+} else {
+    tube_ram$=""
+}
 private_ram_in_use=FALSE:REM SFTODONOW: We really should be detecting this independently of assemble_shadow_driver in a tube-safe way but this will do for now
 !ifdef ACORN_SHADOW_VMEM {
 IF shadow AND NOT tube THEN PROCassemble_shadow_driver
@@ -117,7 +119,7 @@ REM enabled), as it seems potentially confusing if we sometimes apparently
 REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
-IF tube THEN PRINT CHR$normal_fg;"  Second processor (";tube_ram$;")"
+IF tube THEN PRINT CHR$normal_fg;"  Second processor";tube_ram$
 IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM ";shadow_extra$
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
@@ -453,32 +455,15 @@ IF POS<>0 THEN PRINT
 ENDPROC
 
 DEF PROCdetect_turbo
-REM SFTODO: Can/should we detect this via modified A register with OSBYTE &84 instead? (We probably still need to enable turbo mode first.)
-REM SFTODO: Once the Ozmoo executable has started poking non-0 into page 3, will BASIC crash on a soft-break? I suspect the re-enter language will disable turbo mode, but test this.
-!&70=block%:?block%=0
-P%=block%+1
-[OPT 0
-\ Set all banks to 0 to start with before turning turbo mode on.
-\ (The Ozmoo executable relies on this, and if we didn't do it BASIC might crash
-\ when its (zp),y accesses start accessing random banks once we've turned on
-\ turbo mode.)
-LDY #0:TYA
-.loop
-STA &300,Y
-DEY:BNE loop
-\ Try to turn turbo mode on.
-LDA #&80:STA &FEF0
-\ See if we do actually have multiple 64K banks available.
-LDA #1:STA &371:STA (&70),Y
-STY &371:LDA (&70),Y
-\ Note that &371 is left as 0, so all banks are still 0.
-RTS
-]
-turbo=(USR(block%+1) AND &FF)=0
-IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
 !ifdef ACORN_TURBO_SUPPORTED {
+    REM !BOOT will have run the TURBO executable, which will have set
+    REM zp_temp_turbo_flag to &FF if we're on a turbo copro or 0 otherwise.
+    turbo=0<>?${zp_temp_turbo_flag}
     ?${is_turbo}=turbo:REM we only care about bit 7 being set
+} else {
+    turbo=FALSE
 }
+IF turbo THEN tube_ram$=" (256K)" ELSE tube_ram$=" (64K)"
 ENDPROC
 
 !ifdef ACORN_SHADOW_VMEM {
