@@ -1000,11 +1000,11 @@ SFTODOXX89
     bcc .not_private_ram
     ; This is the Integra-B private 12K.
     pha
-    ; We need to skip 512 bytes of IBOS workspace in the private RAM at $8200.
+    ; We need to skip 1024 bytes of IBOS workspace in the private RAM at $8000.
     ; Set sideways_ram_hole_start
-    ; = (RAM banks including private 12K - 1) * 32 + 1
-    ; = (RAM banks including private 12K * 32) - 32 + 1
-    ; = ((ram_blocks+1 A) >> 1) - 31
+    ; = (RAM banks including private 12K - 1) * 32
+    ; = (RAM banks including private 12K * 32) - 32
+    ; = ((ram_blocks+1 A) >> 1) - 32
     ; If this doesn't fit in a single byte, just set it to 255 as we will never
     ; need to skip.
     ; (Note that convert_index_x_to_ram_bank_and_address has already added back
@@ -1018,7 +1018,7 @@ SFTODOKOO
     pla
     ror
     sec
-    sbc #31
+    sbc #32
     cpy #0
     beq +
     lda #255

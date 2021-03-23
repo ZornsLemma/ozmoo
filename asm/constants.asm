@@ -479,7 +479,7 @@ screen_width_minus_1 = $403 ; !byte 0 SFTODO TEMP REUSED THIS
 }
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
 	sideways_ram_hole_start = $404 ; !byte 0
-	sideways_ram_hole_vmem_blocks = 1 ; always 512 bytes if we have a hole
+	sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
 }
 game_disc_crc = $405 ; 2 bytes
 num_rows = $407 ; !byte 0
@@ -523,7 +523,7 @@ vmem_cache_page_index_end = vmem_cache_page_index + ACORN_RECOMMENDED_SHADOW_CAC
 }
 !ifdef ACORN_SWR {
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
-integra_b_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for IBOS workspace
+integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.
 mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
 vmem_blocks_in_main_ram = $41d ; 1 byte
