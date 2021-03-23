@@ -316,14 +316,11 @@ wait_x
     ; SFTODO: Kind of stating the obvious, but the tube loops obviously burn loads of CPU time, so even if it feels inefficient to be iterating over 255 cache entries once or twice per call to check timestamps or whatever, remember we have to do 512 iterations of this loop and/or the other similar tube loop, so that other code isn't negligible but is diluted. Plus of course we are saving a trip to disc.
 tube_read_loop
 lda_abs_tube_data
-    lda bbc_tube_data
-    ; We now need a 10 microsecond/20 cycle delay.
-    ; SFTODO: Am I being over-conservative here? p9 of app note 4 just shows
-    ; 3 NOPs; I think because I am not counting the "lda bbc_tube_data" towards
-    ; the delay, and I could do.
+    ; We must not read from bbc_tube_data more often than once every 10
+    ; microseconds/20 cycles.
+    lda bbc_tube_data     ; 4 cycles
     sta (our_cache_ptr),y ; 6 cycles
     lda (our_cache_ptr),y ; 5 cycles (dummy, cache is page-aligned so not 6)
-    lda our_cache_ptr,x   ; 4 cycles (dummy)
     iny                   ; 2 cycles
     bne tube_read_loop    ; 3 cycles if we branch
     +assert_no_page_crossing tube_read_loop
@@ -396,15 +393,12 @@ copy_requested_block_loop
     ; We don't need an initial delay with this reason code.
     ldy #0
 tube_write_loop
-    ; SFTODO: Am I being over-conservative here? See the comment on the other
-    ; direction above.
-    lda (our_cache_ptr),y    ; 5 cycles (dummy, cache is page-aligned so not 6)
-    lda (our_cache_ptr),y    ; 5 cycles (dummy)
+    ; We must not write to bbc_tube_data more often than once every 10
+    ; microseconds/20 cycles.
     lda (our_cache_ptr),y    ; 5 cycles
+    sta (our_cache_ptr),y    ; 6 cycles (dummy)
 sta_abs_tube_data
-    sta bbc_tube_data
-    ; We now need a 10 microsecond/20 cycle delay; the instructions in the loop
-    ; before the store to tube_data also form part of this delay.
+    sta bbc_tube_data        ; 4 cycles
     iny                      ; 2 cycles
     bne tube_write_loop      ; 3 cycles if we branch
     +assert_no_page_crossing tube_write_loop
