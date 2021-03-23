@@ -676,6 +676,14 @@ deletable_init_start
     ; it back on if we do want it.
     bit is_turbo
     bpl .dont_enable_turbo
+    ; Set all the turbo banks to zero before enabling turbo mode; we might crash
+    ; if we don't.
+    lda #0
+    ldy #254
+-   sta turbo_bank_base,y
+    dey
+    cpy #255
+    bne -
     lda #$80
     sta turbo_control
 .dont_enable_turbo
