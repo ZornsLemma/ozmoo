@@ -1116,10 +1116,7 @@ def make_tube_executables():
         info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
         return [tube_vmem]
-    if not cmd_args.no_turbo:
-        return [make_turbo_test_executable(), make_cache_executable(), tube_vmem]
-    else:
-        return [make_cache_executable(), tube_vmem]
+    return [make_cache_executable(), tube_vmem]
 
 
 def make_findswr_executable():
@@ -1137,6 +1134,10 @@ def make_cache_executable():
 
 
 def make_boot():
+    # SFTODO: Get rid of the VDU 21/VDU 6 stuff? I'm trying to hide the mildly
+    # disconcerting error from running TURBO on a non-turbo second processor, but
+    # maybe this is asking for trouble if there's a disc error or something of
+    # the sort.
     boot = [
         '*BASIC',
         'VDU 21',
@@ -1690,7 +1691,10 @@ def make_disc_image():
         e = make_shr_swr_executable()
         if e is not None:
             ozmoo_variants.append([e])
+    turbo_test_executable = None
     if want_tube:
+        if not cmd_args.no_turbo:
+            turbo_test_executable = make_turbo_test_executable()
         ozmoo_variants.append(make_tube_executables())
     if len(ozmoo_variants) == 0:
         die("No builds succeeded, can't generate disc image.")
@@ -1721,6 +1725,8 @@ def make_disc_image():
     loader_screen.add_loader_symbols(loader_symbols)
 
     disc_contents = [boot_file]
+    if turbo_test_executable is not None:
+        disc_contents.append(turbo_test_executable)
     loader = make_tokenised_loader(loader_symbols)
     if cmd_args.splash_image:
         splash_executable = make_splash_executable()
