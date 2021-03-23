@@ -396,6 +396,10 @@ match
     ; We don't need an initial delay with this reason code.
     lda #2
     sta count
+    ; SFTODO: Probably revert to the transfer type 6/7 code later, as that
+    ; was probably not causing the problems I suspected it was. (It was still
+    ; probably being a little over-conservative with its timings, so keep
+    ; TODOs for that, or fix that.)
 copy_requested_block_loop
     ldy #0
 tube_write_loop
