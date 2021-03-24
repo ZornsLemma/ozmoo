@@ -160,7 +160,7 @@ readblocks
 !ifdef FAKE_READ_ERRORS {
     ; Test code to fake intermittent read failures
     jsr kernal_readtime
-    cmp #25
+    cmp #50
     bcs +
     brk
     !byte 'A' ; error code, use a printable character to confirm it isn't printed

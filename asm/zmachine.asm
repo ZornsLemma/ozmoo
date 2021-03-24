@@ -165,7 +165,7 @@ main_loop_normal_exe_mode
     sec
     sbc .printspeed_last_time ; A is now $a2 from C64 code
     php
-    cmp #50 ; Acorn port has 50Hz jiffies, not 60Hz ones
+    cmp #100 ; Acorn port has 100Hz jiffies, not 60Hz ones
     bcc ++
     bne +
     plp

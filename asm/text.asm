@@ -1059,7 +1059,7 @@ init_read_text_timer
 !ifndef ACORN {
 	lda #6
 } else {
-    lda #5 ; Acorn kernal_readtime uses 1/50 second jiffys
+    lda #10 ; Acorn kernal_readtime uses 1/100 second jiffys
 }
 	sta multiplicand ; t*6 to get jiffies
 	jsr mult16

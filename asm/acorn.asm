@@ -2337,6 +2337,10 @@ set_default_error_handler
     ; OS time counter may have an arbitrarily large value (perhaps some kind of
     ; soft RTC solution) when we start up and we don't want to zero it, we read
     ; the initial value and subtract that from any subsequent reads.
+    ; SFTODO: We could get away without this and save a few bytes of runtime
+    ; code, although it would mean you'd have to subtract the initial benchmark
+    ; time from the final one, and you'd not be able to use the initial
+    ; benchmark time as a measure of startup time.
 !macro init_readtime_inline {
     lda #osword_read_clock
     ldx #<initial_clock
@@ -2344,6 +2348,11 @@ set_default_error_handler
     jsr osword
 }
 
+; The Acorn kernal_readtime uses 100Hz ticks; a C64 uses 60Hz ticks. Since we
+; subtract off the initial value of the OS time it would take 1.94 days from
+; game startup for the value returned by kernal_readtime to wrap round, slightly
+; quicker than a C64 at 3.24 days (from reset), but still not a concern. I think
+; the Ozmoo timer code would handle a wraparound transparently anyway.
 kernal_readtime
 .current_clock = scratch_page
     lda #osword_read_clock
@@ -2357,15 +2366,6 @@ kernal_readtime
     sta .current_clock-(256-5),x
     inx
     bne -
-    ; The Acorn clock is in centiseconds; a PAL C64 would use fiftieths of a
-    ; second, so halve the value before we return it.
-    ldx #4
-    clc
--   ror .current_clock,x
-    dex
-    bpl -
-    ; All the above means we're at no more or less risk than a C64 of having the
-    ; time roll over during a game. It would take >3.8 days for this to happen.
     ldy .current_clock+2
     ldx .current_clock+1
     lda .current_clock+0
