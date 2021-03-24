@@ -2126,6 +2126,13 @@ SFTODOLABEL4
     dex
 +   stx use_hw_scroll
 }
+!ifdef MODE_7_INPUT {
+    ; We're not currently in the middle of using coloured input, so stop update_colours
+    ; trying to adjust things. SFTODO: We could do this right after startup, which would
+    ; save a bit of code in the Z-machine stack.
+    lda #0
+    sta input_colour_code_or_0
+}
     jsr update_colours
 } ; End of acorn_deletable_screen_init_2_inline
 

@@ -544,8 +544,8 @@ filename_size = 49 ; this takes us from inside K% to end of W%
 game_data_filename_or_restart_command = $42f
 ; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
 !ifdef MODE_7_INPUT {
-use_coloured_input = $42f+filename_size
-jmp_buf = use_coloured_input+1
+input_colour_code_or_0 = $42f+filename_size
+jmp_buf = input_colour_code_or_0+1
 } else {
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
 }

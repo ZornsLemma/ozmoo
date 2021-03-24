@@ -354,7 +354,7 @@ z_ins_read
 !ifdef MODE_7_INPUT {
 	; Enable coloured input iff we're in mode 7 with no timer routine.
 	lda #0
-	sta use_coloured_input
+	sta input_colour_code_or_0
 	lda screen_mode
 	cmp #7
 	bne +
@@ -362,7 +362,10 @@ z_ins_read
 	cpx #3
 	bcs + ; time and routine are set
 }
-	inc use_coloured_input
+	lda #mode_7_text_colour_base
+	clc
+	adc input_colour
+	sta input_colour_code_or_0
 +
 }
 
@@ -1380,7 +1383,7 @@ read_text
 }
 	sta .read_text_column
 !ifdef MODE_7_INPUT {
-	lda use_coloured_input
+	lda input_colour_code_or_0
 	beq +
 	; Check to see if there's a space before the current (Ozmoo) cursor
 	; position; if there is, we'll overwrite it with the colour control code via
@@ -1397,16 +1400,11 @@ read_text
 	jsr osbyte
 	cpx #' '
 	bne .no_space_present
-	; SFTODO: Following chunk of code is duplicated a bit - just possibly we could store the actual colour code at use_coloured_prompt, although would need to be sure the colour changing updated this which might make it more trouble than it's worth, have a look
-	lda #mode_7_text_colour_base
-	clc
-	adc input_colour
+	lda input_colour_code_or_0
 	jsr oswrch
 	jmp +
 .no_space_present
-	lda #mode_7_text_colour_base
-	clc
-	adc input_colour
+	lda input_colour_code_or_0
 	jsr s_printchar_unfiltered
 +
 }

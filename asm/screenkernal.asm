@@ -728,7 +728,7 @@ set_os_reverse_video
 ; This must preserve X and Y.
 handle_mode_7_colour_prompt_delete
     jsr s_printchar
-    lda use_coloured_input
+    lda input_colour_code_or_0
     beq .rts
 	; On second and subsequent lines there will be an invisible colour control
 	; code in column 0. We want to leave that there when the user deletes the
@@ -742,13 +742,11 @@ handle_mode_7_colour_prompt_delete
 	bne s_printchar ; always branch - print the delete char again to delete the colour code
 s_printchar_and_handle_mode_7_colour_prompt_new_line
     jsr s_printchar
-    lda use_coloured_input
+    lda input_colour_code_or_0
     beq .rts
 	lda zp_screencolumn
 	bne .rts
-	lda #mode_7_text_colour_base
-	clc
-	adc input_colour
+    lda input_colour_code_or_0
 	; fall through to s_printchar_unfiltered
 ; SFTODONOW: Experimental - this might also be useful for mode 7 status line
 s_printchar_unfiltered
@@ -1891,11 +1889,7 @@ update_colours
 }
 }
 !ifdef MODE_7_INPUT {
-    ; SFTODO: Not just here, there may be general code-saving opportunities by tidying up
-    ; the mode 7 prompt code (e.g. the repeated 128+colour code calculation) and combining
-    ; it with MODE_7_STATUS where applicable. But I want to see how well the mode 7 prompt
-    ; works before integrating it too deeply.
-    lda use_coloured_input
+    lda input_colour_code_or_0
     beq +
     sta s_cursors_inconsistent
     jsr turn_off_cursor
@@ -1917,6 +1911,7 @@ update_colours
     lda #mode_7_text_colour_base
     clc
     adc input_colour
+    sta input_colour_code_or_0
     jsr oswrch
 .prompt_change_done
     jsr turn_on_cursor

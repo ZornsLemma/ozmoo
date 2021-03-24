@@ -876,6 +876,8 @@ draw_status_line
     ; code via s_printchar. (*If* this is the case, may want to re-enable
 	; hardware scrolling in mode 7; I disabled it as I believed this was the
 	; cause of the ugly status line colour loss during scrolling.)
+	; SFTODO: Note that I now have an s_printchar_unfiltered which may be
+	; useful here.
     lda #vdu_home
     sta s_cursors_inconsistent
     jsr oswrch
