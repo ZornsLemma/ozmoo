@@ -543,9 +543,15 @@ memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 ; variable workspace but doesn't need to.
 filename_size = 49 ; this takes us from inside K% to end of W%
 game_data_filename_or_restart_command = $42f
+; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
+!ifdef MODE_7_PROMPT {
+use_coloured_input = $42f+filename_size
+jmp_buf = use_coloured_input+1
+} else {
 jmp_buf = $42f+filename_size ; "up to" 257 bytes - in reality 64 bytes is probably enough
+}
 ; The progress_indicator_* variables can re-use the space at
-; z_operand_value_high-arr; they're only used during the initial loading when
+; z_operand_value_high_arr; they're only used during the initial loading when
 ; the Z-machine has not been set up.
 progress_indicator_blocks_per_chunk = z_operand_value_high_arr ; 2 bytes
 progress_indicator_blocks_left_in_chunk = z_operand_value_high_arr + 2 ; 2 bytes

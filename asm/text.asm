@@ -351,6 +351,20 @@ z_ins_read
 !ifdef USE_INPUTCOL {
 	jsr activate_inputcol
 }
+!ifdef MODE_7_PROMPT {
+	; Enable coloured input iff we're in mode 7 with no timer routine.
+	lda #0
+	sta use_coloured_input
+	lda screen_mode
+	cmp #7
+	bne +
+!ifdef Z4PLUS {
+	cpx #3
+	bcs + ; time and routine are set
+}
+	inc use_coloured_input
++
+}
 
 	; Read input
 	lda z_operand_value_high_arr
@@ -1365,17 +1379,14 @@ read_text
 	tya
 }
 	sta .read_text_column
-	; turn on blinking cursor
 !ifdef MODE_7_PROMPT {
-	lda screen_mode
-	cmp #7
-	bne .not_mode_7
+	lda use_coloured_input
+	beq +
 	; Check to see if there's a space before the current (Ozmoo) cursor
 	; position; if there is, we'll overwrite it with the colour control code via
 	; OSWRCH instead of printing a colour control code via s_printchar. The OS
 	; cursor is invisible at this point so we can move it around without it
-	; looking ugly. SFTODO: What if we're already in column 0? Unlikely but we
-	; should cope with that.
+	; looking ugly.
 	ldx zp_screencolumn
 	beq .no_space_present
 	stx s_cursors_inconsistent
@@ -1386,18 +1397,20 @@ read_text
 	jsr osbyte
 	cpx #' '
 	bne .no_space_present
+	; SFTODO: Following chunk of code is duplicated a bit - just possibly we could store the actual colour code at use_coloured_prompt, although would need to be sure the colour changing updated this which might make it more trouble than it's worth, have a look
 	lda #mode_7_text_colour_base
 	clc
 	adc prompt_colour
 	jsr oswrch
-	jmp .not_mode_7 ; SFTODO CHANGE LABEL
+	jmp +
 .no_space_present
 	lda #mode_7_text_colour_base
 	clc
 	adc prompt_colour
 	jsr s_printchar_unfiltered
-.not_mode_7
++
 }
+	; turn on blinking cursor
 	jsr turn_on_cursor
 .readkey
 	jsr get_cursor ; x=row, y=column

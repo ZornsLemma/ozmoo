@@ -728,9 +728,8 @@ set_os_reverse_video
 ; This must preserve X and Y.
 handle_mode_7_colour_prompt_delete
     jsr s_printchar
-	lda screen_mode
-	cmp #7
-	bne .rts
+    lda use_coloured_input
+    beq .rts
 	; On second and subsequent lines there will be an invisible colour control
 	; code in column 0. We want to leave that there when the user deletes the
 	; only *visible* character on the line, so subsequent input is coloured, but
@@ -743,9 +742,8 @@ handle_mode_7_colour_prompt_delete
 	bne s_printchar ; always branch - print the delete char again to delete the colour code
 s_printchar_and_handle_mode_7_colour_prompt_new_line
     jsr s_printchar
-	lda screen_mode
-	cmp #7
-	bne .rts
+    lda use_coloured_input
+    beq .rts
 	lda zp_screencolumn
 	bne .rts
 	lda #mode_7_text_colour_base
@@ -1897,9 +1895,8 @@ update_colours
     ; the mode 7 prompt code (e.g. the repeated 128+colour code calculation) and combining
     ; it with MODE_7_STATUS where applicable. But I want to see how well the mode 7 prompt
     ; works before integrating it too deeply.
-    lda screen_mode
-    cmp #7
-    bne +
+    lda use_coloured_input
+    beq +
     sta s_cursors_inconsistent
     jsr turn_off_cursor
     ; SFTODO: We "should" update previous lines of this same prompt, but let's keep the
@@ -1923,7 +1920,6 @@ update_colours
     jsr oswrch
 .prompt_change_done
     jsr turn_on_cursor
-.not_colour_code
 +
 }
     ldx #0
@@ -1960,7 +1956,7 @@ check_user_interface_controls
     cmp #'F' - ctrl_key_adjust
     beq .change_colour_x
 !ifdef MODE_7_PROMPT {
-    ; SFTODO: Show this on the loader screen!
+    ; SFTODONOW: Show this on the loader screen!
     ldx #2
     cmp #'P' - ctrl_key_adjust
     beq .change_colour_x
@@ -1999,7 +1995,7 @@ check_user_interface_controls
     lda fg_colour,x
     ; Wrap colour numbers; we need to wrap to 0 in modes 0-6, but if we support
     ; a coloured status line in mode 7 we need to wrap to 1.
-    ; SFTODO: We also need this mode 7 wrapping if we have MODE_7_PROMPT without MODE_7_STATUS,
+    ; SFTODONOW: We also need this mode 7 wrapping if we have MODE_7_PROMPT without MODE_7_STATUS,
     ; if that is possible.
     cmp #8
     bne +
