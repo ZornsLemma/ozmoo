@@ -2243,4 +2243,4 @@ scratch_overlapping_game_start
 ; set?" might be a reliable way to detect private 12K use, I *think* the MMFS+
 ; variant will do that too.
 
-; SFTODO: MODE_7_STATUS and MODE_7_PROMPT should probably have ACORN_ prefix.
+; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.

@@ -487,13 +487,12 @@ num_rows = $407 ; !byte 0
 relocate_target = $408 ; !byte 0, low byte of B%
 ozmoo_relocate_target = relocate_target ; SFTODO!?
 }
-; fg_colour and bg_colour must be adjacent and in this order
-; SFTODONOW: If MODE_7_PROMPT is defined, prompt_colour must follow bg_colour too
+; fg_colour, bg_colour and (if MODE_7_INPUT is defined) input_colour must be
+; adjacent and in this order.
 fg_colour = $409 ; !byte 0
 bg_colour = $40a ; !byte 0
-!ifdef MODE_7_PROMPT {
-; SFTODONOW: LOADER MUST SET THIS TO AN INITIAL VALUE
-prompt_colour = $40b ; ! byte 0
+!ifdef MODE_7_INPUT {
+input_colour = $40b ; ! byte 0
 }
 screen_mode = $403 ; !byte 0, high byte of B%
 !ifdef VMEM {
@@ -544,7 +543,7 @@ memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
 filename_size = 49 ; this takes us from inside K% to end of W%
 game_data_filename_or_restart_command = $42f
 ; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
-!ifdef MODE_7_PROMPT {
+!ifdef MODE_7_INPUT {
 use_coloured_input = $42f+filename_size
 jmp_buf = use_coloured_input+1
 } else {

@@ -68,8 +68,8 @@ VDU 23,16,0,254,0;0;0;
 
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
-!ifdef MODE_7_PROMPT {
-?${prompt_colour}=3:REM SFTODONOW: Default should be settable at build time
+!ifdef MODE_7_INPUT {
+?${input_colour}=3:REM SFTODONOW: Default should be settable at build time
 }
 screen_mode=${screen_mode}
 DIM block% 256
@@ -710,12 +710,8 @@ REM indentation as it's at the start of the line.
 !ifdef MODE_7_STATUS {
          IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-F: change status line colour"
 }
-!ifdef MODE_7_PROMPT {
-REM SFTODO: "P" and "prompt" are maybe less than ideal here; the *prompt* isn't coloured,
-REM it's the user's input which is coloured. Not sure if this is a problem, but maybe
-REM CTRL-I would be better, and change the wording, and the name of the make-acorn.py
-REM option, and MODE_7_PROMPT itself...
-         IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-P: change prompt colour     "
+!ifdef MODE_7_INPUT {
+         IF ?screen_mode=7 THEN PRINT CHR$normal_fg;"  CTRL-I: change input colour      "
 }
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-F: change foreground colour "
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "

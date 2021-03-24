@@ -724,7 +724,7 @@ set_os_reverse_video
     jmp oswrch
 }
 
-!ifdef MODE_7_PROMPT {
+!ifdef MODE_7_INPUT {
 ; This must preserve X and Y.
 handle_mode_7_colour_prompt_delete
     jsr s_printchar
@@ -748,7 +748,7 @@ s_printchar_and_handle_mode_7_colour_prompt_new_line
 	bne .rts
 	lda #mode_7_text_colour_base
 	clc
-	adc prompt_colour
+	adc input_colour
 	; fall through to s_printchar_unfiltered
 ; SFTODONOW: Experimental - this might also be useful for mode 7 status line
 s_printchar_unfiltered
@@ -1890,7 +1890,7 @@ update_colours
 +
 }
 }
-!ifdef MODE_7_PROMPT {
+!ifdef MODE_7_INPUT {
     ; SFTODO: Not just here, there may be general code-saving opportunities by tidying up
     ; the mode 7 prompt code (e.g. the repeated 128+colour code calculation) and combining
     ; it with MODE_7_STATUS where applicable. But I want to see how well the mode 7 prompt
@@ -1916,7 +1916,7 @@ update_colours
     bpl -
     lda #mode_7_text_colour_base
     clc
-    adc prompt_colour
+    adc input_colour
     jsr oswrch
 .prompt_change_done
     jsr turn_on_cursor
@@ -1955,10 +1955,9 @@ check_user_interface_controls
     ldx #0
     cmp #'F' - ctrl_key_adjust
     beq .change_colour_x
-!ifdef MODE_7_PROMPT {
-    ; SFTODONOW: Show this on the loader screen!
+!ifdef MODE_7_INPUT {
     ldx #2
-    cmp #'P' - ctrl_key_adjust
+    cmp #'I' - ctrl_key_adjust
     beq .change_colour_x
 }
     ; We can't change the background colour in mode 7, and we don't allow
@@ -1989,18 +1988,23 @@ check_user_interface_controls
 .not_scroll
     cmp #'B' - ctrl_key_adjust
     bne .done
-    ldx #1 ; SFTODO: Was inx, but with MODE_7_PROMPT code above we can't rely on this - can probably rationalise this later once MODE_7_PROMPT is not so experimental
+    ldx #1 ; SFTODO: Was inx, but with MODE_7_INPUT code above we can't rely on this - can probably rationalise this later once MODE_7_INPUT is not so experimental
 .change_colour_x
     inc fg_colour,x
     lda fg_colour,x
     ; Wrap colour numbers; we need to wrap to 0 in modes 0-6, but if we support
-    ; a coloured status line in mode 7 we need to wrap to 1.
-    ; SFTODONOW: We also need this mode 7 wrapping if we have MODE_7_PROMPT without MODE_7_STATUS,
-    ; if that is possible.
+    ; a coloured status line or input in mode 7 we need to wrap to 1.
     cmp #8
     bne +
     lda #0
 !ifdef MODE_7_STATUS {
+    MODE_7_STATUS_OR_INPUT = 1
+} else {
+    !ifdef MODE_7_INPUT {
+        MODE_7_STATUS_OR_INPUT = 1
+    }
+}
+!ifdef MODE_7_STATUS_OR_INPUT {
     ldy screen_mode
     cpy #7
     bne +

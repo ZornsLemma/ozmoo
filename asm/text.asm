@@ -351,7 +351,7 @@ z_ins_read
 !ifdef USE_INPUTCOL {
 	jsr activate_inputcol
 }
-!ifdef MODE_7_PROMPT {
+!ifdef MODE_7_INPUT {
 	; Enable coloured input iff we're in mode 7 with no timer routine.
 	lda #0
 	sta use_coloured_input
@@ -1379,7 +1379,7 @@ read_text
 	tya
 }
 	sta .read_text_column
-!ifdef MODE_7_PROMPT {
+!ifdef MODE_7_INPUT {
 	lda use_coloured_input
 	beq +
 	; Check to see if there's a space before the current (Ozmoo) cursor
@@ -1400,13 +1400,13 @@ read_text
 	; SFTODO: Following chunk of code is duplicated a bit - just possibly we could store the actual colour code at use_coloured_prompt, although would need to be sure the colour changing updated this which might make it more trouble than it's worth, have a look
 	lda #mode_7_text_colour_base
 	clc
-	adc prompt_colour
+	adc input_colour
 	jsr oswrch
 	jmp +
 .no_space_present
 	lda #mode_7_text_colour_base
 	clc
-	adc prompt_colour
+	adc input_colour
 	jsr s_printchar_unfiltered
 +
 }
@@ -1535,7 +1535,7 @@ read_text
 	jsr turn_off_cursor
 }
 	lda .petscii_char_read
-!ifndef MODE_7_PROMPT {
+!ifndef MODE_7_INPUT {
 	jsr s_printchar ; print the delete char
 } else {
 	jsr handle_mode_7_colour_prompt_delete
@@ -1605,7 +1605,7 @@ read_text
 !ifdef USE_HISTORY {
 	jsr disable_history_keys
 }
-!ifndef MODE_7_PROMPT {
+!ifndef MODE_7_INPUT {
 	jsr s_printchar
 } else {
 	jsr s_printchar_and_handle_mode_7_colour_prompt_new_line
@@ -1769,7 +1769,7 @@ get_input_from_history
 } else {
 	lda #del
 }
-!ifndef MODE_7_PROMPT {
+!ifndef MODE_7_INPUT {
 	jsr s_printchar
 } else {
 	jsr handle_mode_7_colour_prompt_delete
@@ -1789,7 +1789,7 @@ get_input_from_history
 	; convert back to petscii
 	jsr translate_zscii_to_petscii
 	jsr s_printchar
-!ifndef MODE_7_PROMPT {
+!ifndef MODE_7_INPUT {
 	jsr s_printchar
 } else {
 	jsr s_printchar_and_handle_mode_7_colour_prompt_new_line
