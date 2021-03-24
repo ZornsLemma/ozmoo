@@ -687,8 +687,7 @@ REM Integra-B private RAM doesn't cause wrapping if we have a lot of sideways
 REM RAM banks. SFTODO: I'm not entirely happy with this, is there a better way?
 swr$=STR$(swr_size DIV 1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
-REM SFTODONOW: Use "P" instead of "+"
-IF bank>=64 THEN bank$="+" ELSE bank$=STR$~bank
+IF bank>=64 THEN bank$="P" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
