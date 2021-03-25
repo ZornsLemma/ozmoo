@@ -624,6 +624,8 @@ deletable_init_start
     lda #>error_handler
     sta brkv + 1
 
+    ; SFTODO: Maybe we should get rid of ACORN_CURSOR_PASS_THROUGH? Not sure,
+    ; but it's always set by make-acorn.py.
 !ifdef ACORN_CURSOR_PASS_THROUGH {
     ldx #1
     jsr do_osbyte_set_cursor_editing

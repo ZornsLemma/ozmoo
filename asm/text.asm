@@ -1911,6 +1911,7 @@ add_line_to_history
 }
 	rts
 
+	; SFTODODATA 4 (AT LEAST SOME OF THIS PROB NEEDED INITING)
 .history_current !byte 0  ; the current entry (when selecting with up/down)
 .history_first !byte 0    ; offset to the first (oldest) entry
 .history_last !byte 0     ; offset to the end of the last (newest) entry
