@@ -29,9 +29,7 @@ REM *not* the top half of some double-height text.)
 integra_b=FALSE
 ON ERROR GOTO 100
 integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
-100
-
-ON ERROR PROCerror
+100ON ERROR PROCerror
 
 REM We need to ensure the !BOOT file is cleanly closed. (SFTODO: Why, exactly?
 REM But I think we do.) We can't do CLOSE #0 in the last line of !BOOT because
