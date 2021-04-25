@@ -47,7 +47,7 @@ def show_deferred_output():
 
 def ourhex(i):
     assert i >= 0
-    return hex(i)[2:]
+    return hex(i)[2:].rstrip("L")
 
 
 def page_le(i):
