@@ -57,7 +57,11 @@ USE_HISTORY = 100 ; SFTODONOW TEMP HACK
 	; SFTODO: This may not be the best way of doing this, but I want to get things working and tested before (much later) maybe trying to make the Acorn port fit a bit more cleanly
 	TARGET_ASSIGNED = 1
 	SUPPORT_REU = 0 ; SFTODO: Can I get rid of need for this definition?
-
+    !ifdef ONLY_40_COLUMN {
+        SUPPORT_80COL = 0
+    } else {
+        SUPPORT_80COL = 1
+    }
 }
 
 !ifndef TARGET_ASSIGNED {
@@ -1234,7 +1238,6 @@ stack_start
 deletable_screen_init_1
 	; start text output from bottom of the screen
 
-    ; SFTODONOW: Do I need something like this for Acorn port?
 !ifdef Z3 {
 	!ifdef TARGET_C128 {
 		lda COLS_40_80
@@ -1248,7 +1251,24 @@ deletable_screen_init_1
 		sta sl_time_pos
 .width40
 		; Default values are correct, nothing to do here.
-	}
+	} else {
+        !ifdef ACORN {
+            !ifdef SUPPORT_80COL {
+                lda s_screen_width
+                cmp #80
+                bne .width40
+                ; 80 col
+                lda #54
+                sta sl_score_pos
+                lda #67
+                sta sl_turns_pos
+                lda #64
+                sta sl_time_pos
+.width40
+                ; Default values are correct, nothing to do here.
+            }
+        }
+    }
 }
 	
 !ifndef ACORN {

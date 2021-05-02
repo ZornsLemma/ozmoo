@@ -835,7 +835,6 @@ restore_cursor
 
 !ifdef Z3 {
 
-; SFTODONOW: May need Acorn support here
 !ifdef TARGET_MEGA65 {
 sl_score_pos !byte 54
 sl_turns_pos !byte 67
@@ -843,6 +842,9 @@ sl_time_pos !byte 64
 } else {
 sl_score_pos !byte 25
 !ifdef TARGET_C128 {
+sl_turns_pos !byte 0 ; A signal that "Turns:" should not be printed
+}
+!ifdef ACORN {
 sl_turns_pos !byte 0 ; A signal that "Turns:" should not be printed
 }
 sl_time_pos !byte 25
@@ -1066,6 +1068,9 @@ draw_status_line
 .ampm_str !pet " AM",0
 } else {
 .score_str !text "Score: ",0
+!ifdef SUPPORT_80COL {
+.turns_str !text "Turns: ",0
+}
 .time_str !text "Time: ",0
 .ampm_str !text " AM",0
 }
