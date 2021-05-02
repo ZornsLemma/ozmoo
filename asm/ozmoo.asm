@@ -10,9 +10,8 @@ USE_HISTORY = 100 ; SFTODONOW TEMP HACK
 ;Z8 = 1
 
 ; Which machine to generate code for
-; C64 is default and currently the only supported target, but
-; future versions may include new targets such as Mega65, Plus/4 etc.
 !ifndef ACORN { ; SFTODO!?
+; C64 is default target
 !ifndef VMEM {
 !ifndef SLOW {
 	SLOW = 1
@@ -23,6 +22,7 @@ USE_HISTORY = 100 ; SFTODONOW TEMP HACK
 	TARGET_ASSIGNED = 1
 	HAS_SID = 1
 	SUPPORT_REU = 0
+	SUPPORT_80COL = 1;
 	!ifdef SLOW {
 		!ifndef VMEM {
 			SKIP_BUFFER = 1
@@ -48,6 +48,7 @@ USE_HISTORY = 100 ; SFTODONOW TEMP HACK
 	HAS_SID = 1
 	VMEM_END_PAGE = $fc
 	COMPLEX_MEMORY = 1
+	SUPPORT_80COL = 1;
 	!ifndef SLOW {
 		SLOW = 1
 	}
@@ -1232,6 +1233,23 @@ stack_start
 
 deletable_screen_init_1
 	; start text output from bottom of the screen
+
+    ; SFTODONOW: Do I need something like this for Acorn port?
+!ifdef Z3 {
+	!ifdef TARGET_C128 {
+		lda COLS_40_80
+		beq .width40
+		; 80 col
+		lda #54
+		sta sl_score_pos
+		lda #67
+		sta sl_turns_pos
+		lda #64
+		sta sl_time_pos
+.width40
+		; Default values are correct, nothing to do here.
+	}
+}
 	
 !ifndef ACORN {
 	lda #147 ; clear screen
