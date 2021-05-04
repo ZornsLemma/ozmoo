@@ -845,7 +845,9 @@ sl_score_pos !byte 25
 sl_moves_pos !byte 0 ; A signal that "Moves:" should not be printed
 }
 !ifdef ACORN {
-sl_turns_pos !byte 0 ; A signal that "Turns:" should not be printed
+!ifdef SUPPORT_80COL {
+sl_moves_pos !byte 0 ; A signal that "Turns:" should not be printed
+}
 }
 sl_time_pos !byte 25
 }
@@ -1069,7 +1071,7 @@ draw_status_line
 } else {
 .score_str !text "Score: ",0
 !ifdef SUPPORT_80COL {
-.turns_str !text "Turns: ",0
+.turns_str !text "Moves: ",0
 }
 .time_str !text "Time: ",0
 .ampm_str !text " AM",0
