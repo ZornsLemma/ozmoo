@@ -837,12 +837,12 @@ restore_cursor
 
 !ifdef TARGET_MEGA65 {
 sl_score_pos !byte 54
-sl_turns_pos !byte 67
+sl_moves_pos !byte 67
 sl_time_pos !byte 64
 } else {
 sl_score_pos !byte 25
 !ifdef TARGET_C128 {
-sl_turns_pos !byte 0 ; A signal that "Turns:" should not be printed
+sl_moves_pos !byte 0 ; A signal that "Moves:" should not be printed
 }
 !ifdef ACORN {
 sl_turns_pos !byte 0 ; A signal that "Turns:" should not be printed
@@ -951,7 +951,7 @@ draw_status_line
 	sta z_operand_value_high_arr
 	jsr z_ins_print_num
 !ifdef SUPPORT_80COL {
-	ldy sl_turns_pos
+	ldy sl_moves_pos
 	bne +
 	lda #47
 	jsr s_printchar
@@ -1062,7 +1062,7 @@ draw_status_line
 !ifndef ACORN {
 .score_str !pet "Score: ",0
 !ifdef SUPPORT_80COL {
-.turns_str !pet "Turns: ",0
+.turns_str !pet "Moves: ",0
 }
 .time_str !pet "Time: ",0
 .ampm_str !pet " AM",0
