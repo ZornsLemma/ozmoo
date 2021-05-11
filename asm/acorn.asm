@@ -987,12 +987,14 @@ SFTODOXX89
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     lda #$ff
     sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
+}
     lda ram_bank_count
     ldx #6
 -   asl
     rol ram_blocks + 1
     dex
     bne -
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; The last RAM bank might be the B+ or Integra-B private RAM, which isn't
     ; the full 16K.
     ldx ram_bank_count
@@ -1044,12 +1046,12 @@ SFTODOKOO
     dec ram_blocks + 1
 +
 .not_private_ram
+}
     ; Save a copy of ram_blocks for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
     sta scratch_ram_blocks
     ldx ram_blocks + 1
     stx scratch_ram_blocks + 1
-}
     sta ram_blocks
 
 !ifdef ACORN_SHADOW_VMEM {
