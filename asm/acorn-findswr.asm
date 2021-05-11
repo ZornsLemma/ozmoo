@@ -20,9 +20,9 @@ bbc = $75
 ; We arrange for the output to be near the start of this binary so the loader
 ; can access it at fixed addresses.
 ; SFTODO: With current build system it might be fairly easy to use an exec
-; address to avoid his jmp. On the other hand, changing this might make FINDSWR
-; executables interchangeable with older versions (although I haven't tested
-; they're interchangeable at the moment).
+; address to avoid this jmp. On the other hand, changing this might make FINDSWR
+; executables incompatible with older versions (although I haven't tested
+; they're actually interchangeable at the moment).
 
     jmp start
 
