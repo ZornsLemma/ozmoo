@@ -676,7 +676,7 @@ REM avoid this altogether for the moment.
 swr_adjust=0
 IF NOT tube THEN PROCdetect_private_ram
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
-swr_size=&4000*FNpeek(${ram_bank_count})-swr_adjust
+swr_size=&4000*swr_banks-swr_adjust
 IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
