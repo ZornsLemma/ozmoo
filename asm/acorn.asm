@@ -106,7 +106,9 @@ ram_blocks = dir_ptr ; 2 bytes
 ; Allocation in scratch_page for the calculation before we start loading game
 ; data.
 !ifdef VMEM {
+!ifdef ACORN_SWR {
 scratch_ram_blocks = scratch_page ; 2 bytes
+}
 scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 }
 
@@ -984,6 +986,7 @@ SFTODOXX89
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta ram_blocks + 1
+!ifdef ACORN_SWR {
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     lda #$ff
     sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
@@ -1052,6 +1055,7 @@ SFTODOKOO
     sta scratch_ram_blocks
     ldx ram_blocks + 1
     stx scratch_ram_blocks + 1
+}
     sta ram_blocks
 
 !ifdef ACORN_SHADOW_VMEM {

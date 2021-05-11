@@ -1,8 +1,20 @@
+Timings to try to reassure myself I've un-broken everything
+"older" timings are just taken from the most recent values I can see below, these have not been recreated - I am looking for a sanity check more than anything, and I've doublede the older times to compensate for jiffies change
+				new	older
+B 144K SWR meddyn mode 7	$00924f $0092c6 OK
+B 16K SWR meddyn mode 7		$014a10 $0123e4 older B+16K time before shadow support added - probably OK, the B+ would have had an extra 1K RAM
+B 144K SWR+3MHz copro 		$005910 $0058b2 OK
+B 16K SWR ext6502		$005a35 -       plausibly a little bit slower
+M128 bigdyn			$009478 $009380 OK
+B+128K bigdyn			$009373	$009336 OK
+BeebEm Integra-B 64K mode 7	$009549	$009500 OK
+
+
 M128 96K SWR mode 7 $0045d8 alpha 14-wip
 ditto alpha 12 $004580 start $0003cc (that was at 500% but pretty much same at 100%)
 alpha 12 ditto but with internal copro $3d5 to $0025d1
 
-On C64 first_bnaked_memory_page=$d0, so it looks like the vmem cache stuff is used for 12K of RAM. Compare that with 0-19K of RAM on Acorn. I don't think this necessarily suggests I should add more cache compared to C64; my experiments (see below) with this suggest 5 cache pages was optimal, at least for HH. Just a note really.
+On C64 first_banked_memory_page=$d0, so it looks like the vmem cache stuff is used for 12K of RAM. Compare that with 0-19K of RAM on Acorn. I don't think this necessarily suggests I should add more cache compared to C64; my experiments (see below) with this suggest 5 cache pages was optimal, at least for HH. Just a note really.
 
 Playing around with TRACE_SETJMP to see how low S can get: $ea
 
