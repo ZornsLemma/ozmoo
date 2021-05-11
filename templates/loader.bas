@@ -675,7 +675,7 @@ REM doesn't know how to skip the IBOS workspace on an Integra-B, so we'll just
 REM avoid this altogether for the moment.
 swr_adjust=0
 IF NOT tube THEN PROCdetect_private_ram
-IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)"
+IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)":PROCupdate_swr_banks(0)
 swr_size=&4000*swr_banks-swr_adjust
 IF swr_banks=0 THEN ENDPROC
 REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
@@ -690,9 +690,11 @@ swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
 DEF PROCdetect_private_ram
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${integra_b_private_ram_size}
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:swr_banks=swr_banks+1:?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
 ENDPROC
+
+DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
@@ -729,6 +731,8 @@ DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
 DEF FNpeek(addr):!block%=&FFFF0000 OR addr:A%=5:X%=block%:Y%=block% DIV 256:CALL &FFF1:=block%?4
+
+DEF PROCpoke(addr,val):!block%=&FFFF0000 OR addr:block%?4=val:A%=6:X%=block%:Y%=block% DIV 256:CALL &FFF1:ENDPROC
 
 DEF FNfs:A%=0:Y%=0:=USR&FFDA AND &FF
 
