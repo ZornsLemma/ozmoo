@@ -213,8 +213,6 @@ REM agitated trying to write it.
 
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
-REM The use of 'p' in the next line is to work around a beebasm bug.
-REM (https://github.com/stardot/beebasm/issues/45)
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 extra_main_ram=max_page-PAGE
 
