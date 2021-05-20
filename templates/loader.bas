@@ -27,9 +27,9 @@ REM *not* the top half of some double-height text.)
 *FX4,1
 
 REM Some games - e.g. Freefall - don't like read_char returning upper case
-REM characters. They don't like it on frotz either, but on frotz Caps Lock
-REM will usually not be on by default. Force Caps Lock off on Acorn; if the
-REM user wants to turn on back on that is their choice (just as it is on frotz).
+REM characters. They don't like it on frotz either, but on frotz Caps Lock will
+REM usually not be on by default. Force Caps Lock off on Acorn Ozmoo; if the
+REM user wants to turn it back on that is their choice (just as it is on frotz).
 *FX202,48
 
 integra_b=FALSE
