@@ -551,6 +551,10 @@ jmp_buf = $42f+filename_size ; jmp_buf_size bytes
 }
 jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
 +assert jmp_buf + jmp_buf_size <= $500
+!ifdef USE_HISTORY {
+low_history_start = jmp_buf + jmp_buf_size
+low_history_end = $500
+}
 ; The progress_indicator_* variables can re-use the space at
 ; z_operand_value_high_arr; they're only used during the initial loading when
 ; the Z-machine has not been set up.

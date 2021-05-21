@@ -1158,7 +1158,22 @@ program_end
     !fill WASTE_BYTES
 }
 
+; On Acorn, we use memory at low_history_start for the history, provided it's at
+; least as large as the minimum size the user has requested.
 !ifdef USE_HISTORY {
+    !ifdef ACORN {
+        !if low_history_end - low_history_start >= USE_HISTORY {
+            history_start = low_history_start
+            history_end = low_history_end
+        } else {
+            WANT_HIGH_HISTORY = 1
+        }
+    } else {
+        WANT_HIGH_HISTORY = 1
+    }
+}
+
+!ifdef WANT_HIGH_HISTORY {
 history_start
 	!fill USE_HISTORY, $00 ; make sure that there is some history available
 }
@@ -1167,14 +1182,18 @@ history_start
 	!align 255, 0, 0
 }
 
-!ifdef USE_HISTORY {
+!ifdef WANT_HIGH_HISTORY {
 history_end
-!if history_end - history_start < 255 {
-  history_size = history_end - history_start
-} else {
-  history_size = 255  ; max size of history buffer
 }
-history_lastpos = history_size -1 ; last pos (size of history buffer - 1)
+
+!ifdef USE_HISTORY {
+    !if history_end - history_start < 255 {
+        history_size = history_end - history_start
+    } else {
+        history_size = 255  ; max size of history buffer
+    }
+
+    history_lastpos = history_size -1 ; last pos (size of history buffer - 1)
 }
 
 z_trace_page
