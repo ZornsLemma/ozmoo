@@ -153,6 +153,9 @@ VDU 23,255,-1;-1;-1;-1;:REM block UDG for progress indicator in modes 0-6
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
 }
+!ifdef USE_HISTORY {
+    */INSV
+}
 IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
 fs=FNfs
 IF fs<>4 THEN path$=FNpath

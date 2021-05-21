@@ -30,6 +30,8 @@ electron_romsel = $fe05
 ram_bank_count = $904
 ram_bank_list = $905
 
+buffer_keyboard = 0
+
 ; SFTODO: MOVE THIS?
 !macro assert .b {
     !if .b = 0 {

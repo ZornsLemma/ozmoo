@@ -1123,6 +1123,19 @@ def make_findswr_executable():
     return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
 
 
+def make_insv_executable():
+    # We squeeze this executable into the sound buffers at &840-&87f inclusive.
+    # The resident part of this code is small enough that the buffers for
+    # channels 2 and 3 are still usable without corrupting it.
+    sound_buffer_0 = 0x840
+    sound_buffer_2 = 0x860
+    e = Executable("acorn-insv.asm", "INSV", None, sound_buffer_0, [])
+    init = e.labels['init']
+    assert init <= sound_buffer_2
+    e.exec_addr = host | init
+    return e
+
+
 def make_turbo_test_executable():
     return Executable("acorn-turbo-test.asm", "TURBO", None, 0x70, [])
 
@@ -1394,6 +1407,7 @@ def title_from_filename(filename, remove_the_if_longer_than):
 def parse_args():
     parser = argparse.ArgumentParser(description="Build an Acorn disc image to run a Z-machine game using %s." % (best_effort_version,))
     # SFTODO: Might be good to add an option for setting -DUNSAFE=1 for maximum performance, but I probably don't want to be encouraging that just yet.
+    # SFTODO: Perhaps split "advanced user" options off into their own group?
     if version_txt is not None:
         parser.add_argument("--version", action="version", version=best_effort_version)
     parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
@@ -1425,7 +1439,9 @@ def parse_args():
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
     parser.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
-    parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard")
+    parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODO: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
+    parser.add_argument("--no-history", action="store_true", help="disable command history")
+    parser.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
     parser.add_argument("--on-quit-command", metavar="COMMAND", type=str, help="execute COMMAND when game quits")
     parser.add_argument("--on-quit-command-silent", metavar="COMMAND", type=str, help="execute COMMAND invisibly when game quits")
     parser.add_argument("--recommended-shadow-cache-pages", metavar="N", type=int, help="try to allocate N pages for shadow cache")
@@ -1546,6 +1562,14 @@ def parse_args():
     else:
         cmd_args.recommended_shadow_cache_pages = 4
 
+    if cmd_args.min_history is not None:
+        if cmd_args.min_history < 16 or cmd_args.min_history > 255:
+            die("Minimum history size must be between 16 and 255 bytes inclusive")
+    if cmd_args.no_history and cmd_args.min_history is not None:
+        die("--no-history and --min-history are incompatible")
+    if not cmd_args.no_history and cmd_args.min_history is None:
+        cmd_args.min_history = 16
+
     return cmd_args
 
 
@@ -1644,6 +1668,8 @@ def make_disc_image():
     if cmd_args.on_quit_command_silent:
         ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND=1"]
         ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND_SILENT=1"]
+    if not cmd_args.no_history:
+        ozmoo_base_args += ["-DUSE_HISTORY=%d" % cmd_args.min_history]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -1730,6 +1756,8 @@ def make_disc_image():
         splash_executable = make_splash_executable()
         disc_contents += [make_tokenised_preloader(loader, splash_executable.load_addr & 0xffff), splash_executable]
     disc_contents += [loader, findswr_executable]
+    if not cmd_args.no_history:
+        disc_contents.append(make_insv_executable())
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
         disc2_contents = []

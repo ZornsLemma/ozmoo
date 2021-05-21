@@ -406,7 +406,6 @@ mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
 err_not_found = $d6
 ctrl_key_adjust = 64
-buffer_keyboard = 0
 max_screen_width = 80
 !ifdef ACORN_SWR {
 flat_ramtop = $8000

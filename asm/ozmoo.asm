@@ -1,6 +1,3 @@
-; SFTODONOW: Can I squish this into some spare space in page 4?
-; SFTODONOW: Can I allow command history *and* traditional Acorn cursor editing?
-USE_HISTORY = 100 ; SFTODONOW TEMP HACK
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
 ; Z1, Z2, Z6 and Z7 will (probably) never be supported
