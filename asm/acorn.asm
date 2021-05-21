@@ -2282,16 +2282,6 @@ setjmp
     ; rely on it.) As a nice side effect of this, the return address for our
     ; caller is saved so .setjmp_error_handler can simply rts after restoring
     ; the stack.
-    ; SFTODO: If jmp_buf is made smaller, we could probably fairly easily
-    ; detect overflow - initialize y with -buffer_size, do sta jmp_buf+1+buffer_size,y
-    ; and if the bne after the iny isn't taken we've overflowed. There might be
-    ; an off by one error in that, I'm just sketching the idea out. This is
-    ; tempting, *but* at the moment jmp_buf is going to live in $400-800 and
-    ; (except for the possibility of starting code at say $600 on 2P) we have
-    ; loads of free space down there, so adding a few bytes of code to the VM
-    ; to detect overflow and cause a fatal error will eat into valuable memory
-    ; for the sake of optimising use of a currently not-scare resource. Think
-    ; about it, maybe convert this to an SF: comment.
     tsx
 !ifdef TRACE_SETJMP {
     cpx setjmp_min_s
@@ -2300,13 +2290,27 @@ setjmp
 +
 }
     stx jmp_buf
-    ldy #0
+.initial_y = (-jmp_buf_size) & $ff
+    ldy #.initial_y
 -   inx
     beq +
     lda stack,x
-    sta jmp_buf+1,y
+    sta jmp_buf+1-.initial_y,y
     iny
-    bne -
+    bne - ; branch if we have't overflowed jmp_buf, which shouldn't happen in practice
+    ; SFTODO: UNSAFE is not necessarily the best way to control this. Especially
+    ; (do another code review) if Ozmoo doesn't use arbitrary amounts of stack
+    ; depending on the Z-code being executed, this isn't something that should
+    ; be triggered by buggy Z-code; it's internal to the itnerpreter.
+!ifndef UNSAFE {
+    ; Y starts at -jmp_buf_size and is incremented every time we store a byte,
+    ; so if it reaches 0 will have written jmp_buf_size bytes starting at
+    ; jmp_buf+1 and have therefore overflowed the buffer (remember jmp_buf holds a
+    ; copy of S). This shouldn't happen in practice, as jmp_buf_size is selected to
+    ; accommodate the largest stack size Ozmoo will use.
+    lda #ERROR_JMP_BUF_OVERFLOW
+    jsr fatalerror
+}
 +   ; Z flag is set
     rts
 

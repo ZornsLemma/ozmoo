@@ -777,10 +777,10 @@ c128_border_phase1
 	jmp $ff33	;return from IRQ
 
 } else { ; SFTODO: As per SFTODO elsewhere, note that it looks like constants-c128.asm is *alternative* to constants.asm, whereas currently acorn-constants.asm is an addition (plus acorn-constants.asm is only constants common to all the executables)
-!source "constants.asm"
 !ifdef ACORN {
 !source "acorn-constants.asm" ; SFTODO: rename constants-acorn.asm? But that is already in use for the small "generic" constants header, so I'd need to rename that. And then again I have other acorn-* files. Think about it.
 }
+!source "constants.asm"
 }
 !source "constants-header.asm"
 

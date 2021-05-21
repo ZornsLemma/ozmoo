@@ -384,7 +384,11 @@ convert_byte_to_two_digits
 
 
 ERROR_UNSUPPORTED_STREAM = 1
+!ifndef ACORN {
 ERROR_CONFIG = 2
+} else {
+ERROR_JMP_BUF_OVERFLOW = 2
+}
 ERROR_STREAM_NESTING_ERROR = 3
 ERROR_FLOPPY_READ_ERROR = 4
 ERROR_MEMORY_OVER_64KB = 5
@@ -422,7 +426,7 @@ ERROR_DIVISION_BY_ZERO = 17
 .error_division_by_zero !pet "division by zero", 0
 } else {
 .error_unsupported_stream !text "unsupported stream#",0
-.error_config !text "broken config",0
+.error_jmp_buf_overflow !text "jmp_buf overflow",0
 .error_stream_nesting_error !text "stream nesting error",0
 .error_floppy_read_error !text "floppy read error", 0
 .error_memory_over_64kb !text "tried to access z-machine memory over 64kb", 0
@@ -442,7 +446,11 @@ ERROR_DIVISION_BY_ZERO = 17
 
 .error_message_high_arr
 	!byte >.error_unsupported_stream
+!ifndef ACORN {
 	!byte >.error_config
+} else {
+    !byte >.error_jmp_buf_overflow
+}
 	!byte >.error_stream_nesting_error
 	!byte >.error_floppy_read_error
 	!byte >.error_memory_over_64kb
@@ -461,7 +469,11 @@ ERROR_DIVISION_BY_ZERO = 17
 
 .error_message_low_arr
 	!byte <.error_unsupported_stream
+!ifndef ACORN {
 	!byte <.error_config
+} else {
+    !byte <.error_jmp_buf_overflow
+}
 	!byte <.error_stream_nesting_error
 	!byte <.error_floppy_read_error
 	!byte <.error_memory_over_64kb
