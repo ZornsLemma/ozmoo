@@ -2305,9 +2305,9 @@ setjmp
 !ifndef UNSAFE {
     ; Y starts at -jmp_buf_size and is incremented every time we store a byte,
     ; so if it reaches 0 will have written jmp_buf_size bytes starting at
-    ; jmp_buf+1 and have therefore overflowed the buffer (remember jmp_buf holds a
-    ; copy of S). This shouldn't happen in practice, as jmp_buf_size is selected to
-    ; accommodate the largest stack size Ozmoo will use.
+    ; jmp_buf+1 and have therefore overflowed the buffer (remember jmp_buf holds
+    ; a copy of S). This shouldn't happen in practice, as jmp_buf_size is chosen
+    ; to accommodate the largest stack size we will have when setjmp is called.
     lda #ERROR_JMP_BUF_OVERFLOW
     jsr fatalerror
 }
