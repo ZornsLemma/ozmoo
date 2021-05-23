@@ -850,6 +850,7 @@ class OzmooExecutable(Executable):
         vmap_z_l_offset = self.labels['initial_vmap_z_l'] - self.labels['program_start']
         vmap_z_h_offset = self.labels['vmap_z_h'        ] - self.labels['program_start']
         vmap_max_size = self.labels['vmap_max_size']
+        print("XXX", self, self.asm_filename)
         assert self._asm_output[vmap_z_l_offset:vmap_z_l_offset+vmap_max_size] == b'V'*vmap_max_size
         assert self._asm_output[vmap_z_h_offset:vmap_z_h_offset+vmap_max_size] == b'V'*vmap_max_size
         blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []
@@ -1953,3 +1954,5 @@ show_deferred_output()
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
+
+# SFTODO: I am seeing inexplicable build errors on HH (not in benchmark mode) with --extra-build-at 0xe00, but --extra-build-at 0x1000/1200/1400 etc is just fine. I am not getting into this right now as I'm trying to investigate a different problem.
