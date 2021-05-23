@@ -1786,6 +1786,14 @@ get_input_from_history
 	beq ++
 	; convert back to petscii
 	jsr translate_zscii_to_petscii
+!ifdef HISTORY_UPPER_CASE {
+    cmp #'a'
+    bcc .not_lower_case
+    cmp #'z' + 1
+    bcs .not_lower_case
+    sbc #('a' - 'A') - 1 ; -1 as carry is clear
+.not_lower_case
+}
 !ifndef MODE_7_INPUT {
 	jsr s_printchar
 } else {

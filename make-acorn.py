@@ -1442,6 +1442,7 @@ def parse_args():
     parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODO: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
     parser.add_argument("--no-history", action="store_true", help="disable command history")
     parser.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
+    parser.add_argument("--history-upper-case", action="store_true", help="show command history in upper case")
     parser.add_argument("--leave-caps-lock-alone", action="store_true", help="don't force lower case in loader")
     parser.add_argument("--on-quit-command", metavar="COMMAND", type=str, help="execute COMMAND when game quits")
     parser.add_argument("--on-quit-command-silent", metavar="COMMAND", type=str, help="execute COMMAND invisibly when game quits")
@@ -1571,6 +1572,9 @@ def parse_args():
     if not cmd_args.no_history and cmd_args.min_history is None:
         cmd_args.min_history = 16
 
+    if cmd_args.no_history and cmd_args.history_upper_case:
+        die("--no-history and --history-upper-case are incompatible")
+
     return cmd_args
 
 
@@ -1671,6 +1675,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND_SILENT=1"]
     if not cmd_args.no_history:
         ozmoo_base_args += ["-DUSE_HISTORY=%d" % cmd_args.min_history]
+    if cmd_args.history_upper_case:
+        ozmoo_base_args += ["-DHISTORY_UPPER_CASE=1"]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
