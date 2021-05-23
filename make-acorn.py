@@ -850,7 +850,6 @@ class OzmooExecutable(Executable):
         vmap_z_l_offset = self.labels['initial_vmap_z_l'] - self.labels['program_start']
         vmap_z_h_offset = self.labels['vmap_z_h'        ] - self.labels['program_start']
         vmap_max_size = self.labels['vmap_max_size']
-        print("XXX", self, self.asm_filename)
         assert self._asm_output[vmap_z_l_offset:vmap_z_l_offset+vmap_max_size] == b'V'*vmap_max_size
         assert self._asm_output[vmap_z_h_offset:vmap_z_h_offset+vmap_max_size] == b'V'*vmap_max_size
         blocks = cmd_args.preload_config[:] if cmd_args.preload_config is not None else []
