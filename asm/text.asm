@@ -1786,7 +1786,6 @@ get_input_from_history
 	beq ++
 	; convert back to petscii
 	jsr translate_zscii_to_petscii
-	jsr s_printchar ; SFTODO: SURELY WE DON'T WANT THIS *AS WELL* AS THE NEXT LINE? BUT WHEN I REMOVED IT I WAS ABLE TO GET CORRUPTION IN MODE 7 WITH A VERY LONG LINE OF HISTORY
 !ifndef MODE_7_INPUT {
 	jsr s_printchar
 } else {
