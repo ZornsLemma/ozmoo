@@ -705,6 +705,17 @@ deletable_init_start
     ; bytes of stack space code.
 }
 
+!ifdef USE_HISTORY {
+    ; Zero the history buffer; if this isn't done it is sometimes possible to
+    ; navigate to invalid history entries.
+    ldx #(history_end - history_start) - 1
+    lda #0
+-   sta history_start,x
+    dex
+    cpx #$ff
+    bne -
+}
+
 !ifdef ACORN_SCREEN_HOLE {
     lda screen_mode
     ora #128 ; force shadow mode on SFTODO  MAGIC CONSTANT IN A FEW PLACES NOW?
