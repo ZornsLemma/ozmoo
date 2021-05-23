@@ -1442,6 +1442,7 @@ def parse_args():
     parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODO: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
     parser.add_argument("--no-history", action="store_true", help="disable command history")
     parser.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
+    parser.add_argument("--leave-caps-lock-alone", action="store_true", help="don't force lower case in loader")
     parser.add_argument("--on-quit-command", metavar="COMMAND", type=str, help="execute COMMAND when game quits")
     parser.add_argument("--on-quit-command-silent", metavar="COMMAND", type=str, help="execute COMMAND invisibly when game quits")
     parser.add_argument("--recommended-shadow-cache-pages", metavar="N", type=int, help="try to allocate N pages for shadow cache")
@@ -1746,6 +1747,8 @@ def make_disc_image():
         loader_symbols["NO_ONLY_COLUMN"] = basic_int(1)
     if cmd_args.auto_start:
         loader_symbols["AUTO_START"] = basic_int(1)
+    if cmd_args.leave_caps_lock_alone:
+        loader_symbols["LEAVE_CAPS_LOCK_ALONE"] = basic_int(1)
     loader_screen.add_loader_symbols(loader_symbols)
 
     disc_contents = [boot_file]
