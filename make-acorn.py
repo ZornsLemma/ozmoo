@@ -1126,12 +1126,13 @@ def make_findswr_executable():
 def make_insv_executable():
     # We squeeze this executable into the sound buffers at &840-&87f inclusive.
     # The resident part of this code is small enough that the buffers for
-    # channels 2 and 3 are still usable without corrupting it.
+    # channels 2 and 3 are still usable without corrupting it. SFTODO: Not true, I've at least temporarily had to spill over into sound buffer 2.
     sound_buffer_0 = 0x840
     sound_buffer_2 = 0x860
+    sound_buffer_3 = 0x870
     e = Executable("acorn-insv.asm", "INSV", None, sound_buffer_0, [])
     init = e.labels['init']
-    assert init <= sound_buffer_2
+    assert init <= sound_buffer_3
     e.exec_addr = host | init
     return e
 

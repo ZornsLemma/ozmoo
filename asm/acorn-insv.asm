@@ -20,12 +20,22 @@ our_insv
     cmp #%10001100
     bne not_unshifted_or_shifted_cursor
     ; This is a shifted (b4 set) or unshifted (b4 clear) cursor key.
+    ; b1 is set iff this is an up/down cursor key.
     pla
     pha
-    and #%00010000
-    eor #%00010000
-    beq cursor_key_status_in_a
+    and #%00010010
+    beq is_unshifted_left_right_cursor_key
+    cmp #16
+    bcs is_shifted_cursor_key
+    ; It's an unshifted up/down cursor key. Make cursor keys return character
+    ; codes like normal keys, so Ozmoo can see them and trigger command history
+    ; features if appropriate.
     lda #1
+    bne cursor_key_status_in_a ; always branch
+is_unshifted_left_right_cursor_key
+is_shifted_cursor_key
+    ; Make cursor keys activate OS split cursor editing.
+    lda #0
 cursor_key_status_in_a
     sta cursor_key_status
 not_unshifted_or_shifted_cursor
