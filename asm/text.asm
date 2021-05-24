@@ -1138,6 +1138,16 @@ getchar_and_maybe_toggle_darkmode
     ; input.
     jsr osrdch
 }
+!ifdef USE_HISTORY { ; SFTODO: Experimental to make Escape reset split cursor mode
+    cmp #27 ; SFTODO: magic
+    bne .not_escape
+    ; Turn the cursor off, which has the side effect of cancelling split cursor
+    ; mode, then back on again.
+    jsr turn_off_cursor
+    jsr turn_on_cursor
+    lda #27
+.not_escape
+}
     jmp check_user_interface_controls
 }
 
