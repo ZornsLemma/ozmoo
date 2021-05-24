@@ -7,6 +7,7 @@
 !source "acorn-constants.asm"
 
 insv = $22a
+vdu_status = $d0
 cursor_key_status = $27d ; address updated by *FX4
 
 !if * != nominal_cursor_key_status {
@@ -20,30 +21,26 @@ cursor_key_status = $27d ; address updated by *FX4
 our_insv
     cpx #buffer_keyboard
     bne jmp_old_insv
+    ; If split cursor editing is in progress, leave things alone.
+    bit vdu_status
+    bvs jmp_old_insv
     tax
     ; If nominal_cursor_key_status is 1, we always use that.
     lda nominal_cursor_key_status
     bne cursor_key_status_in_a
+    ; Check if this is a shifted or unshifted cursor key.
     txa
     and #%11101100
     cmp #%10001100
     bne not_unshifted_or_shifted_cursor
-    ; This is a shifted (b4 set) or unshifted (b4 clear) cursor key.
-    ; b1 is set iff this is an up/down cursor key.
+    ; This is a shifted (b4 set) or unshifted (b4 clear) cursor key. Set
+    ; cursor_key_status = !b4, so unshifted cursor keys return codes to the
+    ; application and shifted cursor keys trigger split cursor editing.
     txa
-    and #%00010010
-    beq is_unshifted_left_right_cursor_key
-    cmp #16
-    bcs is_shifted_cursor_key
-    ; It's an unshifted up/down cursor key. Make cursor keys return character
-    ; codes like normal keys, so Ozmoo can see them and trigger command history
-    ; features if appropriate.
+    and #%00010000
+    eor #%00010000
+    beq cursor_key_status_in_a
     lda #1
-    !byte $2c ; BIT abs ; skip to cursor_key_status_in_a
-is_unshifted_left_right_cursor_key
-is_shifted_cursor_key
-    ; Make cursor keys activate OS split cursor editing.
-    lda #0
 cursor_key_status_in_a
     sta cursor_key_status
 not_unshifted_or_shifted_cursor
