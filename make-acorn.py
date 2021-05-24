@@ -1130,9 +1130,11 @@ def make_insv_executable():
     sound_buffer_0 = 0x840
     sound_buffer_2 = 0x860
     sound_buffer_3 = 0x870
-    e = Executable("acorn-insv.asm", "INSV", None, sound_buffer_0, [])
+    sound_buffer_3_end = 0x880
+    e = Executable("acorn-insv.asm", "INSV", None, sound_buffer_0, ["-DUSE_HISTORY=1"])
     init = e.labels['init']
     assert init <= sound_buffer_3
+    assert e.start_addr + len(e.binary()) <= sound_buffer_3_end
     e.exec_addr = host | init
     return e
 

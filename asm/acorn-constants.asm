@@ -30,6 +30,10 @@ electron_romsel = $fe05
 ram_bank_count = $904
 ram_bank_list = $905
 
+!ifdef USE_HISTORY {
+    nominal_cursor_key_status = $840
+}
+
 buffer_keyboard = 0
 
 ; SFTODO: MOVE THIS?

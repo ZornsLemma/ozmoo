@@ -2464,11 +2464,38 @@ calculate_crc
 
 ; Two wrappers for calling osbyte_set_cursor_editing to reduce code size; we do
 ; this in several places.
+; SFTODO: Take "osbyte" out of these names, now they may set this indirectly on
+; USE_HISTORY builds?
 do_osbyte_set_cursor_editing_x_0
     ldx #0
 do_osbyte_set_cursor_editing
+!ifndef USE_HISTORY {
     lda #osbyte_set_cursor_editing
     bne do_osbyte_y_0 ; Always branch
+} else {
+    ; We write X to nominal_cursor_key_status and let our INSV handler take care
+    ; of the actual *FX4 state.
+!ifdef ACORN_SWR {
+    stx nominal_cursor_key_status
+} else {
+    ; SFTODO: Any chance we could use some scratch ZP to shrink this code? If
+    ; nothing else on tube we probably have spare ZP anyway, as it has more free
+    ; than host. Alternatively, would we come out ahead using a dedicated 5-byte
+    ; block? We wouldn't need to populate the $FF bytes every time then.
+    lda #<nominal_cursor_key_status
+    sta scratch_page + 0
+    lda #>nominal_cursor_key_status
+    sta scratch_page + 1
+    lda #$ff
+    sta scratch_page + 2
+    sta scratch_page + 3
+    stx scratch_page + 4
+    lda #osword_write_host
+    ldx #<scratch_page
+    ldy #>scratch_page
+    jmp osword
+}
+}
 
 ; Two wrappers for calling osbyte_rw_escape_key to reduce code size; we do this
 ; in several places.

@@ -9,20 +9,28 @@
 insv = $22a
 cursor_key_status = $27d ; address updated by *FX4
 
+!if * != nominal_cursor_key_status {
+    !error "nominal_cursor_key_status incorrect"
+}
+    !byte 0 ;  nominal_cursor_key_status
+
 ; On entry:
 ;     A=140-143 for unshifted cursors
 ;     A=156-159 for shifter cursors
 our_insv
     cpx #buffer_keyboard
     bne jmp_old_insv
-    pha
+    tax
+    ; If nominal_cursor_key_status is 1, we always use that.
+    lda nominal_cursor_key_status
+    bne cursor_key_status_in_a
+    txa
     and #%11101100
     cmp #%10001100
     bne not_unshifted_or_shifted_cursor
     ; This is a shifted (b4 set) or unshifted (b4 clear) cursor key.
     ; b1 is set iff this is an up/down cursor key.
-    pla
-    pha
+    txa
     and #%00010010
     beq is_unshifted_left_right_cursor_key
     cmp #16
@@ -31,7 +39,7 @@ our_insv
     ; codes like normal keys, so Ozmoo can see them and trigger command history
     ; features if appropriate.
     lda #1
-    bne cursor_key_status_in_a ; always branch
+    !byte $2c ; BIT abs ; skip to cursor_key_status_in_a
 is_unshifted_left_right_cursor_key
 is_shifted_cursor_key
     ; Make cursor keys activate OS split cursor editing.
@@ -39,7 +47,8 @@ is_shifted_cursor_key
 cursor_key_status_in_a
     sta cursor_key_status
 not_unshifted_or_shifted_cursor
-    pla
+    txa
+    ldx #buffer_keyboard
 jmp_old_insv
     jmp $ffff ; patched by init
 

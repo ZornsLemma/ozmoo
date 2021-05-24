@@ -371,6 +371,7 @@ osgbpb_read_using_ptr = $03
 osgbpb_read_ignoring_ptr = $04
 osword_input_line = 0
 osword_read_clock = 1
+osword_write_host = 6
 osword_sound = 7
 osword_floppy_op = $7f
 !ifdef ACORN_TUBE_CACHE {
