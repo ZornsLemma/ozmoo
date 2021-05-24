@@ -2477,6 +2477,7 @@ do_osbyte_set_cursor_editing
     ; of the actual *FX4 state.
 !ifdef ACORN_SWR {
     stx nominal_cursor_key_status
+    rts
 } else {
     ; SFTODO: Any chance we could use some scratch ZP to shrink this code? If
     ; nothing else on tube we probably have spare ZP anyway, as it has more free
