@@ -81,7 +81,14 @@ bg_colour=${bg_colour}
 screen_mode=${screen_mode}
 DIM block% 256
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100
-IF integra_b THEN host_os=1:REM override Integra-B OS version faking
+REM If we're on an Integra-B in OSMODE 0, it's as if we're on a standard model B.
+REM We need to avoid detecting the private RAM, because the non-shadow-RAM model B
+REM executable we'll choose to run doesn't know how to handle it.
+IF integra_b AND host_os=1 THEN integra_b=FALSE
+REM If we're on an Integra-B in some other OSMODE, override its faking of the OS
+REM version; we don't want to use our code to access the B+ or Master shadow RAM
+REM hardware, for example.
+IF integra_b THEN host_os=1
 electron=host_os=0
 
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
