@@ -1125,8 +1125,8 @@ def make_findswr_executable():
 
 def make_insv_executable():
     # We squeeze this executable into the sound buffers at &840-&87f inclusive.
-    # The resident part of this code is small enough that the buffers for
-    # channels 2 and 3 are still usable without corrupting it. SFTODO: Not true, I've at least temporarily had to spill over into sound buffer 2.
+    # The resident part of this code is small enough that the buffer for channel
+    # 3 is still usable without corrupting it.
     sound_buffer_0 = 0x840
     sound_buffer_2 = 0x860
     sound_buffer_3 = 0x870
@@ -1963,4 +1963,4 @@ show_deferred_output()
 
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
 
-# SFTODO: I am seeing inexplicable build errors on HH (not in benchmark mode) with --extra-build-at 0xe00, but --extra-build-at 0x1000/1200/1400 etc is just fine. I am not getting into this right now as I'm trying to investigate a different problem.
+# SFTODONOW: I am seeing inexplicable build errors on HH (not in benchmark mode) with --extra-build-at 0xe00, but --extra-build-at 0x1000/1200/1400 etc is just fine. I am not getting into this right now as I'm trying to investigate a different problem.
