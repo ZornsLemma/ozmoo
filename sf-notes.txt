@@ -1,3 +1,13 @@
+Working towards stable 7.x release, TODO:
+- test on Electron
+- finish reviewing existing SFTODO comments and dealing with them or promoting them to SFTODONOW
+  - done acorn.asm
+- deal with SFTODONOW comments
+- do regression test to check performance is comparable to 5.x/6.x semi-stable release
+- testing! do some of my own, ask people on stardot (once I have something *I* don't intend to tinker with unless bugs are found)
+
+
+
 Timings to try to reassure myself I've un-broken everything
 "older" timings are just taken from the most recent values I can see below, these have not been recreated - I am looking for a sanity check more than anything, and I've doublede the older times to compensate for jiffies change
 				new	older

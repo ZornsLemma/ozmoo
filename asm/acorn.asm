@@ -362,14 +362,14 @@ lda_dynmem_ind_y_slow_x_sub
     lda (screen_hole_zp_ptr),y
     rts
 .zp_y_ok
-    stx .SFTODO344LDA_ZP_IND_Y+1
+    stx .SFTODO344LDA_ZP_IND_Y+1 ; SFTODONOW: Fix label name
     ldx screen_hole_tmp
 .SFTODO344LDA_ZP_IND_Y
     lda ($00),y ; patched at runtime
     rts
 }
 
-!macro SFTODORENAMEME zp {
+!macro SFTODORENAMEME zp { ; SFTODONOW: rename
     stx screen_hole_tmp
     ldx #zp
     !if zp = 0 {
@@ -398,7 +398,7 @@ lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
     stx screen_hole_tmp_slow
     ldx #object_tree_ptr
-SFTODO3X1
+SFTODO3X1 ; SFTODONOW: rename
     sta screen_hole_tmp
     lda $01,x
     cmp acorn_screen_hole_start_page_minus_one
@@ -422,7 +422,7 @@ SFTODO3X1
     sta (screen_hole_zp_ptr),y
     rts
 .zp_y_ok
-    stx .SFTODO344STA_ZP_IND_Y + 1
+    stx .SFTODO344STA_ZP_IND_Y + 1 ; SFTODONOW: rename
     ldx screen_hole_tmp_slow
     lda screen_hole_tmp
 .SFTODO344STA_ZP_IND_Y
@@ -430,11 +430,11 @@ SFTODO3X1
     rts
 }
 
-!macro SFTODOALSORENAMEME zp {
+!macro SFTODOALSORENAMEME zp { ; SFTODONOW: rename
     stx screen_hole_tmp_slow
     ldx #zp
     !if zp = 0 {
-        beq SFTODO3X1 ; always branch
+        beq SFTODO3X1 ; always branch ; SFTODONOW: rename
     } else {
         bne SFTODO3X1 ; always branch
     }
@@ -1075,20 +1075,14 @@ SFTODOKOO
 SFTODOLM2
     lda vmem_cache_count_mem
     beq .no_spare_shadow
-!if 0 { ; SFTODO: TIDY UP
-    lda #osbyte_read_screen_address_for_mode
-    ldx screen_mode ; note we don't force shadow mode on here
-    jsr osbyte
-    ; SFTODO: I wonder if this will go wrong for things like Electron Master RAM board, where shadow can't be turned off by software and so this OSBYTE probably always returns $8000. For now let me deliberately hang if this happens - if this is the case, we just need to use a hard-coded table of start addresses rather than this OSBYTE, not a big deal. - yes, it does go wrong...
-    tya
-!if 1 { ; SFTODO TEMP
--   bmi -
-}
-} else {
-    ; On an Electron with a Master RAM Board in shadow mode, the shadow RAM can't be turned off under software control and osbyte_read_screen_address_for_mode will always return $8000. This makes sense, but it's not much use to us here. We use our own table of start addresses instead; we might as well do this on all platforms for consistency.
+    ; On an Electron with a Master RAM Board in shadow mode, the shadow RAM
+    ; can't be turned off under software control and
+    ; osbyte_read_screen_address_for_mode will always return $8000. This makes
+    ; sense, but it's not much use to us here. We use our own table of start
+    ; addresses instead; we might as well do this on all platforms for
+    ; consistency.
     ldx screen_mode
     lda screen_start_page_by_mode,x
-}
     sec
     sbc #$30 ; SFTODO MAGIC NUMBER USED IN COUPLE OF PLACES
     clc
@@ -1194,7 +1188,7 @@ SFTODOEE2
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_TURBO_SUPPORTED {
-    ; SFTODO: REVIEW THIS FRESH
+    ; SFTODONOW: REVIEW THIS FRESH
     ; On a turbo second processor, we can increase nonstored_pages to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
@@ -1338,7 +1332,7 @@ game_blocks_ne_ram_blocks
     bcs +
     dec ram_blocks + 1
 +
-    ; SFTODO: REVIEW ALL THE FOLLOWING FRESH, ESP "NEW" SWR CASE
+    ; SFTODONOW: REVIEW ALL THE FOLLOWING FRESH, ESP "NEW" SWR CASE
     ; It's important ram_blocks >= vmem_block_pagecount now so that we will set
     ; vmap_max_entries >= 1 below. Conceptually it makes sense for
     ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
@@ -1415,7 +1409,7 @@ SFTODOLABEL5
     ; page of dynmem) and start using only the first vmap_max_entries; since
     ; this is a sort (we're just reordering things) they haven't actually
     ; displaced anything useful in the meantime. All the same, it might be
-    ; neater to make the build script use $ffff for the dummy entries.
+    ; neater to make the build script use $ffff for the dummy entries. SFTODONOW: Not intending to rework this now, but maybe just review this
     lda nonstored_pages
     cmp #ACORN_INITIAL_NONSTORED_PAGES
     beq +
@@ -1614,7 +1608,6 @@ initial_vmap_z_l
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-; SFTODO: Get rid of this if it's not used
 screen_start_page_by_mode
     !byte $30 ; mode 0
     !byte $30 ; mode 1
