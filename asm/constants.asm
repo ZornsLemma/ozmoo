@@ -560,7 +560,7 @@ low_history_end = $500
 ; the Z-machine has not been set up.
 progress_indicator_blocks_per_chunk = z_operand_value_high_arr ; 2 bytes
 progress_indicator_blocks_left_in_chunk = z_operand_value_high_arr + 2 ; 2 bytes
-; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf.
+; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf. (Not so much now as we do use it for history.)
 
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 ; SFTODO: I'm fairly sure this isn't performance critical, but it might be worth

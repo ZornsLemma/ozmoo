@@ -3,6 +3,10 @@ Working towards stable 7.x release, TODO:
 - finish reviewing existing SFTODO comments and dealing with them or promoting them to SFTODONOW
   - done acorn.asm
   - done acorn-cache.asm
+  - done acorn-constants.asm
+  - done acorn-disk.asm
+  - done acorn-findswr.asm
+  - done constants.asm
 - deal with SFTODONOW comments
 - do regression test to check performance is comparable to 5.x/6.x semi-stable release
 - testing! do some of my own, ask people on stardot (once I have something *I* don't intend to tinker with unless bugs are found)
