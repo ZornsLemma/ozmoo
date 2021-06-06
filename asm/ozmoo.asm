@@ -949,7 +949,7 @@ initialize
 }
 !source "utilities.asm"
 !source "screenkernal.asm"
-!source "streams.asm"
+!source "streams.asm" ; Must come before "text.asm"
 !ifndef ACORN {
 	!source "disk.asm"
 } else {

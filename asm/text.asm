@@ -565,7 +565,6 @@ translate_petscii_to_zscii
 	bcc .no_match
 	beq .translation_match
 	dex
-	dex
 	bpl -
 .no_match	
 	; cmp #$60
@@ -593,8 +592,7 @@ translate_petscii_to_zscii
 }
 	rts
 .translation_match
-	dex
-	lda character_translation_table_in,x
+	lda character_translation_table_in_end,x
 	rts
 
 	
@@ -1520,7 +1518,9 @@ read_text
 
 	ldy #0
 -   cmp terminating_characters,y
-	beq .read_text_done_SFTODO_HACK
+	bne .cont_check
+	jmp .read_text_done
+.cont_check
 	iny
 	cpy num_terminating_characters
 	bne -
@@ -1536,7 +1536,7 @@ read_text
 !ifdef USE_HISTORY {
 	bne ++
 	; all input deleted, so enable history again
-	jsr enable_history_keys
+;	jsr enable_history_keys
 ++
 }
 !ifndef ACORN {
@@ -1562,7 +1562,6 @@ read_text
 }
 	jmp .readkey ; don't store in the array
 .readkey_SFTODO_HACK jmp .readkey
-.read_text_done_SFTODO_HACK jmp .read_text_done
 +   ; disallow cursor keys etc
     ; SF: Note that this is part of read_text, used only by z_ins_read, and
     ; therefore we are reading a line of text here. The following code will
@@ -1611,7 +1610,7 @@ read_text
 }
 	lda .petscii_char_read
 !ifdef USE_HISTORY {
-	jsr disable_history_keys
+;	jsr disable_history_keys
 }
 !ifndef MODE_7_INPUT {
 	jsr s_printchar
@@ -1625,6 +1624,20 @@ read_text
 	jsr update_cursor
 }
 	pla
+!ifdef character_downcase_table {	
+	bpl +
+	ldx #character_downcase_table_end - character_downcase_table - 1
+-	cmp character_downcase_table,x
+	bcc +
+	beq .match_in_downcase_table
+	dex
+	bpl -
+	bmi + ; Alwats branch
+.match_in_downcase_table
+	lda character_downcase_table_end,x
+	bne .dont_invert_case ; Always branch
++
+}
 	; convert to lower case
     ; SF: We are working with ZSCII here, so this is nothing to do with PETSCII.
     ; I suspect this is done to comply with 3.7 of the Z-machine specification.
@@ -1839,12 +1852,11 @@ disable_history_keys
 	lda #1
 	bne + ; unconditional jump for code sharing with enable_history_keys
 enable_history_keys
-	; enable cursor up/down for history
+	; enable cursor up/down for history if there is any history stored
 	; input: -
 	; output: -
 	; side effects: -
 	; used registers: -
-	; only enable if we have any history stored
 	pha
 	lda .history_first
 	cmp .history_last
