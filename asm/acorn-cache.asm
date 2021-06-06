@@ -28,7 +28,7 @@ zp_temp = $f5 ; 3 bytes
 ; https://stardot.org.uk/forums/viewtopic.php?f=4&t=13351&p=287831&#p287831 and
 ; some of the data I'm sending is getting lost. I am using MAME 0.224 on Windows
 ; to test, and that predates that stardot comment.
-; SFTODO: I'm fairly sure I've had this working on an emulated Electron with tube
+; SFTODONOW: I'm fairly sure I've had this working on an emulated Electron with tube
 ; since, but need to confirm that before deleting this comment.
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
