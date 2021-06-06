@@ -7,6 +7,9 @@ Working towards stable 7.x release, TODO:
   - done acorn-disk.asm
   - done acorn-findswr.asm
   - done constants.asm
+  - done memory.asm
+  - done objecttable.asm
+  - done ozmoo.asm
 - deal with SFTODONOW comments
 - do regression test to check performance is comparable to 5.x/6.x semi-stable release
 - testing! do some of my own, ask people on stardot (once I have something *I* don't intend to tinker with unless bugs are found)

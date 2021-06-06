@@ -91,7 +91,7 @@
 	VMEM_END_PAGE = $00 ; Last page of accessible RAM for VMEM, plus 1.
 }
 
-; SFTODO: Not here specifically, but if I end up using the cache functionality on some Acorn ports, this seems to imply it is page-based not 512-byte-block-based; I may have the wrong end of the stick.
+; SFTODO: Not here specifically, but if I end up using the cache functionality on some Acorn ports, this seems to imply it is page-based not 512-byte-block-based; I may have the wrong end of the stick. SFTODONOW - I THINK THIS IS ALL FINE, IT IS PAGE  BASED AND I TAKE ADVANTAGE OF THAT, JUST DOUBLE CHECK THEN DELETE THIS
 !ifdef TARGET_PLUS4 {
 	cache_pages = 0
 } else {
@@ -315,7 +315,7 @@ program_start
 	lda #%00001110
 	sta $ff00
 }
-initial_jmp ; SFTODO: IF THIS ISN'T USED, GET RID OF IT - I MERGED THIS LABEL, IT'S NOT IN 5.3
+initial_jmp
 !ifndef ACORN_RELOCATABLE {
 	jmp .initialize
 } else {
@@ -800,12 +800,12 @@ game_id		!byte 0,0,0,0
 }
 
 
-; SFTODO: Can we move this code into the deletable init space on Acorn? If we just moved the (.)initialize label I think it would mostly "just work".
+; SFTODONOW: Can we move this code into the deletable init space on Acorn? If we just moved the (.)initialize label I think it would mostly "just work".
 .initialize
 !ifdef ACORN_RELOCATABLE {
 initialize
 }
-; SFTODO: CAN WE GET RID OF CLD/CLI FOR ACORN?
+; SFTODONOW: CAN WE GET RID OF CLD/CLI FOR ACORN?
 	cld
 	cli
 !ifdef ACORN {
@@ -900,12 +900,12 @@ initialize
 	sta $d012
 ++
 }
-	cli ; SFTODO: WE DON'T NEED THIS ON ACORN
+	cli ; SFTODONOW: WE DON'T NEED THIS ON ACORN
 
 
 	jsr z_execute
 
-	; SFTODO: IT'S PROB CORRECT THERE'S *NO* ACORN CODE HERE, BUT A) TEST IT B) COMMENT WHY WE DON'T NEED ANY
+	; SFTODONOW: IT'S PROB CORRECT THERE'S *NO* ACORN CODE HERE, BUT A) TEST IT B) COMMENT WHY WE DON'T NEED ANY
 !ifndef ACORN {
 !ifdef TARGET_PLUS4_OR_C128 {
 !ifdef TARGET_C128 {
@@ -2283,18 +2283,5 @@ scratch_overlapping_game_start
 	config_load_address = SCREEN_ADDRESS
 }
 }
-
-; SFTODO: It might be possible to use the 12K private RAM in the B+ as sideways
-; RAM. If we put it last in the list of RAM banks, it probably wouldn't require
-; too much special casing - we'd just make sure not to count it as a full 16K
-; during the initial load, then I suspect it would mostly "just work". (Though
-; this would clash with e.g. my "private RAM MMFS"; it might be prudent to ask
-; the user if we can use the 12K private RAM, since unlike normal SWR we can't
-; reasonably detect if it's in use or not. And we can't check for PAGE=&E00
-; because they could be using the more common SWMMFS in a regular sideways RAM
-; bank and have the 12K private RAM free.) - actually, would need to check, but
-; I think in practice "do any extended vectors point into a bank with top bit
-; set?" might be a reliable way to detect private 12K use, I *think* the MMFS+
-; variant will do that too.
 
 ; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.
