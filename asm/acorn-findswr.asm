@@ -7,14 +7,27 @@
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
 max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
+opcode_cmp_immediate = $c9
+user_via_ddrb = $fe62
+user_via_orb_irb = $fe60
+original_user_via_ddrb = $70
+original_user_via_orb_irb = $71
+swr_byte_value1 = $72
+swr_byte_value2 = $73
+tmp = $74
+bbc = $75
 
 ; We arrange for the output to be near the start of this binary so the loader
 ; can access it at fixed addresses.
+; SFTODO: With current build system it might be fairly easy to use an exec
+; address to avoid this jmp. On the other hand, changing this might make FINDSWR
+; executables incompatible with older versions (although I haven't tested
+; they're actually interchangeable at the moment).
 
     jmp start
 
 ; Output for Ozmoo
-swr_type        !byte 0
+swr_type        !byte 255
 ram_bank_count2 !byte 0
 ram_bank_list2  !fill max_ram_bank_count
 
@@ -24,23 +37,28 @@ ram_bank_list2  !fill max_ram_bank_count
 ; Storage used by this routine which the loader doesn't care about
 swr_test   = $100 ; !fill $10
 swr_backup = $110 ; !fill $10
+; dummy could possibly be moved into zero page, but since it's used to change the
+; databus value I don't want to risk breaking things.
+dummy      = $120 ; !byte 0
 swr_banks       !byte 0
-swr_byte_value1 !byte 0
-swr_byte_value2 !byte 0
-dummy           !byte 0
-tmp             !byte 0
-bbc             !byte 0
 
 start
     LDA #osbyte_read_host
     LDX #1
     JSR osbyte
+    SEI
     TXA
     BEQ +
+    ; We're on a BBC. Save the user VIA state so we can restore it after probing
+    ; for Solidisk-style sideways RAM. See
+    ; https://stardot.org.uk/forums/viewtopic.php?p=311955&sid=7a8cb62ccfe0b519342f67d1880cb5e5#p311955.
+    LDA user_via_ddrb
+    STA original_user_via_ddrb
+    LDA user_via_orb_irb
+    STA original_user_via_orb_irb
     LDX #$FF
 +   STX bbc ; $FF for BBC, 0 for Electron
     
-    SEI
     ; save original contents
     LDY #0
 lp
@@ -51,15 +69,18 @@ lp
     CPY #16
     BCC lp
 
+!if 0 {
+    ; These locations are initialised when the executable is loaded.
     LDA #0
     STA swr_banks
     LDA #255
     STA swr_type
+}
 
     ; now test which type
 
     LDY #0
-    LDA #0
+    TYA ; LDA #0
 lp0
     STA swr_test,Y
     INY
@@ -78,17 +99,19 @@ bank_lp_y
     ; at $2A1 so we don't use banks which contain valid ROM images temporarily
     ; disabled by a ROM manager.
     LDX copyright_offset
-    LDA $8000,X
+    STX check_copyright_string_lda_abs_x+1
+    LDX #(copyright_string_prefix_end - copyright_string_prefix) - 1
+check_copyright_string
+check_copyright_string_lda_abs_x
+    LDA $8000,X ; patched to address copyright_offset,X
+    CMP copyright_string_prefix,X
     BNE invalid_header
-    LDA $8001,X
-    CMP #'('
-    BNE invalid_header
-    LDA $8002,X
-    CMP #'C'
-    BNE invalid_header
-    LDA $8003,X
-    CMP #')'
-    BEQ cmp_next_y
+    DEX
+    BPL check_copyright_string
+    BMI cmp_next_y
+copyright_string_prefix
+    !text 0, "(C)"
+copyright_string_prefix_end
 invalid_header
     TYA
     EOR swr_byte_value1
@@ -198,17 +221,17 @@ find_type_lp
 found_watford_romram
     LDA #6
     STA swr_type
-    JMP end
+    BNE end ; always branch
 
 found_rom_sel
     LDA #2
     STA swr_type
-    JMP end
+    BNE end ; always branch
 
 found_ram_sel
     LDA #3
     STA swr_type
-    JMP end
+    BNE end ; always branch
 
 found_soli
     LDA #4
@@ -221,7 +244,7 @@ found_soli
 soli_3bits
     ; remove factor 2 from solidisk's incomplete address decoding
     LSR swr_banks
-    JMP end
+    ; JMP end - just fall through
 
 end
     ; restore swr, using method found
@@ -239,6 +262,13 @@ restore_lp
 end2
     LDA $F4
     JSR page_in_a
+    BIT bbc
+    BPL no_user_via
+    LDA original_user_via_ddrb
+    STA user_via_ddrb
+    LDA original_user_via_orb_irb
+    STA user_via_orb_irb
+no_user_via
     CLI
     ; Now derive a list of banks which have usable sideways RAM.
     ; We don't trust swr_banks because ROM write through can make it misleading.
@@ -258,7 +288,19 @@ not_usable
     BNE derive_loop
 derive_done
     STX ram_bank_count
-    RTS
+    ; Re-select the current filing system. This should always be harmless and
+    ; will cause SD card filing systems to re-initialise cards which may have
+    ; been upset by our probing at the user port looking for Solidisk-style
+    ; sideways RAM. See the sub-thread starting at
+    ; https://stardot.org.uk/forums/viewtopic.php?p=311717#p311717 for an
+    ; example of learning this lesson the hard way.
+    LDA #0
+    TAY
+    JSR osargs ; A now contains the current filing system number
+    TAY
+    LDA #osbyte_issue_service_request
+    LDX #$12 ; select filing system
+    JMP osbyte
 
 ; Utilities
 
@@ -273,8 +315,7 @@ set_solidisk ; for old solidisk swr
 set_only_romsel
     JSR set_all_to_wrong_bank
 set_romsel
-    JSR page_in_y_preserve_a
-    RTS
+    JMP page_in_y_preserve_a
 
 ; RAMSEL may not exist, in which case it is equivalent to ROMSEL
 ; (incomplete address decoding), therefore this code
@@ -326,7 +367,7 @@ page_in_y_preserve_a
     RTS
 page_in_x_corrupt_a
     TXA
-    JMP page_in_a
+    !byte opcode_cmp_immediate ; skip following TYA
 page_in_y_corrupt_a
     TYA
 page_in_a

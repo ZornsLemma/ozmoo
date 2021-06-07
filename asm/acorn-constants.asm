@@ -1,8 +1,10 @@
 ; Acorn constants shared by multiple Acorn executables; constants only relevant
 ; to the main Ozmoo executable are in constants.asm
 
+osargs = $ffda
 osbyte = $fff4
 osbyte_read_host = 0
+osbyte_issue_service_request = $8f
 
 romsel_copy = $f4
 bbc_romsel = $fe30
