@@ -355,7 +355,6 @@ IF turbo THEN tube_ram$="256K" ELSE tube_ram$="64K"
 ENDPROC
 
 DEF PROCdetect_swr
-*/FINDSWR
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on
 REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
