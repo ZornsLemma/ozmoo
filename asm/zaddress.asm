@@ -6,7 +6,7 @@
 set_z_address
 	stx z_address + 2
 	sta z_address + 1
-	; SFTODO: The next couple of instructions are executed often enough it might be worth adding a CMOS version which does stz
+	; SFTODONOW: The next couple of instructions are executed often enough it might be worth adding a CMOS version which does stz
 	lda #$0
 	sta z_address
 	rts
@@ -61,7 +61,7 @@ get_z_address
 	lda z_address + 1 ; high
 	rts
 
-; SFTODO: Could we rejig this slightly so it does the ldy and falls through into get_z_address? Would save a few bytes and probably no less clear, maybe arguably clearer. Check callers don't use flags-reflect-Y first!
+; SFTODONOW: Could we rejig this slightly so it does the ldy and falls through into get_z_address? Would save a few bytes and probably no less clear, maybe arguably clearer. Check callers don't use flags-reflect-Y first! (It might be this is something I could easily offer to upstream.)
 get_z_himem_address
 	ldx z_address + 2
 	lda z_address + 1
@@ -119,7 +119,7 @@ write_next_byte
 ; a,x,y are preserved
 	sta z_address_temp
 !ifndef UNSAFE {
-!if 0 { ; SFTODO: I SHOULD PROB SUPPORT THIS ON ACORN, BUT RIGHT NOW dynmem_size IS NOT BEING INITIALISED ON ACORN AS IT'S OTHERWISE UNNEEDED. THE IDEA OF BURNING TWO BYTES ON A COPY OF THIS FROM THE HEADER FOR SUCH LITTLE USE ANNOYS ME FAR THAN IS PROBABLY RATIONAL. OF COURSE, IF I *DO* DECIDE TO DO SOMETHING DIFFERENT, I SHOULD MAKE SURE NOT TO ALLOCATE 2 BYTES TO dynmem_size ON ACORN BUILDS! - OF COURSE, WORTH NOTING WE HAVE DYNMEM SIZE AS ACORN_DYNAMIC_SIZE_BYTES AS AN ASSEMBLY-TIME CONSTANT, AND IT WOULD BE FASTER (IF NOT NECESSARILY SIGNIFICANTLY FASTER) TO DO THIS COMPARISON AGAINST IMMEDIATE CONSTANTS
+!if 0 { ; SFTODONOW: I SHOULD PROB SUPPORT THIS ON ACORN, BUT RIGHT NOW dynmem_size IS NOT BEING INITIALISED ON ACORN AS IT'S OTHERWISE UNNEEDED. THE IDEA OF BURNING TWO BYTES ON A COPY OF THIS FROM THE HEADER FOR SUCH LITTLE USE ANNOYS ME FAR THAN IS PROBABLY RATIONAL. OF COURSE, IF I *DO* DECIDE TO DO SOMETHING DIFFERENT, I SHOULD MAKE SURE NOT TO ALLOCATE 2 BYTES TO dynmem_size ON ACORN BUILDS! - OF COURSE, WORTH NOTING WE HAVE DYNMEM SIZE AS ACORN_DYNAMIC_SIZE_BYTES AS AN ASSEMBLY-TIME CONSTANT, AND IT WOULD BE FASTER (IF NOT NECESSARILY SIGNIFICANTLY FASTER) TO DO THIS COMPARISON AGAINST IMMEDIATE CONSTANTS
 	lda z_address
 	bne .write_outside_dynmem
 	lda z_address + 2

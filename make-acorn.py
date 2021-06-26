@@ -832,7 +832,7 @@ class OzmooExecutable(Executable):
             # some main RAM free after loading dynamic memory when loaded at the
             # build addr. For relocatable builds the loader will also take
             # account of the actual value of PAGE.
-            # SFTODO: THINKING OUT LOUD - in the new "no 3c00 hack" model, what we probably mostly want is for swr_dynmem to be calculated like this, then the loader bumps up swr_dynmem_needed by any "unavoidable" screen RAM consumption. The build system needs some sort of option to allow the user to control whether we will accept a smalldyn build which won't work at max PAGE with no shadow RAM. I need to think this through a bit TBH. - I *think* for now, where I am going to keep a separate B-no-shadow executable and not offer the option to run in a non-default mode on no-shadow machines, all I need to do here is make pseudo_ramtop() return its current value less the screen size for non-shadow builds, but come back to that fresh
+            # SFTODONOW: THINKING OUT LOUD - in the new "no 3c00 hack" model, what we probably mostly want is for swr_dynmem to be calculated like this, then the loader bumps up swr_dynmem_needed by any "unavoidable" screen RAM consumption. The build system needs some sort of option to allow the user to control whether we will accept a smalldyn build which won't work at max PAGE with no shadow RAM. I need to think this through a bit TBH. - I *think* for now, where I am going to keep a separate B-no-shadow executable and not offer the option to run in a non-default mode on no-shadow machines, all I need to do here is make pseudo_ramtop() return its current value less the screen size for non-shadow builds, but come back to that fresh
             self.swr_dynmem = nonstored_pages_up_to - 0x8000
             assert self.swr_dynmem <= 16 * 1024
 
@@ -939,7 +939,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_SWR=1" in args
 
     # Because of Ozmoo's liking for 512-byte alignment and the 256-byte
-    # alignment of PAGE: SFTODO: THIS COMMENT IGNORES MEDIUM DYNMEM MODEL
+    # alignment of PAGE: SFTODONOW: THIS COMMENT IGNORES MEDIUM DYNMEM MODEL
     # - max_nonstored_pages() can only return even values on a VMEM build.
     # - nonstored_pages (i.e. for this specific game) will always be even.
     # - There are two possible start addresses 256 bytes apart which will
@@ -1011,7 +1011,7 @@ def make_optimally_aligned_executable(leafname, initial_start_addr, args, report
             return make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
 
 
-# SFTODO: RENAME THIS FUNCTION NOW WE HAVE MEDIUM
+# SFTODONOW: RENAME THIS FUNCTION NOW WE HAVE MEDIUM
 def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # Calculate adjusted_small_dynmem_page_threshold; it doesn't make sense to refuse to
     # build using the small model because it requires assuming PAGE>=max_start_addr.
@@ -1044,7 +1044,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # B+ or Integra-B actually has a fair bit of RAM (up to 19K of spare shadow
     # RAM in mode 7 and the private 12K) available even if it has no sideways
     # RAM.
-    # SFTODO: Should probably make this more controllable from command line; this
+    # SFTODONOW: Should probably make this more controllable from command line; this
     # whole area could be revamped, "--force-big-dynmem" is a bit of a clumsy
     # hammer anyway.
     medium_e = None
@@ -1426,7 +1426,6 @@ def parse_args():
     parser.add_argument("--splash-mode", metavar="N", type=int, help="use mode N for the splash screen")
     parser.add_argument("--splash-palette", metavar="N,N,...", type=str, help="set physical colours for splash screen")
     parser.add_argument("--splash-wait", metavar="N", type=int, help="show the splash screen for N seconds (0 means 'wait for any key')")
-    # TODO: It would be good to allow a custom palette to be specified for the splash screen, probably as a comma-separated list of colour numbers in physical colour order.
     parser.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
     parser.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
     parser.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
@@ -1442,7 +1441,7 @@ def parse_args():
     parser.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     parser.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
     parser.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
-    parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODO: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
+    parser.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODONOW: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
     parser.add_argument("--no-history", action="store_true", help="disable command history")
     parser.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
     parser.add_argument("--history-upper-case", action="store_true", help="show command history in upper case")
@@ -1464,7 +1463,7 @@ def parse_args():
     group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
     group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
     group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
-    # SFTODO: We probably want some sort of force-medium-dynmem and/or disable-medium-dynmem etc options now, but I'm not rushing into this until it becomes clearer which models are sometimes desirable/undesirable and which the automatic selection can't get right in all cases.
+    # SFTODONOW: We probably want some sort of force-medium-dynmem and/or disable-medium-dynmem etc options now, but I'm not rushing into this until it becomes clearer which models are sometimes desirable/undesirable and which the automatic selection can't get right in all cases.
     group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
     group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
@@ -1955,9 +1954,9 @@ while True:
                 die("Game is too large for a double-sided disc")
 show_deferred_output()
 
-# SFTODO: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
+# SFTODONOW: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
 
-# SFTODO: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy.
+# SFTODONOW: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy.
 
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 

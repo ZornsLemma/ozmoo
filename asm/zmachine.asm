@@ -354,7 +354,7 @@ dumptovice
 .short_0op
 	lda #z_opcode_opcount_0op 
 	sta z_opcode_opcount
-!ifndef ACORN_SWR { ; SFTODO: Might be worth investigating this, upstream doesn't need it, am I doing something wrong? Can I tweak code ordering to avoid needing this? Thought it only wastes a byte, it has no performance impact.
+!ifndef ACORN_SWR { ; SFTODONOW: Might be worth investigating this, upstream doesn't need it, am I doing something wrong? Can I tweak code ordering to avoid needing this? Thought it only wastes a byte, it has no performance impact.
 	beq .perform_instruction ; Always branch
 } else {
 	jmp .perform_instruction ; Always branch
@@ -546,7 +546,7 @@ read_operand
 }
 	inc z_operand_count
 	rts
-.nonexistent_local_SFTODO_HACK jmp .nonexistent_local
+.nonexistent_local_SFTODO_HACK jmp .nonexistent_local ; SFTODONOW
 
 .read_from_stack
 !ifdef SLOW {
@@ -566,7 +566,7 @@ read_operand
 ; SFTODO: IT'S POSSIBLE THAT THERE'S A SAVING TO BE HAD BY RECOGNISING AT RUNTIME OR BUILD TIME THAT ON A BIGDYN BUILD EVEN WITH A SCREEN HOLE, THE GLOBAL VARS MAY WELL LIVE BELOW $8000 AND CAN BE ACCESSED WITHOUT NEEDING TO PAGE IN DYNMEM SWR BANK.
 !ifndef COMPLEX_MEMORY {
 .read_global_var
-	; SFTODO: AS ELSEWHERE, WE COULD MOVE THE ASL FROM BOTH PATHS TO HERE AND NOT BOTHER WITH CMP #128
+	; SFTODONOW: AS ELSEWHERE, WE COULD MOVE THE ASL FROM BOTH PATHS TO HERE AND NOT BOTHER WITH CMP #128
 	cmp #128
 	bcs .read_high_global_var
 !ifdef SLOW {
@@ -612,9 +612,10 @@ read_operand
 } else {
     jmp .store_operand ; SFTODO: carry not guaranteed to be set, and it's (probably) too far for bcs anyway
 }
-.store_operand_SFTODO_HACK jmp .store_operand
+.store_operand_SFTODO_HACK jmp .store_operand ; SFTODONOW
 } ; end COMPLEX_MEMORY
 ; SFTODO: WHERE ARE Z_{HIGH,LOW}_GLOBAL_VARS_PTR SET WRT MY !COMPLEX_MEMORY POSSIBLE SCREEN HOLE HACK? - THESE ARE SET UP IN OZMOO.ASM ON STARTUP AND NEVER CHANGE, SO I SHOULD JUST BE ABLE TO DO ANY ONE-OFF ADJUSTMENT THERE AND NEVER WORRY ABOUT IT AGAIN - *EXCEPT* THAT THERE'S NO REASON THE GLOBAL VARS CAN'T END UP STRADDLING THE SCREEN HOLE, SO I NEED SOME WAY TO HANDLE THAT - PROBABLY NOT THE BEST WAY, BUT POSSIBLY THE BUILD SYSTEM (ALTHOUGH I WAS HOPING TO GET AWAY FROM A FIXED PAGE REQUIREMENT FOR B-NO-SHADOW) COULD DETECT IF THIS WILL HAPPEN AND BUILD WITH (PARTIAL; WE ONLY NEED IT FOR THE GLOBALS) COMPLEX_MEMORY IN THAT CASE - DON'T REALLY LIKE THAT THOUGH - IT MIGHT BE POSSIBLE/ACCEPTABLE TO ADJUST STORY_START AT RUNTIME (PERHAPS INDIRECTLY BY FUDGING THE CHOICE OF RELOCATION TARGET) TO ENSURE THE (I THINK) 512-32 BYTE GLOBAL VAR TABLE *DOESN'T* STRADDLE SCREEN RAM. THAT *MIGHT* BE ACCEPTABLE ON A B IN MODE 7, BUT IT'S NOT VIABLE ON AN ELECTRON IN MODE 6 (OR A B IN MODE 6, IF I SUPPORT THAT, AS I MIGHT WELL DO) - IT'S NOT GREAT EVEN ON A B IN MODE 7, AS IN THE WORST CASE WE COULD LOSE ~1K FROM THIS ADJUSTMENT
+; SFTODONOW: That comment looks scary, I suspect it's taken care of by my implementation decisions a while back but should review it carefully.
 
 !ifndef UNSAFE {
 .nonexistent_local
@@ -705,8 +706,8 @@ SFTODOQQ4
 }
 }
 
-.find_global_var_SFTODO_HACK jmp .find_global_var
-.nonexistent_local_SFTODO_HACK jmp .nonexistent_local
+.find_global_var_SFTODO_HACK jmp .find_global_var ; SFTODONOW
+.nonexistent_local_SFTODO_HACK jmp .nonexistent_local ; SFTODONOW
 z_get_variable_reference_and_value
 	; input: Variable in y
 	; output: Address is stored in (zp_temp), bank may be stored in zp_temp + 2
@@ -955,7 +956,7 @@ HANG	bcs HANG
 	sta (z_local_vars_ptr),y
 	rts
 .write_global_var
-	; SFTODO: NOT HUGE, BUT IF WE DID THE ASL NOW (WHICH OCCURS ON BOTH PATHS ANYWAY) WE COULD AVOID DOING THE CMP #128
+	; SFTODONOW: NOT HUGE, BUT IF WE DID THE ASL NOW (WHICH OCCURS ON BOTH PATHS ANYWAY) WE COULD AVOID DOING THE CMP #128
 	cmp #128
 	bcs .write_high_global_var
 	asl
@@ -1299,7 +1300,7 @@ z_ins_jg
 } else {
     ; Unfortunately the Electron's more verbose ROM paging code means
     ; make_branch_true is out of range of a branch instruction.
-	; SFTODO: CHECK THIS STILL TRUE IN FINAL-ISH 5.X PORT
+	; SFTODONOW: CHECK THIS STILL TRUE IN FINAL-ISH 5.X PORT
 +   bpl make_branch_false
     jmp make_branch_true
 }
