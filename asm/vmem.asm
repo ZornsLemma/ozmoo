@@ -1484,7 +1484,7 @@ convert_index_x_to_ram_bank_and_address
     ; We have at most 19K of spare shadow RAM, so 0 <= A < 19*4 < 128.
     ; clc - carry is already clear
 -   bcs - ; SFTODO TOTAL PARANOIA, DELETE LATER
-    adc #$30 ; SFTODONOW: MAGIC CONSTANT IN A COUPLE OF PLACES, USE SOMETHING LIKE shadow_start = $3000 IN CONSTANTS FOR ACORN_SHADOW_VMEM BUILD
+    adc #>shadow_start
     bit .in_shadow_ram_rts ; set V
 .in_shadow_ram_rts
     rts

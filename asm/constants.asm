@@ -415,6 +415,9 @@ swr_ramtop = $c000
 } else {
 flat_ramtop = $f800
 }
+!ifdef ACORN_SHADOW_VMEM {
+shadow_start = $3000
+}
 
 ; Acorn memory allocations
 ; SFTODO: It might be worth reordering/reallocating these so the order is a

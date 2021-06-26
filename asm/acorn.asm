@@ -943,7 +943,7 @@ prepare_for_initial_load
     ; game will fit in RAM - but due to the doubling of game_blocks we just did,
     ; it might be larger than RAM, causing us to read too much and corrupt
     ; things. TODO: If we simply passed in the game size as a build parameter
-    ; this sort of thing would go away.
+    ; this sort of thing would go away. SFTODONOW?
     lda #0
     sta game_blocks + 1
     lda #>(flat_ramtop - story_start)
@@ -1084,7 +1084,7 @@ SFTODOLM2
     ldx screen_mode
     lda screen_start_page_by_mode,x
     sec
-    sbc #$30 ; SFTODO MAGIC NUMBER USED IN COUPLE OF PLACES
+    sbc #>shadow_start
     clc
     adc ram_blocks
     sta ram_blocks
