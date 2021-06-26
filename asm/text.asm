@@ -988,8 +988,8 @@ find_word_in_dictionary
 	rts
 
 !ifdef Z5PLUS {
-.found_dict_entry_SFTODO_HACK jmp .found_dict_entry
-.no_entry_found_SFTODO_HACK jmp .no_entry_found
+.found_dict_entry_SFTODO_HACK jmp .found_dict_entry ; SFTODONOW
+.no_entry_found_SFTODO_HACK jmp .no_entry_found ; SFTODONOW
 .find_word_in_unordered_dictionary
 ; In the end, jump to either .found_dict_entry or .no_entry_found
 	ldx dict_entries
@@ -1136,14 +1136,15 @@ getchar_and_maybe_toggle_darkmode
     ; input.
     jsr osrdch
 }
-!ifdef USE_HISTORY { ; SFTODO: Experimental to make Escape reset split cursor mode
-    cmp #27 ; SFTODO: magic
+!ifdef USE_HISTORY {
+    ; Make the Escape key cancel split cursor mode.
+    cmp #vdu_escape
     bne .not_escape
     ; Turn the cursor off, which has the side effect of cancelling split cursor
     ; mode, then back on again.
     jsr turn_off_cursor
     jsr turn_on_cursor
-    lda #27
+    lda #vdu_escape
 .not_escape
 }
     jmp check_user_interface_controls
@@ -1574,7 +1575,7 @@ read_text
     ; do it properly, this would probably also mean we could implement history
     ; recall/editing using the cursor keys here without preventing the
     ; possibility of a game using the cursor keys for its own purposes, as the
-    ; game would probably read them using z_ins_read_char. SFTODO: UPDATE THIS COMMENT
+    ; game would probably read them using z_ins_read_char. SFTODONOW: UPDATE THIS COMMENT
 	cmp #32
 	bcs ++
 	jmp .readkey

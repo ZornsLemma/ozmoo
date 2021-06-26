@@ -357,6 +357,7 @@ vdu_disable = 21
 vdu_set_mode = 22
 vdu_miscellaneous = 23
 vdu_reset_text_window = 26
+vdu_escape = 27
 vdu_define_text_window = 28
 vdu_home = 30
 vdu_goto_xy = 31
