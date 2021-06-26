@@ -8,7 +8,7 @@ vmem_cache_page_index !fill cache_pages + 1, 0
 vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 }
-; SFTODO: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
+; SFTODONOW: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT.
 
 !ifndef ACORN {
 !ifdef TARGET_PLUS4 {
@@ -94,7 +94,7 @@ read_byte_at_z_address
 	+after_dynmem_read_corrupt_y
 	rts
 .read_new_byte
-!ifndef TARGET_PLUS4 { ; SFTODO: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANGE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
+!ifndef TARGET_PLUS4 { ; SFTODONOW: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANGE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
 	sty mempointer_y
 }
 	txa
@@ -102,7 +102,7 @@ read_byte_at_z_address
 	clc
 	adc #>story_start
 	sta mempointer + 1
-!ifdef ACORN { ; SFTODO: IDEALLY WE MIGHT "RENAME" THE TARGET_PLUS4 BELOW (AND IN OTHER PLACES?) TO NO_BANKED_MEMORY OR SIMILAR AND USE THAT RATHER THAN NEEDING TO SPECIAL-CASE ACORN
+!ifdef ACORN { ; SFTODONOW: IDEALLY WE MIGHT "RENAME" THE TARGET_PLUS4 BELOW (AND IN OTHER PLACES?) TO NO_BANKED_MEMORY OR SIMILAR AND USE THAT RATHER THAN NEEDING TO SPECIAL-CASE ACORN
 	bne .return_result ; Always branch
 } else {
 !ifdef TARGET_PLUS4 {
@@ -177,6 +177,7 @@ read_byte_at_z_address
 ; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
 ; too large. Not necessarily a problem, but think about it - will there be a
 ; problem? Are we wasting (a few bytes only) of RAM for no good reason?
+; SFTODONOW: Can/should I take advantage of knowing the game size at build time?
 vmem_blocksize = 512
 vmem_indiv_block_mask = >(vmem_blocksize - 1)
 vmem_block_pagecount = vmem_blocksize / 256
@@ -231,7 +232,7 @@ vmap_first_ram_page		!byte 0
 } else {
 ; SFTODODATA 8-ish
 !ifndef ACORN_SWR {
-; SFTODO: I believe this is constant on Acorn and except for conditional compilation
+; SFTODONOW: I believe this is constant on Acorn and except for conditional compilation
 ; pain we could just replace its uses with an immediate constant. Not sure if it's
 ; worth it for performance, but using a macro to encapsulate the Acorn/Commodore
 ; difference would be not too bad.
@@ -791,7 +792,7 @@ SFTODOBOOM
     ; the cost of checking the high bit of mempointer. Playing around with the
     ; benchmark and HHGTTG, >70% of executions of this code are accessing main
     ; RAM, so it's a win to pay 5 cycles for the test in order to save 20 cycles
-    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.) SFTODO: COMMENT IS OUTDATED NOW WE HAVE MEDIUM MODEL - THE POINT IS POSSIBLY STILL VALID, BUT WOULD BE GOOD TO PROFILE IT
+    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.) SFTODONOW: COMMENT IS OUTDATED NOW WE HAVE MEDIUM MODEL - THE POINT IS POSSIBLY STILL VALID, BUT WOULD BE GOOD TO PROFILE IT
     lda mempointer + 1
     bmi .not_main_ram
     lda (mempointer),y
@@ -826,7 +827,7 @@ SFTODOBOOM
 }
 
 	rts
-    ; SFTODO: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND DEFAULT_BANK_USING_Y
+    ; SFTODONOW: TAKE A LOOK AT ZP USE FOR MEMPOINTER_RAM_BANK AND DEFAULT_BANK_USING_Y
 .read_new_byte
 	sta zp_pc_h
 	stx zp_pc_l
@@ -889,7 +890,7 @@ SFTODOLL8
 	ror
 	sta vmem_temp
 	; Check quick index first
-    ; SFTODO: Would it be worth asserting/ensuring the following loop doesn't incur a page-crossing penalty?
+    ; SFTODONOW: Would it be worth asserting/ensuring the following loop doesn't incur a page-crossing penalty?
 	ldx #vmap_quick_index_length - 1
 -	ldy vmap_quick_index,x
 	cmp vmap_z_l,y ; zmachine mem offset ($0 -
@@ -921,7 +922,7 @@ SFTODOLL8
 	beq +
 .check_next_block
 	dex
-	bne - ; SFTODO: Just might be worth asserting this branch doesn't suffer page-crossing penalty (or perhaps just silently inserting some padding after the "jmp .index_found" above if necessary to ensure it's not - but do some timings first to see how much difference it really makes)
+	bne - ; SFTODONOW: Just might be worth asserting this branch doesn't suffer page-crossing penalty (or perhaps just silently inserting some padding after the "jmp .index_found" above if necessary to ensure it's not - but do some timings first to see how much difference it really makes)
 	beq .no_such_block ; Always branch
 	; is the highbyte correct?
 +
@@ -985,7 +986,7 @@ SFTODOLL8
 	bne .block_chosen ; Always branch
 }
 
-; SFTODO: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised. - I believe on Acorn the bcc can only occur when we're in PREOPT mode
+; SFTODONOW: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised. - I believe on Acorn the bcc can only occur when we're in PREOPT mode
 .not_initial_reu_loading
 	ldx vmap_used_entries
 	cpx vmap_max_entries
@@ -1383,6 +1384,7 @@ SFTODOLL8
     ; I'm not 100% confident right now. It's only a byte saved so it might be as
     ; well just to change it to a jmp but let's go with it for now and put this
     ; guard code in and see if it ever triggers.
+    ; SFTODONOW: The "always true" seems to have disappeared, is the upstream code now allowing for the possibility that bne won't be taken? Need to check. It may be we need to do something special on Acorn, think about this.
 -   jmp -
 .block_directly_accessible
 }
@@ -1467,7 +1469,7 @@ convert_index_x_to_ram_bank_and_address
     ; Carry is set
     adc #(>flat_ramtop)-1
 !ifdef ACORN_SCREEN_HOLE {
-    sec ; SFTODO: can we in fact rely on carry having a known state here and avoid this?
+    sec ; SFTODONOW: can we in fact rely on carry having a known state here and avoid this?
     sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
 }
 !ifdef ACORN_SHADOW_VMEM {
@@ -1482,7 +1484,7 @@ convert_index_x_to_ram_bank_and_address
     ; We have at most 19K of spare shadow RAM, so 0 <= A < 19*4 < 128.
     ; clc - carry is already clear
 -   bcs - ; SFTODO TOTAL PARANOIA, DELETE LATER
-    adc #$30 ; SFTODO: MAGIC CONSTANT IN A COUPLE OF PLACES, USE SOMETHING LIKE shadow_start = $3000 IN CONSTANTS FOR ACORN_SHADOW_VMEM BUILD
+    adc #$30 ; SFTODONOW: MAGIC CONSTANT IN A COUPLE OF PLACES, USE SOMETHING LIKE shadow_start = $3000 IN CONSTANTS FOR ACORN_SHADOW_VMEM BUILD
     bit .in_shadow_ram_rts ; set V
 .in_shadow_ram_rts
     rts
@@ -1503,6 +1505,4 @@ vmap_z_h
 }
 }
 
-; SFTODO: WHEN I COME TO TRY TO SUPPORT THE UP-TO-19K FREE IN THE SHADOW BANK, IT MAY BE POSSIBLE TO SUPPORT THIS ON THE B+ BY USING OSRDSC. (We could in principle put copy code in the special RAM at $Axxx or wherever, but since it needs to be able to copy to/from arbitrary SWR banks I don't think that's very practical. We could potentially copy like that via a bounce buffer in main RAM, but it's an extra copy - it would depend how slow OSWRSC/OSRDSC are/if they can do what we need.)
-
-; SFTODO: Could/should we identify any free memory in the "private 12K" on a Master and use it as vmem cache? I suspect we'd need to treat it a bit like shadow RAM and copy it to/from main memory, but maybe not. This might be a bit too hacky anyway, but worth a thought. Definitely something to do only after adding use of spare shadow RAM.
+; SFTODO: Could/should we identify any free memory in the "private 12K" on a Master and use it as vmem cache? (I'm mainly thinking of RAM which *could* have been claimed by sideways ROMs but hasn't been.) I suspect we'd need to treat it a bit like shadow RAM and copy it to/from main memory, but maybe not. This might be a bit too hacky anyway, but worth a thought.
