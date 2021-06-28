@@ -362,9 +362,9 @@ lda_dynmem_ind_y_slow_x_sub
     lda (screen_hole_zp_ptr),y
     rts
 .zp_y_ok
-    stx .SFTODO344LDA_ZP_IND_Y+1 ; SFTODONOW: Fix label name
+    stx .lda_zp_ind_y + 1
     ldx screen_hole_tmp
-.SFTODO344LDA_ZP_IND_Y
+.lda_zp_ind_y
     lda ($00),y ; patched at runtime
     rts
 }
