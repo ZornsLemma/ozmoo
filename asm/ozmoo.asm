@@ -91,7 +91,7 @@
 	VMEM_END_PAGE = $00 ; Last page of accessible RAM for VMEM, plus 1.
 }
 
-; SFTODO: Not here specifically, but if I end up using the cache functionality on some Acorn ports, this seems to imply it is page-based not 512-byte-block-based; I may have the wrong end of the stick. SFTODONOW - I THINK THIS IS ALL FINE, IT IS PAGE  BASED AND I TAKE ADVANTAGE OF THAT, JUST DOUBLE CHECK THEN DELETE THIS
+!ifndef ACORN {
 !ifdef TARGET_PLUS4 {
 	cache_pages = 0
 } else {
@@ -100,6 +100,7 @@
 	} else {
 		cache_pages = 4 ; Note, this is not final. One page may be added. vmem_cache_count will hold final # of pages.
 	}
+}
 }
 }
 
@@ -805,10 +806,10 @@ game_id		!byte 0,0,0,0
 !ifdef ACORN_RELOCATABLE {
 initialize
 }
-; SFTODONOW: CAN WE GET RID OF CLD/CLI FOR ACORN?
+!ifndef ACORN {
 	cld
 	cli
-!ifdef ACORN {
+} else {
     ; Reset the stack pointer; setjmp relies on this.
     ldx #$ff
     txs
@@ -900,7 +901,9 @@ initialize
 	sta $d012
 ++
 }
-	cli ; SFTODONOW: WE DON'T NEED THIS ON ACORN
+!ifndef ACORN {
+	cli
+}
 
 
 	jsr z_execute

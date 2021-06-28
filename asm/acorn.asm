@@ -780,9 +780,9 @@ deletable_init_start
     jsr osbyte
     sty vmem_cache_start_mem
     lda #>program_start
-    cmp #$30 ; SFTODO MAGIC CONSTANT
+    cmp #>shadow_start
     bcc +
-    lda #$30 ; SFTODO MAGIC CONSTANT
+    lda #>shadow_start
 +   sec
     sbc vmem_cache_start_mem
     ; We mustn't have just one page; the loader won't deliberately bring this
