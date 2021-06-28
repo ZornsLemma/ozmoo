@@ -369,7 +369,7 @@ lda_dynmem_ind_y_slow_x_sub
     rts
 }
 
-!macro SFTODORENAMEME zp { ; SFTODONOW: rename
+!macro lda_dynmem_ind_y_slow_helper zp {
     stx screen_hole_tmp
     ldx #zp
     !if zp = 0 {
@@ -380,19 +380,19 @@ lda_dynmem_ind_y_slow_x_sub
 }
 
 lda_dynmem_ind_y_slow_zp_mempos_sub
-	+SFTODORENAMEME zp_mempos
+	+lda_dynmem_ind_y_slow_helper zp_mempos
 
 lda_dynmem_ind_y_slow_string_array_sub
-	+SFTODORENAMEME string_array
+	+lda_dynmem_ind_y_slow_helper string_array
 
 lda_dynmem_ind_y_slow_parse_array_sub
-	+SFTODORENAMEME parse_array
+	+lda_dynmem_ind_y_slow_helper parse_array
 
 lda_dynmem_ind_y_slow_default_properties_ptr_sub
-	+SFTODORENAMEME default_properties_ptr
+	+lda_dynmem_ind_y_slow_helper default_properties_ptr
 
 lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+SFTODORENAMEME z_low_global_vars_ptr
+	+lda_dynmem_ind_y_slow_helper z_low_global_vars_ptr
 
 !zone {
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
