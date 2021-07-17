@@ -1191,18 +1191,21 @@ SFTODOEE2
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_TURBO_SUPPORTED {
-    ; SFTODONOW: REVIEW THIS FRESH
+    ; SFTODONOW: REVIEW THIS FRESH - I have done and it seems OK *if* the "see below for why we subtract" is true/valid/sensible - the localised reasoning and logic here seems fine
     ; On a turbo second processor, we can increase nonstored_pages to promote
     ; some additional data into dynamic memory and make full use of bank 0. We
     ; don't need to keep any of bank 0 free for virtual memory cache because we
-    ; have banks 1 and 2 for that. So we set nonstored_pages = min(game_blocks
-    ; - vmem_block_pagecount, available blocks in bank 0); see below for why we
-    ; subtract vmem_block_pagecount. This subtraction can't cause
-    ; nonstored_pages < ACORN_INITIAL_NONSTORED_PAGES because the build system
-    ; guarantees the game has at least one block of non-dynamic memory. The
-    ; subtraction is otherwise harmless; it just means that for small games one
-    ; 512-byte block of RAM will have to be accessed via the slower virtual
-    ; memory code when it could maybe have been promoted to be dynamic memory.
+    ; have banks 1 and 2 for that. So we set:
+    ;   nonstored_pages = min(game_blocks - vmem_block_pagecount,
+    ;                         available blocks in bank 0)
+    ; See below for why we subtract vmem_block_pagecount, but note that:
+    ; - This subtraction can't cause nonstored_pages <
+    ;   ACORN_INITIAL_NONSTORED_PAGES because the build system
+    ;   guarantees the game has at least one block of non-dynamic memory.
+    ; - This subtraction is otherwise harmless; it just means that for small
+    ;   games one 512-byte block of RAM will have to be accessed via the slower
+    ;   virtual memory code when it could maybe have been promoted to be dynamic
+    ;   memory.
     ;
     ; This adjustment will make it faster to access the part of the game which
     ; has been promoted into dynamic memory, so we do it even if this is a small
@@ -1218,10 +1221,10 @@ SFTODOLABEL1
     sbc #0
     bne .available_blocks_is_smaller
     cpx #>(flat_ramtop - story_start)
-    bcc game_blocks_is_smaller
+    bcc .game_blocks_is_smaller
 .available_blocks_is_smaller
     ldx #>(flat_ramtop - story_start)
-game_blocks_is_smaller
+.game_blocks_is_smaller
     stx nonstored_pages
 .no_turbo_dynmem_adjust
 }
@@ -1287,10 +1290,10 @@ game_blocks_is_smaller
     sbc #0
     bne .max_dynmem_is_smaller
     cpx .max_dynmem
-    bcc game_blocks_is_smaller
+    bcc .game_blocks_is_smaller
 .max_dynmem_is_smaller
     ldx .max_dynmem
-game_blocks_is_smaller
+.game_blocks_is_smaller
     bne .dynmem_adjust_done ; Always branch
 
 game_blocks_ne_ram_blocks
