@@ -1016,7 +1016,7 @@ SFTODOXX89
     ldx ram_bank_count
     ldy ram_bank_list - 1,x
     bmi .b_plus_private_ram
-    cpy #64
+    cpy #64 ; SFTODO MAGIC NUMBER
     bcc .not_private_ram
     ; This is the Integra-B private 12K.
     pha
@@ -1245,8 +1245,10 @@ SFTODOLABEL1
     ; machines but on this one we have PAGE=&E00 and dynamic memory fits in
     ; main RAM, for example.) We might also have a short sideways RAM bank;
     ; if it's the Integra-B private 12K we mustn't promote dynmem into it as
-    ; it's not contiguous, but we can do so with the B+ private 12k.
-    ; SFTODONOW: Review/test this code when fresh!
+    ; it's not contiguous, but we can do so with the B+ private 12k. Note that
+    ; because we don't allow the Integra-B private 12K to be used as the only
+    ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem
+    ; to 0.
     lda #>flat_ramtop
     ldy ram_bank_count
     beq .upper_bound_in_a
@@ -1275,8 +1277,9 @@ SFTODOLABEL1
     ; If game_blocks == ram_blocks, we want to set nonstored_pages as high as
     ; possible; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
-    ; faster dynamic memory code path. Set nonstored_pages = min(game_blocks -
-    ; vmem_block_pagecount, .max_dynmem).
+    ; faster dynamic memory code path. Set:
+    ;    nonstored_pages = min(game_blocks - vmem_block_pagecount,
+    ;                          .max_dynmem)
     ldy ram_blocks + 1
     lda ram_blocks
     cpy game_blocks + 1
@@ -1295,6 +1298,7 @@ SFTODOLABEL1
     ldx .max_dynmem
 .game_blocks_is_smaller
     bne .dynmem_adjust_done ; Always branch
+    ; SFTODONOW MIGHT BE A GOOD IDEA TO ADD A HANG OR ERROR HERE JUST IN CASE?
 
 game_blocks_ne_ram_blocks
     ; Note that we can't have game_blocks < ram_blocks because we reduced
@@ -1302,9 +1306,10 @@ game_blocks_ne_ram_blocks
     ; to reduce flexibility by locking parts of the game into RAM instead of
     ; allowing the virtual memory system to choose what lives in RAM. It's only
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
-    ; RAM into play. Set nonstored_pages =
-    ; max(min(ram_blocks - vmap_max_size * vmem_block_pagecount, .max_dynmem),
-    ;     ACORN_INITIAL_NONSTORED_PAGES)
+    ; RAM into play. Set:
+    ;   nonstored_pages = max(min(ram_blocks - vmap_max_size * vmem_block_pagecount,
+    ;                             .max_dynmem),
+    ;                         ACORN_INITIAL_NONSTORED_PAGES)
 .min_lhs_sub = vmap_max_size * vmem_block_pagecount
     sec
     sbc #<.min_lhs_sub
@@ -1329,6 +1334,7 @@ game_blocks_ne_ram_blocks
 }
 }
 
+;SFTODONOW - UP TO HERE WITH REVIEW
     ; Set ram_blocks -= nonstored_pages, i.e. set ram_blocks to the number of
     ; RAM blocks we have available as virtual memory cache.
     lda ram_blocks
