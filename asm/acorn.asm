@@ -1345,12 +1345,15 @@ game_blocks_ne_ram_blocks
     dec ram_blocks + 1
 +
     ; SFTODONOW: REVIEW ALL THE FOLLOWING FRESH, ESP "NEW" SWR CASE
+    ; SFTODONOW: OK, I ALREADY STARTED SAYING THIS, CHANGED MY MIND BUT NOW I'M THINKING AGAIN - DON'T WE IN FACT NEED ram_blocks >= 2 * vmem_block_pagecount? YES, 1* IS ENOUGH O GUARANTEE VMAP_MAX_ENTRIES >=1, BUT IF WE DON'T ENFORCE 2*, IS THERE A RISK WE END UP DEADLOCKED/CRASHING BECAUSE WE HAVE OUR SOLE VMEM BLOCK OCCUPIED BY (SAY) ZPC AND THE DATA PTR THEREFORE CAN'T SWAP THE NEEDED BLOCK IN?
     ; It's important ram_blocks >= vmem_block_pagecount now so that we will set
     ; vmap_max_entries >= 1 below. Conceptually it makes sense for
     ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
+    ; SFTODONOW: SHOULD I ADD "ASSERT" CODE TO VERIFY THE VALUE IS NON-ZERO? THIS IS DISCARDABLE INIT CODE SO WE CAN AFFORD IT AND IT MIGHT SAVE HAIR-PULLING LATER
     ;
     ; The build system and loader work together to guarantee (initial)
     ; ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + 2 * vmem_block_pagecount.
+    ;
     ; If nonstored_pages has not been adjusted, there are two cases:
     ; a) If we didn't set ram_blocks = game_blocks above, the build system and
     ;    loader guarantee means we now have ram_blocks >= 2 *
