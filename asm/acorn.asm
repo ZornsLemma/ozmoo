@@ -398,7 +398,7 @@ lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
     stx screen_hole_tmp_slow
     ldx #object_tree_ptr
-SFTODO3X1 ; SFTODONOW: rename
+sta_dynmem_ind_y_slow_x_sub ; SFTODONOW: rename
     sta screen_hole_tmp
     lda $01,x
     cmp acorn_screen_hole_start_page_minus_one
@@ -430,30 +430,30 @@ SFTODO3X1 ; SFTODONOW: rename
     rts
 }
 
-!macro SFTODOALSORENAMEME zp { ; SFTODONOW: rename
+!macro sta_dynmem_ind_y_slow_setup_x zp {
     stx screen_hole_tmp_slow
     ldx #zp
     !if zp = 0 {
-        beq SFTODO3X1 ; always branch ; SFTODONOW: rename
+        beq sta_dynmem_ind_y_slow_x_sub ; always branch
     } else {
-        bne SFTODO3X1 ; always branch
+        bne sta_dynmem_ind_y_slow_x_sub ; always branch
     }
 }
 
 sta_dynmem_ind_y_slow_zp_mempos_sub
-	+SFTODOALSORENAMEME zp_mempos
+	+sta_dynmem_ind_y_slow_setup_x zp_mempos
 
 sta_dynmem_ind_y_slow_string_array_sub
-	+SFTODOALSORENAMEME string_array
+	+sta_dynmem_ind_y_slow_setup_x string_array
 
 sta_dynmem_ind_y_slow_parse_array_sub
-	+SFTODOALSORENAMEME parse_array
+	+sta_dynmem_ind_y_slow_setup_x parse_array
 
 sta_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
-	+SFTODOALSORENAMEME z_low_global_vars_ptr
+	+sta_dynmem_ind_y_slow_setup_x z_low_global_vars_ptr
 
 sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
-	+SFTODOALSORENAMEME z_high_global_vars_ptr
+	+sta_dynmem_ind_y_slow_setup_x z_high_global_vars_ptr
 
 } else { ; !ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
