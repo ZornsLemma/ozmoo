@@ -422,10 +422,10 @@ sta_dynmem_ind_y_slow_x_sub ; SFTODONOW: rename
     sta (screen_hole_zp_ptr),y
     rts
 .zp_y_ok
-    stx .SFTODO344STA_ZP_IND_Y + 1 ; SFTODONOW: rename
+    stx .sta_zp_ind_y_instruction_to_patch + 1
     ldx screen_hole_tmp_slow
     lda screen_hole_tmp
-.SFTODO344STA_ZP_IND_Y
+.sta_zp_ind_y_instruction_to_patch
     sta ($00),y ; patched at runtime
     rts
 }
