@@ -398,7 +398,7 @@ lda_dynmem_ind_y_slow_z_low_global_vars_ptr_sub
 sta_dynmem_ind_y_slow_object_tree_ptr_sub
     stx screen_hole_tmp_slow
     ldx #object_tree_ptr
-sta_dynmem_ind_y_slow_x_sub ; SFTODONOW: rename
+sta_dynmem_ind_y_slow_x_sub
     sta screen_hole_tmp
     lda $01,x
     cmp acorn_screen_hole_start_page_minus_one
