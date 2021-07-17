@@ -753,6 +753,7 @@ deletable_init_start
 }
 
 !ifdef ACORN_SHADOW_VMEM {
+    ; SFTODONOW: Do we need to special case mode 0 here? Won't it "just work" that we set vmem_cache_count_mem to 0 in this case?
     ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have
     ; for holding data copied out of shadow RAM. If we set this to 0, it will
     ; effectively disable the use of shadow RAM as virtual memory cache. The
