@@ -940,8 +940,8 @@ prepare_for_initial_load
     asl game_blocks
     rol game_blocks + 1
 !ifndef VMEM {
-    ; If we don't have virtual memory, the logic below to cap game_blocks at
-    ; ram_blocks won't kick in. Since we don't have virtual memory, we know the
+    ; If we don't have virtual memory, the logic below to cap ram_blocks at
+    ; game_blocks won't kick in. Since we don't have virtual memory, we know the
     ; game will fit in RAM - but due to the doubling of game_blocks we just did,
     ; it might be larger than RAM, causing us to read too much and corrupt
     ; things. TODO: If we simply passed in the game size as a build parameter
@@ -1116,6 +1116,7 @@ SFTODOLM2
     bit is_turbo
     bmi .host_cache_initialised
 }
+    ; Note that ram_blocks is 0 at this point.
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
@@ -1140,7 +1141,7 @@ SFTODOLABELX1
     ; deletable init code so it doesn't really cost anything b) if we don't,
     ; the relocation code fails because we have a variation which doesn't follow
     ; the simple fixed relationship we expect.
-    lda #(>flat_ramtop)
+    lda #>flat_ramtop
     sec
     sbc #>data_start
 !ifdef ACORN_SCREEN_HOLE {
