@@ -911,6 +911,7 @@ prepare_for_initial_load
     sta readblocks_base
 }
     ; Determine the length of the DATA file in blocks.
+    ; SFTODONOW: We could just hard-code this, as we know at assembly time.
     ldy #6
     lda (dir_ptr),y
     and #%00110000
