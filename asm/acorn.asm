@@ -1408,7 +1408,7 @@ game_blocks_ne_ram_blocks
 
 SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more
+; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more - OK, rethink this later, but I suspect this is right - the vmap contains entries for pages which are going to be dynamic memory if we use ACORN_INITIAL_NONSTORED_PAGES. If we've grown dynmem, some of the entries in the vmap may be discarded (since they've been promoted to dynmem - this isn't guaranteed, if we used PREOPT) and therefore in order to be left with vmap_max_entries valid entries we need to sort the entire table
     ; If we've adjusted nonstored_pages, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
     ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
