@@ -1406,7 +1406,6 @@ game_blocks_ne_ram_blocks
 .cap_at_vmap_max_size
     stx vmap_max_entries
 
-;SFTODONOW - UP TO HERE WITH REVIEW
 SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 ; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more
@@ -1677,6 +1676,13 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
 ; acorn_deletable_init_start. (The distinction is not that important on Acorn
 ; as the Ozmoo executable itself doesn't generate a splash screen.)
 !macro acorn_deletable_init_inline {
+    ; SFTODO: It's a bit confusing to have this macro and the other one which
+    ; contains prepare_for_initial_load; if it doesn't make things too extra-
+    ; confusingly different from the Commodore code, could this be simplified?
+    ; SFTODONOW: Doing this might also make it feasible for this rather long
+    ; discardable-ish init code to be put in a .asm file *not* in a macro,
+    ; which would (given the lack of detail for acme macro expansions in report
+    ; output) improve debuggability.
     jsr prepare_for_initial_load
     ; Load the nonstored blocks, or all the blocks if we're not using virtual
     ; memory. We don't need to worry about reading past the end of the game data
@@ -1822,6 +1828,7 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     cpx vmap_sort_entries
     bne .outer_loop
 
+;SFTODONOW - UP TO HERE WITH REVIEW
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; The initial vmap created by the build system assumes nonstored_pages ==
     ; ACORN_INITIAL_NONSTORED_PAGES, so if we changed nonstored_pages earlier
