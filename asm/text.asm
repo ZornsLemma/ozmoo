@@ -1003,11 +1003,7 @@ find_word_in_dictionary
 	ldy #0
 .unordered_loop_check_entry
 	jsr read_next_byte
-!ifdef Z4PLUS { ; SFTODO: Redundant, as inside a Z5PLUS block?
-	cmp zword,y
-} else {
-	cmp zword + 2,y
-}
+	cmp zword,y ; Correct for z4+, and this code is only built for z5+
 	bne .unordered_not_a_match
 	iny
 	cpy #ZCHAR_BYTES_PER_ENTRY
