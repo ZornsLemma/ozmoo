@@ -1384,7 +1384,7 @@ SFTODOLL8
     ; I'm not 100% confident right now. It's only a byte saved so it might be as
     ; well just to change it to a jmp but let's go with it for now and put this
     ; guard code in and see if it ever triggers.
-    ; SFTODONOW: The "always true" seems to have disappeared, is the upstream code now allowing for the possibility that bne won't be taken? Need to check. It may be we need to do something special on Acorn, think about this.
+    ; SFTODONOW: The "always true" seems to have disappeared, is the upstream code now allowing for the possibility that bne won't be taken? Need to check. It may be we need to do something special on Acorn, think about this. - OK, still thinking about this, but upstream code *does* still have the 'always true' comment on the branch
 -   jmp -
 .block_directly_accessible
 }
