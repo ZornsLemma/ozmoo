@@ -955,7 +955,7 @@ SFTODOLL8
     ; SF: If vmap_z_h,x == vmem_oldest_age, consider this index if we haven't
     ; yet found one. (This is mostly unnecessary, but VMEM_STRESS can easily
     ; trigger this, and I believe it could in principle happen with more vmap
-    ; entries, although of course the more you have the less likely it becomes.
+    ; entries, although of course the more you have the less likely it becomes.)
     ; SFTODO: It might be worth mentioning this to upstream if it works out OK
     ; here, although the Acorn port is more at risk, because there are
     ; situations like a small game running on a B-no-SWR where we might end up
