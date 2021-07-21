@@ -27,6 +27,23 @@
 ; the next time it matters (when we try to print something via OSWRCH, or when
 ; the OS cursor becomes visible to the user).
 
+!ifdef MODE_7_STATUS {
+    MODE_7_STATUS_OR_INPUT = 1
+} else {
+    !ifdef MODE_7_INPUT {
+        MODE_7_STATUS_OR_INPUT = 1
+    }
+}
+!ifdef Z3 {
+    !ifdef MODE_7_STATUS_OR_INPUT {
+        WANT_PRINTCHAR_UNFILTERED = 1
+    }
+} else {
+    !ifdef MODE_7_INPUT {
+        WANT_PRINTCHAR_UNFILTERED = 1
+    }
+}
+
 !zone screenkernal {
 
 ; The Commodore 64 and one Acorn build have a fixed screen size while other
@@ -748,7 +765,8 @@ s_printchar_and_handle_mode_7_colour_prompt_new_line
 	bne .rts
     lda input_colour_code_or_0
 	; fall through to s_printchar_unfiltered
-; SFTODONOW: Experimental - this might also be useful for mode 7 status line
+} ; MODE_7_INPUT
+!ifdef WANT_PRINTCHAR_UNFILTERED {
 s_printchar_unfiltered
 	stx s_stored_x
 	sty s_stored_y
@@ -1992,13 +2010,6 @@ check_user_interface_controls
     cmp #8
     bne +
     lda #0
-!ifdef MODE_7_STATUS {
-    MODE_7_STATUS_OR_INPUT = 1
-} else {
-    !ifdef MODE_7_INPUT {
-        MODE_7_STATUS_OR_INPUT = 1
-    }
-}
 !ifdef MODE_7_STATUS_OR_INPUT {
     ldy screen_mode
     cpy #7

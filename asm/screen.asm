@@ -879,30 +879,9 @@ draw_status_line
     lda screen_mode
     cmp #7
     bne +
-    ; SF: This used to output the colour code via s_printchar, but a recent
-    ; change (to stop Beyond Zork - probably any other game using function keys
-    ; as terminating characters as well - printing the function key codes)
-    ; stopped that working. I can't help thinking the right fix would be to not
-    ; send these valid-for-input-only codes to s_printchar at the end of
-    ; .char_is_ok when they occur as terminating characters and then allow
-    ; s_printchar to print these colour codes, but I may be missing something
-    ; and I don't want to risk causing subtle breakage. As a not-too-bad
-    ; workaround, output using oswrch instead.
-    ; SFTODO: It's just possible - need to check - that in 5.3 s_printchar
-    ; doesn't exhibit this behaviour and I can revert to outputting the colour
-    ; code via s_printchar. (*If* this is the case, may want to re-enable
-	; hardware scrolling in mode 7; I disabled it as I believed this was the
-	; cause of the ugly status line colour loss during scrolling.)
-	; SFTODO: Note that I now have an s_printchar_unfiltered which may be
-	; useful here.
-    lda #vdu_home
-    sta s_cursors_inconsistent
-    jsr oswrch
-    clc
     lda fg_colour
-    adc #mode_7_text_colour_base
-    jsr oswrch
-    inc zp_screencolumn
+    adc #mode_7_text_colour_base - 1 ; -1 as carry will be set after the cmp (7>=7)
+    jsr s_printchar_unfiltered
 +
 }
 }
