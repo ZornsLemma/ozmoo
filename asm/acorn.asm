@@ -945,7 +945,9 @@ prepare_for_initial_load
     ; game will fit in RAM - but due to the doubling of game_blocks we just did,
     ; it might be larger than RAM, causing us to read too much and corrupt
     ; things. TODO: If we simply passed in the game size as a build parameter
-    ; this sort of thing would go away. SFTODONOW?
+    ; this sort of thing would go away. SFTODONOW? Also worth nothing that we *already*
+    ; use the game size to set vmap_max_size at assembly time, so we're
+    ; already using this information.
     lda #0
     sta game_blocks + 1
     lda #>(flat_ramtop - story_start)
@@ -1925,7 +1927,6 @@ SFTODOLABEL2
 .normal_tube_load
 }
 
-;SFTODONOW - UP TO HERE WITH REVIEW
 !ifdef ACORN_TUBE_CACHE {
 ; SFTODO: These labels should probably start with a "."
 inflated_vmap_max_entries = zp_temp
@@ -2013,6 +2014,11 @@ SFTODOLABELX3
     jsr load_blocks_from_index
     ldy to_index
     lda vmap_z_h,y
+    ; SFTODO: We could maybe just do this and # *anyway* - it offers a negligible
+    ; time saving and no code saving, since we do it below anyway for the timestamp
+    ; hint, and the code would probably be clearer with it. (I suspect at one point
+    ; I didn't have the timestamp hint code in. Also worth nothing this is discardable
+    ; init code so we don't care too much about a couple of extra bytes.) SFTODONOW?
     ; and #$ff xor vmem_highbyte_mask ; not necessary as we're doing a >= test
     cmp #.cutover_timestamp + 1
     bcs .dont_put_in_cache
@@ -2206,7 +2212,7 @@ SFTODOLABEL4
 re_enter_language
     lda #osbyte_enter_language
 re_enter_language_ldx_imm
-    ldx #$ff
+    ldx #$ff ; patched by initialisation code
     jsr osbyte ; never returns
 }
 
@@ -2264,7 +2270,7 @@ error_print_following_string
     inc .error_print_following_string_lda + 2
 +
 .error_print_following_string_lda
-    lda $ffff
+    lda $ffff ; patched by code above
     beq +
     jsr .error_handler_print_char
     jmp -
@@ -2293,6 +2299,7 @@ error_print_osasci = 1
 ;   rts
 ; ok
 ;   ; do something that might cause an error
+;   ; no error occurred
 ;   jsr set_default_error_handler ; errors after this point aren't our problem
 setjmp
     stx .error_handler_newlines
@@ -2384,15 +2391,14 @@ set_default_error_handler
 ; C64 kernal_readtime emulation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    ; The Acorn OS time counter is a 5 byte value, whereas (ignoring the
-    ; difference in resolution) the Commodore one is 3 bytes. Because the Acorn
-    ; OS time counter may have an arbitrarily large value (perhaps some kind of
-    ; soft RTC solution) when we start up and we don't want to zero it, we read
-    ; the initial value and subtract that from any subsequent reads.
-    ; SFTODO: We could get away without this and save a few bytes of runtime
-    ; code, although it would mean you'd have to subtract the initial benchmark
-    ; time from the final one, and you'd not be able to use the initial
-    ; benchmark time as a measure of startup time.
+; The Acorn OS time counter is a 5 byte value, whereas (ignoring the difference
+; in resolution) the Commodore one is 3 bytes. Because the Acorn OS time counter
+; may have an arbitrarily large value (perhaps some kind of soft RTC solution)
+; when we start up and we don't want to zero it, we read the initial value and
+; subtract that from any subsequent reads. SFTODO: We could get away without
+; this and save a few bytes of runtime code, although it would mean you'd have
+; to subtract the initial benchmark time from the final one, and you'd not be
+; able to use the initial benchmark time as a measure of startup time.
 !macro init_readtime_inline {
     lda #osword_read_clock
     ldx #<initial_clock
