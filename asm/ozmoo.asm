@@ -908,7 +908,7 @@ initialize
 
 	jsr z_execute
 
-	; SFTODONOW: IT'S PROB CORRECT THERE'S *NO* ACORN CODE HERE, BUT A) TEST IT B) COMMENT WHY WE DON'T NEED ANY
+	; On Acorn we don't use z_exe_mode_exit, so z_execute can't return.
 !ifndef ACORN {
 !ifdef TARGET_PLUS4_OR_C128 {
 !ifdef TARGET_C128 {
@@ -927,7 +927,7 @@ initialize
 ;	+set_memory_normal
 	jmp (basic_reset)
 }
-}
+} ; Not ACORN
 
 
 ; SF: This is upstream code but moved so I can put it in a macro and inline it
