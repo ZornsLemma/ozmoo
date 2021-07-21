@@ -1828,7 +1828,6 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     cpx vmap_sort_entries
     bne .outer_loop
 
-;SFTODONOW - UP TO HERE WITH REVIEW
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; The initial vmap created by the build system assumes nonstored_pages ==
     ; ACORN_INITIAL_NONSTORED_PAGES, so if we changed nonstored_pages earlier
@@ -1926,6 +1925,7 @@ SFTODOLABEL2
 .normal_tube_load
 }
 
+;SFTODONOW - UP TO HERE WITH REVIEW
 !ifdef ACORN_TUBE_CACHE {
 ; SFTODO: These labels should probably start with a "."
 inflated_vmap_max_entries = zp_temp
