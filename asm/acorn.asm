@@ -1334,7 +1334,6 @@ game_blocks_ne_ram_blocks
 }
 }
 
-;SFTODONOW - UP TO HERE WITH REVIEW
     ; Set ram_blocks -= nonstored_pages, i.e. set ram_blocks to the number of
     ; RAM blocks we have available as virtual memory cache.
     lda ram_blocks
@@ -1407,8 +1406,10 @@ game_blocks_ne_ram_blocks
 .cap_at_vmap_max_size
     stx vmap_max_entries
 
+;SFTODONOW - UP TO HERE WITH REVIEW
 SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
+; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more
     ; If we've adjusted nonstored_pages, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
     ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
@@ -1433,6 +1434,9 @@ SFTODOLABEL5
 }
     stx vmap_sort_entries
 
+    ; SFTODONOW: Not just here - I wonder if I should aggresively factor some of this into
+    ; subroutines and/or actually indent nested !if blocks, yes that isn't the general Ozmoo
+    ; style, but this code is !ifdef-tastic.
 !ifdef ACORN_SWR {
     ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
@@ -1447,7 +1451,7 @@ SFTODOLABEL5
     adc acorn_screen_hole_pages
 }
     sec
-    sbc #(>flat_ramtop)
+    sbc #>flat_ramtop
     bcc .some_vmem_in_main_ram
     lsr
     sta vmem_blocks_stolen_in_first_bank
@@ -1503,6 +1507,9 @@ SFTODOTPP
 SFTODOXY7
     ; Now we know how much data we are going to load, we can calculate how many
     ; blocks correspond to each progress indicator position.
+    ; SFTODO: Since below we convert back to 512-byte blocks, it might make more
+    ; sense to stick with 512-byte blocks here and scale *nonstored_page* instead
+    ; of vmap_max_entries.
     lda #0
     sta .blocks_to_load + 1
     lda vmap_max_entries
@@ -1532,7 +1539,7 @@ progress_indicator_fractional_bits=7
 ; to just use a subroutine.
 ; SFTODO: It might be nice to use "half steps" to double the resolution of the
 ; progress bar; we'd just need to alternate between "print a half-width
-; character" and "print backspace-then-full-width-character".
+; character" and "print backspace-then-full-width-character". SFTODONOW?
 init_progress_indicator
 !ifdef VMEM {
 .blocks_to_load = scratch_blocks_to_load
@@ -1619,7 +1626,7 @@ SFTODOOOL
 
 !ifdef VMEM {
 initial_vmap_z_l
-    !FILL vmap_max_size, 'V'
+    !fill vmap_max_size, 'V'
 }
 
 !ifdef ACORN_SHADOW_VMEM {
