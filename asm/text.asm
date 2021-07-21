@@ -988,8 +988,6 @@ find_word_in_dictionary
 	rts
 
 !ifdef Z5PLUS {
-.found_dict_entry_SFTODO_HACK jmp .found_dict_entry ; SFTODONOW
-.no_entry_found_SFTODO_HACK jmp .no_entry_found ; SFTODONOW
 .find_word_in_unordered_dictionary
 ; In the end, jump to either .found_dict_entry or .no_entry_found
 	ldx dict_entries
@@ -1008,7 +1006,7 @@ find_word_in_dictionary
 	iny
 	cpy #ZCHAR_BYTES_PER_ENTRY
 	bne .unordered_loop_check_entry
-	beq .found_dict_entry_SFTODO_HACK ; Always branch
+	beq .found_dict_entry ; Always branch
 	
 	
 .unordered_not_a_match	
@@ -1030,7 +1028,7 @@ find_word_in_dictionary
 	sta .dictionary_address
 	bcc .unordered_check_next_word ; Always branch
 
-+	bcs .no_entry_found_SFTODO_HACK ; Always branch
++	bcs .no_entry_found ; Always branch
 } ; End of !ifdef Z5PLUS
 
 !ifndef ACORN {
@@ -1526,7 +1524,7 @@ read_text
 	; allow delete if anything in the buffer
 	ldy .read_text_column
 	cpy #2
-	bcc .readkey_SFTODO_HACK
+	bcc .readkey
 	dey
 	sty .read_text_column
 	dey ; the length of the text
@@ -1558,7 +1556,6 @@ read_text
 ;	sta (string_array),y
 }
 	jmp .readkey ; don't store in the array
-.readkey_SFTODO_HACK jmp .readkey
 +   ; disallow cursor keys etc
     ; SF: Note that this is part of read_text, used only by z_ins_read, and
     ; therefore we are reading a line of text here. Note that we are in the
@@ -2007,7 +2004,7 @@ tokenise_text
 	; skip initial space
 	cpy .textend
 	beq +
-	bcs .parsing_done_SFTODO_HACK
+	bcs .parsing_done
 +	+macro_string_array_read_byte
 ;	lda (string_array),y
 	cmp #$20
@@ -2033,7 +2030,6 @@ tokenise_text
 	bcs .word_found
 	iny
 	bne - ; Always branch
-.parsing_done_SFTODO_HACK jmp .parsing_done
 .terminator_found
 	cpy .wordstart
 	beq .word_found
@@ -2070,14 +2066,13 @@ tokenise_text
 	ldy .wordend
 	lda .numwords
 	cmp .maxwords
-	bne  .find_word_loop_SFTODO_HACK
+	bne  .find_word_loop
 .parsing_done
 	ldy #1
 	lda .numwords
 	+macro_parse_array_write_byte
 ;	sta (parse_array),y ; num of words
 	rts
-.find_word_loop_SFTODO_HACK jmp .find_word_loop
     ;SFTODODATA 7
 .maxwords   !byte 0 
 .numwords   !byte 0 
