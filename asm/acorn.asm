@@ -2463,7 +2463,7 @@ calculate_crc
 .nbyt
     lda .crc + 1
 .eor_abs
-    eor $ffff,y
+    eor $ffff,y ; patched by code above
     sta .crc + 1
     ldx #8
 .loop
