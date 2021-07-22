@@ -1485,13 +1485,17 @@ convert_index_x_to_ram_bank_and_address
     ; A contains a negative block offset from the top of main RAM (BBC sideways
     ; RAM version) or the bottom of screen RAM (Electron sideways RAM version).
     ; Multiply by two to get a page offset and add it to the base to get the
-    ; actual start.
+    ; actual start. SFTODO: I think that commented is outdated, the Electron is no
+    ; longer a special case and this is always a negative block offset from the
+    ; top of main RAM, isn't it?
     asl
     ; Carry is set
     adc #(>flat_ramtop)-1
 !ifdef ACORN_SCREEN_HOLE {
-    sec ; SFTODONOW: can we in fact rely on carry having a known state here and avoid this?
-    sbc acorn_screen_hole_pages ; SFTODO: MAYBE DO CLC AND USE MINUS 1, IF IT AVOIDS HAVING TO *AHVE* THE NON-MINUS-1 VERSION
+    ; sec - we know C is set as we just did $80 + a smallish negative number, e.g.
+    ; $80 + $f0 = $170 when interpreted as unsigned addition.
+.SFTODOHANG bcc .SFTODOHANG ; SFTODONOW GET RID OF THIS ONCE MORE CONFIDENT
+    sbc acorn_screen_hole_pages
 }
 !ifdef ACORN_SHADOW_VMEM {
     clv
