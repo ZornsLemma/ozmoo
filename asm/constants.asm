@@ -153,6 +153,11 @@ z_operand_value_low_arr = $1e ;  !byte 0, 0, 0, 0, 0, 0, 0, 0
 
 !ifndef ACORN {
 vmap_max_entries	  = $34
+HAVE_VMAP_USED_ENTRIES = 1
+} else {
+!ifdef PREOPT {
+HAVE_VMAP_USED_ENTRIES = 1
+}
 }
 
 zchar_triplet_cnt	  = $35
@@ -173,7 +178,15 @@ object_tree_ptr       = $49 ; 2 bytes
 object_num			  = $4b ; 2 bytes
 object_temp			  = $4d ; 2 bytes
 
+!ifndef ACORN {
 vmap_used_entries	  = $4f
+} else {
+; SF: On the Acorn port, the vmap starts off full unless we are doing a PREOPT
+; build, so vmap_used_entries == vmap_max_entries at all times. We use
+; vmap_max_entries everywhere and don't allocate a byte anywhere for
+; vmap_used_entries if it isn't used.
+vmap_max_entries	  = $4f
+}
 
 z_low_global_vars_ptr	  = $50 ; 2 bytes
 z_high_global_vars_ptr	  = $52 ; 2 bytes
@@ -499,8 +512,10 @@ bg_colour = $40a ; !byte 0
 input_colour = $40b ; ! byte 0
 }
 screen_mode = $403 ; !byte 0, high byte of B%
-!ifdef VMEM {
-vmap_max_entries = $40c ; !byte 0
+!ifdef HAVE_VMAP_USED_ENTRIES {
+; SF: This is used only in PREOPT builds where performance isn't critical so we
+; don't waste a byte of zero page on it.
+vmap_used_entries = $40c ; !byte 0
 }
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll = $40d ; !byte 0

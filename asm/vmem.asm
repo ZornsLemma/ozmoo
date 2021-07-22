@@ -930,7 +930,11 @@ SFTODOLL8
 	lda vmem_temp
 
 	; is there a block with this address in map?
+!ifdef HAVE_VMAP_USED_ENTRIES {
 	ldx vmap_used_entries
+} else {
+    ldx vmap_max_entries
+}
 -   ; compare with low byte
 	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 -
 	beq +
@@ -1002,9 +1006,11 @@ SFTODOLL8
 
 ; SFTODONOW: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised. - I believe on Acorn the bcc can only occur when we're in PREOPT mode
 .not_initial_reu_loading
+!ifdef HAVE_VMAP_USED_ENTRIES {
 	ldx vmap_used_entries
 	cpx vmap_max_entries
 	bcc .block_chosen
+}
 
 !ifdef DEBUG {
 !ifdef PREOPT {
@@ -1030,7 +1036,11 @@ SFTODOLL8
 	sta vmem_oldest_age
 	
 	; Check all indexes to find something older
+!ifdef HAVE_VMAP_USED_ENTRIES {
 	ldx vmap_used_entries
+} else {
+    ldx vmap_max_entries
+}
 	dex
 -
  	lda vmap_z_h,x
@@ -1071,11 +1081,13 @@ SFTODOLL8
 }
 
     ; SFTODONOW: Is this block redundant on Acorn except for PREOPT??
+!ifdef HAVE_VMAP_USED_ENTRIES {
 	cpx vmap_used_entries
 	bcc +
 	; This block was unoccupied
 	inc vmap_used_entries
 +
+}
 	txa
 	
 !ifdef TARGET_C128 {
@@ -1203,8 +1215,12 @@ SFTODOLL8
 	; Tick counter has passed max value. Decrease tick value for all pages. Set tick counter back.
 	txa
 	pha
-	
+
+!ifdef HAVE_VMAP_USED_ENTRIES {
 	ldx vmap_used_entries
+} else {
+    ldx vmap_max_entries
+}
 	dex
 -	lda vmap_z_h,x
 	sec

@@ -1924,7 +1924,9 @@ SFTODOLABEL2
     lda vmap_index
     cmp vmap_max_entries
     bne .turbo_load_loop
+!ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
+}
     jmp .all_loading_done
 
 .normal_tube_load
@@ -1965,7 +1967,9 @@ SFTODOLABELX2
     sbc nonstored_pages
     lsr
     sta vmap_max_entries
+!ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
+}
     ; Adjust host_cache_size so the following load loop won't try to put "too
     ; much" into the host cache; if this happens we might not have enough blocks
     ; to load into the local virtual memory cache and so some vmap entries would
@@ -2096,7 +2100,9 @@ SFTODOLABELX3
     cmp vmap_max_entries
     bne -
 SFTODOLABEL4
+!ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
+}
 }
 .all_loading_done
 
