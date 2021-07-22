@@ -446,7 +446,7 @@ cursor_column         = $7c ; 2 bytes
 !if 0 { ; SFTODO: These zp locations can be re-used now; I suspect (but obviously can test) there's no real value to using zp for text output related things
 ;screen_width          = $54 ; 1 byte ; SFTODO: I have re-used this one already
 ;screen_height         = $89 ; 1 byte ; SFTODO: I have re-used this one already
-screen_height_minus_1 = $8a ; 1 byte
+screen_height_minus_1 = $8a ; 1 byte ; SFTODONOW: Re-use this - possibly for mempointer_ram_bank, but should find some use for it anyway
 }
 
 vmem_temp			  = $00 ; 2 bytes
