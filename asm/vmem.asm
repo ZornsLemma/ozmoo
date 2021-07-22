@@ -904,13 +904,18 @@ SFTODOLL8
 	ror
 	sta vmem_temp
 	; Check quick index first
-    ; SFTODONOW: Would it be worth asserting/ensuring the following loop doesn't incur a page-crossing penalty?
 	ldx #vmap_quick_index_length - 1
 -	ldy vmap_quick_index,x
 	cmp vmap_z_l,y ; zmachine mem offset ($0 -
 	beq .quick_index_candidate
 --	dex
 	bpl -
+    ; SFTODO: I *haven't* benchmarked it, but this is hot enough that a page crossing
+    ; penalty might have a noticeable effect. However, arranging for it not to happen
+    ; isn't trivial, so the check is commented out for now.
+;!if (>*) != (>-) {
+;    !error "quick index loop crosses page boundary"
+;}
 	bmi .no_quick_index_match ; Always branch
 .quick_index_candidate
 !if vmem_highbyte_mask > 0 {
@@ -940,7 +945,13 @@ SFTODOLL8
 	beq +
 .check_next_block
 	dex
-	bne - ; SFTODONOW: Just might be worth asserting this branch doesn't suffer page-crossing penalty (or perhaps just silently inserting some padding after the "jmp .index_found" above if necessary to ensure it's not - but do some timings first to see how much difference it really makes)
+	bne -
+    ; SFTODO: I *haven't* benchmarked it, but this is hot enough that a page crossing
+    ; penalty might have a noticeable effect. However, arranging for it not to happen
+    ; isn't trivial, so the check is commented out for now.
+;!if (>*) != (>-) {
+;!error "vmap search loop crosses page boundary"
+;}
 	beq .no_such_block ; Always branch
 	; is the highbyte correct?
 +
