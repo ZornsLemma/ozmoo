@@ -1004,7 +1004,6 @@ SFTODOLL8
 	bne .block_chosen ; Always branch
 }
 
-; SFTODONOW: Not sure right now, but it may be this little block of code is not needed on Acorn, depending on how vmap_used_entries is initialised. - I believe on Acorn the bcc can only occur when we're in PREOPT mode
 .not_initial_reu_loading
 !ifdef HAVE_VMAP_USED_ENTRIES {
 	ldx vmap_used_entries
@@ -1080,7 +1079,6 @@ SFTODOLL8
 ++
 }
 
-    ; SFTODONOW: Is this block redundant on Acorn except for PREOPT??
 !ifdef HAVE_VMAP_USED_ENTRIES {
 	cpx vmap_used_entries
 	bcc +
