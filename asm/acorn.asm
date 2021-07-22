@@ -754,7 +754,6 @@ deletable_init_start
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-    ; SFTODONOW: Do we need to special case mode 0 here? Won't it "just work" that we set vmem_cache_count_mem to 0 in this case?
     ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have
     ; for holding data copied out of shadow RAM. If we set this to 0, it will
     ; effectively disable the use of shadow RAM as virtual memory cache. The
@@ -767,7 +766,10 @@ deletable_init_start
     ;
     ; If we're in mode 0, there's no spare shadow RAM anyway. The loader won't have
     ; allocated any space, but we might have one page available if we happened to
-    ; load at PAGE+256, and we mustn't let that mislead us.
+    ; load at PAGE+256, and we mustn't let that mislead us. (I don't believe this
+    ; is strictly necessary - if we didn't special-case mode 0, we would discover
+    ; that we have 0 or 1 pages of cache and set vmem_cache_count_mem to 0 anyway.
+    ; But we might as well be explicit, since this is discardable init code.)
     lda #0
     sta vmem_cache_count_mem
     lda screen_mode
