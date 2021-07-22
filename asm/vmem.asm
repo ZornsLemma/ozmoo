@@ -793,6 +793,7 @@ SFTODOBOOM
 	bne .read_new_byte
 	; same 256 byte segment, just return
 !ifdef ACORN_SWR {
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
     ; In either the big or small dynamic memory model, at this point we could be
     ; accessing dynamic or read-only memory and needing to page in the relevant
     ; SWR bank is a possibility. However, if we're accessing main RAM, we don't
@@ -801,9 +802,13 @@ SFTODOBOOM
     ; the cost of checking the high bit of mempointer. Playing around with the
     ; benchmark and HHGTTG, >70% of executions of this code are accessing main
     ; RAM, so it's a win to pay 5 cycles for the test in order to save 20 cycles
-    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.) SFTODONOW: COMMENT IS OUTDATED NOW WE HAVE MEDIUM MODEL - THE POINT IS POSSIBLY STILL VALID, BUT WOULD BE GOOD TO PROFILE IT
+    ; paging. (0.7*5+(1-0.7)*(20+5)=11<20.)
+    ;
+    ; In the medium dynamic memory model, about 5% of accesses here are to main
+    ; memory and this would be a pessimisation. (0.05*5+(1-0.05)*(20+5)=24>20.)
     lda mempointer + 1
     bmi .not_main_ram
+}
     lda (mempointer),y
 !ifdef ACORN_DEBUG_ASSERT {
     ; Let's just prove it's OK to be corrupting X and Y.
