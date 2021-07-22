@@ -1387,9 +1387,9 @@ game_blocks_ne_ram_blocks
 }
 
 !ifndef ACORN_SWR {
-    ; vmap_first_ram_page is set at build time to suit a normal second processor
+    ; vmap_first_ram_page is a constant set to suit a normal second processor
     ; and it's not used on a turbo second processor, so we don't need any code
-    ; to initialise it. SFTODO: BUT WE COULD MOVE IT INTO PAGE 4 AND INITIALISE IT IN DISCARDABLE INIT CODE (IE HERE)
+    ; to initialise it.
 }
 
     ; Now set vmap_max_entries = min(ram_blocks / vmem_block_pagecount,

@@ -234,17 +234,23 @@ vmap_z_h = vmap_z_l + vmap_max_size
 vmap_first_ram_page		!byte 0
 } else {
 ; SFTODODATA 8-ish
-!ifndef ACORN_SWR {
-; SFTODONOW: I believe this is constant on Acorn and except for conditional compilation
-; pain we could just replace its uses with an immediate constant. Not sure if it's
-; worth it for performance, but using a macro to encapsulate the Acorn/Commodore
-; difference would be not too bad.
-vmap_first_ram_page		!byte ACORN_INITIAL_NONSTORED_PAGES + >story_start
-}
-}
 vmap_index !byte 0              ; current vmap index matching the z pointer
 vmem_offset_in_block !byte 0         ; 256 byte offset in 512 byte block (0-1)
 ; vmem_temp !byte 0
+
+; SF: vmap_first_ram_page is only used by the Acorn port on a non-turbo second processor,
+; and in that case it always has a fixed value. We use this macro to hide the fact that
+; it is a fixed constant on Acorn.
+!ifndef ACORN {
+!macro adc_vmap_first_ram_page {
+    adc vmac_first_ram_page
+}
+} else {
+!macro adc_vmap_first_ram_page {
+    adc #ACORN_INITIAL_NONSTORED_PAGES + >story_start
+}
+}
+}
 
 vmap_temp			!byte 0,0,0
 
@@ -299,7 +305,7 @@ vmem_swap_count !byte 0,0
     bra .done
 .is_normal_second_processor
 	; Carry is already clear
-	adc vmap_first_ram_page
+	+adc_vmap_first_ram_page
 .done
 }
 }
@@ -479,7 +485,7 @@ print_vm_map
     bra .skip_adc_vmap_first_ram_page
 +
 }
-	adc vmap_first_ram_page
+	+adc_vmap_first_ram_page
 .skip_adc_vmap_first_ram_page
 	jsr print_byte_as_hex
 	lda #$30
@@ -532,7 +538,7 @@ load_blocks_from_index
 	asl
 !ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
-	adc vmap_first_ram_page
+	+adc_vmap_first_ram_page
 } else {
     +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
@@ -1087,7 +1093,7 @@ SFTODOLL8
 
 !ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
-	adc vmap_first_ram_page
+	+adc_vmap_first_ram_page
 } else {
     +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
@@ -1271,7 +1277,7 @@ SFTODOLL8
 	asl
 !ifndef ACORN_TURBO_SUPPORTED {
 	; Carry is already clear
-	adc vmap_first_ram_page
+	+adc_vmap_first_ram_page
 } else {
     +acorn_adc_vmap_first_ram_page_or_set_mempointer_turbo_bank_from_c
 }
