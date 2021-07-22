@@ -80,6 +80,7 @@
 
 ; Control a few small debug assertions and similar.
 ; SFTODO: Make this controllable via the build script?
+; SFTODONOW: Should probably do some testing with these on
 ; ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 ; DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 

@@ -1055,7 +1055,8 @@ SFTODOLL8
 	inc vmem_swap_count
 ++
 }
-	
+
+    ; SFTODONOW: Is this block redundant on Acorn except for PREOPT??
 	cpx vmap_used_entries
 	bcc +
 	; This block was unoccupied
@@ -1372,8 +1373,14 @@ SFTODOLL8
     clc
     adc vmem_cache_start_mem
     sta mempointer + 1
+!if 0 { ; SFTODONOW
     ldx vmap_index
     bne .return_result ; always true
+} else {
+    ; SF: The upstream code returns with vmap_index in X, but I don't think we care.
+    bpl .return_result ; always true; vmem_cache_start_mem is in main RAM
+-   jmp - ; SFTODONOW: TEMP
+}
     ; SFTODO: That "always true" is from upstream code. It's less obviously true
     ; on Acorn, where we could be very short on RAM and it's superficially
     ; plausible vmap block 0 is in shadow RAM. I suspect this can't happen
@@ -1403,6 +1410,11 @@ SFTODOLL8
 	+after_dynmem_read_corrupt_y
 } else {
     +acorn_swr_page_in_default_bank_using_y
+}
+!ifdef ACORN_DEBUG_ASSERT {
+    ; Let's just prove it's OK to be corrupting X and Y.
+    ldx #42
+    ldy #86
 }
 	rts
 
