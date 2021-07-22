@@ -1373,7 +1373,7 @@ SFTODOLL8
     adc vmem_cache_start_mem
     sta mempointer + 1
     ldx vmap_index
-    bne .return_result
+    bne .return_result ; always true
     ; SFTODO: That "always true" is from upstream code. It's less obviously true
     ; on Acorn, where we could be very short on RAM and it's superficially
     ; plausible vmap block 0 is in shadow RAM. I suspect this can't happen
