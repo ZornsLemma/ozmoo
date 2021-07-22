@@ -94,15 +94,20 @@ read_byte_at_z_address
 	+after_dynmem_read_corrupt_y
 	rts
 .read_new_byte
-!ifndef TARGET_PLUS4 { ; SFTODONOW: MAYBE WE CAN GET AWAY WITHOUT THIS ON ACORN TOO? I THINK I MADE THIS CHANGE ON COMMODORE VERSION WITHOUT CONSIDERING ACORN ASPECTS...
+    ; SF: On Acorn and Plus/4 Y will not be touched by this code so we don't
+    ; need to save it, but the more complex logic for other Commodore machines
+    ; can corrupt Y.
+!ifndef TARGET_PLUS4 {
+!ifndef ACORN {
 	sty mempointer_y
+}
 }
 	txa
 	sta zp_pc_l
 	clc
 	adc #>story_start
 	sta mempointer + 1
-!ifdef ACORN { ; SFTODONOW: IDEALLY WE MIGHT "RENAME" THE TARGET_PLUS4 BELOW (AND IN OTHER PLACES?) TO NO_BANKED_MEMORY OR SIMILAR AND USE THAT RATHER THAN NEEDING TO SPECIAL-CASE ACORN
+!ifdef ACORN {
 	bne .return_result ; Always branch
 } else {
 !ifdef TARGET_PLUS4 {
@@ -152,7 +157,7 @@ read_byte_at_z_address
 	jmp .return_result 
 } ; Not SKIP_VMEM_BUFFERS
 } ; Not TARGET_PLUS4
-}
+} ; Not ACORN
 	
 } else {
 ; virtual memory
