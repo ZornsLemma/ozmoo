@@ -179,10 +179,6 @@ read_byte_at_z_address
 ; vmap_max_size determines the memory allocated for the vmap; vmap_max_entries
 ; is the actual run-time limit, which may be less than vmap_max_size but
 ; obviously can't be larger.
-; SFTODO: For a Z3 game 255 is actually likely (not guaranteed) to be slightly
-; too large. Not necessarily a problem, but think about it - will there be a
-; problem? Are we wasting (a few bytes only) of RAM for no good reason?
-; SFTODONOW: Can/should I take advantage of knowing the game size at build time?
 vmem_blocksize = 512
 vmem_indiv_block_mask = >(vmem_blocksize - 1)
 vmem_block_pagecount = vmem_blocksize / 256
@@ -190,6 +186,8 @@ vmem_block_pagecount = vmem_blocksize / 256
 vmap_max_size = (vmap_buffer_end - vmap_buffer_start) / 2
 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else { ; ACORN
+; The Acorn port takes advantage of knowing the game size at build time to avoid
+; wasting memory on a vmap_max_size larger than the game will ever need.
 !ifndef ACORN_SWR {
     !ifndef ACORN_TUBE_CACHE {
         !ifdef ACORN_TURBO_SUPPORTED {
