@@ -2125,7 +2125,7 @@ SFTODOLABEL4
 
 ; SFTODO: Move this to be with the other paging macros?
 !ifdef ACORN_SWR {
-; SFTODO: Don't define these in smalldyn? Any code using it is wasting time/space, I think.
+; SFTODO: Don't define these in smalldyn? Any code using it is wasting time/space, I think. SFTODONOW: This is probably "potentially important" - I am not at all clear if this is true or not, need to think about it with a clear head
 !macro acorn_swr_page_in_default_bank_using_y {
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
