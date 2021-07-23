@@ -1924,7 +1924,6 @@ while nonstored_pages % vmem_block_pagecount != 0:
 while game_blocks < nonstored_pages + vmem_block_pagecount:
     game_data += bytearray(bytes_per_block)
     game_blocks = bytes_to_blocks(len(game_data))
-dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
 
