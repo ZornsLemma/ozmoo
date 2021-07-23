@@ -1,3 +1,5 @@
+get_z_himem_address tweak: $0058b2 $0058b8
+
 stz for tube in zaddress.asm:
 - with stz, benchmark (B+128K with 3MHz copro) takes $0058b7 $0058b8 $0058b6
 - without stz, ditto: $0058c2 $0058c1 $0058be

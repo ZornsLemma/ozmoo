@@ -58,6 +58,9 @@ print_z_address
 	jmp newline
 }
 
+get_z_himem_address
+	ldy z_address
+	; fall through into get_z_address
 get_z_address
 	; input: 
 	; output: a,x
@@ -67,12 +70,6 @@ get_z_address
 	lda z_address + 1 ; high
 	rts
 
-; SFTODONOW: Could we rejig this slightly so it does the ldy and falls through into get_z_address? Would save a few bytes and probably no less clear, maybe arguably clearer. Check callers don't use flags-reflect-Y first! (It might be this is something I could easily offer to upstream.)
-get_z_himem_address
-	ldx z_address + 2
-	lda z_address + 1
-	ldy z_address
-	rts
 
 read_next_byte
 	; input: 
