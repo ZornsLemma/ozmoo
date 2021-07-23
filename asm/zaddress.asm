@@ -6,9 +6,15 @@
 set_z_address
 	stx z_address + 2
 	sta z_address + 1
-	; SFTODONOW: The next couple of instructions are executed often enough it might be worth adding a CMOS version which does stz
+	; SF: The next couple of instructions are moderately hot and it's near-trivial to
+	; take advantage of stz, so let's do it. (No callers seem to rely on returning with
+	; A=0.)
+!ifndef CMOS {
 	lda #$0
 	sta z_address
+} else {
+	stz z_address
+}
 	rts
 
 dec_z_address
