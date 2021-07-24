@@ -1589,8 +1589,8 @@ c128_mmu_values !byte $0e,$3f,$7f
 
 
 deletable_init
-	cld
 !ifndef ACORN {
+	cld
 
 	; stop key repeat (preventing problems with input in fast emulators)
 !ifdef TARGET_C64 {
