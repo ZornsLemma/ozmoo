@@ -135,7 +135,6 @@ write_next_byte
 	lda z_address + 1
 	sbc #<ACORN_DYNAMIC_SIZE_BYTES
 	bcs .write_outside_dynmem
-SFTODO
 }
 }
 
