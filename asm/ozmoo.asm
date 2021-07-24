@@ -2310,4 +2310,4 @@ scratch_overlapping_game_start
 ; tell you what value to do a --extra-build-at in order to get an assembly
 ; listing for the actual runtime address - by the time you factor shadow RAM
 ; cache and relocation in, it's a bit annoyingly trial and error inferring this
-; from knowledge of how it all works.
+; from knowledge of how it all works. SFTODONOW?
