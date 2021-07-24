@@ -1962,3 +1962,5 @@ show_deferred_output()
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
 
 # SFTODONOW: I am seeing inexplicable build errors on HH (not in benchmark mode) with --extra-build-at 0xe00, but --extra-build-at 0x1000/1200/1400 etc is just fine. I am not getting into this right now as I'm trying to investigate a different problem.
+
+# SFTODONOW: It would be good to *optionally* allow use of basictool instead of beebasm to pack the loader
