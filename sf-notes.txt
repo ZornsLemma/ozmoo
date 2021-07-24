@@ -1,3 +1,10 @@
+M128 benchmark mode 7
+- with write-outside-dynmem checking code enabled: $0094ec $0094f0 $0094ef
+- without checking code enabled: $009477 $009479 $009479
+so 0.3% slower. This is an upstream thing and you can disable it by building in UNSAFE so I'm happy with that, I just thought it would be interesting to see the impact.
+
+
+
 get_z_himem_address tweak: $0058b2 $0058b8
 
 stz for tube in zaddress.asm:
