@@ -801,70 +801,7 @@ game_id		!byte 0,0,0,0
 }
 
 
-; SFTODONOW: Can we move this code into the deletable init space on Acorn? If we just moved the (.)initialize label I think it would mostly "just work".
-.initialize
-!ifdef ACORN_RELOCATABLE {
-initialize
-}
-!ifndef ACORN {
-	cld
-	cli
-} else {
-    ; Reset the stack pointer; setjmp relies on this.
-    ldx #$ff
-    txs
-}
-!ifdef TESTSCREEN {
-	jmp testscreen
-}
-
-	jsr deletable_init_start
-;	jsr init_screen_colours
-	jsr deletable_screen_init_1
-!ifndef ACORN {
-!if SPLASHWAIT > 0 {
-	jsr splash_screen
-}
-
-!ifdef VMEM {
-!ifdef TARGET_C64 {
-	; set up C64 SuperCPU if any
-	; see: http://www.elysium.filety.pl/tools/supercpu/superprog.html
-	lda $d0bc ; SuperCPU control register (read only)
-	and #$80  ; DOS extension mode? 0 if SuperCPU, 1 if standard C64
-	beq .supercpu
-	;bne .nosupercpu 
-	; it doesn't matter what you store in the SuperCPU control registers
-	; it is just the access itself that counts
-	;sta $d07e ; enable hardware registers
-	;sta $d076 ; basic optimization
-	;sta $d077 ; no memory optimization
-	;sta $d07f ; disable hardware registers
-	;sta $d07a ; normal speed (1 MHz)
-}
-	; SuperCPU and REU doesn't work well together
-	; https://www.lemon64.com/forum/viewtopic.php?t=68824&sid=330a8c62e22ebd2cf654c14ae8073fb9
-	;
-!if SUPPORT_REU = 1 {
-	jsr reu_start
-}
-.supercpu
-}
-}
-	jsr deletable_init
-	jsr parse_object_table
-!ifndef Z5PLUS {
-	; Setup default dictionary
-	jsr parse_default_dictionary
-}
-
-!ifdef Z5PLUS {
-	; set up terminating characters
-	jsr parse_terminating_characters
-}
-	
-	jsr streams_init
-	; SFTODONOW: Presumably nothing up to this point can use the stack, so the above *is* technically eligible for moving into deletable stack space
+.initialize2
 	jsr stack_init
 
 	jsr deletable_screen_init_2
@@ -2250,6 +2187,74 @@ init_sid
 
 
 end_of_routines_in_stack_space
+
+; SF: This code has been moved within this file compared to the Commodore
+; version. This allows us to save approximately 21 bytes by making the first
+; part of .initialize discardable initialization code.
+.initialize
+!ifdef ACORN_RELOCATABLE {
+initialize
+}
+!ifndef ACORN {
+	cld
+	cli
+} else {
+    ; Reset the stack pointer; setjmp relies on this.
+    ldx #$ff
+    txs
+}
+!ifdef TESTSCREEN {
+	jmp testscreen
+}
+
+	jsr deletable_init_start
+;	jsr init_screen_colours
+	jsr deletable_screen_init_1
+!ifndef ACORN {
+!if SPLASHWAIT > 0 {
+	jsr splash_screen
+}
+
+!ifdef VMEM {
+!ifdef TARGET_C64 {
+	; set up C64 SuperCPU if any
+	; see: http://www.elysium.filety.pl/tools/supercpu/superprog.html
+	lda $d0bc ; SuperCPU control register (read only)
+	and #$80  ; DOS extension mode? 0 if SuperCPU, 1 if standard C64
+	beq .supercpu
+	;bne .nosupercpu
+	; it doesn't matter what you store in the SuperCPU control registers
+	; it is just the access itself that counts
+	;sta $d07e ; enable hardware registers
+	;sta $d076 ; basic optimization
+	;sta $d077 ; no memory optimization
+	;sta $d07f ; disable hardware registers
+	;sta $d07a ; normal speed (1 MHz)
+}
+	; SuperCPU and REU doesn't work well together
+	; https://www.lemon64.com/forum/viewtopic.php?t=68824&sid=330a8c62e22ebd2cf654c14ae8073fb9
+	;
+!if SUPPORT_REU = 1 {
+	jsr reu_start
+}
+.supercpu
+}
+}
+	jsr deletable_init
+	jsr parse_object_table
+!ifndef Z5PLUS {
+	; Setup default dictionary
+	jsr parse_default_dictionary
+}
+
+!ifdef Z5PLUS {
+	; set up terminating characters
+	jsr parse_terminating_characters
+}
+
+	jsr streams_init
+	jmp .initialize2
+
 !ifdef ACORN {
     ; It's fine for code to spill over past story_start *as long as it's going
     ; to be executed before it gets overwritten*. We don't have any preload data
