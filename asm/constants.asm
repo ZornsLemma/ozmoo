@@ -361,6 +361,7 @@ oswrch = $ffee
 osword = $fff1
 osbyte = $fff4
 oscli = $fff7
+vdu_back = 8
 vdu_down = 10
 vdu_cls = 12
 vdu_cr = 13

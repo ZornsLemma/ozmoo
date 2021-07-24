@@ -1541,19 +1541,17 @@ progress_indicator_fractional_bits=7
 ; build so we could make it a macro and inline it, but since this code overlaps
 ; the game data we're not under that much memory pressure and it's more readable
 ; to just use a subroutine.
-; SFTODO: It might be nice to use "half steps" to double the resolution of the
-; progress bar; we'd just need to alternate between "print a half-width
-; character" and "print backspace-then-full-width-character". SFTODONOW?
 init_progress_indicator
 !ifdef VMEM {
 .blocks_to_load = scratch_blocks_to_load
 } else {
 .blocks_to_load = game_blocks
 }
-    ; If we're not on the bottom line of the screen, set divisor = screen_width
-    ; - cursor_x, otherwise set divisor = (screen_width - 1) - cursor_x. This
-    ; way we don't have to worry about causing a mildly ugly scroll if we print
-    ; in the bottom right position on the screen.
+    ; If we're not on the bottom line of the screen, set divisor = 2 *
+    ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
+    ; - cursor_x). This way we don't have to worry about causing a mildly ugly
+    ; scroll if we print in the bottom right position on the screen. The
+    ; multiplication by 2 allows for the use of half-character blocks.
     ;
     ; (We haven't called screenkernal_init yet; that would be wrong because we
     ; might be in mode 6/7 from the loader and not yet have changed into the
@@ -1594,8 +1592,10 @@ init_progress_indicator
     tya
     sec
     sbc divisor
+    asl
     sta divisor
     lda #0
+    rol
     sta divisor + 1
 
     ; .blocks_to_load is expressed in 256-byte blocks, but loading is done in
@@ -1655,6 +1655,8 @@ screenkernal_init
 
 update_progress_indicator
 progress_indicator_block_size = 1 << progress_indicator_fractional_bits
+half_block_graphic = 181
+full_block_graphic = 255
     sec
     lda progress_indicator_blocks_left_in_chunk
     sbc #<progress_indicator_block_size
@@ -1673,8 +1675,20 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
     lda progress_indicator_blocks_left_in_chunk + 1
     adc progress_indicator_blocks_per_chunk + 1
     sta progress_indicator_blocks_left_in_chunk + 1
-    lda #255 ; solid block graphic
-    jmp oswrch
+    ; Alternate between outputting a half block graphic and a backspace+full
+    ; block graphic.
+.lda_imm_block_graph
+    lda #half_block_graphic ; patched at run time
+    cmp #half_block_graphic
+    beq +
+    lda #vdu_back
+    jsr oswrch
+    lda #full_block_graphic
++   jsr oswrch
+    lda .lda_imm_block_graph + 1
+    eor #half_block_graphic xor full_block_graphic
+    sta .lda_imm_block_graph + 1
+    rts
 }
 
 ; Initialization performed shortly after startup, just after

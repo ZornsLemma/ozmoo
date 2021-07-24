@@ -159,7 +159,9 @@ IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
 PRINTTAB(0,space_y);CHR$normal_fg;"Loading:";:pos=POS:PRINT "                               ";
 REM Leave the cursor positioned ready for the loading progress indicator.
 PRINTTAB(pos,space_y);CHR$normal_graphics_fg;
-VDU 23,255,-1;-1;-1;-1;:REM block UDG for progress indicator in modes 0-6
+REM half-block and block UDGs for progress indicator in modes 0-6
+VDU 23,181,240,240,240,240,240,240,240,240
+VDU 23,255,-1;-1;-1;-1;
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
 }
