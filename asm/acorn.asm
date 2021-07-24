@@ -1678,17 +1678,14 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
 }
 
 ; Initialization performed shortly after startup, just after
-; acorn_deletable_init_start. (The distinction is not that important on Acorn
-; as the Ozmoo executable itself doesn't generate a splash screen.)
+; acorn_deletable_init_start. This code will be placed inside the Z-machine
+; stack, so it won't overwrite itself when it loads to story_start.
 !macro acorn_deletable_init_inline {
-    ; SFTODO: It's a bit confusing to have this macro and the other one which
-    ; contains prepare_for_initial_load; if it doesn't make things too extra-
-    ; confusingly different from the Commodore code, could this be simplified?
-    ; SFTODONOW: Doing this might also make it feasible for this rather long
-    ; discardable-ish init code to be put in a .asm file *not* in a macro,
-    ; which would (given the lack of detail for acme macro expansions in report
-    ; output) improve debuggability.
     jsr prepare_for_initial_load
+    ; SFTODO: If we got tight on space in the Z-machine stack, the following
+    ; code up to but not including .dynmem_load_loop could be moved into
+    ; prepare_for_initial_load.
+
     ; Load the nonstored blocks, or all the blocks if we're not using virtual
     ; memory. We don't need to worry about reading past the end of the game data
     ; here, because at worst we will read a final 512-byte block when we don't
