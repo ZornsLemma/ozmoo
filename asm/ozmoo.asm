@@ -864,6 +864,7 @@ initialize
 }
 	
 	jsr streams_init
+	; SFTODONOW: Presumably nothing up to this point can use the stack, so the above *is* technically eligible for moving into deletable stack space
 	jsr stack_init
 
 	jsr deletable_screen_init_2
@@ -1728,7 +1729,7 @@ deletable_init
 ; parse_header section
 
 
-!ifndef ACORN { ; SFTODO: I JUST MAY WANT TO DO THE DYNMEM_SIZE INITIALISATION FROM THIS COMMODORE CODE, BUT IT WOULD PROBABLY BE DONE IN ONE OF THE MACROS IN ACORN.ASM EVEN IF I DO KEEP THIS
+!ifndef ACORN {
 	; Store the size of dynmem AND (if VMEM is enabled)
 	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
 !ifdef TARGET_C128 {
