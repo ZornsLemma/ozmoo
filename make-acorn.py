@@ -238,6 +238,7 @@ def update_common_labels(labels):
                 del common_labels[label]
 
 
+# SFTODO: Should this really derive from Exception?
 class LoaderScreen(Exception):
     def __init__(self):
         loader_screen = LoaderScreen._get_title_page()
