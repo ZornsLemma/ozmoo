@@ -708,7 +708,6 @@ class Executable(object):
         # because we can't run any lower anyway.
         other_start_addr = 0xe00
         if "ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT" in self.labels:
-            # SFTODONOW: INSTEAD OF ADJUSTING (AND MAYBE QUIETLY MUCKING THIGS UP)? assert same_double_page_alignment(self.start_addr, other_start_addr)
             other_start_addr += (self.start_addr - other_start_addr) % 0x200
         assert other_start_addr <= self.start_addr
         other = self.rebuild_at(other_start_addr)
