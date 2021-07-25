@@ -1944,7 +1944,7 @@ while True:
         if not cmd_args.double_sided:
             cmd_args.double_sided = True
             single_to_double_sided = True
-            Executable.cache = {}
+            Executable.all_output_names = set()
             deferred_output = []
             warn("Generating a double-sided disc as the game won't fit otherwise")
         else:
