@@ -894,7 +894,7 @@ class OzmooExecutable(Executable):
         return len(self._asm_output)
 
     def rebuild_at(self, start_addr):
-        return OzmooExecutable(self.leafname, start_addr, self.args)
+        return make_ozmoo_executable(self.leafname, start_addr, self.args)
 
     def add_loader_symbols(self, symbols):
         Executable.add_loader_symbols(self, symbols)
@@ -906,11 +906,20 @@ class OzmooExecutable(Executable):
 
 def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = None):
     try:
-        return OzmooExecutable(leafname, start_addr, args)
+        # It's not really necessary to include leafname in cache_key, but let's
+        # play it safe.
+        cache_key = (leafname, start_addr, tuple(args))
+        e = make_ozmoo_executable._cache.get(cache_key)
+        if e is not None:
+            return e
+        e = OzmooExecutable(leafname, start_addr, args)
+        make_ozmoo_executable._cache[cache_key] = e
+        return e
     except GameWontFit as e:
         if report_failure_prefix is not None:
             warn("Game is too large for %s: %s" % (report_failure_prefix, str(e)))
         return None
+make_ozmoo_executable._cache = {}
 
 
 # Build an Ozmoo executable which loads at the highest possible address; we pick
@@ -1943,7 +1952,5 @@ show_deferred_output()
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
-
-# SFTODONOW: I am seeing inexplicable build errors on HH (not in benchmark mode) with --extra-build-at 0xe00, but --extra-build-at 0x1000/1200/1400 etc is just fine. I am not getting into this right now as I'm trying to investigate a different problem.
 
 # SFTODONOW: It would be good to *optionally* allow use of basictool instead of beebasm to pack the loader
