@@ -946,16 +946,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_RELOCATABLE=1" in args
     assert "-DACORN_SWR=1" in args
 
-    # Because of Ozmoo's liking for 512-byte alignment and the 256-byte
-    # alignment of PAGE: SFTODONOW: THIS COMMENT IGNORES MEDIUM DYNMEM MODEL
-    # - max_nonstored_pages() can only return even values on a VMEM build.
-    # - nonstored_pages (i.e. for this specific game) will always be even.
-    # - There are two possible start addresses 256 bytes apart which will
-    #   generate the same value of max_nonstored_pages(), as one will waste an
-    #   extra 256 bytes on aligning story_start to a 512-byte boundary.
-    # - We want to use the higher of those two possible start addresses, because
-    #   it means we won't need to waste 256 bytes before the start of the code
-    #   if PAGE happens to have the right alignment.
     e_low = make_optimally_aligned_executable(leafname, 0xe00, args, report_failure_prefix)
     # If we can't build successfully with a start of 0xe00 we can't ever manage
     # it.
@@ -980,13 +970,14 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
         assert main_ram_vmem >= 0
         assert main_ram_vmem % (2 * bytes_per_block) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
-    e = make_optimally_aligned_executable(leafname, max_start_addr, args, report_failure_prefix, e_low)
+    assert same_double_page_alignment(max_start_addr, e_low.start_addr)
+    e = make_ozmoo_executable(leafname, max_start_addr, args, report_failure_prefix)
     assert e is not None
-    assert same_double_page_alignment(e.start_addr, e_low.start_addr)
-    assert 0 <= e.max_nonstored_pages() - nonstored_pages
+    assert e.max_nonstored_pages() >= nonstored_pages
     return e
 
 
+# SFTODONOW: Move this definition to somewhere a bit more logical, probably lower down
 # If cmd_args.extra_build_at is not None, rebuild e at that address. This
 # executable isn't used any further, but it's useful for debugging to be able to
 # force it to happen in order to have acme output for the actual address the
@@ -997,27 +988,30 @@ def extra_build_wrapper(e):
     return e
 
 
-# Build an Ozmoo executable which loads at whichever of initial_start_addr
-# and initial_start_addr+256 gives the least wasted space. If provided
-# base_executable is a pre-built executable which shares the same double-page
-# alignment as initial_start_addr; this may help avoid an unnecessary build.
-def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix, base_executable = None):
+# SFTODONOW: Move this up above make_highest_possible...
+# Build an Ozmoo executable which loads at whichever of initial_start_addr and
+# initial_start_addr+256 gives the least wasted space. Because Ozmoo uses
+# 512-byte alignment internally while PAGE has 256-byte alignment, one of these
+# builds will have 256 bytes less of padding before data_start - that's the one
+# we want to use, as it avoids wasting memory if PAGE happens to have the right
+# 512-byte alignment, and if PAGE has the opposite alignment we will "waste" 256
+# bytes before program_start to get the right alginment instead of wasting 256
+# bytes on internal alignment, so we're no worse off. (The space below PAGE is
+# not necessarily wasted either, since it may be used as shadow RAM cache on
+# some machines.)
+def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix):
+    base_executable = make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
     if base_executable is None:
-        base_executable = make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
-        if base_executable is None:
-            return None
-    else:
-        assert base_executable.asm_filename == "ozmoo.asm"
-        assert same_double_page_alignment(base_executable.start_addr, initial_start_addr)
-        assert base_executable.args == args
+        return None
     alternate_executable = make_ozmoo_executable(leafname, initial_start_addr + 256, args)
+    # If alternate_executable is None:
+    # - We know base_executable has the the optimal 512-byte alignment, otherwise
+    #   there's no reason alternate_executable failed to build.
+    # - Even if base_executable could have sub-optimal alignment (which it can't),
+    #   we prefer a sub-optimal successful build to an optimal failed one.
     if alternate_executable is not None and alternate_executable.size() < base_executable.size():
         return alternate_executable
-    else:
-        if base_executable.start_addr == initial_start_addr:
-            return base_executable
-        else:
-            return make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
+    return base_executable
 
 
 # SFTODONOW: RENAME THIS FUNCTION NOW WE HAVE MEDIUM
