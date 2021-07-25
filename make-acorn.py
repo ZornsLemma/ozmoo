@@ -1033,7 +1033,11 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
             if small_e.start_addr >= adjusted_small_dynmem_page_threshold:
                 info(init_cap(report_failure_prefix) + " executable uses small dynamic memory model and requires " + page_le(small_e.start_addr))
                 return small_e
-        info(init_cap(report_failure_prefix) + " executable can't use small dynamic memory model as it would require " + page_le(0xe00 if small_e is None else small_e.start_addr))
+        msg = init_cap(report_failure_prefix) + " executable can't use small dynamic memory model as it "
+        if small_e is None:
+            info(msg + "won't fit even with PAGE=&E00")
+        else:
+            info(msg + "would require " + page_le(small_e.start_addr))
 
     # We don't do a medium build for the shadow executable. The medium memory
     # model doesn't have that big an advantage over the big model when we have
