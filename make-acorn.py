@@ -758,27 +758,6 @@ class Executable(object):
         # A second processor binary *could* extend past 0x8000 but in practice
         # it won't come even close.
         assert self.start_addr + len(binary) <= 0x8000
-        # SFTODONOW: Can/should the compression be done in OzmooExecutable?
-        if self.asm_filename == "ozmoo.asm" and not cmd_args.no_exe_compression:
-            binary_filename = os.path.join("temp", "binary")
-            with open(binary_filename, "wb") as f:
-                f.write(binary)
-            compressed_binary_filename = os.path.join("temp", "binary.lzsa2")
-            safe_distance = compress_lzsa(binary_filename, compressed_binary_filename, [])
-            new_load_addr = self.load_addr + safe_distance
-            extra_args = ["-DDECOMPRESS_TO=$%x" % (self.load_addr & 0xffff)]
-            if self.leafname == "OZMOO2P":
-                extra_args += ["-DTUBE=1"]
-                # I can't see any way to get acme to generate a hex version of the
-                # DECOMPRESS_TO value, so do it like this.
-                with open(os.path.join("temp", "go.asm"), "w") as f:
-                    f.write('!text "GO %X", 13' % (self.load_addr & 0xffff))
-            e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, extra_args)
-            # TODO: Use 0x8000? Or use 0x7c00 above not 0x8000?
-            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x7c00
-            self.load_addr = new_load_addr
-            self.exec_addr = new_load_addr + os.path.getsize(compressed_binary_filename)
-            binary = e.binary()
         self._binary = binary
         return binary
 
@@ -910,6 +889,35 @@ class OzmooExecutable(Executable):
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
         symbols[self.leafname + "_SWR_MEDIUM_DYNMEM"] = basic_string("ACORN_SWR_MEDIUM_DYNMEM" in self.labels)
+
+    def binary(self):
+        # It's important to check self._binary isn't None so we don't compress
+        # something we already compressed.
+        if self._binary is not None:
+            return self._binary
+        binary = Executable.binary(self)
+        if not cmd_args.no_exe_compression:
+            binary_filename = os.path.join("temp", "binary")
+            with open(binary_filename, "wb") as f:
+                f.write(binary)
+            compressed_binary_filename = os.path.join("temp", "binary.lzsa2")
+            safe_distance = compress_lzsa(binary_filename, compressed_binary_filename, [])
+            new_load_addr = self.load_addr + safe_distance
+            extra_args = ["-DDECOMPRESS_TO=$%x" % (self.load_addr & 0xffff)]
+            if self.leafname == "OZMOO2P":
+                extra_args += ["-DTUBE=1"]
+                # I can't see any way to get acme to generate a hex version of the
+                # DECOMPRESS_TO value, so do it like this.
+                with open(os.path.join("temp", "go.asm"), "w") as f:
+                    f.write('!text "GO %X", 13' % (self.load_addr & 0xffff))
+            e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, extra_args)
+            # TODO: Use 0x8000? Or use 0x7c00 above not 0x8000?
+            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x7c00
+            self.load_addr = new_load_addr
+            self.exec_addr = new_load_addr + os.path.getsize(compressed_binary_filename)
+            binary = e.binary()
+        self._binary = binary
+        return self._binary
 
 
 def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = None):
