@@ -626,6 +626,12 @@ class File(object):
 
 # SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not. I should maybe switch to making the args a set in the first place.
 class Executable(object):
+    # Things could get confusing if an output_name is accidentally re-used, so
+    # we track them in here and assert that each output_name is new. This
+    # wouldn't work if we didn't have caching in make_ozmoo_executable(), since
+    # an identical rebuild should generate the same output name.
+    all_output_names = set()
+
     def __init__(self, asm_filename, leafname, version_maker, start_addr, args):
         self.asm_filename = asm_filename
         self.leafname = leafname
@@ -644,6 +650,9 @@ class Executable(object):
             output_name += "_" + version_maker(start_addr, args)
         else:
             output_name += "_" + ourhex(start_addr)
+        assert output_name not in Executable.all_output_names
+        Executable.all_output_names.add(output_name)
+        print(Executable.all_output_names)
         self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
         self._report_filename = os.path.join("temp", "acme_report_" + output_name)
         self._asm_output_filename = os.path.join("temp", output_name)
