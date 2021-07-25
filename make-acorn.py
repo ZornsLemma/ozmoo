@@ -652,7 +652,6 @@ class Executable(object):
             output_name += "_" + ourhex(start_addr)
         assert output_name not in Executable.all_output_names
         Executable.all_output_names.add(output_name)
-        print(Executable.all_output_names)
         self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
         self._report_filename = os.path.join("temp", "acme_report_" + output_name)
         self._asm_output_filename = os.path.join("temp", output_name)
