@@ -626,8 +626,6 @@ class File(object):
 
 # SFTODO: In a few places I am doing set(args) - this is fine if all the elements stand alone like "-DFOO=1", but if there are multi-element entries ("--setpc", "$0900") I will need to do something different. I am not sure if this will be an issue or not. I should maybe switch to making the args a set in the first place.
 class Executable(object):
-    cache = {}
-
     def __init__(self, asm_filename, leafname, version_maker, start_addr, args):
         self.asm_filename = asm_filename
         self.leafname = leafname
@@ -646,40 +644,23 @@ class Executable(object):
             output_name += "_" + version_maker(start_addr, args)
         else:
             output_name += "_" + ourhex(start_addr)
-
-        # SFTODO: MOVE THIS CACHE LOGIC INTO OZMOOEXECUTABLE? WE DON'T NEED IT ANYWHERE ELSE, AND IT WOULD THEN CACHE THE RESULTS OF VMEM PATCHIG AND EVERYTHING, WHICH FEELS A BIT MORE ELEGANT EVEN IF IN PRACTICE IT'S HARMLESS TO REDO THIS WORK
-        # Not all build parameters have to be reflected in the output name, but we
-        # can't have two builds with different parameters using the same output
-        # name.
-        cache_key = (asm_filename, output_name)
-        cache_definition = (start_addr, set(args))
-        cache_entry = Executable.cache.get(cache_key, None)
-        if cache_entry is not None:
-            assert cache_entry[0] == cache_definition
-            e = cache_entry[1]
-            self.labels = e.labels
-            self._asm_output = e._asm_output
-            self._relocations = e._relocations
-            return
-
         self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
         self._report_filename = os.path.join("temp", "acme_report_" + output_name)
         self._asm_output_filename = os.path.join("temp", output_name)
+
         os.chdir("asm")
         def up(path):
             return os.path.join("..", path)
         cpu = "65c02" if "-DCMOS=1" in args else "6502"
         run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], None, lambda x: x.startswith(b"Warning"))
         os.chdir("..")
-        self.labels = self._parse_labels()
 
+        self.labels = self._parse_labels()
         with open(self._asm_output_filename, "rb") as f:
             self._asm_output = bytearray(f.read())
         if "ACORN_RELOCATABLE" in self.labels:
             self.truncate_at("reloc_count")
         update_common_labels(self.labels)
-
-        Executable.cache[cache_key] = (cache_definition, copy.deepcopy(self))
 
     def _parse_labels(self):
         labels = {}
