@@ -750,6 +750,7 @@ class Executable(object):
         # A second processor binary *could* extend past 0x8000 but in practice
         # it won't come even close.
         assert self.start_addr + len(binary) <= 0x8000
+        # SFTODONOW: Can/should the compression be done in OzmooExecutable?
         if self.asm_filename == "ozmoo.asm" and not cmd_args.no_exe_compression:
             binary_filename = os.path.join("temp", "binary")
             with open(binary_filename, "wb") as f:
