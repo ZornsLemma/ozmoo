@@ -168,7 +168,7 @@ VDU 23,255,-1;-1;-1;-1;
 !ifdef USE_HISTORY {
     */INSV
 }
-REM If there are no no-tube builds, ozmoo_relocate_target won't be defined.
+REM If there are no non-tube builds, ozmoo_relocate_target won't be defined.
 !ifdef ozmoo_relocate_target {
     IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
 }
