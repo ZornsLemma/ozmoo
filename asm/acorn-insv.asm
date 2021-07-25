@@ -17,7 +17,7 @@ cursor_key_status = $27d ; address updated by *FX4
 
 ; On entry:
 ;     A=140-143 for unshifted cursors
-;     A=156-159 for shifter cursors
+;     A=156-159 for shifted cursors
 our_insv
     cpx #buffer_keyboard
     bne jmp_old_insv
