@@ -1013,7 +1013,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     adjusted_small_dynmem_page_threshold = min(small_dynmem_page_threshold, max_start_addr)
 
     small_e = None
-    if not cmd_args.force_big_dynmem:
+    if not (cmd_args.force_medium_dynmem or cmd_args.force_big_dynmem):
         small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
         # Some systems may have PAGE too high to run small_e, but those systems
         # would be able to run the game if built with the big dynamic memory model.
@@ -1039,11 +1039,8 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # B+ or Integra-B actually has a fair bit of RAM (up to 19K of spare shadow
     # RAM in mode 7 and the private 12K) available even if it has no sideways
     # RAM. SFTODONOW: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem.
-    # SFTODONOW: Should probably make this more controllable from command line; this
-    # whole area could be revamped, "--force-big-dynmem" is a bit of a clumsy
-    # hammer anyway.
     medium_e = None
-    if "-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem:
+    if cmd_args.force_medium_dynmem or ("-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem):
         if nonstored_pages * bytes_per_block <= 16 * 1024:
             medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
             if medium_e is not None:
@@ -1051,6 +1048,8 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
                 return medium_e
         else:
             info(init_cap(report_failure_prefix) + " executable can't use medium dynamic memory model as the game's dynamic memory is >16K")
+            if cmd_args.force_medium_dynmem:
+                return None
 
     # Note that we don't respect small_dynmem_page_threshold when generating a big
     # dynamic memory executable; unlike the above decision about whether or not
@@ -1060,7 +1059,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # and there's nothing we can do about it.
     big_e = make_highest_possible_executable(leafname, args, report_failure_prefix)
     if big_e is not None:
-        info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model out of necessity and requires " + page_le(big_e.start_addr))
+        info(init_cap(report_failure_prefix) + " executable uses big dynamic memory model and requires " + page_le(big_e.start_addr))
     return big_e
 
 
@@ -1470,8 +1469,12 @@ def parse_args():
     group.add_argument("--no-dynmem-adjust", action="store_true", help="disable dynamic memory adjustment")
     group.add_argument("--fake-read-errors", action="store_true", help="fake intermittent read errors")
     group.add_argument("--slow", action="store_true", help="use slow but shorter routines")
-    # SFTODONOW: We probably want some sort of force-medium-dynmem and/or disable-medium-dynmem etc options now, but I'm not rushing into this until it becomes clearer which models are sometimes desirable/undesirable and which the automatic selection can't get right in all cases.
-    group.add_argument("--force-big-dynmem", action="store_true", help="disable automatic selection of small dynamic memory model where possible")
+    # We don't have a --force-small-dynmem because we already prefer it whenever it can be
+    # used; building with --max-page=0xe00 will maximise the opportunity to use it.
+    # SFTODO: Should I add it just for completeness, and make it prevent generation of anything
+    # except small dynmem builds as with force medium/big?
+    group.add_argument("--force-medium-dynmem", action="store_true", help="force use of the medium dynamic memory model")
+    group.add_argument("--force-big-dynmem", action="store_true", help="force use of the big dynamic memory model")
     group.add_argument("--waste-bytes", metavar="N", type=int, help="waste N bytes of main RAM")
     group.add_argument("--force-65c02", action="store_true", help="use 65C02 instructions on all machines")
     group.add_argument("--force-6502", action="store_true", help="use only 6502 instructions on all machines (implies --no-turbo)")
@@ -1583,6 +1586,9 @@ def parse_args():
 
     if cmd_args.no_history and cmd_args.history_upper_case:
         die("--no-history and --history-upper-case are incompatible")
+
+    if cmd_args.force_medium_dynmem and cmd_args.force_big_dynmem:
+        die("--force-medium-dynmem and --force-big-dynmem are incompatible")
 
     return cmd_args
 

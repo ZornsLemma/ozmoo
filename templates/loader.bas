@@ -168,7 +168,10 @@ VDU 23,255,-1;-1;-1;-1;
 !ifdef USE_HISTORY {
     */INSV
 }
-IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
+REM If there are no no-tube builds, ozmoo_relocate_target won't be defined.
+!ifdef ozmoo_relocate_target {
+    IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
+}
 fs=FNfs
 IF fs<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
@@ -247,7 +250,12 @@ REM At this point we have three different kinds of memory available:
 REM - extra_main_ram bytes free in main RAM
 REM - flexible_swr bytes of normal, contiguous sideways RAM
 REM - vmem_only_swr bytes of non-contiguous sideways RAM
-IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
+!ifdef integra_b_private_ram_size {
+    IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
+} else {
+    REM This shouldn't happen normally, and if it does this code shouldn't execute.
+    PROCdie("Sorry, unsupported machine.")
+}
 flexible_swr=swr_size-vmem_only_swr
 
 IF medium_dynmem THEN PROCcheck_ram_medium_dynmem:ENDPROC
@@ -709,8 +717,14 @@ swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
 DEF PROCdetect_private_ram
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+REM If this is a tube-only build, these *_private_ram_size constants might not be
+REM defined.
+!ifdef integra_b_private_ram_size {
+    IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
+}
+!ifdef b_plus_private_ram_size {
+    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+}
 ENDPROC
 
 DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
