@@ -988,6 +988,7 @@ def extra_build_wrapper(e):
         e.rebuild_at(cmd_args.extra_build_at)
     return e
 
+
 # Build an Ozmoo executable which loads at whichever of initial_start_addr
 # and initial_start_addr+256 gives the least wasted space. If provided
 # base_executable is a pre-built executable which shares the same double-page
@@ -1047,7 +1048,7 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     # avoid *requiring* at least one bank of sideways RAM, which is useful as a
     # B+ or Integra-B actually has a fair bit of RAM (up to 19K of spare shadow
     # RAM in mode 7 and the private 12K) available even if it has no sideways
-    # RAM.
+    # RAM. SFTODONOW: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem.
     # SFTODONOW: Should probably make this more controllable from command line; this
     # whole area could be revamped, "--force-big-dynmem" is a bit of a clumsy
     # hammer anyway.
