@@ -938,6 +938,31 @@ def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = No
 make_ozmoo_executable._cache = {}
 
 
+# Build an Ozmoo executable which loads at whichever of initial_start_addr and
+# initial_start_addr+256 gives the least wasted space. Because Ozmoo uses
+# 512-byte alignment internally while PAGE has 256-byte alignment, one of these
+# builds will have 256 bytes less of padding before data_start - that's the one
+# we want to use, as it avoids wasting memory if PAGE happens to have the right
+# 512-byte alignment, and if PAGE has the opposite alignment we will "waste" 256
+# bytes before program_start to get the right alginment instead of wasting 256
+# bytes on internal alignment, so we're no worse off. (The space below PAGE is
+# not necessarily wasted either, since it may be used as shadow RAM cache on
+# some machines.)
+def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix):
+    base_executable = make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
+    if base_executable is None:
+        return None
+    alternate_executable = make_ozmoo_executable(leafname, initial_start_addr + 256, args)
+    # If alternate_executable is None:
+    # - We know base_executable has the the optimal 512-byte alignment, otherwise
+    #   there's no reason alternate_executable failed to build.
+    # - Even if base_executable could have sub-optimal alignment (which it can't),
+    #   we prefer a sub-optimal successful build to an optimal failed one.
+    if alternate_executable is not None and alternate_executable.size() < base_executable.size():
+        return alternate_executable
+    return base_executable
+
+
 # Build an Ozmoo executable which loads at the highest possible address; we pick
 # an address which means it will work on machines with relatively high values of
 # PAGE if possible. The executable will relocate itself down if PAGE isn't as
@@ -975,43 +1000,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert e is not None
     assert e.max_nonstored_pages() >= nonstored_pages
     return e
-
-
-# SFTODONOW: Move this definition to somewhere a bit more logical, probably lower down
-# If cmd_args.extra_build_at is not None, rebuild e at that address. This
-# executable isn't used any further, but it's useful for debugging to be able to
-# force it to happen in order to have acme output for the actual address the
-# code will run at after relocation and/or introduction of shadow RAM cache.
-def extra_build_wrapper(e):
-    if e is not None and cmd_args.extra_build_at is not None:
-        e.rebuild_at(cmd_args.extra_build_at)
-    return e
-
-
-# SFTODONOW: Move this up above make_highest_possible...
-# Build an Ozmoo executable which loads at whichever of initial_start_addr and
-# initial_start_addr+256 gives the least wasted space. Because Ozmoo uses
-# 512-byte alignment internally while PAGE has 256-byte alignment, one of these
-# builds will have 256 bytes less of padding before data_start - that's the one
-# we want to use, as it avoids wasting memory if PAGE happens to have the right
-# 512-byte alignment, and if PAGE has the opposite alignment we will "waste" 256
-# bytes before program_start to get the right alginment instead of wasting 256
-# bytes on internal alignment, so we're no worse off. (The space below PAGE is
-# not necessarily wasted either, since it may be used as shadow RAM cache on
-# some machines.)
-def make_optimally_aligned_executable(leafname, initial_start_addr, args, report_failure_prefix):
-    base_executable = make_ozmoo_executable(leafname, initial_start_addr, args, report_failure_prefix)
-    if base_executable is None:
-        return None
-    alternate_executable = make_ozmoo_executable(leafname, initial_start_addr + 256, args)
-    # If alternate_executable is None:
-    # - We know base_executable has the the optimal 512-byte alignment, otherwise
-    #   there's no reason alternate_executable failed to build.
-    # - Even if base_executable could have sub-optimal alignment (which it can't),
-    #   we prefer a sub-optimal successful build to an optimal failed one.
-    if alternate_executable is not None and alternate_executable.size() < base_executable.size():
-        return alternate_executable
-    return base_executable
 
 
 # SFTODONOW: RENAME THIS FUNCTION NOW WE HAVE MEDIUM
@@ -1076,12 +1064,23 @@ def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
     return big_e
 
 
-def make_shr_swr_executable():
-    leafname = "OZMOOSH"
-    args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
+# If cmd_args.extra_build_at is not None, rebuild e at that address. This
+# executable isn't used any further, but it's useful for debugging to be able to
+# force it to happen in order to have acme output for the actual address the
+# code will run at after relocation and/or introduction of shadow RAM cache.
+def extra_build_wrapper(e):
+    if e is not None and cmd_args.extra_build_at is not None:
+        e.rebuild_at(cmd_args.extra_build_at)
+    return e
+
+
+def make_electron_swr_executable():
+    leafname = "OZMOOE"
+    args = ozmoo_base_args + swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
+    # SFTODO: Not sure if this is a good idea or not - it will slightly harm performance on some machines. If it *does* stay, factor out the duplicate code with make_shr_swr_executable.
     if not cmd_args.no_shadow_vmem:
         args += ["-DACORN_SHADOW_VMEM=1", "-DACORN_RECOMMENDED_SHADOW_CACHE_PAGES=%d" % cmd_args.recommended_shadow_cache_pages]
-    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM"))
+    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "Electron"))
 
 
 def make_bbc_swr_executable():
@@ -1095,13 +1094,12 @@ def make_bbc_swr_executable():
     return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM"))
 
 
-def make_electron_swr_executable():
-    leafname = "OZMOOE"
-    args = ozmoo_base_args + swr_args + relocatable_args + ["-DACORN_ELECTRON_SWR=1", "-DACORN_SCREEN_HOLE=1"]
-    # SFTODO: Not sure if this is a good idea or not - it will slightly harm performance on some machines. If it *does* stay, factor out the duplicate code with make_shr_swr_executable.
+def make_shr_swr_executable():
+    leafname = "OZMOOSH"
+    args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
     if not cmd_args.no_shadow_vmem:
         args += ["-DACORN_SHADOW_VMEM=1", "-DACORN_RECOMMENDED_SHADOW_CACHE_PAGES=%d" % cmd_args.recommended_shadow_cache_pages]
-    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "Electron"))
+    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM"))
 
 
 def make_tube_executables():
@@ -1151,8 +1149,10 @@ def make_turbo_test_executable():
 
 
 def make_cache_executable():
-    # In practice the cache executable will only be run in mode 7, but we'll
-    # position it to load just below the mode 0 screen RAM.
+    # In practice the cache executable will only be run in mode 7 (by the
+    # loader) and will then relocate itself down to the host PAGE, but we'll
+    # position it to load just below the mode 0 screen RAM anyway; there's no
+    # real downside.
     return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args)
 
 
