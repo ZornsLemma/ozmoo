@@ -1412,26 +1412,9 @@ SFTODOLL8
     clc
     adc vmem_cache_start_mem
     sta mempointer + 1
-!if 0 { ; SFTODONOW
-    ldx vmap_index
-    bne .return_result ; always true
-} else {
     ; SF: The upstream code returns with vmap_index in X, but I don't think we care.
     bpl .return_result ; always true; vmem_cache_start_mem is in main RAM
--   jmp - ; SFTODONOW: TEMP
-}
-    ; SFTODO: That "always true" is from upstream code. It's less obviously true
-    ; on Acorn, where we could be very short on RAM and it's superficially
-    ; plausible vmap block 0 is in shadow RAM. I suspect this can't happen
-    ; because we always have to have at least two 512-byte blocks of vmem
-    ; guaranteed by the loader+build system and shadow isn't taken into account
-    ; there (and I don't intend to try to avoid that requirement and run the
-    ; game entirely from shadow cache...) so vmap_index>=2 for shadow RAM, but
-    ; I'm not 100% confident right now. It's only a byte saved so it might be as
-    ; well just to change it to a jmp but let's go with it for now and put this
-    ; guard code in and see if it ever triggers.
-    ; SFTODONOW: The "always true" seems to have disappeared, is the upstream code now allowing for the possibility that bne won't be taken? Need to check. It may be we need to do something special on Acorn, think about this. - OK, still thinking about this, but upstream code *does* still have the 'always true' comment on the branch
--   jmp -
+-   bmi - ; SFTODONOW: TEMP
 .block_directly_accessible
 }
     clc
