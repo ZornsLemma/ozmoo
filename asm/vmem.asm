@@ -1495,12 +1495,9 @@ convert_index_x_to_ram_bank_and_address
 }
     rts
 .in_main_ram
-    ; A contains a negative block offset from the top of main RAM (BBC sideways
-    ; RAM version) or the bottom of screen RAM (Electron sideways RAM version).
-    ; Multiply by two to get a page offset and add it to the base to get the
-    ; actual start. SFTODO: I think that commented is outdated, the Electron is no
-    ; longer a special case and this is always a negative block offset from the
-    ; top of main RAM, isn't it?
+    ; A contains a negative block offset from the bottom of screen RAM, which is
+    ; flat_ramtop unless we have a screen hole. Multiply by two to get a page
+    ; offset and add it to the base to get the actual start.
     asl
     ; Carry is set
     adc #(>flat_ramtop)-1
@@ -1521,7 +1518,7 @@ convert_index_x_to_ram_bank_and_address
     asl ; convert to 256-byte blocks
     ; We have at most 19K of spare shadow RAM, so 0 <= A < 19*4 < 128.
     ; clc - carry is already clear
--   bcs - ; SFTODO TOTAL PARANOIA, DELETE LATER
+-   bcs - ; SFTODONOW TOTAL PARANOIA, DELETE LATER
     adc #>shadow_start
     bit .in_shadow_ram_rts ; set V
 .in_shadow_ram_rts
