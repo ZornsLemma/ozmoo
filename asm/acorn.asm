@@ -1653,6 +1653,7 @@ screenkernal_init
 .screenkernal_init_rts
     rts
 
+    ; SFTODONOW: Not critical, but on machines with very little RAM (I noticed this on a Compact with no sideways RAM loading HH (non-benchmark) in mode 3) the progress indicator hardly gets anywhere before the game starts - it should ideally zoom across the screen and fill the whole width
 update_progress_indicator
 progress_indicator_block_size = 1 << progress_indicator_fractional_bits
 half_block_graphic = 181
