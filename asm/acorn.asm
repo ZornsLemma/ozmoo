@@ -81,7 +81,7 @@
 ; Control a few small debug assertions and similar.
 ; SFTODO: Make this controllable via the build script?
 ; SFTODONOW: Should probably do some testing with these on
-; ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
+ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 ; DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
 ; Zero page allocations for the initial load of game data.
@@ -122,6 +122,22 @@ scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
     brk
     !byte 0
     !text "Unreachable", 0
+}
+
+; Macro used to catch cases where a supposedly unreachable execution path is
+; taken. This is intended for use in space-conscious code and is a no-op unless
+; ACORN_DEBUG_ASSERT is defined.
+; SFTODONOW: Use this in more places?
+!ifndef ACORN_DEBUG_ASSERT {
+!macro assert_unreached {
+}
+} else {
+assert_unreached_sub
+    +assert_discardable_unreached
+
+!macro assert_unreached {
+    jsr assert_unreached_sub
+}
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

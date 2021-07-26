@@ -1414,7 +1414,7 @@ SFTODOLL8
     sta mempointer + 1
     ; SF: The upstream code returns with vmap_index in X, but I don't think we care.
     bpl .return_result ; always true; vmem_cache_start_mem is in main RAM
--   bmi - ; SFTODONOW: TEMP
+    +assert_unreached
 .block_directly_accessible
 }
     clc
