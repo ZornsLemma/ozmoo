@@ -2311,3 +2311,5 @@ scratch_overlapping_game_start
 ; listing for the actual runtime address - by the time you factor shadow RAM
 ; cache and relocation in, it's a bit annoyingly trial and error inferring this
 ; from knowledge of how it all works. SFTODONOW?
+
+; SFTODO: Don't forget the transient command workspace at &A0 is available for some uses. In particular (not necessarily only case), this may be useful for the screen hole operations which need short-term zp storage, and might free up a bit of "regular" zp. SFTODONOW: Look into possible uses for this? If it saves re-using some zp addresses it would probably add to my confidence I'm not accidentally breaking something.
