@@ -354,11 +354,7 @@ dumptovice
 .short_0op
 	lda #z_opcode_opcount_0op 
 	sta z_opcode_opcount
-!ifndef ACORN_SWR { ; SFTODONOW: Might be worth investigating this, upstream doesn't need it, am I doing something wrong? Can I tweak code ordering to avoid needing this? Thought it only wastes a byte, it has no performance impact.
 	beq .perform_instruction ; Always branch
-} else {
-	jmp .perform_instruction ; Always branch
-}
 
 .top_bits_are_0x
 	; Form = Long
