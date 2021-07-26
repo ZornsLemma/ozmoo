@@ -524,7 +524,7 @@ read_operand
 	tay
 	dey
 	cpy z_local_var_count
-	bcs .nonexistent_local_SFTODO_HACK
+	bcs .nonexistent_local
 }
 	asl ; This clears carry
 	tay
@@ -546,7 +546,6 @@ read_operand
 }
 	inc z_operand_count
 	rts
-.nonexistent_local_SFTODO_HACK jmp .nonexistent_local ; SFTODONOW
 
 .read_from_stack
 !ifdef SLOW {
@@ -562,6 +561,11 @@ read_operand
 }
 	jmp .store_operand ; Always branch
 
+!ifndef UNSAFE {
+.nonexistent_local
+	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
+	jsr fatalerror
+}
 
 ; SFTODO: IT'S POSSIBLE THAT THERE'S A SAVING TO BE HAD BY RECOGNISING AT RUNTIME OR BUILD TIME THAT ON A BIGDYN BUILD EVEN WITH A SCREEN HOLE, THE GLOBAL VARS MAY WELL LIVE BELOW $8000 AND CAN BE ACCESSED WITHOUT NEEDING TO PAGE IN DYNMEM SWR BANK.
 !ifndef COMPLEX_MEMORY {
@@ -617,11 +621,6 @@ read_operand
 ; SFTODO: WHERE ARE Z_{HIGH,LOW}_GLOBAL_VARS_PTR SET WRT MY !COMPLEX_MEMORY POSSIBLE SCREEN HOLE HACK? - THESE ARE SET UP IN OZMOO.ASM ON STARTUP AND NEVER CHANGE, SO I SHOULD JUST BE ABLE TO DO ANY ONE-OFF ADJUSTMENT THERE AND NEVER WORRY ABOUT IT AGAIN - *EXCEPT* THAT THERE'S NO REASON THE GLOBAL VARS CAN'T END UP STRADDLING THE SCREEN HOLE, SO I NEED SOME WAY TO HANDLE THAT - PROBABLY NOT THE BEST WAY, BUT POSSIBLY THE BUILD SYSTEM (ALTHOUGH I WAS HOPING TO GET AWAY FROM A FIXED PAGE REQUIREMENT FOR B-NO-SHADOW) COULD DETECT IF THIS WILL HAPPEN AND BUILD WITH (PARTIAL; WE ONLY NEED IT FOR THE GLOBALS) COMPLEX_MEMORY IN THAT CASE - DON'T REALLY LIKE THAT THOUGH - IT MIGHT BE POSSIBLE/ACCEPTABLE TO ADJUST STORY_START AT RUNTIME (PERHAPS INDIRECTLY BY FUDGING THE CHOICE OF RELOCATION TARGET) TO ENSURE THE (I THINK) 512-32 BYTE GLOBAL VAR TABLE *DOESN'T* STRADDLE SCREEN RAM. THAT *MIGHT* BE ACCEPTABLE ON A B IN MODE 7, BUT IT'S NOT VIABLE ON AN ELECTRON IN MODE 6 (OR A B IN MODE 6, IF I SUPPORT THAT, AS I MIGHT WELL DO) - IT'S NOT GREAT EVEN ON A B IN MODE 7, AS IN THE WORST CASE WE COULD LOSE ~1K FROM THIS ADJUSTMENT
 ; SFTODONOW: That comment looks scary, I suspect it's taken care of by my implementation decisions a while back but should review it carefully.
 
-!ifndef UNSAFE {
-.nonexistent_local
-	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
-	jsr fatalerror
-} ; Ifdef SLOW {} else
 } ; zone read_operand
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
@@ -707,7 +706,6 @@ SFTODOQQ4
 }
 
 .find_global_var_SFTODO_HACK jmp .find_global_var ; SFTODONOW
-.nonexistent_local_SFTODO_HACK jmp .nonexistent_local ; SFTODONOW
 z_get_variable_reference_and_value
 	; input: Variable in y
 	; output: Address is stored in (zp_temp), bank may be stored in zp_temp + 2
@@ -735,7 +733,7 @@ z_get_variable_reference_and_value
 	dey
 !ifndef UNSAFE {
 	cpy z_local_var_count
-	bcs .nonexistent_local_SFTODO_HACK
+	bcs nonexistent_local2
 }
 	asl ; Also clears carry
 	adc z_local_vars_ptr
@@ -790,6 +788,12 @@ z_get_referenced_value
 	+lda_dynmem_ind_y zp_temp
 	+after_dynmem_read_corrupt_y
 	rts
+
+!ifndef UNSAFE {
+nonexistent_local2
+	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
+	jsr fatalerror
+}
 } else {
 !zone { ; SFTODO!?
 	; Many calls to this code are to access stack variables, which can be
@@ -823,6 +827,11 @@ SFTODOTEMP
 	lda screen_hole_tmp
 	+after_dynmem_read_corrupt_y_slow
 	rts
+!ifndef UNSAFE {
+nonexistent_local2
+	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
+	jsr fatalerror
+}
 .zp_y_not_ok
 	; SF: I have forced this case to execute by manually fiddling around with
 	; the screen hole location.
@@ -865,12 +874,6 @@ SFTODOTEMP
 	adc z_low_global_vars_ptr + 1
 	sta zp_temp + 1
 	jmp z_get_referenced_value
-
-!ifndef UNSAFE {
-.nonexistent_local
-	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
-	jsr fatalerror
-}
 
 !ifdef Z3 {
 	Z3_OR_SLOW = 1
@@ -940,7 +943,7 @@ z_set_variable
 	dey
 !ifndef UNSAFE {
 	cpy z_local_var_count
-	bcs .nonexistent_local
+	bcs nonexistent_local2
 }
 	asl
 	tay
