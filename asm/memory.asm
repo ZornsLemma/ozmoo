@@ -1,41 +1,41 @@
 ; Routines to handle memory
 
-; SF: On Acorn non-VMEM this just needs to do
-; the two inc statements and rts, no need for anything else. Conditionally
-; assembling this is a real faff so we just accept the small inefficiency. SFTODO: Is this still true/relevant for 5.3?
 inc_z_pc_page
 !zone {
+; SF: As a general rule I have been keeping Commodore code in place to serve as
+; a reference and (probably the main reason) to ease merges of upstream changes.
+; It's probably been the case for a while that trying to build a Commodore
+; executable would fail; I don't deliberately break this but it's also not a
+; high priority as this code will never be merged upstream. I don't intend to
+; change this policy generally, but this chunk of code is fairly isolated and we
+; can get a small benefit by making it Acorn-only. (The conditional compilation
+; here gets quite hairy if we keep the Commodore support in.)
+!ifndef ACORN {
+    !error "inc_z_pc_page has had non-Acorn code removed"
+}
+
+!ifdef VMEM {
 	pha
 	inc z_pc_mempointer + 1
 	inc z_pc + 1
-!ifdef VMEM {
 	bne +
 	inc z_pc
 +	lda z_pc + 1
 	and #vmem_indiv_block_mask
 	beq get_page_at_z_pc_did_pha
 	lda z_pc_mempointer + 1
-!ifndef ACORN {
-	cmp #>story_start
-	bcc get_page_at_z_pc_did_pha
-} else {
 !ifdef ACORN_SHADOW_VMEM {
 	cmp #>data_start
 	bcc get_page_at_z_pc_did_pha
 }
-}
-} else {
-; No vmem
-!ifndef ACORN {
-	!ifndef TARGET_PLUS4 {
-		lda z_pc + 1
-		cmp #(first_banked_memory_page - (>story_start))
-		bcs get_page_at_z_pc_did_pha
-	}
-}
-}
 ; safe
 	pla
+} else {
+; No vmem
+	inc z_pc_mempointer + 1
+	inc z_pc + 1
+; always safe
+}
 inc_z_pc_page_rts
 	rts
 
