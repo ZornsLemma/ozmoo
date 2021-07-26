@@ -440,6 +440,8 @@ ENDPROC
     IF on THEN PROCshow_mode_keys
     IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
     IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
+    PROChighlight_internal(x,y,on)
+    ENDPROC
     DEF PROChighlight_internal(x,y,on)
     REM We put the "normal background" code in at the right hand side first before
     REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
