@@ -320,7 +320,7 @@ p=PAGE
     REM SFTODO: If we're in a large-ish screen mode, should we reduce the number
     REM of pages of shadow cache? 1K of cache for 4K of shadow RAM in mode 3, for
     REM example, feels a little excessive when we'd use the same 1K to back 19K
-    REM of shadow RAM in mode 7.
+    REM of shadow RAM in mode 7. SFTODONOW?
     shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
     REM The shadow cache must not overlap with shadow RAM.
     REM SFTODO: Strictly speaking this could be allowed on machines where we use
