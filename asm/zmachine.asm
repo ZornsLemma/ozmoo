@@ -956,9 +956,8 @@ HANG	bcs HANG
 	rts
 .write_global_var
 	; SFTODONOW: NOT HUGE, BUT IF WE DID THE ASL NOW (WHICH OCCURS ON BOTH PATHS ANYWAY) WE COULD AVOID DOING THE CMP #128
-	cmp #128
-	bcs .write_high_global_var
 	asl
+	bcs .write_high_global_var
 	tay
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
@@ -969,8 +968,7 @@ HANG	bcs HANG
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .write_high_global_var
-;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will remove top bit
-	asl
+;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will have removed top bit
 	tay
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
