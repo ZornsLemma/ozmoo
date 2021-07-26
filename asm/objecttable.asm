@@ -1016,10 +1016,11 @@ z_ins_get_next_prop
 	beq + ; property == 0, return first property number
 	; find the property, and return next number
 	jsr find_prop
-	; skip property data SFTODO: COULD WE USE skip_bytes_z_address HERE?
--   jsr read_next_byte
-	dec .property_length
-	bne -
+	; SFTODO: This is a small optimisation of mine, if it doesn't prove problematic
+	; suggest it to upstream.
+	; skip property data
+	lda .property_length
+	jsr skip_bytes_z_address
 +   jsr calculate_property_length_number
 	ldx .property_number
 	lda #0
