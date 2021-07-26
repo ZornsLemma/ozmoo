@@ -1504,7 +1504,7 @@ convert_index_x_to_ram_bank_and_address
 !ifdef ACORN_SCREEN_HOLE {
     ; sec - we know C is set as we just did $80 + a smallish negative number, e.g.
     ; $80 + $f0 = $170 when interpreted as unsigned addition.
-.SFTODOHANG bcc .SFTODOHANG ; SFTODONOW GET RID OF THIS ONCE MORE CONFIDENT
+    +assert_carry_set
     sbc acorn_screen_hole_pages
 }
 !ifdef ACORN_SHADOW_VMEM {
@@ -1517,8 +1517,7 @@ convert_index_x_to_ram_bank_and_address
     sbc vmem_blocks_in_sideways_ram
     asl ; convert to 256-byte blocks
     ; We have at most 19K of spare shadow RAM, so 0 <= A < 19*4 < 128.
-    ; clc - carry is already clear
--   bcs - ; SFTODONOW TOTAL PARANOIA, DELETE LATER
+    +assert_carry_clear ; clc - carry is already clear
     adc #>shadow_start
     bit .in_shadow_ram_rts ; set V
 .in_shadow_ram_rts

@@ -140,6 +140,38 @@ assert_unreached_sub
 }
 }
 
+; Macros used to detect "impossible" values of the carry flag. This are intended
+; for use in space-conscious code and is a no-op unless ACORN_DEBUG_ASSERT is
+; defined.
+; SFTODONOW: Use this in more places?
+!ifndef ACORN_DEBUG_ASSERT {
+!macro assert_carry_set {
+}
+
+!macro assert_carry_clear {
+}
+} else {
+assert_carry_set_sub
+    bcs assert_carry_sub_rts
+    !byte 0
+    !text "C clear", 0
+assert_carry_sub_rts
+    rts
+
+assert_carry_clear_sub
+    bcc assert_carry_sub_rts
+    !byte 0
+    !text "C set", 0
+
+!macro assert_carry_set {
+    jsr assert_carry_set_sub
+}
+
+!macro assert_carry_clear {
+    jsr assert_carry_clear_sub
+}
+}
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Sideways RAM paging
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
