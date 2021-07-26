@@ -586,10 +586,8 @@ read_operand
 	+after_dynmem_read_corrupt_y
 }
 !ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-!ifdef ACORN_DEBUG_ASSERT {
--	bcs -
-}
 	bcc .store_operand ; Always branch
+	+assert_unreached
 } else {
     jmp .store_operand ; SFTODO: carry not guaranteed to be clear, and it's probably too far for bcc anyway
 }
@@ -607,10 +605,8 @@ read_operand
 	+lda_dynmem_ind_y z_high_global_vars_ptr
 	+after_dynmem_read_corrupt_y
 !ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-!ifdef ACORN_DEBUG_ASSERT {
--	bcc -
-}
 	bcs .store_operand ; Always branch
+	+assert_unreached
 } else {
     jmp .store_operand ; SFTODO: carry not guaranteed to be set, and it's (probably) too far for bcs anyway
 }

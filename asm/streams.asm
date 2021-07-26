@@ -1,7 +1,7 @@
 ; Routines to handle output streams and input streams
 
 !zone streams {
-; SFTODODATA: 76 bytes! Not sure about initialisation requirements...
+; SFTODODATA: 76 bytes! Not sure about initialisation requirements... SFTODONOW?
 streams_current_entry		!byte 0,0,0,0
 streams_stack				!fill 60, 0
 streams_stack_items			!byte 0
