@@ -452,12 +452,18 @@ screen_height_minus_1 = $8a ; 1 byte ; SFTODONOW: Re-use this - possibly for mem
 
 vmem_temp			  = $00 ; 2 bytes
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-; SF: I don't really like re-using zero page addresses like this, but I'm
-; fairly sure these are safe.
-; SFTODO: Might be worth adding a debug macro to conditionally assemble
-; these to use Econet zero page workspace.
-screen_hole_zp_ptr    = vmem_temp ; 2 bytes
-screen_hole_tmp       = z_address_temp ; 1 byte
+; These zero-page addresses are only used very briefly to store temporary values
+; in. We use some of the transient command workspace at $a8; this is safe as
+; there will be no service calls of any kind while the values stored here are
+; live, and it's less likely to create subtle bugs than re-using other Ozmoo
+; zero page.
+screen_hole_zp_ptr    = $a8 ; 2 bytes
+screen_hole_tmp       = $aa ; 1 byte
+; SFTODO: This address is *probably* less performance critical, but since we now
+; have plenty of zp available thanks to using the transient command workspace,
+; there's no point wasting code/cycles on a non-zp address. It may be better to
+; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
+screen_hole_tmp_slow  = $ab ; 1 byte
 }
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 dynmem_ram_bank       = $89; 1 byte
@@ -582,11 +588,7 @@ progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
 progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
 ; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf. (Not so much now as we do use it for history.)
 
-!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-; SFTODO: I'm fairly sure this isn't performance critical, but it might be worth
-; doing a comparison with it in zero page at some point just to be safe.
-screen_hole_tmp_slow = $500 ; 1 byte
-}
+; SFTODO: $500 is currently unused
 vmap_z_l = $501 ; not $500, because we use "vmap_z_l - 1,x" addressing in a hot loop
 scratch_page = $600
 !ifdef ACORN_SWR {
