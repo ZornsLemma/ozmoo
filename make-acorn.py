@@ -175,7 +175,7 @@ def prechecks():
     else:
         # We prefer basictool if it's available and the user isn't expressing a
         # preference, because the Advanced BASIC Editor's "pack" is much better
-        # than the ad-hoc packing implemented here for beebasm.
+        # than the ad-hoc crunching implemented here for beebasm.
         have_basictool = test_executable("basictool", quiet=True)
         if have_basictool:
             cmd_args.use_basictool = True
