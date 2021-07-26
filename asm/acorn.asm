@@ -1536,8 +1536,8 @@ SFTODOXY7
 ; bits for the fractional component.
 progress_indicator_fractional_bits=7
 
-; Initialise progress_indicator_blocks_left_in_chunk and
-; progress_indicator_blocks_per_chunk. This is only called once in any given
+; Initialise progress_indicator_blocks_until_next_step and
+; progress_indicator_blocks_per_step. This is only called once in any given
 ; build so we could make it a macro and inline it, but since this code overlaps
 ; the game data we're not under that much memory pressure and it's more readable
 ; to just use a subroutine.
@@ -1615,11 +1615,11 @@ init_progress_indicator
 SFTODOOOL
     jsr divide16
     lda division_result
-    sta progress_indicator_blocks_per_chunk
-    sta progress_indicator_blocks_left_in_chunk
+    sta progress_indicator_blocks_per_step
+    sta progress_indicator_blocks_until_next_step
     lda division_result + 1
-    sta progress_indicator_blocks_per_chunk + 1
-    sta progress_indicator_blocks_left_in_chunk + 1
+    sta progress_indicator_blocks_per_step + 1
+    sta progress_indicator_blocks_until_next_step + 1
     rts
 
 .loading_string
@@ -1659,23 +1659,23 @@ progress_indicator_block_size = 1 << progress_indicator_fractional_bits
 half_block_graphic = 181
 full_block_graphic = 255
     sec
-    lda progress_indicator_blocks_left_in_chunk
+    lda progress_indicator_blocks_until_next_step
     sbc #<progress_indicator_block_size
-    sta progress_indicator_blocks_left_in_chunk
-    lda progress_indicator_blocks_left_in_chunk + 1
+    sta progress_indicator_blocks_until_next_step
+    lda progress_indicator_blocks_until_next_step + 1
     sbc #>progress_indicator_block_size
-    sta progress_indicator_blocks_left_in_chunk + 1
+    sta progress_indicator_blocks_until_next_step + 1
     bcc +
-    ora progress_indicator_blocks_left_in_chunk
+    ora progress_indicator_blocks_until_next_step
     bne .screenkernal_init_rts
-+   ; progress_indicator_blocks_left_in_chunk <= 0
++   ; progress_indicator_blocks_until_next_step <= 0
     clc
-    lda progress_indicator_blocks_left_in_chunk
-    adc progress_indicator_blocks_per_chunk
-    sta progress_indicator_blocks_left_in_chunk
-    lda progress_indicator_blocks_left_in_chunk + 1
-    adc progress_indicator_blocks_per_chunk + 1
-    sta progress_indicator_blocks_left_in_chunk + 1
+    lda progress_indicator_blocks_until_next_step
+    adc progress_indicator_blocks_per_step
+    sta progress_indicator_blocks_until_next_step
+    lda progress_indicator_blocks_until_next_step + 1
+    adc progress_indicator_blocks_per_step + 1
+    sta progress_indicator_blocks_until_next_step + 1
     ; Alternate between outputting a half block graphic and a backspace+full
     ; block graphic.
 .lda_imm_block_graph

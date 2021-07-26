@@ -578,8 +578,8 @@ low_history_end = $500
 ; The progress_indicator_* variables can re-use the space at
 ; z_operand_value_high_arr; they're only used during the initial loading when
 ; the Z-machine has not been set up.
-progress_indicator_blocks_per_chunk = z_operand_value_high_arr ; 2 bytes
-progress_indicator_blocks_left_in_chunk = z_operand_value_high_arr + 2 ; 2 bytes
+progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
+progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
 ; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf. (Not so much now as we do use it for history.)
 
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
