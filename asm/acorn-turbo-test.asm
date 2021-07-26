@@ -1,5 +1,9 @@
-; Executable with the "turbo 6502" zp_temp_turbo_flag set in the header to see if we're
-; running on a turbo secod processor.
+; Executable with the "turbo 6502" flag set in the header to see if we're
+; running on a turbo second processor.
+;
+; This should only be executed if we know we are running on a second processor
+; of some kind. In that case, zp_temp_turbo_flag is set to 0 for a non-turbo or
+; $ff for a turbo second processor.
 
 zp_temp_turbo_flag = $8f
 
