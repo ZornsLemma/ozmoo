@@ -808,7 +808,6 @@ SFTODOBOOM
     ; memory and this would be a pessimisation. (0.05*5+(1-0.05)*(20+5)=24>20.)
     lda mempointer + 1
     bmi .not_main_ram
-}
     lda (mempointer),y
 !ifdef ACORN_DEBUG_ASSERT {
     ; Let's just prove it's OK to be corrupting X and Y.
@@ -817,6 +816,7 @@ SFTODOBOOM
 }
     rts
 .not_main_ram
+}
     +acorn_page_in_bank_using_a mempointer_ram_bank
 }
 .read_and_return_value
