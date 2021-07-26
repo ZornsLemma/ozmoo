@@ -1500,7 +1500,8 @@ SFTODOLABEL5
 
     ; SFTODONOW: Not just here - I wonder if I should aggresively factor some of this into
     ; subroutines and/or actually indent nested !if blocks, yes that isn't the general Ozmoo
-    ; style, but this code is !ifdef-tastic.
+    ; style, but this code is !ifdef-tastic. (But do note acme warns noisily if labels are
+    ; not flush left, which somewhat spoils this idea.)
 !ifdef ACORN_SWR {
     ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
