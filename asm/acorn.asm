@@ -1706,6 +1706,19 @@ full_block_graphic = 255
 ; acorn_deletable_init_start. This code will be placed inside the Z-machine
 ; stack, so it won't overwrite itself when it loads to story_start.
 !macro acorn_deletable_init_inline {
+!ifdef ACORN_SHOW_PROGRAM_START {
+    jsr streams_init
+    lda #13
+    jsr s_printchar
+    jsr print_following_string
+    !text "program_start=$", 0
+    lda #>program_start
+    jsr print_byte_as_hex
+    lda #<program_start
+    jsr print_byte_as_hex
+    jsr osrdch
+}
+
     jsr prepare_for_initial_load
     ; SFTODO: If we got tight on space in the Z-machine stack, the following
     ; code up to but not including .dynmem_load_loop could be moved into

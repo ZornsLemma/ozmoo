@@ -1556,6 +1556,7 @@ def parse_args():
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
+    group.add_argument("--show-program-start", action="store_true", help="show program_start at runtime")
 
     cmd_args = parser.parse_args()
 
@@ -1766,6 +1767,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DUSE_HISTORY=%d" % cmd_args.min_history]
     if cmd_args.history_upper_case:
         ozmoo_base_args += ["-DHISTORY_UPPER_CASE=1"]
+    if cmd_args.show_program_start:
+        ozmoo_base_args += ["-DACORN_SHOW_PROGRAM_START=1"]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
