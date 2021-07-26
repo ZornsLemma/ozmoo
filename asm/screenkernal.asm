@@ -473,7 +473,7 @@ colour1k
 	rts
 }
 
-; SFTODO: I should move these into page 4 to save a few bytes in main RAM.
+; SFTODO: I should move these into page 4 to save a few bytes in main RAM. SFTODONOW?
 s_screen_width !byte 0
 s_screen_height !byte 0
 s_screen_width_plus_one !byte 0
@@ -1913,7 +1913,7 @@ update_colours
     jsr turn_off_cursor
     ; SFTODO: We "should" update previous lines of this same prompt, but let's keep the
     ; code size and complexity down for now.
-    ; SFTODO: Is it safe to use zp_temp here?
+    ; SFTODO: Is it safe to use zp_temp here? SFTODONOW: WE CAN USE TRANSIENT ZP
     lda #$ff
     sta zp_temp
 -   inc zp_temp
