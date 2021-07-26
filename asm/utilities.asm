@@ -180,7 +180,7 @@ read_next_byte_at_z_pc_sub
 	inc z_pc_mempointer ; Also increases z_pc
 	bne ++
 	jsr inc_z_pc_page
-++  ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0
+++  ldy #76 ; SFTODO JUST TO PROVE IT'S OK ldy #0 SFTODONOW CONVERT TO ifdef DEBUG ASSERT? (BUT MAYBE LEAVE IT UNTIL AFTER I'VE DONE BENCHMARKING AGAINST OLD VERSION FOR FAIR COMPARISON, AT LEAST WRT REGRESSION PERFORMANCE TESTING)
 }
 
 }
