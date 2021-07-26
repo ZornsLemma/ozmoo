@@ -2049,7 +2049,7 @@ while True:
                 die("Game is too large for a double-sided disc")
 show_deferred_output()
 
-# SFTODONOW: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy.
+# SFTODO: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy. This is less critical now we have --show-program-start and --extra-build-at, perhaps not worth it at all.
 
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 
