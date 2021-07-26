@@ -1,3 +1,22 @@
+benchmark, M128 bigdyn, mode 3
+- default (4) pages shadow cache: $00ae4c $00ae4b
+- 2 pages shadow cache: $00ae5f $00ae5d $00ae5d
+- looks like smaller shadow cache is *slightly* slower, but it's not huge - which does seem reasonable given this machine has a fair amount of RAM
+- of course, with a different game and/or memory setup, we might have got unlucky and had some core game code living in shadow RAM and ended up thrashing on the smaller cache
+
+OK, let's try with a B+64K, again, bigdyn, mode 3
+- default (5) pages shadow cache: $019a37 $019a3a
+- 3 pages shadow cache: $0182ba $0182b7
+- so on this smaller machine, the smaller shadow cache gives up more vmem cache overall and the effect is significant - runtime is reduced by 5.7%
+
+B+64K, bigdyn, mode 7
+- default (5) pages shadow cache: $00b3a5 $00b3a3
+- 3 pages shadow cache: $00b520 $00b51f
+- so with more vmem cache due to having 19k spare shadow RAM, and potentially more need for shadow cache, a smaller shadow cache is slower - runtime is increased by 0.8%, which isn't huge I suppose
+- there's potentially an element of "luck" here as always - if a game ends up with n+1 "hot" pages in shadow RAM and it has only n pages of shadow cache, it will suffer
+
+
+
 M128 benchmark mode 7
 - with write-outside-dynmem checking code enabled: $0094ec $0094f0 $0094ef
 - without checking code enabled: $009477 $009479 $009479

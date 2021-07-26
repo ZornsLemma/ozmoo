@@ -1708,6 +1708,9 @@ full_block_graphic = 255
 !macro acorn_deletable_init_inline {
 !ifdef ACORN_SHOW_PROGRAM_START {
     jsr streams_init
+    ; SFTODONOW: Half understood magic incantantions to try to make streams output work reliably
+	ldy #0
+	sty is_buffered_window
     lda #13
     jsr s_printchar
     jsr print_following_string
