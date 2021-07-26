@@ -1217,6 +1217,28 @@ def make_boot():
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 
 
+# The build file does not contain all the possibly useful information, but it's
+# a start. Examples of information not included:
+# - whether basictool or beebasm was used to tokenise BASIC (although if crunching
+#   is not disabled, it's easy to infer which was used by looking at the loader)
+# - the version of basictool/beebasm/acme used for the build
+def make_build_file():
+    # In an attempt to avoid the minor privacy leak of including pathnames on the
+    # build system in the build file, and to keep the size down, we convert them
+    # to just the basename.
+    data = ""
+    for arg in sys.argv:
+        if arg.startswith('-'):
+            i = arg.find('=')
+            if i != -1:
+                arg = arg[:i+1] + os.path.basename(arg[i+1:])
+            data += arg
+        else:
+            data += os.path.basename(arg)
+        data += "\r"
+    return File("BUILD", 0, 0, data.encode("ascii"))
+
+
 def substitute_text(s, d, f):
     return substitute(s.encode("ascii"), {k.encode("ascii"): v.encode("ascii") for k, v in d.items()}, lambda x: f(x.decode("ascii")).encode("ascii")).decode("ascii")
 
@@ -1506,6 +1528,7 @@ def parse_args():
     group.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
     group.add_argument("--force-beebasm", action="store_true", help="use beebasm to tokenise BASIC")
     group.add_argument("--force-basictool", action="store_true", help="use basictool to tokenise BASIC")
+    group.add_argument("--no-build-file", action="store_true", help="disable creation of build file on generated disc image")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -1876,6 +1899,8 @@ def make_disc_image():
             # it's good for testing.)
             disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
             disc.add_file(File("DATA", 0, 0, game_data))
+            if not cmd_args.no_build_file:
+                disc.add_file(make_build_file())
             DfsImage.write_ssd(disc, output_file)
         else:
             disc2 = DfsImage(disc2_contents, boot_option=0) # 0 = no action
@@ -1893,12 +1918,16 @@ def make_disc_image():
                 data[(i % (2 * spt)) // spt].extend(game_data[i*bps:i*bps+bpt])
             disc .add_file(File("DATA", 0, 0, data[0]))
             disc2.add_file(File("DATA", 0, 0, data[1]))
+            if not cmd_args.no_build_file:
+                disc.add_file(make_build_file())
             DfsImage.write_dsd(disc, disc2, output_file)
     else:
         disc = AdfsImage(disc_contents)
         # There are no alignment requirements for ADFS so we don't need a pad file..
         disc.add_file(File("DATA", 0, 0, game_data))
         disc.add_directory("SAVES")
+        if not cmd_args.no_build_file:
+            disc.add_file(make_build_file())
         if cmd_args.double_sided:
             disc.write_adl(output_file)
         else:
@@ -2016,8 +2045,6 @@ while True:
             else:
                 die("Game is too large for a double-sided disc")
 show_deferred_output()
-
-# SFTODONOW: If disc space permits it would be good to include the build args in a BUILD file at the "end" of the disc. Try to "anonymise" this so it doesn't include any paths or filenames.
 
 # SFTODONOW: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy.
 
