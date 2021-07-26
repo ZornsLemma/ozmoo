@@ -9,8 +9,8 @@
 ;
 ; The second processor build (ifndef ACORN_SWR) has a simple flat memory model
 ; with user RAM from $0400-$f7ff inclusive. It's rather like the C64 but without
-; even the complication of paging the kernal ROM in and out, so it doesn't need
-; the cache which the C64 code uses when ALLMEM is defined. SFTODO: SAY SOMETHING ABOUT ACORN_TURBO_SUPPORTED
+; even the complication of paging the kernal ROM in and out.
+; SFTODO: SAY SOMETHING ABOUT ACORN_TURBO_SUPPORTED
 ;
 ; The sideways RAM build (ifdef ACORN_SWR) is a bit more involved. The hardware
 ; situation here is that we have main RAM (not paged) from $0000-$7fff

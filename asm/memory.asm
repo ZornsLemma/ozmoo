@@ -1,7 +1,6 @@
 ; Routines to handle memory
-; SFTODO: ALLRAM might have been done away with - probably not a big deal, but check to see if I have any comments or code related to it and fix up if it has gone
 
-; SF: On Acorn non-VMEM (and, I believe, C64 non-ALLMEM) this just needs to do
+; SF: On Acorn non-VMEM this just needs to do
 ; the two inc statements and rts, no need for anything else. Conditionally
 ; assembling this is a real faff so we just accept the small inefficiency. SFTODO: Is this still true/relevant for 5.3?
 inc_z_pc_page
