@@ -2305,11 +2305,4 @@ scratch_overlapping_game_start
 
 ; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.
 
-; SFTODO: It might be nice to add a debug option to print out the hex value of
-; program_start and wait for a keypress on startup. This would unambiguously
-; tell you what value to do a --extra-build-at in order to get an assembly
-; listing for the actual runtime address - by the time you factor shadow RAM
-; cache and relocation in, it's a bit annoyingly trial and error inferring this
-; from knowledge of how it all works. SFTODONOW?
-
 ; SFTODO: Don't forget the transient command workspace at &A8 is available for some uses. In particular (not necessarily only case), this may be useful for the screen hole operations which need short-term zp storage, and might free up a bit of "regular" zp. SFTODONOW: Look into possible uses for this? If it saves re-using some zp addresses it would probably add to my confidence I'm not accidentally breaking something.
