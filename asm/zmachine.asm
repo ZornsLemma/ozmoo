@@ -955,7 +955,6 @@ HANG	bcs HANG
 	sta (z_local_vars_ptr),y
 	rts
 .write_global_var
-	; SFTODONOW: NOT HUGE, BUT IF WE DID THE ASL NOW (WHICH OCCURS ON BOTH PATHS ANYWAY) WE COULD AVOID DOING THE CMP #128
 	asl
 	bcs .write_high_global_var
 	tay
