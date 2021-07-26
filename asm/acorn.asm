@@ -113,6 +113,17 @@ scratch_ram_blocks = scratch_page ; 2 bytes
 scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 }
 
+; Macro used to catch cases where a supposedly unreachable execution path is
+; taken. This is intended for use in discardable init code where we're not too
+; space-conscious and so the check can be left in permanently. SFTODO: In some
+; cases, maybe it would be better just to rewrite the code to avoid even a
+; theoretical possibility of this macro being executed.
+!macro assert_discardable_unreached {
+    brk
+    !byte 0
+    !text "Unreachable", 0
+}
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Sideways RAM paging
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1263,6 +1274,7 @@ SFTODOLABEL1
     bcs .upper_bound_in_a ; Integra-B private 12K
     lda #>swr_ramtop
     bne .upper_bound_in_a ; always branch
+    +assert_discardable_unreached
 .b_plus_private_12k
     lda #>(flat_ramtop + b_plus_private_ram_size)
 .upper_bound_in_a
@@ -1303,7 +1315,7 @@ SFTODOLABEL1
     ldx .max_dynmem
 .game_blocks_is_smaller
     bne .dynmem_adjust_done ; Always branch
-    ; SFTODONOW MIGHT BE A GOOD IDEA TO ADD A HANG OR ERROR HERE JUST IN CASE?
+    +assert_discardable_unreached
 
 game_blocks_ne_ram_blocks
     ; Note that we can't have game_blocks < ram_blocks because we reduced
@@ -1460,6 +1472,7 @@ SFTODOLABEL5
     lsr
     sta vmem_blocks_stolen_in_first_bank
     bpl + ; Always branch
+    +assert_discardable_unreached
 .some_vmem_in_main_ram
     ; Carry is clear; negate A
     eor #$ff
@@ -1909,6 +1922,7 @@ SFTODOLABEL2
     lda vmap_z_l,x
     inx
     bne + ; Always branch
+    +assert_discardable_unreached
 .use_dummy_entry
     ; We use $0000 as a dummy entry; this has the oldest possible timestamp so
     ; the entry will be re-used ASAP and because $0000xx is always dynamic
