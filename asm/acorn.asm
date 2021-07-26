@@ -1653,33 +1653,31 @@ screenkernal_init
 .screenkernal_init_rts
     rts
 
-    ; SFTODONOW: Not critical, but on machines with very little RAM (I noticed this on a Compact with no sideways RAM loading HH (non-benchmark) in mode 3) the progress indicator hardly gets anywhere before the game starts - it should ideally zoom across the screen and fill the whole width
 update_progress_indicator
-progress_indicator_block_size = 1 << progress_indicator_fractional_bits
+progress_indicator_one_block = 1 << progress_indicator_fractional_bits
 half_block_graphic = 181
 full_block_graphic = 255
+    ; progress_indicator_blocks_until_next_step -= 1 (but fixed point)
     sec
     lda progress_indicator_blocks_until_next_step
-    sbc #<progress_indicator_block_size
+    sbc #<progress_indicator_one_block
     sta progress_indicator_blocks_until_next_step
     lda progress_indicator_blocks_until_next_step + 1
-    sbc #>progress_indicator_block_size
+    sbc #>progress_indicator_one_block
     sta progress_indicator_blocks_until_next_step + 1
-    bcc + ; branch if progress_indicator_blocks_until_next_step < 0
-    ; test for progress_indicator_blocks_until_next_step == 0
-    ora progress_indicator_blocks_until_next_step
-    bne .screenkernal_init_rts
-+   ; progress_indicator_blocks_until_next_step <= 0
-    clc
-    lda progress_indicator_blocks_until_next_step
-    adc progress_indicator_blocks_per_step
-    sta progress_indicator_blocks_until_next_step
-    lda progress_indicator_blocks_until_next_step + 1
-    adc progress_indicator_blocks_per_step + 1
-    sta progress_indicator_blocks_until_next_step + 1
+    jmp .while_test
+.while_loop
+    ; while progress_indicator_blocks_until_next_step <= 0:
+    ;     extend the progress bar by one step (half a block graphic)
+    ;     progress_indicator_blocks_until_next_step += progress_indicator_blocks_per_step
+    ;
+    ; We need a while loop since on machines with very little memory, reading a
+    ; single 512-byte block might account for multiple steps of the progress
+    ; bar.
+    ;
     ; Alternate between outputting a half block graphic and a backspace+full
     ; block graphic.
-.lda_imm_block_graph
+.lda_imm_block_graphic
     lda #half_block_graphic ; patched at run time
     cmp #half_block_graphic
     beq +
@@ -1687,9 +1685,20 @@ full_block_graphic = 255
     jsr oswrch
     lda #full_block_graphic
 +   jsr oswrch
-    lda .lda_imm_block_graph + 1
+    lda .lda_imm_block_graphic + 1
     eor #half_block_graphic xor full_block_graphic
-    sta .lda_imm_block_graph + 1
+    sta .lda_imm_block_graphic + 1
+    clc
+    lda progress_indicator_blocks_until_next_step
+    adc progress_indicator_blocks_per_step
+    sta progress_indicator_blocks_until_next_step
+    lda progress_indicator_blocks_until_next_step + 1
+    adc progress_indicator_blocks_per_step + 1
+    sta progress_indicator_blocks_until_next_step + 1
+.while_test
+    bmi .while_loop
+    ora progress_indicator_blocks_until_next_step
+    beq .while_loop
     rts
 }
 
