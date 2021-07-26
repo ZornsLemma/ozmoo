@@ -186,6 +186,7 @@ def prechecks():
             check_beebasm_version()
             cmd_args.use_beebasm = True
 
+
 def check_beebasm_version():
     # Check for a new enough beebasm. We parse the --help output, if we find
     # something that looks like a version we complain if it's too old; if in
