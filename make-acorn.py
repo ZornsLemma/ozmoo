@@ -167,10 +167,10 @@ def run_and_check(args, output_filter=None, warning_filter=None):
 # rather than failing on a complex build command.
 def prechecks():
     test_executable("acme")
-    if cmd_args.use_beebasm:
+    if cmd_args.force_beebasm:
         test_executable("beebasm")
         check_beebasm_version()
-    elif cmd_args.use_basictool:
+    elif cmd_args.force_basictool:
         test_executable("basictool")
     else:
         # We prefer basictool if it's available and the user isn't expressing a
@@ -178,13 +178,13 @@ def prechecks():
         # than the ad-hoc crunching implemented here for beebasm.
         have_basictool = test_executable("basictool", quiet=True)
         if have_basictool:
-            cmd_args.use_basictool = True
+            cmd_args.force_basictool = True
         else:
             have_beebasm = test_executable("beebasm", quiet=True)
             if not have_beebasm:
                 die("Can't execute 'basictool' or 'beebasm'; is at least one of them on your PATH?")
             check_beebasm_version()
-            cmd_args.use_beebasm = True
+            cmd_args.force_beebasm = True
 
 
 def check_beebasm_version():
@@ -1309,7 +1309,7 @@ def make_text_basic(template, symbols):
                     assert False
             elif all(if_results):
                 line = substitute_text(line, symbols, basic_string)
-                if not cmd_args.no_loader_crunch and cmd_args.use_beebasm:
+                if not cmd_args.no_loader_crunch and cmd_args.force_beebasm:
                     line = crunch_line(line, crunched_symbols)
                 loader.append(line)
     return "\n".join(loader) + "\n"
@@ -1319,7 +1319,7 @@ def make_tokenised_basic(name, text_basic):
     filename_text = os.path.join("temp", "%s.bas" % name)
     with open(filename_text, "w") as f:
         f.write(text_basic)
-    if cmd_args.use_beebasm:
+    if cmd_args.force_beebasm:
         filename_beebasm = os.path.join("temp", "%s.beebasm" % name)
         filename_ssd = os.path.join("temp", "%s.ssd" % name)
         with open(filename_beebasm, "w") as f:
@@ -1504,8 +1504,8 @@ def parse_args():
     group.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODONOW: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
     group.add_argument("--no-history", action="store_true", help="disable command history")
     group.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
-    group.add_argument("--use-beebasm", action="store_true", help="use beebasm to tokenise BASIC")
-    group.add_argument("--use-basictool", action="store_true", help="use basictool to tokenise BASIC")
+    group.add_argument("--force-beebasm", action="store_true", help="use beebasm to tokenise BASIC")
+    group.add_argument("--force-basictool", action="store_true", help="use basictool to tokenise BASIC")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -1638,8 +1638,8 @@ def parse_args():
     if cmd_args.force_medium_dynmem and cmd_args.force_big_dynmem:
         die("--force-medium-dynmem and --force-big-dynmem are incompatible")
 
-    if cmd_args.use_beebasm and cmd_args.use_basictool:
-        die("--use-beebasm and --use-basictool are incompatible")
+    if cmd_args.force_beebasm and cmd_args.force_basictool:
+        die("--force-beebasm and --force-basictool are incompatible")
 
     return cmd_args
 
