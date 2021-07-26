@@ -317,10 +317,25 @@ p=PAGE
     IF NOT shadow_driver THEN =p
     REM In mode 0, all shadow RAM is used for the screen.
     IF ?screen_mode=0 THEN =p
-    REM SFTODO: If we're in a large-ish screen mode, should we reduce the number
-    REM of pages of shadow cache? 1K of cache for 4K of shadow RAM in mode 3, for
-    REM example, feels a little excessive when we'd use the same 1K to back 19K
-    REM of shadow RAM in mode 7. SFTODONOW?
+    REM If we're in (say) shadow mode 3, we only have 4K of spare shadow RAM and
+    REM it's tempting to reduce the number of pages of shadow cache. This would
+    REM sometimes help on machines which don't have that much RAM for virtual
+    REM memory cache, but it runs the risk of creating bad worst-case behaviour.
+    REM Imagine a game has 4 "hot" pages of read-only memory, all of which happen
+    REM to end up in shadow RAM - if we've reduced the shadow cache from 4 pages
+    REM to 3 pages we will suffer a big performance hit as we repeatedly copy data
+    REM into the shadow cache. This might not be all that likely, and the
+    REM probability of it happening goes down as the size of spare shadow RAM
+    REM reduces, but it's always possible. It therefore seems safest to avoid
+    REM adjusting the size of shadow cache depending on the size of spare shadow
+    REM RAM. (In principle we could allow the user to specify a minimum shadow
+    REM cache size which we'd never shrink below, but in reality the user is not
+    REM going to know a safe minimum value. There is already some risk of this
+    REM happening anyway - perhaps the user tests on a machine where an extra page
+    REM of shadow cache is added to the default because of the alignment of PAGE,
+    REM and that makes all the difference, or perhaps the user's precise memory
+    REM setup avoids hot read-only memory being loaded into shadow RAM on their
+    REM machine.)
     shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
     REM The shadow cache must not overlap with shadow RAM.
     REM SFTODO: Strictly speaking this could be allowed on machines where we use
