@@ -612,11 +612,10 @@ read_operand
 !ifdef ACORN_DEBUG_ASSERT {
 -	bcc -
 }
-	bcs .store_operand_SFTODO_HACK ; Always branch
+	bcs .store_operand ; Always branch
 } else {
     jmp .store_operand ; SFTODO: carry not guaranteed to be set, and it's (probably) too far for bcs anyway
 }
-.store_operand_SFTODO_HACK jmp .store_operand ; SFTODONOW
 } ; end COMPLEX_MEMORY
 ; SFTODO: WHERE ARE Z_{HIGH,LOW}_GLOBAL_VARS_PTR SET WRT MY !COMPLEX_MEMORY POSSIBLE SCREEN HOLE HACK? - THESE ARE SET UP IN OZMOO.ASM ON STARTUP AND NEVER CHANGE, SO I SHOULD JUST BE ABLE TO DO ANY ONE-OFF ADJUSTMENT THERE AND NEVER WORRY ABOUT IT AGAIN - *EXCEPT* THAT THERE'S NO REASON THE GLOBAL VARS CAN'T END UP STRADDLING THE SCREEN HOLE, SO I NEED SOME WAY TO HANDLE THAT - PROBABLY NOT THE BEST WAY, BUT POSSIBLY THE BUILD SYSTEM (ALTHOUGH I WAS HOPING TO GET AWAY FROM A FIXED PAGE REQUIREMENT FOR B-NO-SHADOW) COULD DETECT IF THIS WILL HAPPEN AND BUILD WITH (PARTIAL; WE ONLY NEED IT FOR THE GLOBALS) COMPLEX_MEMORY IN THAT CASE - DON'T REALLY LIKE THAT THOUGH - IT MIGHT BE POSSIBLE/ACCEPTABLE TO ADJUST STORY_START AT RUNTIME (PERHAPS INDIRECTLY BY FUDGING THE CHOICE OF RELOCATION TARGET) TO ENSURE THE (I THINK) 512-32 BYTE GLOBAL VAR TABLE *DOESN'T* STRADDLE SCREEN RAM. THAT *MIGHT* BE ACCEPTABLE ON A B IN MODE 7, BUT IT'S NOT VIABLE ON AN ELECTRON IN MODE 6 (OR A B IN MODE 6, IF I SUPPORT THAT, AS I MIGHT WELL DO) - IT'S NOT GREAT EVEN ON A B IN MODE 7, AS IN THE WORST CASE WE COULD LOSE ~1K FROM THIS ADJUSTMENT
 ; SFTODONOW: That comment looks scary, I suspect it's taken care of by my implementation decisions a while back but should review it carefully.
@@ -705,7 +704,22 @@ SFTODOQQ4
 }
 }
 
-.find_global_var_SFTODO_HACK jmp .find_global_var ; SFTODONOW
+.find_global_var
+	ldx #0
+	stx zp_temp + 1
+!ifdef TARGET_C128 {
+	dex
+	stx zp_temp + 2 ; Value $ff, meaning bank = 1
+}
+	asl
+	rol zp_temp + 1
+	adc z_low_global_vars_ptr ; Carry is already clear after rol
+	sta zp_temp
+	lda zp_temp + 1
+	adc z_low_global_vars_ptr + 1
+	sta zp_temp + 1
+	jmp z_get_referenced_value
+
 z_get_variable_reference_and_value
 	; input: Variable in y
 	; output: Address is stored in (zp_temp), bank may be stored in zp_temp + 2
@@ -724,7 +738,7 @@ z_get_variable_reference_and_value
 	jmp z_get_referenced_value ; SFTODO: WRT MEM HOLE, WE KNOW IT'S ON STACK HERE - ALTHOUGH THIS HARDLY EVER GETS EXECUTED, BUT IF IT'S "FREE" TO OPTIMISE THIS, MIGHT AS WELL
 +	tya
 	cmp #16
-	bcs .find_global_var_SFTODO_HACK
+	bcs .find_global_var
 	; Local variable
 !ifdef TARGET_C128 {
 	ldx #0
@@ -858,22 +872,6 @@ nonexistent_local2
 	rts
 }
 } ; end ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
-
-.find_global_var
-	ldx #0
-	stx zp_temp + 1
-!ifdef TARGET_C128 {
-	dex
-	stx zp_temp + 2 ; Value $ff, meaning bank = 1
-}
-	asl
-	rol zp_temp + 1
-	adc z_low_global_vars_ptr ; Carry is already clear after rol
-	sta zp_temp
-	lda zp_temp + 1
-	adc z_low_global_vars_ptr + 1
-	sta zp_temp + 1
-	jmp z_get_referenced_value
 
 !ifdef Z3 {
 	Z3_OR_SLOW = 1
