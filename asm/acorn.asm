@@ -1665,7 +1665,8 @@ full_block_graphic = 255
     lda progress_indicator_blocks_until_next_step + 1
     sbc #>progress_indicator_block_size
     sta progress_indicator_blocks_until_next_step + 1
-    bcc +
+    bcc + ; branch if progress_indicator_blocks_until_next_step < 0
+    ; test for progress_indicator_blocks_until_next_step == 0
     ora progress_indicator_blocks_until_next_step
     bne .screenkernal_init_rts
 +   ; progress_indicator_blocks_until_next_step <= 0
