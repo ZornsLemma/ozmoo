@@ -113,7 +113,7 @@ tube=PAGE<&E00
 } else {
     tube_ram$=""
 }
-private_ram_in_use=FALSE:REM SFTODONOW: We really should be detecting this independently of assemble_shadow_driver in a tube-safe way but this will do for now
+private_ram_in_use=FALSE:REM SFTODO: We really should be detecting this independently of assemble_shadow_driver in a tube-safe way but this will do for now
 !ifdef ACORN_SHADOW_VMEM {
 IF shadow AND NOT tube THEN PROCassemble_shadow_driver
 }
@@ -565,14 +565,24 @@ RTS
 NEXT
 ENDPROC
 
+REM Determine if the private 12K is free on Integra-B or B+ by checking for any
+REM extended vectors pointing into it.
+DEF FNprivate_ram_in_use(test_bit)
+extended_vector_table=&D9F
+FOR vector=0 TO 26
+IF ((extended_vector_table?(vector*3+2)) AND test_bit)<>0 THEN =TRUE
+NEXT
+=FALSE
+
 DEF PROCassemble_shadow_driver_integra_b
-REM SFTODO: We could probably fiddle directly with the Integra-B hardware
-REM registers to optimise this a little.
+private_ram_in_use=FNprivate_ram_in_use(64)
+REM SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
+REM registers, we might as well do so here to page shadow RAM in and out; it
+REM would be faster. But I'll stick with this for now.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
 STA lda_abs_y+2:STY sta_abs_y+2
-\ SFTODONOW: DO THE PAGING DIRECTLY RATHER THAN GOING VIA OSBYTE - WE'RE ALREADY POKING THE HW DIRECTLY SO MIGHT AS WELL BE AS FAST AS POSS!
 LDA #&6C:LDX #1:JSR &FFF4 \ page in shadow RAM
 LDY #0
 .copy_loop
@@ -589,20 +599,12 @@ NEXT
 ENDPROC
 
 DEF PROCassemble_shadow_driver_bbc_b_plus
-REM Determine if the private 12K is free on a B+ by checking for any extended
-REM vectors pointing into it.
-REM SFTODONOW: DO DO THE EXTENDED VECTOR CHECK ON INTEGRA-B
-REM SFTODO: We should probably do something similar (remember it's >=64 not 128 - we could use same code for both really) on Integra-B (although we may always find there is such a vector pointing into part of the private RAM we don't touch) - think about it anyway - OK, FWIW under normal circumstances no extended vectors point into bank 64+ on Integra-B, even after I enable printer buffer with "*BUFFER 0" - I suspect this is handled via the stub in page 8 rather than an extended vector - but in principle some other code *might* set an extended vector up to point into that RAM
 REM SFTODO: This may or may not be acceptable in practice, but I'd really rather
 REM not have to ask the user about using the private 12K. If SWMMFS+ is in use
 REM but is *not* the current filing system, this won't detect it and there might
 REM be "Sum?" errors or worse on BREAK. CTRL-BREAK should fix this. Have a play
 REM around with this on an emulator at some point.
-private_ram_in_use=FALSE
-extended_vector_table=&D9F
-FOR vector=0 TO 26
-IF extended_vector_table?(vector*3+2)>=128 THEN private_ram_in_use=TRUE
-NEXT
+private_ram_in_use=FNprivate_ram_in_use(128)
 IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
 REM The private 12K is free, so we can use this much faster implementation which
 REM takes advantage of the ability of code running at &Axxx in the 12K private
@@ -654,7 +656,7 @@ ENDPROC
 DEF PROCassemble_shadow_driver_bbc_b_plus_os
 REM SFTODO: Not sure I like this string, but I think it's better to leave the
 REM default case not saying anything (as opposed to "fast") and therefore I
-REM don't really like to call this case "slow". It's also proably bad
+REM don't really like to call this case "slow". It's also probably bad
 REM marketing. :-) So I'm aiming for a more factual description here.
 shadow_extra$="(via OS)"
 FOR opt%=0 TO 2 STEP 2
@@ -718,11 +720,11 @@ REM to host memory, but that's not a big deal. More to the point is that CACHE2P
 REM doesn't know how to skip the IBOS workspace on an Integra-B, so we'll just
 REM avoid this altogether for the moment.
 swr_adjust=0
-IF NOT tube THEN PROCdetect_private_ram
+IF NOT tube AND NOT private_ram_in_use THEN PROCadd_private_ram_as_swr
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)":PROCupdate_swr_banks(0)
 swr_size=&4000*swr_banks-swr_adjust
 IF swr_banks=0 THEN ENDPROC
-REM SFTODONOW: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
+REM SFTODO: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
 REM We use integer division here so that the 11.5K sideways RAM from the B+/
 REM Integra-B private RAM doesn't cause wrapping if we have a lot of sideways
@@ -733,14 +735,14 @@ IF bank>=64 THEN bank$="P" ELSE bank$=STR$~bank
 swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
-DEF PROCdetect_private_ram
+DEF PROCadd_private_ram_as_swr
 REM If this is a tube-only build, these *_private_ram_size constants might not be
 REM defined.
 !ifdef integra_b_private_ram_size {
     IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
 }
 !ifdef b_plus_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN IF NOT private_ram_in_use THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
 }
 ENDPROC
 
