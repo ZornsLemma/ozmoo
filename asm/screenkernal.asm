@@ -473,13 +473,14 @@ colour1k
 	rts
 }
 
-; SFTODO: I should move these into page 4 to save a few bytes in main RAM. SFTODONOW?
+; SFTODO: I could move these into page 4 to save a few bytes in main RAM. However, page 4 is getting quite full now we can use otherwise wasted space for history storage. It would be a bit conditionally messy but we could squeeze these into spare space in page 5 *if* vmap_max_size is small enough. Probably something to reconsider when I finally tidy up the low memory allocation/constants.asm.
 s_screen_width !byte 0
 s_screen_height !byte 0
 s_screen_width_plus_one !byte 0
 s_screen_width_minus_one !byte 0
 s_screen_height_minus_one !byte 0
 !ifndef ACORN {
+; s_screen_size isn't used on Acorn
 s_screen_size !byte 0, 0
 }
 
