@@ -1063,7 +1063,7 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     # avoid *requiring* at least one bank of sideways RAM, which is useful as a
     # B+ or Integra-B actually has a fair bit of RAM (up to 19K of spare shadow
     # RAM in mode 7 and the private 12K) available even if it has no sideways
-    # RAM. SFTODONOW: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem.
+    # RAM. SFTODONOW: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem. - I SHOULD PERHAPS DO SOME TIMINGS OF MEDDYN VS BIGDYN BEFORE REWRITING THIS COMMENT, AND IT MAY ALSO FORCE ME TO RECONSIDER
     medium_e = None
     if cmd_args.force_medium_dynmem or ("-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem):
         if nonstored_pages * bytes_per_block <= 16 * 1024:
