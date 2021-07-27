@@ -76,7 +76,7 @@ VDU 23,16,0,254,0;0;0;
 fg_colour=${fg_colour}
 bg_colour=${bg_colour}
 !ifdef MODE_7_INPUT {
-?${input_colour}=3:REM SFTODONOW: Default should be settable at build time
+?${input_colour}=${DEFAULT_M7_INPUT_COLOUR}
 }
 screen_mode=${screen_mode}
 DIM block% 256

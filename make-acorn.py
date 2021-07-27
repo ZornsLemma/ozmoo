@@ -1501,6 +1501,7 @@ def parse_args():
     group.add_argument("--default-fg-colour", metavar="N", type=int, help="set the default foreground colour (0-7) for modes 0-6")
     group.add_argument("--default-bg-colour", metavar="N", type=int, help="set the default background colour (0-7) for modes 0-6")
     group.add_argument("--default-mode-7-status-colour", metavar="N", type=int, help="set the default colour (0-7) for the mode 7 status line")
+    group.add_argument("--default-mode-7-input-colour", metavar="N", type=int, help="set the default colour (0-7) for mode 7 player input")
     group.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
     group.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
 
@@ -1589,6 +1590,7 @@ def parse_args():
     cmd_args.default_fg_colour = validate_colour(cmd_args.default_fg_colour, 7)
     cmd_args.default_bg_colour = validate_colour(cmd_args.default_bg_colour, 4)
     cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6, True)
+    cmd_args.default_mode_7_input_colour = validate_colour(cmd_args.default_mode_7_input_colour, 3, True)
 
     cmd_args.splash_wait = 10 if cmd_args.splash_wait is None else cmd_args.splash_wait
     if cmd_args.splash_mode is not None:
@@ -1830,7 +1832,8 @@ def make_disc_image():
         "default_mode": basic_int(cmd_args.default_mode),
         "DEFAULT_FG_COLOUR": basic_int(cmd_args.default_fg_colour),
         "DEFAULT_BG_COLOUR": basic_int(cmd_args.default_bg_colour),
-        "DEFAULT_M7_STATUS_COLOUR": basic_int(cmd_args.default_mode_7_status_colour)
+        "DEFAULT_M7_STATUS_COLOUR": basic_int(cmd_args.default_mode_7_status_colour),
+        "DEFAULT_M7_INPUT_COLOUR": basic_int(cmd_args.default_mode_7_input_colour)
     }
     for executable_group in ozmoo_variants:
         for e in executable_group:
