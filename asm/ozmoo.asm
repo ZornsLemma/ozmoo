@@ -2305,4 +2305,4 @@ scratch_overlapping_game_start
 
 ; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.
 
-; SFTODO: Don't forget the transient command workspace at &A8 is available for some uses. In particular (not necessarily only case), this may be useful for the screen hole operations which need short-term zp storage, and might free up a bit of "regular" zp. SFTODONOW: Look into possible uses for this? If it saves re-using some zp addresses it would probably add to my confidence I'm not accidentally breaking something.
+; SFTODO: Don't forget the transient command workspace at &A8 is available for short-term use.
