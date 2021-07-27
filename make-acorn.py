@@ -829,7 +829,6 @@ class OzmooExecutable(Executable):
             # some main RAM free after loading dynamic memory when loaded at the
             # build addr. For relocatable builds the loader will also take
             # account of the actual value of PAGE.
-            # SFTODONOW: THINKING OUT LOUD - in the new "no 3c00 hack" model, what we probably mostly want is for swr_dynmem to be calculated like this, then the loader bumps up swr_dynmem_needed by any "unavoidable" screen RAM consumption. The build system needs some sort of option to allow the user to control whether we will accept a smalldyn build which won't work at max PAGE with no shadow RAM. I need to think this through a bit TBH. - I *think* for now, where I am going to keep a separate B-no-shadow executable and not offer the option to run in a non-default mode on no-shadow machines, all I need to do here is make pseudo_ramtop() return its current value less the screen size for non-shadow builds, but come back to that fresh
             self.swr_dynmem = nonstored_pages_up_to - 0x8000
             assert self.swr_dynmem <= 16 * 1024
 
@@ -1029,8 +1028,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     return e
 
 
-# SFTODONOW: RENAME THIS FUNCTION NOW WE HAVE MEDIUM
-def make_small_or_big_dynmem_executable(leafname, args, report_failure_prefix):
+def make_best_model_executable(leafname, args, report_failure_prefix):
     # Calculate adjusted_small_dynmem_page_threshold; it doesn't make sense to refuse to
     # build using the small model because it requires assuming PAGE>=max_start_addr.
     if "-DACORN_ELECTRON_SWR=1" in args:
@@ -1106,7 +1104,7 @@ def make_electron_swr_executable():
     # SFTODO: Not sure if this is a good idea or not - it will slightly harm performance on some machines. If it *does* stay, factor out the duplicate code with make_shr_swr_executable.
     if not cmd_args.no_shadow_vmem:
         args += ["-DACORN_SHADOW_VMEM=1", "-DACORN_RECOMMENDED_SHADOW_CACHE_PAGES=%d" % cmd_args.recommended_shadow_cache_pages]
-    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "Electron"))
+    return extra_build_wrapper(make_best_model_executable(leafname, args, "Electron"))
 
 
 def make_bbc_swr_executable():
@@ -1117,7 +1115,7 @@ def make_bbc_swr_executable():
     # hardware scrolling is always disabled in mode 7 anyway.
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
     args = [x for x in args if x != "-DACORN_HW_SCROLL=1"]
-    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "BBC B sideways RAM"))
+    return extra_build_wrapper(make_best_model_executable(leafname, args, "BBC B sideways RAM"))
 
 
 def make_shr_swr_executable():
@@ -1125,7 +1123,7 @@ def make_shr_swr_executable():
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args
     if not cmd_args.no_shadow_vmem:
         args += ["-DACORN_SHADOW_VMEM=1", "-DACORN_RECOMMENDED_SHADOW_CACHE_PAGES=%d" % cmd_args.recommended_shadow_cache_pages]
-    return extra_build_wrapper(make_small_or_big_dynmem_executable(leafname, args, "shadow+sideways RAM"))
+    return extra_build_wrapper(make_best_model_executable(leafname, args, "shadow+sideways RAM"))
 
 
 def make_tube_executables():
