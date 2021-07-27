@@ -531,7 +531,7 @@ z_store_result
 	+read_next_byte_at_z_pc
 	tay
 	pla
-	jmp z_set_variable ; SFTODO: This is a hot instruction, may be worth moving this code to just before z_set_variable so we can fall through SFTODONOW?
+	jmp z_set_variable ; SFTODO: This is a hot instruction, may be worth moving this code to just before z_set_variable so we can fall through - but the code flow around this and z_set_variable is complex enough that I'm reluctant to fiddle right now - maybe suggest to upstream, if they're willing to shuffle code it doesn't create a merge headache for me. (Nothing falls through *into* z_set_variable at the moment, so that is "free" for us.)
 }
 
 
