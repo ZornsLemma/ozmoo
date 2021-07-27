@@ -1388,6 +1388,7 @@ read_text
 	; SFTODONOW: There is a glitch with Beyond Zork - which is *not* related to history, it happens with --no-history too - where pressing (e.g.) the up arrow emits spurious colour codes, both at the start of input and part way through (e.g. type "a" then press up arrow then "a", you get "a a" where the space is really a colour code). I haven't investigated too deeply yet, except that I am 95% sure (from using debugger on tube build) that the colour code is being emitted by the code below at .no_space_present, but *why* this code is being called I do not know. This seems to be called "more often" than I am expecting, it is written on the assumption this is a one-off at the start of reading a line. I suspect that's a faulty assumption, *perhaps* (in this case) because the up arrow is specified to have a terminating action in BZ or something, but I am going beyond the bounds of what I've investigated so far in saying that.
 !ifdef MODE_7_INPUT {
 ; SFTODONOW START EXPERIMENTAL HACK - THIS DOES *NOT* WORK, BUT IT DOES HELP - I THINK I HAVE A VAGUE IDEA WHAT'S GOING ON - I SUSPECT THAT *ALSO* CHANGING THE CODE BELOW TO DETECT TOP-BIT_SET AS WELL AS SPACE WOULD MAYBE FIX IT, BUT IT COULD ALSO BE SHEER VOODOO - YES, WITH THE EXP HACK BELOW AS WELL THIS DOES SUPERFICIALLY (PLAYING FOR A MINUTE) FIX BZ - *IF* I DECIDE TO STICK WITH THIS, A) NEED TO COMMENT THE CODE B) THIS SHOULD ONLY BE DONE FOR Z5+, NO POINT WASTING MEMORY ON CODE WHICH WON'T BE NEEDED IN Z3/Z4
+; SFTODONOW: THIS *DOES* SEEM TO WORK EVEN IF THE INPUT LINE WRAPS - I THOUGHT IF BZ IS "REDISPLAYING" TEXT ITSELF IT MIGHT NOT, BUT IT DOES SEEM TO WORK. SINCE THE HACK IS NOT THAT COMPLEX MAYBE GO WITH IT AND LEAVE SOME COMMENTS HERE SAYNIG IT'S MAYBE IFFY AND IN FUTURE WE MIGHT WANT TO SIMPLY DISABLE COLOURED INPUT (AUTO OR MANUAL) FOR THESE GAMES.
     cmp #2
     bcs +
 ; SFTODO END EXP HACK
@@ -1415,6 +1416,7 @@ read_text
 	cmp #' '
 	bne .no_space_present
 }
+	; SFTODONOW: NEXT TWO "BRANCHES" OF CODE ARE VERY SIMILAR, CAN WE SHARE THEM? ALSO TBH I AM NOT SURE USING S_PRINTCHAR_UNFILTERED IS RIGHT HERE - OK, IT PROBABLTY IS, BECAUSE WE WANT THIS CHARACTER TO "COUNT" AND THAT'S PROBABLY WHY THE TWO BRANCHES ARE DIFFERENT - THINK ABOUT THIS< THERE MAY STILL BE SOME SHARING POTENTIAL AND IN ANY CASE SHOULD PROBABLY COMMENT - THO I SEE WE DO HAVE A COMMENT ABOVE SO MAYBE NOT, I JUST HADN'T READ THAT
 	lda input_colour_code_or_0
 	jsr oswrch
 	jmp +
