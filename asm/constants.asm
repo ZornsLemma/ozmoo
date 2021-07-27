@@ -466,6 +466,11 @@ screen_hole_tmp       = $aa ; 1 byte
 ; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
 screen_hole_tmp_slow  = $ab ; 1 byte
 }
+!ifdef MODE_7_INPUT {
+; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
+; and can't be relied on to hold values for long anyway.
+mode_7_input_tmp = $a8 ; 1 byte
+}
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 dynmem_ram_bank       = $89; 1 byte
 }
@@ -617,6 +622,12 @@ acorn_screen_hole_pages_minus_one = $421 ; SFTODO: PROB NOT GOING TO BENEFIT FRO
 !ifdef TRACE_SETJMP {
 ; This address is owned by Econet but this is debug-only code.
 setjmp_min_s = $90
+}
+
+!ifndef ACORN_SWR {
+; On a second processor zero page is available up to but not including $ee. We don't use
+; most of that, at least not yet.
+;SFTODONOW
 }
 
 }

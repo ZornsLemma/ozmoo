@@ -1913,11 +1913,10 @@ update_colours
     jsr turn_off_cursor
     ; SFTODO: We "should" update previous lines of this same prompt, but let's keep the
     ; code size and complexity down for now.
-    ; SFTODO: Is it safe to use zp_temp here? SFTODONOW: WE CAN USE TRANSIENT ZP
     lda #$ff
-    sta zp_temp
--   inc zp_temp
-    ldx zp_temp
+    sta mode_7_input_tmp
+-   inc mode_7_input_tmp
+    ldx mode_7_input_tmp
     cpx #40
     beq .prompt_change_done
     ldy zp_screenrow
