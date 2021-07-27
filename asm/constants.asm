@@ -447,8 +447,9 @@ cursor_column         = $7c ; 2 bytes
 !if 0 { ; SFTODO: These zp locations can be re-used now; I suspect (but obviously can test) there's no real value to using zp for text output related things
 ;screen_width          = $54 ; 1 byte ; SFTODO: I have re-used this one already
 ;screen_height         = $89 ; 1 byte ; SFTODO: I have re-used this one already
-screen_height_minus_1 = $8a ; 1 byte ; SFTODONOW: Re-use this - possibly for mempointer_ram_bank, but should find some use for it anyway
+;screen_height_minus_1 = $8a ; 1 byte ; SFTODO: I have re-used this one already
 }
+mempointer_ram_bank = $8a ; 1 byte SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
 
 vmem_temp			  = $00 ; 2 bytes
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
@@ -550,7 +551,6 @@ vmem_cache_page_index_end = vmem_cache_page_index + ACORN_RECOMMENDED_SHADOW_CAC
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up.
-mempointer_ram_bank = $41c ; 1 byte SFTODO: might benefit from zp? looking at profiles it's really not that hot on big or small dynmem model
 vmem_blocks_in_main_ram = $41d ; 1 byte
 vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
 z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
