@@ -82,7 +82,7 @@
 ; SFTODO: Make this controllable via the build script?
 ; SFTODONOW: Should probably do some testing with these on - and make sure I turn them off after!
 ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
-; DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
+DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
 ; Zero page allocations for the initial load of game data.
 dir_ptr = zp_temp ; 2 bytes
