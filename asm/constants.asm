@@ -471,6 +471,15 @@ screen_hole_tmp_slow  = $ab ; 1 byte
 ; and can't be relied on to hold values for long anyway.
 mode_7_input_tmp = $a8 ; 1 byte
 }
+!ifndef ACORN_SWR {
+!ifdef USE_HISTORY {
+; This overlaps the above uses of transient command workspace, but that's fine - the
+; whole point is we cannot rely on it to hold values except in the short term. (On
+; a second processor this is actually our zero page, but we're treating it as if it's
+; short-term only just as it is on the host.)
+osbyte_set_cursor_editing_tmp = $a8 ; 5 bytes
+}
+}
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 dynmem_ram_bank       = $89; 1 byte
 }
@@ -625,9 +634,7 @@ setjmp_min_s = $90
 }
 
 !ifndef ACORN_SWR {
-; On a second processor zero page is available up to but not including $ee. We don't use
-; most of that, at least not yet.
-;SFTODONOW
+; On a second processor zero page is available up to but not including $ee. SFTODO?
 }
 
 }

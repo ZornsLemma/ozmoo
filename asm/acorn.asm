@@ -2617,22 +2617,18 @@ do_osbyte_set_cursor_editing
     stx nominal_cursor_key_status
     rts
 } else {
-    ; SFTODO: Any chance we could use some scratch ZP to shrink this code? If
-    ; nothing else on tube we probably have spare ZP anyway, as it has more free
-    ; than host. Alternatively, would we come out ahead using a dedicated 5-byte
-    ; block? We wouldn't need to populate the $FF bytes every time then.
-    ; SFTODONOW: Probably a fair use for transient ZP workspace here
+    ; We use temporary workspace in zero page here to keep the code size down.
     lda #<nominal_cursor_key_status
-    sta scratch_page + 0
+    sta osbyte_set_cursor_editing_tmp + 0
     lda #>nominal_cursor_key_status
-    sta scratch_page + 1
+    sta osbyte_set_cursor_editing_tmp + 1
     lda #$ff
-    sta scratch_page + 2
-    sta scratch_page + 3
-    stx scratch_page + 4
+    sta osbyte_set_cursor_editing_tmp + 2
+    sta osbyte_set_cursor_editing_tmp + 3
+    stx osbyte_set_cursor_editing_tmp + 4
     lda #osword_write_host
-    ldx #<scratch_page
-    ldy #>scratch_page
+    ldx #<osbyte_set_cursor_editing_tmp
+    ldy #>osbyte_set_cursor_editing_tmp
     jmp osword
 }
 }
