@@ -479,7 +479,9 @@ s_screen_height !byte 0
 s_screen_width_plus_one !byte 0
 s_screen_width_minus_one !byte 0
 s_screen_height_minus_one !byte 0
+!ifndef ACORN {
 s_screen_size !byte 0, 0
+}
 
 !ifndef ACORN {
 s_init
