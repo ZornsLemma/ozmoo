@@ -1387,6 +1387,10 @@ read_text
 	sta .read_text_column
 	; SFTODONOW: There is a glitch with Beyond Zork - which is *not* related to history, it happens with --no-history too - where pressing (e.g.) the up arrow emits spurious colour codes, both at the start of input and part way through (e.g. type "a" then press up arrow then "a", you get "a a" where the space is really a colour code). I haven't investigated too deeply yet, except that I am 95% sure (from using debugger on tube build) that the colour code is being emitted by the code below at .no_space_present, but *why* this code is being called I do not know. This seems to be called "more often" than I am expecting, it is written on the assumption this is a one-off at the start of reading a line. I suspect that's a faulty assumption, *perhaps* (in this case) because the up arrow is specified to have a terminating action in BZ or something, but I am going beyond the bounds of what I've investigated so far in saying that.
 !ifdef MODE_7_INPUT {
+; SFTODONOW START EXPERIMENTAL HACK - THIS DOES *NOT* WORK, BUT IT DOES HELP - I THINK I HAVE A VAGUE IDEA WHAT'S GOING ON - I SUSPECT THAT *ALSO* CHANGING THE CODE BELOW TO DETECT TOP-BIT_SET AS WELL AS SPACE WOULD MAYBE FIX IT, BUT IT COULD ALSO BE SHEER VOODOO - YES, WITH THE EXP HACK BELOW AS WELL THIS DOES SUPERFICIALLY (PLAYING FOR A MINUTE) FIX BZ - *IF* I DECIDE TO STICK WITH THIS, A) NEED TO COMMENT THE CODE B) THIS SHOULD ONLY BE DONE FOR Z5+, NO POINT WASTING MEMORY ON CODE WHICH WON'T BE NEEDED IN Z3/Z4
+    cmp #2
+    bcs +
+; SFTODO END EXP HACK
 	lda input_colour_code_or_0
 	beq +
 	; Check to see if there's a space before the current (Ozmoo) cursor
@@ -1402,8 +1406,15 @@ read_text
 	jsr do_oswrch_vdu_goto_xy
 	lda #osbyte_read_screen_mode ; SFTODO: ALSO READS CHAR AT CURSOR
 	jsr osbyte
+!if 0 { ;SFTODONOW ORIGINAL
 	cpx #' '
 	bne .no_space_present
+} else { ; SFTODONOW EXPERIMENTAL HACK
+	txa
+	bmi + ; there's already a control code
+	cmp #' '
+	bne .no_space_present
+}
 	lda input_colour_code_or_0
 	jsr oswrch
 	jmp +
