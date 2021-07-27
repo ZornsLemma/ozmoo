@@ -1385,6 +1385,7 @@ read_text
 	tya
 }
 	sta .read_text_column
+	; SFTODONOW: There is a glitch with Beyond Zork - which is *not* related to history, it happens with --no-history too - where pressing (e.g.) the up arrow emits spurious colour codes, both at the start of input and part way through (e.g. type "a" then press up arrow then "a", you get "a a" where the space is really a colour code). I haven't investigated too deeply yet, except that I am 95% sure (from using debugger on tube build) that the colour code is being emitted by the code below at .no_space_present, but *why* this code is being called I do not know. This seems to be called "more often" than I am expecting, it is written on the assumption this is a one-off at the start of reading a line. I suspect that's a faulty assumption, *perhaps* (in this case) because the up arrow is specified to have a terminating action in BZ or something, but I am going beyond the bounds of what I've investigated so far in saying that.
 !ifdef MODE_7_INPUT {
 	lda input_colour_code_or_0
 	beq +
