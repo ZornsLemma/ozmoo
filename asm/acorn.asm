@@ -2621,6 +2621,7 @@ do_osbyte_set_cursor_editing
     ; nothing else on tube we probably have spare ZP anyway, as it has more free
     ; than host. Alternatively, would we come out ahead using a dedicated 5-byte
     ; block? We wouldn't need to populate the $FF bytes every time then.
+    ; SFTODONOW: Probably a fair use for transient ZP workspace here
     lda #<nominal_cursor_key_status
     sta scratch_page + 0
     lda #>nominal_cursor_key_status

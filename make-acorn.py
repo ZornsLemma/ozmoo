@@ -235,7 +235,7 @@ def check_if_special_game():
         if cmd_args.interpreter_num is None:
             cmd_args.interpreter_num = 2
         cmd_args.function_keys = True
-        cmd_args.no_cursor_editing = True
+        cmd_args.no_cursor_editing = True # SFTODONOW!?
         # We don't patch if the game is only going to be run in 80 column modes.
         if not cmd_args.only_80_column:
             patch = beyond_zork_releases[game_key].split(" ")
@@ -1521,7 +1521,7 @@ def parse_args():
     group.add_argument("-o", "--preload-opt", action="store_true", help="build in preload optimisation mode (implies -d)")
     group.add_argument("-c", "--preload-config", metavar="PREOPTFILE", type=str, help="build with specified preload configuration previously created with -o")
     group.add_argument("--interpreter-num", metavar="N", type=int, help="set the interpreter number (0-19, defaults to 2 for Beyond Zork and 8 otherwise)")
-    group.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard") # SFTODONOW: MAY WANT TO GET RID OF THIS OR TWEAK IT - at least when USE_HISTORY is set, it's kind of irrelevant because the INSV handler allows *FX4,0 to be forced at any time using SHIFT+cursor. It arguably has some limited value on no-history builds in stopping "simple" cursor key use bringing up the split cursor in read_char. Do we need to do anything to stop the split cursor occurring in read_char with history builds and SHIFT+cursor? I can't help feeling that's OK - it's "hidden" and if the user wants it, it is there - but maybe that's path of least resistance.
+    group.add_argument("--no-cursor-editing", action="store_true", help="pass cursor keys through when reading a line from keyboard")
     group.add_argument("--no-history", action="store_true", help="disable command history")
     group.add_argument("-f", "--function-keys", action="store_true", help="pass function keys through to the game")
     group.add_argument("--force-beebasm", action="store_true", help="use beebasm to tokenise BASIC")
