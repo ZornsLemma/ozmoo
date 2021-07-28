@@ -42,7 +42,6 @@
 ; Finished setting vmap_max_size.
 
 zp_constant_ptr = $00
-low_constant_ptr = $400
 high_constant_ptr = *
 
 * = $02
@@ -346,8 +345,6 @@ zp_screenrow          = $8f ; current cursor row
 
 stack = $100
 
-* = low_constant_ptr
-
 !set pending_extra_skip = 0
 
 !macro allocate_fixed n {
@@ -406,9 +403,9 @@ resident_integer_x = $460
 
 ; We need to avoid allocating loader-modified addresses with @% and A% as those
 ; have special meanings in BASIC. To keep the macro complexity down, we just
-; assign some addresses which are always needed there.
+; assign some variables which are needed by all executables there.
 
-* = low_constant_ptr
+* = $400
 num_rows		+allocate_fixed 1
 memory_buffer	+allocate_fixed 7 ; larger on C64, but this is all we use
 !if * < resident_integer_b {
@@ -431,10 +428,11 @@ screen_mode	+allocate_fixed 1
 fg_colour	+allocate_fixed 1
 bg_colour	+allocate_fixed 1
 
-; The next few loader-written values aren't used by all executables; we need them to
-; have fixed addresses across the executables which do use them so the loader can
-; write to them without making things difficult, so we always skip the space for them
-; even if they're not used. allocate_low will re-use the wasted space when allocating.
+; The next few loader-written values aren't used by all executables; we need
+; them to have fixed addresses across the executables which do use them so the
+; loader can write to them without making things difficult, so we always make
+; space for them even if they're not used. allocate_low will re-use the wasted
+; space when it allocates.
 
 first_optional_low_address = *
 
@@ -512,7 +510,6 @@ z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFT
 jmp_buf_ram_bank 	+allocate_low 1
 }
 
-; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
 !ifdef MODE_7_INPUT {
 input_colour_code_or_0	+allocate_low 1
 }
