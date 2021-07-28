@@ -452,17 +452,25 @@ initial_clock	+allocate_low 5
 memory_buffer	+allocate_low 7 ; larger on C64, but this is all we use
 ; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
 !ifdef MODE_7_INPUT {
-input_colour_code_or_0 = $42f+filename_size
-jmp_buf = input_colour_code_or_0+1
-} else {
-jmp_buf = $42f+filename_size ; jmp_buf_size bytes
+input_colour_code_or_0	+allocate_low 1
 }
 jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
-+assert jmp_buf + jmp_buf_size <= $500
+jmp_buf	+allocate_low jmp_buf_size
+
+; vmap_z_l is at $501 because we use "vmap_z_l-1,x" addressing in a hot loop and
+; we want to avoid any page-crossing penalty.
+vmap_z_l = $501
+
+; SFTODONOW: I SUSPECT I WANT TO BE FANCIER ABOUT HISTORY SO I CAN SQUEEZE SOME OTHER STUFF INTO PAGE 4 DEPENDING ON MIN HISTORY SIZE WE WILL TOLERATE
 !ifdef USE_HISTORY {
-low_history_start = jmp_buf + jmp_buf_size
-low_history_end = $500
+low_history_end = vmap_z_l
+!if * >= low_history_end {
+	!error "No space for low_history"
 }
+low_history_start
+	+allocate_low low_history_end - *
+}
+
 ; The progress_indicator_* variables can re-use the space at
 ; z_operand_value_high_arr; they're only used during the initial loading when
 ; the Z-machine has not been set up.
@@ -470,8 +478,6 @@ progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
 progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
 ; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf. (Not so much now as we do use it for history.)
 
-; SFTODO: $500 is currently unused
-vmap_z_l = $501 ; not $500, because we use "vmap_z_l - 1,x" addressing in a hot loop
 scratch_page = $600
 !ifdef ACORN_SWR {
 scratch_double_page = scratch_page
