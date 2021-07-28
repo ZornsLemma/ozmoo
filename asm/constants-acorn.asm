@@ -375,7 +375,11 @@ stack = $100
 	; byte allocations in the region which has fixed allocations.
 	!if (* + n + pending_extra_skip) == addr {
 		!set pending_extra_skip = pending_extra_skip + 1
-		;!warn "YYY", *
+	}
+
+	; SFTODO: Mildly ugly special case, and previous check for collision is perhaps sub-optimal too
+	!if (* + n + pending_extra_skip) == game_data_filename_or_restart_command {
+		!set pending_extra_skip = pending_extra_skip + filename_size
 	}
 }
 
@@ -390,6 +394,7 @@ stack = $100
 	!ifdef ACORN_RELOCATABLE {
 		+skip_fixed_low_allocation relocate_target, n
 	}
+	;+skip_fixed_low_allocation game_data_filename_or_restart_command, n
 
 	* = * + n + pending_extra_skip
 	!set pending_extra_skip = 0
@@ -420,11 +425,21 @@ screen_mode	+allocate_fixed 1
 fg_colour	+allocate_fixed 1
 bg_colour	+allocate_fixed 1
 !ifdef MODE_7_INPUT {
-input_colour	+allocate_fixed 1
+input_colour
 }
+	+allocate_fixed 1
 !ifdef ACORN_RELOCATABLE {
-relocate_target	+allocate_fixed 1
+relocate_target
 ozmoo_relocate_target = relocate_target ; SFTODO!?
+}
+	+allocate_fixed 1
+
+; game_data_filename/restart_command have filename_size bytes allocated; we only
+; need one or the other in any particular build.
+filename_size = 49
+game_data_filename_or_restart_command +allocate_fixed filename_size
+!if * >= resident_integer_x {
+	!error "game_data_filename_or_restart_command not within resident integer space"
 }
 
 * = low_constant_ptr
@@ -476,18 +491,6 @@ vmem_blocks_in_main_ram	+allocate_low 1
 vmem_blocks_stolen_in_first_bank	+allocate_low 1
 z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
 jmp_buf_ram_bank 	+allocate_low 1
-}
-
-; game_data_filename/restart_command have filename_size bytes allocated; we only
-; need one or the other in any particular build. This needs to be within the
-; resident variable space so the BASIC loader can write to it safely. We don't
-; allocate it too early because we want to allow the simpler one byte
-; allocations to fill up round the variable set of one byte loader-written
-; addresses.
-filename_size = 49
-game_data_filename_or_restart_command +allocate_low filename_size
-!if * >= resident_integer_x {
-	!error "game_data_filename_or_restart_command not within resident integer space"
 }
 
 initial_clock	+allocate_low 5
