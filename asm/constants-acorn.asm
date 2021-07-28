@@ -364,7 +364,7 @@ stack = $100
 
 	; At this point, the label for the n bytes has already been allocated, so if
 	; the allocation overlaps addr that's not acceptable.
-	!if (addr >= *) and (addr < (* + n)) {
+	!if (n != 0) and ((addr >= *) and (addr < (* + n))) {
 		!error "Low allocation collision at ", *, " with ", addr
 	}
 
@@ -376,25 +376,16 @@ stack = $100
 	!if (* + n + pending_extra_skip) == addr {
 		!set pending_extra_skip = pending_extra_skip + 1
 	}
-
-	; SFTODO: Mildly ugly special case, and previous check for collision is perhaps sub-optimal too
-	!if (* + n + pending_extra_skip) == game_data_filename_or_restart_command {
-		!set pending_extra_skip = pending_extra_skip + filename_size
-	}
 }
 
 !macro allocate_low n {
 	!set ascending_check = 0
-	+skip_fixed_low_allocation screen_mode, n
-	+skip_fixed_low_allocation fg_colour, n
-	+skip_fixed_low_allocation bg_colour, n
 	!ifdef MODE_7_INPUT {
 		+skip_fixed_low_allocation input_colour, n
 	}
 	!ifdef ACORN_RELOCATABLE {
 		+skip_fixed_low_allocation relocate_target, n
 	}
-	;+skip_fixed_low_allocation game_data_filename_or_restart_command, n
 
 	* = * + n + pending_extra_skip
 	!set pending_extra_skip = 0
@@ -409,23 +400,49 @@ stack = $100
 ; for anything else we know the values will not be corrupted. We can't do this
 ; with most of language workspace as BASIC is using it for its own purposes
 ; while the loader is running.
-;
-; We skip @%, A% and X% onwards for loader-modified addresses, as those
-; variables have special meanings in BASIC. O% and P% do have special meanings
-; but we ensure only game_data_filename_or_restart_command overlaps them and
-; make sure the loader sets that after all uses of O% and P%.
 resident_integer_b = $408
 resident_integer_o = $43c ; SFTODO: NOT USED, WE SHOULD PROB ASSERT <= THIS AT SOME POINT
 resident_integer_x = $460
 
-* = resident_integer_b
+; We need to avoid allocating loader-modified addresses with @% and A% as those
+; have special meanings in BASIC. To keep the macro complexity down, we just
+; assign some addresses which are always needed there.
+
+* = low_constant_ptr
+num_rows		+allocate_fixed 1
+memory_buffer	+allocate_fixed 7 ; larger on C64, but this is all we use
+!if * < resident_integer_b {
+	!error "Not enough low allocations to reach B%"
+}
+
+; Now allocate loader-written addresses.
+
+; game_data_filename/restart_command have filename_size bytes allocated; we only
+; need one or the other in any particular build.
+filename_size = 47
+game_data_filename_or_restart_command +allocate_fixed filename_size
+!if * >= resident_integer_x {
+	!error "game_data_filename_or_restart_command not within resident integer space"
+}
+
 screen_mode	+allocate_fixed 1
 ; fg_colour, bg_colour and (if MODE_7_INPUT is defined) input_colour must be
 ; adjacent and in this order.
 fg_colour	+allocate_fixed 1
 bg_colour	+allocate_fixed 1
+
+; The next few loader-written values aren't used by all executables; we need them to
+; have fixed addresses across the executables which do use them so the loader can
+; write to them without making things difficult, so we always skip the space for them
+; even if they're not used. allocate_low will re-use the wasted space when allocating.
+
+first_optional_low_address = *
+
 !ifdef MODE_7_INPUT {
 input_colour
+	!if bg_colour + 1 != input_colour {
+		!error "bg_colour and input_colour must be adjacent"
+	}
 }
 	+allocate_fixed 1
 !ifdef ACORN_RELOCATABLE {
@@ -434,30 +451,32 @@ ozmoo_relocate_target = relocate_target ; SFTODO!?
 }
 	+allocate_fixed 1
 
-; game_data_filename/restart_command have filename_size bytes allocated; we only
-; need one or the other in any particular build.
-filename_size = 49
-game_data_filename_or_restart_command +allocate_fixed filename_size
-!if * >= resident_integer_x {
-	!error "game_data_filename_or_restart_command not within resident integer space"
+; O% is the first resident integer variable after A% which has a special meaning
+; to BASIC and which the loader can't entirely avoid, so if possible (and it is,
+; at the moment) we want to avoid spilling into it. SFTODO: If this gets
+; problematic, we could probably fairly easily make sure we do all our assembly
+; ASAP in the loader before we poke any values into page 4 to pass them to the
+; Ozmoo executable.
+!if * > resident_integer_o {
+	!error "Loader-written values have spilled into O%", *
 }
 
-* = low_constant_ptr
+* = first_optional_low_address
++allocate_low 0
 
 ; The following allocations are only used by the Ozmoo executable itself, so we
 ; no longer care about working around BASIC's use of the language workspace.
 
+s_stored_x		+allocate_low 1
+s_stored_y		+allocate_low 1
+
 !ifdef TRACE {
 z_trace_index	+allocate_low 1
 }
-s_stored_x		+allocate_low 1
-s_stored_y		+allocate_low 1
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
 sideways_ram_hole_start	+allocate_low 1
 sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
 }
-game_disc_crc	+allocate_low 2
-num_rows		+allocate_low 1
 !ifdef HAVE_VMAP_USED_ENTRIES {
 ; This is used only in PREOPT builds where performance isn't critical so we
 ; don't waste a byte of zero page on it.
@@ -493,8 +512,6 @@ z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFT
 jmp_buf_ram_bank 	+allocate_low 1
 }
 
-initial_clock	+allocate_low 5
-memory_buffer	+allocate_low 7 ; larger on C64, but this is all we use
 ; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
 !ifdef MODE_7_INPUT {
 input_colour_code_or_0	+allocate_low 1
@@ -507,6 +524,9 @@ acorn_screen_hole_start_page_minus_one = $54
 acorn_screen_hole_pages	+allocate_low 1; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 acorn_screen_hole_pages_minus_one +allocate_low 1 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 }
+
+game_disc_crc	+allocate_low 2
+initial_clock	+allocate_low 5
 
 jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
 jmp_buf	+allocate_low jmp_buf_size
