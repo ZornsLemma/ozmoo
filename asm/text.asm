@@ -1385,13 +1385,29 @@ read_text
 	tya
 }
 	sta .read_text_column
-	; SFTODONOW: There is a glitch with Beyond Zork - which is *not* related to history, it happens with --no-history too - where pressing (e.g.) the up arrow emits spurious colour codes, both at the start of input and part way through (e.g. type "a" then press up arrow then "a", you get "a a" where the space is really a colour code). I haven't investigated too deeply yet, except that I am 95% sure (from using debugger on tube build) that the colour code is being emitted by the code below at .no_space_present, but *why* this code is being called I do not know. This seems to be called "more often" than I am expecting, it is written on the assumption this is a one-off at the start of reading a line. I suspect that's a faulty assumption, *perhaps* (in this case) because the up arrow is specified to have a terminating action in BZ or something, but I am going beyond the bounds of what I've investigated so far in saying that.
 !ifdef MODE_7_INPUT {
-; SFTODONOW START EXPERIMENTAL HACK - THIS DOES *NOT* WORK, BUT IT DOES HELP - I THINK I HAVE A VAGUE IDEA WHAT'S GOING ON - I SUSPECT THAT *ALSO* CHANGING THE CODE BELOW TO DETECT TOP-BIT_SET AS WELL AS SPACE WOULD MAYBE FIX IT, BUT IT COULD ALSO BE SHEER VOODOO - YES, WITH THE EXP HACK BELOW AS WELL THIS DOES SUPERFICIALLY (PLAYING FOR A MINUTE) FIX BZ - *IF* I DECIDE TO STICK WITH THIS, A) NEED TO COMMENT THE CODE B) THIS SHOULD ONLY BE DONE FOR Z5+, NO POINT WASTING MEMORY ON CODE WHICH WON'T BE NEEDED IN Z3/Z4
-; SFTODONOW: THIS *DOES* SEEM TO WORK EVEN IF THE INPUT LINE WRAPS - I THOUGHT IF BZ IS "REDISPLAYING" TEXT ITSELF IT MIGHT NOT, BUT IT DOES SEEM TO WORK. SINCE THE HACK IS NOT THAT COMPLEX MAYBE GO WITH IT AND LEAVE SOME COMMENTS HERE SAYNIG IT'S MAYBE IFFY AND IN FUTURE WE MIGHT WANT TO SIMPLY DISABLE COLOURED INPUT (AUTO OR MANUAL) FOR THESE GAMES.
+	; SF: Beyond Zork in mode 7 with coloured input exhibited a glitch where
+	; pressing the up arrow would insert spurious spaces, which on closer
+	; inspection turned out to be input colour control codes. This happened both
+	; with a blank input line and after typing some "real" characters. This is
+	; not related to history; it happens with history disabled. The problem
+	; seems to be the use of read_text "more than once" for the same line of
+	; input; I note there are some trenchant comments on this in the Z-machine
+	; spec. The following two workarounds seem to solve this in Beyond Zork and
+	; may work in other games, but I don't claim they are perfect. This might
+	; need revisiting in the future, and if it proves thorny it might be best
+	; just to say "mode 7 coloured input is not supported for these games".
+	;
+	; That said, the two workarounds are:
+	; 1) If .read_text_column >= 2, there is already at least one character of
+	;    input so we know we've added a colour code already and don't need to do
+	;    anything.
+	; 2) When checking to see if there's a space we can overwrite, treat an
+	;    existing colour code as a space.
+!ifdef Z5PLUS {
     cmp #2
     bcs +
-; SFTODO END EXP HACK
+}
 	lda input_colour_code_or_0
 	beq +
 	; Check to see if there's a space before the current (Ozmoo) cursor
@@ -1407,16 +1423,15 @@ read_text
 	jsr do_oswrch_vdu_goto_xy
 	lda #osbyte_read_screen_mode ; SFTODO: ALSO READS CHAR AT CURSOR
 	jsr osbyte
-!if 0 { ;SFTODONOW ORIGINAL
+!ifndef Z5PLUS {
 	cpx #' '
 	bne .no_space_present
-} else { ; SFTODONOW EXPERIMENTAL HACK
+} else {
 	txa
 	bmi + ; there's already a control code
 	cmp #' '
 	bne .no_space_present
 }
-	; SFTODONOW: NEXT TWO "BRANCHES" OF CODE ARE VERY SIMILAR, CAN WE SHARE THEM? ALSO TBH I AM NOT SURE USING S_PRINTCHAR_UNFILTERED IS RIGHT HERE - OK, IT PROBABLTY IS, BECAUSE WE WANT THIS CHARACTER TO "COUNT" AND THAT'S PROBABLY WHY THE TWO BRANCHES ARE DIFFERENT - THINK ABOUT THIS< THERE MAY STILL BE SOME SHARING POTENTIAL AND IN ANY CASE SHOULD PROBABLY COMMENT - THO I SEE WE DO HAVE A COMMENT ABOVE SO MAYBE NOT, I JUST HADN'T READ THAT
 	lda input_colour_code_or_0
 	jsr oswrch
 	jmp +
