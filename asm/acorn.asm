@@ -86,7 +86,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
 ; Zero page allocations for the initial load of game data.
 dir_ptr = zp_temp ; 2 bytes
-game_blocks = zp_temp + 2 ; 2 bytes
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
 catalogue = scratch_overlapping_game_start
 } else {
@@ -110,8 +109,8 @@ ram_blocks = dir_ptr ; 2 bytes
 !ifdef ACORN_SWR {
 scratch_ram_blocks = scratch_page ; 2 bytes
 }
-scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 }
+scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too
@@ -972,90 +971,7 @@ prepare_for_initial_load
     lda division_result
     sta readblocks_base
 }
-    ; Determine the length of the DATA file in blocks.
-    ; SFTODONOW: We could just hard-code this, as we know at assembly time.
-    ldy #6
-    lda (dir_ptr),y
-    and #%00110000
-    lsr
-    lsr
-    lsr
-    lsr
-    sta game_blocks + 1 ; high byte of length in blocks
-    dey
-    lda (dir_ptr),y
-    sta game_blocks ; low byte of length in blocks
-    dey
-    lda (dir_ptr),y ; low byte of length in bytes
-    beq +
-    inc game_blocks
-    bne +
-    inc game_blocks + 1
-+
-!ifdef ACORN_DSD {
-    ; If this is a double-sided game, there will be *approximately* (definitely
-    ; no more, possibly a track's worth of data less) the same amount of data
-    ; on the second side. We don't look up :2.$.DATA and determine its length,
-    ; we just double game_blocks. The absolute worst case here is we read a
-    ; track's worth of junk which won't be accessed because it's past the end
-    ; of the game.
-    asl game_blocks
-    rol game_blocks + 1
-!ifndef VMEM {
-    ; If we don't have virtual memory, the logic below to cap ram_blocks at
-    ; game_blocks won't kick in. Since we don't have virtual memory, we know the
-    ; game will fit in RAM - but due to the doubling of game_blocks we just did,
-    ; it might be larger than RAM, causing us to read too much and corrupt
-    ; things. TODO: If we simply passed in the game size as a build parameter
-    ; this sort of thing would go away. SFTODONOW? Also worth nothing that we *already*
-    ; use the game size to set vmap_max_size at assembly time, so we're
-    ; already using this information.
-    lda #0
-    sta game_blocks + 1
-    lda #>(flat_ramtop - story_start)
-    cmp game_blocks
-    bcs +
-    sta game_blocks
-+
 }
-}
-} else { ; ACORN_ADFS
-    lda #<game_data_filename
-    sta scratch_page
-    lda #>game_data_filename
-    sta scratch_page + 1
-    lda #osfile_read_catalogue_information
-    ldx #<scratch_page
-    ldy #>scratch_page
-    jsr osfile
-    bne +
-    ; The wording of this error is technically incorrect - we're trying to read
-    ; information about the file, not open it - but I don't think it's a big
-    ; deal. It shouldn't be happening at all, of course.
-    jmp cant_open_data_error
-+   lda scratch_page + $a
-    beq +
-    inc scratch_page + $b
-    bne +
-    inc scratch_page + $c
-+   lda scratch_page + $b
-    sta game_blocks
-    lda scratch_page + $c
-    sta game_blocks + 1
-}
-
-    ; If game_blocks is odd, increment it by one so the game data is always
-    ; considered to be a multiple of 512 bytes. This avoids having to worry
-    ; about some corner cases and doesn't cause any problems; on DFS we're doing
-    ; raw sector reads and the extra sector will always exist, on ADFS we may try
-    ; to do a 512-byte read when only 256 bytes are available but that's fine.
-    lda game_blocks
-    and #1
-    beq +
-    inc game_blocks
-    bne +
-    inc game_blocks + 1
-+
 
 SFTODOXX89
 !ifdef VMEM {
@@ -1236,8 +1152,8 @@ SFTODOLABELX1
     ; In order to avoid accessing nonexistent game data in an attempt to use all
     ; that RAM, set ram_blocks = min(ram_blocks, game_blocks).
 SFTODOEE2
-    ldx game_blocks + 1
-    lda game_blocks
+    ldx #>ACORN_GAME_BLOCKS
+    lda #<ACORN_GAME_BLOCKS
     cpx ram_blocks + 1
     bne +
     cmp ram_blocks
@@ -1277,11 +1193,11 @@ SFTODOEE2
     bit is_turbo
     bpl .no_turbo_dynmem_adjust
 SFTODOLABEL1
-    lda game_blocks
+    lda #<ACORN_GAME_BLOCKS
     sec
     sbc #vmem_block_pagecount
     tax
-    lda game_blocks + 1
+    lda #>ACORN_GAME_BLOCKS
     sbc #0
     bne .available_blocks_is_smaller
     cpx #>(flat_ramtop - story_start)
@@ -1347,9 +1263,9 @@ SFTODOLABEL1
     ;                          .max_dynmem)
     ldy ram_blocks + 1
     lda ram_blocks
-    cpy game_blocks + 1
+    cpy #>ACORN_GAME_BLOCKS
     bne game_blocks_ne_ram_blocks
-    cmp game_blocks
+    cmp #<ACORN_GAME_BLOCKS
     bne game_blocks_ne_ram_blocks
     sec
     sbc #vmem_block_pagecount
@@ -1577,22 +1493,27 @@ SFTODOXY7
     ; sense to stick with 512-byte blocks here and scale *nonstored_page* instead
     ; of vmap_max_entries.
     lda #0
-    sta .blocks_to_load + 1
+    sta scratch_blocks_to_load + 1
     lda vmap_max_entries
     asl ; convert to 256-byte blocks
-    rol .blocks_to_load + 1
+    rol scratch_blocks_to_load + 1
     clc
     adc nonstored_pages ; already in 256-byte blocks
-    sta .blocks_to_load
+    sta scratch_blocks_to_load
     bcc +
-    inc .blocks_to_load + 1
+    inc scratch_blocks_to_load + 1
 +
+} else { ; Not VMEM
+    lda #<ACORN_GAME_BLOCKS
+    sta scratch_blocks_to_load
+    lda #>ACORN_GAME_BLOCKS
+    sta scratch_blocks_to_load + 1
 }
     ; fall through to init_progress_indicator
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
 ; progress bar step, in order to get avoid the bar under-filling or over-filling
-; the screen width. .blocks_to_load can't be more than 64K dynamic memory plus
+; the screen width. scratch_blocks_to_load can't be more than 64K dynamic memory plus
 ; 128K virtual memory cache (and that's not going to happen in practice), so it
 ; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
 ; bits for the fractional component.
@@ -1604,11 +1525,6 @@ progress_indicator_fractional_bits=7
 ; the game data we're not under that much memory pressure and it's more readable
 ; to just use a subroutine.
 init_progress_indicator
-!ifdef VMEM {
-.blocks_to_load = scratch_blocks_to_load
-} else {
-.blocks_to_load = game_blocks
-}
     ; If we're not on the bottom line of the screen, set divisor = 2 *
     ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
     ; - cursor_x). This way we don't have to worry about causing a mildly ugly
@@ -1660,15 +1576,15 @@ init_progress_indicator
     rol
     sta divisor + 1
 
-    ; .blocks_to_load is expressed in 256-byte blocks, but loading is done in
+    ; scratch_blocks_to_load is expressed in 256-byte blocks, but loading is done in
     ; 512-byte blocks, so we want to divide by two to convert this. We want to
     ; shift right by 1 for the division by two, then left by
     ; progress_indicator_fractional_bits bits.
     ldx #progress_indicator_fractional_bits - 1
-    ; Set dividend = .blocks_to_load << X.
-    lda .blocks_to_load + 1
+    ; Set dividend = scratch_blocks_to_load << X.
+    lda scratch_blocks_to_load + 1
     sta dividend + 1
-    lda .blocks_to_load
+    lda scratch_blocks_to_load
 -   asl
     rol dividend + 1
     dex
@@ -1824,7 +1740,7 @@ full_block_graphic = 255
 !ifdef VMEM {
     lda nonstored_pages
 } else {
-    lda game_blocks
+    lda #ACORN_GAME_BLOCKS
 }
     sta .blocks_to_read
 
@@ -2059,11 +1975,11 @@ SFTODOLABELX2
     lda vmap_max_entries
     sta inflated_vmap_max_entries
     lda #>(flat_ramtop - story_start)
-    ldx game_blocks + 1
+    ldx #>ACORN_GAME_BLOCKS
     bne +
-    cmp game_blocks
+    cmp #<ACORN_GAME_BLOCKS
     bcc +
-    lda game_blocks
+    lda #<ACORN_GAME_BLOCKS
 +   sec
     sbc nonstored_pages
     lsr

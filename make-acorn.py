@@ -1129,10 +1129,15 @@ def make_shr_swr_executable():
 def make_tube_executables():
     leafname = "OZMOO2P"
     args = ozmoo_base_args + tube_args
-    tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, args)
-    if game_blocks <= tube_no_vmem.max_nonstored_pages():
-        info("Game is small enough to run without virtual memory on second processor")
-        return [tube_no_vmem]
+    # The next check just saves a build which clearly can't succeed; the threshold could
+    # be tightened up a bit but the more "realistic" the threshold the more chance there
+    # is of subsequent code changes optimising things more than this code expects and
+    # missing out on a chance to use a no-vmem build.
+    if game_blocks <= 64 * 4:
+        tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, args)
+        if game_blocks <= tube_no_vmem.max_nonstored_pages():
+            info("Game is small enough to run without virtual memory on second processor")
+            return [tube_no_vmem]
     args += ["-DVMEM=1"]
     if not cmd_args.no_tube_cache:
         args += ["-DACORN_TUBE_CACHE=1"]
@@ -1708,6 +1713,7 @@ def make_disc_image():
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
         "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_blocks - nonstored_pages, 2),
+        "-DACORN_GAME_BLOCKS=%d" % game_blocks,
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -2018,7 +2024,16 @@ while nonstored_pages % vmem_block_pagecount != 0:
     nonstored_pages += 1
 # The Acorn initialisation code assumes the game has at least one block of
 # non-dynamic memory. That's almost certainly the case anyway, but make sure.
-while game_blocks < nonstored_pages + vmem_block_pagecount:
+#
+# We also ensure game_blocks is even; this avoids various corner cases when
+# we're loading the game and it doesn't have any downside. Because we 512-byte
+# align data_start/story_start and all the hardware memory thresholds and sizes
+# are multiples of 512 bytes, our free RAM is always a multiple of 512 bytes and
+# it simplifies things if game blocks is too. Because of the alignment, this
+# doesn't cost us anything - for example, the rounding up can't tip a game over
+# the no-vmem-needed threshold on a second processor, because the free RAM is a
+# multiple of 512 bytes anyway.
+while (game_blocks < nonstored_pages + vmem_block_pagecount) or (game_blocks % 2 == 1):
     game_data += bytearray(bytes_per_block)
     game_blocks = bytes_to_blocks(len(game_data))
 if cmd_args.preload_config:
