@@ -378,7 +378,6 @@ resident_integer_o = $43c
 resident_integer_x = $460
 
 * = resident_integer_b
-; SFTODNOW: screen_mode *SHOULD* have a proper resident variable space as loader pokes it, it had previous been $403 which is A% which is a bit iffy, but let's stick with that for the moment and fix this later - actually it's part of @% I think, but anyway, still iffy
 screen_mode	+allocate_fixed 1
 !ifdef ACORN_RELOCATABLE {
 relocate_target	+allocate_fixed 1
@@ -397,7 +396,9 @@ input_colour	+allocate_fixed 1
 ; The following allocations are only used by the Ozmoo executable itself, so we
 ; no longer care about working around BASIC's use of the language workspace.
 
+!ifdef TRACE {
 z_trace_index	+allocate_low 1
+}
 s_stored_x		+allocate_low 1
 s_stored_y		+allocate_low 1
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
@@ -443,7 +444,10 @@ jmp_buf_ram_bank 	+allocate_low 1
 
 ; game_data_filename/restart_command have filename_size bytes allocated; we only
 ; need one or the other in any particular build. This needs to be within the
-; resident variable space so the BASIC loader can write to it safely.
+; resident variable space so the BASIC loader can write to it safely. We don't
+; allocate it too early because we want to allow the simpler one byte
+; allocations to fill up round the variable set of one byte loader-written
+; addresses.
 filename_size = 49
 game_data_filename_or_restart_command +allocate_low filename_size
 !if * >= resident_integer_x {
@@ -456,6 +460,15 @@ memory_buffer	+allocate_low 7 ; larger on C64, but this is all we use
 !ifdef MODE_7_INPUT {
 input_colour_code_or_0	+allocate_low 1
 }
+
+; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
+!ifdef ACORN_SCREEN_HOLE {
+acorn_screen_hole_start_page	+allocate_low 1
+acorn_screen_hole_start_page_minus_one = $54
+acorn_screen_hole_pages	+allocate_low 1; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
+acorn_screen_hole_pages_minus_one +allocate_low 1 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
+}
+
 jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
 jmp_buf	+allocate_low jmp_buf_size
 
@@ -495,15 +508,6 @@ turbo_bank_base = $301
 mempointer_turbo_bank = turbo_bank_base + mempointer
 z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 }
-
-; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
-!ifdef ACORN_SCREEN_HOLE {
-acorn_screen_hole_start_page = $41f ; $9e ; SFTODO TEMP EXPERIMENTAL $41f ; SFTODO TEMP ADDRESS, EXPERIMENTAL - THIS DOESN'T REALLY NEED TO BE IN ZP (BUT MAYBE DO COMPARATIVE MEASUREMENTS) - OK, I REALLY DON'T THINK THIS BENEFITS SIGNIFICANTLY FROM ZP
-acorn_screen_hole_start_page_minus_one = $54
-acorn_screen_hole_pages = $420 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
-acorn_screen_hole_pages_minus_one = $421 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
-}
-
 !ifdef TRACE_SETJMP {
 ; This address is owned by Econet but this is debug-only code.
 setjmp_min_s = $90
