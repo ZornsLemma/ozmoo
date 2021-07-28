@@ -391,6 +391,9 @@ stack = $100
 	;!warn "XXX", *
 }
 
+; We don't know the true value of low_memory_upper_bound until later.
+!set low_memory_upper_bound = $ffff
+
 ; $0400-$046B hold the BASIC resident integer variables. We use some of these
 ; addresses to pass information from the loader to the Ozmoo executable. Note
 ; that we don't read/write (e.g.) B% in the BASIC loader directly; the point is
@@ -538,13 +541,22 @@ initial_clock	+allocate_low 5
 jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
 jmp_buf	+allocate_low jmp_buf_size
 
+; SFTODONOW: THIS ASSUMES VMEM, BUT LET'S NOT WORRY ABOUT THAT JUST YET....
 ; We use "vmap-z_l-1,x" addressing in a hot loop and we want to avoid any
-; page-crossing penalty. We allocate it as high as possible in page 5 so we have
-; the largest possible contiguous space for the allocations we started in page 4
-; to spill over into page 5.
+; page-crossing penalty. We allocate vmap_z_l as high as possible in page 5 so
+; we have the largest possible contiguous space for the allocations we started
+; in page 4 to spill over into page 5.
 vmap_z_l = $600 - vmap_max_size
 !if vmap_z_l < $501 {
 	!error "vmap_z_l is too low"
+}
+
+!set low_memory_upper_bound = vmap_z_l
+!ifdef USE_HISTORY {
+	!set low_memory_upper_bound = low_memory_upper_bound - USE_HISTORY
+}
+!if * >= low_memory_upper_bound {
+	!error "Out of low memory"
 }
 
 ; SFTODONOW: I SUSPECT I WANT TO BE FANCIER ABOUT HISTORY SO I CAN SQUEEZE SOME OTHER STUFF INTO PAGE 4 DEPENDING ON MIN HISTORY SIZE WE WILL TOLERATE
@@ -582,3 +594,5 @@ setjmp_min_s = $90
 }
 
 * = high_constant_ptr
+
+; SFTODONOW: Do smart ZP allocation, and fill spare ZP (which we have in spades on tube) with stuff that would otherwise go into low memory - this is another good reason for allocation 1 byte things first, then getting larger
