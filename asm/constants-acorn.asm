@@ -391,8 +391,21 @@ stack = $100
 	;!warn "XXX", *
 }
 
+!macro pre_allocate n {
+	!if (* + n) >= low_memory_upper_bound {
+		* = high_constant_ptr
+		!set low_memory_upper_bound = $ffff
+	}
+}
+
+!macro post_allocate n {
+	* = * + n
+}
+
+!if 0 { ;SFTODO: DELETE?
 ; We don't know the true value of low_memory_upper_bound until later.
 !set low_memory_upper_bound = $ffff
+}
 
 ; $0400-$046B hold the BASIC resident integer variables. We use some of these
 ; addresses to pass information from the loader to the Ozmoo executable. Note
@@ -553,20 +566,44 @@ vmap_z_l = $600 - vmap_max_size
 
 !set low_memory_upper_bound = vmap_z_l
 !ifdef USE_HISTORY {
-	!set low_memory_upper_bound = low_memory_upper_bound - USE_HISTORY
+	; If we have enough space in low memory for the history, don't allow the
+	; following allocations to steal it. If we don't have enough space anyway,
+	; allow the following allocations to use everything up to vmap_z_l and we
+	; will allocate space for the history in the executable. SFTODONOW: TEST THIS, NEED TO REMEMBER TO SET START=END FOR HIST LOW VARS
+	!if * < (low_memory_upper_bound - USE_HISTORY) {
+		!set low_memory_upper_bound = low_memory_upper_bound - USE_HISTORY
+	}
 }
 !if * >= low_memory_upper_bound {
 	!error "Out of low memory"
 }
 
-; SFTODONOW: I SUSPECT I WANT TO BE FANCIER ABOUT HISTORY SO I CAN SQUEEZE SOME OTHER STUFF INTO PAGE 4 DEPENDING ON MIN HISTORY SIZE WE WILL TOLERATE
+; SFTODO: The repetition of these macros is annoying.
+; SFTODO: If the code doesn't rely on the ordering of these, doing the smaller ones first
+; might be marginally helpful. Or maybe the larger ones first.
+	+pre_allocate 4
+streams_current_entry
+	+post_allocate 4
+	+pre_allocate 60
+streams_stack
+	+post_allocate 60
+	+pre_allocate 1
+streams_stack_items
+	+post_allocate 1
+	+pre_allocate 2
+streams_buffering
+	+post_allocate 2
+	+pre_allocate 4
+streams_output_selected
+	+post_allocate 4
+
 !ifdef USE_HISTORY {
 low_history_end = vmap_z_l
 !if * >= low_history_end {
-	!error "No space for low_history"
-}
+low_history_start = low_history_end
+} else {
 low_history_start
-	+allocate_low low_history_end - *
+}
 }
 
 scratch_page = $600
@@ -593,6 +630,8 @@ setjmp_min_s = $90
 ; On a second processor zero page is available up to but not including $ee. SFTODO?
 }
 
-* = high_constant_ptr
+!if * < high_constant_ptr {
+	* = high_constant_ptr
+}
 
 ; SFTODONOW: Do smart ZP allocation, and fill spare ZP (which we have in spades on tube) with stuff that would otherwise go into low memory - this is another good reason for allocation 1 byte things first, then getting larger

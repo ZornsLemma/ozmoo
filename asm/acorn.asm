@@ -774,7 +774,7 @@ deletable_init_start
 !ifdef USE_HISTORY {
     ; Zero the history buffer; if this isn't done it is sometimes possible to
     ; navigate to invalid history entries.
-    ldx #(history_end - history_start) - 1
+    ldx #history_size - 1
     lda #0
 -   sta history_start,x
     dex
