@@ -932,10 +932,10 @@ s_printchar
 !ifdef ACORN_HW_SCROLL {
     ldy zp_screenrow
     bne +
-    sta .top_line_buffer,x
+    sta top_line_buffer,x
     lda s_reverse
-    sta .top_line_buffer_reverse,x
-    lda .top_line_buffer,x
+    sta top_line_buffer_reverse,x
+    lda top_line_buffer,x
 +
 }
 	; Reset ignore next linebreak setting
@@ -1489,9 +1489,9 @@ s_erase_line_from_cursor
     bne +
     ldx zp_screencolumn
 -   lda #' '
-    sta .top_line_buffer,x
+    sta top_line_buffer,x
     lda #0
-    sta .top_line_buffer_reverse,x
+    sta top_line_buffer_reverse,x
     inx
     +cpx_screen_width
     bne -
@@ -1593,12 +1593,12 @@ s_pre_scroll
 }
 }
     ldx #0
--   lda .top_line_buffer_reverse,x
+-   lda top_line_buffer_reverse,x
     beq +
     jsr set_os_reverse_video
     jmp ++
 +   jsr set_os_normal_video
-++  lda .top_line_buffer,x
+++  lda top_line_buffer,x
     jsr oswrch
     inx
     dey
@@ -2086,12 +2086,13 @@ z_ins_set_colour
 }
 }
 
-; SFTODODATA 160 (BUT NOT IN ALL BUILDS)
+!if 0 { ; SFTODO: This is now allocated by constants-acorn.asm
 !ifdef ACORN_HW_SCROLL {
-.top_line_buffer
+top_line_buffer
     !fill max_screen_width
-.top_line_buffer_reverse
+top_line_buffer_reverse
     !fill max_screen_width
+}
 }
 
 !ifdef TESTSCREEN {

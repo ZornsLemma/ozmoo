@@ -592,9 +592,10 @@ vmap_z_l = $600 - vmap_max_size
 ; memory if possible. acorn_deletable_init_inline will zero-initialise anythnig
 ; which does end up in low memory automatically and non-zero values will patched
 ; up.
+; SFTODO: The repetition of the {pre,post}_allocate macros is annoying.
 
 zero_start
-; SFTODO: The repetition of the {pre,post}_allocate macros is annoying.
+
 ; SF: I've reordered these streams_* variables so the smallest ones come first
 ; in an attempt to minimise wasted space. I don't believe the code relies on
 ; them being in any particular order.
@@ -613,6 +614,17 @@ streams_output_selected
 	+pre_allocate 60
 streams_stack
 	+post_allocate 60
+
+!ifdef ACORN_HW_SCROLL {
+; It's very unlikely both of these will ever fit, but it doesn't hurt to try.
+	+pre_allocate max_screen_width
+top_line_buffer
+	+post_allocate max_screen_width
+	+pre_allocate max_screen_width
+top_line_buffer_reverse
+	+post_allocate max_screen_width
+}
+
 ; If we couldn't fit everything in low memory, pre_allocate will have set zero_end
 ; appropriately. If everything did fit in low memory, we need to define zero_end.
 !ifndef zero_end {

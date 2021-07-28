@@ -3,7 +3,7 @@
 !zone streams {
 ; SF: On Acorn this is allocated in low memory if possible and it's always
 ; initialised by acorn_deletable_init_inline.
-!if 0 {
+!ifndef ACORN {
 streams_current_entry		!byte 0,0,0,0
 streams_stack				!fill 60, 0
 streams_stack_items			!byte 0
