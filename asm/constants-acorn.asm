@@ -1,5 +1,7 @@
 ; SFTODONOW: It's not good to have acorn-constants.asm and constants-acorn.asm, but let's see how this experiment goes before tidying that up.
 
+; SFTODONOW: Since this is experimental, *all* SFTODOs should be reviewed to see if they are urgent or not
+
 zp_constant_ptr = $00
 low_constant_ptr = $400
 high_constant_ptr = *
@@ -474,9 +476,9 @@ low_history_start
 ; The progress_indicator_* variables can re-use the space at
 ; z_operand_value_high_arr; they're only used during the initial loading when
 ; the Z-machine has not been set up.
+; SFTODONOW: Move these assignments into the progress indicator code?
 progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
 progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
-; SFTODO: The remaining space in page 4 is wasted on an over-large jmp_buf. (Not so much now as we do use it for history.)
 
 scratch_page = $600
 !ifdef ACORN_SWR {
