@@ -5,6 +5,7 @@
 ; Determine vmap_max_size; this code used to live in vmem.asm but it's better to
 ; put it here so we can use the value of vmap_max_size when allocating low
 ; memory.
+!ifdef VMEM {
 
 ; The Acorn port takes advantage of knowing the game size at build time to avoid
 ; wasting memory on a vmap_max_size larger than the game will ever need.
@@ -39,6 +40,7 @@
     vmap_max_size = ACORN_VMEM_BLOCKS
 }
 
+}
 ; Finished setting vmap_max_size.
 
 zp_constant_ptr = $00
@@ -536,9 +538,14 @@ initial_clock	+allocate_low 5
 jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
 jmp_buf	+allocate_low jmp_buf_size
 
-; vmap_z_l is at $501 because we use "vmap_z_l-1,x" addressing in a hot loop and
-; we want to avoid any page-crossing penalty.
-vmap_z_l = $501
+; We use "vmap-z_l-1,x" addressing in a hot loop and we want to avoid any
+; page-crossing penalty. We allocate it as high as possible in page 5 so we have
+; the largest possible contiguous space for the allocations we started in page 4
+; to spill over into page 5.
+vmap_z_l = $600 - vmap_max_size
+!if vmap_z_l < $501 {
+	!error "vmap_z_l is too low"
+}
 
 ; SFTODONOW: I SUSPECT I WANT TO BE FANCIER ABOUT HISTORY SO I CAN SQUEEZE SOME OTHER STUFF INTO PAGE 4 DEPENDING ON MIN HISTORY SIZE WE WILL TOLERATE
 !ifdef USE_HISTORY {
@@ -549,13 +556,6 @@ low_history_end = vmap_z_l
 low_history_start
 	+allocate_low low_history_end - *
 }
-
-; The progress_indicator_* variables can re-use the space at
-; z_operand_value_high_arr; they're only used during the initial loading when
-; the Z-machine has not been set up.
-; SFTODONOW: Move these assignments into the progress indicator code?
-progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
-progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
 
 scratch_page = $600
 !ifdef ACORN_SWR {

@@ -112,6 +112,13 @@ scratch_ram_blocks = scratch_page ; 2 bytes
 }
 scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 
+; The progress_indicator_* variables can re-use the space at
+; z_operand_value_high_arr; they're only used during the initial loading when
+; the Z-machine has not been set up.
+progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
+progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
+
+
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too
 ; space-conscious and so the check can be left in permanently. SFTODO: In some
@@ -1518,12 +1525,6 @@ SFTODOXY7
 ; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
 ; bits for the fractional component.
 progress_indicator_fractional_bits=7
-
-; The progress_indicator_* variables can re-use the space at
-; z_operand_value_high_arr; they're only used during the initial loading when
-; the Z-machine has not been set up.
-progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
-progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
 
 ; Initialise progress_indicator_blocks_until_next_step and
 ; progress_indicator_blocks_per_step. This is only called once in any given
