@@ -312,6 +312,10 @@ stack = $100
 
 !set pending_extra_skip = 0
 
+!macro allocate_fixed n {
+	* = * + n
+}
+
 !macro skip_fixed_low_allocation addr, n {
 	; The logic below to increment pending_extra_skip will only work if calls to
 	; this macro are for ascending values of addr, so enforce that.
@@ -340,7 +344,9 @@ stack = $100
 !macro allocate_low n {
 	!set ascending_check = 0
 	+skip_fixed_low_allocation screen_mode, n
-	+skip_fixed_low_allocation relocate_target, n
+	!ifdef ACORN_RELOCATABLE {
+		+skip_fixed_low_allocation relocate_target, n
+	}
 	+skip_fixed_low_allocation fg_colour, n
 	+skip_fixed_low_allocation bg_colour, n
 	!ifdef MODE_7_INPUT {
@@ -360,19 +366,31 @@ stack = $100
 ; for anything else we know the values will not be corrupted. We can't do this
 ; with most of language workspace as BASIC is using it for its own purposes
 ; while the loader is running.
+;
+; We skip @%, A% and X% onwards for loader-modified addresses, as those
+; variables have special meanings in BASIC. O% and P% do have special meanings
+; but we ensure only game_data_filename_or_restart_command overlaps them and
+; make sure the loader sets that after all uses of O% and P%.
+resident_integer_b = $408
+resident_integer_o = $43c
+resident_integer_x = $460
 
-; SFTODNOW: screen_mode *SHOULD* have a proper resident variable space as loader pokes it, it had previous been $403 which is A% which is a bit iffy, but let's stick with that for the moment and fix this later
-screen_mode = $403
-; The next four bytes correspond to B%
-relocate_target = $408 ; 1 byte ; SFTODNOW: SHOULD BE !ifdef ACORN_RELOCATABLE
+* = resident_integer_b
+; SFTODNOW: screen_mode *SHOULD* have a proper resident variable space as loader pokes it, it had previous been $403 which is A% which is a bit iffy, but let's stick with that for the moment and fix this later - actually it's part of @% I think, but anyway, still iffy
+screen_mode	+allocate_fixed 1
+!ifdef ACORN_RELOCATABLE {
+relocate_target	+allocate_fixed 1
+ozmoo_relocate_target = relocate_target ; SFTODO!?
+}
 ; fg_colour, bg_colour and (if MODE_7_INPUT is defined) input_colour must be
 ; adjacent and in this order.
-fg_colour = $409 ; !byte 0
-bg_colour = $40a ; !byte 0
+fg_colour	+allocate_fixed 1
+bg_colour	+allocate_fixed 1
 !ifdef MODE_7_INPUT {
-input_colour = $40b ; ! byte 0
+input_colour	+allocate_fixed 1
 }
-ozmoo_relocate_target = relocate_target ; SFTODO!?
+
+* = low_constant_ptr
 
 ; The following allocations are only used by the Ozmoo executable itself, so we
 ; no longer care about working around BASIC's use of the language workspace.
@@ -394,69 +412,44 @@ vmap_used_entries	+allocate_low 1
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll 	+allocate_low 1
 }
-
-;z_trace_index = $400 ; !byte 0
-;s_stored_x = $401 ; !byte 0
-;s_stored_y = $402 ; !byte 0
-!if 0 { ; SFTODO: These can be re-used now
-;screen_width_minus_1 = $403 ; !byte 0 SFTODO TEMP REUSED THIS
-;screen_width_plus_1 = $404 ; !byte 0 SFTODO NOW REUSED
-}
-;game_disc_crc = $405 ; 2 bytes
-;num_rows = $407 ; !byte 0
-!ifdef ACORN_RELOCATABLE {
-;relocate_target = $408 ; !byte 0, low byte of B%
-;ozmoo_relocate_target = relocate_target ; SFTODO!?
-}
-;screen_mode = $403 ; !byte 0, high byte of B%
-!ifdef HAVE_VMAP_USED_ENTRIES {
-; SF: This is used only in PREOPT builds where performance isn't critical so we
-; don't waste a byte of zero page on it.
-;vmap_used_entries = $40c ; !byte 0
-}
-!ifdef ACORN_HW_SCROLL {
-;use_hw_scroll = $40d ; !byte 0
-}
 !ifdef ACORN_TURBO_SUPPORTED {
-is_turbo = $40e ; !byte 0 SFTODO: RENAME turbo_flag?
+is_turbo	+allocate_low 1 ; SFTODO: RENAME turbo_flag?
 }
-cursor_status = $40f ; !byte 0
+cursor_status	+allocate_low 1
 !ifdef ACORN_SHADOW_VMEM {
 ; We use _mem suffixes on these variables to avoid accidental confusion with the
 ; Commodore values, which are assembly-time constants.
-vmem_cache_count_mem = $410 ; !byte 0
-vmem_cache_start_mem = $411 ; !byte 0
-vmem_blocks_in_sideways_ram = $412 ; !byte 0
-vmem_cache_cnt = $414 ; !byte 0
-vmem_cache_page_index = $415
+vmem_cache_count_mem	+allocate_low 1
+vmem_cache_start_mem	+allocate_low 1
+vmem_blocks_in_sideways_ram	+allocate_low 1
+vmem_cache_cnt	+allocate_low 1
 ; We add one in the next line because PAGE alignment may add an extra cache page
 ; on top of the recommended number of pages.
-vmem_cache_page_index_end = vmem_cache_page_index + ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
-!if vmem_cache_page_index_end >= $41c {
-	!error "Not enough space for vmem_cache_page_index"
-}
+vmem_cache_page_index
+	+allocate_low ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
+vmem_cache_page_index_end
 }
 !ifdef ACORN_SWR {
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up. - this includes $41c which used to be mempointer_ram_bank
-vmem_blocks_in_main_ram = $41d ; 1 byte
-vmem_blocks_stolen_in_first_bank = $41e ; 1 byte
+vmem_blocks_in_main_ram	+allocate_low 1
+vmem_blocks_stolen_in_first_bank	+allocate_low 1
 z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
-; SFTODO: 2 bytes at $420 currently wasted, shuffle up SFTODO TEMP REUSED THESE NOW
-jmp_buf_ram_bank = $422 ; 1 byte
+jmp_buf_ram_bank 	+allocate_low 1
 }
-initial_clock = $423 ; 5 bytes
-memory_buffer = $428 ; 7 bytes (larger on C64, but this is all we use)
-; The following two strings have filename_size bytes allocated. We're not short
-; on storage in low memory in general, but as the BASIC loader needs to write
-; these strings we must use memory which won't clash with BASIC's own use, so
-; this has to fit inside the resident integer variable workspace and that is
-; relatively scarce. We could probably increase filename_size but it might mean
-; some reshuffling of other data which happens to live in the resident integer
-; variable workspace but doesn't need to.
-filename_size = 49 ; this takes us from inside K% to end of W%
-game_data_filename_or_restart_command = $42f
+
+; game_data_filename/restart_command have filename_size bytes allocated; we only
+; need one or the other in any particular build. This needs to be within the
+; resident variable space so the BASIC loader can write to it safely.
+filename_size = 49
+game_data_filename_or_restart_command +allocate_low filename_size
+!if * >= resident_integer_x {
+	!error "game_data_filename_or_restart_command not within resident integer space"
+}
+
+initial_clock	+allocate_low 5
+memory_buffer	+allocate_low 7 ; larger on C64, but this is all we use
 ; SFTODO: Not too happy with this, but it will do for now - I do need to tidy all this up at some point
 !ifdef MODE_7_INPUT {
 input_colour_code_or_0 = $42f+filename_size
