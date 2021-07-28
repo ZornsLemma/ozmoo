@@ -2070,3 +2070,5 @@ show_deferred_output()
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
+
+# SFTODONOW: Should I rename ACORN_GAME_BLOCKS as ACORN_GAME_PAGES? Not just here, in acorn.asm too of course.
