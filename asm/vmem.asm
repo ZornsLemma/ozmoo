@@ -185,46 +185,15 @@ vmem_block_pagecount = vmem_blocksize / 256
 !ifndef ACORN {
 vmap_max_size = (vmap_buffer_end - vmap_buffer_start) / 2
 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
-} else { ; ACORN
-; The Acorn port takes advantage of knowing the game size at build time to avoid
-; wasting memory on a vmap_max_size larger than the game will ever need.
-!ifndef ACORN_SWR {
-    !ifndef ACORN_TUBE_CACHE {
-        !ifdef ACORN_TURBO_SUPPORTED {
-            ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
-            max_vmap_max_size = 255
-        } else { ; !ACORN_TURBO_SUPPORTED
-            max_vmap_max_size = (flat_ramtop - story_start) / 512
-        }
-    } else { ; ACORN_TUBE_CACHE
-        ; The host cache is initialised using "extra" entries in the vmap.
-        max_vmap_max_size = 255
-        !ifndef ACORN_TURBO_SUPPORTED {
-            ; During execution (after the initial preload of the host cache),
-            ; vmap_max_entries only covers the second processor's own 64K, so we
-            ; don't need large vmap support.
-            ACORN_SMALL_RUNTIME_VMAP = 1
-        }
-    }
-} else { ; ACORN_SWR
-    ; We might have enough main+sideways RAM to hold 255 512-byte blocks.
-    max_vmap_max_size = 255
-}
-
-; Set vmap_max_size = min(max_vmap_max_size, ACORN_VMEM_BLOCKS) - there's no
-; point allocating space for more vmem blocks than the game can ever use.
-!if max_vmap_max_size < ACORN_VMEM_BLOCKS {
-    vmap_max_size = max_vmap_max_size
 } else {
-    vmap_max_size = ACORN_VMEM_BLOCKS
-}
-
+; On Acorn we set vmap_max_size in constants-acorn.asm so we can use it help
+; control allocation of low memory.
 !if vmap_max_size < 128 {
     !ifndef ACORN_SMALL_RUNTIME_VMAP {
         ACORN_SMALL_RUNTIME_VMAP = 1
     }
 }
-} ; end of ACORN
+}
 ; vmap_max_entries	!byte 0 ; Moved to ZP
 ; vmap_used_entries	!byte 0 ; Moved to ZP
 !ifndef ACORN {

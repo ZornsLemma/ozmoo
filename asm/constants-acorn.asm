@@ -2,12 +2,48 @@
 
 ; SFTODONOW: Since this is experimental, *all* SFTODOs should be reviewed to see if they are urgent or not
 
+; Determine vmap_max_size; this code used to live in vmem.asm but it's better to
+; put it here so we can use the value of vmap_max_size when allocating low
+; memory.
+
+; The Acorn port takes advantage of knowing the game size at build time to avoid
+; wasting memory on a vmap_max_size larger than the game will ever need.
+!ifndef ACORN_SWR {
+    !ifndef ACORN_TUBE_CACHE {
+        !ifdef ACORN_TURBO_SUPPORTED {
+            ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
+            max_vmap_max_size = 255
+        } else { ; !ACORN_TURBO_SUPPORTED
+            max_vmap_max_size = (flat_ramtop - story_start) / 512
+        }
+    } else { ; ACORN_TUBE_CACHE
+        ; The host cache is initialised using "extra" entries in the vmap.
+        max_vmap_max_size = 255
+        !ifndef ACORN_TURBO_SUPPORTED {
+            ; During execution (after the initial preload of the host cache),
+            ; vmap_max_entries only covers the second processor's own 64K, so we
+            ; don't need large vmap support.
+            ACORN_SMALL_RUNTIME_VMAP = 1
+        }
+    }
+} else { ; ACORN_SWR
+    ; We might have enough main+sideways RAM to hold 255 512-byte blocks.
+    max_vmap_max_size = 255
+}
+
+; Set vmap_max_size = min(max_vmap_max_size, ACORN_VMEM_BLOCKS) - there's no
+; point allocating space for more vmem blocks than the game can ever use.
+!if max_vmap_max_size < ACORN_VMEM_BLOCKS {
+    vmap_max_size = max_vmap_max_size
+} else {
+    vmap_max_size = ACORN_VMEM_BLOCKS
+}
+
+; Finished setting vmap_max_size.
+
 zp_constant_ptr = $00
 low_constant_ptr = $400
 high_constant_ptr = *
-!macro ourfill {
-* = * + 5
-}
 
 * = $02
 
@@ -346,13 +382,13 @@ stack = $100
 !macro allocate_low n {
 	!set ascending_check = 0
 	+skip_fixed_low_allocation screen_mode, n
-	!ifdef ACORN_RELOCATABLE {
-		+skip_fixed_low_allocation relocate_target, n
-	}
 	+skip_fixed_low_allocation fg_colour, n
 	+skip_fixed_low_allocation bg_colour, n
 	!ifdef MODE_7_INPUT {
 		+skip_fixed_low_allocation input_colour, n
+	}
+	!ifdef ACORN_RELOCATABLE {
+		+skip_fixed_low_allocation relocate_target, n
 	}
 
 	* = * + n + pending_extra_skip
@@ -374,21 +410,21 @@ stack = $100
 ; but we ensure only game_data_filename_or_restart_command overlaps them and
 ; make sure the loader sets that after all uses of O% and P%.
 resident_integer_b = $408
-resident_integer_o = $43c
+resident_integer_o = $43c ; SFTODO: NOT USED, WE SHOULD PROB ASSERT <= THIS AT SOME POINT
 resident_integer_x = $460
 
 * = resident_integer_b
 screen_mode	+allocate_fixed 1
-!ifdef ACORN_RELOCATABLE {
-relocate_target	+allocate_fixed 1
-ozmoo_relocate_target = relocate_target ; SFTODO!?
-}
 ; fg_colour, bg_colour and (if MODE_7_INPUT is defined) input_colour must be
 ; adjacent and in this order.
 fg_colour	+allocate_fixed 1
 bg_colour	+allocate_fixed 1
 !ifdef MODE_7_INPUT {
 input_colour	+allocate_fixed 1
+}
+!ifdef ACORN_RELOCATABLE {
+relocate_target	+allocate_fixed 1
+ozmoo_relocate_target = relocate_target ; SFTODO!?
 }
 
 * = low_constant_ptr
@@ -408,7 +444,7 @@ sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
 game_disc_crc	+allocate_low 2
 num_rows		+allocate_low 1
 !ifdef HAVE_VMAP_USED_ENTRIES {
-; SF: This is used only in PREOPT builds where performance isn't critical so we
+; This is used only in PREOPT builds where performance isn't critical so we
 ; don't waste a byte of zero page on it.
 vmap_used_entries	+allocate_low 1
 }
