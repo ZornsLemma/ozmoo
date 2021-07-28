@@ -394,6 +394,12 @@ stack = $100
 	;!warn "XXX", *
 }
 
+; SFTODO: It might be possible to make pre_allocate/post_allocate able to
+; allocate from low and high memory simultaneously, rather than switching
+; permanently to high memory the first time we don't have enough low memory. But
+; I will try to avoid adding that extra (albeit possibly relatively minimal)
+; complexity right now while all this code is new.
+
 !macro pre_allocate n {
 	!if (* + n) >= low_memory_upper_bound {
 		zero_end = *
