@@ -463,30 +463,37 @@ ozmoo_relocate_target = relocate_target ; SFTODO!?
 +allocate_low 0
 
 ; The following allocations are only used by the Ozmoo executable itself, so we
-; no longer care about working around BASIC's use of the language workspace.
+; no longer care about working around BASIC's use of the language workspace. We
+; prefer to do single byte allocations first, as not needing to deal well with
+; multi-byte allocations simplifies allocate_low.
 
 s_stored_x		+allocate_low 1
 s_stored_y		+allocate_low 1
+cursor_status	+allocate_low 1
 
 !ifdef TRACE {
 z_trace_index	+allocate_low 1
 }
+
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
 sideways_ram_hole_start	+allocate_low 1
 sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
 }
+
 !ifdef HAVE_VMAP_USED_ENTRIES {
 ; This is used only in PREOPT builds where performance isn't critical so we
 ; don't waste a byte of zero page on it.
 vmap_used_entries	+allocate_low 1
 }
+
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll 	+allocate_low 1
 }
+
 !ifdef ACORN_TURBO_SUPPORTED {
 is_turbo	+allocate_low 1 ; SFTODO: RENAME turbo_flag?
 }
-cursor_status	+allocate_low 1
+
 !ifdef ACORN_SHADOW_VMEM {
 ; We use _mem suffixes on these variables to avoid accidental confusion with the
 ; Commodore values, which are assembly-time constants.
@@ -500,6 +507,7 @@ vmem_cache_page_index
 	+allocate_low ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
 vmem_cache_page_index_end
 }
+
 !ifdef ACORN_SWR {
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace

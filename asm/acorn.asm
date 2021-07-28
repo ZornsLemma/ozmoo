@@ -1519,6 +1519,12 @@ SFTODOXY7
 ; bits for the fractional component.
 progress_indicator_fractional_bits=7
 
+; The progress_indicator_* variables can re-use the space at
+; z_operand_value_high_arr; they're only used during the initial loading when
+; the Z-machine has not been set up.
+progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
+progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
+
 ; Initialise progress_indicator_blocks_until_next_step and
 ; progress_indicator_blocks_per_step. This is only called once in any given
 ; build so we could make it a macro and inline it, but since this code overlaps
