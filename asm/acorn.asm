@@ -1707,6 +1707,21 @@ full_block_graphic = 255
     jsr osrdch
 }
 
+!if zero_end > zero_start {
+    ; Clear SFTODONOW HOW TO DESCRIBE IT BEST
+    ldx #(zero_end - zero_start) - 1
+    lda #0
+-   sta zero_start,x
+    dex
+    cpx #255
+    bne -
+}
+
+    ; Initialise non-0 streams variables.
+    lda #1
+    sta streams_buffering
+    sta streams_buffering + 1
+
     jsr prepare_for_initial_load
     ; SFTODO: If we got tight on space in the Z-machine stack, the following
     ; code up to but not including .dynmem_load_loop could be moved into

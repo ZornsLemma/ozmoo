@@ -1,3 +1,6 @@
+; Note that this may allocate some constant storage at *, so make sure it's
+; only sourced where this is acceptable. SFTODO!
+
 ; SFTODONOW: It's not good to have acorn-constants.asm and constants-acorn.asm, but let's see how this experiment goes before tidying that up.
 
 ; SFTODONOW: Since this is experimental, *all* SFTODOs should be reviewed to see if they are urgent or not
@@ -393,13 +396,20 @@ stack = $100
 
 !macro pre_allocate n {
 	!if (* + n) >= low_memory_upper_bound {
+		zero_end = *
 		* = high_constant_ptr
 		!set low_memory_upper_bound = $ffff
 	}
 }
 
 !macro post_allocate n {
-	* = * + n
+	!if * >= low_memory_upper_bound {
+		; It's important this is zero-filled because acorn_deletable_init_inline
+		; will only zero this memory if it's allocated in low memory.
+		!fill n, 0
+	} else {
+		* = * + n
+	}
 }
 
 !if 0 { ;SFTODO: DELETE?
@@ -578,15 +588,16 @@ vmap_z_l = $600 - vmap_max_size
 	!error "Out of low memory"
 }
 
-; SFTODO: The repetition of these macros is annoying.
-; SFTODO: If the code doesn't rely on the ordering of these, doing the smaller ones first
-; might be marginally helpful. Or maybe the larger ones first.
-	+pre_allocate 4
-streams_current_entry
-	+post_allocate 4
-	+pre_allocate 60
-streams_stack
-	+post_allocate 60
+; We now allocate data which would otherwise live in the executable in low
+; memory if possible. acorn_deletable_init_inline will zero-initialise anythnig
+; which does end up in low memory automatically and non-zero values will patched
+; up.
+
+zero_start
+; SFTODO: The repetition of the {pre,post}_allocate macros is annoying.
+; SF: I've reordered these streams_* variables so the smallest ones come first
+; in an attempt to minimise wasted space. I don't believe the code relies on
+; them being in any particular order.
 	+pre_allocate 1
 streams_stack_items
 	+post_allocate 1
@@ -594,8 +605,22 @@ streams_stack_items
 streams_buffering
 	+post_allocate 2
 	+pre_allocate 4
+streams_current_entry
+	+post_allocate 4
+	+pre_allocate 4
 streams_output_selected
 	+post_allocate 4
+	+pre_allocate 60
+streams_stack
+	+post_allocate 60
+; If we couldn't fit everything in low memory, pre_allocate will have set zero_end
+; appropriately. If everything did fit in low memory, we need to define zero_end.
+!ifndef zero_end {
+	!if * >= vmap_z_l {
+		!error "zero_end not defined but * >= vmap_z_l"
+	}
+zero_end
+}
 
 !ifdef USE_HISTORY {
 low_history_end = vmap_z_l

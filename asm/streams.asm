@@ -1,8 +1,9 @@
 ; Routines to handle output streams and input streams
 
 !zone streams {
-!if 0 { ; SFTODONOW: NEED TO ENSURE THIS IS INITIALISED
-; SFTODODATA: 76 bytes! Not sure about initialisation requirements... SFTODO: This is a potentially decent saving, but as per comment elsewhere page 4/5 are getting a bit full and I probably need a more sophisticated allocation system in low memory before looking into this.
+; SF: On Acorn this is allocated in low memory if possible and it's always
+; initialised by acorn_deletable_init_inline.
+!if 0 {
 streams_current_entry		!byte 0,0,0,0
 streams_stack				!fill 60, 0
 streams_stack_items			!byte 0
