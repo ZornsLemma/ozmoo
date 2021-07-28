@@ -1,10 +1,25 @@
 ; SFTODONOW: It's not good to have acorn-constants.asm and constants-acorn.asm, but let's see how this experiment goes before tidying that up.
 
+zp_constant_ptr = $00
+low_constant_ptr = $400
+high_constant_ptr = *
+!macro ourfill {
+* = * + 5
+}
+
+* = $02
+
+!macro allocate_zp n {
+	* = * + n
+}
+
+z_opcode	+allocate_zp 1
+mempointer	+allocate_zp 2
 
 ; --- ZERO PAGE --
 ; available zero page variables (pseudo registers)
-z_opcode              = $02
-mempointer            = $03 ; 2 bytes
+;z_opcode              = $02
+;mempointer            = $03 ; 2 bytes
 mem_temp              = $05 ; 2 bytes
 z_extended_opcode	  = $07
 
@@ -293,25 +308,63 @@ zp_screenrow          = $8f ; current cursor row
 
 stack = $100
 
+* = low_constant_ptr
+
+!set pending_extra_skip = 0
+
+!macro skip_fixed_low_allocation addr, n {
+	; The logic below to increment pending_extra_skip will only work if calls to
+	; this macro are for ascending values of addr, so enforce that.
+	!if addr < ascending_check {
+		!error "Low allocation checks not in ascending order"
+	}
+	!set ascending_check = addr
+
+	; At this point, the label for the n bytes has already been allocated, so if
+	; the allocation overlaps addr that's not acceptable.
+	!if (addr >= *) and (addr < (* + n)) {
+		!error "Low allocation collision at ", *, " with ", addr
+	}
+
+	; If this allocation takes us up to addr, add an extra skip to avoid a
+	; collision. SFTODO: This will only avoid a collision if the next allocation
+	; is a single byte; we will *detect* such a collision via the code above,
+	; and I think we can eliminate it happening by ensuring we always do single
+	; byte allocations in the region which has fixed allocations.
+	!if (* + n + pending_extra_skip) == addr {
+		!set pending_extra_skip = pending_extra_skip + 1
+		;!warn "YYY", *
+	}
+}
+
+!macro allocate_low n {
+	!set ascending_check = 0
+	+skip_fixed_low_allocation screen_mode, n
+	+skip_fixed_low_allocation relocate_target, n
+	+skip_fixed_low_allocation fg_colour, n
+	+skip_fixed_low_allocation bg_colour, n
+	!ifdef MODE_7_INPUT {
+		+skip_fixed_low_allocation input_colour, n
+	}
+
+	* = * + n + pending_extra_skip
+	!set pending_extra_skip = 0
+	;!warn "XXX", *
+}
+
 ; $0400-$046B hold the BASIC resident integer variables. We use some of these
-; addresses to pass information from the loader to the Ozmoo executable.
-z_trace_index = $400 ; !byte 0
-s_stored_x = $401 ; !byte 0
-s_stored_y = $402 ; !byte 0
-!if 0 { ; SFTODO: These can be re-used now
-screen_width_minus_1 = $403 ; !byte 0 SFTODO TEMP REUSED THIS
-;screen_width_plus_1 = $404 ; !byte 0 SFTODO NOW REUSED
-}
-!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-	sideways_ram_hole_start = $404 ; !byte 0
-	sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
-}
-game_disc_crc = $405 ; 2 bytes
-num_rows = $407 ; !byte 0
-!ifdef ACORN_RELOCATABLE {
-relocate_target = $408 ; !byte 0, low byte of B%
-ozmoo_relocate_target = relocate_target ; SFTODO!?
-}
+; addresses to pass information from the loader to the Ozmoo executable. Note
+; that we don't read/write (e.g.) B% in the BASIC loader directly; the point is
+; just that the loader can write values into the addresses which happen to
+; correspond to these variables and as long as the loader doesn't use (e.g.) B%
+; for anything else we know the values will not be corrupted. We can't do this
+; with most of language workspace as BASIC is using it for its own purposes
+; while the loader is running.
+
+; SFTODNOW: screen_mode *SHOULD* have a proper resident variable space as loader pokes it, it had previous been $403 which is A% which is a bit iffy, but let's stick with that for the moment and fix this later
+screen_mode = $403
+; The next four bytes correspond to B%
+relocate_target = $408 ; 1 byte ; SFTODNOW: SHOULD BE !ifdef ACORN_RELOCATABLE
 ; fg_colour, bg_colour and (if MODE_7_INPUT is defined) input_colour must be
 ; adjacent and in this order.
 fg_colour = $409 ; !byte 0
@@ -319,14 +372,50 @@ bg_colour = $40a ; !byte 0
 !ifdef MODE_7_INPUT {
 input_colour = $40b ; ! byte 0
 }
-screen_mode = $403 ; !byte 0, high byte of B%
+ozmoo_relocate_target = relocate_target ; SFTODO!?
+
+; The following allocations are only used by the Ozmoo executable itself, so we
+; no longer care about working around BASIC's use of the language workspace.
+
+z_trace_index	+allocate_low 1
+s_stored_x		+allocate_low 1
+s_stored_y		+allocate_low 1
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+sideways_ram_hole_start	+allocate_low 1
+sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
+}
+game_disc_crc	+allocate_low 2
+num_rows		+allocate_low 1
 !ifdef HAVE_VMAP_USED_ENTRIES {
 ; SF: This is used only in PREOPT builds where performance isn't critical so we
 ; don't waste a byte of zero page on it.
-vmap_used_entries = $40c ; !byte 0
+vmap_used_entries	+allocate_low 1
 }
 !ifdef ACORN_HW_SCROLL {
-use_hw_scroll = $40d ; !byte 0
+use_hw_scroll 	+allocate_low 1
+}
+
+;z_trace_index = $400 ; !byte 0
+;s_stored_x = $401 ; !byte 0
+;s_stored_y = $402 ; !byte 0
+!if 0 { ; SFTODO: These can be re-used now
+;screen_width_minus_1 = $403 ; !byte 0 SFTODO TEMP REUSED THIS
+;screen_width_plus_1 = $404 ; !byte 0 SFTODO NOW REUSED
+}
+;game_disc_crc = $405 ; 2 bytes
+;num_rows = $407 ; !byte 0
+!ifdef ACORN_RELOCATABLE {
+;relocate_target = $408 ; !byte 0, low byte of B%
+;ozmoo_relocate_target = relocate_target ; SFTODO!?
+}
+;screen_mode = $403 ; !byte 0, high byte of B%
+!ifdef HAVE_VMAP_USED_ENTRIES {
+; SF: This is used only in PREOPT builds where performance isn't critical so we
+; don't waste a byte of zero page on it.
+;vmap_used_entries = $40c ; !byte 0
+}
+!ifdef ACORN_HW_SCROLL {
+;use_hw_scroll = $40d ; !byte 0
 }
 !ifdef ACORN_TURBO_SUPPORTED {
 is_turbo = $40e ; !byte 0 SFTODO: RENAME turbo_flag?
@@ -423,3 +512,4 @@ setjmp_min_s = $90
 ; On a second processor zero page is available up to but not including $ee. SFTODO?
 }
 
+* = high_constant_ptr
