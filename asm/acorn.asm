@@ -1720,11 +1720,18 @@ full_block_graphic = 255
 
 !if zero_end > zero_start {
     ; Clear SFTODONOW HOW TO DESCRIBE IT BEST
-    ldx #(zero_end - zero_start) - 1
+    ; SFTODO: This code feels a bit clumsy, can I improve it? Just for satisfaction.
     lda #0
--   sta zero_start,x
-    dex
-    cpx #255
+.sta_zero_start
+-   sta zero_start ; patched by following code
+    inc .sta_zero_start + 1
+    bne +
+    inc .sta_zero_start + 2
++   ldx .sta_zero_start + 1
+    cpx #<zero_end
+    bne -
+    ldx .sta_zero_start + 2
+    cpx #>zero_end
     bne -
 }
 
