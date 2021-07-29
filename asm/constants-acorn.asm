@@ -1,5 +1,9 @@
 ; Acorn version of Commodore constants.asm.
 
+; This file refers to "low" and "high" memory:
+; - low memory is otherwise free memory in pages 4 and 5
+; - high memory is part of the main executable from program_start upwards
+
 ; Note that this may allocate some constant storage at *, so make sure it's
 ; only sourced where this is acceptable. SFTODO!
 !set high_alloc_ptr = *
@@ -12,6 +16,7 @@
 ; SFTODO IN SEPARATE FILE!?
 
 ; Acorn OS and hardware constants
+stack = $100
 brkv = $202
 wrchv = $20e
 keyv = $228
@@ -99,7 +104,7 @@ flat_ramtop = $f800
 shadow_start = $3000
 }
 
-; === Determine vmap_max_size
+; === Virtual memory configuration
 
 ; Determine vmap_max_size; this code used to live in vmem.asm but it's better to
 ; put it here so we can use the value of vmap_max_size when allocating low
@@ -137,6 +142,11 @@ shadow_start = $3000
     vmap_max_size = max_vmap_max_size
 } else {
     vmap_max_size = ACORN_VMEM_BLOCKS
+}
+
+; We only need to allocate space for vmap_used_entries in PREOPT builds.
+!ifdef PREOPT {
+	HAVE_VMAP_USED_ENTRIES = 1
 }
 
 }
@@ -281,7 +291,7 @@ low_fixed_gap_end = *
 		!error "Invalid n"
 	}
 
-	!if (n > 1) and (n != pre_allocation) {
+	!if check_pre_allocation and (n > 1) and (n != pre_allocation) {
 		!error "Missing/incorrect pre-allocation"
 	}
 
@@ -326,20 +336,22 @@ low_fixed_gap_end = *
 }
 
 ; === Non-fixed allocations
-;
-; These proceed from "higher priority" (should be in zero page) to lower
-; priority (may be in zero page, but need not be). Adjacent allocations in this
-; code are not necessarily adjacent in memory; if data needs to be kept
-; together, it must be allocated as a single block and labels assigned to parts
-; of the block.
 
+; These allocations don't have fixed addresses (although in practice many of
+; them are predictable across builds) as they're only used internally by an
+; Ozmoo executable.
+
+; === Non-fixed allocations, part 1: Guaranteed zero page allocations
+;
+; These allocations are guaranteed to be allocated contiguously in zero page; we
+; verify this afterwards.
+
+!set check_pre_allocation = 0
 +set_alloc_star zp_start
 +pre_allocate 1
 
 z_opcode	+allocate 1
-			+pre_allocate 2
 mempointer	+allocate 2
-			+pre_allocate 2
 mem_temp	+allocate 2
 z_extended_opcode	+allocate 1
 
@@ -349,39 +361,27 @@ zp_pc_h +allocate 1
 zp_pc_l	+allocate 1
 z_opcode_opcount	+allocate 1; 0 = 0OP, 1=1OP, 2=2OP, 3=VAR
 z_operand_count	+allocate 1
-		+pre_allocate 6
 zword	+allocate 6
 
-			+pre_allocate 2
 zp_mempos	+allocate 2
 
-							+pre_allocate 8
 z_operand_value_high_arr	+allocate 8
-						+pre_allocate 8
 z_operand_value_low_arr	+allocate 8
 
 ;
-; NOTE: This entire block of variables, except last byte of z_pc_mempointer
-; and z_pc_mempointer_is_unsafe is included in the save/restore files
-; and _have_ to be stored in a contiguous block of zero page addresses
-;SFTODO: z_pc_mempointer_is_unsafe doesn't exist?!
+; NOTE: This entire block of variables, except last byte of z_pc_mempointer is
+; included in the save/restore files and _have_ to be stored in a contiguous
+; block of zero page addresses
 ;
-; SFTODONOW: I NEED TO DO A SINGLE ALLOCATION TO GUARANTEE CONTIGUOUS - IN PRACTICE WILL GET AWAY WITH IT SO WON'T WORRY JUST YET
-					+pre_allocate 2
 z_local_vars_ptr	+allocate 2
 z_local_var_count	+allocate 1
-					+pre_allocate 2
 stack_pushed_bytes	+allocate 2
-			+pre_allocate 2
 stack_ptr	+allocate 2
-				+pre_allocate 2
 stack_top_value	+allocate 2
 stack_has_top_value	+allocate 1
 ; SF: z_pc is big-endian, z_pc_mempointer is little-endian
-	+pre_allocate 2
 z_pc ; 3 bytes (last byte shared with z_pc_mempointer)
 	+allocate 2
-	+pre_allocate 2
 z_pc_mempointer ; 2 bytes (first byte shared with z_pc)
 	+allocate 2
 zp_save_start = z_local_vars_ptr
@@ -391,33 +391,21 @@ zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
 ;
 ;
 
-; SFTODO: MOVE THIS (EVEN IF ONLY WITHIN THIS FILE) NOW?
-!ifdef PREOPT {
-HAVE_VMAP_USED_ENTRIES = 1
-}
-
 zchar_triplet_cnt	+allocate 1
-			+pre_allocate 2
 packed_text	+allocate 2
 alphabet_offset	+allocate 1
 escape_char	+allocate 1
 escape_char_counter	+allocate 1
 abbreviation_command +allocate 1
 
-			+pre_allocate 2
 parse_array	+allocate 2
-				+pre_allocate 2
 string_array	+allocate 2
 
-			+pre_allocate 3
 z_address	+allocate 3
 z_address_temp	+allocate 1
 
-				+pre_allocate 2
 object_tree_ptr	+allocate 2
-			+pre_allocate 2
 object_num	+allocate 2
-			+pre_allocate 2
 object_temp	+allocate 2
 
 ; SF: On the Acorn port, the vmap starts off full unless we are doing a PREOPT
@@ -426,17 +414,12 @@ object_temp	+allocate 2
 ; vmap_used_entries if it isn't used.
 vmap_max_entries	+allocate 1
 
-						+pre_allocate 2
 z_low_global_vars_ptr	+allocate 2
-						+pre_allocate 2
 z_high_global_vars_ptr	+allocate 2
 z_exe_mode	+allocate 1
 
-			+pre_allocate 5
 stack_tmp	+allocate 5
-						+pre_allocate 2
 default_properties_ptr	+allocate 2
-		+pre_allocate 3
 zchars	+allocate 3
 
 ; SF: I experimented with increasing vmap_quick_index_length to see if it helps
@@ -455,39 +438,31 @@ zchars	+allocate 3
 vmap_quick_index_match	+allocate 1
 vmap_next_quick_index	+allocate 1
 vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
-					+pre_allocate vmap_quick_index_length
-vmap_quick_index +allocate vmap_quick_index_length ; Must follow vmap_next_quick_index! SFTODONOW NEED TO ALLOC IN ONE BLOCK TO GET CONTIG GUARANTEE
+vmap_quick_index +allocate vmap_quick_index_length ; Must follow vmap_next_quick_index!
 
-	 	+pre_allocate 12
 z_temp	+allocate 12
 
-		+pre_allocate 5
 zp_temp	+allocate 5
 ; SF: cursor_{row,column} are used to hold the cursor positions for the two
 ; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
 ; the active cursor position is zp_screen{row,column} and that's all that
 ; matters most of the time.
-			+pre_allocate 2
 cursor_row	+allocate 2
-				+pre_allocate 2
 cursor_column	+allocate 2
 mempointer_ram_bank	+allocate 1 ; SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
 
-			+pre_allocate 2
 vmem_temp	+allocate 2
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 dynmem_ram_bank	+allocate 1
 }
 
-					+pre_allocate 4
 window_start_row	+allocate 4
 
 current_window	+allocate 1
 
 is_buffered_window	+allocate 1
 
-; Screen kernal stuff. Must be kept together or update s_init in screenkernal. SFTODONOW: NEED TO ALLOCATE AS ONE TO GUARANTEE
-						+pre_allocate 3
+; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
 s_ignore_next_linebreak	+allocate 3
 s_reverse	+allocate 1
 s_os_reverse	+allocate 1
@@ -541,11 +516,13 @@ screen_hole_tmp       = transient_zp + 2 ; 1 byte
 ; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
 screen_hole_tmp_slow  = transient_zp + 3 ; 1 byte
 }
+
 !ifdef MODE_7_INPUT {
 ; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
 ; and can't be relied on to hold values for long anyway.
 mode_7_input_tmp = transient_zp ; 1 byte
 }
+
 !ifndef ACORN_SWR {
 !ifdef USE_HISTORY {
 ; This overlaps the above uses of transient command workspace, but that's fine - the
@@ -555,6 +532,21 @@ mode_7_input_tmp = transient_zp ; 1 byte
 osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
 }
 }
+
+; Confirm that up to this point we've been allocating in zero page; this means
+; we know adjacent allocations were actually adjacent in memory and therefore we
+; didn't need to jump through any extra hoops to ensure that.
+!if low_alloc_ptr > low_fixed_gap_end {
+	!error "Unexpected non-zero page allocations"
+}
+!set check_pre_allocation = 1
+
+; === Non-fixed allocations, part 2: Flexible allocations
+;
+; The following allocations may end up in zero page, low memory or high memory.
+; The allocation macros will pack them into the available memory and adjacent
+; allocations in the source code may not be adjacent in memory; if this is
+; important, a single block must be allocated and divided up afterwards.
 
 !ifdef MODE_7_INPUT {
 s_stored_x
@@ -603,7 +595,6 @@ jmp_buf_ram_bank 	+allocate 1
 input_colour_code_or_0	+allocate 1
 }
 
-; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page	+allocate 1
 acorn_screen_hole_pages	+allocate 1; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
@@ -616,8 +607,10 @@ acorn_screen_hole_pages_minus_one +allocate 1 ; SFTODO: PROB NOT GOING TO BENEFI
 vmem_cache_count_mem	+allocate 1
 vmem_cache_start_mem	+allocate 1
 vmem_blocks_in_sideways_ram	+allocate 1
-; vmem_cache_cnt and vmem_cache_page_index must be adjacent in memory. SFTODONOW NEED TO ALLOC AS ONE BLOCK
-; The next line adds 1 byte for vmem_cache_cnt and another 1 byte because PAGE alignment may causes us to use one more shadow cache page than recommended (because that page would be pasted otherwise).
+; vmem_cache_cnt and vmem_cache_page_index must be adjacent in memory.
+; The next line adds 1 byte for vmem_cache_cnt and another 1 byte because PAGE
+; alignment may causes us to use one more shadow cache page than recommended
+; (because that page would be pasted otherwise).
 	+pre_allocate 1 + ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
 vmem_cache_cnt ; 1 byte
 	+allocate 1 + ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
@@ -638,13 +631,14 @@ jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if neces
 	  	+pre_allocate jmp_buf_size
 jmp_buf	+allocate jmp_buf_size
 
-; SFTODO: The repetition of the {pre_,}allocate macros is annoying.
-
 ; SFTODO: RENAME zero_start/end TO AVOID CONFUSION WITH ZERO *PAGE*? THE ZERO MEANS "IS CLEARED ON STARTUP"
 
-; SF: I've reordered these streams_* variables so the smallest ones come first
-; in an attempt to minimise wasted space. I don't believe the code relies on
-; them being in any particular order.
+	+pre_allocate 4
+streams_current_entry
+	+allocate 4
+	+pre_allocate 60
+streams_stack
+	+allocate 60
 	+pre_allocate 1
 streams_stack_items
 	+allocate 1
@@ -652,17 +646,10 @@ streams_stack_items
 streams_buffering
 	+allocate 2
 	+pre_allocate 4
-streams_current_entry
-	+allocate 4
-	+pre_allocate 4
 streams_output_selected
 	+allocate 4
-	+pre_allocate 60
-streams_stack
-	+allocate 60
 
 !ifdef ACORN_HW_SCROLL {
-; It's very unlikely both of these will ever fit, but it doesn't hurt to try.
 	+pre_allocate max_screen_width
 top_line_buffer
 	+allocate max_screen_width
@@ -674,12 +661,6 @@ top_line_buffer_reverse
 ; SFTODONOW: For debuggability, make all non-!ifdef ZP allocations come before all !ifdef-ed ones. (I can't really do this with $400 because of the resident integer variable constraints, but I can in zp.)
 
 ; SFTODONOW: With the new allocation it seems there are about 9 bytes of zp free even on non-tube. If I do smart allocation these should get used for *something*, but it may be worth looking around for things which seem like particularly promising candidates for being promoted to zp.
-
-
-; SFTODO: I should look at tidying up the ACORN conditional stuff in this file
-; to try to "match" the Commodore platforms later (although this may not be
-; trivial, because those platforms probably share some common details which
-; the Acorn port doesn't), but let's not worry about that for now.
 
 ; SFTODO: Is it OK to use 162 bytes of the stack like this? In practice we
 ; certainly seem to get away with it, and my brief experiments when I
@@ -709,14 +690,6 @@ print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
 
 ; SFTODO: It might be worth having a constants-acorn.asm (note there is a constants-c128.asm - is that *in addition* to this, or a complete alternative to this?). Not necessarily just for stuff in the following block.
 
-
-; Acorn memory allocations
-; SFTODO: It might be worth reordering/reallocating these so the order is a
-; bit more logical.
-
-stack = $100
-
-
 scratch_page = $600
 !ifdef ACORN_SWR {
 scratch_double_page = scratch_page
@@ -724,7 +697,10 @@ scratch_double_page = scratch_page
 ; Second processor builds load at $700, so this page isn't wasted.
 }
 
-zero_end = vmap_z_l ; SFTODO: I believe this means I can get rid of the code to zero the history explicitly - if so, comment here
+; If we have a history buffer, it's cleared explicitly, not via the
+; zero_start-zero_end clear operation - this is necessary in general because it
+; might be located in the executable just below data_start.
+zero_end = low_end
 
 !ifdef ACORN_TURBO_SUPPORTED {
 ; SFTODO: It might be possible to use an entire 64K bank for dynmem on a turbo copro,
