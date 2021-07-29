@@ -1,3 +1,5 @@
+; Acorn version of Commodore constants.asm.
+
 ; Note that this may allocate some constant storage at *, so make sure it's
 ; only sourced where this is acceptable. SFTODO!
 
@@ -46,94 +48,99 @@
 }
 ; Finished setting vmap_max_size.
 
-zp_constant_ptr = $00
 high_constant_ptr = *
 
-* = $02
+; Zero page allocations
+
+zp_start = $00
+zp_end = $90 ; SFTODO!?
+
+* = zp_start
 
 !macro allocate_zp n {
 	* = * + n
+	!if * > zp_end {
+		!error "Out of zero page"
+	}
 }
 
 z_opcode	+allocate_zp 1
 mempointer	+allocate_zp 2
+mem_temp	+allocate_zp 2
+z_extended_opcode	+allocate_zp 1
 
-; --- ZERO PAGE --
-; available zero page variables (pseudo registers)
-;z_opcode              = $02
-;mempointer            = $03 ; 2 bytes
-mem_temp              = $05 ; 2 bytes
-z_extended_opcode	  = $07
+mempointer_y +allocate_zp 1
+z_opcode_number	+allocate_zp 1
+zp_pc_h +allocate_zp 1
+zp_pc_l	+allocate_zp 1
+z_opcode_opcount	+allocate_zp 1; 0 = 0OP, 1=1OP, 2=2OP, 3=VAR
+z_operand_count	+allocate_zp 1
+zword	+allocate_zp 6
 
-mempointer_y          = $08 ; 1 byte
-z_opcode_number       = $09
-zp_pc_h               = $0a
-zp_pc_l               = $0b
-z_opcode_opcount      = $0c ; 0 = 0OP, 1=1OP, 2=2OP, 3=VAR
-z_operand_count		  = $0d
-zword				  = $0e ; 6 bytes
+zp_mempos	+allocate_zp 2
 
-zp_mempos             = $14 ; 2 bytes
-
-z_operand_value_high_arr = $16 ; !byte 0, 0, 0, 0, 0, 0, 0, 0
-z_operand_value_low_arr = $1e ;  !byte 0, 0, 0, 0, 0, 0, 0, 0
+z_operand_value_high_arr	+allocate_zp 8
+z_operand_value_low_arr	+allocate_zp 8
 
 ;
 ; NOTE: This entire block of variables, except last byte of z_pc_mempointer
 ; and z_pc_mempointer_is_unsafe is included in the save/restore files
 ; and _have_ to be stored in a contiguous block of zero page addresses
+;SFTODO: z_pc_mempointer_is_unsafe doesn't exist?!
 ;
-	z_local_vars_ptr      = $26 ; 2 bytes
-	z_local_var_count	  = $28
-	stack_pushed_bytes	  = $29 ; !byte 0, 0
-	stack_ptr             = $2b ; 2 bytes
-	stack_top_value 	  = $2d ; 2 bytes !byte 0, 0
-	stack_has_top_value   = $2f ; !byte 0
-	; SF: z_pc is big-endian, z_pc_mempointer is little-endian
-	z_pc				  = $30 ; 3 bytes (last byte shared with z_pc_mempointer)
-	z_pc_mempointer		  = $32 ; 2 bytes (first byte shared with z_pc)
-	zp_save_start = z_local_vars_ptr
-	zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
+z_local_vars_ptr	+allocate_zp 2
+z_local_var_count	+allocate_zp 1
+stack_pushed_bytes	+allocate_zp 2
+stack_ptr	+allocate_zp 2
+stack_top_value	+allocate_zp 2
+stack_has_top_value	+allocate_zp 1
+; SF: z_pc is big-endian, z_pc_mempointer is little-endian
+z_pc ; 3 bytes (last byte shared with z_pc_mempointer)
+	+allocate_zp 2
+z_pc_mempointer ; 2 bytes (first byte shared with z_pc)
+	+allocate_zp 2
+zp_save_start = z_local_vars_ptr
+zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
 ;
 ; End of contiguous zero page block
 ;
 ;
 
+; SFTODO: MOVE THIS (EVEN IF ONLY WITHIN THIS FILE) NOW?
 !ifdef PREOPT {
 HAVE_VMAP_USED_ENTRIES = 1
 }
 
-zchar_triplet_cnt	  = $35
-packed_text			  = $36 ; 2 bytes
-alphabet_offset		  = $38
-escape_char			  = $39
-escape_char_counter	  = $3a
-abbreviation_command  = $40
+zchar_triplet_cnt	+allocate_zp 1
+packed_text	+allocate_zp 2
+alphabet_offset	+allocate_zp 1
+escape_char	+allocate_zp 1
+escape_char_counter	+allocate_zp 1
+abbreviation_command +allocate_zp 1
 
-parse_array           = $41 ; 2 bytes
-string_array          = $43 ; 2 bytes
-;terminators_ptr       = $45 ; 2 bytes
+parse_array	+allocate_zp 2
+string_array	+allocate_zp 2
 
-z_address			  = $45 ; 3 bytes
-z_address_temp		  = $48
+z_address	+allocate_zp 3
+z_address_temp	+allocate_zp 1
 
-object_tree_ptr       = $49 ; 2 bytes
-object_num			  = $4b ; 2 bytes
-object_temp			  = $4d ; 2 bytes
+object_tree_ptr	+allocate_zp 2
+object_num	+allocate_zp 2
+object_temp	+allocate_zp 2
 
 ; SF: On the Acorn port, the vmap starts off full unless we are doing a PREOPT
 ; build, so vmap_used_entries == vmap_max_entries at all times. We use
 ; vmap_max_entries everywhere and don't allocate a byte anywhere for
 ; vmap_used_entries if it isn't used.
-vmap_max_entries	  = $4f
+vmap_max_entries	+allocate_zp 1
 
-z_low_global_vars_ptr	  = $50 ; 2 bytes
-z_high_global_vars_ptr	  = $52 ; 2 bytes
-z_exe_mode	  		  = $55
+z_low_global_vars_ptr	+allocate_zp 2
+z_high_global_vars_ptr	+allocate_zp 2
+z_exe_mode	+allocate_zp 1
 
-stack_tmp			  = $56; ! 5 bytes
-default_properties_ptr = $5b ; 2 bytes
-zchars				  = $5d ; 3 bytes
+stack_tmp	+allocate_zp 5
+default_properties_ptr	+allocate_zp 2
+zchars	+allocate_zp 3
 
 ; SF: I experimented with increasing vmap_quick_index_length to see if it helps
 ; on "big" systems with the maximum supported 144K of sideways RAM. Upping it
@@ -148,12 +155,76 @@ zchars				  = $5d ; 3 bytes
 ; SFTODO: It might be worth making vmap_quick_index_length variable at runtime
 ; based on how much RAM we actually have. (It is used in few enough places the
 ; initialisation code could patch the code up.)
-vmap_quick_index_match= $60
-vmap_next_quick_index = $61
-vmap_quick_index	  = $62 ; Must follow vmap_next_quick_index!
+vmap_quick_index_match	+allocate_zp 1
+vmap_next_quick_index	+allocate_zp 1
 vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
+vmap_quick_index +allocate_zp vmap_quick_index_length ; Must follow vmap_next_quick_index!
 
-z_temp				  = $68 ; 12 bytes
+z_temp	+allocate_zp 12
+
+zp_temp	+allocate_zp 5
+; SF: cursor_{row,column} are used to hold the cursor positions for the two
+; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
+; the active cursor position is zp_screen{row,column} and that's all that
+; matters most of the time.
+cursor_row	+allocate_zp 2
+cursor_column	+allocate_zp 2
+mempointer_ram_bank	+allocate_zp 1 ; SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
+
+vmem_temp	+allocate_zp 2
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+; These zero-page addresses are only used very briefly to store temporary values
+; in. We use some of the transient command workspace at $a8; this is safe as
+; there will be no service calls of any kind while the values stored here are
+; live, and it's less likely to create subtle bugs than re-using other Ozmoo
+; zero page.
+; SFTODONOW: NEW HANDLING FOR TRANSIENT ALLOC? AT VERY LEAST MOVE TIL AFTER OTHER ZP ALLOCS?
+screen_hole_zp_ptr    = $a8 ; 2 bytes
+screen_hole_tmp       = $aa ; 1 byte
+; SFTODO: This address is *probably* less performance critical, but since we now
+; have plenty of zp available thanks to using the transient command workspace,
+; there's no point wasting code/cycles on a non-zp address. It may be better to
+; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
+screen_hole_tmp_slow  = $ab ; 1 byte
+}
+!ifdef MODE_7_INPUT {
+; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
+; and can't be relied on to hold values for long anyway.
+mode_7_input_tmp = $a8 ; 1 byte
+}
+!ifndef ACORN_SWR {
+!ifdef USE_HISTORY {
+; This overlaps the above uses of transient command workspace, but that's fine - the
+; whole point is we cannot rely on it to hold values except in the short term. (On
+; a second processor this is actually our zero page, but we're treating it as if it's
+; short-term only just as it is on the host.)
+osbyte_set_cursor_editing_tmp = $a8 ; 5 bytes
+}
+}
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+dynmem_ram_bank	+allocate_zp 1
+}
+
+window_start_row	+allocate_zp 4
+
+current_window	+allocate_zp 1
+
+is_buffered_window	+allocate_zp 1
+
+; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
+s_ignore_next_linebreak	+allocate_zp 3
+s_reverse	+allocate_zp 1
+s_os_reverse	+allocate_zp 1
+
+s_cursors_inconsistent	+allocate_zp 1
+
+max_chars_on_line	+allocate_zp 1
+buffer_index	+allocate_zp 1
+last_break_char_buffer_pos	+allocate_zp 1
+
+zp_screencolumn	+allocate_zp 1 ; current cursor column
+zp_screenrow	+allocate_zp 1 ; current cursor row
+
 
 ; SFTODO: I should look at tidying up the ACORN conditional stuff in this file
 ; to try to "match" the Commodore platforms later (although this may not be
@@ -280,74 +351,6 @@ shadow_start = $3000
 ; SFTODO: It might be worth reordering/reallocating these so the order is a
 ; bit more logical.
 
-zp_temp               = $75 ; 5 bytes
-; SF: cursor_{row,column} are used to hold the cursor positions for the two
-; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
-; the active cursor position is zp_screen{row,column} and that's all that
-; matters most of the time.
-cursor_row            = $7a ; 2 bytes
-cursor_column         = $7c ; 2 bytes
-!if 0 { ; SFTODO: These zp locations can be re-used now; I suspect (but obviously can test) there's no real value to using zp for text output related things
-;screen_width          = $54 ; 1 byte ; SFTODO: I have re-used this one already
-;screen_height         = $89 ; 1 byte ; SFTODO: I have re-used this one already
-;screen_height_minus_1 = $8a ; 1 byte ; SFTODO: I have re-used this one already
-}
-mempointer_ram_bank = $8a ; 1 byte SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
-
-vmem_temp			  = $00 ; 2 bytes
-!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-; These zero-page addresses are only used very briefly to store temporary values
-; in. We use some of the transient command workspace at $a8; this is safe as
-; there will be no service calls of any kind while the values stored here are
-; live, and it's less likely to create subtle bugs than re-using other Ozmoo
-; zero page.
-screen_hole_zp_ptr    = $a8 ; 2 bytes
-screen_hole_tmp       = $aa ; 1 byte
-; SFTODO: This address is *probably* less performance critical, but since we now
-; have plenty of zp available thanks to using the transient command workspace,
-; there's no point wasting code/cycles on a non-zp address. It may be better to
-; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
-screen_hole_tmp_slow  = $ab ; 1 byte
-}
-!ifdef MODE_7_INPUT {
-; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
-; and can't be relied on to hold values for long anyway.
-mode_7_input_tmp = $a8 ; 1 byte
-}
-!ifndef ACORN_SWR {
-!ifdef USE_HISTORY {
-; This overlaps the above uses of transient command workspace, but that's fine - the
-; whole point is we cannot rely on it to hold values except in the short term. (On
-; a second processor this is actually our zero page, but we're treating it as if it's
-; short-term only just as it is on the host.)
-osbyte_set_cursor_editing_tmp = $a8 ; 5 bytes
-}
-}
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-dynmem_ram_bank       = $89; 1 byte
-}
-; alphabet_table		  = $7e ; 2 bytes SFTODO: This is no longer in ZP on Commodore, this means I have two bytes of zp free - at some point I will need to tidy up the ZP allocation anyway - I have now used $7e FWIW, $7f has also now been used but it's only experimental
-
-window_start_row	  = $80; 4 bytes
-
-current_window		  = $74 ; !byte 0
-
-is_buffered_window	  = $7e;  !byte 1
-
-; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
-s_ignore_next_linebreak = $84 ; 3 bytes
-s_reverse 			  = $87 ; !byte 0
-s_os_reverse          = $88 ; !byte 0
-
-s_cursors_inconsistent = $34 ; !byte 0
-
-max_chars_on_line	  = $8b; !byte 0
-buffer_index		  = $8c ; !byte 0
-last_break_char_buffer_pos = $8d ; !byte 0
-
-zp_screencolumn       = $8e ; current cursor column
-zp_screenrow          = $8f ; current cursor row
-
 stack = $100
 
 !set pending_extra_skip = 0
@@ -432,7 +435,7 @@ stack = $100
 ; with most of language workspace as BASIC is using it for its own purposes
 ; while the loader is running.
 resident_integer_b = $408
-resident_integer_o = $43c ; SFTODO: NOT USED, WE SHOULD PROB ASSERT <= THIS AT SOME POINT
+resident_integer_o = $43c
 resident_integer_x = $460
 
 ; We need to avoid allocating loader-modified addresses with @% and A% as those
