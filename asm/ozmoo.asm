@@ -1098,19 +1098,12 @@ program_end
     !fill WASTE_BYTES
 }
 
-; On Acorn, we use memory at low_history_start for the history, provided it's at
-; least as large as the minimum size the user has requested.
 !ifdef USE_HISTORY {
-    !ifdef ACORN {
-        !if low_history_end - low_history_start >= USE_HISTORY {
-            history_start = low_history_start
-            history_end = low_history_end
-        } else {
-            WANT_HIGH_HISTORY = 1
-        }
-    } else {
+    !ifndef ACORN {
         WANT_HIGH_HISTORY = 1
-    }
+    } else {
+high_history_start
+	}
 }
 
 !ifdef WANT_HIGH_HISTORY {
@@ -1126,12 +1119,34 @@ history_start
 history_end
 }
 
+; On Acorn, we always have at least USE_HISTORY bytes allocated at
+; low_history_start, so we never deliberately allocate any memory for history
+; here. However, if alignment requirements happen to give us space for a larger
+; history buffer here anyway, we use it. (Of course, it's possible that if we'd
+; only known we were going to use a high history buffer, we could have allocated
+; other stuff in low memory - but there's not really much we can do, as this is
+; a bit recursive.)
+!ifdef ACORN {
+!ifdef USE_HISTORY {
+	!if (* - high_history_start) > (low_history_end - low_history_start) {
+		history_start = high_history_start
+		history_end = *
+	} else {
+		history_start = low_history_start
+		history_end = low_history_end
+	}
+}
+}
+
 !ifdef USE_HISTORY {
     !if history_end - history_start < 255 {
         history_size = history_end - history_start
     } else {
         history_size = 255  ; max size of history buffer
     }
+	!if history_size < USE_HISTORY {
+		!error "Not enough space allocated for history"
+	}
 
     history_lastpos = history_size -1 ; last pos (size of history buffer - 1)
 }
