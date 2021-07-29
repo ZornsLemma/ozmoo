@@ -228,6 +228,8 @@ last_break_char_buffer_pos	+allocate_zp 1
 zp_screencolumn	+allocate_zp 1 ; current cursor column
 zp_screenrow	+allocate_zp 1 ; current cursor row
 
+first_spare_zp_address = *
+
 ; SFTODONOW: For debuggability, make all non-!ifdef ZP allocations come before all !ifdef-ed ones. (I can't really do this with $400 because of the resident integer variable constraints, but I can in zp.)
 
 ; SFTODONOW: With the new allocation it seems there are about 9 bytes of zp free even on non-tube. If I do smart allocation these should get used for *something*, but it may be worth looking around for things which seem like particularly promising candidates for being promoted to zp.
@@ -398,19 +400,34 @@ stack = $100
 		!error "Bad allocate_low size"
 	}
 
-	!set ascending_check = 0
-	!ifdef MODE_7_INPUT {
-		+skip_fixed_low_allocation input_colour, n
-	}
-	!ifdef ACORN_RELOCATABLE {
-		+skip_fixed_low_allocation relocate_target, n
-	}
+	!if (* <= zp_end) and ((* + n) > zp_end) {
+		; The label for the n bytes has already been allocated, so if the
+		; allocation won't fit in the remaining zero page it's too late to do
+		; anything but fail.
+		!error "Low allocation would bit split across zp and low memory"
+	} else { ; SFTODO: MAKE ELSE CODE ONE LEVEL HIGHER, SINCE IF CASE ERRORS?
+		!set ascending_check = 0
+		!ifdef MODE_7_INPUT {
+			+skip_fixed_low_allocation input_colour, n
+		}
+		!ifdef ACORN_RELOCATABLE {
+			+skip_fixed_low_allocation relocate_target, n
+		}
 
-	* = * + n + pending_extra_skip
-	!set pending_extra_skip = 0
-	;!warn "XXX", *
+		* = * + n + pending_extra_skip
+		!set pending_extra_skip = 0
+		;!warn "XXX", *
+
+		; Transition from spare zero page to low memory; this will avoid split
+		; errors above if we are only allocating single bytes.
+		!if * == zp_end {
+			* = first_optional_low_address
+			+allocate_low 0
+		}
+	}
 }
 
+; SFTODO: Maybe move these macros lower to nearer their first use?
 ; SFTODO: It might be possible to make pre_allocate/post_allocate able to
 ; allocate from low and high memory simultaneously, rather than switching
 ; permanently to high memory the first time we don't have enough low memory. But
@@ -516,11 +533,10 @@ ozmoo_relocate_target = relocate_target ; SFTODO!?
 ; ASAP in the loader before we poke any values into page 4 to pass them to the
 ; Ozmoo executable.
 !if * > resident_integer_o {
-	!error "Loader-written values have spilled into O%", *
+	!error "Loader-written values have spilled into O%"
 }
 
-* = first_optional_low_address
-+allocate_low 0
+* = first_spare_zp_address
 
 ; The following allocations are only used by the Ozmoo executable itself, so we
 ; no longer care about working around BASIC's use of the language workspace. We
@@ -554,26 +570,13 @@ use_hw_scroll 	+allocate_low 1
 is_turbo	+allocate_low 1 ; SFTODO: RENAME turbo_flag?
 }
 
-!ifdef ACORN_SHADOW_VMEM {
-; We use _mem suffixes on these variables to avoid accidental confusion with the
-; Commodore values, which are assembly-time constants.
-vmem_cache_count_mem	+allocate_low 1
-vmem_cache_start_mem	+allocate_low 1
-vmem_blocks_in_sideways_ram	+allocate_low 1
-vmem_cache_cnt	+allocate_low 1
-; We add one in the next line because PAGE alignment may add an extra cache page
-; on top of the recommended number of pages.
-vmem_cache_page_index
-	+allocate_low ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
-vmem_cache_page_index_end
-}
-
 !ifdef ACORN_SWR {
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up. - this includes $41c which used to be mempointer_ram_bank
 vmem_blocks_in_main_ram	+allocate_low 1
 vmem_blocks_stolen_in_first_bank	+allocate_low 1
+!error "SFTODONOW NEXT LINE NEEDS TO ALLOCATE A DYNAMIC ZP ADDDRESS"
 z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
 jmp_buf_ram_bank 	+allocate_low 1
 }
@@ -585,9 +588,24 @@ input_colour_code_or_0	+allocate_low 1
 ; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page	+allocate_low 1
+!error "SFTODONOW MUST BE DYNAMIC"
 acorn_screen_hole_start_page_minus_one = $54
 acorn_screen_hole_pages	+allocate_low 1; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 acorn_screen_hole_pages_minus_one +allocate_low 1 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
+}
+
+!ifdef ACORN_SHADOW_VMEM {
+; We use _mem suffixes on these variables to avoid accidental confusion with the
+; Commodore values, which are assembly-time constants.
+vmem_cache_count_mem	+allocate_low 1
+vmem_cache_start_mem	+allocate_low 1
+vmem_blocks_in_sideways_ram	+allocate_low 1
+; vmem_cache_cnt and vmem_cache_page_index must be adjacent in memory.
+vmem_cache_cnt ; 1 byte
+vmem_cache_page_index = vmem_cache_cnt + 1
+; The next line adds 1 byte for vmem_cache_cnt and another 1 byte because PAGE alignment may causes us to use one more shadow cache page than recommended (because that page would be pasted otherwise).
+	+allocate_low 1 + ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
+vmem_cache_page_index_end
 }
 
 game_disc_crc	+allocate_low 2
@@ -692,6 +710,7 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 }
 !ifdef TRACE_SETJMP {
 ; This address is owned by Econet but this is debug-only code.
+!error "SFTODONOW SHOULD PROB BE DYNAMIC"
 setjmp_min_s = $90
 }
 
