@@ -35,6 +35,14 @@ input_colour_active !byte 0
 !ifdef Z5PLUS {
 .read_text_return_value = read_text_return_value
 }
+
+.maxwords = maxwords
+.numwords = numwords
+.wordoffset = wordoffset
+.textend = textend
+.wordstart = wordstart
+.wordend = wordend
+.ignore_unknown_words = ignore_unknown_words
 }
 
 ; only ENTER + cursor + F1-F8 possible on a C64
@@ -2130,14 +2138,15 @@ tokenise_text
 	+macro_parse_array_write_byte
 ;	sta (parse_array),y ; num of words
 	rts
-    ;SFTODODATA 7
-.maxwords   !byte 0 
+!ifndef ACORN {
+.maxwords   !byte 0
 .numwords   !byte 0 
 .wordoffset !byte 0 
 .textend    !byte 0 
 .wordstart  !byte 0 
 .wordend    !byte 0 
-.ignore_unknown_words !byte 0 
+.ignore_unknown_words !byte 0
+}
 
 get_next_zchar
 	; returns the next zchar in a
@@ -2198,6 +2207,9 @@ was_last_zchar
 	eor #1
 +   rts
 
+!ifdef ACORN {
+.current_zchar = current_zchar
+}
 get_abbreviation_offset
 	; abbreviation is 32(abbreviation_command-1)+a
 	sta .current_zchar
@@ -2213,8 +2225,9 @@ get_abbreviation_offset
 	asl ; byte -> word 
 	tay
 	rts
-    ;SFTODODATA 1
+!ifndef ACORN {
 .current_zchar !byte 0
+}
 
 print_addr
 	; print zchar-encoded text

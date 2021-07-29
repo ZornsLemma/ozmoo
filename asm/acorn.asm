@@ -2412,7 +2412,7 @@ setjmp
     ; SFTODO: UNSAFE is not necessarily the best way to control this. Especially
     ; (do another code review) if Ozmoo doesn't use arbitrary amounts of stack
     ; depending on the Z-code being executed, this isn't something that should
-    ; be triggered by buggy Z-code; it's internal to the itnerpreter.
+    ; be triggered by buggy Z-code; it's internal to the interpreter.
 !ifndef UNSAFE {
     ; Y starts at -jmp_buf_size and is incremented every time we store a byte,
     ; so if it reaches 0 will have written jmp_buf_size bytes starting at

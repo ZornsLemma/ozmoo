@@ -1126,6 +1126,12 @@ history_end
 ; only known we were going to use a high history buffer, we could have allocated
 ; other stuff in low memory - but there's not really much we can do, as this is
 ; a bit recursive.)
+; SFTODO: We do *further* alignment below to align the stack, and I think we
+; will not take advantage of that space if there is any. This section of
+; alignment might well benefit from just !error-ing if we're not on Acorn - it
+; is extremely platform specific and trying (and probably failing) to include
+; the Commodore logic just makes it more convoluted for little real benefit.
+; SFTODONOW?
 !ifdef ACORN {
 !ifdef USE_HISTORY {
 	!if (* - high_history_start) > (low_history_end - low_history_start) {

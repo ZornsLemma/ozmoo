@@ -704,6 +704,16 @@ read_text_routine +allocate 2 ; called with .read_text_time intervals
 read_text_return_value +allocate 1 ; return value
 }
 
+maxwords   +allocate 1
+numwords   +allocate 1
+wordoffset +allocate 1
+textend    +allocate 1
+wordstart  +allocate 1
+wordend    +allocate 1
+ignore_unknown_words +allocate 1
+
+current_zchar +allocate 1
+
 				+pre_allocate 2
 game_disc_crc	+allocate 2
 				+pre_allocate 5
@@ -805,7 +815,5 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 
 ; Further assembly continues in high (executable) memory.
 * = high_alloc_ptr
-
-; SFTODONOW: Go over all the SFTODODATA comments and see what I can move in here - it should be relatively easy to move these now, and some of them may be small but have mdoerate performance sensitivity and could therefore benefit (at least on tube) from a chance to be moved into zp, plus of course shaving a few bytes here and there off the main executable increases the chances of getting an extra block of vmem cache on any given machine
 
 ; SFTODONOW: have a look over this fresh, it may be that now the overall picture is clearer I can use a more generic "(pre) allocate a block of size n, skipping to the next area of memory and skipping over any pre-allocated things" macro or smaller set of macros, rather than all the very ad-hoc three different ways to allocate stuff.
