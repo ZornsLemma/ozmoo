@@ -671,6 +671,17 @@ after_dynmem_read_preserve_axy_slow_sub
 !macro acorn_init_code_overlapping_game_data {
 ; Initialization performed very early during startup.
 deletable_init_start
+    ; Clear all our zero page; this is probably a good idea for consistency
+    ; anyway but is important if (as can happen on a second processor) some
+    ; storage allocated via {pre,post}_allocate which needs to be
+    ; zero-initialised ends up in zero page instead of low memory.
+    ldx #zp_end - 1
+    lda #0
+-   sta $00,x
+    dex
+    cpx #255
+    bne -
+
 !ifdef TRACE_SETJMP {
     lda #$ff
     sta setjmp_min_s
@@ -2468,7 +2479,7 @@ kernal_readtime
     ldx #(256-5)
     sec
 -   lda .current_clock-(256-5),x
-    sbc initial_clock-(256-5),x
+    sbc (initial_clock-(256-5)) and $ffff,x ; SFTODONOW COMMENT WHY
     sta .current_clock-(256-5),x
     inx
     bne -

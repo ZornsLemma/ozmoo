@@ -53,7 +53,11 @@ high_constant_ptr = *
 ; Zero page allocations
 
 zp_start = $00
-zp_end = $90 ; SFTODO!?
+!ifndef ACORN_SWR {
+	zp_end = $ee
+} else {
+	zp_end = $90
+}
 
 * = zp_start
 
@@ -175,35 +179,6 @@ cursor_column	+allocate_zp 2
 mempointer_ram_bank	+allocate_zp 1 ; SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
 
 vmem_temp	+allocate_zp 2
-!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-; These zero-page addresses are only used very briefly to store temporary values
-; in. We use some of the transient command workspace at $a8; this is safe as
-; there will be no service calls of any kind while the values stored here are
-; live, and it's less likely to create subtle bugs than re-using other Ozmoo
-; zero page.
-; SFTODONOW: NEW HANDLING FOR TRANSIENT ALLOC? AT VERY LEAST MOVE TIL AFTER OTHER ZP ALLOCS?
-screen_hole_zp_ptr    = $a8 ; 2 bytes
-screen_hole_tmp       = $aa ; 1 byte
-; SFTODO: This address is *probably* less performance critical, but since we now
-; have plenty of zp available thanks to using the transient command workspace,
-; there's no point wasting code/cycles on a non-zp address. It may be better to
-; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
-screen_hole_tmp_slow  = $ab ; 1 byte
-}
-!ifdef MODE_7_INPUT {
-; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
-; and can't be relied on to hold values for long anyway.
-mode_7_input_tmp = $a8 ; 1 byte
-}
-!ifndef ACORN_SWR {
-!ifdef USE_HISTORY {
-; This overlaps the above uses of transient command workspace, but that's fine - the
-; whole point is we cannot rely on it to hold values except in the short term. (On
-; a second processor this is actually our zero page, but we're treating it as if it's
-; short-term only just as it is on the host.)
-osbyte_set_cursor_editing_tmp = $a8 ; 5 bytes
-}
-}
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 dynmem_ram_bank	+allocate_zp 1
 }
@@ -234,6 +209,52 @@ z_pc_mempointer_ram_bank +allocate_zp 1 ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1
 
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page_minus_one +allocate_zp 1
+}
+
+; "Transient" zero page allocations. On non-second processor builds, these use the
+; OS transient command zero page at $a8-$af inclusive - these addresses cannot be
+; trusted to retain their values across * commands and (being paranoid) any service
+; call, but they can be used for very short term storage. On second processor builds,
+; we just allocate some of the available zero page for this.
+; SFTODO: There's no advantage to a small transient_zp_size on non-tube; on tube we could make it smaller depending on MODE_7_INPUT and USE_HISTORY.
+transient_zp_size = 5 ; bytes of transient zero page needed
+!if transient_zp_size > 8 {
+	!error "transient_zp_size is too large"
+}
+!ifndef ACORN_SWR {
+transient_zp	+allocate_zp transient_zp_size
+} else {
+transient_zp = $a8
+}
+
+!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+; These zero-page addresses are only used very briefly to store temporary values
+; in. We use some of the transient command workspace at $a8; this is safe as
+; there will be no service calls of any kind while the values stored here are
+; live, and it's less likely to create subtle bugs than re-using other Ozmoo
+; zero page.
+; SFTODONOW: NEW HANDLING FOR TRANSIENT ALLOC? AT VERY LEAST MOVE TIL AFTER OTHER ZP ALLOCS?
+screen_hole_zp_ptr    = transient_zp ; 2 bytes
+screen_hole_tmp       = transient_zp + 2 ; 1 byte
+; SFTODO: This address is *probably* less performance critical, but since we now
+; have plenty of zp available thanks to using the transient command workspace,
+; there's no point wasting code/cycles on a non-zp address. It may be better to
+; rename this screen_hole_tmp2 or screen_hole_tmp+1 or something later.
+screen_hole_tmp_slow  = transient_zp + 3 ; 1 byte
+}
+!ifdef MODE_7_INPUT {
+; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
+; and can't be relied on to hold values for long anyway.
+mode_7_input_tmp = transient_zp ; 1 byte
+}
+!ifndef ACORN_SWR {
+!ifdef USE_HISTORY {
+; This overlaps the above uses of transient command workspace, but that's fine - the
+; whole point is we cannot rely on it to hold values except in the short term. (On
+; a second processor this is actually our zero page, but we're treating it as if it's
+; short-term only just as it is on the host.)
+osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
+}
 }
 
 first_spare_zp_address = *
@@ -448,6 +469,12 @@ stack = $100
 	}
 	!set pre_allocate_size = n
 
+	!if (* <= zp_end) and ((* + n) > zp_end) {
+		; SFTODO: Using first_non_fixed_low_address might waste a byte or two if we didn't actually use all the fixed addresses, but in practice this isn't a huge problem as if we're in this case anyway we're already ahead of the game.
+		* = first_non_fixed_low_address
+		zero_start = *
+	}
+
 	!if (* + n) >= low_memory_upper_bound {
 		zero_end = *
 		* = high_constant_ptr
@@ -533,6 +560,9 @@ relocate_target
 ozmoo_relocate_target = relocate_target ; SFTODO!?
 }
 	+allocate_fixed 1
+
+; SFTODO: Using this address is a bit of a hack, but we need to avoid trampling over the absolutely fixed addresses when we're on a second processor and get a lot of stuff into zero page. (Poor comment, needs tweaking once I have a clearer mental picture of whole thing...)
+first_non_fixed_low_address = *
 
 ; O% is the first resident integer variable after A% which has a special meaning
 ; to BASIC and which the loader can't entirely avoid, so if possible (and it is,
@@ -652,7 +682,10 @@ vmap_z_l = $600 - vmap_max_size
 ; up.
 ; SFTODO: The repetition of the {pre,post}_allocate macros is annoying.
 
+; SFTODO: RENAME zero_start/end TO AVOID CONFUSION WITH ZERO *PAGE*? THE ZERO MEANS "IS CLEARED ON STARTUP"
+!if * >= $400 {
 zero_start
+}
 
 ; SF: I've reordered these streams_* variables so the smallest ones come first
 ; in an attempt to minimise wasted space. I don't believe the code relies on
