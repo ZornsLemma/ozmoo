@@ -547,6 +547,8 @@ osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
 ; allocations in the source code may not be adjacent in memory; if this is
 ; important, a single block must be allocated and divided up afterwards.
 
+; SFTODO: Reordering these to affect what happens to get into zp may have an impact on performance, either directly or via reducing code size
+
 !ifdef MODE_7_INPUT {
 s_stored_x
 	+allocate 1
@@ -605,6 +607,9 @@ division_result
 product
 remainder
 	+allocate 4
+
+last_char_index	+allocate 1
+parse_array_index +allocate 1
 
 cursor_status	+allocate 1
 
@@ -669,6 +674,34 @@ vmem_cache_page_index_end
 
 !ifdef TRACE_SETJMP {
 setjmp_min_s +allocate 1
+}
+
+!ifdef USE_HISTORY {
+history_current +allocate 1  ; the current entry (when selecting with up/down)
+history_first +allocate 1    ; offset to the first (oldest) entry
+history_last +allocate 1     ; offset to the end of the last (newest) entry
+history_disabled +allocate 1 ; 0 means disabled, otherwise enabled
+}
+
++pre_allocate 2
+read_parse_buffer +allocate 2
++pre_allocate 2
+read_text_cursor +allocate 2
+read_text_column +allocate 1
+read_text_char_limit +allocate 1
+read_text_operand_count +allocate 1
+!ifdef Z4PLUS {
++pre_allocate 2
+read_text_time +allocate 2 ; update interval in 1/10 seconds
++pre_allocate 3
+read_text_time_jiffy +allocate 3 ; update interval in jiffys
++pre_allocate 3
+read_text_jiffy +allocate 3  ; current time
++pre_allocate 2
+read_text_routine +allocate 2 ; called with .read_text_time intervals
+}
+!ifdef Z5PLUS {
+read_text_return_value +allocate 1 ; return value
 }
 
 				+pre_allocate 2

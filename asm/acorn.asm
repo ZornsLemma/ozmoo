@@ -1739,6 +1739,9 @@ full_block_graphic = 255
     lda #1
     sta streams_buffering
     sta streams_buffering + 1
+!ifdef USE_HISTORY {
+    sta history_disabled
+}
     lda #2
     sta readblocks_numblocks
 

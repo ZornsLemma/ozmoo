@@ -1487,10 +1487,6 @@ convert_index_x_to_ram_bank_and_address
 }
 }
 
-; SFTODO: For now I'm going to pre-fill this as part of the build
-; SFTODODATA - THIS IS INITIALISED, BUT I AM HALF THINKING WE SHOULD JUST
-; POPULATE IT IN THE DISCARDABLE INIT CODE - BUT MAYBE DON'T RUSH INTO THIS AS
-; SWR AND 'SUGGESTED' PAGES AND PREOPT WILL AFFECT THIS DECISION
 !ifdef ACORN {
 !ifdef VMEM {
 ; vmap_z_l lives in low workspace so we never incur page-crossing penalties when

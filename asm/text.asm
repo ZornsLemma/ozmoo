@@ -5,14 +5,36 @@
 ;TRACE_SHOW_DICT_ENTRIES = 1
 ;TRACE_PRINT_ARRAYS = 1
 ;TRACE_HISTORY = 1
-;SFTODODATA 2
-!ifndef ACORN { ; SFTODO!?
+!ifndef ACORN {
 .text_tmp	!byte 0
 .current_character !byte 0
 }
 .petscii_char_read = zp_temp
 !ifdef USE_INPUTCOL {
 input_colour_active !byte 0
+}
+!ifdef ACORN {
+!ifdef USE_HISTORY {
+.history_current = history_current
+.history_first = history_first
+.history_last = history_last
+.history_disabled = history_disabled
+}
+
+.read_parse_buffer = read_parse_buffer
+.read_text_cursor = read_text_cursor
+.read_text_column = read_text_column
+.read_text_char_limit = read_text_char_limit
+.read_text_operand_count = read_text_operand_count
+!ifdef Z4PLUS {
+.read_text_time = read_text_time
+.read_text_time_jiffy = read_text_time_jiffy
+.read_text_jiffy = read_text_jiffy
+.read_text_routine = read_text_routine
+}
+!ifdef Z5PLUS {
+.read_text_return_value = read_text_return_value
+}
 }
 
 ; only ENTER + cursor + F1-F8 possible on a C64
@@ -678,9 +700,13 @@ convert_char_to_zchar
 	
 .is_word_found = zp_temp + 1 ; !byte 0
 .triplet_counter = zp_temp + 2; !byte 0
-; SFTODODATA 2
+!ifndef ACORN {
 .last_char_index		!byte 0
 .parse_array_index 		!byte 0
+} else {
+.last_char_index = last_char_index
+.parse_array_index = parse_array_index
+}
 .dictionary_address = zp_temp + 3 ;  !byte 0,0
 ; .zword !byte 0,0,0,0,0,0
 	
@@ -1957,14 +1983,15 @@ add_line_to_history
 }
 	rts
 
-	; SFTODODATA 4 (AT LEAST SOME OF THIS PROB NEEDED INITING)
+!ifndef ACORN {
 .history_current !byte 0  ; the current entry (when selecting with up/down)
 .history_first !byte 0    ; offset to the first (oldest) entry
 .history_last !byte 0     ; offset to the end of the last (newest) entry
 .history_disabled !byte 1 ; 0 means disabled, otherwise enabled
 }
+}
 
-; SFTODODATA 7+10
+!ifndef ACORN {
 .read_parse_buffer !byte 0,0
 .read_text_cursor !byte 0,0
 .read_text_column !byte 0
@@ -1978,6 +2005,7 @@ add_line_to_history
 }
 !ifdef Z5PLUS {
 .read_text_return_value !byte 0 ; return value
+}
 }
 !ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {
