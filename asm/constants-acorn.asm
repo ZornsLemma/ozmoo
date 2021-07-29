@@ -58,6 +58,9 @@ zp_end = $90 ; SFTODO!?
 * = zp_start
 
 !macro allocate_zp n {
+	!if n < 1 {
+		!error "Bad allocate_zp size"
+	}
 	* = * + n
 	!if * > zp_end {
 		!error "Out of zero page"
@@ -356,6 +359,9 @@ stack = $100
 !set pending_extra_skip = 0
 
 !macro allocate_fixed n {
+	!if n < 1 {
+		!error "Bad allocate_fixed size"
+	}
 	* = * + n
 }
 
@@ -384,6 +390,10 @@ stack = $100
 }
 
 !macro allocate_low n {
+	!if n < 0 {
+		!error "Bad allocate_low size"
+	}
+
 	!set ascending_check = 0
 	!ifdef MODE_7_INPUT {
 		+skip_fixed_low_allocation input_colour, n
@@ -404,6 +414,11 @@ stack = $100
 ; complexity right now while all this code is new.
 
 !macro pre_allocate n {
+	!if n < 1 {
+		!error "Bad pre_allocate size"
+	}
+	!set pre_allocate_size = n
+
 	!if (* + n) >= low_memory_upper_bound {
 		zero_end = *
 		* = high_constant_ptr
@@ -412,6 +427,10 @@ stack = $100
 }
 
 !macro post_allocate n {
+	!if n != pre_allocate_size {
+		!error "Bad post_allocate size"
+	}
+
 	!if * >= low_memory_upper_bound {
 		; It's important this is zero-filled because acorn_deletable_init_inline
 		; will only zero this memory if it's allocated in low memory.
