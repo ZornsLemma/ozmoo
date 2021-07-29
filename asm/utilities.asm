@@ -1012,7 +1012,7 @@ rotate_r
 	dex
 	bne shift_r 
 	rts
-    ;SFTODODATA 8
+!ifndef ACORN {
 multiplier
 divisor
 	!byte 0, 0
@@ -1023,6 +1023,7 @@ division_result
 product
 remainder 
 	!byte 0 ,0 ,0 ,0
+}
 
 ; divisor = $58     ;$59 used for hi-byte
 ; dividend = $fb	  ;$fc used for hi-byte

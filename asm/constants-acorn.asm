@@ -592,6 +592,20 @@ attribute_index +allocate 1
 property_number +allocate 1
 property_length +allocate 1
 
+	+pre_allocate 2
+multiplier
+divisor
+	+allocate 2
+	+pre_allocate 2
+multiplicand
+dividend
+division_result
+	+allocate 2
+	+pre_allocate 4
+product
+remainder
+	+allocate 4
+
 cursor_status	+allocate 1
 
 !ifdef TRACE {
