@@ -228,6 +228,8 @@ last_break_char_buffer_pos	+allocate_zp 1
 zp_screencolumn	+allocate_zp 1 ; current cursor column
 zp_screenrow	+allocate_zp 1 ; current cursor row
 
+; SFTODONOW: For debuggability, make all non-!ifdef ZP allocations come before all !ifdef-ed ones. (I can't really do this with $400 because of the resident integer variable constraints, but I can in zp.)
+
 
 ; SFTODO: I should look at tidying up the ACORN conditional stuff in this file
 ; to try to "match" the Commodore platforms later (although this may not be
