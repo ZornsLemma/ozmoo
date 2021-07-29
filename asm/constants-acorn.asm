@@ -228,6 +228,14 @@ last_break_char_buffer_pos	+allocate_zp 1
 zp_screencolumn	+allocate_zp 1 ; current cursor column
 zp_screenrow	+allocate_zp 1 ; current cursor row
 
+!ifdef ACORN_SWR {
+z_pc_mempointer_ram_bank +allocate_zp 1 ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
+}
+
+!ifdef ACORN_SCREEN_HOLE {
+acorn_screen_hole_start_page_minus_one +allocate_zp 1
+}
+
 first_spare_zp_address = *
 
 ; SFTODONOW: For debuggability, make all non-!ifdef ZP allocations come before all !ifdef-ed ones. (I can't really do this with $400 because of the resident integer variable constraints, but I can in zp.)
@@ -576,8 +584,6 @@ integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS wo
 ; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up. - this includes $41c which used to be mempointer_ram_bank
 vmem_blocks_in_main_ram	+allocate_low 1
 vmem_blocks_stolen_in_first_bank	+allocate_low 1
-!error "SFTODONOW NEXT LINE NEEDS TO ALLOCATE A DYNAMIC ZP ADDDRESS"
-z_pc_mempointer_ram_bank = $7f ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
 jmp_buf_ram_bank 	+allocate_low 1
 }
 
@@ -588,8 +594,6 @@ input_colour_code_or_0	+allocate_low 1
 ; SFTODO: THESE MEMORY ALLOCATIONS ARE MESSY
 !ifdef ACORN_SCREEN_HOLE {
 acorn_screen_hole_start_page	+allocate_low 1
-!error "SFTODONOW MUST BE DYNAMIC"
-acorn_screen_hole_start_page_minus_one = $54
 acorn_screen_hole_pages	+allocate_low 1; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 acorn_screen_hole_pages_minus_one +allocate_low 1 ; SFTODO: PROB NOT GOING TO BENEFIT FROM ZP BUT MAYBE TRY IT
 }
@@ -606,6 +610,10 @@ vmem_cache_page_index = vmem_cache_cnt + 1
 ; The next line adds 1 byte for vmem_cache_cnt and another 1 byte because PAGE alignment may causes us to use one more shadow cache page than recommended (because that page would be pasted otherwise).
 	+allocate_low 1 + ACORN_RECOMMENDED_SHADOW_CACHE_PAGES + 1
 vmem_cache_page_index_end
+}
+
+!ifdef TRACE_SETJMP {
+setjmp_min_s +allocate_low 1
 }
 
 game_disc_crc	+allocate_low 2
@@ -707,11 +715,6 @@ turbo_control = $fef0
 turbo_bank_base = $301
 mempointer_turbo_bank = turbo_bank_base + mempointer
 z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
-}
-!ifdef TRACE_SETJMP {
-; This address is owned by Econet but this is debug-only code.
-!error "SFTODONOW SHOULD PROB BE DYNAMIC"
-setjmp_min_s = $90
 }
 
 !ifndef ACORN_SWR {
