@@ -1,3 +1,4 @@
+;SFTODONOW: Once constants-acorn.asm comes to fruition, I should restore this file to be a pristine copy of upstream
 ; C128 is now in a separate constants-c128 instead
 ;
 
