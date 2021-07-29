@@ -763,3 +763,6 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 ; SFTODONOW: Go over all the SFTODODATA comments and see what I can move in here - it should be relatively easy to move these now, and some of them may be small but have mdoerate performance sensitivity and could therefore benefit (at least on tube) from a chance to be moved into zp, plus of course shaving a few bytes here and there off the main executable increases the chances of getting an extra block of vmem cache on any given machine
 
 ; SFTODONOW: have a look over this fresh, it may be that now the overall picture is clearer I can use a more generic "(pre) allocate a block of size n, skipping to the next area of memory and skipping over any pre-allocated things" macro or smaller set of macros, rather than all the very ad-hoc three different ways to allocate stuff.
+
+
+; SFTODONOW: if I can clearly define a single block of memory containing data passed in by the loader, the init code could possibly zero out all of page 4 and 5 except for that block. that would probably allow me to get rid of separate zeroing code for history and for what I currently call zero_start/end etc.
