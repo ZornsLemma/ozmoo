@@ -575,6 +575,24 @@ readblocks_base         +allocate 1
 }
 }
 
+num_default_properties +allocate 1
+	+pre_allocate 2
+objects_start_ptr      +allocate 2
+
+	+pre_allocate 2
+parent_num +allocate 2
+	+pre_allocate 2
+child_num +allocate 2
+	+pre_allocate 2
+sibling_num +allocate 2	  ; won't be used at the same time
+dest_num = sibling_num      ; won't be used at the same time
+
+bitmask_index +allocate 1
+attribute_index +allocate 1
+
+property_number +allocate 1
+property_length +allocate 1
+
 cursor_status	+allocate 1
 
 !ifdef TRACE {

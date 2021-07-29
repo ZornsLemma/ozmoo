@@ -1,9 +1,15 @@
 ; see: http://inform-fiction.org/zmachine/standards/z1point1/sect12.html
 
 ; globals
-; SFTODODATA 3 ? DON'T KNOW IF THESE NEED TO BE INITIALISED. NOT THAT BIG.
+!ifndef ACORN {
 num_default_properties !byte 0
 objects_start_ptr      !byte 0, 0
+}
+
+!ifdef ACORN {
+.property_number = property_number
+.property_length = property_length
+}
 
 ; object table opcodes
 z_ins_get_sibling
@@ -197,12 +203,18 @@ z_ins_get_prop_len
 .zp_parent = object_tree_ptr  ; won't be used at the same time
 .zp_sibling = object_tree_ptr ; won't be used at the same time
 .zp_dest = object_tree_ptr    ; won't be used at the same time
-; SFTODODATA 6 - DON'T KNOW IF NEEDS TO BE INITIALISED, NOT THAT BIG
 ; .object_num !byte 0,0
+!ifndef ACORN {
 .parent_num !byte 0,0
 .child_num !byte 0,0
 .sibling_num !byte 0,0        ; won't be used at the same time
 .dest_num = .sibling_num      ; won't be used at the same time
+} else {
+.parent_num = parent_num
+.child_num = child_num
+.sibling_num = sibling_num
+.dest_num = dest_num
+}
 
 z_ins_remove_obj
 	; remove_obj object
@@ -516,6 +528,10 @@ z_ins_remove_obj_body
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this, but think it's correct/necessary
 	rts
 
+!ifdef ACORN {
+.bitmask_index = bitmask_index
+.attribute_index = attribute_index
+}
 find_attr
 	; find attribute
 	; output: 
@@ -539,9 +555,10 @@ find_attr
 	sta .attribute_index
 	rts
 .bitmask !byte 128,64,32,16,8,4,2,1
-; SFTODODATA 2 SMALL THO, DON'T KNOW IF IT NEEDS TO BE 0 INITED
+!ifndef ACORN {
 .bitmask_index !byte 0
 .attribute_index !byte 0
+}
 
 z_ins_print_obj
 	; print_obj object
@@ -879,9 +896,10 @@ calculate_property_length_number
 }
 .end_pf_property_list
 	rts
-    ; SFTODODATA 2 CHECK 0-INIT REQ
+!ifndef ACORN {
 .property_number !byte 0
 .property_length !byte 0
+}
 
 find_first_prop
 	; output: z_address is set to property block, or 0,0 if not set in obj
