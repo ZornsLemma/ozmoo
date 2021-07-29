@@ -166,9 +166,8 @@ vmap_z_l = $600 - vmap_max_size
 !ifndef USE_HISTORY {
 	low_end = vmap_z_l
 } else {
-	low_history_start = vmap_z_l - USE_HISTORY
+	low_end = vmap_z_l - USE_HISTORY
 	low_history_end = vmap_z_l
-	low_end = low_history_start
 }
 
 ; === Determine available zero page
@@ -736,7 +735,17 @@ scratch_double_page = scratch_page
 ; If we have a history buffer, it's cleared explicitly, not via the
 ; zero_start-zero_end clear operation - this is necessary in general because it
 ; might be located in the executable just below data_start.
-zero_end = low_end
+zero_end = low_alloc_ptr
+
+!ifdef USE_HISTORY {
+	; We should - by choice of low_end earlier - have at least USE_HISTORY bytes
+	; for low history, but we may have more if we weren't able to allocate right
+	; up to low_end.
+	low_history_start = low_alloc_ptr
+	!if low_history_end - low_history_start < USE_HISTORY {
+		!error "Low history buffer too small"
+	}
+}
 
 !ifdef ACORN_TURBO_SUPPORTED {
 ; SFTODO: It might be possible to use an entire 64K bank for dynmem on a turbo copro,

@@ -1659,7 +1659,7 @@ def parse_args():
     if cmd_args.no_history and cmd_args.min_history is not None:
         die("--no-history and --min-history are incompatible")
     if not cmd_args.no_history and cmd_args.min_history is None:
-        cmd_args.min_history = 16
+        cmd_args.min_history = 48
 
     if cmd_args.no_history and cmd_args.history_upper_case:
         die("--no-history and --history-upper-case are incompatible")
