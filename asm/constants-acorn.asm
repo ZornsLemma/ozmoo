@@ -557,6 +557,24 @@ s_stored_y
 	+allocate 1
 }
 
+!ifdef VMEM {
+nonstored_pages	+allocate 1
+vmap_index +allocate 1 ; current vmap index matching the z pointer
+vmem_offset_in_block +allocate 1 ; 256 byte offset in 512 byte block (0-1)
+}
+
+readblocks_numblocks +allocate 1
+					+pre_allocate 2
+readblocks_currentblock	+allocate 2
+!ifndef ACORN_ADFS {
+!ifndef ACORN_DSD {
+	+pre_allocate 2
+readblocks_base         +allocate 2
+} else {
+readblocks_base         +allocate 1
+}
+}
+
 cursor_status	+allocate 1
 
 !ifdef TRACE {

@@ -1735,10 +1735,12 @@ full_block_graphic = 255
     bne -
 }
 
-    ; Initialise non-0 streams variables.
+    ; Initialise non-0 variables.
     lda #1
     sta streams_buffering
     sta streams_buffering + 1
+    lda #2
+    sta readblocks_numblocks
 
     jsr prepare_for_initial_load
     ; SFTODO: If we got tight on space in the Z-machine stack, the following
