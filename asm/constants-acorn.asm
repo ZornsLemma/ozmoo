@@ -256,7 +256,7 @@ wordoffset
 }
 	* = * + 1
 
-zero_start ; SFTODO: This means s_stored_[xy] *won't* be zeroed automatically
+zero_start
 low_fixed_gap_end = *
 
 !if * >= resident_integer_x {

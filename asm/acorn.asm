@@ -1735,10 +1735,10 @@ full_block_graphic = 255
     bne -
 }
 
-    ; wordstart and wordend are handled specially and won't always be automatically
+    ; maxwords and wordoffset are handled specially and won't always be automatically
     ; cleared by the previous loop, so do them explicitly here.
-    sta wordstart
-    sta wordend
+    sta maxwords
+    sta wordoffset
 
     ; Initialise non-0 variables.
     lda #1
