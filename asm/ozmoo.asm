@@ -877,12 +877,16 @@ game_id		!byte 0,0,0,0
 	sta zp_pc_h
 	sta zp_pc_l
 
+	; SF: We don't need to clear quick_index; we explicitly clear all our zero
+	; page and low memory on startup.
+!if 0 {
 ; Clear quick index
 	lda #0
 	ldx #vmap_quick_index_length
 -	sta vmap_next_quick_index,x ; Sets next quick index AND all entries in quick index to 0
 	dex
 	bpl -
+}
 }
 
 
