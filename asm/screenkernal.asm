@@ -2086,15 +2086,6 @@ z_ins_set_colour
 }
 }
 
-!if 0 { ; SFTODO: This is now allocated by constants-acorn.asm
-!ifdef ACORN_HW_SCROLL {
-top_line_buffer
-    !fill max_screen_width
-top_line_buffer_reverse
-    !fill max_screen_width
-}
-}
-
 !ifdef TESTSCREEN {
 !ifdef ACORN {
     !error "TESTSCREEN not supported on Acorn"

@@ -2,7 +2,7 @@
 ; part of the Ozmoo binary itself. This is derived from Wouter Scholten's public
 ; domain swrtype-0.7. (http://wouter.bbcmicro.net/bbc/software-whs.html)
 
-!source "acorn-constants.asm"
+!source "acorn-shared-constants.asm"
 
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM

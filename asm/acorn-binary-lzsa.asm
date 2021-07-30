@@ -1,4 +1,4 @@
-!source "acorn-constants.asm"
+!source "acorn-shared-constants.asm"
 
 data_start
     !binary "../temp/binary.lzsa2"

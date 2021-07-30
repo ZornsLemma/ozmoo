@@ -1,4 +1,4 @@
-!source "acorn-constants.asm"
+!source "acorn-shared-constants.asm"
 osbyte_read_top_of_user_memory = $84
 mrb_read_write = $fbfd
 

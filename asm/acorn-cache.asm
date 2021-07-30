@@ -1,7 +1,7 @@
 ; Cache to use memory on the host in Acorn second processor builds.
 ; SFTODO: Eventually this should be capable of using spare shadow RAM too
 
-!source "acorn-constants.asm"
+!source "acorn-shared-constants.asm"
 
 userv = $200
 osword_a = $ef

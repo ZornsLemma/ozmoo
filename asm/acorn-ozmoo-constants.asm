@@ -16,8 +16,6 @@ scratch_double_page = scratch_page
 ; only sourced where this is acceptable.
 !set high_alloc_ptr = *
 
-; SFTODONOW: It's not good to have acorn-constants.asm and constants-acorn.asm, but let's see how this experiment goes before tidying that up.
-
 ; SFTODONOW: Since this is experimental, *all* SFTODOs should be reviewed to see if they are urgent or not
 
 ; === SFTODONAME
@@ -791,8 +789,6 @@ top_line_buffer_reverse
 print_buffer		  = $100 ; SCREEN_WIDTH + 1 bytes
 print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
 }
-
-; SFTODO: It might be worth having a constants-acorn.asm (note there is a constants-c128.asm - is that *in addition* to this, or a complete alternative to this?). Not necessarily just for stuff in the following block.
 
 ; If we have a history buffer, it's cleared explicitly, not via the
 ; zero_start-zero_end clear operation - this is necessary in general because it

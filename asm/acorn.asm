@@ -673,13 +673,15 @@ after_dynmem_read_preserve_axy_slow_sub
 deletable_init_start
     ; Clear all our zero page; this is probably a good idea for consistency
     ; anyway but is important when some storage allocated via +allocate in
-    ; constants-acorn.asm ends up in zero page instead of low memory.
+    ; acorn-ozmoo-constants.asm ends up in zero page instead of low memory.
     ldx #zp_end - 1
     lda #0
 -   sta $00,x
     dex
     cpx #255
     bne -
+
+    ; SFTODONOW: Move the low memory clearing to here, so it's done next to the zp clearing.
 
 !ifdef TRACE_SETJMP {
     lda #$ff

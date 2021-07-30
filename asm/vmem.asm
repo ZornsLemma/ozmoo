@@ -186,8 +186,8 @@ vmem_block_pagecount = vmem_blocksize / 256
 vmap_max_size = (vmap_buffer_end - vmap_buffer_start) / 2
 ; If we go past this limit we get in trouble, since we overflow the memory area we can use.
 } else {
-; On Acorn we set vmap_max_size in constants-acorn.asm so we can use it help
-; control allocation of low memory.
+; On Acorn we set vmap_max_size in acorn-ozmoo-constants.asm so we can use it
+; help control allocation of low memory.
 !if vmap_max_size < 128 {
     !ifndef ACORN_SMALL_RUNTIME_VMAP {
         ACORN_SMALL_RUNTIME_VMAP = 1

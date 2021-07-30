@@ -4,7 +4,7 @@
 ; cursor keys, while retaining access to the OS split cursor editing via
 ; SHIFT+cursor keys.
 
-!source "acorn-constants.asm"
+!source "acorn-shared-constants.asm"
 
 insv = $22a
 vdu_status = $d0
