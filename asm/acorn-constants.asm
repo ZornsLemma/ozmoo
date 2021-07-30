@@ -37,6 +37,7 @@ ram_bank_list = $905
 buffer_keyboard = 0
 
 ; SFTODO: MOVE THIS?
+; SFTODO: Use this in more places?
 !macro assert .b {
     !if .b = 0 {
         !error "assertion failed"

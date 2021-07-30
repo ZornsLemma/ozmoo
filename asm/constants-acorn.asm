@@ -1,7 +1,7 @@
 ; Acorn version of Commodore constants.asm.
 
 ; This file refers to "low" and "high" memory:
-; - low memory is pages 4 and 5
+; - low memory is language workspace at $400-$7ff, mainly pages 4 and 5
 ; - high memory is part of the main executable from program_start upwards
 
 ; Pages 6 and 7 are allocated to scratch space and (on a second processor) code.
@@ -521,7 +521,6 @@ acorn_screen_hole_start_page_minus_one +allocate 1
 ; there will be no service calls of any kind while the values stored here are
 ; live, and it's less likely to create subtle bugs than re-using other Ozmoo
 ; zero page.
-; SFTODONOW: NEW HANDLING FOR TRANSIENT ALLOC? AT VERY LEAST MOVE TIL AFTER OTHER ZP ALLOCS?
 screen_hole_zp_ptr    = transient_zp ; 2 bytes
 screen_hole_tmp       = transient_zp + 2 ; 1 byte
 ; SFTODO: This address is *probably* less performance critical, but since we now
