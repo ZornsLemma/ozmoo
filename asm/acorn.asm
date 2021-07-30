@@ -107,7 +107,9 @@ ram_blocks = dir_ptr ; 2 bytes
 ; data.
 !ifdef VMEM {
 !ifdef ACORN_SWR {
+!ifdef ACORN_SHADOW_VMEM {
 scratch_ram_blocks = scratch_page ; 2 bytes
+}
 }
 }
 scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
@@ -1027,22 +1029,28 @@ prepare_for_initial_load
 SFTODOXX89
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
+
+!ifndef ACORN_SWR {
+    lda #0
+    sta ram_blocks
+    sta ram_blocks + 1
+} else {
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta ram_blocks + 1
-    ; SFTODONOW: Note the 'sta ram_blocks'  right down after following !ifdef brace block. Since this is discardable init code *and* it's chock full of conditional code, I should probably fight my optimisation tendency and just write it here and not worry about a few redundant instructions which just make the code harder to understand and more error-prone to modify.
-!ifdef ACORN_SWR {
-!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-    lda #$ff
-    sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
-}
     lda ram_bank_count
     ldx #6
 -   asl
     rol ram_blocks + 1
     dex
     bne -
+    sta ram_blocks
+
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    ; SFTODONOW: I'm finding it hard to convince myself this is a safe "dummy" value - what if we had 9x16K SWR, couldn't this sometimes cause us to start skipping the last block or two in the last bank?
+    lda #$ff
+    sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
+
     ; The last RAM bank might be the B+ or Integra-B private RAM, which isn't
     ; the full 16K.
     ldx ram_bank_count
@@ -1051,30 +1059,25 @@ SFTODOXX89
     cpy #64 ; SFTODO MAGIC NUMBER
     bcc .not_private_ram
     ; This is the Integra-B private 12K.
-    pha
     ; We need to skip 1024 bytes of IBOS workspace in the private RAM at $8000.
     ; Set sideways_ram_hole_start
     ; = (RAM banks including private 12K - 1) * 32
     ; = (RAM banks including private 12K * 32) - 32
-    ; = ((ram_blocks+1 A) >> 1) - 32
-    ; If this doesn't fit in a single byte, just set it to 255 as we will never
-    ; need to skip.
+    ; = (ram_blocks >> 1) - 32
+    ; If this doesn't fit in a single byte, we will never try to access the
+    ; private RAM so just leave the default value in sideways_ram_hole_start.
     ; (Note that convert_index_x_to_ram_bank_and_address has already added back
     ; vmem_blocks_stolen_in_first_blank before using this value, so we're just
     ; calculating the vmem block index *from the start of sideways RAM* to skip.)
 SFTODOKOO
-    pha
     lda ram_blocks + 1
     lsr
-    tay
-    pla
+    bne .not_private_ram
+    lda ram_blocks
     ror
     sec
     sbc #32
-    cpy #0
-    beq +
-    lda #255
-+   sta sideways_ram_hole_start
+    sta sideways_ram_hole_start
     ; SFTODO: MAGIC CONSTANTS
     ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of ROMSEL,
     ; much as we can access it by setting b7 on the B+.
@@ -1082,28 +1085,32 @@ SFTODOKOO
     ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
     sta $37f
     sta $fe34
-    pla
+    lda ram_blocks
     sec
     sbc #(16 * 1024 - integra_b_private_ram_size) / 256
     jmp .subtract_private_ram_high_byte
 .b_plus_private_ram
+    lda ram_blocks
     sec
     sbc #(16 * 1024 - b_plus_private_ram_size) / 256
 .subtract_private_ram_high_byte
+    sta ram_blocks
     bcs +
     dec ram_blocks + 1
 +
 .not_private_ram
 }
-    ; Save a copy of ram_blocks for later when we're calculating
-    ; vmem_blocks_in_sideways_ram.
-    sta scratch_ram_blocks
-    ldx ram_blocks + 1
-    stx scratch_ram_blocks + 1
 }
-    sta ram_blocks
 
 !ifdef ACORN_SHADOW_VMEM {
+    ; Save a copy of ram_blocks for later when we're calculating
+    ; vmem_blocks_in_sideways_ram.
+    ; SFTODO: Rename scratch_ram_blocks to swr_ram_blocks or similar?
+    lda ram_blocks
+    sta scratch_ram_blocks
+    lda ram_blocks + 1
+    sta scratch_ram_blocks + 1
+
     ; We may have some additional RAM blocks in shadow RAM not being used for the
     ; screen display.
 SFTODOLM2
