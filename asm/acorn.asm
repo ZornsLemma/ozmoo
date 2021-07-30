@@ -1171,11 +1171,11 @@ SFTODOLABELX1
 .dont_count_turbo_ram
 }
 
-    ; We also have some blocks between flat_ramtop and data_start.
-    ; SF: We're doing a constant subtraction in code here, but a) this is
-    ; deletable init code so it doesn't really cost anything b) if we don't,
-    ; the relocation code fails because we have a variation which doesn't follow
-    ; the simple fixed relationship we expect.
+    ; We also have some blocks between flat_ramtop and data_start. We're doing a
+    ; constant subtraction in code here, but a) this is deletable init code so
+    ; it doesn't really cost anything b) if we don't, the relocation code fails
+    ; because we have a variation which doesn't follow the simple fixed
+    ; relationship we expect.
     lda #>flat_ramtop
     sec
     sbc #>data_start
