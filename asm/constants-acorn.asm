@@ -298,6 +298,25 @@ low_fixed_gap_end = *
 	}
 }
 
+!macro pre_allocate n {
+	!if n < 1 {
+		!error "Invalid n"
+	}
+
+	+save_alloc_star
+	!if (zp_alloc_ptr + n) <= zp_end {
+		+set_alloc_star zp_alloc_ptr
+	} else {
+		!if (low_alloc_ptr + n) <= low_end {
+			+set_alloc_star low_alloc_ptr
+		} else {
+			+set_alloc_star high_alloc_ptr
+		}
+	}
+
+	!set pre_allocation = n
+}
+
 !macro allocate n {
 	!if n < 1 {
 		!error "Invalid n"
@@ -327,36 +346,18 @@ low_fixed_gap_end = *
 	+pre_allocate 1
 }
 
-; SFTODO: MOVE BEFORE allocate?
-!macro pre_allocate n {
-	!if n < 1 {
-		!error "Invalid n"
-	}
-
-	+save_alloc_star
-	!if (zp_alloc_ptr + n) <= zp_end {
-		+set_alloc_star zp_alloc_ptr
-	} else {
-		!if (low_alloc_ptr + n) <= low_end {
-			+set_alloc_star low_alloc_ptr
-		} else {
-			+set_alloc_star high_alloc_ptr
-		}
-	}
-
-	!set pre_allocation = n
-}
-
 ; === Non-fixed allocations
 
 ; These allocations don't have fixed addresses (although in practice many of
 ; them are predictable across builds) as they're only used internally by an
-; Ozmoo executable.
+; Ozmoo executable and the assembler obviously knows where they are.
 
 ; === Non-fixed allocations, part 1: Guaranteed zero page allocations
 ;
 ; These allocations are guaranteed to be allocated contiguously in zero page; we
-; verify this afterwards.
+; verify this afterwards. We put the non-conditionally-assembled things first,
+; so zero page addresses are more consistent between different builds - this
+; makes debugging a little less confusing.
 
 !set check_pre_allocation = 0
 +set_alloc_star zp_start
@@ -464,9 +465,6 @@ cursor_column	+allocate 2
 mempointer_ram_bank	+allocate 1 ; SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
 
 vmem_temp	+allocate 2
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-dynmem_ram_bank	+allocate 1
-}
 
 window_start_row	+allocate 4
 
@@ -488,17 +486,9 @@ last_break_char_buffer_pos	+allocate 1
 zp_screencolumn	+allocate 1 ; current cursor column
 zp_screenrow	+allocate 1 ; current cursor row
 
-!ifdef ACORN_SWR {
-z_pc_mempointer_ram_bank +allocate 1 ; 1 byte SFTODO EXPERIMENTAL ZP $41f ; 1 byte SFTODO: might benefit from zp? yes, bigdynmem builds do use this in fairly hot path (and it's also part of macros so it might shrink code size) - savings from zp not going to be huge, but not absolutely negligible either
-}
-
-!ifdef ACORN_SCREEN_HOLE {
-acorn_screen_hole_start_page_minus_one +allocate 1
-}
-
 ; "Transient" zero page allocations. On non-second processor builds, these use the
 ; OS transient command zero page at $a8-$af inclusive - these addresses cannot be
-; trusted to retain their values across * commands and (being paranoid) any service
+; trusted to retain their values across * commands or (being paranoid) any service
 ; call, but they can be used for very short term storage. On second processor builds,
 ; we just allocate some of the available zero page for this.
 ; SFTODO: There's no advantage to a small transient_zp_size on non-tube; on tube we could make it smaller depending on MODE_7_INPUT and USE_HISTORY.
@@ -511,6 +501,18 @@ transient_zp_size = 5 ; bytes of transient zero page needed
 transient_zp	+allocate transient_zp_size
 } else {
 transient_zp = $a8
+}
+
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+dynmem_ram_bank	+allocate 1
+}
+
+!ifdef ACORN_SWR {
+z_pc_mempointer_ram_bank +allocate 1
+}
+
+!ifdef ACORN_SCREEN_HOLE {
+acorn_screen_hole_start_page_minus_one +allocate 1
 }
 
 !ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
@@ -541,6 +543,8 @@ mode_7_input_tmp = transient_zp ; 1 byte
 ; whole point is we cannot rely on it to hold values except in the short term. (On
 ; a second processor this is actually our zero page, but we're treating it as if it's
 ; short-term only just as it is on the host.)
+; SFTODO: I do wonder if this is really a good use of zero page - note that we'd only
+; need one byte of transient_zp otherwise - but it does shorten the code a bit.
 osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
 }
 }
@@ -560,16 +564,8 @@ osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
 ; allocations in the source code may not be adjacent in memory; if this is
 ; important, a single block must be allocated and divided up afterwards.
 
-; SFTODO: Reordering these to affect what happens to get into zp may have an impact on performance, either directly or via reducing code size
-
-!ifdef MODE_7_INPUT {
-maxwords
-	+allocate 1
-}
-!ifdef ACORN_RELOCATABLE {
-wordoffset
-	+allocate 1
-}
+; SFTODO: Reordering these to affect what happens to get into zp may have an
+; impact on performance, either directly or via reducing code size
 
 s_stored_x +allocate 1
 s_stored_y +allocate 1
@@ -655,7 +651,6 @@ is_turbo	+allocate 1 ; SFTODO: RENAME turbo_flag?
 !ifdef ACORN_SWR {
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
-; SFTODO: There's a gap here in page 4 now we've stopped storing RAM bank list there; move things up. - this includes $41c which used to be mempointer_ram_bank
 vmem_blocks_in_main_ram	+allocate 1
 vmem_blocks_stolen_in_first_bank	+allocate 1
 jmp_buf_ram_bank 	+allocate 1
@@ -720,11 +715,11 @@ read_text_routine +allocate 2 ; called with .read_text_time intervals
 read_text_return_value +allocate 1 ; return value
 }
 
-!if 0 { ; handled specially
+!ifdef MODE_7_INPUT {
 maxwords   +allocate 1
 }
 numwords   +allocate 1
-!if 0 { ; handled specially
+!ifdef ACORN_RELOCATABLE {
 wordoffset +allocate 1
 }
 textend    +allocate 1
@@ -769,8 +764,6 @@ top_line_buffer
 top_line_buffer_reverse
 	+allocate max_screen_width
 }
-
-; SFTODONOW: For debuggability, make all non-!ifdef ZP allocations come before all !ifdef-ed ones. (I can't really do this with $400 because of the resident integer variable constraints, but I can in zp.)
 
 ; SFTODONOW: With the new allocation it seems there are about 9 bytes of zp free even on non-tube. If I do smart allocation these should get used for *something*, but it may be worth looking around for things which seem like particularly promising candidates for being promoted to zp.
 
@@ -830,3 +823,5 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 * = high_alloc_ptr
 
 ; SFTODONOW: have a look over this fresh, it may be that now the overall picture is clearer I can use a more generic "(pre) allocate a block of size n, skipping to the next area of memory and skipping over any pre-allocated things" macro or smaller set of macros, rather than all the very ad-hoc three different ways to allocate stuff.
+
+; SFTODO: Indentation in this file is a bit inconsistent, especially the pre_allocate lines

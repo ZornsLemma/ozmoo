@@ -672,9 +672,8 @@ after_dynmem_read_preserve_axy_slow_sub
 ; Initialization performed very early during startup.
 deletable_init_start
     ; Clear all our zero page; this is probably a good idea for consistency
-    ; anyway but is important if (as can happen on a second processor) some
-    ; storage allocated via {pre,post}_allocate which needs to be
-    ; zero-initialised ends up in zero page instead of low memory.
+    ; anyway but is important when some storage allocated via +allocate in
+    ; constants-acorn.asm ends up in zero page instead of low memory.
     ldx #zp_end - 1
     lda #0
 -   sta $00,x
