@@ -229,8 +229,7 @@ input_colour
 		!error "bg_colour and input_colour must be adjacent"
 	}
 } else {
-; SFTODO: It seems a shame to "have" to put s_stored_x here when it's referenced a few times and would shrink the code a bit if it were in zp. When I promote more SFTODODATA to this file, there may be something less "valuable" which can be used.
-s_stored_x
+maxwords
 }
 	* = * + 1
 
@@ -238,8 +237,7 @@ s_stored_x
 relocate_target
 ozmoo_relocate_target = relocate_target ; SFTODO!?
 } else {
-; SFTODO: It seems a shame to "have" to put s_stored_y here when it's referenced a few times and would shrink the code a bit if it were in zp. When I promote more SFTODODATA to this file, there may be something less "valuable" which can be used.
-s_stored_y
+wordoffset
 }
 	* = * + 1
 
@@ -550,13 +548,16 @@ osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
 ; SFTODO: Reordering these to affect what happens to get into zp may have an impact on performance, either directly or via reducing code size
 
 !ifdef MODE_7_INPUT {
-s_stored_x
+maxwords
 	+allocate 1
 }
 !ifdef ACORN_RELOCATABLE {
-s_stored_y
+wordoffset
 	+allocate 1
 }
+
+s_stored_x +allocate 1
+s_stored_y +allocate 1
 
 !ifdef VMEM {
 nonstored_pages	+allocate 1
@@ -704,9 +705,13 @@ read_text_routine +allocate 2 ; called with .read_text_time intervals
 read_text_return_value +allocate 1 ; return value
 }
 
+!if 0 { ; handled specially
 maxwords   +allocate 1
+}
 numwords   +allocate 1
+!if 0 { ; handled specially
 wordoffset +allocate 1
+}
 textend    +allocate 1
 wordstart  +allocate 1
 wordend    +allocate 1

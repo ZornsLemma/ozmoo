@@ -1735,6 +1735,11 @@ full_block_graphic = 255
     bne -
 }
 
+    ; wordstart and wordend are handled specially and won't always be automatically
+    ; cleared by the previous loop, so do them explicitly here.
+    sta wordstart
+    sta wordend
+
     ; Initialise non-0 variables.
     lda #1
     sta streams_buffering
