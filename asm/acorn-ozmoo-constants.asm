@@ -3,6 +3,12 @@
 ; This file refers to "low" and "high" memory:
 ; - low memory is language workspace at $400-$7ff, mainly pages 4 and 5
 ; - high memory is part of the main executable from program_start upwards
+;
+; Memory is allocated in zero page, low memory and high memory to take advantage
+; of the space available on the specific configuration this executable is being
+; built for. Allocation in high memory takes place at the current assembly
+; pointer (*) when this file is sourced, so this must be sourced somewhere this
+; is acceptable.
 
 ; Pages 6 and 7 are allocated to scratch space and (on a second processor) code.
 scratch_page = $600
@@ -12,16 +18,15 @@ scratch_double_page = scratch_page
 ; Second processor builds load at $700, so this page isn't wasted.
 }
 
-; Note that this may allocate some constant storage at *, so make sure it's
-; only sourced where this is acceptable.
 !set high_alloc_ptr = *
 
-; SFTODONOW: Since this is experimental, *all* SFTODOs should be reviewed to see if they are urgent or not
+; SFTODONOW: As this is new code, it's probably worth reviewing it (particularly the macros) fresh
 
-; === SFTODONAME
-; SFTODO IN SEPARATE FILE!?
+; === Acorn OS and hardware constants
+;
+; These could be moved into acorn-shared-constants.asm, but these aren't needed
+; by anything except the main Ozmoo executable.
 
-; Acorn OS and hardware constants
 stack = $100
 brkv = $202
 wrchv = $20e
@@ -762,8 +767,6 @@ top_line_buffer_reverse
 	+allocate max_screen_width
 }
 
-; SFTODONOW: With the new allocation it seems there are about 9 bytes of zp free even on non-tube. If I do smart allocation these should get used for *something*, but it may be worth looking around for things which seem like particularly promising candidates for being promoted to zp.
-
 ; SFTODO: Is it OK to use 162 bytes of the stack like this? In practice we
 ; certainly seem to get away with it, and my brief experiments when I
 ; implemented setjmp suggest Ozmoo won't ever get near 64 bytes of stack use,
@@ -816,7 +819,5 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 
 ; Further assembly continues in high (executable) memory.
 * = high_alloc_ptr
-
-; SFTODONOW: have a look over this fresh, it may be that now the overall picture is clearer I can use a more generic "(pre) allocate a block of size n, skipping to the next area of memory and skipping over any pre-allocated things" macro or smaller set of macros, rather than all the very ad-hoc three different ways to allocate stuff.
 
 ; SFTODO: Indentation in this file is a bit inconsistent, especially the pre_allocate lines
