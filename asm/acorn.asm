@@ -682,7 +682,11 @@ deletable_init_start
     bne -
 
 !if zero_end > zero_start {
-    ; Clear SFTODONOW HOW TO DESCRIBE IT BEST
+    ; Clear memory betwen zero_start and zero_end; this is language workspace
+    ; which holds miscellaneous variables and because it's not part of the
+    ; executable will not automatically be zero-initialised. Some of these
+    ; variables must be zero-initialised and for the others it's still helpful
+    ; for consistency.
     ; SFTODO: This code feels a bit clumsy, can I improve it? Just for satisfaction.
     lda #0
 .sta_zero_start
@@ -1736,9 +1740,6 @@ full_block_graphic = 255
 !macro acorn_deletable_init_inline {
 !ifdef ACORN_SHOW_PROGRAM_START {
     jsr streams_init
-    ; SFTODONOW: Half understood magic incantantions to try to make streams output work reliably
-	ldy #0
-	sty is_buffered_window
     lda #13
     jsr s_printchar
     jsr print_following_string
