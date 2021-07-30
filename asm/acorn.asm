@@ -2089,18 +2089,12 @@ SFTODOLABELX3
     jsr load_blocks_from_index
     ldy to_index
     lda vmap_z_h,y
-    ; SFTODO: We could maybe just do this and # *anyway* - it offers a negligible
-    ; time saving and no code saving, since we do it below anyway for the timestamp
-    ; hint, and the code would probably be clearer with it. (I suspect at one point
-    ; I didn't have the timestamp hint code in. Also worth nothing this is discardable
-    ; init code so we don't care too much about a couple of extra bytes.) SFTODONOW?
-    ; and #$ff xor vmem_highbyte_mask ; not necessary as we're doing a >= test
+    and #$ff xor vmem_highbyte_mask
     cmp #.cutover_timestamp + 1
     bcs .dont_put_in_cache
     ldx host_cache_size
     beq .dont_put_in_cache
     dec host_cache_size
-    and #$ff xor vmem_highbyte_mask
     sta osword_cache_index_offered_timestamp_hint
     ; load_blocks_from_index will have set osword_cache_index_requested
     lda osword_cache_index_requested
