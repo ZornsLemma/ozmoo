@@ -2491,7 +2491,7 @@ kernal_readtime
     ldx #(256-5)
     sec
 -   lda .current_clock-(256-5),x
-    sbc (initial_clock-(256-5)) and $ffff,x ; SFTODONOW COMMENT WHY
+    sbc (initial_clock-(256-5)) and $ffff,x ; 'and' in case initial_clock in zp
     sta .current_clock-(256-5),x
     inx
     bne -
