@@ -837,7 +837,7 @@ deletable_init_start
     ; If we're in a shadow mode, the screen hole isn't needed; by setting the
     ; start page as high as possible, code which implements the screen hole will
     ; realise ASAP that it's not necessary. (If we didn't do this, we'd end up
-    ; with a zero-size screen hole at $8000, which would work but but slower.)
+    ; with a zero-size screen hole at $8000, which would work but be slower.)
     ldy #$ff
 .not_shadow_mode
     sty acorn_screen_hole_start_page
@@ -907,21 +907,19 @@ deletable_init_start
 +   sta vmem_cache_count_mem
 .mode_0
 
+    ; SF: We don't need to zero vmem_cache_cnt and vmem_cache_page_index
+    ; explicitly because we cleared all our zero page and low memory on startup.
+!if 0 {
     ; Zero vmem_cache_cnt and vmem_cache_page_index.
-    ; SFTODO: In principle we could arrange a contiguous chunk of page 4 which we
-    ; put zero-inited stuff in and just zero the whole block. We can't do the whole
-    ; of page 4 because we use resident integer variables to pass information in
-    ; from the loader. This might help move some minor bits of data out of main
-    ; RAM down into page 4.
     !if vmem_cache_cnt + 1 != vmem_cache_page_index {
         !error "vmem_cache_cnt is not just before vmem_cache_page_index"
     }
-SFTODOQH3
     lda #0
     ldx #vmem_cache_page_index_end - vmem_cache_cnt - 1
 -   sta vmem_cache_cnt,x
     dex
     bpl -
+}
 }
 
     +prepare_static_high_memory_inline
@@ -940,6 +938,7 @@ prepare_for_initial_load
 !ifndef ACORN_ADFS {
     ; Examine the disc catalogue and determine the first sector occupied by the
     ; DATA file containing the game.
+
     ; Because this is initialisation code, we know the following variables are
     ; already set to predictable values. This optimisation was useful at one
     ; point but it's not really important right now; it isn't too confusing so
@@ -1024,6 +1023,7 @@ prepare_for_initial_load
 }
 }
 
+; SFTODONOW: UP TO HERE WITH REVIEW
 SFTODOXX89
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
