@@ -1257,7 +1257,7 @@ SFTODOLABEL1
     sbc #vmem_block_pagecount
     tax
     lda #>ACORN_GAME_BLOCKS
-    sbc #0
+    sbc #<(flat_ramtop - story_start) ; 0
     bne .available_blocks_is_smaller
     cpx #>(flat_ramtop - story_start)
     bcc .game_blocks_is_smaller
