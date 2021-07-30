@@ -73,12 +73,6 @@ REM the bottom right of the screen will cause a scroll. Override any "No Scroll"
 REM configuration on a Master to make this assumption valid.
 VDU 23,16,0,254,0;0;0;
 
-fg_colour=${fg_colour}
-bg_colour=${bg_colour}
-!ifdef MODE_7_INPUT {
-?${input_colour}=${DEFAULT_M7_INPUT_COLOUR}
-}
-screen_mode=${screen_mode}
 DIM block% 256
 A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100
 REM If we're on an Integra-B in OSMODE 0, it's as if we're on a standard model B.
@@ -120,6 +114,14 @@ IF shadow AND NOT tube THEN PROCassemble_shadow_driver
 PROCdetect_swr
 
 MODE 135:VDU 23,1,0;0;0;0;
+REM We don't want to write to any of the resident variable workspace earlier than this
+REM because we might trample on P%/O% when assembling code.
+fg_colour=${fg_colour}
+bg_colour=${bg_colour}
+!ifdef MODE_7_INPUT {
+?${input_colour}=${DEFAULT_M7_INPUT_COLOUR}
+}
+screen_mode=${screen_mode}
 ?fg_colour=${DEFAULT_FG_COLOUR}:?bg_colour=${DEFAULT_BG_COLOUR}
 IF electron THEN VDU 19,0,?bg_colour,0;0,19,7,?fg_colour,0;0
 IF electron THEN PROCelectron_header_footer ELSE PROCbbc_header_footer
