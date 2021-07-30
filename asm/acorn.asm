@@ -700,6 +700,7 @@ deletable_init_start
 
     ; maxwords and wordoffset are handled specially and won't always be automatically
     ; cleared by the previous loop, so do them explicitly here.
+    lda #0
     sta maxwords
     sta wordoffset
 
