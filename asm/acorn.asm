@@ -1445,6 +1445,13 @@ game_blocks_ne_ram_blocks
     tax
 .cap_at_vmap_max_size
     stx vmap_max_entries
+    ; SFTODONOW EXPERIMENTAL
+    cpx #2
+    bcs +
+    brk
+    !byte 0
+    !text "vmap_max_entries < 2", 0
++
 
 SFTODOLABEL5
 !ifndef ACORN_NO_DYNMEM_ADJUST {
@@ -2039,7 +2046,7 @@ SFTODOLABELX2
 +   sec
     sbc nonstored_pages
     lsr
-    sta vmap_max_entries
+    sta vmap_max_entries ; SFTODONOW: MOVE VMAP_MAX_ENTRIES >= 2 CHECK TO AFTER THIS CODE SO IT CATCHES ALL CASES??
 !ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
 }
