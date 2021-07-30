@@ -1194,7 +1194,7 @@ SFTODOLABELX1
     inc ram_blocks + 1
 +
 
-!ifdef ACORN_SWR {
+!ifdef ACORN_SWR { ; SFTODO: MERGE THIS WITH ANOTHER ACORN_SWR BLOCK? FEELS A BIT ISOLATED STUCK OUT HERE ON ITS OWN.
     ; This value might be changed below.
     lda #0
     sta vmem_blocks_in_main_ram
