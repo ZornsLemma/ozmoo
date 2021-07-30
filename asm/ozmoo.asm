@@ -1093,113 +1093,38 @@ load_suggested_pages
 
 program_end
 
+; SF: The alignment is complex enough without interweaving it (probably
+; brokenly) with the Commodore code, so I've removed the Commodore code.
+!ifndef ACORN {
+	!error "Non-Acorn code at program_end has been removed"
+}
+
 ; SF: It can be helpful for testing paged RAM builds to burn some non-paged RAM.
 !ifdef WASTE_BYTES {
     !fill WASTE_BYTES
 }
 
 !ifdef USE_HISTORY {
-    !ifndef ACORN {
-        WANT_HIGH_HISTORY = 1
-    } else {
 high_history_start
-	}
 }
 
-!ifdef WANT_HIGH_HISTORY {
-history_start
-	!fill USE_HISTORY, $00 ; make sure that there is some history available
-}
-
-!ifndef TARGET_C128 {
 	!align 255, 0, 0
-}
 
-!ifdef WANT_HIGH_HISTORY {
-history_end
-}
-
-; On Acorn, we always have at least USE_HISTORY bytes allocated at
-; low_history_start, so we never deliberately allocate any memory for history
-; here. However, if alignment requirements happen to give us space for a larger
-; history buffer here anyway, we use it. (Of course, it's possible that if we'd
-; only known we were going to use a high history buffer, we could have allocated
-; other stuff in low memory - but there's not really much we can do, as this is
-; a bit recursive.)
-; SFTODO: We do *further* alignment below to align the stack, and I think we
-; will not take advantage of that space if there is any. This section of
-; alignment might well benefit from just !error-ing if we're not on Acorn - it
-; is extremely platform specific and trying (and probably failing) to include
-; the Commodore logic just makes it more convoluted for little real benefit.
-; SFTODONOW?
-!ifdef ACORN {
+!if z_trace_size > 0 {
 !ifdef USE_HISTORY {
-	!if (* - high_history_start) > (low_history_end - low_history_start) {
-		history_start = high_history_start
-		history_end = *
-	} else {
-		history_start = low_history_start
-		history_end = low_history_end
-	}
+; SF: If z_trace_size > 0, we may miss out on a chance to make high_history use
+; a larger space between the end of z_trace_page and stack_start, but that's not
+; really a big deal and it isn't worth complicating the logic for.
+high_history_end
 }
-}
-
-!ifdef USE_HISTORY {
-    !if history_end - history_start < 255 {
-        history_size = history_end - history_start
-    } else {
-        history_size = 255  ; max size of history buffer
-    }
-	!if history_size < USE_HISTORY {
-		!error "Not enough space allocated for history"
-	}
-
-    history_lastpos = history_size -1 ; last pos (size of history buffer - 1)
-}
-
 z_trace_page
 	!fill z_trace_size, 0
-
-!ifndef ACORN {
-!ifndef TARGET_C128 {
-vmem_cache_start
 }
-vmem_cache_start_maybe
-
-!ifndef TARGET_PLUS4_OR_C128 {
-	!if SPLASHWAIT > 0 {
-		!source "splashscreen.asm"
-	}
-}
-
-
-end_of_routines_in_vmem_cache
-
-!align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
-
-!ifndef TARGET_C128 {
-	!fill cache_pages * 256 - (* - vmem_cache_start_maybe),0 ; Typically 4 pages
-} 
 
 !ifdef VMEM {
-	!if (stack_size + *) & 256 {
-		!fill 256,0 ; Add one page to avoid vmem alignment issues
-	}
-}
-
-!ifndef TARGET_C128 {
-vmem_cache_size = * - vmem_cache_start
-vmem_cache_count = vmem_cache_size / 256
-}
-
-!align 255, 0, 0 ; To make sure stack is page-aligned even if not using vmem.
-}
-
-!ifdef ACORN { ; SFTODO: TURN THIS INTO ELSE ON PREVIOUS NDEF ACORN BLOCK?
-!ifdef VMEM {
-    ; The stack needs to be page-aligned. If we're using vmem, story_start needs
+    ; The stack needs to be page-aligned. If we're using vmem, data_start needs
     ; to be at a 512-byte boundary. We don't want a gap between the stack and
-    ; story_start because it will increase the size of saved games and mean
+    ; data_start because it will increase the size of saved games and mean
     ; they're only compatible with builds of Ozmoo with the same alignment
     ; padding, so we put the gap here.
     ; SFTODODATA-ISH MAYBE SORT OF USABLE TO SQUEEZE SOMETHING IN
@@ -1211,6 +1136,39 @@ vmem_cache_count = vmem_cache_size / 256
         !align 511, 256, 0
     }
 }
+
+!if z_trace_size == 0 {
+!ifdef USE_HISTORY {
+high_history_end
+}
+}
+
+; On Acorn, we always have at least USE_HISTORY bytes allocated at
+; low_history_start, so we never deliberately allocate any memory for history
+; here. However, if alignment requirements happen to give us space for a larger
+; history buffer here anyway, we use it. (Of course, it's possible that if we'd
+; only known we were going to use a high history buffer, we could have allocated
+; other stuff in low memory - but there's not really much we can do, as this is
+; a bit recursive.)
+!ifdef USE_HISTORY {
+	!if (* - high_history_start) > (low_history_end - low_history_start) {
+		history_start = high_history_start
+		history_end = *
+	} else {
+		history_start = low_history_start
+		history_end = low_history_end
+	}
+
+    !if history_end - history_start < 255 {
+        history_size = history_end - history_start
+    } else {
+        history_size = 255  ; max size of history buffer
+    }
+	!if history_size < USE_HISTORY {
+		!error "Not enough space allocated for history"
+	}
+
+    history_lastpos = history_size -1 ; last pos (size of history buffer - 1)
 }
 
 stack_start
@@ -2289,12 +2247,26 @@ initialize
     !source "acorn-relocate.asm"
 }
 end_of_routines
-}
+} ; ACORN
 
 !ifndef ACORN {
 	!fill stack_size - (* - stack_start),0 ; 4 pages
 story_start
-} else {
+
+!ifdef vmem_cache_size {
+!if vmem_cache_size >= $200 {
+	config_load_address = vmem_cache_start
+}
+}
+!ifndef config_load_address {
+	config_load_address = SCREEN_ADDRESS
+}
+} else { ; ACORN
+	; SFTODONOW: I think I had been assuming - e.g. when rounding game_blocks up
+	; to be even in the loader - that data_start always had to be on a 512-byte
+	; boundary, but for non-VMEM (ie some tube games) that seems not to be the
+	; case. Need to think about this and see what implications it has and tweak
+	; things accordingly.
 	!if (end_of_routines_in_stack_space - stack_start) > stack_size {
 		!error "Routines in stack space have overflowed stack by ", end_of_routines_in_stack_space - stack_start - stack_size, " bytes"
 	}
@@ -2315,16 +2287,6 @@ story_start
 scratch_overlapping_game_start
 }
 
-!ifndef ACORN { ; SFTODO: MERGE WITH PREV ACORN CONDITIONAL BLOCK?
-!ifdef vmem_cache_size {
-!if vmem_cache_size >= $200 {
-	config_load_address = vmem_cache_start
-}
-}
-!ifndef config_load_address {
-	config_load_address = SCREEN_ADDRESS
-}
-}
 
 ; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.
 
