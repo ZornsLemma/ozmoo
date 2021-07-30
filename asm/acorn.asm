@@ -278,7 +278,7 @@ assert_carry_clear_sub
 ; and it would probably cause branch out of range errors. We should catch any
 ; bugs in this area using the non-screen hole version of the code.
 
-; SF: These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
+; These macros will alter the carry, unlike a raw lda/sta (zp),y. The store
 ; macros will also alter N and Z. In practice this isn't a problem.
 
 !macro lda_dynmem_ind_y .zp {
@@ -569,11 +569,11 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 !zone {
 
-; SF: In the Acorn port, I've deliberately renamed before_dynmem_read and
+; In the Acorn port, I've deliberately renamed before_dynmem_read and
 ; after_dynmem_read so that any upstream changes which use these macros will
 ; fail to build and force me to inspect them manually. The Commodore versions
-; don't modify any registers or flags (except I), but that would cost time
-; and space on the Acorn port.
+; don't modify any registers or flags (except I), but that would cost time and
+; space on the Acorn port.
 
 !macro before_dynmem_read_corrupt_a {
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
@@ -666,7 +666,7 @@ after_dynmem_read_preserve_axy_slow_sub
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Initialization code which may be placed after the end of the Z-machine stack;
-; this means it will be overwritten as soon as anything is loaded at
+; this means it might be overwritten as soon as anything is loaded at
 ; story_start.
 !macro acorn_init_code_overlapping_game_data {
 ; Initialization performed very early during startup.
@@ -674,11 +674,11 @@ deletable_init_start
     ; Clear all our zero page; this is probably a good idea for consistency
     ; anyway but is important when some storage allocated via +allocate in
     ; acorn-ozmoo-constants.asm ends up in zero page instead of low memory.
-    ldx #zp_end - 1
     lda #0
+    tax
 -   sta $00,x
-    dex
-    cpx #255
+    inx
+    cpx #zp_end
     bne -
 
 !if zero_end > zero_start {
