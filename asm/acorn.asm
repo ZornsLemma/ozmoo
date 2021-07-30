@@ -2097,7 +2097,7 @@ SFTODOLABELX3
     ; and #$ff xor vmem_highbyte_mask ; not necessary as we're doing a >= test
     cmp #.cutover_timestamp + 1
     bcs .dont_put_in_cache
-+   ldx host_cache_size
+    ldx host_cache_size
     beq .dont_put_in_cache
     dec host_cache_size
     and #$ff xor vmem_highbyte_mask
