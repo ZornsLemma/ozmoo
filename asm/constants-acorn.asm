@@ -1,11 +1,19 @@
 ; Acorn version of Commodore constants.asm.
 
 ; This file refers to "low" and "high" memory:
-; - low memory is otherwise free memory in pages 4 and 5
+; - low memory is pages 4 and 5
 ; - high memory is part of the main executable from program_start upwards
 
+; Pages 6 and 7 are allocated to scratch space and (on a second processor) code.
+scratch_page = $600
+!ifdef ACORN_SWR {
+scratch_double_page = scratch_page
+} else {
+; Second processor builds load at $700, so this page isn't wasted.
+}
+
 ; Note that this may allocate some constant storage at *, so make sure it's
-; only sourced where this is acceptable. SFTODO!
+; only sourced where this is acceptable.
 !set high_alloc_ptr = *
 
 ; SFTODONOW: It's not good to have acorn-constants.asm and constants-acorn.asm, but let's see how this experiment goes before tidying that up.
@@ -106,10 +114,11 @@ shadow_start = $3000
 
 ; === Virtual memory configuration
 
+!ifdef VMEM {
+
 ; Determine vmap_max_size; this code used to live in vmem.asm but it's better to
 ; put it here so we can use the value of vmap_max_size when allocating low
 ; memory.
-!ifdef VMEM {
 
 ; The Acorn port takes advantage of knowing the game size at build time to avoid
 ; wasting memory on a vmap_max_size larger than the game will ever need.
@@ -149,25 +158,31 @@ shadow_start = $3000
 	HAVE_VMAP_USED_ENTRIES = 1
 }
 
-}
-
-; === Determine upper boundary of low memory
-
-; SFTODONOW: THIS ASSUMES VMEM, BUT LET'S NOT WORRY ABOUT THAT JUST YET....
 ; We use "vmap-z_l-1,x" addressing in a hot loop and we want to avoid any
 ; page-crossing penalty. We allocate vmap_z_l as high as possible in page 5 so
 ; we have the largest possible contiguous space for the allocations in page 4 to
 ; spill over into page 5.
-vmap_z_l = $600 - vmap_max_size
+vmap_z_l = scratch_page - vmap_max_size
 !if vmap_z_l < $501 {
 	!error "vmap_z_l is too low"
 }
 
-!ifndef USE_HISTORY {
-	low_end = vmap_z_l
+}
+
+; === Determine upper boundary of low memory
+
+; SFTODO: Not too happy with name "low_end_vmap"
+!ifdef VMEM {
+	low_end_vmap = vmap_z_l
 } else {
-	low_end = vmap_z_l - USE_HISTORY
-	low_history_end = vmap_z_l
+	low_end_vmap = scratch_page
+}
+
+!ifndef USE_HISTORY {
+	low_end = low_end_vmap
+} else {
+	low_end = low_end_vmap - USE_HISTORY
+	low_history_end = low_end_vmap
 }
 
 ; === Determine available zero page
@@ -786,13 +801,6 @@ print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
 }
 
 ; SFTODO: It might be worth having a constants-acorn.asm (note there is a constants-c128.asm - is that *in addition* to this, or a complete alternative to this?). Not necessarily just for stuff in the following block.
-
-scratch_page = $600
-!ifdef ACORN_SWR {
-scratch_double_page = scratch_page
-} else {
-; Second processor builds load at $700, so this page isn't wasted.
-}
 
 ; If we have a history buffer, it's cleared explicitly, not via the
 ; zero_start-zero_end clear operation - this is necessary in general because it
