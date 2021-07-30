@@ -1033,6 +1033,7 @@ SFTODOXX89
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta ram_blocks + 1
+    ; SFTODONOW: Note the 'sta ram_blocks'  right down after following !ifdef brace block. Since this is discardable init code *and* it's chock full of conditional code, I should probably fight my optimisation tendency and just write it here and not worry about a few redundant instructions which just make the code harder to understand and more error-prone to modify.
 !ifdef ACORN_SWR {
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     lda #$ff
