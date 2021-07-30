@@ -681,7 +681,37 @@ deletable_init_start
     cpx #255
     bne -
 
-    ; SFTODONOW: Move the low memory clearing to here, so it's done next to the zp clearing.
+!if zero_end > zero_start {
+    ; Clear SFTODONOW HOW TO DESCRIBE IT BEST
+    ; SFTODO: This code feels a bit clumsy, can I improve it? Just for satisfaction.
+    lda #0
+.sta_zero_start
+-   sta zero_start ; patched by following code
+    inc .sta_zero_start + 1
+    bne +
+    inc .sta_zero_start + 2
++   ldx .sta_zero_start + 1
+    cpx #<zero_end
+    bne -
+    ldx .sta_zero_start + 2
+    cpx #>zero_end
+    bne -
+}
+
+    ; maxwords and wordoffset are handled specially and won't always be automatically
+    ; cleared by the previous loop, so do them explicitly here.
+    sta maxwords
+    sta wordoffset
+
+    ; Initialise non-0 variables.
+    lda #1
+    sta streams_buffering
+    sta streams_buffering + 1
+!ifdef USE_HISTORY {
+    sta history_disabled
+}
+    lda #2
+    sta readblocks_numblocks
 
 !ifdef TRACE_SETJMP {
     lda #$ff
@@ -1718,38 +1748,6 @@ full_block_graphic = 255
     jsr print_byte_as_hex
     jsr osrdch
 }
-
-!if zero_end > zero_start {
-    ; Clear SFTODONOW HOW TO DESCRIBE IT BEST
-    ; SFTODO: This code feels a bit clumsy, can I improve it? Just for satisfaction.
-    lda #0
-.sta_zero_start
--   sta zero_start ; patched by following code
-    inc .sta_zero_start + 1
-    bne +
-    inc .sta_zero_start + 2
-+   ldx .sta_zero_start + 1
-    cpx #<zero_end
-    bne -
-    ldx .sta_zero_start + 2
-    cpx #>zero_end
-    bne -
-}
-
-    ; maxwords and wordoffset are handled specially and won't always be automatically
-    ; cleared by the previous loop, so do them explicitly here.
-    sta maxwords
-    sta wordoffset
-
-    ; Initialise non-0 variables.
-    lda #1
-    sta streams_buffering
-    sta streams_buffering + 1
-!ifdef USE_HISTORY {
-    sta history_disabled
-}
-    lda #2
-    sta readblocks_numblocks
 
     jsr prepare_for_initial_load
     ; SFTODO: If we got tight on space in the Z-machine stack, the following
