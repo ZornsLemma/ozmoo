@@ -1017,6 +1017,8 @@ SFTODOOOL
 
     ; Set transient_zp = ram_blocks; on a normal second processor with the host
     ; cache enabled, we need to count only the second processor's own RAM.
+    ; SFTODO: I don't believe this code will ever actually execute on a normal
+    ; second processor, but it doesn't really hurt to support this case here.
     lda ram_blocks
     sta transient_zp
     lda ram_blocks + 1
