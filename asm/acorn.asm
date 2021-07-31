@@ -85,6 +85,7 @@
 ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
+; SFTODONOW: Move some/all of this into acorn-init*.asm?
 ; Zero page allocations for the initial load of game data.
 dir_ptr = zp_temp ; 2 bytes
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
@@ -106,13 +107,6 @@ ram_blocks = dir_ptr ; 2 bytes SFTODO: rename to ram_pages???
 }
 ; Allocation in scratch_page for the calculation before we start loading game
 ; data.
-!ifdef VMEM {
-!ifdef ACORN_SWR {
-!ifdef ACORN_SHADOW_VMEM {
-scratch_ram_blocks = scratch_page ; 2 bytes
-}
-}
-}
 scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 
 ; The progress_indicator_* variables can re-use the space at

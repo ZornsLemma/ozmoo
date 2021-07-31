@@ -8,6 +8,10 @@
 ; here after it has been overwritten.
 !zone {
 
+!ifdef ACORN_SHADOW_VMEM {
+.swr_ram_blocks !fill 2
+}
+
 ; Initialization performed very early during startup.
 deletable_init_start
 !ifdef ACORN_TURBO_SUPPORTED {
@@ -182,7 +186,7 @@ deletable_init_start
 
 !ifdef ACORN_SCREEN_HOLE {
     lda screen_mode
-    ora #128 ; force shadow mode on SFTODO  MAGIC CONSTANT IN A FEW PLACES NOW?
+    ora #128 ; force shadow mode on SFTODO: MAGIC CONSTANT IN A FEW PLACES NOW?
     tax
     lda #osbyte_read_screen_address_for_mode
     jsr osbyte
@@ -476,11 +480,10 @@ SFTODOKOO
 !ifdef ACORN_SHADOW_VMEM {
     ; Save a copy of ram_blocks for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
-    ; SFTODO: Rename scratch_ram_blocks to swr_ram_blocks or similar?
     lda ram_blocks
-    sta scratch_ram_blocks
+    sta .swr_ram_blocks
     lda ram_blocks + 1
-    sta scratch_ram_blocks + 1
+    sta .swr_ram_blocks + 1
 
     ; We may have some additional RAM blocks in shadow RAM not being used for the
     ; screen display.
@@ -847,14 +850,14 @@ SFTODOTPP
     ; shadow RAM and it doesn't matter if we actually use fewer blocks than
     ; this. This value is just used to ensure that if a vmem block index *would*
     ; access past the end of sideways RAM, it's handled via shadow RAM.
-    ; scratch_ram_blocks is in 256-byte blocks, so convert it to 512-byte blocks.
-    lsr scratch_ram_blocks + 1
-    lda scratch_ram_blocks
+    ; .swr_ram_blocks is in 256-byte blocks, so convert it to 512-byte blocks.
+    lsr .swr_ram_blocks + 1
+    lda .swr_ram_blocks
     ror
     sec
     sbc vmem_blocks_stolen_in_first_bank
     sta vmem_blocks_in_sideways_ram
-    lda scratch_ram_blocks + 1
+    lda .swr_ram_blocks + 1
     sbc #0
     beq +
     ; We have a result which won't fit in a single byte, but since we know the
