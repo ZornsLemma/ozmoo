@@ -70,6 +70,7 @@ calculate_normal_tube_own_ram_blocks ; SFTODO: RENAME??
 ; This initialization happens quite late in the initialization process - in
 ; particular it happens after the lengthy loading process in
 ; acorn_deletable_init_inline. SFTODONOW: Which no longer exists, tweak comment
+; SFTODO: MOVE THIS TOWARDS BOTTOM OF FILE, TO HELP REFLECT LOGICAL EXECUTION SEQUENCE?
 deletable_screen_init_2
 !ifndef ACORN {
 	!error "Non-Acorn code has been removed from deletable_screen_init_2"
