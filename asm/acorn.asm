@@ -1,5 +1,6 @@
 ; Acorn-specific code factored out into its own file for readability.
 ; SFTODONOW: REPLACE USES OF 2 AS MAGIC NUMBER WITH min_vmem_blocks
+; SFTODONOW: Maybe rename this file to acorn-something.asm now we've pulled some code out into other acorn-*.asm files
 
 ; Note that the code macros defined in here have the suffix "_inline" if control
 ; flows straight through them or "_subroutine" if they end by executing rts (or
@@ -91,13 +92,6 @@ dir_ptr = zp_temp ; 2 bytes
 !ifdef VMEM {
 ram_blocks = dir_ptr ; 2 bytes SFTODO: rename to ram_pages???
 }
-
-; The progress_indicator_* variables can re-use the space at
-; z_operand_value_high_arr; they're only used during the initial loading when
-; the Z-machine has not been set up.
-progress_indicator_blocks_per_step = z_operand_value_high_arr ; 2 bytes
-progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 bytes
-
 
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too

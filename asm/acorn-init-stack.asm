@@ -5,6 +5,9 @@
 host_cache_size !fill 1
 }
 
+progress_indicator_blocks_per_step !fill 2
+progress_indicator_blocks_until_next_step !fill 2
+
 screenkernal_init
     +screenkernal_init_inline
 .screenkernal_init_rts
