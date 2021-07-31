@@ -498,6 +498,7 @@ zp_screenrow	+allocate 1 ; current cursor row
 ; we just allocate some of the available zero page for this.
 ; SFTODO: There's no advantage to a small transient_zp_size on non-tube; on tube we could make it smaller depending on MODE_7_INPUT and USE_HISTORY.
 transient_zp_size = 5 ; bytes of transient zero page needed
+; SFTODO: Note at the moment code in acorn.asm uses transient_zp directly and assumes size >=2
 !if transient_zp_size > 8 {
 	!error "transient_zp_size is too large"
 }

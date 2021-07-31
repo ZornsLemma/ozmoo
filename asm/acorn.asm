@@ -1406,15 +1406,7 @@ game_blocks_ne_ram_blocks
 }
 }
 
-    ; Assert that nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES; this should be
-    ; guaranteed, barring bugs.
-    lda nonstored_pages
-    cmp #ACORN_INITIAL_NONSTORED_PAGES
-    bcs +
-    brk
-    !byte 0
-    !text "nonstored_pages too small", 0
-+
+    jsr check_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
 
 ; SFTODONOW: ARBITRARY POINT FOR SOME NOTES, MOVE THESE IF KEEP
 ; - for all VMEM builds, the build system and loader work together to ensure there are at least min_vmem_blocks (2) 512-byte blocks of virtual memory cache, in order to avoid any risk of deadlock (ignoring dynmem adjusts, which are entirely the busy of the Ozmoo executable init code here) - this has nothing to do with the game's actual non-dynmem size compared to RAM, and in the unlikely case that a game has only *one* 512-byte block of non-dynmem, we will still insist on having 2x512-bytes of vmem cache - this is probably OK, we might refuse to run that hyper rare game on some systems which could technically cope with it, but I don't think this is in practice worth worrying about
@@ -1718,24 +1710,59 @@ SFTODOOOL
 ; start to put data at story_start.
 
 !ifdef VMEM {
-; SFTODONOW: RENAME THIS AS IT'S NOW CHECKING MORE
 check_vmap_max_entries
     ; Assert vmap_max_entries >= 1. We need this as the vmem code assumes it
-    ; implicitly.
+    ; implicitly (e.g. when looping over the vmap).
     lda vmap_max_entries
-    bne +
+    bne .rts
     brk
     !byte 0
     !text "vmap_max_entries == 0", 0
-+
 
+    ; SFTODONOW: *Maybe* this could should not assert but constrain, allowing the dynmem adjust code to be as simple as possible and then this fixes up afterwards?
+check_nonstored_pages
     ; Assert nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES. We need this as
     ; otherwise we're not respecting the game's real dynamic memory size.
-    SFTODONOW
-
-    ; SFTODO ASSERT AT LEAST MIN WHATSIT PAGES OF VMEM CACHE
-!error "SFTODONOW"
-
+    lda nonstored_pages
+    cmp #ACORN_INITIAL_NONSTORED_PAGES
+    bcs +
+    brk
+    !byte 0
+    !text "nonstored_pages too small", 0
++
+    ; Assert nonstored_pages + min_vmem_blocks * vmem_block_pagecount <=
+    ; ram_blocks. We need this so the vmem code can't deadlock if the Z-machine
+    ; PC and data pointers each point to separte blocks of read-only memory.
+    ;
+    ; There is a superficial contradiction with this check (note min_vmem_blocks
+    ; == 2) and check_vmap_max_entries (which checks vmap_max_entries >= 1). If
+    ; vmap_max_entries == 1, there is only one 512-byte block of non-dynamic
+    ; memory in the whole game, and therefore we couldn't deadlock in the vmem
+    ; code even with just one block of vmem cache. In this case, it's
+    ; unnecessarily strict to insist on at least vmem_block_pagecount 512-byte
+    ; blocks of vmem, but it's easier just to insist on meeting this condition
+    ; all the time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
+    sec
+    !error "SFTODONOW ON TUBE CACHE CASE, USE DIFFERENT VAL INSTEAD OF RAM_BLOCKS?"
+    lda ram_blocks
+    sbc nonstored_pages
+    sta transient_zp
+    lda ram_blocks + 1
+    sbc #0 ; high byte of nonstored_pages
+    bcc .nonstored_pages_too_large
+    sta transient_zp + 1
+    sec ; redundant...
+    lda transient_zp
+    sbc #<(min_vmem_blocks * vmem_block_pagecount)
+    lda transient_zp + 1
+    sbc #>(min_vmem_blocks * vmem_block_pagecount) ; 0
+    bcc +
+.nonstored_pages_too_large
+    brk
+    !byte 0
+    !text "nonstored_pages too large", 0
++
+    ; SFTODONOW: Can/should we assert nonstored_blocks isn't so large it's not bigger than the game? This *might* be redundant if we always cap ram_blcoks at game_blocks. need to think about this.
     rts
 
 initial_vmap_z_l
