@@ -720,6 +720,7 @@ deletable_init_start
 
     ; maxwords and wordoffset are handled specially and won't always be automatically
     ; cleared by the previous loop, so do them explicitly here.
+    ; SFTODONOW: SHOULD WE DO $400-low_fixed_gap_start AS WELL?
     lda #0
     sta maxwords
     sta wordoffset
@@ -1241,9 +1242,26 @@ SFTODOEE2
     ; memory rounded up to a 512-byte boundary, i.e.
     ; ACORN_INITIAL_NONSTORED_PAGES.
     lda #ACORN_INITIAL_NONSTORED_PAGES
-    sta nonstored_pages
+    sta nonstored_pages ; SFTODONOW: Do we need nonstored_pages on non-VMEM builds?
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
+    ; The build system and loader have worked together to ensure that we can run
+    ; the game with nonstored_pages == ACORN_INITIAL_NONSTORED_PAGES. We must
+    ; not have nonstored_pages lower than that, since we'd not be respecting the
+    ; game's real dynamic memory size.
+    ;
+    ; nonstored_pages must not be so large that we'd have less than
+    ; min_vmem_blocks * vmem_block_pagecount pages of memory left over for vmem
+    ; cache, as doing so would risk a deadlock when paging. SFTODO: INTRODUCE max_nonstored_pages AND DEFINE IT HERE??
+    ;
+    ; So we can vary nonstored_pages between those two hard limits. In general
+    ; setting nonstored_pages > ACORN_INITIAL_NONSTORED_PAGES isn't a good idea;
+    ; raising it will permanently lock more of the game into memory, reducing
+    ; the amount of memory we have to use flexibly as vmem cache and likely
+    ; increasing the amount of disc access we need to perform.
+    ;
+    ; The following code detects situations where it *is* useful to set
+    ; nonstored_pages > ACORN_INITIAL_NONSTORED_PAGES.
 !ifdef ACORN_TURBO_SUPPORTED {
 ;!error "SFTODO - THIS IS BROKEN, DID WORK WITH PREVIOUS COMMIT"
     ; On a turbo second processor banks 1 and 2 provide as much virtual memory
@@ -1447,6 +1465,9 @@ game_blocks_ne_ram_blocks
     bcs +
     dec ram_blocks + 1
 +
+
+    ; SFTODO: NOTE THAT IN THE TUBE CACHE CASE RAM_BLOCKS IS INFLATED HERE SO CHECKING WOULD NOT BE GOOD ENOUGH
+    !error "SFTODO  - PLACE TO ASSERT HAVE ENOUGH LEFT FOR MIN_VMEM_BLOCKS?"
 }
 ; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
@@ -1697,13 +1718,25 @@ SFTODOOOL
 ; start to put data at story_start.
 
 !ifdef VMEM {
+; SFTODONOW: RENAME THIS AS IT'S NOW CHECKING MORE
 check_vmap_max_entries
-    ; Assert vmap_max_entries >= 1; this should always be true, barring bugs.
+    ; Assert vmap_max_entries >= 1. We need this as the vmem code assumes it
+    ; implicitly.
     lda vmap_max_entries
-    bne .rts
+    bne +
     brk
     !byte 0
     !text "vmap_max_entries == 0", 0
++
+
+    ; Assert nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES. We need this as
+    ; otherwise we're not respecting the game's real dynamic memory size.
+    SFTODONOW
+
+    ; SFTODO ASSERT AT LEAST MIN WHATSIT PAGES OF VMEM CACHE
+!error "SFTODONOW"
+
+    rts
 
 initial_vmap_z_l
     !fill vmap_max_size, 'V'
@@ -1905,6 +1938,10 @@ full_block_graphic = 255
     ; but it's discardable init code so it's not really harmful and it seems
     ; best for support purposes to keep the code identical whether or not preopt
     ; data is supplied or not.)
+    ;
+    ; SFTODO: Couldn't we move this code so it's in the game data area not the
+    ; Z-machine stack? This doesn't matter unless/until we run out of space in the
+    ; Z-machine stack, of course. SFTODONOW?
     ldx #1
 .outer_loop
     lda vmap_z_l,x
@@ -1954,6 +1991,7 @@ full_block_graphic = 255
     ; space freed up at the end of the vmap by this move is filled with dummy
     ; entries so those entries will be used first when the game needs to load
     ; more blocks from disc.
+    ; SFTODO: Couldn't we do this in the game-data code not the Z-machine stack code? SFTODONOW?
 SFTODOLABEL2
     ldx #255
 .find_first_non_promoted_entry_loop
@@ -2683,3 +2721,7 @@ do_oswrch_vdu_goto_xy
 ; SFTODO: Perhaps do some timings to see how much of an impact replacing direct SWR paging code with a JSR to that same code has. It's probably significant, but it may be that some of the optimisations in Ozmoo over time mean this actually isn't a huge performance overhead, which would help make executables more shareable across different machines.
 
 ; SFTODO: Would there be any value in always using $400-$800 as two pages of VM cache, and using $900-B00 plus space allocated within the binary itself to substitute for existing uses of $400-800?
+
+; SFTODONOW: Replace --show-program-start option with --debug-info or similar which shows program_start but also shows messages like "nonstored pages adjusted to X", all with osrdch once after all such output has occurred.
+
+; SFTODONOW: Should I tweak the settings for the bRKV handler during the initial load so it uses an extra leading newline or two?
