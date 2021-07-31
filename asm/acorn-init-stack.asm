@@ -441,8 +441,13 @@ SFTODOLABELX2
 !ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
 }
-;!error "SFTODO: LNEXT LINE IS BROKEN, check_vmap_max_entries CURRENTLY LIVES IN NON-STACK GAME DATA REG AND HAS BEEN OVERWRITTEN"
+!if 0 {
+    ; (.)check_vmap_max_entries is currently in asm/acorn-init-preload.asm and
+    ; is no longer available to us here. We could move it so it is available,
+    ; but we are not playing games with nonstored_pages in this case and it
+    ; doesn't add a huge amount of value. SFTODO: OK?
     jsr check_vmap_max_entries
+}
     ; Adjust host_cache_size so the following load loop won't try to put "too
     ; much" into the host cache; if this happens we might not have enough blocks
     ; to load into the local virtual memory cache and so some vmap entries would
