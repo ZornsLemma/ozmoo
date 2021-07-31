@@ -138,20 +138,6 @@ deletable_screen_init_2
 ; Initialization performed shortly after startup, just after
 ; acorn_deletable_init_start.
 deletable_init
-!ifdef ACORN_SHOW_PROGRAM_START {
-    jsr streams_init
-    lda #13
-    jsr s_printchar
-    jsr print_following_string
-    !text "program_start=$", 0
-    lda #>program_start
-    jsr print_byte_as_hex
-    lda #<program_start
-    jsr print_byte_as_hex
-    jsr osrdch
-}
-
-    jsr prepare_for_initial_load
     ; SFTODO: If we got tight on space in the Z-machine stack, the following
     ; code up to but not including .dynmem_load_loop could be moved into
     ; prepare_for_initial_load.

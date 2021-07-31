@@ -277,7 +277,24 @@ deletable_init_start
 
     +prepare_static_high_memory_inline
     +init_readtime_inline
-    jmp init_cursor_control
+    jsr init_cursor_control
+
+!ifdef ACORN_SHOW_PROGRAM_START {
+    jsr streams_init
+    lda #13
+    jsr s_printchar
+    jsr print_following_string
+    !text "program_start=$", 0
+    lda #>program_start
+    jsr print_byte_as_hex
+    lda #<program_start
+    jsr print_byte_as_hex
+    jsr osrdch
+}
+
+    ; SFTODO: just fall through to prepare_for_initial_load?
+    jsr prepare_for_initial_load
+    rts
 ; End of deletable_init_start
 
 
