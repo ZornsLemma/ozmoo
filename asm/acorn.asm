@@ -90,15 +90,9 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 dir_ptr = zp_temp ; 2 bytes
 ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache loading code?
 vmap_sort_entries = vmem_temp ; 1 byte
-!ifdef ACORN_TUBE_CACHE {
-host_cache_size = memory_buffer
-}
 !ifdef VMEM {
 ram_blocks = dir_ptr ; 2 bytes SFTODO: rename to ram_pages???
 }
-; Allocation in scratch_page for the calculation before we start loading game
-; data.
-scratch_blocks_to_load = scratch_page + 2 ; 2 bytes
 
 ; The progress_indicator_* variables can re-use the space at
 ; z_operand_value_high_arr; they're only used during the initial loading when

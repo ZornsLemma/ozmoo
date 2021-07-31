@@ -22,6 +22,8 @@
 .swr_ram_blocks !fill 2
 }
 
+.scratch_blocks_to_load !fill 2
+
 ; Initialization performed very early during startup.
 deletable_init_start
 !ifdef ACORN_TURBO_SUPPORTED {
@@ -886,21 +888,21 @@ SFTODOXY7
     ; sense to stick with 512-byte blocks here and scale *nonstored_page* instead
     ; of vmap_max_entries.
     lda #0
-    sta scratch_blocks_to_load + 1
+    sta .scratch_blocks_to_load + 1
     lda vmap_max_entries
     asl ; convert to 256-byte blocks
-    rol scratch_blocks_to_load + 1
+    rol .scratch_blocks_to_load + 1
     clc
     adc nonstored_pages ; already in 256-byte blocks
-    sta scratch_blocks_to_load
+    sta .scratch_blocks_to_load
     bcc +
-    inc scratch_blocks_to_load + 1
+    inc .scratch_blocks_to_load + 1
 +
 } else { ; Not VMEM
     lda #<ACORN_GAME_BLOCKS
-    sta scratch_blocks_to_load
+    sta .scratch_blocks_to_load
     lda #>ACORN_GAME_BLOCKS
-    sta scratch_blocks_to_load + 1
+    sta .scratch_blocks_to_load + 1
 }
 
 !ifdef VMEM { ; SFTODO: MERGE WITH PREV BLOCK!?
@@ -1055,7 +1057,7 @@ SFTODOLABEL2
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
 ; progress bar step, in order to get avoid the bar under-filling or over-filling
-; the screen width. scratch_blocks_to_load can't be more than 64K dynamic memory plus
+; the screen width. .scratch_blocks_to_load can't be more than 64K dynamic memory plus
 ; 128K virtual memory cache (and that's not going to happen in practice), so it
 ; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
 ; bits for the fractional component.
@@ -1118,15 +1120,15 @@ progress_indicator_fractional_bits=7
     rol
     sta divisor + 1
 
-    ; scratch_blocks_to_load is expressed in 256-byte blocks, but loading is done in
+    ; .scratch_blocks_to_load is expressed in 256-byte blocks, but loading is done in
     ; 512-byte blocks, so we want to divide by two to convert this. We want to
     ; shift right by 1 for the division by two, then left by
     ; progress_indicator_fractional_bits bits.
     ldx #progress_indicator_fractional_bits - 1
-    ; Set dividend = scratch_blocks_to_load << X.
-    lda scratch_blocks_to_load + 1
+    ; Set dividend = .scratch_blocks_to_load << X.
+    lda .scratch_blocks_to_load + 1
     sta dividend + 1
-    lda scratch_blocks_to_load
+    lda .scratch_blocks_to_load
 -   asl
     rol dividend + 1
     dex

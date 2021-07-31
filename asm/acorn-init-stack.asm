@@ -1,5 +1,10 @@
 ; Initialization subroutines which will be placed inside the Z-machine stack.
 
+
+!ifdef ACORN_TUBE_CACHE {
+host_cache_size !fill 1
+}
+
 screenkernal_init
     +screenkernal_init_inline
 .screenkernal_init_rts
