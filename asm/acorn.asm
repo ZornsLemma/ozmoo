@@ -88,15 +88,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; SFTODONOW: Move some/all of this into acorn-init*.asm?
 ; Zero page allocations for the initial load of game data.
 dir_ptr = zp_temp ; 2 bytes
-!ifndef ACORN_SWR_MEDIUM_DYNMEM {
-catalogue = scratch_overlapping_game_start
-} else {
-; story_start will be in sideways RAM; we could make this work, but we'd need to
-; make sure the right bank was paged in and it's simpler just to use
-; scratch_double_page. We can't simply always use that, because it doesn't exist
-; on second processor builds.
-catalogue = scratch_double_page
-}
 ; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache loading code?
 vmap_sort_entries = vmem_temp ; 1 byte
 !ifdef ACORN_TUBE_CACHE {

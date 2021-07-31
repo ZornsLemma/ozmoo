@@ -8,6 +8,16 @@
 ; here after it has been overwritten.
 !zone {
 
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
+.catalogue = scratch_overlapping_game_start
+} else {
+; story_start will be in sideways RAM; we could make this work, but we'd need to
+; make sure the right bank was paged in and it's simpler just to use
+; scratch_double_page. We can't simply always use that, because it doesn't exist
+; on second processor builds.
+.catalogue = scratch_double_page
+}
+
 !ifdef ACORN_SHADOW_VMEM {
 .swr_ram_blocks !fill 2
 }
@@ -326,13 +336,13 @@ prepare_for_initial_load
     lda #0
     sta readblocks_currentblock
     sta readblocks_currentblock + 1
-    sta readblocks_mempos ; catalogue is page-aligned
+    sta readblocks_mempos ; .catalogue is page-aligned
 !ifdef ACORN_TURBO_SUPPORTED {
     ; In reality this is redundant but let's play it safe.
     sta readblocks_mempos + 2
 }
 }
-    lda #>catalogue
+    lda #>.catalogue
     sta dir_ptr + 1
     sta readblocks_mempos + 1
     lda #0
