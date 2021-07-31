@@ -280,6 +280,9 @@ deletable_init_start
     jsr init_cursor_control
 
 !ifdef ACORN_SHOW_PROGRAM_START {
+    ; Call deletable_screen_init_1 here so we can output succesfully; this is a
+    ; little bit hacky but not a huge problem (and this is debug-only code).
+    jsr deletable_screen_init_1
     jsr streams_init
     lda #13
     jsr s_printchar
