@@ -60,6 +60,19 @@ deletable_init_start
     sta maxwords
     sta wordoffset
 
+!ifdef USE_HISTORY {
+    ; Zero the history buffer; if this isn't done it is sometimes possible to
+    ; navigate to invalid history entries. (We don't fold this into the
+    ; zero_start to zero_end loop above, because the history might not be in low
+    ; memory.)
+    ldx #history_size - 1
+    lda #0
+-   sta history_start,x
+    dex
+    cpx #$ff
+    bne -
+}
+
     ; Initialise non-0 variables.
     lda #1
     sta streams_buffering
@@ -164,17 +177,6 @@ deletable_init_start
 -   lda initial_vmap_z_l - 1,x
     sta vmap_z_l - 1,x
     dex
-    bne -
-}
-
-!ifdef USE_HISTORY {
-    ; Zero the history buffer; if this isn't done it is sometimes possible to
-    ; navigate to invalid history entries.
-    ldx #history_size - 1
-    lda #0
--   sta history_start,x
-    dex
-    cpx #$ff
     bne -
 }
 
