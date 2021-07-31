@@ -126,6 +126,8 @@ deletable_screen_init_2
 	ldx #$ff
 	jsr erase_window
 	jmp start_buffering
+; End of deletable_screen_init_2
+
 
 !zone deletable_init {
 
@@ -215,6 +217,7 @@ deletable_init
     sbc readblocks_numblocks
     sta .blocks_to_read
     bne .dynmem_load_loop
+SFTODOXA9
 
 !ifdef VMEM {
     ; vmem_highbyte_mask might be 0 and that enables some small optimisations, but

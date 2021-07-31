@@ -272,6 +272,8 @@ deletable_init_start
     +prepare_static_high_memory_inline
     +init_readtime_inline
     jmp init_cursor_control
+; End of deletable_init_start
+
 
 ; Do as much as we can to prepare for the initial load of game data from disk,
 ; without actually loading anything (which would overwrite this code).
@@ -864,6 +866,8 @@ SFTODOXY7
     sta scratch_blocks_to_load + 1
 }
     ; fall through to init_progress_indicator
+; End of prepare_for_initial_load
+
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
 ; progress bar step, in order to get avoid the bar under-filling or over-filling
@@ -1059,4 +1063,3 @@ screen_start_page_by_mode
     !byte $60 ; mode 6
     !byte $7c ; mode 7
 }
-
