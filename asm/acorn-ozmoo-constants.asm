@@ -156,10 +156,7 @@ shadow_start = $3000
     vmap_max_size = ACORN_VMEM_BLOCKS
 }
 
-; If we don't have at least two blocks of vmem cache - which we definitely won't
-; if the vmap isn't large enough - we are likely to deadlock in the virtual
-; memory code.
-+assert vmap_max_size >= 2
+min_vmem_blocks = 2
 
 ; We only need to allocate space for vmap_used_entries in PREOPT builds.
 !ifdef PREOPT {

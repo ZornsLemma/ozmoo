@@ -5,7 +5,7 @@
 ; of some kind. In that case, zp_temp_turbo_flag is set to 0 for a non-turbo or
 ; $ff for a turbo second processor.
 
-zp_temp_turbo_flag = $8f
+!source "acorn-shared-constants.asm"
 
 start
     jmp entry

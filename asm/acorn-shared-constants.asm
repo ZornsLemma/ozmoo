@@ -10,6 +10,8 @@ romsel_copy = $f4
 bbc_romsel = $fe30
 electron_romsel = $fe05
 
+zp_temp_turbo_flag = $8f
+
 !ifdef ACORN_SHADOW_VMEM {
     ; We steal the envelope buffers in page 8 for the shadow RAM driver. (It's
     ; tempting to steal the printer buffer at $880 as well, but the Integra-B

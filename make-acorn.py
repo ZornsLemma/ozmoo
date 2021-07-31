@@ -2017,25 +2017,46 @@ elif z_machine_version == 8:
     vmem_highbyte_mask = 0x03
 else:
     vmem_highbyte_mask = 0x01
+
 game_blocks = bytes_to_blocks(len(game_data))
 dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 nonstored_pages = bytes_to_blocks(dynamic_size_bytes)
+assert nonstored_pages > 0
+# We round nonstored_pages up to a multiple of vmem_block_pagecount; this is
+# irrelevant but harmless for non-VMEM builds, and for VMEM builds it is
+# essential as the vmem code requires that cached game data blocks start on
+# vmem_block_pagecount (512-byte) boundaries within the game.
 while nonstored_pages % vmem_block_pagecount != 0:
     nonstored_pages += 1
-# The Acorn initialisation code assumes the game has at least one block of
-# non-dynamic memory. That's almost certainly the case anyway, but make sure.
+# The following points are technically irrelevant and very mildly harmful for
+# non-VMEM builds, but in order to avoid extra complexity we always apply them
+# anyway:
 #
-# We also ensure game_blocks is even; this avoids various corner cases when
-# we're loading the game and it doesn't have any downside. Because we 512-byte
-# align data_start/story_start and all the hardware memory thresholds and sizes
-# are multiples of 512 bytes, our free RAM is always a multiple of 512 bytes and
-# it simplifies things if game blocks is too. Because of the alignment, this
-# doesn't cost us anything - for example, the rounding up can't tip a game over
-# the no-vmem-needed threshold on a second processor, because the free RAM is a
-# multiple of 512 bytes anyway.
-while (game_blocks < nonstored_pages + vmem_block_pagecount) or (game_blocks % 2 == 1):
+# - Lots of VMEM code assumes that there is at least one meaningful entry in
+#   the vmap (for example, loops over the vmap in vmem.asm are written to
+#   assume they will always iterate at least once). It is almost certain that
+#   the game already has at least one 512-byte block of read-only data in
+#   addition to its rounded-up nonstored_pages of dynamic memory, but we
+#   deliberately pad the game if necessary to ensure this. This guarantees
+#   vmap_{used,max}_entries >= 1.
+#
+# - We pad the game if necessary so it's a multiple of 512-bytes long, i.e. we
+#   guarantee that game_blocks % vmem_block_pagecount == 0. In VMEM builds,
+#   everything is 512-byte aligned and so this isn't really harmful, and it
+#   avoids introducing corner cases when we're using game_blocks during
+#   initialisation. (Non-VMEM builds only require story_start to be 256-byte
+#   aligned, and it's therefore possible to have (say) 201 pages of memory free
+#   with a 201 page game but end up insisting on using VMEM because we treat it
+#   as a 202 page game.)
+#
+# SFTODO: It would be possible - the complexity would mainly be in the build
+# script, I beleive - to stop applying these (particularly the second) tweaks
+# to non-VMEM builds. I really don't know if it's worth it though.
+while ((game_blocks < nonstored_pages + vmem_block_pagecount) or
+       (game_blocks % vmem_block_pagecount != 0)):
     game_data += bytearray(bytes_per_block)
     game_blocks = bytes_to_blocks(len(game_data))
+
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
 

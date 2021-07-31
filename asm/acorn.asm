@@ -1,4 +1,5 @@
 ; Acorn-specific code factored out into its own file for readability.
+; SFTODONOW: REPLACE USES OF 2 AS MAGIC NUMBER WITH min_vmem_blocks
 
 ; Note that the code macros defined in here have the suffix "_inline" if control
 ; flows straight through them or "_subroutine" if they end by executing rts (or
@@ -101,7 +102,7 @@ vmap_sort_entries = vmem_temp ; 1 byte
 host_cache_size = memory_buffer
 }
 !ifdef VMEM {
-ram_blocks = dir_ptr ; 2 bytes
+ram_blocks = dir_ptr ; 2 bytes SFTODO: rename to ram_pages???
 }
 ; Allocation in scratch_page for the calculation before we start loading game
 ; data.
@@ -127,6 +128,7 @@ progress_indicator_blocks_until_next_step = z_operand_value_high_arr + 2 ; 2 byt
 ; cases, maybe it would be better just to rewrite the code to avoid even a
 ; theoretical possibility of this macro being executed.
 !macro assert_discardable_unreached {
+    ; SFTODO: I should have a macro for this brk-byte-text sequence to avoid accidentally gettin g it wrong somewhere and not noticing
     brk
     !byte 0
     !text "Unreachable", 0
@@ -673,6 +675,13 @@ after_dynmem_read_preserve_axy_slow_sub
 !macro acorn_init_code_overlapping_game_data {
 ; Initialization performed very early during startup.
 deletable_init_start
+!ifdef ACORN_TURBO_SUPPORTED {
+    ; The TURBO executable will have set zp_temp_turbo_flag; stash the value before we clear zero page and copy it into is_turbo afterwards.
+    ; SFTODONOW: This is *not* going to work across a "restart" command. But let's just hack it like this for the moment.
+    lda zp_temp_turbo_flag
+    pha
+}
+
     ; Clear all our zero page; this is probably a good idea for consistency
     ; anyway but is important when some storage allocated via +allocate in
     ; acorn-ozmoo-constants.asm ends up in zero page instead of low memory.
@@ -682,6 +691,11 @@ deletable_init_start
     inx
     cpx #zp_end
     bne -
+
+!ifdef ACORN_TURBO_SUPPORTED {
+    pla
+    sta is_turbo
+}
 
 !if zero_end > zero_start {
     ; Clear memory betwen zero_start and zero_end; this is language workspace
@@ -793,6 +807,7 @@ deletable_init_start
     ; This executable doesn't have a ROM header indicating we want the turbo
     ; mode enabled, so it will have been disabled when were were executed. Turn
     ; it back on if we do want it.
+;    !error "SFTODONOW - I DON'T KNOW IF THIS IS WHAT'S BREAKING THINGS, BUT NOTE THAT WE ARE NOT KEEPING is_turbo FIXED WHERE IT NEEDS TO BE TO MATCH THE TURBO-DETECTION CODE"
     bit is_turbo
     bpl .dont_enable_turbo
     ; Set all the turbo banks to zero before enabling turbo mode; we might crash
@@ -1230,43 +1245,28 @@ SFTODOEE2
 !ifdef VMEM {
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_TURBO_SUPPORTED {
-    ; SFTODONOW: REVIEW THIS FRESH - I have done and it seems OK *if* the "see below for why we subtract" is true/valid/sensible - the localised reasoning and logic here seems fine
-    ; On a turbo second processor, we can increase nonstored_pages to promote
-    ; some additional data into dynamic memory and make full use of bank 0. We
-    ; don't need to keep any of bank 0 free for virtual memory cache because we
-    ; have banks 1 and 2 for that. So we set:
-    ;   nonstored_pages = min(game_blocks - vmem_block_pagecount,
-    ;                         available blocks in bank 0)
-    ; See below for why we subtract vmem_block_pagecount, but note that:
-    ; - This subtraction can't cause nonstored_pages <
-    ;   ACORN_INITIAL_NONSTORED_PAGES because the build system
-    ;   guarantees the game has at least one block of non-dynamic memory.
-    ; - This subtraction is otherwise harmless; it just means that for small
-    ;   games one 512-byte block of RAM will have to be accessed via the slower
-    ;   virtual memory code when it could maybe have been promoted to be dynamic
-    ;   memory.
-    ;
-    ; This adjustment will make it faster to access the part of the game which
-    ; has been promoted into dynamic memory, so we do it even if this is a small
-    ; game and we could address enough RAM for the entire game without it.
+;!error "SFTODO - THIS IS BROKEN, DID WORK WITH PREVIOUS COMMIT"
+    ; On a turbo second processor banks 1 and 2 provide as much virtual memory
+    ; cache as we can use, so we can promote some additional data into dynamic
+    ; memory to use all of bank 0. This may allow us to address more memory in
+    ; total, but even if the game is small and would have been entirely
+    ; addressable in RAM anyway, we will still get a performance benefit from
+    ; accessing as much of the game as possible via the simpler dynamic memory
+    ; code path.
     bit is_turbo
-    bpl .no_turbo_dynmem_adjust
+    bpl .dynmem_adjust_done
 SFTODOLABEL1
-    lda #<ACORN_GAME_BLOCKS
-    sec
-    sbc #vmem_block_pagecount
-    tax
-    lda #>ACORN_GAME_BLOCKS
-    sbc #<(flat_ramtop - story_start) ; 0
-    bne .available_blocks_is_smaller
-    cpx #>(flat_ramtop - story_start)
-    bcc .game_blocks_is_smaller
-.available_blocks_is_smaller
-    ldx #>(flat_ramtop - story_start)
-.game_blocks_is_smaller
-    stx nonstored_pages
-.no_turbo_dynmem_adjust
+    lda #>(flat_ramtop - story_start)
+    ; SFTODONOW NEXT TWO LINES HACK TO SEE IF THIS IS AN EVEN/ODD ISSUE - NO, DOESN'T HELP, BUT DO NEED TO THINK IF THIS IS A CONCERN IN GENERAL
+    lsr
+    asl
+    sta nonstored_pages
+.dynmem_adjust_done ; SFTODO RENAME LABEL
+    ; Note that we don't need to do the subsequent adjustment the ACORN_SWR case
+    ; below has to do; we know we have plenty of vmem cache in banks 1 and 2.
 }
+
+SFTODOLABEL2X
 !ifdef ACORN_SWR {
     ; It may be useful to increase nonstored_pages to promote some additional
     ; data into dynamic memory, either for performance or to make use of more
@@ -1277,7 +1277,7 @@ SFTODOLABEL1
     ; this optimisation more headroom, but of course the big model has its own
     ; performance drawbacks so it's probably best not using it unless we're
     ; forced to.)
-.max_dynmem = zp_temp + 4 ; 1 byte
+.max_dynmem = zp_temp + 4 ; 1 byte SFTODONOW RENAME GET RID OF ???
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; It's not all that likely, but it's not impossible we don't actually have
     ; any sideways RAM. (Perhaps we had to use the big model to fit on some
@@ -1287,7 +1287,7 @@ SFTODOLABEL1
     ; it's not contiguous, but we can do so with the B+ private 12k. Note that
     ; because we don't allow the Integra-B private 12K to be used as the only
     ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem
-    ; to 0.
+    ; to 0. SFTODONOW: PROB OK BUT REVIEW LATER
     lda #>flat_ramtop
     ldy ram_bank_count
     beq .upper_bound_in_a
@@ -1296,8 +1296,7 @@ SFTODOLABEL1
     cpy #64 ; SFTODO: MAGIC NUMBER
     bcs .upper_bound_in_a ; Integra-B private 12K
     lda #>swr_ramtop
-    bne .upper_bound_in_a ; always branch
-    +assert_discardable_unreached
+    jmp .upper_bound_in_a
 .b_plus_private_12k
     lda #>(flat_ramtop + b_plus_private_ram_size)
 .upper_bound_in_a
@@ -1314,65 +1313,130 @@ SFTODOLABEL1
     sbc #>story_start
     sta .max_dynmem
 
-    ; If game_blocks == ram_blocks, we want to set nonstored_pages as high as
-    ; possible; there's no downside as we have enough RAM for the entire game
+    ; If game_blocks == ram_blocks, we want to set nonstored_pages to
+    ; .max_dynmem; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
-    ; faster dynamic memory code path. Set:
-    ;    nonstored_pages = min(game_blocks - vmem_block_pagecount,
-    ;                          .max_dynmem)
+    ; faster dynamic memory code path.
     ldy ram_blocks + 1
     lda ram_blocks
     cpy #>ACORN_GAME_BLOCKS
     bne game_blocks_ne_ram_blocks
     cmp #<ACORN_GAME_BLOCKS
     bne game_blocks_ne_ram_blocks
-    sec
-    sbc #vmem_block_pagecount
-    tax
-    tya
-    sbc #0
-    bne .max_dynmem_is_smaller
-    cpx .max_dynmem
-    bcc .game_blocks_is_smaller
-.max_dynmem_is_smaller
-    ldx .max_dynmem
-.game_blocks_is_smaller
-    bne .dynmem_adjust_done ; Always branch
-    +assert_discardable_unreached
+.use_max_dynmem
+    lda .max_dynmem
+    sta nonstored_pages
+    jmp .dynmem_adjust_done
 
 game_blocks_ne_ram_blocks
     ; Note that we can't have game_blocks < ram_blocks because we reduced
-    ; ram_blocks to match earlier, so game_blocks > ram_blocks. We don't want
-    ; to reduce flexibility by locking parts of the game into RAM instead of
+    ; ram_blocks to match earlier, so game_blocks > ram_blocks. We don't want to
+    ; reduce flexibility by locking parts of the game into RAM instead of
     ; allowing the virtual memory system to choose what lives in RAM. It's only
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
-    ; RAM into play. Set:
-    ;   nonstored_pages = max(min(ram_blocks - vmap_max_size * vmem_block_pagecount,
-    ;                             .max_dynmem),
-    ;                         ACORN_INITIAL_NONSTORED_PAGES)
-.min_lhs_sub = vmap_max_size * vmem_block_pagecount
+    ; RAM into play.
+    ;
+    ; only_dynmem_addressable_blocks = ram_blocks - (vmap_max_size *
+    ; vmem_block_pagecount) is the number of 256-byte pages we can't address via
+    ; the virtual memory code, and can therefore only address as dynamic memory.
+    ; If this is negative, there is no memory we can't address, so leave things
+    ; alone.
+.min_lhs_sub = vmap_max_size * vmem_block_pagecount ; SFTODO RENAME NOW
     sec
     sbc #<.min_lhs_sub
     tax
     tya
     sbc #>.min_lhs_sub
-    bcc .use_acorn_initial_nonstored_pages
-    bne .use_min_rhs
-    cpx .max_dynmem
-    bcc .use_min_lhs
-.use_min_rhs
-    ldx .max_dynmem
-.use_min_lhs
+    bcc .dynmem_adjust_done ; branch if only_dynmem_addressable_blocks negative
+    ; Set nonstored_pages = min(max(ACORN_INITIAL_NONSTORED_PAGES,
+    ; only_dynmem_addressable_blocks), .max_dynmem); we can't use more dynamic
+    ; memory than we have memory to support, of course, nor should be use less
+    ; than ACORN_INITIAL_NONSTORED_PAGES.
+    bne .use_max_dynmem ; branch if only_dymem_addressable_blocks is > 8 bit
+    ; We now have X=only_dynmem_addressable_blocks, an 8-bit quantity.
     cpx #ACORN_INITIAL_NONSTORED_PAGES
-    bcs .use_max_lhs
-.use_acorn_initial_nonstored_pages
-    ldx #ACORN_INITIAL_NONSTORED_PAGES
-.use_max_lhs
-.dynmem_adjust_done
+    bcc .dynmem_adjust_done ; stick with ACORN_INITIAL_NONSTORED_PAGES
+    cpx .max_dynmem
+    bcs .use_max_dynmem
     stx nonstored_pages
-.no_dynmem_adjust
+.dynmem_adjust_done ; SFTODO RENAME LABEL
+
+    ; The code above may have set nonstored_pages slightly too high; in addition
+    ; to the constraints discussed above, we need to ensure there are always
+    ; min_vmem_blocks 512-byte blocks of vmem cache in order to prevent
+    ; deadlocking in the vmem code.
+    ;
+    ; Set nonstored_pages = min(nonstored_pages, max_nonstored_pages) where
+    ; max_nonstored_pages satisfies:
+    ;     (ram_blocks - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
+    ; The build system and loader work together to effectively ensure 0 <
+    ; ACORN_INITIAL_NONSTORED_PAGES <= max_nonstored_pages.
+    ;
+    ; So max_nonstored_pages = ram_blocks - min_vmem_blocks * vmem_block_pagecount.
+    sec
+    lda ram_blocks
+    sbc #<(min_vmem_blocks * vmem_block_pagecount)
+    tax
+    lda ram_blocks + 1
+    sbc #>(min_vmem_blocks * vmem_block_pagecount) ; 0
+    bne .nonstored_pages_le_max_nonstored_pages ; branch if max_nonstored_pages >255
+    ; X holds max_nonstored_pages, which we now know is an 8-bit value.
+    cpx nonstored_pages
+    bcs .nonstored_pages_le_max_nonstored_pages
+    stx nonstored_pages
+.nonstored_pages_le_max_nonstored_pages
 }
 }
+
+    ; Assert that nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES; this should be
+    ; guaranteed, barring bugs.
+    lda nonstored_pages
+    cmp #ACORN_INITIAL_NONSTORED_PAGES
+    bcs +
+    brk
+    !byte 0
+    !text "nonstored_pages too small", 0
++
+
+; SFTODONOW: ARBITRARY POINT FOR SOME NOTES, MOVE THESE IF KEEP
+; - for all VMEM builds, the build system and loader work together to ensure there are at least min_vmem_blocks (2) 512-byte blocks of virtual memory cache, in order to avoid any risk of deadlock (ignoring dynmem adjusts, which are entirely the busy of the Ozmoo executable init code here) - this has nothing to do with the game's actual non-dynmem size compared to RAM, and in the unlikely case that a game has only *one* 512-byte block of non-dynmem, we will still insist on having 2x512-bytes of vmem cache - this is probably OK, we might refuse to run that hyper rare game on some systems which could technically cope with it, but I don't think this is in practice worth worrying about
+; - the vmem code does assume there is at least one entry in the vmap, so we must have vmap_max_entries>=1 in all VMEM builds in order not to break this (we'd access invalid data)
+; - indpendently of that, we "must" have min_vmem_blocks (2) 512-byte blocks of vmem cache in general so we don't deadlock if both the Z-machine PC and data pointers are in vmem in different blocks. I don't beleive this is absolutely a hard requirement if there *is* only one possible 512-byte block of non-dynmem, since in that case there can't be a deadlock as there's no contention - we have one block of vmem cache and one block of read-only memory which sits permanently in that vmem cache block.
+
+; SFTODONOW EXP FRAGMEENT NEEDS OTHER CHANGES ELSEWHERE IF KEEP
+    ; We don't allow nonstored_pages >= max_nonstored_pages, where
+    ; max_nonstored_pages satisfies:
+    ;
+    ; (ram_blocks - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
+    ;
+    ; This ensures we always have at least min_vmem_blocks 512-byte blocks of vmem cache.
+    ; (If a game has only one 512-byte block of virtual memory, this restriction is tighter
+    ; than necessary, but we - including the loader, not just this code - don't care; we'll
+    ; still run such a game fine, we'll just demand 512 bytes more RAM as a minimum than we
+    ; strictly needed.)
+    ;
+    ; build system/loader effectively ensure 0 < ACORN_INITIAL_NONSTORED_PAGES <= max_nonstored_pages
+    ;
+    ; So max_nonstored_pages =
+    ; ram_blcoks - max == min_vmem * vmem_block
+    ; ram_blocks - min_vmem * vmem_block = max
+    ; what about oddness?
+    ; suppose game has 6 initial-nonstored pages - build system always rounds tup
+    ; build system/loader will guarantee ram_blocks >= 10
+    ; suppose we have ram_blocks = 11
+    ; we will calculate max_nonstored_pages = 7
+    ; maybe our dynmem adjust (which I am thinking about "de-regulating", then reining back in with this change afterwards) sets nonstored_pages = 8. this isn't acceptable, as it only leaves us 1.5 512-byte vmem cache pages. nonstored_pages > max_nonstored_pages, so we'd cap it, to 7. That leaves us the min 2 512-byte blocks of vmem cache, but we have an odd nonstored_pages. *Maybe* that will work, but do we have a general assumption it's even, as it always is otherwise - the build system ensures this, ignoring any dynmem adjust.
+    ;
+    ; if we force game size to be rounded up to 512 bytes (as we currently do), we avoid this issue. what downsides does this have? on a non-vmem build, we don't force 512-byte alignment of story_start, but doing that doesn't help us, as we always round the game size up and so if we have 87 256-byte pages of memory free on tube and the game is actually 87 256-byte pages long, we will insist on a vmem build anyway.
+    ;
+
+    ;
+    ; The build system and loader work together to guarantee there are at least
+    ; min_vmem_blocks 512-byte blocks of vmem cache, i.e. to ensure
+    ; ACORN_INITIAL_NONSTORED_PAGES <= max_nonstored_pages. So by capping nonstored_pages at
+    ; max_nonstored_pages, we can't accidentally force it below ACORN_INITIAL_NONSTORED_PAGES.
+
+; SFTODONOW END EXP FRAGMENT
 
     ; Set ram_blocks -= nonstored_pages, i.e. set ram_blocks to the number of
     ; RAM blocks we have available as virtual memory cache.
@@ -1383,45 +1447,8 @@ game_blocks_ne_ram_blocks
     bcs +
     dec ram_blocks + 1
 +
-    ; SFTODONOW: REVIEW ALL THE FOLLOWING FRESH, ESP "NEW" SWR CASE
-    ; SFTODONOW: OK, I ALREADY STARTED SAYING THIS, CHANGED MY MIND BUT NOW I'M THINKING AGAIN - DON'T WE IN FACT NEED ram_blocks >= 2 * vmem_block_pagecount? YES, 1* IS ENOUGH O GUARANTEE VMAP_MAX_ENTRIES >=1, BUT IF WE DON'T ENFORCE 2*, IS THERE A RISK WE END UP DEADLOCKED/CRASHING BECAUSE WE HAVE OUR SOLE VMEM BLOCK OCCUPIED BY (SAY) ZPC AND THE DATA PTR THEREFORE CAN'T SWAP THE NEEDED BLOCK IN?
-    ; It's important ram_blocks >= vmem_block_pagecount now so that we will set
-    ; vmap_max_entries >= 1 below. Conceptually it makes sense for
-    ; vmap_max_entries to be 0 but in practice lots of code assumes it isn't.
-    ; SFTODONOW: SHOULD I ADD "ASSERT" CODE TO VERIFY THE VALUE IS NON-ZERO? THIS IS DISCARDABLE INIT CODE SO WE CAN AFFORD IT AND IT MIGHT SAVE HAIR-PULLING LATER
-    ;
-    ; The build system and loader work together to guarantee (initial)
-    ; ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + 2 * vmem_block_pagecount.
-    ;
-    ; If nonstored_pages has not been adjusted, there are two cases:
-    ; a) If we didn't set ram_blocks = game_blocks above, the build system and
-    ;    loader guarantee means we now have ram_blocks >= 2 *
-    ;    vmem_block_pagecount. QED.
-    ; b) If we did set ram_blocks = game_blocks above, we know that the
-    ;    game has at least one block of non-dynamic memory, so before the
-    ;    subtraction we had ram_blocks = game_blocks >=
-    ;    ACORN_INITIAL_NONSTORED_PAGES + vmem_block_pagecount. QED.
-    ;
-    ; On a turbo second processor, we may have adjusted nonstored_pages. There are
-    ; two cases:
-    ; a) If we didn't set ram_blocks = game_blocks above, as nonstored_pages
-    ;    lives in bank 0 and we also have banks 1 and 2 for virtual memory
-    ;    cache, after the subtraction we have ram_blocks ~= 128K >=
-    ;    vmem_block_pagecount. QED.
-    ; b) If we did set ram_blocks = game_blocks above, combine that with the
-    ;    fact the adjustment to nonstored_pages left nonstored_pages <=
-    ;    game_blocks - vmem_block_pagecount. QED.
-    ;
-    ; On a sideways RAM build, we may have adjusted nonstored_pages. There are
-    ; two cases:
-    ; a) If we didn't set ram_blocks = game_blocks above, we either:
-    ;    1) set nonstored_pages = ACORN_INITIAL_NONSTORED_PAGES; see the "not
-    ;       been adjusted" case above.
-    ;    2) set nonstored_pages <= ram_blocks - vmap_max_size *
-    ;       vmem_block_pagecount, so after the subtraction we have ram_blocks
-    ;       >= vmap_max_size * vmem_block_pagecount. QED
-    ; b) exactly the same as for the turbo second processor
 }
+; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
 !ifndef ACORN_SWR {
     ; vmap_first_ram_page is a constant set to suit a normal second processor
@@ -1445,12 +1472,7 @@ game_blocks_ne_ram_blocks
     tax
 .cap_at_vmap_max_size
     stx vmap_max_entries
-    ; SFTODONOW EXPERIMENTAL
-    cpx #2
-    bcs +
-    brk
-    !byte 0
-    !text "vmap_max_entries < 2", 0
+    jsr check_vmap_max_entries
 +
 
 SFTODOLABEL5
@@ -1664,15 +1686,25 @@ SFTODOOOL
     lda division_result + 1
     sta progress_indicator_blocks_per_step + 1
     sta progress_indicator_blocks_until_next_step + 1
+.rts
     rts
 
 .loading_string
     !text "Loading:", 0
 
+
 ; SFTODO: Don't forget more code can go here if it can be executed before we
 ; start to put data at story_start.
 
 !ifdef VMEM {
+check_vmap_max_entries
+    ; Assert vmap_max_entries >= 1; this should always be true, barring bugs.
+    lda vmap_max_entries
+    bne .rts
+    brk
+    !byte 0
+    !text "vmap_max_entries == 0", 0
+
 initial_vmap_z_l
     !fill vmap_max_size, 'V'
 }
@@ -2046,7 +2078,8 @@ SFTODOLABELX2
 +   sec
     sbc nonstored_pages
     lsr
-    sta vmap_max_entries ; SFTODONOW: MOVE VMAP_MAX_ENTRIES >= 2 CHECK TO AFTER THIS CODE SO IT CATCHES ALL CASES??
+    sta vmap_max_entries
+    jsr check_vmap_max_entries
 !ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
 }
