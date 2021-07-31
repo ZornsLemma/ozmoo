@@ -88,8 +88,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; SFTODONOW: Move some/all of this into acorn-init*.asm?
 ; Zero page allocations for the initial load of game data.
 dir_ptr = zp_temp ; 2 bytes
-; SFTODO: Probably not, but can the existence of vmap_sort_entries help simplify the normal tube+cache loading code?
-vmap_sort_entries = vmem_temp ; 1 byte
 !ifdef VMEM {
 ram_blocks = dir_ptr ; 2 bytes SFTODO: rename to ram_pages???
 }
