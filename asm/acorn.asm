@@ -1678,6 +1678,9 @@ constrain_nonstored_pages
 
     ; Set transient_zp = ram_blocks; on a normal second processor with the host
     ; cache enabled, we need to count only the second processor's own RAM.
+    ; SFTODO: THIS CODE PROBABLY NEVER ACTUALLY EXECUTES ON A NORMAL SECOND PROCESSOR,
+    ; BUT I SUPPOSE IT *MIGHT* - WE SHOULD MAYBE CALL IT ALWAYS. OTOH, IF WE *DON'T*
+    ; ALWAYS CALL IT, IS IT WORTH THE COMPLEXITY HERE?
     lda ram_blocks
     sta transient_zp
     lda ram_blocks + 1
@@ -1787,7 +1790,7 @@ full_block_graphic = 255
 !ifdef ACORN_TUBE_CACHE {
 ; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_BLOCKS), i.e. the number of
 ; pages of RAM we actually have on a normal second processor without counting
-; host cache.
+; host cache, capped at the actual size of the game.
 calculate_normal_tube_own_ram_blocks ; SFTODO: RENAME??
     lda #>(flat_ramtop - story_start)
 !if (>ACORN_GAME_BLOCKS) == 0 {
@@ -2102,10 +2105,10 @@ SFTODOLABELX2
     sbc nonstored_pages
     lsr
     sta vmap_max_entries
-    jsr check_vmap_max_entries
 !ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
 }
+    jsr check_vmap_max_entries
     ; Adjust host_cache_size so the following load loop won't try to put "too
     ; much" into the host cache; if this happens we might not have enough blocks
     ; to load into the local virtual memory cache and so some vmap entries would
