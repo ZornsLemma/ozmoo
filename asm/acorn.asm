@@ -1274,8 +1274,9 @@ SFTODOEE2
     bit is_turbo
     bpl .dynmem_adjust_done
 SFTODOLABEL1
+; SFTODONOW: While we'd *probably* get away with it because otherwise we'd be using a non-VMEM build, the next line could in theory set nonstored pages > actual game size - THIS WOULD BE HANDLED IF WE USED CHECK_BLAH TO CONSTRAIN
     lda #>(flat_ramtop - story_start)
-    ; SFTODONOW NEXT TWO LINES HACK TO SEE IF THIS IS AN EVEN/ODD ISSUE - NO, DOESN'T HELP, BUT DO NEED TO THINK IF THIS IS A CONCERN IN GENERAL
+    ; SFTODONOW NEXT TWO LINES HACK TO SEE IF THIS IS AN EVEN/ODD ISSUE - NO, DOESN'T HELP, BUT DO NEED TO THINK IF THIS IS A CONCERN IN GENERAL - I DON'T THINK IT IS, BECAUSE IN THE VMEM CASE WE *DO* HAVE 512-BYTE ALIGNEMTN (AND THIS IS VMEM)
     lsr
     asl
     sta nonstored_pages
@@ -1366,6 +1367,7 @@ game_blocks_ne_ram_blocks
     tya
     sbc #>.min_lhs_sub
     bcc .dynmem_adjust_done ; branch if only_dynmem_addressable_blocks negative
+; SFTODONOW FOLLOWING BLOCK COULD BE SIMPLIFIED SLIGHTLY BY CONSTRAINING CODE IN CHECK_NONSTORED_PAGES TO HANDLE THE CAORN_INITIAL_NONSTORED_PAGES LIMIT
     ; Set nonstored_pages = min(max(ACORN_INITIAL_NONSTORED_PAGES,
     ; only_dynmem_addressable_blocks), .max_dynmem); we can't use more dynamic
     ; memory than we have memory to support, of course, nor should be use less
@@ -1379,6 +1381,7 @@ game_blocks_ne_ram_blocks
     stx nonstored_pages
 .dynmem_adjust_done ; SFTODO RENAME LABEL
 
+; SFTODNOW: THE FOLLOWING BLOCK COULD BE REPLACED BY CONSTAINING CODE IN CHECK_NONSTORED_PAGES
     ; The code above may have set nonstored_pages slightly too high; in addition
     ; to the constraints discussed above, we need to ensure there are always
     ; min_vmem_blocks 512-byte blocks of vmem cache in order to prevent
