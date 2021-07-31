@@ -1241,17 +1241,6 @@ deletable_screen_init_1
     rts
 }
 
-deletable_screen_init_2
-!ifdef ACORN {
-    +acorn_deletable_screen_init_2_inline
-}
-	; clear and unsplit screen, start text output from bottom of the screen (top of screen if z5)
-	ldy #1
-	sty is_buffered_window
-	ldx #$ff
-	jsr erase_window
-	jmp start_buffering
-
 z_init
 !zone z_init {
 
@@ -1434,311 +1423,6 @@ z_init
 } else {
 	jmp z_rnd_init_random
 }
-}
-
-!zone deletable_init {
-
-!ifndef ACORN {
-deletable_init_start
-
-!ifdef TARGET_PLUS4 {
-	!ifdef CUSTOM_FONT {
-		lda reg_screen_char_mode
-		and #$07
-		ora #$10
-		sta reg_screen_char_mode
-		lda reg_screen_bitmap_mode
-		and #%11111011
-		sta reg_screen_bitmap_mode
-	} else {
-		lda #$d4
-		sta reg_screen_char_mode
-		lda reg_screen_bitmap_mode
-		ora #%00000100
-		sta reg_screen_bitmap_mode
-	}
-}
-!ifdef TARGET_C128 {
-	!ifdef CUSTOM_FONT {
-		; make font available to VDC as well
-		jsr VDCCopyFont
-
-		; set bit 2 in $01/$d9 to disable character ROM shadowing
-		; Page 364, https://www.cubic.org/~doj/c64/mapping128.pdf
-		lda #4
-		sta $d9
-
-		lda #$17 ; 0001 011X = $0400 $1800
-	} else {
-		lda #$16
-	}
-	sta reg_screen_char_mode
-}
-!ifdef TARGET_C64 {
-	!ifdef CUSTOM_FONT {
-		lda #$12
-	} else {
-		lda #$17
-	}
-	sta reg_screen_char_mode
-}
-!ifdef TARGET_MEGA65 {
-	!ifdef CUSTOM_FONT {
-		lda #$42 ; screen/font: $1000 $0800
-	} else {
-		lda #$26 ; screen/font: $0800 $1800 (character ROM)
-	}
-	sta reg_screen_char_mode
-	jsr init_mega65
-}
-
-	lda #$80
-	sta charset_switchable
-	lda #0
-	sta mempointer
-
-	jmp init_screen_colours ; _invisible
-}
-
-
-
-!ifdef TARGET_C128 {
-; Setup the memory pre-configurations we need:
-; pcra: RAM in bank 0, Basic disabled, Kernal and I/O enabled
-; pcrb: RAM in bank 0, RAM everywhere
-; pcrc: RAM in bank 1, RAM everywhere
-c128_mmu_values !byte $0e,$3f,$7f
-}
-
-
-deletable_init
-!ifndef ACORN {
-	cld
-
-	; stop key repeat (preventing problems with input in fast emulators)
-!ifdef TARGET_C64 {
-	lda #127
-	sta $028a
-}
-!ifdef TARGET_C128 {
-	lda #96
-	sta $0a22
-}
-!ifdef TARGET_PLUS4 {
-	lda #96
-	sta $0540
-}
-
-!ifdef TARGET_C128 {
-	jsr c128_setup_mmu
-}
-
-
-
-; Turn off function key strings, to let F1 work for darkmode and F keys work in BZ 
-!ifdef TARGET_PLUS4_OR_C128 {
-	ldx #$85
--	lda #1
-	sta fkey_string_lengths - $85,x
-	txa
-	sta fkey_string_area - $85,x
-	inx
-	cpx #$85 + 8
-	bcc -
-!ifdef TARGET_C128 {
-	lda #0
-	sta fkey_string_lengths + 8
-	sta fkey_string_lengths + 9
-}
-}
-
-
-; Read and parse config from boot disk
-	ldy CURRENT_DEVICE
-	cpy #8
-	bcc .pick_default_boot_device
-	cpy #16
-	bcc .store_boot_device
-.pick_default_boot_device
-	ldy #8
-.store_boot_device
-	sty boot_device ; Boot device# stored
-
-!ifdef VMEM {
-!ifdef TARGET_PLUS4 {
-	; Make config info on screen invisible
-	lda reg_backgroundcolour
-	ldx #0
--	sta COLOUR_ADDRESS,x
-	sta COLOUR_ADDRESS + 256,x
-	inx
-	bne -
-}
-	lda #<config_load_address
-	sta readblocks_mempos
-	lda #>config_load_address
-	sta readblocks_mempos + 1
-	lda #CONF_TRK
-	ldx #0
-; No need to load y with boot device#, already in place
-	jsr read_track_sector
-	inc readblocks_mempos + 1
-	lda #CONF_TRK
-	ldx #1
-	ldy boot_device
-	jsr read_track_sector
-;    jsr kernal_readchar   ; read keyboard
-; Copy game id
-	ldx #3
--	lda config_load_address,x
-!if SUPPORT_REU = 1 {
-	cmp reu_filled,x
-	beq +
-	dec reu_needs_loading
-+
-}
-	sta game_id,x
-	dex
-	bpl -
-
-; Copy disk info
-	ldx config_load_address + 4
-	dex
--	lda config_load_address + 4,x
-	sta disk_info - 1,x
-	dex
-	bne -
-	
-	jsr auto_disk_config
-;	jsr init_screen_colours
-} else { ; End of !ifdef VMEM
-	sty disk_info + 4
-	ldy #header_static_mem
-	jsr read_header_word ; Note: This does not work on C128, but we don't support non-vmem on C128!
-	ldx #$30 ; First unavailable slot
-	clc
-	adc #(>stack_size) + 4
-	sta zp_temp
-	lda #>664
-	sta zp_temp + 1
-	lda #<664
-.one_more_slot
-	sec
-	sbc zp_temp
-	tay
-	lda zp_temp + 1
-	sbc #0
-	sta zp_temp + 1
-	bmi .no_more_slots
-	inx
-	cpx #$3a
-	bcs .no_more_slots
-	tya
-	bcc .one_more_slot ; Always branch
-.no_more_slots
-	stx first_unavailable_save_slot_charcode
-	txa
-	and #$0f
-	sta disk_info + 1 ; # of save slots
-}
-
-	; Default banks during execution: Like standard except Basic ROM is replaced by RAM.
-	+set_memory_no_basic
-} else {
-    +acorn_deletable_init_inline
-}
-
-; parse_header section
-
-
-!ifndef ACORN {
-	; Store the size of dynmem AND (if VMEM is enabled)
-	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
-!ifdef TARGET_C128 {
-	; Special case because we need to read a header word from dynmem before dynmem
-	; has been moved to its final location.
-	lda story_start + header_static_mem
-	ldx story_start + header_static_mem + 1
-} else {
-	; Target is not C128
-	ldy #header_static_mem
-	jsr read_header_word
-}
-	stx dynmem_size
-	sta dynmem_size + 1
-}
-!ifdef VMEM {
-!ifndef ACORN {
-	tay
-	cpx #0
-	beq .maybe_inc_nonstored_pages
-	iny ; Add one page if statmem doesn't start on a new page ($xx00)
-.maybe_inc_nonstored_pages
-	tya
-	and #vmem_indiv_block_mask ; keep index into kB chunk
-	beq .store_nonstored_pages
-	iny
-.store_nonstored_pages
-	sty nonstored_pages
-	tya
-	clc
-	adc #>story_start
-	sta vmap_first_ram_page
-	lda #VMEM_END_PAGE
-	sec
-	sbc vmap_first_ram_page
-	lsr
-	cmp #vmap_max_size ; Maximum space available
-	bcc ++
-	lda #vmap_max_size
-++
-} ; ifndef ACORN
-!ifdef VMEM_STRESS {
-	lda #2 ; one block for PC, one block for data
-!ifdef ACORN {
-	sta vmap_used_entries
-	sta vmap_max_entries
-}
-}
-!ifndef ACORN {
-	sta vmap_max_entries
-}
-
-!ifdef TARGET_C128 {
-	jsr c128_move_dynmem_and_calc_vmem
-}
-
-	jsr prepare_static_high_memory
-
-!ifndef ACORN {
-	jsr insert_disks_at_boot
-
-!ifndef NOSECTORPRELOAD {
-
-!if SUPPORT_REU = 1 {
-	lda use_reu
-	bne .dont_preload
-}
-
-	jsr load_suggested_pages
-.dont_preload
-} ; ifndef NOSECTORPRELOAD
-} ; ifndef ACORN
-
-} ; End of !ifdef VMEM
-
-!ifndef UNSAFE {
-	; check z machine version
-	ldy #header_version
-	jsr read_header_word
-	cmp #ZMACHINEVERSION
-	beq .supported_version
-	lda #ERROR_UNSUPPORTED_STORY_VERSION
-	jsr fatalerror
-.supported_version
-}
-
-	rts
 }
 
 !ifdef VMEM {
@@ -2131,7 +1815,7 @@ prepare_static_high_memory
     lda #1
     sta vmap_used_entries
 } else {
-    ; +acorn_deletable_init_inline will initialise vmap_used_entries.
+    ; +acorn_deletable_init_inline will initialise vmap_used_entries. SFTODO: DOESN'T EXIST NOW, TWEAK COMMENT
 }
 }
 !ifdef TRACE_VM {
@@ -2166,7 +1850,7 @@ init_sid
 }
 
 !ifdef ACORN {
-    +acorn_init_code_in_stack
+	!source "acorn-init-stack.asm"
 }
 
 
@@ -2244,7 +1928,7 @@ initialize
     ; It's fine for code to spill over past story_start *as long as it's going
     ; to be executed before it gets overwritten*. We don't have any preload data
     ; attached, unlike the C64, so this doesn't cause problems.
-    +acorn_init_code_overlapping_game_data
+	!source "acorn-init-preload.asm"
 !ifdef ACORN_RELOCATABLE {
     ; This must be the last thing in the executable.
 	ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT = 1
