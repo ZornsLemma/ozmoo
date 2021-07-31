@@ -24,6 +24,9 @@
 
 .scratch_blocks_to_load !fill 2
 
+; SFTODO: Probably not, but can the existence of .vmap_sort_entries help simplify the normal tube+cache loading code?
+.vmap_sort_entries !fill 1
+
 ; Initialization performed very early during startup.
 deletable_init_start
 !ifdef ACORN_TURBO_SUPPORTED {
@@ -807,7 +810,7 @@ SFTODOLABEL5
     ldx #vmap_max_size
 +
 }
-    stx vmap_sort_entries
+    stx .vmap_sort_entries
 
     ; SFTODONOW: Not just here - I wonder if I should aggresively factor some of this into
     ; subroutines and/or actually indent nested !if blocks, yes that isn't the general Ozmoo
@@ -913,7 +916,7 @@ SFTODOXY7
     ; Sort vmap into ascending order, preserving the timestamps but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
     ; initial load. The build system can't do this sort, because we're sorting
-    ; the truncated list with just vmap_sort_entries not the full list of
+    ; the truncated list with just .vmap_sort_entries not the full list of
     ; vmap_max_size entries.
     ;
     ; This only happens once and it's not a huge list so while we don't want it
@@ -984,7 +987,7 @@ SFTODOXY7
     lda zp_temp + 1
     sta vmap_z_h,y
     inx
-    cpx vmap_sort_entries
+    cpx .vmap_sort_entries
     bne .outer_loop
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
