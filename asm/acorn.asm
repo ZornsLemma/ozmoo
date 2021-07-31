@@ -86,13 +86,6 @@
 ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
-; SFTODONOW: Move some/all of this into acorn-init*.asm?
-; Zero page allocations for the initial load of game data.
-dir_ptr = zp_temp ; 2 bytes
-!ifdef VMEM {
-ram_blocks = dir_ptr ; 2 bytes SFTODO: rename to ram_pages???
-}
-
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too
 ; space-conscious and so the check can be left in permanently. SFTODO: In some
@@ -1039,8 +1032,6 @@ do_oswrch_vdu_goto_xy
 ; SFTODO: Perhaps do some timings to see how much of an impact replacing direct SWR paging code with a JSR to that same code has. It's probably significant, but it may be that some of the optimisations in Ozmoo over time mean this actually isn't a huge performance overhead, which would help make executables more shareable across different machines.
 
 ; SFTODO: Would there be any value in always using $400-$800 as two pages of VM cache, and using $900-B00 plus space allocated within the binary itself to substitute for existing uses of $400-800?
-
-; SFTODONOW: Replace --show-program-start option with --debug-info or similar which shows program_start but also shows messages like "nonstored pages adjusted to X", all with osrdch once after all such output has occurred.
 
 ; SFTODONOW: Should I tweak the settings for the bRKV handler during the initial load so it uses an extra leading newline or two?
 
