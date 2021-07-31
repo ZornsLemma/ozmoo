@@ -1742,21 +1742,41 @@ check_nonstored_pages
     ; unnecessarily strict to insist on at least vmem_block_pagecount 512-byte
     ; blocks of vmem, but it's easier just to insist on meeting this condition
     ; all the time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
-    sec
-    !error "SFTODONOW ON TUBE CACHE CASE, USE DIFFERENT VAL INSTEAD OF RAM_BLOCKS?"
+    ;
+    ; Set transient_zp = ram_blocks; on a normal second processor with the host
+    ; cache enabled, we need to count only the second processor's own RAM.
     lda ram_blocks
-    sbc nonstored_pages
     sta transient_zp
     lda ram_blocks + 1
+    sta transient_zp + 1
+!ifdef ACORN_TUBE_CACHE {
+!ifdef ACORN_TURBO_SUPPORTED {
+    bit is_turbo
+    bmi +
+}
+    jsr calculate_tube_cache_ram_blocks
+    sta transient_zp
+    lda #0
+    sta transient_zp + 1
++
+}
+    ; Now subtract nonstored_pages and min_vmem_blocks * vmem_block_pagecount
+    ; from transient_zp (== ram_blocks); if the result becomes negative at any
+    ; point, nonstored_pages is too large.
+    sec
+    lda transient_zp
+    sbc nonstored_pages
+    sta transient_zp
+    lda transient_zp + 1
     sbc #0 ; high byte of nonstored_pages
     bcc .nonstored_pages_too_large
     sta transient_zp + 1
-    sec ; redundant...
+    sec
     lda transient_zp
     sbc #<(min_vmem_blocks * vmem_block_pagecount)
     lda transient_zp + 1
     sbc #>(min_vmem_blocks * vmem_block_pagecount) ; 0
-    bcc +
+    bcs +
 .nonstored_pages_too_large
     brk
     !byte 0
@@ -1836,6 +1856,20 @@ full_block_graphic = 255
     ora progress_indicator_blocks_until_next_step
     beq .while_loop
     rts
+
+!ifdef ACORN_TUBE_CACHE {
+; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_BLOCKS), i.e. the number of
+; pages of RAM we actually have on a normal second processor without counting
+; host cache.
+calculate_tube_cache_ram_blocks ; SFTODO: RENAME??
+    lda #>(flat_ramtop - story_start)
+!if (>ACORN_GAME_BLOCKS) == 0 {
+    cmp #<ACORN_GAME_BLOCKS
+    bcc +
+    lda #<ACORN_GAME_BLOCKS
+}
++   rts
+}
 }
 
 ; Initialization performed shortly after startup, just after
@@ -2065,7 +2099,9 @@ SFTODOLABEL2
 !if 0 {
     jsr streams_init
     ; vmap_used_entries is set later in normal use, but set it early here so
-    ; print_vm shows the entire vmap.
+    ; print_vm shows the entire vmap. SFTODO: This is probably broken by
+    ; "removal" of vmap_used_entries (except in PREOPT builds) - needs to be
+    ; tweaked.
     lda vmap_max_entries
     sta vmap_used_entries
     lda #'X'
@@ -2134,13 +2170,8 @@ SFTODOLABELX2
     ; through the Ozmoo build process.
     lda vmap_max_entries
     sta inflated_vmap_max_entries
-    lda #>(flat_ramtop - story_start)
-    ldx #>ACORN_GAME_BLOCKS
-    bne +
-    cmp #<ACORN_GAME_BLOCKS
-    bcc +
-    lda #<ACORN_GAME_BLOCKS
-+   sec
+    jsr calculate_tube_cache_ram_blocks
+    sec
     sbc nonstored_pages
     lsr
     sta vmap_max_entries
