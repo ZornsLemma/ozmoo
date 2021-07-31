@@ -1754,7 +1754,7 @@ check_nonstored_pages
     bit is_turbo
     bmi +
 }
-    jsr calculate_tube_cache_ram_blocks
+    jsr calculate_normal_tube_own_ram_blocks
     sta transient_zp
     lda #0
     sta transient_zp + 1
@@ -1782,7 +1782,8 @@ check_nonstored_pages
     !byte 0
     !text "nonstored_pages too large", 0
 +
-    ; SFTODONOW: Can/should we assert nonstored_blocks isn't so large it's not bigger than the game? This *might* be redundant if we always cap ram_blcoks at game_blocks. need to think about this.
+    ; Note that as we've already capped ram_blocks at game_blocks, we don't have to
+    ; explicitly check for nonstored_blocks being so large it's larger than the game.
     rts
 
 initial_vmap_z_l
@@ -1861,7 +1862,7 @@ full_block_graphic = 255
 ; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_BLOCKS), i.e. the number of
 ; pages of RAM we actually have on a normal second processor without counting
 ; host cache.
-calculate_tube_cache_ram_blocks ; SFTODO: RENAME??
+calculate_normal_tube_own_ram_blocks ; SFTODO: RENAME??
     lda #>(flat_ramtop - story_start)
 !if (>ACORN_GAME_BLOCKS) == 0 {
     cmp #<ACORN_GAME_BLOCKS
@@ -2170,7 +2171,7 @@ SFTODOLABELX2
     ; through the Ozmoo build process.
     lda vmap_max_entries
     sta inflated_vmap_max_entries
-    jsr calculate_tube_cache_ram_blocks
+    jsr calculate_normal_tube_own_ram_blocks
     sec
     sbc nonstored_pages
     lsr
