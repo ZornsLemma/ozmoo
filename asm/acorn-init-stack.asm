@@ -441,7 +441,7 @@ SFTODOLABELX2
 !ifdef HAVE_VMAP_USED_ENTRIES {
     sta vmap_used_entries
 }
-!error "SFTODO: LNEXT LINE IS BROKEN, check_vmap_max_entries CURRENTLY LIVES IN NON-STACK GAME DATA REG AND HAS BEEN OVERWRITTEN"
+;!error "SFTODO: LNEXT LINE IS BROKEN, check_vmap_max_entries CURRENTLY LIVES IN NON-STACK GAME DATA REG AND HAS BEEN OVERWRITTEN"
     jsr check_vmap_max_entries
     ; Adjust host_cache_size so the following load loop won't try to put "too
     ; much" into the host cache; if this happens we might not have enough blocks

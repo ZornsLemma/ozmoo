@@ -1,6 +1,12 @@
 ; Initialization code which may be placed after the end of the Z-machine stack;
 ; this means it might be overwritten as soon as anything is loaded at
-; story_start.
+; data_start/story_start.
+
+; As the code in this file gets overwritten when we start to load the game data,
+; we put it all in its own zone and make an effort to use local labels for
+; almost everything to reduce the risk of accidentally calling a subroutine in
+; here after it has been overwritten.
+!zone {
 
 ; Initialization performed very early during startup.
 deletable_init_start
@@ -470,7 +476,7 @@ SFTODOLM2
     ; addresses instead; we might as well do this on all platforms for
     ; consistency.
     ldx screen_mode
-    lda screen_start_page_by_mode,x
+    lda .screen_start_page_by_mode,x
     sec
     sbc #>shadow_start
     clc
@@ -663,15 +669,15 @@ SFTODOLABEL2X
     ldy ram_blocks + 1
     lda ram_blocks
     cpy #>ACORN_GAME_BLOCKS
-    bne game_blocks_ne_ram_blocks
+    bne .game_blocks_ne_ram_blocks
     cmp #<ACORN_GAME_BLOCKS
-    bne game_blocks_ne_ram_blocks
+    bne .game_blocks_ne_ram_blocks
 .use_max_dynmem
     lda .max_dynmem
     sta nonstored_pages
     jmp .dynmem_adjust_done
 
-game_blocks_ne_ram_blocks
+.game_blocks_ne_ram_blocks
     ; Note that we can't have game_blocks < ram_blocks because we reduced
     ; ram_blocks to match earlier, so game_blocks > ram_blocks. We don't want to
     ; reduce flexibility by locking parts of the game into RAM instead of
@@ -703,7 +709,7 @@ game_blocks_ne_ram_blocks
 
     ; The above adjustments deliberately ignored some general constraints on
     ; nonstored_pages to simplify the code; apply those constraints now.
-    jsr constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
+    jsr .constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
 }
 
     ; Set ram_blocks -= nonstored_pages, i.e. set ram_blocks to the number of
@@ -740,7 +746,7 @@ game_blocks_ne_ram_blocks
     tax
 .cap_at_vmap_max_size
     stx vmap_max_entries
-    jsr check_vmap_max_entries
+    jsr .check_vmap_max_entries
 +
 
 SFTODOLABEL5
@@ -865,7 +871,7 @@ SFTODOXY7
     lda #>ACORN_GAME_BLOCKS
     sta scratch_blocks_to_load + 1
 }
-    ; fall through to init_progress_indicator
+    ; fall through to .init_progress_indicator
 ; End of prepare_for_initial_load
 
 
@@ -882,7 +888,7 @@ progress_indicator_fractional_bits=7
 ; build so we could make it a macro and inline it, but since this code overlaps
 ; the game data we're not under that much memory pressure and it's more readable
 ; to just use a subroutine.
-init_progress_indicator
+.init_progress_indicator
     ; If we're not on the bottom line of the screen, set divisor = 2 *
     ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
     ; - cursor_x). This way we don't have to worry about causing a mildly ugly
@@ -967,7 +973,7 @@ SFTODOOOL
 ; start to put data at story_start.
 
 !ifdef VMEM {
-check_vmap_max_entries
+.check_vmap_max_entries
     ; Assert vmap_max_entries >= 1. We need this as the vmem code assumes it
     ; implicitly (e.g. when looping over the vmap).
     lda vmap_max_entries
@@ -976,7 +982,7 @@ check_vmap_max_entries
     !byte 0
     !text "vmap_max_entries == 0", 0
 
-constrain_nonstored_pages
+.constrain_nonstored_pages
     ; We must have nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES, otherwise
     ; we're not respecting the game's real dynamic memory size.
     lda nonstored_pages
@@ -1053,7 +1059,7 @@ initial_vmap_z_l
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-screen_start_page_by_mode
+.screen_start_page_by_mode
     !byte $30 ; mode 0
     !byte $30 ; mode 1
     !byte $30 ; mode 2
@@ -1062,4 +1068,6 @@ screen_start_page_by_mode
     !byte $58 ; mode 5
     !byte $60 ; mode 6
     !byte $7c ; mode 7
+}
+
 }
