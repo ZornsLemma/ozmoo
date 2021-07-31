@@ -279,20 +279,17 @@ deletable_init_start
     +init_readtime_inline
     jsr init_cursor_control
 
-!ifdef ACORN_SHOW_PROGRAM_START {
+!ifdef ACORN_SHOW_RUNTIME_INFO {
     ; Call deletable_screen_init_1 here so we can output succesfully; this is a
     ; little bit hacky but not a huge problem (and this is debug-only code).
     jsr deletable_screen_init_1
     jsr streams_init
-    lda #13
-    jsr s_printchar
     jsr print_following_string
-    !text "program_start=$", 0
+    !text 13, "program_start=$", 0
     lda #>program_start
     jsr print_byte_as_hex
     lda #<program_start
     jsr print_byte_as_hex
-    jsr osrdch
 }
 
     ; SFTODO: just fall through to prepare_for_initial_load?
@@ -891,6 +888,16 @@ SFTODOXY7
     lda #>ACORN_GAME_BLOCKS
     sta scratch_blocks_to_load + 1
 }
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    jsr print_following_string
+    !text 13, "nonstored_pages=$", 0
+    lda nonstored_pages
+    jsr print_byte_as_hex
+    jsr newline
+    jsr osrdch
+}
+
     ; fall through to .init_progress_indicator
 ; End of prepare_for_initial_load
 

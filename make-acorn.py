@@ -1560,7 +1560,7 @@ def parse_args():
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
-    group.add_argument("--show-program-start", action="store_true", help="show program_start at runtime")
+    group.add_argument("--show-runtime-info", action="store_true", help="show debug info at runtime")
 
     cmd_args = parser.parse_args()
 
@@ -1773,8 +1773,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DUSE_HISTORY=%d" % cmd_args.min_history]
     if cmd_args.history_upper_case:
         ozmoo_base_args += ["-DHISTORY_UPPER_CASE=1"]
-    if cmd_args.show_program_start:
-        ozmoo_base_args += ["-DACORN_SHOW_PROGRAM_START=1"]
+    if cmd_args.show_runtime_info:
+        ozmoo_base_args += ["-DACORN_SHOW_RUNTIME_INFO=1"]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -2086,7 +2086,7 @@ while True:
                 die("Game is too large for a double-sided disc")
 show_deferred_output()
 
-# SFTODO: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy. This is less critical now we have --show-program-start and --extra-build-at, perhaps not worth it at all.
+# SFTODO: For debugging purposes, a "just build at PAGE=&xxx and give me a usable report with no relocation shenanigans" option would be handy. This is less critical now we have --show-debug-info and --extra-build-at, perhaps not worth it at all.
 
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 
