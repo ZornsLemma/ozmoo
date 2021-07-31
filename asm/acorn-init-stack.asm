@@ -207,144 +207,7 @@ deletable_init
 SFTODOXA9
 
 !ifdef VMEM {
-    ; vmem_highbyte_mask might be 0 and that enables some small optimisations, but
-    ; in this one-off discardable init code we favour simplicity and don't bother.
-
 !ifndef PREOPT {
-    ; Sort vmap into ascending order, preserving the timestamps but using just the
-    ; addresses as keys. This avoids the drive head jumping around during the
-    ; initial load. The build system can't do this sort, because we're sorting
-    ; the truncated list with just vmap_sort_entries not the full list of
-    ; vmap_max_size entries.
-    ;
-    ; This only happens once and it's not a huge list so while we don't want it
-    ; to be really slow, compactness and simplicity of code are also important.
-    ; This is an insertion sort, implemented based on the pseudocode from
-    ; https://en.m.wikipedia.org/wiki/Insertion_sort, which I've relabelled here
-    ; to match the register use in the following code:
-    ;
-    ;     x = 1
-    ;     while x < length(vmap_z)
-    ;         temp = vmap_z[x]
-    ;         y = x - 1
-    ;         while y >= 0 and vmap_z[y] > temp
-    ;             vmap_z[y+1] = vmap_z[y]
-    ;             y = y - 1
-    ;         end while
-    ;         vmap_z[y+1] = temp
-    ;         x = x + 1
-    ;     end while
-    ;
-    ; Invariants:
-    ;       1 <= x <= length(vmap_z) <= vmap_max_size <= 255
-    ;      -1 <= y < x, so -1 <= y <= 254
-    ;
-    ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
-    ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
-    ; shuffled entries, which is probably a more typical case. Given a sorted
-    ; list - as will happen if the preopt mode has not been used - it takes
-    ; about 0.02 seconds to "sort" 255 entries, so there's no significant
-    ; performance penalty when this is not doing anything useful.
-    ; (We could simply not include this code if we don't have any preopt data,
-    ; but it's discardable init code so it's not really harmful and it seems
-    ; best for support purposes to keep the code identical whether or not preopt
-    ; data is supplied or not.)
-    ;
-    ; SFTODO: Couldn't we move this code so it's in the game data area not the
-    ; Z-machine stack? This doesn't matter unless/until we run out of space in the
-    ; Z-machine stack, of course. SFTODONOW?
-    ldx #1
-.outer_loop
-    lda vmap_z_l,x
-    sta zp_temp
-    lda vmap_z_h,x
-    sta zp_temp + 1
-    and #vmem_highbyte_mask
-    sta zp_temp + 4
-    txa
-    tay
-.inner_loop
-    dey
-    lda vmap_z_h,y
-    and #vmem_highbyte_mask
-    cmp zp_temp + 4
-    bne +
-    lda vmap_z_l,y
-    cmp zp_temp
-    beq .exit_inner_loop
-+   bcc .exit_inner_loop
-    lda vmap_z_l,y
-    sta vmap_z_l + 1,y
-    lda vmap_z_h,y
-    sta vmap_z_h + 1,y
-    tya
-    bne .inner_loop
-    dey
-.exit_inner_loop
-    ; We can't omit this iny and use vmap_z_[lh] + 1,y below to compensate
-    ; because Y may be -1 (255) and so they're not equivalent.
-    iny
-    lda zp_temp
-    sta vmap_z_l,y
-    lda zp_temp + 1
-    sta vmap_z_h,y
-    inx
-    cpx vmap_sort_entries
-    bne .outer_loop
-
-!ifndef ACORN_NO_DYNMEM_ADJUST {
-    ; The initial vmap created by the build system assumes nonstored_pages ==
-    ; ACORN_INITIAL_NONSTORED_PAGES, so if we changed nonstored_pages earlier
-    ; we need to adjust the vmap to compensate. If we didn't adjust it, this
-    ; code is a no-op. As the vmap is now sorted by address we just need to find
-    ; the first entry which doesn't correspond to dynamic memory and move
-    ; everything down so that entry becomes the first entry in the vmap. The
-    ; space freed up at the end of the vmap by this move is filled with dummy
-    ; entries so those entries will be used first when the game needs to load
-    ; more blocks from disc.
-    ; SFTODO: Couldn't we do this in the game-data code not the Z-machine stack code? SFTODONOW?
-SFTODOLABEL2
-    ldx #255
-.find_first_non_promoted_entry_loop
-    ; We need to shift the 16-bit vmap entry left one bit before comparing it
-    ; against nonstored_pages.
-    inx
-    lda vmap_z_l,x
-    asl
-    lda vmap_z_h,x
-    and #vmem_highbyte_mask
-    rol
-    bne .found_first_non_promoted_entry
-    lda vmap_z_l,x
-    asl
-    cmp nonstored_pages
-    bcc .find_first_non_promoted_entry_loop
-.found_first_non_promoted_entry
-    txa
-    beq .no_dynmem_promotion
-    ldy #0
-.vmap_move_down_loop
-    cpx #vmap_max_size
-    beq .use_dummy_entry
-    lda vmap_z_h,x
-    sta vmap_z_h,y
-    lda vmap_z_l,x
-    inx
-    bne + ; Always branch
-    +assert_discardable_unreached
-.use_dummy_entry
-    ; We use $0000 as a dummy entry; this has the oldest possible timestamp so
-    ; the entry will be re-used ASAP and because $0000xx is always dynamic
-    ; memory the virtual memory code will never match against the dummy entry.
-    lda #0
-    sta vmap_z_h,y
-+   sta vmap_z_l,y
-    iny
-    cpy vmap_max_entries
-    bne .vmap_move_down_loop
-.no_dynmem_promotion
-}
-
     ; Debugging code - use this in conjunction with --print-vm.
 !if 0 {
     jsr streams_init
@@ -368,6 +231,9 @@ SFTODOLABEL2
     ; memory and initialise vmap_used_entries. (This roughly corresponds to the
     ; C64 load_suggested_pages subroutine.)
 
+    ; SFTODO: I think we are duplicating code a bit here if we have
+    ; ACORN_TURBO_SUPPORTED and !ACORN_TUBE_CACHE - in that case we probably
+    ; don't need this special block of ACORN_TURBO_SUPPORTED code.
 !ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
     bpl .normal_tube_load
@@ -393,7 +259,7 @@ SFTODOLABEL2
     jmp .all_loading_done
 
 .normal_tube_load
-}
+} ; ACORN_TURBO_SUPPORTED
 
 !ifdef ACORN_TUBE_CACHE {
 ; SFTODO: These labels should probably start with a "."
