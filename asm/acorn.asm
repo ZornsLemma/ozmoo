@@ -641,46 +641,6 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 
 !zone {
 
-; SFTODONOW: DELETE HEADING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Initialization and finalization
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-!macro clean_up_and_quit_inline {
-!ifndef ACORN_ON_QUIT_COMMAND {
-    lda #<press_break_string
-    ldy #>press_break_string
-    jsr printstring
--   jmp -
-} else {
-    !ifdef ACORN_ON_QUIT_COMMAND_SILENT {
-        lda #vdu_disable
-        jsr oswrch
-    }
-    ldx #<.on_quit_command
-    ldy #>.on_quit_command
-    jsr oscli
-    ldx #<.basic_command
-    ldy #>.basic_command
-    jmp oscli ; never returns
-.on_quit_command
-    !source "../temp/on-quit-command.asm"
-.basic_command
-    !text "BASIC", 13
-}
-}
-
-!ifndef ACORN_SWR {
-    ; Re-enter the current language.
-re_enter_language
-    lda #osbyte_enter_language
-re_enter_language_ldx_imm
-    ldx #$ff ; patched by initialisation code
-    jsr osbyte ; never returns
-}
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; OS error handling and associated routines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -897,6 +857,39 @@ kernal_readtime
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Miscellaneous utility routines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+!macro clean_up_and_quit_inline {
+!ifndef ACORN_ON_QUIT_COMMAND {
+    lda #<press_break_string
+    ldy #>press_break_string
+    jsr printstring
+-   jmp -
+} else {
+    !ifdef ACORN_ON_QUIT_COMMAND_SILENT {
+        lda #vdu_disable
+        jsr oswrch
+    }
+    ldx #<.on_quit_command
+    ldy #>.on_quit_command
+    jsr oscli
+    ldx #<.basic_command
+    ldy #>.basic_command
+    jmp oscli ; never returns
+.on_quit_command
+    !source "../temp/on-quit-command.asm"
+.basic_command
+    !text "BASIC", 13
+}
+}
+
+!ifndef ACORN_SWR {
+    ; Re-enter the current language.
+re_enter_language
+    lda #osbyte_enter_language
+re_enter_language_ldx_imm
+    ldx #$ff ; patched by initialisation code
+    jsr osbyte ; never returns
+}
 
 ; Like printstring_raw, but using OSASCI.
 printstring_os
