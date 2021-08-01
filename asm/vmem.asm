@@ -770,6 +770,7 @@ SFTODOBOOM
     ; memory and this would be a pessimisation. (0.05*5+(1-0.05)*(20+5)=24>20.)
     lda mempointer + 1
     bmi .not_main_ram
+.read_and_return_value_main_ram
     lda (mempointer),y
 !ifdef ACORN_DEBUG_ASSERT {
     ; Let's just prove it's OK to be corrupting X and Y.
@@ -825,6 +826,7 @@ SFTODOBOOM
 } else {
 	sta mempointer + 1
 }
+!ifndef ACORN_SWR {
 !ifdef ACORN_TURBO_SUPPORTED {
     ; We need to ensure bank 0 is accessed for dynamic memory on a turbo second
     ; processor. This isn't necessary on an ordinary second processor, but it's
@@ -833,13 +835,14 @@ SFTODOBOOM
     stz mempointer_turbo_bank
     bra .read_and_return_value
 } else {
-!ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+	bne .read_and_return_value ; Always branch
+}
+} else { ; ACORN_SWR
+!ifdef ACORN_SWR_SMALL_DYNMEM {
     ; SF: On an ACORN_SWR_SMALL_DYNMEM build, all dynamic memory is in main
     ; RAM so it doesn't matter what the value of mempointer_ram_bank is or which
     ; bank is currently paged in.
-    ; SFTODO: I think we could just do the lda+rts here; since we haven't paged out the
-    ; current bank there's no need to page it back in afterwards, as read_and_return_value will.
-	bne .read_and_return_value ; Always branch
+	bne .read_and_return_value_main_ram ; Always branch
 } else { ; ACORN_SWR_MEDIUM_OR_BIG_DYNMEM
     ; SFTODO: WE COULD POSSIBLY DO "bpl read_and_return_value" or "bmi +:lda:rts:+" HERE, SINCE IF THE ADDRESS ISN'T IN SWR WE DON'T NEED TO PAGE ANYTHING IN OR OUT TO GET TO THE DATA
     ; We have to page in the first SWR bank now, and we have to set
