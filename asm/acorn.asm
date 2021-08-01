@@ -1,5 +1,4 @@
 ; Acorn-specific code factored out into its own file for readability.
-; SFTODONOW: REPLACE USES OF 2 AS MAGIC NUMBER WITH min_vmem_blocks
 ; SFTODONOW: Maybe rename this file to acorn-something.asm now we've pulled some code out into other acorn-*.asm files
 
 ; Note that the code macros defined in here have the suffix "_inline" if control

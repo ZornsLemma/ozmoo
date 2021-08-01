@@ -468,7 +468,7 @@ SFTODOLABEL4
 
 !ifdef VMEM {
 !ifdef VMEM_STRESS {
-	lda #2 ; one block for PC, one block for data
+	lda #min_vmem_blocks ; one block for PC, one block for data
 	sta vmap_used_entries
 	sta vmap_max_entries
 }
