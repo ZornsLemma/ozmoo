@@ -390,10 +390,7 @@ prepare_for_initial_load
     adc #8
     sta .dir_ptr
     bne .find_file_loop
-    brk
-    !byte 0
-    !text "DATA not found"
-    !byte 0
+    +os_error 0, "DATA not found"
 .file_found
     ; We found the file's name using sector 0, we now want to look at the
     ; corresponding part of sector 1. Adjust .dir_ptr for convenience.
@@ -1170,9 +1167,7 @@ SFTODOOOL
     ; implicitly (e.g. when looping over the vmap).
     lda vmap_max_entries
     bne .rts
-    brk
-    !byte 0
-    !text "vmap_max_entries == 0", 0
+    +os_error 0, "vmap_max_entries == 0"
 
 .constrain_nonstored_pages
     ; We must have nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES, otherwise

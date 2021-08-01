@@ -149,10 +149,9 @@ readblocks
     jsr kernal_readtime
     cmp #50
     bcs +
-    brk
-    !byte 'A' ; error code, use a printable character to confirm it isn't printed
-    !text "Fake read error"
-    !byte 0
+    ; The error code doesn't matter, but we use a printable one here to confirm it
+    ; isn't being printed by accident. (We wouldn't notice if it were 0.)
+    +os_error 'A', "Fake read error"
 +
 }
 
@@ -197,11 +196,7 @@ readblocks
     ldy #>game_data_filename
     jsr osfind
     bne +
-    brk
-cant_open_data_error
-    !byte 0
-    !text "Can't open DATA"
-    !byte 0
+    +os_error 0, "Can't open DATA"
 +   sta osgbpb_block_handle
 
 .file_is_open
@@ -975,10 +970,7 @@ save_game
     jsr osfind
     cmp #0
     bne +
-    brk
-    !byte err_not_found
-    !text "Not found"
-    !byte 0
+    +os_error err_not_found, "Not found"
 +   sta osgbpb_block_handle
 .open_file_rts
     rts

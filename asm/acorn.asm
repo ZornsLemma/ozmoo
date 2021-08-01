@@ -86,16 +86,20 @@
 ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
+; Macro used to generate an OS error.
+!macro os_error error_number, error_message {
+    brk
+    !byte error_number
+    !text error_message, 0
+}
+
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too
 ; space-conscious and so the check can be left in permanently. SFTODO: In some
 ; cases, maybe it would be better just to rewrite the code to avoid even a
 ; theoretical possibility of this macro being executed.
 !macro assert_discardable_unreached {
-    ; SFTODO: I should have a macro for this brk-byte-text sequence to avoid accidentally gettin g it wrong somewhere and not noticing
-    brk
-    !byte 0
-    !text "Unreachable", 0
+    +os_error 0, "Unreachable"
 }
 
 ; Macro used to catch cases where a supposedly unreachable execution path is
