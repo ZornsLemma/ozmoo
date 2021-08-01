@@ -893,6 +893,8 @@ game_id		!byte 0,0,0,0
 ; include other assembly files
 !ifdef ACORN {
 	!source "acorn.asm"
+	!source "acorn-swr.asm" ; SFTODO: rename this file? screen hole is not exactly swr (although it kind of us, because screen hole is trivial if we have no swr)
+	!source "acorn-utilities.asm"
 }
 !source "utilities.asm"
 !source "screenkernal.asm"
