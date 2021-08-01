@@ -231,6 +231,15 @@ assert_carry_clear_sub
     sty electron_romsel
 }
 }
+
+; SFTODO: Don't define these in smalldyn? Any code using it is wasting time/space, I think. SFTODONOW: This is probably "potentially important" - I am not at all clear if this is true or not, need to think about it with a clear head - I *think* these are used usefully and correctly in smalldyn case, but review that again before deleting this TODO
+!macro acorn_swr_page_in_default_bank_using_y {
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
+}
+!macro acorn_swr_page_in_default_bank_using_a {
+    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
+}
+
 }
 
 ; In the Acorn port, I've deliberately renamed before_dynmem_read and
@@ -637,18 +646,6 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 ; Initialization and finalization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
-; SFTODO: Move this to be with the other paging macros?
-!ifdef ACORN_SWR {
-; SFTODO: Don't define these in smalldyn? Any code using it is wasting time/space, I think. SFTODONOW: This is probably "potentially important" - I am not at all clear if this is true or not, need to think about it with a clear head - I *think* these are used usefully and correctly in smalldyn case, but review that again before deleting this TODO
-!macro acorn_swr_page_in_default_bank_using_y {
-    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
-}
-!macro acorn_swr_page_in_default_bank_using_a {
-    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
-}
-}
 
 
 !macro clean_up_and_quit_inline {
