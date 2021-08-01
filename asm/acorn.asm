@@ -233,6 +233,98 @@ assert_carry_clear_sub
 }
 }
 
+; In the Acorn port, I've deliberately renamed before_dynmem_read and
+; after_dynmem_read so that any upstream changes which use these macros will
+; fail to build and force me to inspect them manually. The Commodore versions
+; don't modify any registers or flags (except I), but that would cost time and
+; space on the Acorn port.
+
+!macro before_dynmem_read_corrupt_a {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    +acorn_page_in_bank_using_a dynmem_ram_bank
+}
+}
+
+!macro before_dynmem_read_corrupt_a_slow {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    jsr before_dynmem_read_corrupt_a_slow_sub
+}
+}
+
+!macro before_dynmem_read_corrupt_y {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    +acorn_page_in_bank_using_y dynmem_ram_bank
+}
+}
+
+!macro before_dynmem_read_corrupt_y_slow {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    jsr before_dynmem_read_corrupt_y_slow_sub
+}
+}
+
+!macro after_dynmem_read_corrupt_a {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
+}
+}
+
+; SFTODO: A lot of the after_dynmem_*_slow calls are followed by rts; it may be worth introducing special wrappers to do after_dynmem_*+rts, it is a bit of extra complexity but not much and it would save time and space on bigdyn builds at a small complexity cost for other builds
+!macro after_dynmem_read_corrupt_a_slow {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    jsr after_dynmem_read_corrupt_a_slow_sub
+}
+}
+
+!macro after_dynmem_read_corrupt_y {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
+}
+}
+
+!macro after_dynmem_read_corrupt_y_slow {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    jsr after_dynmem_read_corrupt_y_slow_sub
+}
+}
+
+; SFTODO: IT'S POSSIBLE SOME CALLERS OF THIS NON-A-CORRUPTING VERSION COULD USE AN X OR Y CORRUPTING VERSION - I HAVE REVIEWED MOST, BUT THINGS ARE STILL WIP SO WORTH RE-REVIEWING ANY REMAINING CALLERS OF THIS VERSION LATER
+!macro after_dynmem_read_preserve_axy {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    pha
+    +after_dynmem_read_corrupt_a
+    pla
+}
+}
+
+!macro after_dynmem_read_preserve_axy_slow {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    jsr after_dynmem_read_preserve_axy_slow_sub
+}
+}
+
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+before_dynmem_read_corrupt_a_slow_sub
+    +before_dynmem_read_corrupt_a
+    rts
+
+before_dynmem_read_corrupt_y_slow_sub
+    +before_dynmem_read_corrupt_y
+    rts
+
+after_dynmem_read_corrupt_a_slow_sub
+    +after_dynmem_read_corrupt_a
+    rts
+
+after_dynmem_read_corrupt_y_slow_sub
+    +after_dynmem_read_corrupt_y
+    rts
+
+after_dynmem_read_preserve_axy_slow_sub
+    +after_dynmem_read_preserve_axy
+    rts
+}
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Screen hole support
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -539,98 +631,6 @@ sta_dynmem_ind_y_slow_z_high_global_vars_ptr_sub
 }
 
 !zone {
-
-; In the Acorn port, I've deliberately renamed before_dynmem_read and
-; after_dynmem_read so that any upstream changes which use these macros will
-; fail to build and force me to inspect them manually. The Commodore versions
-; don't modify any registers or flags (except I), but that would cost time and
-; space on the Acorn port.
-
-!macro before_dynmem_read_corrupt_a {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_a dynmem_ram_bank
-}
-}
-
-!macro before_dynmem_read_corrupt_a_slow {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    jsr before_dynmem_read_corrupt_a_slow_sub
-}
-}
-
-!macro before_dynmem_read_corrupt_y {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_y dynmem_ram_bank
-}
-}
-
-!macro before_dynmem_read_corrupt_y_slow {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    jsr before_dynmem_read_corrupt_y_slow_sub
-}
-}
-
-!macro after_dynmem_read_corrupt_a {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
-}
-}
-
-; SFTODO: A lot of the after_dynmem_*_slow calls are followed by rts; it may be worth introducing special wrappers to do after_dynmem_*+rts, it is a bit of extra complexity but not much and it would save time and space on bigdyn builds at a small complexity cost for other builds
-!macro after_dynmem_read_corrupt_a_slow {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    jsr after_dynmem_read_corrupt_a_slow_sub
-}
-}
-
-!macro after_dynmem_read_corrupt_y {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
-}
-}
-
-!macro after_dynmem_read_corrupt_y_slow {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    jsr after_dynmem_read_corrupt_y_slow_sub
-}
-}
-
-; SFTODO: IT'S POSSIBLE SOME CALLERS OF THIS NON-A-CORRUPTING VERSION COULD USE AN X OR Y CORRUPTING VERSION - I HAVE REVIEWED MOST, BUT THINGS ARE STILL WIP SO WORTH RE-REVIEWING ANY REMAINING CALLERS OF THIS VERSION LATER
-!macro after_dynmem_read_preserve_axy {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    pha
-    +after_dynmem_read_corrupt_a
-    pla
-}
-}
-
-!macro after_dynmem_read_preserve_axy_slow {
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    jsr after_dynmem_read_preserve_axy_slow_sub
-}
-}
-
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-before_dynmem_read_corrupt_a_slow_sub
-    +before_dynmem_read_corrupt_a
-    rts
-
-before_dynmem_read_corrupt_y_slow_sub
-    +before_dynmem_read_corrupt_y
-    rts
-
-after_dynmem_read_corrupt_a_slow_sub
-    +after_dynmem_read_corrupt_a
-    rts
-
-after_dynmem_read_corrupt_y_slow_sub
-    +after_dynmem_read_corrupt_y
-    rts
-
-after_dynmem_read_preserve_axy_slow_sub
-    +after_dynmem_read_preserve_axy
-    rts
-}
 
 ; SFTODONOW: DELETE HEADING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
