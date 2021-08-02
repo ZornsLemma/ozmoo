@@ -68,6 +68,9 @@ A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
     IF HIMEM-TOP<512 THEN MODE 135:VDU 23,1,0;0;0;0;
 }
 
+REM Allow calling PROCdie() before things have been properly set up.
+die_top_y=0:space_y=24:normal_fg=0
+
 REM In a few places in the loader (not the Ozmoo binary) we assume printing at
 REM the bottom right of the screen will cause a scroll. Override any "No Scroll"
 REM configuration on a Master to make this assumption valid.
@@ -502,6 +505,14 @@ DEF PROCdetect_turbo
 !ifdef ACORN_TURBO_SUPPORTED {
     REM !BOOT will have run the TURBO executable, which will have set
     REM zp_temp_turbo_flag to &FF if we're on a turbo copro or 0 otherwise.
+    REM It's just possible (e.g. on a hard drive installation) our !BOOT isn't
+    REM in use, so if zp_temp_turbo_flag isn't 0 or &FF let's complain. This
+    REM won't always catch the problem, but it's better than nothing.
+    IF ?${zp_temp_turbo_flag}<>0 AND ?${zp_temp_turbo_flag}<>&FF THEN PROCdie("Invalid turbo test flag")
+    REM SFTODO: This copying is a little pointless - we currently arrange for
+    REM is_turbo == zp_temp_turbo_flag, and since is_turbo must be a BASIC-safe
+    REM address anyway doing this copy doesn't allow us to just allocate an
+    REM arbitrary address to is_turbo.
     turbo=0<>?${zp_temp_turbo_flag}
     ?${is_turbo}=turbo:REM we only care about bit 7 being set
 } else {
