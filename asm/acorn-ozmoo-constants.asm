@@ -303,6 +303,34 @@ low_fixed_gap_end = *
 	}
 }
 
+; Algorithm for detecting overapping intervals taken from
+; https://scicomp.stackexchange.com/questions/26258/the-easiest-way-to-find-intersection-of-two-intervals,
+; but tweaked to work with half-open intervals.
+
+!macro skip_fixed_alloc fixed_start, fixed_size, current_size {
+	.fixed_end = fixed_start + fixed_size
+	.current_end = * + current_size
+	; acme's "not" is a bitwise operation and doesn't do what we want here...
+	!if (* >= .fixed_end) or (fixed_start >= .current_end) {
+	} else {
+		!if * != fixed_start {
+			!warn "Wasting ", fixed_start - *, " bytes before fixed allocation at ", fixed_start
+		}
+		* = .fixed_end
+		+pre_allocate current_size
+	}
+}
+
+!macro check_fixed_alloc fixed_start, fixed_size {
+	.fixed_end = fixed_start + fixed_size
+	.current_end = * + current_size
+	; acme's "not" is a bitwise operation and doesn't do what we want here...
+	!if (* >= .fixed_end) or (fixed_start >= .current_end) {
+	} else {
+		!error "Fixed allocation would be overwritten"
+	}
+}
+
 !macro pre_allocate n {
 	!if n < 1 {
 		!error "Invalid n"
@@ -318,6 +346,10 @@ low_fixed_gap_end = *
 			+set_alloc_star high_alloc_ptr
 		}
 	}
+
+!ifdef ACORN_TURBO_SUPPORTED {
+	+skip_fixed_alloc zp_temp_turbo_flag, 1, n
+}
 
 	!set pre_allocation = n
 }
@@ -338,6 +370,10 @@ low_fixed_gap_end = *
 	!if (* + n) > alloc_end {
 		!error "No room for allocation of ", n, " bytes at ", *, " (alloc_end = ", alloc_end, ")"
 	}
+
+!ifdef ACORN_TURBO_SUPPORTED {
+	+check_fixed_alloc zp_temp_turbo_flag, 1
+}
 
 	!if * < low_end {
 		* = * + n
@@ -650,7 +686,12 @@ use_hw_scroll 	+allocate 1
 }
 
 !ifdef ACORN_TURBO_SUPPORTED {
-is_turbo	+allocate 1 ; SFTODO: RENAME turbo_flag?
+; is_turbo is a bit annoying. Because of the way we test for the presence of a
+; turbo second processor, we end up with the result at zp_temp_turbo_flag in
+; BASIC's user-allocated zero page. We need to avoid this code allocating
+; anything over the top of it, hence the special cases for it in the allocation
+; macros.
+is_turbo = zp_temp_turbo_flag ; 1 byte SFTODO: RENAME turbo_flag?
 }
 
 !ifdef ACORN_SWR {

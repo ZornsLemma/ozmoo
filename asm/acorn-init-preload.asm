@@ -36,20 +36,20 @@
 
 ; Initialization performed very early during startup.
 deletable_init_start
-!ifdef ACORN_TURBO_SUPPORTED {
-    ; The TURBO executable will have set zp_temp_turbo_flag; stash the value before we clear zero page and copy it into is_turbo afterwards.
-    ; SFTODONOW: This is *not* going to work across a "restart" command. But let's just hack it like this for the moment.
-    lda zp_temp_turbo_flag
-    pha
-}
-
     ; Clear all our zero page; this is probably a good idea for consistency
     ; anyway but is important when some storage allocated via +allocate in
     ; acorn-ozmoo-constants.asm ends up in zero page instead of low memory.
     lda #0
     tax
--   sta $00,x
-    inx
+-
+!ifdef ACORN_TURBO_SUPPORTED {
+    ; We must avoid clearing is_turbo, which is set by the turbo test executable
+    ; during boot and never touched afterwards.
+    cpx #is_turbo
+    beq +
+}
+    sta $00,x
++   inx
     cpx #zp_end
     bne -
 
