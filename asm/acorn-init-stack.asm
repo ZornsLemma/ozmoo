@@ -1,17 +1,19 @@
 ; Initialization subroutines which will be placed inside the Z-machine stack.
 
+!zone deletable_init {
 
 !ifdef ACORN_TUBE_CACHE {
 host_cache_size !fill 1
 }
 
-progress_indicator_blocks_per_step !fill 2
-progress_indicator_blocks_until_next_step !fill 2
-
 screenkernal_init
     +screenkernal_init_inline
 .screenkernal_init_rts
     rts
+
+
+progress_indicator_blocks_per_step !fill 2
+progress_indicator_blocks_until_next_step !fill 2
 
 update_progress_indicator
 progress_indicator_one_block = 1 << progress_indicator_fractional_bits
@@ -61,6 +63,7 @@ full_block_graphic = 255
     beq .while_loop
     rts
 
+
 !ifdef ACORN_TUBE_CACHE {
 ; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_BLOCKS), i.e. the number of
 ; pages of RAM we actually have on a normal second processor without counting
@@ -75,77 +78,15 @@ calculate_normal_tube_own_ram_blocks ; SFTODO: RENAME??
 +   rts
 }
 
-; This initialization happens quite late in the initialization process - in
-; particular it happens after the lengthy loading process in
-; acorn_deletable_init_inline. SFTODONOW: Which no longer exists, tweak comment
-; SFTODO: MOVE THIS TOWARDS BOTTOM OF FILE, TO HELP REFLECT LOGICAL EXECUTION SEQUENCE?
-deletable_screen_init_2
-!ifndef ACORN {
-	!error "Non-Acorn code has been removed from deletable_screen_init_2"
-}
-
-    ; Set the desired mode. If we're already in the right mode we don't reselect
-    ; it, to avoid the screen flashing briefly to black. This is deletable init
-    ; code so we can afford minor luxuries like this.
-    lda #osbyte_read_screen_mode
-    jsr osbyte
-    cpy screen_mode
-    beq .already_in_right_mode
-    lda #vdu_set_mode
-    jsr oswrch
-    lda screen_mode
-    ora #128 ; force shadow mode on
-    jsr oswrch
-    jmp .mode_set
-.already_in_right_mode
-    ; Clear the screen; this is mostly unnecessary, but for Z3 games which are
-    ; loading from the loader in mode 7 it clears any leftover text on the top
-    ; line of the screen.
-    lda #vdu_cls
-    jsr oswrch
-.mode_set
-    ; Setting the mode will have turned the cursor back on, so fix that.
-    jsr init_cursor_control
-    ; We must re-initialise screenkernal to pick up the details of the new mode.
-    jsr screenkernal_init
-    ; We must also reset the window sizes; we do this by re-executing
-    ; deletable_screen_init_1.
-    jsr deletable_screen_init_1
-
-!ifdef ACORN_HW_SCROLL {
-    ldx #1
-    ldy screen_mode
-    cpy #7
-    bne +
-    dex
-+   stx use_hw_scroll
-}
-!ifdef MODE_7_INPUT {
-    ; We're not currently in the middle of using coloured input, so stop update_colours
-    ; trying to adjust things. SFTODO: We could do this right after startup, which would
-    ; save a bit of code in the Z-machine stack.
-    lda #0
-    sta input_colour_code_or_0
-}
-    jsr update_colours
-
-	; clear and unsplit screen, start text output from bottom of the screen (top of screen if z5)
-	ldy #1
-	sty is_buffered_window
-	ldx #$ff
-	jsr erase_window
-	jmp start_buffering
-; End of deletable_screen_init_2
-
-
-!zone deletable_init {
 
 !ifndef ACORN {
 	!error "Non-Acorn code for deletable_init has been removed"
 }
 
 ; Initialization performed shortly after startup, just after
-; acorn_deletable_init_start.
+; acorn_deletable_init_start. This code actually loads the game data from disc,
+; which is why it has to live in the Z-machine stack so it doesn't overwrite
+; itself.
 deletable_init
     ; SFTODO: If we got tight on space in the Z-machine stack, the following
     ; code up to but not including .dynmem_load_loop could be moved into
@@ -465,7 +406,6 @@ SFTODOLABEL4
 
 ; parse_header section
 
-
 !ifdef VMEM {
 !ifdef VMEM_STRESS {
 	lda #min_vmem_blocks ; one block for PC, one block for data
@@ -489,4 +429,68 @@ SFTODOLABEL4
 }
 
 	rts
+; End of deletable_init
+
+
+; This initialization happens quite late in the initialization process - in
+; particular it happens after the lengthy loading process in
+; deletable_init.
+deletable_screen_init_2
+!ifndef ACORN {
+	!error "Non-Acorn code has been removed from deletable_screen_init_2"
+}
+
+    ; Set the desired mode. If we're already in the right mode we don't reselect
+    ; it, to avoid the screen flashing briefly to black. This is deletable init
+    ; code so we can afford minor luxuries like this.
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    cpy screen_mode
+    beq .already_in_right_mode
+    lda #vdu_set_mode
+    jsr oswrch
+    lda screen_mode
+    ora #128 ; force shadow mode on
+    jsr oswrch
+    jmp .mode_set
+.already_in_right_mode
+    ; Clear the screen; this is mostly unnecessary, but for Z3 games which are
+    ; loading from the loader in mode 7 it clears any leftover text on the top
+    ; line of the screen.
+    lda #vdu_cls
+    jsr oswrch
+.mode_set
+    ; Setting the mode will have turned the cursor back on, so fix that.
+    jsr init_cursor_control
+    ; We must re-initialise screenkernal to pick up the details of the new mode.
+    jsr screenkernal_init
+    ; We must also reset the window sizes; we do this by re-executing
+    ; deletable_screen_init_1.
+    jsr deletable_screen_init_1
+
+!ifdef ACORN_HW_SCROLL {
+    ldx #1
+    ldy screen_mode
+    cpy #7
+    bne +
+    dex
++   stx use_hw_scroll
+}
+!ifdef MODE_7_INPUT {
+    ; We're not currently in the middle of using coloured input, so stop update_colours
+    ; trying to adjust things. SFTODO: We could do this right after startup, which would
+    ; save a bit of code in the Z-machine stack.
+    lda #0
+    sta input_colour_code_or_0
+}
+    jsr update_colours
+
+	; clear and unsplit screen, start text output from bottom of the screen (top of screen if z5)
+	ldy #1
+	sty is_buffered_window
+	ldx #$ff
+	jsr erase_window
+	jmp start_buffering
+; End of deletable_screen_init_2
+
 }
