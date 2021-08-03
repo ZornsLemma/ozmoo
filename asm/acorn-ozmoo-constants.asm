@@ -533,7 +533,7 @@ zp_screenrow	+allocate 1 ; current cursor row
 ; trusted to retain their values across * commands or (being paranoid) any service
 ; call, but they can be used for very short term storage. On second processor builds,
 ; we just allocate some of the available zero page for this.
-; SFTODO: There's no advantage to a small transient_zp_size on non-tube; on tube we could make it smaller depending on MODE_7_INPUT and USE_HISTORY.
+; SFTODO: There's no advantage to a small transient_zp_size on non-tube; on tube we could make it smaller (but would need to check code to see exactly how much smaller and be careful)
 transient_zp_size = 5 ; bytes of transient zero page needed
 ; SFTODO: Note at the moment code in acorn.asm uses transient_zp directly and assumes size >=2
 !if transient_zp_size > 8 {
@@ -577,18 +577,6 @@ screen_hole_tmp_slow  = transient_zp + 3 ; 1 byte
 ; This overlaps screen_hole_zp_ptr but that's fine; this is transient workspace
 ; and can't be relied on to hold values for long anyway.
 mode_7_input_tmp = transient_zp ; 1 byte
-}
-
-!ifndef ACORN_SWR {
-!ifdef USE_HISTORY {
-; This overlaps the above uses of transient command workspace, but that's fine - the
-; whole point is we cannot rely on it to hold values except in the short term. (On
-; a second processor this is actually our zero page, but we're treating it as if it's
-; short-term only just as it is on the host.)
-; SFTODO: I do wonder if this is really a good use of zero page - note that we'd only
-; need one byte of transient_zp otherwise - but it does shorten the code a bit.
-osbyte_set_cursor_editing_tmp = transient_zp ; 5 bytes
-}
 }
 
 ; Confirm that up to this point we've been allocating in zero page; this means

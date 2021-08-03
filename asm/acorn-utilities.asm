@@ -325,19 +325,16 @@ do_osbyte_set_cursor_editing
     stx nominal_cursor_key_status
     rts
 } else {
-    ; We use temporary workspace in zero page here to keep the code size down.
-    lda #<nominal_cursor_key_status
-    sta osbyte_set_cursor_editing_tmp + 0
-    lda #>nominal_cursor_key_status
-    sta osbyte_set_cursor_editing_tmp + 1
-    lda #$ff
-    sta osbyte_set_cursor_editing_tmp + 2
-    sta osbyte_set_cursor_editing_tmp + 3
-    stx osbyte_set_cursor_editing_tmp + 4
+    stx .osword_write_host_block_data
     lda #osword_write_host
-    ldx #<osbyte_set_cursor_editing_tmp
-    ldy #>osbyte_set_cursor_editing_tmp
+    ldx #<.osword_write_host_block
+    ldy #>.osword_write_host_block
     jmp osword
+.osword_write_host_block
+    !word nominal_cursor_key_status ; low order word of address
+    !word $ffff                     ; high order word of address
+.osword_write_host_block_data
+    !byte 0                         ; data to write, patched at runtime
 }
 }
 
