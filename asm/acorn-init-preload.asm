@@ -52,11 +52,6 @@ deletable_init_start
     cpx #zp_end
     bne -
 
-!ifdef ACORN_TURBO_SUPPORTED {
-    pla
-    sta is_turbo
-}
-
     ; Clear memory between low_start (inclusive) and low_fixed_gap_start
     ; (exclusive); this probably isn't necessary, but since we're clearing
     ; memory in general and this is discardable init code it seems best to do as
