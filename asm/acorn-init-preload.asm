@@ -633,8 +633,7 @@ SFTODOEE2
     ; memory rounded up to a 512-byte boundary, i.e.
     ; ACORN_INITIAL_NONSTORED_PAGES.
     lda #ACORN_INITIAL_NONSTORED_PAGES
-    sta nonstored_pages ; SFTODONOW: Do we need nonstored_pages on non-VMEM builds?
-!ifdef VMEM {
+    sta nonstored_pages
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; The build system and loader have worked together to ensure that we can run
     ; the game with nonstored_pages == ACORN_INITIAL_NONSTORED_PAGES. We must
@@ -776,7 +775,6 @@ SFTODOLABEL2X
     bcs +
     dec .ram_blocks + 1
 +
-}
 ; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
 !ifndef ACORN_SWR {
