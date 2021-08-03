@@ -474,6 +474,9 @@ SFTODOXX89
     ; (Note that convert_index_x_to_ram_bank_and_address has already added back
     ; vmem_blocks_stolen_in_first_blank before using this value, so we're just
     ; calculating the vmem block index *from the start of sideways RAM* to skip.)
+    ; SFTODONOW: I am far from confident this is true. Suppose we have 8 full banks
+    ; and the private 12K. 14K of the first full bank is stolen (by dynmem promotion, for example)
+    ; for dynamic memory. We have 126K (ignoring fact 1K is lost to IBOS) of remaining sideways RAM, which we can comfortaly access via our 0-254 based vmem index. sideways_ram_hole_start as calculated above is 256, which is *right* (we are counting from the start of sideways RAM, not the start of vmem-in-sideways RAM), but we *do* need to skip SWR hole and we won't. Think this over later and see if I've changed my mind, but this probably needs tweaking. Not sure what best fix is, but *maybe* we should start to work in terms of *vmem block number where the hole occurs* rather than 512-byte-block-index-in-SWR, then we probably can work with 8-bit values. This probably won't complicate this calculation, I suspect we just need to treat above calculation as giving a 16-bit value, subtract (using 16-bit calc) vmem_blocks_stolen_in_first_bank and use that as a then-guaranteed-to-be-8-bit (or perhaps "overflow and we can ignore" - not sure) new-style sideways_ram_hole_start value.
 SFTODOKOO
     lda .ram_blocks + 1
     lsr

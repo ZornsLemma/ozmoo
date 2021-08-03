@@ -1430,6 +1430,7 @@ convert_index_x_to_ram_bank_and_address
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    ; SFTODONOW: I ma not sure this is right - note the comment below about CA being a 9-bit block offset, that is true *after the preceding adc vmem_blocks_stolen_in_first_bank, yet this code is working on an 8-bit basis
     cmp sideways_ram_hole_start
     bcc +
     adc #sideways_ram_hole_vmem_blocks - 1 ; -1 as carry is set
