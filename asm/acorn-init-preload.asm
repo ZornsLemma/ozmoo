@@ -876,6 +876,7 @@ SFTODOLABEL5
 
 !ifdef ACORN_SHADOW_VMEM {
 SFTODOTPP
+    ; SFTODO: Rename 'vmem_blocks_in_sideways_ram' to 'sideways_ram_size_in_vmem_blocks'? It is the number of 512-byte blocks of SWR we have, which is *not* the same (because we have vmem_blocks_stolen_in_first_bank possibly > 0) as the number of *blocks of actual vmem* in sideways RAM.
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
     ; convert_index_x_to_ram_bank_and_address to decide when a vmem block is in
     ; shadow RAM and it doesn't matter if we actually use fewer blocks than
