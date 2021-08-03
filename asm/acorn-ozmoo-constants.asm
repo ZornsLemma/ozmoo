@@ -213,6 +213,7 @@ zp_start = $00
 ; assign some internal variables (not written to by the loader) to the page 4
 ; memory below resident_integer_b.
 
+low_start = $400
 num_rows = $400 ; 1 byte
 memory_buffer = $401 ; 7 bytes - larger on C64, but this is all we use
 

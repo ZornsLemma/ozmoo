@@ -8,7 +8,6 @@
 ; here after it has been overwritten.
 !zone {
 
-; SFTODONOW: Not ideal ("avoiding risky re-use") to have this at zp_temp, but it *does* need to be in zp.
 .dir_ptr = zp_temp ; 2 bytes
 
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
@@ -58,6 +57,17 @@ deletable_init_start
     sta is_turbo
 }
 
+    ; Clear memory between low_start (inclusive) and low_fixed_gap_start
+    ; (exclusive); this probably isn't necessary, but since we're clearing
+    ; memory in general and this is discardable init code it seems best to do as
+    ; much as we can.
+    lda #0
+    tax
+-   sta low_start,x
+    inx
+    cpx #low_fixed_gap_start - low_start
+    bne -
+
 !if zero_end > zero_start {
     ; Clear memory betwen zero_start and zero_end; this is language workspace
     ; which holds miscellaneous variables and because it's not part of the
@@ -81,7 +91,6 @@ deletable_init_start
 
     ; maxwords and wordoffset are handled specially and won't always be automatically
     ; cleared by the previous loop, so do them explicitly here.
-    ; SFTODONOW: SHOULD WE DO $400-low_fixed_gap_start AS WELL?
     lda #0
     sta maxwords
     sta wordoffset
@@ -90,7 +99,9 @@ deletable_init_start
     ; Zero the history buffer; if this isn't done it is sometimes possible to
     ; navigate to invalid history entries. (We don't fold this into the
     ; zero_start to zero_end loop above, because the history might not be in low
-    ; memory.)
+    ; memory.) SFTODO: This might be a bit redundant; *if* history is in high
+    ; memory it will be zero from loading executable, if it's in low memory we
+    ; could extend zero_end to cover it and get rid of this code.
     ldx #history_size - 1
     lda #0
 -   sta history_start,x
