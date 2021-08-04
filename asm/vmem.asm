@@ -1424,7 +1424,7 @@ convert_index_x_to_ram_bank_and_address
     bcs .in_shadow_ram
     ; clc - carry is already clear
 } else {
-    clc
+    clc ; SFTODONOW: ONLY NEED THIS IN !SMALLDYN
 }
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
