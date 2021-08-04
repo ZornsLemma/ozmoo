@@ -1426,10 +1426,12 @@ convert_index_x_to_ram_bank_and_address
 } else {
     clc ; SFTODONOW: ONLY NEED THIS IN !SMALLDYN
 }
+; SFTODONOW: PERM COMMENT THAT WE DO THIS ADC "LAST" TO AVOID DEALING WITH >8-BIT QUANTITES ANY EARLIER THAN WE HAVE TO
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+!error "SFTODONOW: SO WE NEED TO MOVE THIS LOGIC *BEFORE* IMM PRECEDING ADC, IN ORDER TO AVOID 8-BIT OVERFLOW PROBLEMS (I THINK!)"
     ; SFTODONOW: I am not sure this is right - note the comment below about CA being a 9-bit block offset, that is true *after the preceding adc vmem_blocks_stolen_in_first_bank, yet this code is working on an 8-bit basis
     cmp sideways_ram_hole_start
     bcc +
