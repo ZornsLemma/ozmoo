@@ -522,6 +522,7 @@ SFTODOLM2
 +
 .no_spare_shadow
 }
+}
 
 !ifdef ACORN_TUBE_CACHE {
     ; We have some blocks of cache in the host, which aren't directly accessible
@@ -745,7 +746,6 @@ SFTODOLABEL2X
     ; The above adjustments deliberately ignored some general constraints on
     ; nonstored_pages to simplify the code; apply those constraints now.
     jsr .constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
-}
 
     ; Set .ram_blocks -= nonstored_pages, i.e. set .ram_blocks to the number of
     ; RAM blocks we have available as virtual memory cache.
