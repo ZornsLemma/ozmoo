@@ -447,51 +447,38 @@ SFTODOXX89
     sta .ram_blocks
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-    ; SFTODONOW: I'm finding it hard to convince myself this is a safe "dummy" value - what if we had 9x16K SWR, couldn't this sometimes cause us to start skipping the last block or two in the last bank?
-    lda #$ff
+    ; Start with the sideways RAM hole disabled; this is nearly always right.
+    lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
 
     ; The last RAM bank might be the B+ or Integra-B private RAM, which isn't
-    ; the full 16K.
-    ldx ram_bank_count
+    ; the full 16K. (For the Integra-B we also need to set
+    ; sideways_ram_hole_start later on, once we know
+    ; vmem_blocks_stolen_in_first_bank.)
+    ldx ram_bank_count ; SFTODONOW: DO WE KNOW THIS ISN'T 0 HERE?
     ldy ram_bank_list - 1,x
     bmi .b_plus_private_ram
-    cpy #64 ; SFTODO MAGIC NUMBER
-    bcc .not_private_ram
+    cpy #64 ; SFTODO MAGIC
+    bcc .no_private_ram
+
     ; This is the Integra-B private 12K.
-    ; We need to skip 1024 bytes of IBOS workspace in the private RAM at $8000.
-    ; Set sideways_ram_hole_start
-    ; = (RAM banks including private 12K - 1) * 32
-    ; = (RAM banks including private 12K * 32) - 32
-    ; = (.ram_blocks >> 1) - 32
-    ; If this doesn't fit in a single byte, we will never try to access the
-    ; private RAM so just leave the default value in sideways_ram_hole_start.
-    ; (Note that convert_index_x_to_ram_bank_and_address has already added back
-    ; vmem_blocks_stolen_in_first_blank before using this value, so we're just
-    ; calculating the vmem block index *from the start of sideways RAM* to skip.)
-    ; SFTODONOW: I am far from confident this is true. Suppose we have 8 full banks
-    ; and the private 12K. 14K of the first full bank is stolen (by dynmem promotion, for example)
-    ; for dynamic memory. We have 126K (ignoring fact 1K is lost to IBOS) of remaining sideways RAM, which we can comfortaly access via our 0-254 based vmem index. sideways_ram_hole_start as calculated above is 256, which is *right* (we are counting from the start of sideways RAM, not the start of vmem-in-sideways RAM), but we *do* need to skip SWR hole and we won't. Think this over later and see if I've changed my mind, but this probably needs tweaking. Not sure what best fix is, but *maybe* we should start to work in terms of *vmem block number where the hole occurs* rather than 512-byte-block-index-in-SWR, then we probably can work with 8-bit values. This probably won't complicate this calculation, I suspect we just need to treat above calculation as giving a 16-bit value, subtract (using 16-bit calc) vmem_blocks_stolen_in_first_bank and use that as a then-guaranteed-to-be-8-bit (or perhaps "overflow and we can ignore" - not sure) new-style sideways_ram_hole_start value.
-SFTODOKOO
-    lda .ram_blocks + 1
-    lsr
-    bne .not_private_ram
-    lda .ram_blocks
-    ror
-    sec
-    sbc #32
-    sta sideways_ram_hole_start
-    ; SFTODO: MAGIC CONSTANTS
     ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of ROMSEL,
     ; much as we can access it by setting b7 on the B+.
     lda $37f
     ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
     sta $37f
     sta $fe34
+    ; Set sideways_ram_hole_start to 0 as a temporary indication that we need to
+    ; calculate this later; this saves repeating the Integra-B private RAM
+    ; detection code.
+    lda #0
+    sta sideways_ram_hole_start
+    ; Now adjust .ram_blocks.
     lda .ram_blocks
     sec
     sbc #(16 * 1024 - integra_b_private_ram_size) / 256
     jmp .subtract_private_ram_high_byte
+
 .b_plus_private_ram
     lda .ram_blocks
     sec
@@ -501,8 +488,7 @@ SFTODOKOO
     bcs +
     dec .ram_blocks + 1
 +
-.not_private_ram
-}
+.no_private_ram
 }
 
 !ifdef ACORN_SHADOW_VMEM {
@@ -772,58 +758,6 @@ SFTODOLABEL2X
 +
 ; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
-!ifndef ACORN_SWR {
-    ; vmap_first_ram_page is a constant set to suit a normal second processor
-    ; and it's not used on a turbo second processor, so we don't need any code
-    ; to initialise it.
-}
-
-    ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
-    ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
-    ; (If we're in the ACORN_TUBE_CACHE case on a normal second processor, we
-    ; have that much RAM in total but the number of vmap entries we can support
-    ; is lower. It's convenient to work with this larger value while we do the
-    ; initial load, then vmap_max_entries is fixed up later.)
-    ldx #vmap_max_size
-    lda .ram_blocks
-    lsr .ram_blocks + 1
-    bne .cap_at_vmap_max_size
-    ror
-    cmp #vmap_max_size
-    bcs .cap_at_vmap_max_size
-    tax
-.cap_at_vmap_max_size
-    stx vmap_max_entries
-    jsr .check_vmap_max_entries
-+
-
-SFTODOLABEL5
-!ifndef ACORN_NO_DYNMEM_ADJUST {
-; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more - OK, rethink this later, but I suspect this is right - the vmap contains entries for pages which are going to be dynamic memory if we use ACORN_INITIAL_NONSTORED_PAGES. If we've grown dynmem, some of the entries in the vmap may be discarded (since they've been promoted to dynmem - this isn't guaranteed, if we used PREOPT) and therefore in order to be left with vmap_max_entries valid entries we need to sort the entire table
-    ; If we've adjusted nonstored_pages, we may need to sort more than
-    ; vmap_max_entries elements of vmap and it's definitely safe to sort all
-    ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
-    ; blocks of virtual memory cache or we have enough RAM for the entire game.
-    ; (Note that we're only talking about *sorting* here; it's important we
-    ; don't sort "useful" things into parts of the vmap we don't have the memory
-    ; to load. We're not talking about *how much of the vmap contains useful
-    ; entries* - that is specified by vmap_max_entries.)
-    ; SFTODO: We *will* sort the dummy 0 entries put at the end of vmap by the
-    ; build script into the initial positions if the game didn't use the entire
-    ; vmap. This is "wrong" but they will be pruned away when we discard vmap
-    ; entries for memory promoted to dynmem (since 0 entries represent the first
-    ; page of dynmem) and start using only the first vmap_max_entries; since
-    ; this is a sort (we're just reordering things) they haven't actually
-    ; displaced anything useful in the meantime. All the same, it might be
-    ; neater to make the build script use $ffff for the dummy entries. SFTODONOW: Not intending to rework this now, but maybe just review this
-    lda nonstored_pages
-    cmp #ACORN_INITIAL_NONSTORED_PAGES
-    beq +
-    ldx #vmap_max_size
-+
-}
-    stx .vmap_sort_entries
-
     ; SFTODONOW: Not just here - I wonder if I should aggresively factor some of this into
     ; subroutines and/or actually indent nested !if blocks, yes that isn't the general Ozmoo
     ; style, but this code is !ifdef-tastic. (But do note acme warns noisily if labels are
@@ -869,6 +803,104 @@ SFTODOLABEL5
     lsr
     sta vmem_blocks_in_main_ram
 }
+
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    lda sideways_ram_hole_start
+    bne .no_sideways_ram_hole
+
+    ; We're on an Integra-B and are using the private RAM, so we need to set up
+    ; sideways_ram_hole_start to skip the 1K of IBOS workspace at $8000.
+    ; Set sideways_ram_hole_start
+    ; = (RAM banks including private 12K - 1) * 32 - vmem_blocks_stolen_in_first_bank
+    ; = (RAM banks including private 12K * 32) - 32 - vmem_blocks_stolen_in_first_blank
+    ; = (.ram_blocks >> 1) - 32 - vmem_blocks_stolen_in_first_bank
+    ; If this doesn't fit in a single byte, we will never try to access the
+    ; private RAM anyway so we have no hole.
+    lda #sideways_ram_hole_start_none
+    sta sideways_ram_hole_start
+    lda .ram_blocks + 1
+    lsr
+    bne .no_sideways_ram_hole
+    lda .ram_blocks
+    ror
+    sec
+    sbc #32
+    +assert_carry_set
+    sec
+    sbc vmem_blocks_stolen_in_first_bank
+    +assert_carry_set
+    sta sideways_ram_hole_start
+.no_sideways_ram_hole
+}
+}
+
+!ifndef ACORN_SWR { ; SFTODO: make 'else' of prev !ifdef BLOCK
+    ; vmap_first_ram_page is a constant set to suit a normal second processor
+    ; and it's not used on a turbo second processor, so we don't need any code
+    ; to initialise it.
+}
+
+    ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
+    ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
+    ; (If we're in the ACORN_TUBE_CACHE case on a normal second processor, we
+    ; have that much RAM in total but the number of vmap entries we can support
+    ; is lower. It's convenient to work with this larger value while we do the
+    ; initial load, then vmap_max_entries is fixed up later.)
+    ldx #vmap_max_size
+    lda .ram_blocks
+    lsr .ram_blocks + 1
+    bne .cap_at_vmap_max_size
+    ror
+    cmp #vmap_max_size
+    bcs .cap_at_vmap_max_size
+    tax
+.cap_at_vmap_max_size
+    stx vmap_max_entries
++
+
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    lda sideways_ram_hole_start
+    cmp #sideways_ram_hole_start_none
+    beq +
+    ; We have a sideways RAM hole, so in order to avoid a carry in
+    ; convert_index_x_to_ram_bank_and_address (see the comment there), we cap
+    ; vmap_max_entries at sideways_ram_hole_vmap_max_size.
+    lda #sideways_ram_hole_vmap_max_size
+    cmp vmap_max_entries
+    bcs +
+    sta vmap_max_entries
++
+}
+
+    jsr .check_vmap_max_entries
+
+SFTODOLABEL5
+    ldx vmap_max_entries
+!ifndef ACORN_NO_DYNMEM_ADJUST {
+; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more - OK, rethink this later, but I suspect this is right - the vmap contains entries for pages which are going to be dynamic memory if we use ACORN_INITIAL_NONSTORED_PAGES. If we've grown dynmem, some of the entries in the vmap may be discarded (since they've been promoted to dynmem - this isn't guaranteed, if we used PREOPT) and therefore in order to be left with vmap_max_entries valid entries we need to sort the entire table
+    ; If we've adjusted nonstored_pages, we may need to sort more than
+    ; vmap_max_entries elements of vmap and it's definitely safe to sort all
+    ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
+    ; blocks of virtual memory cache or we have enough RAM for the entire game.
+    ; (Note that we're only talking about *sorting* here; it's important we
+    ; don't sort "useful" things into parts of the vmap we don't have the memory
+    ; to load. We're not talking about *how much of the vmap contains useful
+    ; entries* - that is specified by vmap_max_entries.)
+    ; SFTODO: We *will* sort the dummy 0 entries put at the end of vmap by the
+    ; build script into the initial positions if the game didn't use the entire
+    ; vmap. This is "wrong" but they will be pruned away when we discard vmap
+    ; entries for memory promoted to dynmem (since 0 entries represent the first
+    ; page of dynmem) and start using only the first vmap_max_entries; since
+    ; this is a sort (we're just reordering things) they haven't actually
+    ; displaced anything useful in the meantime. All the same, it might be
+    ; neater to make the build script use $ffff for the dummy entries. SFTODONOW: Not intending to rework this now, but maybe just review this
+    lda nonstored_pages
+    cmp #ACORN_INITIAL_NONSTORED_PAGES
+    beq +
+    ldx #vmap_max_size ; SFTODONOW IT'S PROB FINE BUT ANY ISSUES HERE WITH THE CASE WHERE WE'RE ON IB PRIVATE RAM AND HAVE BEEN USING A SLIGHTLY SMALLER MAX SIZE FOR VMAP_MAX_ENTRIES? - I BELIEVE IT'S TECHNICALLY INVALID, STILL THINKING ABOUT THIS
++
+}
+    stx .vmap_sort_entries
 
 !ifdef ACORN_SHADOW_VMEM {
 SFTODOTPP

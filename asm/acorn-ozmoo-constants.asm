@@ -661,7 +661,11 @@ z_trace_index	+allocate 1
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
 sideways_ram_hole_start	+allocate 1
+; We can use 255 to indicate "no sideways RAM hole", because vmap_max_size<=255
+; and therefore virtual memory block indexes are in the range 0-254 inclusive.
+sideways_ram_hole_start_none = 255
 sideways_ram_hole_vmem_blocks = 2 ; always 1024 bytes if we have a hole
+sideways_ram_hole_vmap_max_size = 254 ; see convert_index_x_to_ram_bank_and_address
 }
 
 !ifdef HAVE_VMAP_USED_ENTRIES {

@@ -1422,23 +1422,33 @@ convert_index_x_to_ram_bank_and_address
 !ifdef ACORN_SHADOW_VMEM {
     cmp vmem_blocks_in_sideways_ram
     bcs .in_shadow_ram
-    ; clc - carry is already clear
-} else {
-    clc ; SFTODONOW: ONLY NEED THIS IN !SMALLDYN
-}
-; SFTODONOW: PERM COMMENT THAT WE DO THIS ADC "LAST" TO AVOID DEALING WITH >8-BIT QUANTITES ANY EARLIER THAN WE HAVE TO
-!ifndef ACORN_SWR_SMALL_DYNMEM {
-    adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
+    CONVERT_INDEX_X_CARRY_CLEAR = 1
 }
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-; SFTODONOW: To help think about this - suppose vmem_blocks_in_main_ram is 0 (a kind of worst case here). If vmem_blocks_stolen_in_first bank is 0, we can only address 8x16K banks of SWR with 255 vmap entries; if we have 7x16K and 1x(11 or 12)K we're still well within 8-bits at 248 512-byte blocks. Where things get iffy is if we have 8x16 and another 11-or-12K bank, and vmem_blocks_stolen_in_first_bank > 0. Suppose (worst case) vmem_blocks_stolen_in_first_bank = "16K" = 32. We have 7*16+11K (going to say 11K, as it's really the Integra B hole which is the concern here)=246 512-byte blocks of vmem, but when we do the calculation after having added vmem_blocks_stolen_in_first_bank, our "vmem block number" as used to calculate physical SWR address is no longer in range 0-245 inclusive but instead 32-277. This range itself is not a problem, because we use 9-bit arithmetic below. Ah no, it's not quite like that - by the time we skip the 1K memory hole, 2 block numbers are invalid and we have range 32-279. Still 9-bit of course.
-; SFTODONOW contd: So I suppose if we do our cmp-for-priv-ram-hole just above the adc (noting that we need to have subtracted off vmem_blocks_in_main_ram when setting priv-ram-hole-loc in init to make the comparison consistent), the comparison is 8-bit and we can use 255 (an impossible vmem index to mean "no hole". However, if we are >=priv-ram-hole-start-index and we add 2 to skip the hole, could we wrap to 9 bit at that point? I am suspecting we *can't* because of the above analysis showing the range is 0-245 and thus adding 2 won't overflow, then the adc vmem_blocks_stolen gives us a 9-bit value and that's fine. Definitely need to think about this fresh.
-!error "SFTODONOW: SO WE NEED TO MOVE THIS LOGIC *BEFORE* IMM PRECEDING ADC, IN ORDER TO AVOID 8-BIT OVERFLOW PROBLEMS (I THINK!)"
-    ; SFTODONOW: I am not sure this is right - note the comment below about CA being a 9-bit block offset, that is true *after the preceding adc vmem_blocks_stolen_in_first_bank, yet this code is working on an 8-bit basis
     cmp sideways_ram_hole_start
-    bcc +
+    bcc .before_sideways_ram_hole
+    ; We're about to add sideways_ram_hole_vmem_blocks==2 and we want to be able
+    ; to rely on this not generating a carry. If we have a sideways RAM hole, we
+    ; restricted vmap_max_entries to sideways_ram_hole_vmap_max_size==254 during
+    ; initialisation, so we actually had 0<=X<=253 just above and therefore
+    ; A<=253, so we're safe.
+    +assert sideways_ram_hole_vmem_blocks == 2
+    +assert sideways_ram_hole_vmap_max_size == 254
     adc #sideways_ram_hole_vmem_blocks - 1 ; -1 as carry is set
-+
+.before_sideways_ram_hole
+    CONVERT_INDEX_X_CARRY_CLEAR = 1
+}
+    ; Up to this point we have been working with an 8-bit value in A. In the
+    ; medium and big dynamic memory models, the following addition may give a
+    ; 9-bit result, and therefore the code following it always takes the carry
+    ; into account.
+!ifdef CONVERT_INDEX_X_CARRY_CLEAR {
+    +assert_carry_clear
+} else {
+    clc
+}
+!ifndef ACORN_SWR_SMALL_DYNMEM {
+    adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
     ; CA is now the 9-bit block offset of the required data from the start of
     ; our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so
