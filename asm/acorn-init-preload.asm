@@ -677,7 +677,7 @@ SFTODOLABEL2X
     ; We might have no sideways RAM or just the private 12K on a B+ or
     ; Integra-B. We mustn't use the Integra-B 12K for dynamic memory because of
     ; the IBOS workspace, which we only support skipping in the read-only vmem
-    ; path, but but we can use the B+ private 12K as dynamic memory. Note that
+    ; path, but we can use the B+ private 12K as dynamic memory. Note that
     ; because we don't allow the Integra-B private 12K to be used as the only
     ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem
     ; to 0. SFTODONOW: PROB OK BUT REVIEW LATER
