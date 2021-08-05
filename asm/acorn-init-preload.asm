@@ -842,7 +842,7 @@ SFTODOLABEL2X
 }
 }
 
-!ifndef ACORN_SWR { ; SFTODO: make 'else' of prev !ifdef BLOCK
+!ifndef ACORN_SWR { ; SFTODO: make 'else' of prev !ifdef block?
     ; vmap_first_ram_page is a constant set to suit a normal second processor
     ; and it's not used on a turbo second processor, so we don't need any code
     ; to initialise it.
@@ -886,6 +886,7 @@ SFTODOLABEL5
     ldx vmap_max_entries
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 ; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more - OK, rethink this later, but I suspect this is right - the vmap contains entries for pages which are going to be dynamic memory if we use ACORN_INITIAL_NONSTORED_PAGES. If we've grown dynmem, some of the entries in the vmap may be discarded (since they've been promoted to dynmem - this isn't guaranteed, if we used PREOPT) and therefore in order to be left with vmap_max_entries valid entries we need to sort the entire table
+; SFTODONOW: Instead could/should we "filter" the vmap to remove pages promoted to dynem, *then* just sort vmap_max_entries entries??? Don't rush into this, I will have had *some* kind of reason for doing it the way I currently am.
     ; If we've adjusted nonstored_pages, we may need to sort more than
     ; vmap_max_entries elements of vmap and it's definitely safe to sort all
     ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
@@ -901,7 +902,7 @@ SFTODOLABEL5
     ; page of dynmem) and start using only the first vmap_max_entries; since
     ; this is a sort (we're just reordering things) they haven't actually
     ; displaced anything useful in the meantime. All the same, it might be
-    ; neater to make the build script use $ffff for the dummy entries. SFTODONOW: Not intending to rework this now, but maybe just review this
+    ; neater to make the build script use $ffff for the dummy entries. SFTODONOW: Not intending to rework this now, but maybe just review this - TBH maybe I will rework it, but let's see
     lda nonstored_pages
     cmp #ACORN_INITIAL_NONSTORED_PAGES
     beq +
