@@ -435,6 +435,15 @@ SFTODOXX89
     sta .ram_blocks
     sta .ram_blocks + 1
 } else {
+    ; General observation: Just because this is a sideways RAM build, it's
+    ; possible we have no sideways RAM at all. Examples might be a small game
+    ; where dynamic memory plus a couple of 512-byte blocks of vmem cache fit in
+    ; the base 32K, or a game built with the big dynamic memory model to support
+    ; high-ish values of PAGE but where we're running on a machine with
+    ; PAGE=&E00 but no sideways RAM and the game happens to fit. In the medium
+    ; model we will always have at least one bank, of course. But in general, we
+    ; can't assume ram_bank_count>0.
+
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta .ram_blocks + 1
@@ -455,10 +464,11 @@ SFTODOXX89
     ; the full 16K. (For the Integra-B we also need to set
     ; sideways_ram_hole_start later on, once we know
     ; vmem_blocks_stolen_in_first_bank.)
-    ldx ram_bank_count ; SFTODONOW: DO WE KNOW THIS ISN'T 0 HERE?
-    ldy ram_bank_list - 1,x
+    ldx ram_bank_count
+    beq .no_private_ram
+    lda ram_bank_list - 1,x
     bmi .b_plus_private_ram
-    cpy #64 ; SFTODO MAGIC
+    cmp #64 ; SFTODO MAGIC
     bcc .no_private_ram
 
     ; This is the Integra-B private 12K.
@@ -664,12 +674,10 @@ SFTODOLABEL2X
     ; SFTODONOW: Don't risk re-use of zp_temp for this?
 .max_dynmem = zp_temp + 4 ; 1 byte SFTODONOW RENAME GET RID OF ???
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    ; It's not all that likely, but it's not impossible we don't actually have
-    ; any sideways RAM. (Perhaps we had to use the big model to fit on some
-    ; machines but on this one we have PAGE=&E00 and dynamic memory fits in
-    ; main RAM, for example.) We might also have a short sideways RAM bank;
-    ; if it's the Integra-B private 12K we mustn't promote dynmem into it as
-    ; it's not contiguous, but we can do so with the B+ private 12k. Note that
+    ; We might have no sideways RAM or just the private 12K on a B+ or
+    ; Integra-B. We mustn't use the Integra-B 12K for dynamic memory because of
+    ; the IBOS workspace, which we only support skipping in the read-only vmem
+    ; path, but but we can use the B+ private 12K as dynamic memory. Note that
     ; because we don't allow the Integra-B private 12K to be used as the only
     ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem
     ; to 0. SFTODONOW: PROB OK BUT REVIEW LATER
