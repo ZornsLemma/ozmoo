@@ -260,11 +260,11 @@ deletable_init_start
     tax
     lda #osbyte_read_screen_address_for_mode
     jsr osbyte
-    cpy #$80
+    cpy #>flat_ramtop
     bcc .not_shadow_mode
     ; If we're in a shadow mode, the screen hole isn't needed; by setting the
     ; start page as high as possible, code which implements the screen hole will
-    ; realise ASAP that it's not necessary. (If we didn't do this, we'd end up
+    ; realise ASAP that it has nothing to do. (If we didn't do this, we'd end up
     ; with a zero-size screen hole at $8000, which would work but be slower.)
     ldy #$ff
 .not_shadow_mode
@@ -287,21 +287,28 @@ deletable_init_start
     ; {{{ Configure cache pages for spare shadow RAM.
 
     ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have
-    ; for holding data copied out of shadow RAM. If we set this to 0, it will
-    ; effectively disable the use of shadow RAM as virtual memory cache. The
-    ; loader will do this if it doesn't have a shadow RAM driver for this
-    ; machine; the fact that we get relocated up an additional page if PAGE has
-    ; the wrong 512-byte alignment won't cause a problem because we can't use
-    ; just one page of shadow cache anyway (we need a minimum of two, one for
-    ; the Z-machine PC and another one) so we'll set this to 0 below if that
-    ; happens.
+    ; for holding data copied out of shadow RAM, i.e. the number of pages
+    ; between PAGE/OSHWM and program_start. If we set this to 0, it will
+    ; effectively disable the use of shadow RAM as virtual memory cache.
     ;
-    ; If we're in mode 0, there's no spare shadow RAM anyway. The loader won't have
-    ; allocated any space, but we might have one page available if we happened to
-    ; load at PAGE+256, and we mustn't let that mislead us. (I don't believe this
-    ; is strictly necessary - if we didn't special-case mode 0, we would discover
-    ; that we have 0 or 1 pages of cache and set vmem_cache_count_mem to 0 anyway.
-    ; But we might as well be explicit, since this is discardable init code.)
+    ; The loader effectively allocates this cache by setting
+    ; ozmoo_relocate_target to a value higher than PAGE; it won't allocate any
+    ; memory if it knows we don't have any spare shadow RAM which needs to be
+    ; cached. Because relocation works with double pages, we may in fact end up
+    ; with one more page than the loader allocated. We need to check we haven't
+    ; got fewer than two pages because we need at least that many to avoid
+    ; deadlocks (one for the Z-machine PC and another one for data); the loader
+    ; won't deliberately allocate a single useless page, but the relocation
+    ; rounding to a double page boundary may do this if we started with no pages
+    ; allocated.
+    ;
+    ; If we're in mode 0, there's no spare shadow RAM anyway. The loader won't
+    ; have allocated any cache, but the double page rounding might have created
+    ; one page, so we explicitly force vmem_cache_count_mem to 0 in mode 0. (I
+    ; don't believe this is strictly necessary - if we didn't special-case mode
+    ; 0, we would discover that we have 0 or 1 pages of cache and set
+    ; vmem_cache_count_mem to 0 anyway. But we might as well be explicit, since
+    ; this is discardable init code.)
     lda #0
     sta vmem_cache_count_mem
     lda screen_mode
@@ -343,6 +350,7 @@ deletable_init_start
     ; {{{ Show some debug information.
     ; Call deletable_screen_init_1 here so we can output succesfully; this is a
     ; little bit hacky but not a huge problem (and this is debug-only code).
+    ; SFTODO: I am not sure this is always working...
     jsr deletable_screen_init_1
     jsr streams_init
     jsr print_following_string
@@ -412,14 +420,14 @@ prepare_for_initial_load
     ; just do this for all characters.
     and #$7f
     cmp .data_filename-(-8 & $ff),x
-    bne .file_not_found
+    bne .not_this_entry
     iny
     inx
     beq .file_found
     bne .name_compare_loop
 .data_filename
     !text "DATA   $"
-.file_not_found
+.not_this_entry
     clc
     lda .dir_ptr
     adc #8
@@ -465,7 +473,7 @@ SFTODOXX89
     sta .ram_blocks
     sta .ram_blocks + 1
 } else {
-    ; General observation: Just because this is a sideways RAM build, it's
+    ; General observation: Even thought this is a sideways RAM build, it's
     ; possible we have no sideways RAM at all. Examples might be a small game
     ; where dynamic memory plus a couple of 512-byte blocks of vmem cache fit in
     ; the base 32K, or a game built with the big dynamic memory model to support

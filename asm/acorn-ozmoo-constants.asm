@@ -712,7 +712,9 @@ acorn_screen_hole_pages_minus_one +allocate 1 ; SFTODO: PROB NOT GOING TO BENEFI
 vmem_cache_count_mem	+allocate 1
 vmem_cache_start_mem	+allocate 1
 vmem_blocks_in_sideways_ram	+allocate 1
-; vmem_cache_cnt and vmem_cache_page_index must be adjacent in memory.
+; vmem_cache_cnt and vmem_cache_page_index must be adjacent in memory. SFTODO: I
+; am not sure that's true on Acorn; perhaps check and loosen this requirement,
+; though in reality it's unlikely to make any difference.
 ; The next line adds 1 byte for vmem_cache_cnt and another 1 byte because PAGE
 ; alignment may causes us to use one more shadow cache page than recommended
 ; (because that page would be pasted otherwise).
