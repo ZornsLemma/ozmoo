@@ -636,12 +636,6 @@ SFTODOLABELX1
 +
     ; }}}
 
-!ifdef ACORN_SWR { ; SFTODO: MERGE THIS WITH ANOTHER ACORN_SWR BLOCK? FEELS A BIT ISOLATED STUCK OUT HERE ON ITS OWN.
-    ; This value might be changed below.
-    lda #0
-    sta vmem_blocks_in_main_ram
-}
-
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
@@ -800,9 +794,11 @@ SFTODOLABEL2X
     ; The above adjustments deliberately ignored some general constraints on
     ; nonstored_pages to simplify the code; apply those constraints now.
     jsr .constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
+}
+    ; }}}
 
-    ; Set .ram_blocks -= nonstored_pages, i.e. set .ram_blocks to the number of
-    ; RAM blocks we have available as virtual memory cache.
+    ; {{{ Set .ram_blocks -= nonstored_pages, i.e. set .ram_blocks to the number
+    ; of RAM blocks we have available as virtual memory cache.
     lda .ram_blocks
     sec
     sbc nonstored_pages
@@ -810,6 +806,7 @@ SFTODOLABEL2X
     bcs +
     dec .ram_blocks + 1
 +
+    ; }}}
 ; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
     ; SFTODONOW: Not just here - I wonder if I should aggresively factor some of this into
@@ -817,7 +814,9 @@ SFTODOLABEL2X
     ; style, but this code is !ifdef-tastic. (But do note acme warns noisily if labels are
     ; not flush left, which somewhat spoils this idea.)
 !ifdef ACORN_SWR {
-    ; Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
+    ; {{{ Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
+    lda #0
+    sta vmem_blocks_in_main_ram
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
     lda #0
     sta vmem_blocks_stolen_in_first_bank
@@ -857,8 +856,10 @@ SFTODOLABEL2X
     lsr
     sta vmem_blocks_in_main_ram
 }
+    ; }}}
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    ; {{{ Calculate sideways_ram_hole_start.
     lda sideways_ram_hole_start
     bne .no_sideways_ram_hole
 
@@ -885,6 +886,7 @@ SFTODOLABEL2X
     +assert_carry_set
     sta sideways_ram_hole_start
 .no_sideways_ram_hole
+    ; }}}
 }
 }
 
@@ -893,6 +895,8 @@ SFTODOLABEL2X
     ; and it's not used on a turbo second processor, so we don't need any code
     ; to initialise it.
 }
+
+    ; {{{ Calculate vmap_max_entries.
 
     ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
     ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
@@ -927,8 +931,10 @@ SFTODOLABEL2X
 }
 
     jsr .check_vmap_max_entries
+    ; }}}
 
 SFTODOLABEL5
+    ; {{{ Calculate .vmap_sort_entries.
     ldx vmap_max_entries
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 ; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more - OK, rethink this later, but I suspect this is right - the vmap contains entries for pages which are going to be dynamic memory if we use ACORN_INITIAL_NONSTORED_PAGES. If we've grown dynmem, some of the entries in the vmap may be discarded (since they've been promoted to dynmem - this isn't guaranteed, if we used PREOPT) and therefore in order to be left with vmap_max_entries valid entries we need to sort the entire table
@@ -956,8 +962,10 @@ SFTODOLABEL5
 +
 }
     stx .vmap_sort_entries
+    ; }}}
 
 !ifdef ACORN_SHADOW_VMEM {
+    ; {{{ Calculate vmem_blocks_in_sideways_ram.
 SFTODOTPP
     ; SFTODO: Rename 'vmem_blocks_in_sideways_ram' to 'sideways_ram_size_in_vmem_blocks'? It is the number of 512-byte blocks of SWR we have, which is *not* the same (because we have vmem_blocks_stolen_in_first_bank possibly > 0) as the number of *blocks of actual vmem* in sideways RAM. - NO, I GOT THAT WRONG - IT *IS* THE NUMBER OF *VMEM* BLOCKS IN SWR, SINCE WE HAVE SUBTRACTED OFF STOLEN
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
@@ -982,9 +990,8 @@ SFTODOTPP
     lda #255
     sta vmem_blocks_in_sideways_ram
 +
-}
-}
     ; }}}
+}
 
 SFTODOXY7
     ; {{{ Calculate .blocks_to_load for the progress indicator.
