@@ -44,6 +44,8 @@
 
 ; Initialization performed very early during startup.
 deletable_init_start
+    ; {{{ Clear and otherwise initialise memory.
+
     ; Clear all our zero page; this is probably a good idea for consistency
     ; anyway but is important when some storage allocated via +allocate in
     ; acorn-ozmoo-constants.asm ends up in zero page instead of low memory.
@@ -129,6 +131,15 @@ deletable_init_start
     sta setjmp_min_s
 }
 
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+    ; This is used enough it's worth - if only for the code size saving -
+    ; copying it into zero page. (Well, it saves 10 bytes at the time of
+    ; writing; not huge, but not too bad. SFTODO: Maybe reconsider this later.)
+    lda ram_bank_list
+    sta dynmem_ram_bank
+}
+    ; }}}
+
     ldx #1
     jsr do_osbyte_rw_escape_key
 
@@ -153,6 +164,8 @@ deletable_init_start
 }
 
 !ifdef ACORN_FUNCTION_KEY_PASS_THROUGH {
+    ; {{{ Configure OS handling of function keys.
+
     ; We're going to generate ZSCII codes for the unshifted function keys. We
     ; choose a base of 133 (=ZSCII f1) for f0 because if we set a base of 132 so
     ; Acorn f1=ZSCII f1, Acorn f0 would act like cursor right. If we want Acorn
@@ -166,12 +179,14 @@ deletable_init_start
     lda #osbyte_rw_shift_function_key_status
     ldx #1 ; expand as normal soft key
     jsr do_osbyte_y_0
+
+    ; }}}
 }
 
     ldx #0
     stx mempointer
 !ifndef ACORN_SWR {
-    ; Patch re_enter_language to enter the current language; reading it here
+    ; {{{ Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
     ; X is already 0
@@ -191,9 +206,11 @@ deletable_init_start
     sta initial_jmp + 1
     lda #>re_enter_language
     sta initial_jmp + 2
+    ; }}}
 }
 
 !ifdef ACORN_TURBO_SUPPORTED {
+    ; {{{ Enable turbo mode if necessary.
     ; This executable doesn't have a ROM header indicating we want the turbo
     ; mode enabled, so it will have been disabled when were were executed. Turn
     ; it back on if we do want it.
@@ -210,18 +227,21 @@ deletable_init_start
     lda #$80
     sta turbo_control
 .dont_enable_turbo
+    ; }}}
 }
 
 !ifdef VMEM {
-    ; Copy the low bytes of the vmap at initial_vmap_z_l to vmap_z_l.
+    ; {{{ Copy the low bytes of the vmap at initial_vmap_z_l to vmap_z_l.
     ldx #vmap_max_size
 -   lda initial_vmap_z_l - 1,x
     sta vmap_z_l - 1,x
     dex
     bne -
+    ; }}}
 }
 
 !ifdef ACORN_SCREEN_HOLE {
+    ; {{{ Configure screen hole settings.
     lda screen_mode
     ora #128 ; force shadow mode on SFTODO: MAGIC CONSTANT IN A FEW PLACES NOW?
     tax
@@ -247,17 +267,12 @@ deletable_init_start
     tax
     dex
     stx acorn_screen_hole_pages_minus_one
-}
-
-!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-    ; This is used enough it's worth - if only for the code size saving -
-    ; copying it into zero page. (Well, it saves 10 bytes at the time of
-    ; writing; not huge, but not too bad. SFTODO: Maybe reconsider this later.)
-    lda ram_bank_list
-    sta dynmem_ram_bank
+    ; }}}
 }
 
 !ifdef ACORN_SHADOW_VMEM {
+    ; {{{ Configure cache pages for spare shadow RAM.
+
     ; Set vmem_cache_count_mem to the number of 256-byte cache entries we have
     ; for holding data copied out of shadow RAM. If we set this to 0, it will
     ; effectively disable the use of shadow RAM as virtual memory cache. The
@@ -304,17 +319,7 @@ deletable_init_start
 
     ; SF: We don't need to zero vmem_cache_cnt and vmem_cache_page_index
     ; explicitly because we cleared all our zero page and low memory on startup.
-!if 0 {
-    ; Zero vmem_cache_cnt and vmem_cache_page_index.
-    !if vmem_cache_cnt + 1 != vmem_cache_page_index {
-        !error "vmem_cache_cnt is not just before vmem_cache_page_index"
-    }
-    lda #0
-    ldx #vmem_cache_page_index_end - vmem_cache_cnt - 1
--   sta vmem_cache_cnt,x
-    dex
-    bpl -
-}
+    ; }}}
 }
 
     +prepare_static_high_memory_inline
@@ -322,6 +327,7 @@ deletable_init_start
     jsr init_cursor_control
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
+    ; {{{ Show some debug information.
     ; Call deletable_screen_init_1 here so we can output succesfully; this is a
     ; little bit hacky but not a huge problem (and this is debug-only code).
     jsr deletable_screen_init_1
@@ -332,6 +338,7 @@ deletable_init_start
     jsr print_byte_as_hex
     lda #<program_start
     jsr print_byte_as_hex
+    ; }}}
 }
 
     ; SFTODO: just fall through to prepare_for_initial_load?
@@ -630,9 +637,9 @@ SFTODOLABELX1
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
-    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + min_vmem_blocks * vmem_block_pagecount,
-    ;   i.e. that we have enough RAM for the game's dynamic memory and two
-    ;   512-byte blocks of virtual memory cache.
+    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + min_vmem_blocks *
+    ;   vmem_block_pagecount, i.e. that we have enough RAM for the game's
+    ;   dynamic memory and two 512-byte blocks of virtual memory cache.
     ; - the game always has at least one block of non-dynamic memory.
 
     ; {{{ Set .ram_blocks = min(.ram_blocks, game_blocks). We do this in order to
@@ -1167,6 +1174,7 @@ progress_indicator_fractional_bits=7
 ; the game data we're not under that much memory pressure and it's more readable
 ; to just use a subroutine.
 .init_progress_indicator
+    ; {{{
     ; If we're not on the bottom line of the screen, set divisor = 2 *
     ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
     ; - cursor_x). This way we don't have to worry about causing a mildly ugly
@@ -1245,6 +1253,7 @@ SFTODOOOL
 
 .loading_string
     !text "Loading:", 0
+    ; }}}
 
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we
@@ -1258,7 +1267,10 @@ SFTODOOOL
     bne .rts
     +os_error 0, "vmap_max_entries == 0"
 
+; Force nonstored_pages to satisfy the necessary constraints after we possibly
+; adjusted it.
 .constrain_nonstored_pages
+    ; {{{
     ; We must have nonstored_pages >= ACORN_INITIAL_NONSTORED_PAGES, otherwise
     ; we're not respecting the game's real dynamic memory size.
     lda nonstored_pages
@@ -1328,6 +1340,7 @@ SFTODOOOL
     ; Note that as we've already capped .ram_blocks at game_blocks, we don't have to
     ; explicitly check for nonstored_blocks being so large it's larger than the game.
     rts
+    ; }}}
 
 initial_vmap_z_l
     !fill vmap_max_size, 'V'
