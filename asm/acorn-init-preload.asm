@@ -17,6 +17,8 @@
 ; here after it has been overwritten.
 !zone {
 
+; {{{ Allocate space for local variables.
+
 .dir_ptr = zp_temp ; 2 bytes
 
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
@@ -41,6 +43,8 @@
 
 ; SFTODO: Probably not, but can the existence of .vmap_sort_entries help simplify the normal tube+cache loading code?
 .vmap_sort_entries !fill 1
+
+; }}}
 
 ; Initialization performed very early during startup.
 deletable_init_start
@@ -150,7 +154,11 @@ deletable_init_start
     ; error should be able to occur before this point. If an error occurs during
     ; a restart, which will re-run the executable, there's not much we can do
     ; but it's probably OK because the load will just replace the code with an
-    ; identical copy.
+    ; identical copy. (SFTODO: Actually we'll probably bomb out horribly because
+    ; the executable is compressed. Can/should I do anything about this? I haven't
+    ; tested it. If the error handler is low enough in memory it may well not be
+    ; trampled on during the reading-from-disc stage, and there shouldn't be any
+    ; errors during decompression itself.)
     lda #<error_handler
     sta brkv
     lda #>error_handler
