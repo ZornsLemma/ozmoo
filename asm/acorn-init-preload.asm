@@ -48,7 +48,7 @@
 
 ; Initialization performed very early during startup.
 deletable_init_start
-    ; {{{ Clear and otherwise initialise memory.
+    ; {{{ Clear and initialise memory.
 
     ; Clear all our zero page; this is probably a good idea for consistency
     ; anyway but is important when some storage allocated via +allocate in
@@ -155,10 +155,12 @@ deletable_init_start
     ; a restart, which will re-run the executable, there's not much we can do
     ; but it's probably OK because the load will just replace the code with an
     ; identical copy. (SFTODO: Actually we'll probably bomb out horribly because
-    ; the executable is compressed. Can/should I do anything about this? I haven't
-    ; tested it. If the error handler is low enough in memory it may well not be
-    ; trampled on during the reading-from-disc stage, and there shouldn't be any
-    ; errors during decompression itself.)
+    ; the executable is compressed. Can/should I do anything about this? I
+    ; haven't tested it. If the error handler is low enough in memory it may
+    ; well not be trampled on during the reading-from-disc stage, and there
+    ; shouldn't be any errors during decompression itself. So it may be worth
+    ; ensuring that we put the error handler as low in memory as possible, and
+    ; commenting why we do that.)
     lda #<error_handler
     sta brkv
     lda #>error_handler
@@ -194,7 +196,9 @@ deletable_init_start
     ldx #0
     stx mempointer
 !ifndef ACORN_SWR {
-    ; {{{ Patch re_enter_language to enter the current language; reading it here
+    ; {{{ Arrange to re-enter BASIC on exit or soft-break.
+
+    ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
     ; X is already 0
@@ -220,8 +224,9 @@ deletable_init_start
 !ifdef ACORN_TURBO_SUPPORTED {
     ; {{{ Enable turbo mode if necessary.
     ; This executable doesn't have a ROM header indicating we want the turbo
-    ; mode enabled, so it will have been disabled when were were executed. Turn
-    ; it back on if we do want it.
+    ; mode enabled (because it has to run on a normal 6502 second processor as
+    ; well), so turbo mode will be disabled when we are executed. Turn it back
+    ; on if we do want it.
     bit is_turbo
     bpl .dont_enable_turbo
     ; Set all the turbo banks to zero before enabling turbo mode; we might crash
@@ -239,7 +244,7 @@ deletable_init_start
 }
 
 !ifdef VMEM {
-    ; {{{ Copy the low bytes of the vmap at initial_vmap_z_l to vmap_z_l.
+    ; {{{ Copy initial_vmap_z_l to vmap_z_l.
     ldx #vmap_max_size
 -   lda initial_vmap_z_l - 1,x
     sta vmap_z_l - 1,x
@@ -251,7 +256,7 @@ deletable_init_start
 !ifdef ACORN_SCREEN_HOLE {
     ; {{{ Configure screen hole settings.
     lda screen_mode
-    ora #128 ; force shadow mode on SFTODO: MAGIC CONSTANT IN A FEW PLACES NOW?
+    ora #shadow_mode_bit
     tax
     lda #osbyte_read_screen_address_for_mode
     jsr osbyte
@@ -579,7 +584,7 @@ SFTODOLM2
     ; we process more of the initial vmap and fix up the inflated value of
     ; vmap_max_entries later.
     lda screen_mode
-    ora #128 ; force shadow mode on
+    ora #shadow_mode_bit
     tax
     lda #osbyte_initialise_cache
     jsr osbyte

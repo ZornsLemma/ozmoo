@@ -100,6 +100,7 @@ vdu_variable_text_window_top = $0b
 vdu_status_cursor_editing = 1<<6
 cr = 13
 del = 127
+shadow_mode_bit = 128
 mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
 err_not_found = $d6
