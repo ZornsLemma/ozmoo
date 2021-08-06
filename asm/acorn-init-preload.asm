@@ -550,7 +550,7 @@ SFTODOXX89
     ; Save a copy of .ram_blocks for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
     lda .ram_blocks
-    sta .swr_ram_blocks
+    sta .swr_ram_blocks ; SFTODO: rename? We spell out "sideways" most of the time... (also "PIN Number" syndrome...)
     lda .ram_blocks + 1
     sta .swr_ram_blocks + 1
 
