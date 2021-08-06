@@ -463,7 +463,6 @@ prepare_for_initial_load
     ; }}}
 }
 
-; SFTODONOW: UP TO HERE WITH REVIEW
 SFTODOXX89
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
@@ -616,6 +615,7 @@ SFTODOLABELX1
     ; }}}
 }
 
+; SFTODONOW: UP TO HERE IN CURRENT REVIEW
 !ifdef ACORN_TURBO_SUPPORTED {
     ; {{{ Add turbo RAM in banks 1 and 2 to .ram_blocks.
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
@@ -1381,3 +1381,5 @@ initial_vmap_z_l
 }
 
 }
+
+; SFTODONOW: Sure I wrote a note about this somewhere else - should I (not touching upstream variable names) rename things so I consistently talk about "pages" (which are always 256 bytes) and "dpages" (which are always 512 bytes) and avoid the term "block" (except where upstream forces it on me)?
