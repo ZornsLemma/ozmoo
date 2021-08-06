@@ -2,6 +2,15 @@
 ; this means it might be overwritten as soon as anything is loaded at
 ; data_start/story_start.
 
+; SFTODO: I am experimenting with the use of fold markers "{{{" and "}}}" to
+; identify pseudo-subroutines in this file in an attempt to improve readability.
+; Since this is discardable init code, I could spare the space to actually use
+; subroutines; the main reason I haven't done this yet is that it is sometimes
+; helpful to be able to search through the code for a variable name and know
+; that the order of the code in the file reflects the order in which the
+; variable is written to and read from. I suppose if I were strict about
+; ordering the subroutines this property would still be preserved.
+
 ; As the code in this file gets overwritten when we start to load the game data,
 ; we put it all in its own zone and make an effort to use local labels for
 ; almost everything to reduce the risk of accidentally calling a subroutine in
@@ -341,8 +350,8 @@ prepare_for_initial_load
 }
 
 !ifndef ACORN_ADFS {
-    ; Examine the disc catalogue and determine the first sector occupied by the
-    ; DATA file containing the game.
+    ; {{{ Find the first sector occupied by the DATA file by examining the disc
+    ; catalogue.
 
     ; Because this is initialisation code, we know the following variables are
     ; already set to predictable values. This optimisation was useful at one
@@ -423,6 +432,7 @@ prepare_for_initial_load
     lda division_result
     sta readblocks_base
 }
+    ; }}}
 }
 
 ; SFTODONOW: UP TO HERE WITH REVIEW
@@ -444,6 +454,7 @@ SFTODOXX89
     ; model we will always have at least one bank, of course. But in general, we
     ; can't assume ram_bank_count>0.
 
+    ; {{{ Set .ram_blocks to reflect available sideways RAM.
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
     sta .ram_blocks + 1
@@ -454,8 +465,11 @@ SFTODOXX89
     dex
     bne -
     sta .ram_blocks
+    ; }}}
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    ; {{{ Adjust .ram_blocks if we have a private 12K RAM bank.
+
     ; Start with the sideways RAM hole disabled; this is nearly always right.
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
@@ -499,9 +513,12 @@ SFTODOXX89
     dec .ram_blocks + 1
 +
 .no_private_ram
+    ; }}}
 }
 
 !ifdef ACORN_SHADOW_VMEM {
+    ; {{{ Add any spare shadow RAM to .ram_blocks
+
     ; Save a copy of .ram_blocks for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
     lda .ram_blocks
@@ -531,10 +548,16 @@ SFTODOLM2
     inc .ram_blocks + 1
 +
 .no_spare_shadow
+; }}}
 }
 }
 
+; SFTODO: These next two blocks could move into the !ifndef ACORN_SWR block
+; above; this might or might not be clearer.
+
 !ifdef ACORN_TUBE_CACHE {
+    ; {{{ Initialise host cache and add its size to .ram_blocks.
+
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
     ; preloading if we're on a normal second processor. We count them for now so
@@ -562,9 +585,11 @@ SFTODOLM2
     sta .ram_blocks
 .host_cache_initialised
 SFTODOLABELX1
+    ; }}}
 }
 
 !ifdef ACORN_TURBO_SUPPORTED {
+    ; {{{ Add turbo RAM in banks 1 and 2 to .ram_blocks.
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
     ; virtual memory cache.
     bit is_turbo
@@ -572,8 +597,10 @@ SFTODOLABELX1
     inc .ram_blocks + 1
     inc .ram_blocks + 1
 .dont_count_turbo_ram
+    ; }}}
 }
 
+    ; {{{ Add spare main RAM to .ram_blocks.
     ; We also have some blocks between flat_ramtop and data_start. We're doing a
     ; constant subtraction in code here, but a) this is deletable init code so
     ; it doesn't really cost anything b) if we don't, the relocation code fails
@@ -592,6 +619,7 @@ SFTODOLABELX1
     bcc +
     inc .ram_blocks + 1
 +
+    ; }}}
 
 !ifdef ACORN_SWR { ; SFTODO: MERGE THIS WITH ANOTHER ACORN_SWR BLOCK? FEELS A BIT ISOLATED STUCK OUT HERE ON ITS OWN.
     ; This value might be changed below.
@@ -607,8 +635,8 @@ SFTODOLABELX1
     ;   512-byte blocks of virtual memory cache.
     ; - the game always has at least one block of non-dynamic memory.
 
-    ; In order to avoid accessing nonexistent game data in an attempt to use all
-    ; that RAM, set .ram_blocks = min(.ram_blocks, game_blocks).
+    ; {{{ Set .ram_blocks = min(.ram_blocks, game_blocks). We do this in order to
+    ; avoid accessing nonexistent game data as we try to use all available RAM.
 SFTODOEE2
     ldx #>ACORN_GAME_BLOCKS
     lda #<ACORN_GAME_BLOCKS
@@ -619,6 +647,9 @@ SFTODOEE2
     stx .ram_blocks + 1
     sta .ram_blocks
 +
+    ; }}}
+
+    ; {{{ Set nonstored_pages to the effective dynamic RAM size.
 
     ; Set nonstored_pages to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
@@ -938,13 +969,16 @@ SFTODOTPP
 +
 }
 }
+    ; }}}
 
 SFTODOXY7
+    ; {{{ Calculate .blocks_to_load for the progress indicator.
     ; Now we know how much data we are going to load, we can calculate how many
     ; blocks correspond to each progress indicator position.
     ; SFTODO: Since below we convert back to 512-byte blocks, it might make more
     ; sense to stick with 512-byte blocks here and scale *nonstored_page* instead
     ; of vmap_max_entries.
+    ; SFTODO: Move this down to after the VMEM sort and debug-show-info code, to keep progress indicator stuff together?
     lda #0
     sta .blocks_to_load + 1
     lda vmap_max_entries
@@ -962,12 +996,15 @@ SFTODOXY7
     lda #>ACORN_GAME_BLOCKS
     sta .blocks_to_load + 1
 }
+    ; }}}
 
 !ifdef VMEM { ; SFTODO: MERGE WITH PREV BLOCK!?
+!ifndef PREOPT {
+    ; {{{ Sort vmap to avoid drive head skipping during loading.
+
     ; vmem_highbyte_mask might be 0 and that enables some small optimisations, but
     ; in this one-off discardable init code we favour simplicity and don't bother.
 
-!ifndef PREOPT {
     ; Sort vmap into ascending order, preserving the timestamps but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
     ; initial load. The build system can't do this sort, because we're sorting
@@ -1045,8 +1082,10 @@ SFTODOXY7
     inx
     cpx .vmap_sort_entries
     bne .outer_loop
+    ; }}}
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
+    ; {{{ Fix up vmap if we increased nonstored_pages from default.
     ; The initial vmap created by the build system assumes nonstored_pages ==
     ; ACORN_INITIAL_NONSTORED_PAGES, so if we changed nonstored_pages earlier
     ; we need to adjust the vmap to compensate. If we didn't adjust it, this
@@ -1097,6 +1136,7 @@ SFTODOLABEL2
     cpy vmap_max_entries
     bne .vmap_move_down_loop
 .no_dynmem_promotion
+    ; }}}
 }
 }
 }
@@ -1112,7 +1152,6 @@ SFTODOLABEL2
 
     ; fall through to .init_progress_indicator
 ; End of prepare_for_initial_load
-
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
 ; progress bar step, in order to get avoid the bar under-filling or over-filling
