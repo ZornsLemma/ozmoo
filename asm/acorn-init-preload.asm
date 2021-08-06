@@ -890,12 +890,6 @@ SFTODOLABEL2X
 }
 }
 
-!ifndef ACORN_SWR { ; SFTODO: make 'else' of prev !ifdef block?
-    ; vmap_first_ram_page is a constant set to suit a normal second processor
-    ; and it's not used on a turbo second processor, so we don't need any code
-    ; to initialise it.
-}
-
     ; {{{ Calculate vmap_max_entries.
 
     ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
