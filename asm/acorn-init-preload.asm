@@ -621,7 +621,6 @@ SFTODOLABELX1
     ; }}}
 }
 
-; SFTODONOW: UP TO HERE IN CURRENT REVIEW
 !ifdef ACORN_TURBO_SUPPORTED {
     ; {{{ Add turbo RAM in banks 1 and 2 to .ram_blocks.
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
@@ -736,7 +735,7 @@ SFTODOLABEL2X
     ; path, but we can use the B+ private 12K as dynamic memory. Note that
     ; because we don't allow the Integra-B private 12K to be used as the only
     ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem
-    ; to 0. SFTODONOW: PROB OK BUT REVIEW LATER
+    ; to 0.
     lda #>flat_ramtop
     ldy ram_bank_count
     beq .upper_bound_in_a
@@ -856,7 +855,8 @@ SFTODOLABEL2X
     bpl + ; Always branch
     +assert_discardable_unreached
 .some_vmem_in_main_ram
-    ; Carry is clear; negate A
+    ; Negate A.
+    clc
     eor #$ff
     adc #1
     lsr
@@ -878,6 +878,7 @@ SFTODOLABEL2X
 }
     ; }}}
 
+    ; SFTODONOW: REVIEW UP TO HERE
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start.
     lda sideways_ram_hole_start
