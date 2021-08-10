@@ -629,7 +629,7 @@ SFTODOLABELX1
 }
 
     ; {{{ Add spare main RAM to .ram_blocks.
-    ; We also have some blocks between flat_ramtop and data_start. We're doing a
+    ; We also have some blocks between data_start and flat_ramtop. We're doing a
     ; constant subtraction in code here, but a) this is deletable init code so
     ; it doesn't really cost anything b) if we don't, the relocation code fails
     ; because we have a variation which doesn't follow the simple fixed
@@ -652,8 +652,8 @@ SFTODOLABELX1
     ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
-    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + min_vmem_blocks *
-    ;   vmem_block_pagecount, i.e. that we have enough RAM for the game's
+    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks *
+    ;   vmem_block_pagecount), i.e. that we have enough RAM for the game's
     ;   dynamic memory and two 512-byte blocks of virtual memory cache.
     ; - the game always has at least one block of non-dynamic memory.
 
@@ -672,13 +672,13 @@ SFTODOEE2
     ; }}}
 
     ; {{{ Set nonstored_pages to the effective dynamic RAM size.
-
     ; Set nonstored_pages to the number of 256-byte blocks of RAM we are going
     ; to treat as dynamic memory. This is normally the game's actual dynamic
     ; memory rounded up to a 512-byte boundary, i.e.
     ; ACORN_INITIAL_NONSTORED_PAGES.
     lda #ACORN_INITIAL_NONSTORED_PAGES
     sta nonstored_pages
+
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; The build system and loader have worked together to ensure that we can run
     ; the game with nonstored_pages == ACORN_INITIAL_NONSTORED_PAGES. We must
