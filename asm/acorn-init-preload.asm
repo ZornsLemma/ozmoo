@@ -44,6 +44,12 @@
 ; SFTODO: Probably not, but can the existence of .vmap_sort_entries help simplify the normal tube+cache loading code?
 .vmap_sort_entries !fill 1
 
+!ifndef ACORN_NO_DYNMEM_ADJUST {
+!ifdef ACORN_SWR {
+.max_dynmem !fill 1
+}
+}
+
 ; }}}
 
 ; Initialization performed very early during startup.
@@ -725,7 +731,6 @@ SFTODOLABEL2X
     ; performance drawbacks so it's probably best not using it unless we're
     ; forced to.)
     ; SFTODONOW: Don't risk re-use of zp_temp for this?
-.max_dynmem = zp_temp + 4 ; 1 byte SFTODONOW RENAME GET RID OF ???
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; We might have no sideways RAM or just the private 12K on a B+ or
     ; Integra-B. We mustn't use the Integra-B 12K for dynamic memory because of
