@@ -762,6 +762,10 @@ SFTODOLABEL2X
     sec
     sbc #>story_start
     sta .max_dynmem
+    cmp nonstored_pages
+    bcs + ; Always branch
+    +assert_discardable_unreached
++
 
     ; If game_blocks == .ram_blocks, we want to set nonstored_pages to
     ; .max_dynmem; there's no downside as we have enough RAM for the entire game
