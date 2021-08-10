@@ -794,13 +794,13 @@ SFTODOLABEL2X
     ; the virtual memory code, and can therefore only address as dynamic memory.
     ; If this is negative, there is no memory we can't address, so leave things
     ; alone.
-.min_lhs_sub = vmap_max_size * vmem_block_pagecount ; SFTODO RENAME NOW
+.vmap_max_size_pages = vmap_max_size * vmem_block_pagecount
     ; YA contains .ram_blocks.
     sec
-    sbc #<.min_lhs_sub
+    sbc #<.vmap_max_size_pages
     tax
     tya
-    sbc #>.min_lhs_sub
+    sbc #>.vmap_max_size_pages
     bcc .initial_dynmem_adjust_done ; branch if only_dynmem_addressable_blocks negative
     ; Set nonstored_pages = min(only_dynmem_addressable_blocks, .max_dynmem); we
     ; can't use more dynamic memory than we have memory to support, of course.
