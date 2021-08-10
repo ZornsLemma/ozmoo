@@ -730,7 +730,6 @@ SFTODOLABEL2X
     ; this optimisation more headroom, but of course the big model has its own
     ; performance drawbacks so it's probably best not using it unless we're
     ; forced to.)
-    ; SFTODONOW: Don't risk re-use of zp_temp for this?
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; We might have no sideways RAM or just the private 12K on a B+ or
     ; Integra-B. We mustn't use the Integra-B 12K for dynamic memory because of
