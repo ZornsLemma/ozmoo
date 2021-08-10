@@ -713,10 +713,9 @@ SFTODOEE2
     ; accessing as much of the game as possible via the simpler dynamic memory
     ; code path.
     bit is_turbo
-    bpl .dynmem_adjust_done
+    bpl .initial_dynmem_adjust_done
     lda #>(flat_ramtop - story_start)
     sta nonstored_pages
-.dynmem_adjust_done
 }
 
 SFTODOLABEL2X
@@ -780,7 +779,7 @@ SFTODOLABEL2X
 .use_max_dynmem
     lda .max_dynmem
     sta nonstored_pages
-    jmp .dynmem_adjust_done
+    jmp .initial_dynmem_adjust_done
 
 .game_blocks_ne_ram_blocks
     ; Note that we can't have game_blocks < .ram_blocks because we reduced
@@ -796,22 +795,22 @@ SFTODOLABEL2X
     ; If this is negative, there is no memory we can't address, so leave things
     ; alone.
 .min_lhs_sub = vmap_max_size * vmem_block_pagecount ; SFTODO RENAME NOW
+    ; YA contains .ram_blocks.
     sec
     sbc #<.min_lhs_sub
     tax
     tya
     sbc #>.min_lhs_sub
-    bcc .dynmem_adjust_done ; branch if only_dynmem_addressable_blocks negative
-    ; Set nonstored_pages = min(only_dynmem_addressable_blocks, .max_dynmem); we can't use more dynamic
-    ; memory than we have memory to support, of course.
+    bcc .initial_dynmem_adjust_done ; branch if only_dynmem_addressable_blocks negative
+    ; Set nonstored_pages = min(only_dynmem_addressable_blocks, .max_dynmem); we
+    ; can't use more dynamic memory than we have memory to support, of course.
     bne .use_max_dynmem ; branch if only_dymem_addressable_blocks is > 8 bit
     ; We now have X=only_dynmem_addressable_blocks, an 8-bit quantity.
     cpx .max_dynmem
     bcs .use_max_dynmem
     stx nonstored_pages
-.dynmem_adjust_done ; SFTODO RENAME LABEL
 }
-
+.initial_dynmem_adjust_done
     ; The above adjustments deliberately ignored some general constraints on
     ; nonstored_pages to simplify the code; apply those constraints now.
     jsr .constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
