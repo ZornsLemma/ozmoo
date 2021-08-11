@@ -171,6 +171,7 @@ def prechecks():
         test_executable("beebasm")
         check_beebasm_version()
     elif cmd_args.force_basictool:
+        # SFTODONOW: I need to invoke basictool with --strip-spaces in v0.06; probably just let it break with v0.05 and earlier, given limited basictool adoption
         test_executable("basictool")
     else:
         # We prefer basictool if it's available and the user isn't expressing a
