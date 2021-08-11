@@ -14,6 +14,7 @@ screenkernal_init
 half_block_graphic = 181
 full_block_graphic = 255
 progress_indicator_one_block = 1 << progress_indicator_fractional_bits
+
 progress_indicator_blocks_per_step !fill 2
 progress_indicator_blocks_until_next_step !fill 2
 progress_indicator_graphic !byte half_block_graphic
