@@ -921,9 +921,10 @@ SFTODOLABEL2X
     ; is lower. It's convenient to work with this larger value while we do the
     ; initial load, then vmap_max_entries is fixed up later.)
     ldx #vmap_max_size
-    lda .ram_blocks
-    lsr .ram_blocks + 1
+    lda .ram_blocks + 1
+    lsr
     bne .cap_at_vmap_max_size
+    lda .ram_blocks
     ror
     cmp #vmap_max_size
     bcs .cap_at_vmap_max_size
