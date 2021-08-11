@@ -40,6 +40,7 @@ full_block_graphic = 255
     ; Alternate between outputting a half block graphic and a backspace+full
     ; block graphic.
 .lda_imm_block_graphic
+; SFTODONOW: Are we really gaining anything with this self-modifying code?
     lda #half_block_graphic ; patched at run time
     cmp #half_block_graphic
     beq +
@@ -96,7 +97,7 @@ deletable_init
     ; memory. We don't need to worry about reading past the end of the game data
     ; here, because at worst we will read a final 512-byte block when we don't
     ; have a full block and that's fine.
-.blocks_to_read = zp_temp + 4 ; 1 byte
+.blocks_to_read = zp_temp + 4 ; 1 byte SFTODONOW: RENAME pages_to_read? But maybe not, because this is e.g. used with the upstream-named readblocks function etc.
     ; Because this is initialisation code, we know the following variables are
     ; already set to predictable values. This optimisation was useful at one
     ; point but it's not really important right now; it isn't too confusing so
@@ -383,8 +384,8 @@ SFTODOLABEL4
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
 
-    ; Calculate CRC of block 0 before it gets modified, so we can use it later
-    ; to identify the game disc after a save or restore.
+    ; Calculate CRC of page 0 of the game before it gets modified, so we can use
+    ; it later to identify the game disc after a save or restore.
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
     +acorn_page_in_bank_using_a dynmem_ram_bank
 }
