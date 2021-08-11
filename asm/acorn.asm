@@ -1,6 +1,16 @@
 ; Acorn-specific code factored out into its own file for readability.
 ; SFTODONOW: Maybe rename this file to acorn-something.asm now we've pulled some code out into other acorn-*.asm files
 
+; General note on terminology for the Acorn port: Upstream code overloads the
+; word "block" to refer to both 256-byte and 512-byte blocks. I am not changing
+; any upstream variable names, but in Acorn code I will try to consistently
+; avoid "block" and use the terms"page" (always 256 bytes) or "dpage" (always
+; 512 bytes) instead.
+; SFTODO: I don't really like the pseudo-word "dpage", but it will do, and it
+; would probably by easy to search and replace to change this later.
+; SFTODO: Update this comment to reflect the fact I seem to want to talk about "vmem blocks" to mean 512-byte dpages in some places; I think this is OK, but it's misleading to say that I will try to always use dpage when it's not true.
+; SFTODONOW: I HAVEN'T PUT THIS INTO EFFECT YET
+
 ; A note on Acorn memory models - this affects code in many places, but I have
 ; to write this somewhere. SFTODO: This is perhaps not best file any more
 ;
@@ -146,7 +156,7 @@ assert_carry_clear_sub
 }
 
 
-; SFTODO: Once things settle down and I don't have immediate plans to add new features, it would be good to look for opportunities to shrink the code - particularly on builds for smaller machines - as squeezing out an extra one or two 512 byte blocks of vmem cache in main RAM might make all the difference. Due to alignment it doesn't always need that much, a few bytes may tip it over the next alignment boundary.
+; SFTODO: Once things settle down and I don't have immediate plans to add new features, it would be good to look for opportunities to shrink the code - particularly on builds for smaller machines - as squeezing out an extra one or two dpages of vmem cache in main RAM might make all the difference. Due to alignment it doesn't always need that much, a few bytes may tip it over the next alignment boundary.
 
 ; SFTODO: It's maybe a bit hacky, but perhaps we could offer an option to use pages 9 and &A on a B/B+ and those plus pages &B and &C on a Master as vmem cache if the user wants.
 

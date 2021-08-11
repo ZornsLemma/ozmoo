@@ -65,15 +65,15 @@ full_block_graphic = 255
 
 
 !ifdef ACORN_TUBE_CACHE {
-; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_BLOCKS), i.e. the number of
+; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_PAGES), i.e. the number of
 ; pages of RAM we actually have on a normal second processor without counting
 ; host cache, capped at the actual size of the game.
 calculate_normal_tube_own_ram_blocks ; SFTODO: RENAME??
     lda #>(flat_ramtop - story_start)
-!if (>ACORN_GAME_BLOCKS) == 0 {
-    cmp #<ACORN_GAME_BLOCKS
+!if (>ACORN_GAME_PAGES) == 0 {
+    cmp #<ACORN_GAME_PAGES
     bcc +
-    lda #<ACORN_GAME_BLOCKS
+    lda #<ACORN_GAME_PAGES
 }
 +   rts
 }
@@ -127,7 +127,7 @@ deletable_init
 !ifdef VMEM {
     lda nonstored_pages
 } else {
-    lda #ACORN_GAME_BLOCKS
+    lda #ACORN_GAME_PAGES
 }
     sta .blocks_to_read
 

@@ -665,8 +665,8 @@ SFTODOLABELX1
     ; {{{ Set .ram_blocks = min(.ram_blocks, game_blocks). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
 SFTODOEE2
-    ldx #>ACORN_GAME_BLOCKS
-    lda #<ACORN_GAME_BLOCKS
+    ldx #>ACORN_GAME_PAGES
+    lda #<ACORN_GAME_PAGES
     cpx .ram_blocks + 1
     bne +
     cmp .ram_blocks
@@ -771,9 +771,9 @@ SFTODOLABEL2X
     ; faster dynamic memory code path.
     ldy .ram_blocks + 1
     lda .ram_blocks
-    cpy #>ACORN_GAME_BLOCKS
+    cpy #>ACORN_GAME_PAGES
     bne .game_blocks_ne_ram_blocks
-    cmp #<ACORN_GAME_BLOCKS
+    cmp #<ACORN_GAME_PAGES
     bne .game_blocks_ne_ram_blocks
 .use_max_dynmem
     lda .max_dynmem
@@ -1030,9 +1030,9 @@ SFTODOXY7
     inc .blocks_to_load + 1
 +
 } else { ; Not VMEM
-    lda #<ACORN_GAME_BLOCKS
+    lda #<ACORN_GAME_PAGES
     sta .blocks_to_load
-    lda #>ACORN_GAME_BLOCKS
+    lda #>ACORN_GAME_PAGES
     sta .blocks_to_load + 1
 }
     ; }}}

@@ -102,8 +102,8 @@ def divide_round_up(x, y):
         return (x // y) + 1
 
 
-def bytes_to_blocks(x):
-    return divide_round_up(x, bytes_per_block)
+def bytes_to_pages(x):
+    return divide_round_up(x, bytes_per_page)
 
 
 def pad_to(data, size):
@@ -116,7 +116,7 @@ def pad_to_multiple_of(data, block_size):
 
 
 def disc_size(contents):
-    return sum(bytes_to_blocks(len(f.binary())) for f in contents)
+    return sum(bytes_to_pages(len(f.binary())) for f in contents)
 
 
 def same_double_page_alignment(lhs, rhs):
@@ -838,8 +838,8 @@ class OzmooExecutable(Executable):
             self._patch_vmem()
 
     def _patch_vmem(self):
-        # Can we fit the nonstored blocks into memory?
-        nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_block
+        # Can we fit the nonstored pages into memory?
+        nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
         if nonstored_pages_up_to > self.pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
@@ -887,7 +887,7 @@ class OzmooExecutable(Executable):
                 # any "suggested" blocks.
                 addr, timestamp = invalid_addr, invalid_timestamp
             else:
-                addr = (nonstored_pages + block_index * vmem_block_pagecount) >> 1
+                addr = (nonstored_pages + block_index * pages_per_vmem_block) >> 1
             if ((addr >> 8) & ~vmem_highbyte_mask) != 0:
                 # This vmap entry is useless; the current Z-machine version can't contain
                 # such a block.
@@ -917,7 +917,7 @@ class OzmooExecutable(Executable):
             return self.labels["flat_ramtop"]
 
     def max_nonstored_pages(self):
-        return (self.pseudo_ramtop() - self.labels["story_start"]) // bytes_per_block
+        return (self.pseudo_ramtop() - self.labels["story_start"]) // bytes_per_page
 
     # Return the size of the binary, ignoring any relocation data (which isn't
     # important for the limited use we make of the return value).
@@ -1032,12 +1032,12 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
         surplus_nonstored_pages = e_low.max_nonstored_pages() - nonstored_pages
         assert surplus_nonstored_pages >= 0
         assert surplus_nonstored_pages % 2 == 0
-        max_start_addr = min(e_low.start_addr + surplus_nonstored_pages * bytes_per_block, max_start_addr)
+        max_start_addr = min(e_low.start_addr + surplus_nonstored_pages * bytes_per_page, max_start_addr)
     else:
         main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
         main_ram_vmem -= e_low.screen_hole_size()
         assert main_ram_vmem >= 0
-        assert main_ram_vmem % (2 * bytes_per_block) == 0
+        assert main_ram_vmem % (2 * bytes_per_page) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
     assert same_double_page_alignment(max_start_addr, e_low.start_addr)
     e = make_ozmoo_executable(leafname, max_start_addr, args, report_failure_prefix)
@@ -1084,7 +1084,7 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     # RAM. SFTODONOW: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem. - I SHOULD PERHAPS DO SOME TIMINGS OF MEDDYN VS BIGDYN BEFORE REWRITING THIS COMMENT, AND IT MAY ALSO FORCE ME TO RECONSIDER
     medium_e = None
     if cmd_args.force_medium_dynmem or ("-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem):
-        if nonstored_pages * bytes_per_block <= 16 * 1024:
+        if nonstored_pages * bytes_per_page <= 16 * 1024:
             medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
             if medium_e is not None:
                 info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
@@ -1151,9 +1151,9 @@ def make_tube_executables():
     # be tightened up a bit but the more "realistic" the threshold the more chance there
     # is of subsequent code changes optimising things more than this code expects and
     # missing out on a chance to use a no-vmem build.
-    if game_blocks <= 64 * 4:
+    if game_pages <= 64 * 4:
         tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, args)
-        if game_blocks <= tube_no_vmem.max_nonstored_pages():
+        if game_pages <= tube_no_vmem.max_nonstored_pages():
             info("Game is small enough to run without virtual memory on second processor")
             return [tube_no_vmem]
     args += ["-DVMEM=1"]
@@ -1711,7 +1711,7 @@ def make_preload_blocks_list(config_filename):
             # preopt executable, which we just ignore.
             assert i == 0
             continue
-        block_index = ((addr << 1) - nonstored_pages) // vmem_block_pagecount
+        block_index = ((addr << 1) - nonstored_pages) // pages_per_vmem_block
         assert block_index >= 0
         blocks.append(block_index)
     return blocks
@@ -1725,13 +1725,13 @@ def make_disc_image():
         "-DACORN=1",
         "-DACORN_CURSOR_PASS_THROUGH=1",
         "-DSTACK_PAGES=4",
-        "-DSMALLBLOCK=1",
+        "-DSMALLBLOCK=1", # SFTODONOW: Get rid of this, it's dead (upstream)
         "-DSPLASHWAIT=0",
         "-DACORN_HW_SCROLL=1",
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-        "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_blocks - nonstored_pages, 2),
-        "-DACORN_GAME_BLOCKS=%d" % game_blocks,
+        "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_pages - nonstored_pages, pages_per_vmem_block),
+        "-DACORN_GAME_PAGES=%d" % game_pages,
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -1920,12 +1920,12 @@ def make_disc_image():
     if not cmd_args.adfs:
         disc = DfsImage(disc_contents)
         if not cmd_args.double_sided:
-            # Because we read multiples of vmem_block_pagecount at a time, the data file must
+            # Because we read multiples of pages_per_vmem_block at a time, the data file must
             # start at a corresponding sector in order to avoid a read ever straddling a track
             # boundary. (Some emulators - b-em 1770/8271, BeebEm 1770 - seem relaxed about this
             # and it will work anyway. BeebEm's 8271 emulation seems stricter about this, so
             # it's good for testing.)
-            disc.add_pad_file(lambda sector: sector % vmem_block_pagecount == 0)
+            disc.add_pad_file(lambda sector: sector % pages_per_vmem_block == 0)
             disc.add_file(File("DATA", 0, 0, game_data))
             if not cmd_args.no_build_file:
                 disc.add_file(make_build_file())
@@ -1942,7 +1942,7 @@ def make_disc_image():
             spt = DfsImage.sectors_per_track
             bps = DfsImage.bytes_per_sector
             bpt = DfsImage.bytes_per_track
-            for i in range(0, bytes_to_blocks(len(game_data)), spt):
+            for i in range(0, bytes_to_pages(len(game_data)), spt):
                 data[(i % (2 * spt)) // spt].extend(game_data[i*bps:i*bps+bpt])
             disc .add_file(File("DATA", 0, 0, data[0]))
             disc2.add_file(File("DATA", 0, 0, data[1]))
@@ -1991,9 +1991,9 @@ header_version = 0
 header_release = 2
 header_serial = 18
 header_static_mem = 0xe
-vmem_block_pagecount = 2
-bytes_per_block = 256
-bytes_per_vmem_block = vmem_block_pagecount * bytes_per_block
+pages_per_vmem_block = 2
+bytes_per_page = 256
+bytes_per_vmem_block = pages_per_vmem_block * bytes_per_page
 min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
@@ -2039,15 +2039,15 @@ elif z_machine_version == 8:
 else:
     vmem_highbyte_mask = 0x01
 
-game_blocks = bytes_to_blocks(len(game_data))
+game_pages = bytes_to_pages(len(game_data))
 dynamic_size_bytes = read_be_word(game_data, header_static_mem)
-nonstored_pages = bytes_to_blocks(dynamic_size_bytes)
+nonstored_pages = bytes_to_pages(dynamic_size_bytes)
 assert nonstored_pages > 0
-# We round nonstored_pages up to a multiple of vmem_block_pagecount; this is
+# We round nonstored_pages up to a multiple of pages_per_vmem_block; this is
 # irrelevant but harmless for non-VMEM builds, and for VMEM builds it is
 # essential as the vmem code requires that cached game data blocks start on
-# vmem_block_pagecount (512-byte) boundaries within the game.
-while nonstored_pages % vmem_block_pagecount != 0:
+# pages_per_vmem_block (512-byte) boundaries within the game.
+while nonstored_pages % pages_per_vmem_block != 0:
     nonstored_pages += 1
 # The following points are technically irrelevant and very mildly harmful for
 # non-VMEM builds, but in order to avoid extra complexity we always apply them
@@ -2062,21 +2062,21 @@ while nonstored_pages % vmem_block_pagecount != 0:
 #   vmap_{used,max}_entries >= 1.
 #
 # - We pad the game if necessary so it's a multiple of 512-bytes long, i.e. we
-#   guarantee that game_blocks % vmem_block_pagecount == 0. In VMEM builds,
+#   guarantee that game_pages % pages_per_vmem_block == 0. In VMEM builds,
 #   everything is 512-byte aligned and so this isn't really harmful, and it
-#   avoids introducing corner cases when we're using game_blocks during
+#   avoids introducing corner cases when we're using game_pages during
 #   initialisation. (Non-VMEM builds only require story_start to be 256-byte
 #   aligned, and it's therefore possible to have (say) 201 pages of memory free
 #   with a 201 page game but end up insisting on using VMEM because we treat it
-#   as a 202 page game.)
+#   as a 202 page game.) SFTODONOW: Is this quite right? Didn't I switch to making non-VMEM builds meet the same 512-byte alignment anyway? Not sure right now.
 #
 # SFTODO: It would be possible - the complexity would mainly be in the build
 # script, I beleive - to stop applying these (particularly the second) tweaks
 # to non-VMEM builds. I really don't know if it's worth it though.
-while ((game_blocks < nonstored_pages + vmem_block_pagecount) or
-       (game_blocks % vmem_block_pagecount != 0)):
-    game_data += bytearray(bytes_per_block)
-    game_blocks = bytes_to_blocks(len(game_data))
+while ((game_pages < nonstored_pages + pages_per_vmem_block) or
+       (game_pages % pages_per_vmem_block != 0)):
+    game_data += bytearray(bytes_per_page)
+    game_pages = bytes_to_pages(len(game_data))
 
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
@@ -2112,7 +2112,5 @@ show_deferred_output()
 # SFTODO: The memory models should probably be small, medium and *LARGE*, now we have "medium".
 
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
-
-# SFTODONOW: Should I rename ACORN_GAME_BLOCKS as ACORN_GAME_PAGES? Not just here, in acorn.asm too of course.
 
 # SFTODONOW: Should probably do a merge of latest upstream changes (fairly minor, but still) before I settle down to do significant amounts of testing. This can wait until I've finished dealing with any non-test-related SFTODONOW comments though.
