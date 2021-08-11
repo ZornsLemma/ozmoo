@@ -931,7 +931,6 @@ SFTODOLABEL2X
     tax
 .cap_at_vmap_max_size
     stx vmap_max_entries
-+
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     lda sideways_ram_hole_start
