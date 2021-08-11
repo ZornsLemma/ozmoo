@@ -46,7 +46,7 @@
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_SWR {
-.max_dynmem !fill 1
+.max_dynmem_pages !fill 1
 }
 }
 
@@ -733,7 +733,7 @@ SFTODOLABEL2X
     ; the IBOS workspace, which we only support skipping in the read-only vmem
     ; path, but we can use the B+ private 12K as dynamic memory. Note that
     ; because we don't allow the Integra-B private 12K to be used as the only
-    ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem
+    ; sideways RAM bank in the medium model, we can't end up setting .max_dynmem_pages
     ; to 0.
     lda #>flat_ramtop
     ldy ram_bank_count
@@ -758,14 +758,14 @@ SFTODOLABEL2X
 }
     sec
     sbc #>story_start
-    sta .max_dynmem
+    sta .max_dynmem_pages
     cmp nonstored_pages
     bcs + ; Always branch
     +assert_discardable_unreached
 +
 
     ; If game_pages == .ram_pages, we want to set nonstored_pages to
-    ; .max_dynmem; there's no downside as we have enough RAM for the entire game
+    ; .max_dynmem_pages; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
     ; faster dynamic memory code path.
     ldy .ram_pages + 1
@@ -774,8 +774,8 @@ SFTODOLABEL2X
     bne .game_pages_ne_ram_pages
     cmp #<ACORN_GAME_PAGES
     bne .game_pages_ne_ram_pages
-.use_max_dynmem
-    lda .max_dynmem
+.use_max_dynmem_pages
+    lda .max_dynmem_pages
     sta nonstored_pages
     jmp .initial_dynmem_adjust_done
 
@@ -787,8 +787,7 @@ SFTODOLABEL2X
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
     ; RAM into play.
     ;
-    ; SFTODONOW: SEARCH AND REPLACE only_dynmem... blocks->pages
-    ; only_dynmem_addressable_blocks = .ram_pages - (vmap_max_size *
+    ; only_dynmem_addressable_pages = .ram_pages - (vmap_max_size *
     ; vmem_block_pagecount) is the number of 256-byte pages we can't address via
     ; the virtual memory code, and can therefore only address as dynamic memory.
     ; If this is negative, there is no memory we can't address, so leave things
@@ -800,13 +799,13 @@ SFTODOLABEL2X
     tax
     tya
     sbc #>.vmap_max_size_pages
-    bcc .initial_dynmem_adjust_done ; branch if only_dynmem_addressable_blocks negative
-    ; Set nonstored_pages = min(only_dynmem_addressable_blocks, .max_dynmem); we
+    bcc .initial_dynmem_adjust_done ; branch if only_dynmem_addressable_pages negative
+    ; Set nonstored_pages = min(only_dynmem_addressable_pages, .max_dynmem_pages); we
     ; can't use more dynamic memory than we have memory to support, of course.
-    bne .use_max_dynmem ; branch if only_dymem_addressable_blocks is > 8 bit
-    ; We now have X=only_dynmem_addressable_blocks, an 8-bit quantity.
-    cpx .max_dynmem
-    bcs .use_max_dynmem
+    bne .use_max_dynmem_pages ; branch if only_dymem_addressable_blocks is > 8 bit
+    ; We now have X=only_dynmem_addressable_pages, an 8-bit quantity.
+    cpx .max_dynmem_pages
+    bcs .use_max_dynmem_pages
     stx nonstored_pages
 }
 .initial_dynmem_adjust_done
