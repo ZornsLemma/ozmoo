@@ -764,25 +764,24 @@ SFTODOLABEL2X
     +assert_discardable_unreached
 +
 
-; SFTODONOW: SEARCH AND REPLACE (INSPECTING EACH TIME) game_blocks WITH game_pages
-    ; If game_blocks == .ram_pages, we want to set nonstored_pages to
+    ; If game_pages == .ram_pages, we want to set nonstored_pages to
     ; .max_dynmem; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
     ; faster dynamic memory code path.
     ldy .ram_pages + 1
     lda .ram_pages
     cpy #>ACORN_GAME_PAGES
-    bne .game_blocks_ne_ram_pages
+    bne .game_pages_ne_ram_pages
     cmp #<ACORN_GAME_PAGES
-    bne .game_blocks_ne_ram_pages
+    bne .game_pages_ne_ram_pages
 .use_max_dynmem
     lda .max_dynmem
     sta nonstored_pages
     jmp .initial_dynmem_adjust_done
 
-.game_blocks_ne_ram_pages
-    ; Note that we can't have game_blocks < .ram_pages because we reduced
-    ; .ram_pages to match earlier, so game_blocks > .ram_pages. We don't want to
+.game_pages_ne_ram_pages
+    ; Note that we can't have game_pages < .ram_pages because we reduced
+    ; .ram_pages to match earlier, so game_pages > .ram_pages. We don't want to
     ; reduce flexibility by locking parts of the game into RAM instead of
     ; allowing the virtual memory system to choose what lives in RAM. It's only
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
