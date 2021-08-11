@@ -889,16 +889,36 @@ SFTODOLABEL2X
     ; Set sideways_ram_hole_start
     ; = (RAM banks including private 12K - 1) * 32 - vmem_blocks_stolen_in_first_bank
     ; = (RAM banks including private 12K * 32) - 32 - vmem_blocks_stolen_in_first_blank
+;!error "SFTODO: I think the previous line is correct - but the next is not - .ram_pages includes main RAM, which is wrong, and even using .swr_ram_pages is wrong because it has counted the actual 11K for the private RAM, not 32 vmemblocks=16K as in the previous line"
     ; = (.ram_pages >> 1) - 32 - vmem_blocks_stolen_in_first_bank
     ; If this doesn't fit in a single byte, we will never try to access the
     ; private RAM anyway so we have no hole.
     ; SFTODONOW: OK, IN VMEM.ASM WE COMPARE AGAINST ...HOLE_START *AFTER* SUBTRACTING OFF VMEM BLOCKS IN MAIN RAM. SO A) IF WE RENAME IT, IT SHOULD PROBABLY BE TO SOMETHING WHICH REFLECTS THAT IT IS A VMEM BLOCK INDEX *FROM START OF SWR VMEM* NOT "START OF ALL VMEM CACHE" AND NOT START OF SWR (SINCE THIS IS CHECKED BEFORE ADDING STOLEN BLOCKS BACK ON) B) I AM NOT SURE IT'S CORRECT TO BE CALCULATING USING .ram_pages SINCE I THINK THAT CAN INCLUDE MAIN RAM, SHOULDN'T WE USE (WILL NEED TO MAKE IT PRESENT IN NON-SHADOW BUILDS, THOUGH IN PRACTICE NOT A PROBLEM) .swr_ram_pages
+    ; SFTODONOWEXP:
+    ; convert_index_x_to_ram_bank_and_address will do:
+    ; logical_swr_offset = (X-vmem_blocks_in_main_ram+vmem_blocks_stolen_in_first_bank) * 512
+    ; the sideways RAM hole occurs at logical_swr_offset=(RAM banks including private 12K - 1) * $4000, so
+    ; X=(((RAM banks_including_private 12K - 1)*$4000)/512)+vmem_blocks_in_main_ram-vmem_blocks_stolen_in_first_bank
+    ; X=(RAM banks including private 12K - 1) * 32 + vmem_blocks_in_main_ram - vmem_blocks_stolen_in_first_bank
+    ; when we would hit the RAM hole if we didn't take action
+    ; convert_index...  has already subtracted off vmem_blocks_in_main_ram at the point we check for the hole, so sideways_ram_hole_start=X-vmem_blocks_in_main_ram=(RAM banks including private 12K - 1) * 32
+    ; OK, let's try that again.
+    ; If we had no sideways RAM hole support, for a certain vmem index H convert_index... would
+    ; try to access the start of the hole at "logical sideways RAM address" (counting from the start of the first bank of sideways RAM) L = (RAM banks including private 12K - 1) * $4000.
+    ; Looking at convert_... logic, H would satisfy
+    ; L = (H - vmem_blocks_in_main_ram + vmem_blocks_stolen_in_first_bank) * 512
+    ; so
+    ; H = (L / 512) + vmem_blocks_in_main_ram - vmem_blocks_stolen_in_first_bank
+    ; H = (RAM banks including private 12K - 1) * 32 + vmem_blocks_in_main_ram - vmem_blocks_stolen_in_first_bank
+    ; but since the comparisong against sideways_ram_hole_start is done inside convert... after subtracting vmem_blocks_in_main_ram,
+    ; sideways_ram_hole_start = H - vmem_blocks_in_main_ram which is exactly what I am calculating
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start
-    lda .ram_pages + 1
+!if 0 { ; SFTODONOWEXPETC
+    lda .swr_ram_pages + 1 ; SFTODONOWEXP!? .ram_pages + 1
     lsr
     bne .no_sideways_ram_hole
-    lda .ram_pages
+    lda .swr_ram_pages ; SFTODONOWEXP!? .ram_pages
     ror
     sec
     sbc #32
@@ -907,6 +927,30 @@ SFTODOLABEL2X
     sbc vmem_blocks_stolen_in_first_bank
     +assert_carry_set
     sta sideways_ram_hole_start
+} else {
+WORKINGHIGH=$90 ; SFTODONOW COMPLETE HACK
+    ; Set (WORKINGHIGH A) = (RAM banks including private 12K - 1) * 32 - vmem_blocks_stolen_in_first_bank.
+    ldy #0
+    sta WORKINGHIGH
+    lda ram_bank_count
+    sec
+    sbc #1
+    ldx #5 ; 32 == 1 << 5
+-   asl
+    rol WORKINGHIGH
+    dex
+    bne -
+    sec
+    sbc vmem_blocks_stolen_in_first_bank
+    tax
+    lda WORKINGHIGH
+    sbc #0 ; high byte of vmem_blocks_stolen_in_first_bank
+    ; If the result doesn't fit in 8 bits, we have >= 256 vmem blocks of
+    ; sideways RAM available for vmem cache ignoring the private 12K, so we
+    ; don't need a sideways RAM hole at all, as vmem_max_entries <= 255.
+    bne .no_sideways_ram_hole
+    stx sideways_ram_hole_start
+}
 .no_sideways_ram_hole
     ; }}}
 }
@@ -1009,6 +1053,36 @@ SFTODOTPP
     sta vmem_blocks_in_sideways_ram
 +
     ; }}}
+}
+
+    ; SFTODONOW EXPERIMENTAL
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+    lda sideways_ram_hole_start
+    cmp #sideways_ram_hole_start_none
+    beq .no_sideways_ram_hole2
+
+    lda romsel_copy
+    pha
+    clc
+    lda vmem_blocks_in_main_ram
+    adc sideways_ram_hole_start
+    bcs +
+    tax
+    jsr convert_index_x_to_ram_bank_and_address
+    cmp #(>flat_ramtop) + sideways_ram_hole_vmem_blocks * vmem_block_pagecount
+    beq .private_ram_address_ok
+    +os_error 0, "SFTODONOW1"
+.private_ram_address_ok
+    lda romsel_copy
+    cmp #64
+    bcs .private_ram_selected
+    +os_error 0, "SFTODONOW2"
+.private_ram_selected
+
++   pla
+    sta romsel_copy
+    sta bbc_romsel
+.no_sideways_ram_hole2
 }
 
 SFTODOXY7
