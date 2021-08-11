@@ -163,46 +163,63 @@ def run_and_check(args, output_filter=None, warning_filter=None):
         die("%s failed" % args[0])
 
 
+# Check for the existence of a tool on PATH and its version. Return None if the
+# tool can't be executed, otherwise return a tuple representing its version,
+# with (0, 0) meaning we couldn't determine the version. This won't handle
+# arbitrary tools but works well enough for beebasm and basictool, which is all
+# we need.
+def get_tool_version(name):
+    try:
+        child = subprocess.Popen([name, "--help"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        child.wait()
+    except:
+        return None
+    version = (0, 0)
+    for line in child.stdout.readlines():
+        c = line.split()
+        if len(c) >= 2 and c[0] == name:
+            version_components = c[1].split(".")
+            if len(version_components) >= 2:
+                version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
+                break
+    return version
+
+
+# Check to see if we have at least a minimum version of a tool. Return True if
+# we do, if we don't then return False (if quiet) or die (if not quiet).
+def check_tool_version(name, min_version, quiet=False):
+    our_version = get_tool_version(name)
+    if our_version is None:
+        if quiet:
+            return False
+        die_missing_executable(name)
+    if our_version < min_version:
+        if quiet:
+            return False
+        die("You need at least version %d.%02d of %s" % tuple(list(min_version) + [name]))
+    return True
+
+
 # Generate a relatively clear error message if we can't find one of our tools,
 # rather than failing on a complex build command.
 def prechecks():
     test_executable("acme")
     if cmd_args.force_beebasm:
-        test_executable("beebasm")
-        check_beebasm_version()
+        check_tool_version("beebasm", min_beebasm_version)
     elif cmd_args.force_basictool:
-        # SFTODONOW: I need to invoke basictool with --strip-spaces in v0.06; probably just let it break with v0.05 and earlier, given limited basictool adoption
-        test_executable("basictool")
+        check_tool_version("basictool", min_basictool_version)
     else:
         # We prefer basictool if it's available and the user isn't expressing a
         # preference, because the Advanced BASIC Editor's "pack" is much better
         # than the ad-hoc crunching implemented here for beebasm.
-        have_basictool = test_executable("basictool", quiet=True)
-        if have_basictool:
+        if check_tool_version("basictool", min_basictool_version, quiet=True):
             cmd_args.force_basictool = True
         else:
-            have_beebasm = test_executable("beebasm", quiet=True)
-            if not have_beebasm:
-                die("Can't execute 'basictool' or 'beebasm'; is at least one of them on your PATH?")
-            check_beebasm_version()
-            cmd_args.force_beebasm = True
-
-
-def check_beebasm_version():
-    # Check for a new enough beebasm. We parse the --help output, if we find
-    # something that looks like a version we complain if it's too old; if in
-    # doubt we don't generate an error.
-    def beebasm_version_check(x):
-        c = x.split()
-        if len(c) >= 2 and c[0] == "beebasm":
-            version = c[1]
-            if version.startswith("1."):
-                c = version.split(".")
-                if len(c) >= 2:
-                    subversion = re.findall("^\d+", c[1])
-                    if len(subversion) > 0 and int(subversion[0]) < 9:
-                        die("You need beebasm 1.09 or later to build this")
-    run_and_check(["beebasm", "--help"], output_filter=beebasm_version_check)
+            if check_tool_version("beebasm", min_beebasm_version, quiet=True):
+                cmd_args.force_beebasm = True
+            else:
+                die("You need basictool %d.%02d (or newer) or beebasm %d.%02d (or newer) on your PATH to build this." %
+                    (min_basictool_version + min_beebasm_version))
 
 
 def check_if_special_game():
@@ -1367,7 +1384,7 @@ def make_tokenised_basic(name, text_basic):
         filename_tokenised = os.path.join("temp", "%s.tok" % name)
         run_and_check([
             "basictool",
-            "-t" if cmd_args.no_loader_crunch else "-tp",
+            "-ts" if cmd_args.no_loader_crunch else "-tsp",
             filename_text,
             filename_tokenised
         ])
@@ -1962,6 +1979,9 @@ cmd_args = parse_args()
 # but we don't want to generate a disc image with a missing version.
 if version_txt is None:
     die("Can't find version.txt")
+
+min_beebasm_version = (1, 9)
+min_basictool_version = (0, 6)
 
 prechecks()
 
