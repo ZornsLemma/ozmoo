@@ -35,7 +35,7 @@
 .swr_ram_pages !fill 2
 }
 
-.blocks_to_load !fill 2
+.dpages_to_load !fill 2
 
 !ifdef VMEM {
 .ram_pages !fill 2 ; SFTODO: rename to ram_pages???
@@ -1013,30 +1013,30 @@ SFTODOTPP
 }
 
 SFTODOXY7
-; SFTODONOW: Rename blocks_to_load->pages_to_load - or perhjaps given it sometimes has one and sometimes the other, I should just convert to work in 512-byte blocks a;ll the time
-    ; {{{ Calculate .blocks_to_load for the progress indicator.
+    ; {{{ Calculate .dpages_to_load for the progress indicator.
     ; Now we know how much data we are going to load, we can calculate how many
-    ; blocks correspond to each progress indicator position.
-    ; SFTODO: Since below we convert back to 512-byte blocks, it might make more
-    ; sense to stick with 512-byte blocks here and scale *nonstored_page* instead
-    ; of vmap_max_entries.
+    ; dpages correspond to each progress indicator position.
     ; SFTODO: Move this down to after the VMEM sort and debug-show-info code, to keep progress indicator stuff together?
+    ; Set dpages = (nonstored_pages / vmem_block_pagecount) + vmap_max_entries.
     lda #0
-    sta .blocks_to_load + 1
-    lda vmap_max_entries
-    asl ; convert 512-byte vmem blocks to pages
-    rol .blocks_to_load + 1
+    sta .dpages_to_load + 1
+    lda nonstored_pages
+    lsr
+    ror .dpages_to_load + 1
     clc
-    adc nonstored_pages
-    sta .blocks_to_load
+    adc vmap_max_entries
+    sta .dpages_to_load
     bcc +
-    inc .blocks_to_load + 1
+    inc .dpages_to_load + 1
 +
 } else { ; Not VMEM
-    lda #<ACORN_GAME_PAGES
-    sta .blocks_to_load
-    lda #>ACORN_GAME_PAGES
-    sta .blocks_to_load + 1
+    ; SFTODO: vmem_block_pagecount isn't defined for non-vmem builds; this feels
+    ; a bit hacky.
+.vmem_block_pagecount = 2
+    lda #<(ACORN_GAME_PAGES / .vmem_block_pagecount)
+    sta .dpages_to_load
+    lda #>(ACORN_GAME_PAGES / .vmem_block_pagecount)
+    sta .dpages_to_load + 1
 }
     ; }}}
 
@@ -1200,11 +1200,10 @@ SFTODOLABEL2
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
 ; progress bar step, in order to get avoid the bar under-filling or over-filling
-; the screen width. .blocks_to_load can't be more than 64K dynamic memory plus
+; the screen width. .dpages_to_load can't be more than 64K dynamic memory plus
 ; 128K virtual memory cache (and that's not going to happen in practice), so it
 ; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
 ; bits for the fractional component.
-; SFTODONOW: I seem to have got myself confused here, but isn't .blocks_to_load actually measured in 256-byte pages? It certainly seems to be treated that way above. OK, we fix this up here, but this is mega confusing.
 progress_indicator_fractional_bits=7
 
 ; SFTODONOW: Change these uses of block to dpage or vmem_block???
@@ -1266,15 +1265,11 @@ progress_indicator_fractional_bits=7
     rol
     sta divisor + 1
 
-    ; .blocks_to_load is expressed in 256-byte blocks, but loading is done in
-    ; 512-byte blocks, so we want to divide by two to convert this. We want to
-    ; shift right by 1 for the division by two, then left by
-    ; progress_indicator_fractional_bits bits. SFTODONOW!
-    ldx #progress_indicator_fractional_bits - 1
-    ; Set dividend = .blocks_to_load << X.
-    lda .blocks_to_load + 1
+    ; Set dividend = .dpages_to_load << progress_indicator_fractional_bits.
+    ldx #progress_indicator_fractional_bits
+    lda .dpages_to_load + 1
     sta dividend + 1
-    lda .blocks_to_load
+    lda .dpages_to_load
 -   asl
     rol dividend + 1
     dex
