@@ -488,7 +488,7 @@ SFTODOXX89
     ; can't assume ram_bank_count>0.
 
     ; {{{ Set .ram_pages to reflect available sideways RAM.
-    ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
+    ; We have 64 (2^6) pages per sideways RAM bank, if we have any.
     lda #0
     sta .ram_pages + 1
     lda ram_bank_count
@@ -505,7 +505,7 @@ SFTODOXX89
 
     ; Start with the sideways RAM hole disabled; this is nearly always right.
     lda #sideways_ram_hole_start_none
-    sta sideways_ram_hole_start ; SFTODO: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
+    sta sideways_ram_hole_start ; SFTODONOW: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
 
     ; The last RAM bank might be the B+ or Integra-B private RAM, which isn't
     ; the full 16K. (For the Integra-B we also need to set
@@ -559,7 +559,7 @@ SFTODOXX89
     lda .ram_pages + 1
     sta .swr_ram_pages + 1
 
-    ; We may have some additional RAM blocks in shadow RAM not being used for the
+    ; We may have some additional RAM pages in shadow RAM not being used for the
     ; screen display.
 SFTODOLM2
     lda vmem_cache_count_mem
@@ -591,17 +591,17 @@ SFTODOLM2
 !ifdef ACORN_TUBE_CACHE {
     ; {{{ Initialise host cache and add its size to .ram_pages.
 
-    ; We have some blocks of cache in the host, which aren't directly accessible
-    ; but are almost as good as our own RAM and which will benefit from
-    ; preloading if we're on a normal second processor. We count them for now so
-    ; we process more of the initial vmap and fix up the inflated value of
+    ; We have some cache in the host, which isn't directly accessible but is
+    ; almost as good as our own RAM and which will benefit from preloading if
+    ; we're on a normal second processor. We count cache pages for now so we
+    ; process more of the initial vmap and fix up the inflated value of
     ; vmap_max_entries later.
     lda screen_mode
     ora #shadow_mode_bit
     tax
     lda #osbyte_initialise_cache
     jsr osbyte
-    stx host_cache_size
+    stx host_cache_size ; SFTODONOW: Rename to include 'vmem_blocks' or 'dpages'
 !ifdef ACORN_TURBO_SUPPORTED {
     ; A turbo second processor has enough RAM to preload everything in vmap
     ; without touching the host cache. The host cache will still work, but we
@@ -611,7 +611,7 @@ SFTODOLM2
     bmi .host_cache_initialised
 }
     ; Note that .ram_pages is 0 at this point.
-    ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
+    ; X is cache size in 512-byte vmem blocks, but we want to count pages here.
     txa
     asl
     rol .ram_pages + 1
@@ -634,7 +634,7 @@ SFTODOLABELX1
 }
 
     ; {{{ Add spare main RAM to .ram_pages.
-    ; We also have some blocks between data_start and flat_ramtop. We're doing a
+    ; We also have some pages between data_start and flat_ramtop. We're doing a
     ; constant subtraction in code here, but a) this is deletable init code so
     ; it doesn't really cost anything b) if we don't, the relocation code fails
     ; because we have a variation which doesn't follow the simple fixed
@@ -654,15 +654,15 @@ SFTODOLABELX1
 +
     ; }}}
 
-    ; .ram_pages now contains the number of 256-byte blocks of RAM we have
-    ; available, including RAM which will be used for dynamic memory. The build
-    ; system and the loader will have worked together to guarantee that:
+    ; .ram_pages now contains the number of pages of RAM we have available,
+    ; including RAM which will be used for dynamic memory. The build system and
+    ; the loader will have worked together to guarantee that:
     ; - .ram_pages >= ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks *
     ;   vmem_block_pagecount), i.e. that we have enough RAM for the game's
     ;   dynamic memory and two 512-byte blocks of virtual memory cache.
-    ; - the game always has at least one block of non-dynamic memory.
+    ; - the game always has at least one 512-byte block of non-dynamic memory.
 
-    ; {{{ Set .ram_pages = min(.ram_pages, game_blocks). We do this in order to
+    ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
 SFTODOEE2
     ldx #>ACORN_GAME_PAGES
@@ -677,10 +677,9 @@ SFTODOEE2
     ; }}}
 
     ; {{{ Set nonstored_pages to the effective dynamic RAM size.
-    ; Set nonstored_pages to the number of 256-byte blocks of RAM we are going
-    ; to treat as dynamic memory. This is normally the game's actual dynamic
-    ; memory rounded up to a 512-byte boundary, i.e.
-    ; ACORN_INITIAL_NONSTORED_PAGES.
+    ; Set nonstored_pages to the number of pages of RAM we are going to treat as
+    ; dynamic memory. This is normally the game's actual dynamic memory rounded
+    ; up to a 512-byte boundary, i.e. ACORN_INITIAL_NONSTORED_PAGES.
     lda #ACORN_INITIAL_NONSTORED_PAGES
     sta nonstored_pages
 
@@ -765,6 +764,7 @@ SFTODOLABEL2X
     +assert_discardable_unreached
 +
 
+; SFTODONOW: SEARCH AND REPLACE (INSPECTING EACH TIME) game_blocks WITH game_pages
     ; If game_blocks == .ram_pages, we want to set nonstored_pages to
     ; .max_dynmem; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
@@ -788,6 +788,7 @@ SFTODOLABEL2X
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
     ; RAM into play.
     ;
+    ; SFTODONOW: SEARCH AND REPLACE only_dynmem... blocks->pages
     ; only_dynmem_addressable_blocks = .ram_pages - (vmap_max_size *
     ; vmem_block_pagecount) is the number of 256-byte pages we can't address via
     ; the virtual memory code, and can therefore only address as dynamic memory.
@@ -817,7 +818,7 @@ SFTODOLABEL2X
     ; }}}
 
     ; {{{ Set .ram_pages -= nonstored_pages, i.e. set .ram_pages to the number
-    ; of RAM blocks we have available as virtual memory cache.
+    ; of RAM pages we have available as virtual memory cache.
     lda .ram_pages
     sec
     sbc nonstored_pages
@@ -983,13 +984,14 @@ SFTODOLABEL5
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
 SFTODOTPP
-    ; SFTODO: Rename 'vmem_blocks_in_sideways_ram' to 'sideways_ram_size_in_vmem_blocks'? It is the number of 512-byte blocks of SWR we have, which is *not* the same (because we have vmem_blocks_stolen_in_first_bank possibly > 0) as the number of *blocks of actual vmem* in sideways RAM. - NO, I GOT THAT WRONG - IT *IS* THE NUMBER OF *VMEM* BLOCKS IN SWR, SINCE WE HAVE SUBTRACTED OFF STOLEN
+    ; SFTODONOW: Rename 'vmem_blocks_in_sideways_ram' to 'sideways_ram_size_in_vmem_blocks'? It is the number of 512-byte blocks of SWR we have, which is *not* the same (because we have vmem_blocks_stolen_in_first_bank possibly > 0) as the number of *blocks of actual vmem* in sideways RAM. - NO, I GOT THAT WRONG - IT *IS* THE NUMBER OF *VMEM* BLOCKS IN SWR, SINCE WE HAVE SUBTRACTED OFF STOLEN
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
     ; convert_index_x_to_ram_bank_and_address to decide when a vmem block is in
     ; shadow RAM and it doesn't matter if we actually use fewer blocks than
     ; this. This value is just used to ensure that if a vmem block index *would*
     ; access past the end of sideways RAM, it's handled via shadow RAM.
-    ; .swr_ram_pages is in 256-byte blocks, so convert it to 512-byte blocks.
+    ; .swr_ram_pages is in pages so we shift right to convert it to 512-byte
+    ; vmem blocks.
     ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well. SFTODONOW: I THINK THIS COMMENT IS OUTDATED BUT THIS ALL COULD DO WITH A RE-REVIEW
     ; SFTODONOW: DON'T DESTROY .swr_ram_pages IN NEXT LINE - UNLESS IT VASTLY SIMPLIFIES CODE, WE JUST DON'T nEED TO DO RISKY STUFF HERE IN DISCARDABLE INIT
     lsr .swr_ram_pages + 1
@@ -1003,7 +1005,7 @@ SFTODOTPP
     beq +
     ; We have a result which won't fit in a single byte, but since we know the
     ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
-    ; 255.
+    ; 255. SFTODONOW: This is fine if it really is a vmap index, which I think it is, but need to double check
     lda #255
     sta vmem_blocks_in_sideways_ram
 +
@@ -1011,6 +1013,7 @@ SFTODOTPP
 }
 
 SFTODOXY7
+; SFTODONOW: Rename blocks_to_load->pages_to_load - or perhjaps given it sometimes has one and sometimes the other, I should just convert to work in 512-byte blocks a;ll the time
     ; {{{ Calculate .blocks_to_load for the progress indicator.
     ; Now we know how much data we are going to load, we can calculate how many
     ; blocks correspond to each progress indicator position.
@@ -1021,10 +1024,10 @@ SFTODOXY7
     lda #0
     sta .blocks_to_load + 1
     lda vmap_max_entries
-    asl ; convert to 256-byte blocks
+    asl ; convert 512-byte vmem blocks to pages
     rol .blocks_to_load + 1
     clc
-    adc nonstored_pages ; already in 256-byte blocks
+    adc nonstored_pages
     sta .blocks_to_load
     bcc +
     inc .blocks_to_load + 1
@@ -1201,8 +1204,10 @@ SFTODOLABEL2
 ; 128K virtual memory cache (and that's not going to happen in practice), so it
 ; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
 ; bits for the fractional component.
+; SFTODONOW: I seem to have got myself confused here, but isn't .blocks_to_load actually measured in 256-byte pages? It certainly seems to be treated that way above. OK, we fix this up here, but this is mega confusing.
 progress_indicator_fractional_bits=7
 
+; SFTODONOW: Change these uses of block to dpage or vmem_block???
 ; Initialise progress_indicator_blocks_until_next_step and
 ; progress_indicator_blocks_per_step. This is only called once in any given
 ; build so we could make it a macro and inline it, but since this code overlaps
@@ -1214,7 +1219,7 @@ progress_indicator_fractional_bits=7
     ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
     ; - cursor_x). This way we don't have to worry about causing a mildly ugly
     ; scroll if we print in the bottom right position on the screen. The
-    ; multiplication by 2 allows for the use of half-character blocks.
+    ; multiplication by 2 allows for the use of half-character steps.
     ;
     ; (We haven't called screenkernal_init yet; that would be wrong because we
     ; might be in mode 6/7 from the loader and not yet have changed into the
@@ -1264,7 +1269,7 @@ progress_indicator_fractional_bits=7
     ; .blocks_to_load is expressed in 256-byte blocks, but loading is done in
     ; 512-byte blocks, so we want to divide by two to convert this. We want to
     ; shift right by 1 for the division by two, then left by
-    ; progress_indicator_fractional_bits bits.
+    ; progress_indicator_fractional_bits bits. SFTODONOW!
     ldx #progress_indicator_fractional_bits - 1
     ; Set dividend = .blocks_to_load << X.
     lda .blocks_to_load + 1
@@ -1360,6 +1365,7 @@ SFTODOOOL
 
     ; Set transient_zp = max_nonstored_pages =
     ; .ram_pages - min_vmem_blocks *  vmem_block_pagecount.
+    ; SFTODONOW: CONFUSING COMMENT, SINCE THE REAL PURPOSE OF THIS CODE BLOCK IS TO SET NONSTORED_PAGES
     sec
     lda transient_zp
     sbc #<(min_vmem_blocks * vmem_block_pagecount)
@@ -1372,8 +1378,9 @@ SFTODOOOL
     bcs +
     sta nonstored_pages
 +
-    ; Note that as we've already capped .ram_pages at game_blocks, we don't have to
-    ; explicitly check for nonstored_blocks being so large it's larger than the game.
+    ; Note that as we've already capped .ram_pages at game_pages, we don't have
+    ; to explicitly check for nonstored_pages being so large it's larger than
+    ; the game.
     rts
     ; }}}
 
@@ -1394,5 +1401,3 @@ initial_vmap_z_l
 }
 
 }
-
-; SFTODONOW: Sure I wrote a note about this somewhere else - should I (not touching upstream variable names) rename things so I consistently talk about "pages" (which are always 256 bytes) and "dpages" (which are always 512 bytes) and avoid the term "block" (except where upstream forces it on me)?

@@ -59,6 +59,7 @@ Working towards stable 7.x release, TODO:
 - testing! do some of my own, ask people on stardot (once I have something *I* don't intend to tinker with unless bugs are found)
 - test preopt
 - test restart
+- do vmem stress test
 - make sure to test splash screen
 
 

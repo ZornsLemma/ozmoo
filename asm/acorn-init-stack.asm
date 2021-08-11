@@ -232,7 +232,7 @@ SFTODOLABELX2
     ; runtime variable. I just worry a little bit about this breaking
     ; already-not-supposed-to-work-but-sort-of-does-just-about things where a
     ; game developer wants to switch in an updated data file without going
-    ; through the Ozmoo build process.
+    ; through the Ozmoo build process. SFTODONOW: I think this comment is a bit outdated, check
     lda vmap_max_entries
     sta inflated_vmap_max_entries
     jsr calculate_normal_tube_own_ram_pages
