@@ -136,15 +136,13 @@ assert_unreached_sub
 } else {
 assert_carry_set_sub
     bcs assert_carry_sub_rts
-    !byte 0
-    !text "C clear", 0
+    +os_error 0, "C clear"
 assert_carry_sub_rts
     rts
 
 assert_carry_clear_sub
     bcc assert_carry_sub_rts
-    !byte 0
-    !text "C set", 0
+    +os_error 0, "C set"
 
 !macro assert_carry_set {
     jsr assert_carry_set_sub
