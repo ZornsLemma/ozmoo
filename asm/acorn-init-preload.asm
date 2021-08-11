@@ -886,6 +886,7 @@ SFTODOLABEL2X
 
     ; We're on an Integra-B and are using the private RAM, so we need to set up
     ; sideways_ram_hole_start to skip the 1K of IBOS workspace at $8000.
+    ; SFTODONOW: Next couple of lines say "RAM banks including..." and then turn this into .ram_blocks >> 1 - this is at best inconsistent, because .ram_blocks potentially includes some spare main RAM (note that we subtracted off nonstored_pages by this poitn) used as vmem cache - I *suspect* the code here and when we use sideways_ram_hole_star  is correct and it is just the comment that's wrong, but need to think this through fresh
     ; Set sideways_ram_hole_start
     ; = (RAM banks including private 12K - 1) * 32 - vmem_blocks_stolen_in_first_bank
     ; = (RAM banks including private 12K * 32) - 32 - vmem_blocks_stolen_in_first_blank
