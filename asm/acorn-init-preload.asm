@@ -879,7 +879,7 @@ SFTODOLABEL2X
 
     ; SFTODONOW: REVIEW UP TO HERE
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-    ; {{{ Calculate sideways_ram_hole_start.
+    ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
     lda sideways_ram_hole_start
     bne .no_sideways_ram_hole
 
@@ -892,6 +892,7 @@ SFTODOLABEL2X
     ; = (.ram_pages >> 1) - 32 - vmem_blocks_stolen_in_first_bank
     ; If this doesn't fit in a single byte, we will never try to access the
     ; private RAM anyway so we have no hole.
+    ; SFTODONOW: OK, IN VMEM.ASM WE COMPARE AGAINST ...HOLE_START *AFTER* SUBTRACTING OFF VMEM BLOCKS IN MAIN RAM. SO A) IF WE RENAME IT, IT SHOULD PROBABLY BE TO SOMETHING WHICH REFLECTS THAT IT IS A VMEM BLOCK INDEX *FROM START OF SWR VMEM* NOT "START OF ALL VMEM CACHE" AND NOT START OF SWR (SINCE THIS IS CHECKED BEFORE ADDING STOLEN BLOCKS BACK ON) B) I AM NOT SURE IT'S CORRECT TO BE CALCULATING USING .ram_pages SINCE I THINK THAT CAN INCLUDE MAIN RAM, SHOULDN'T WE USE (WILL NEED TO MAKE IT PRESENT IN NON-SHADOW BUILDS, THOUGH IN PRACTICE NOT A PROBLEM) .swr_ram_pages
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start
     lda .ram_pages + 1
