@@ -1049,6 +1049,7 @@ SFTODOXY7
     ; initial load. The build system can't do this sort, because we're sorting
     ; the truncated list with just .vmap_sort_entries not the full list of
     ; vmap_max_size entries.
+    ; SFTODONOW: Somewhere around here should probably be pointing out this code only "matters" for PREOPT - there is actually a comment like that, so this may be OK, but think about it
     ;
     ; This only happens once and it's not a huge list so while we don't want it
     ; to be really slow, compactness and simplicity of code are also important.
@@ -1082,25 +1083,28 @@ SFTODOXY7
     ; but it's discardable init code so it's not really harmful and it seems
     ; best for support purposes to keep the code identical whether or not preopt
     ; data is supplied or not.)
-    ldx #1
     ; SFTODONOW: Don't risk re-use of zp_temp for this code? But it is mildly performance critical so use of zp may be appropriate, and if nothing *else* is using zp_temp this is probably OK.
+.temp_l = zp_temp
+.temp_h_with_timestamp = zp_temp + 1
+.temp_h_without_timestamp = zp_temp + 4 ; SFTODO: Make consecutive now prob no conflicts?
+    ldx #1
 .outer_loop
     lda vmap_z_l,x
-    sta zp_temp
+    sta .temp_l
     lda vmap_z_h,x
-    sta zp_temp + 1
+    sta .temp_h_with_timestamp
     and #vmem_highbyte_mask
-    sta zp_temp + 4
+    sta .temp_h_without_timestamp
     txa
     tay
 .inner_loop
     dey
     lda vmap_z_h,y
     and #vmem_highbyte_mask
-    cmp zp_temp + 4
+    cmp .temp_h_without_timestamp
     bne +
     lda vmap_z_l,y
-    cmp zp_temp
+    cmp .temp_l
     beq .exit_inner_loop
 +   bcc .exit_inner_loop
     lda vmap_z_l,y
@@ -1114,9 +1118,9 @@ SFTODOXY7
     ; We can't omit this iny and use vmap_z_[lh] + 1,y below to compensate
     ; because Y may be -1 (255) and so they're not equivalent.
     iny
-    lda zp_temp
+    lda .temp_l
     sta vmap_z_l,y
-    lda zp_temp + 1
+    lda .temp_h_with_timestamp
     sta vmap_z_h,y
     inx
     cpx .vmap_sort_entries
