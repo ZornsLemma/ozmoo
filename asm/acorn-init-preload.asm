@@ -32,13 +32,13 @@
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-.swr_ram_blocks !fill 2
+.swr_ram_pages !fill 2
 }
 
 .blocks_to_load !fill 2
 
 !ifdef VMEM {
-.ram_blocks !fill 2 ; SFTODO: rename to ram_pages???
+.ram_pages !fill 2 ; SFTODO: rename to ram_pages???
 }
 
 ; SFTODO: Probably not, but can the existence of .vmap_sort_entries help simplify the normal tube+cache loading code?
@@ -475,8 +475,8 @@ SFTODOXX89
 
 !ifndef ACORN_SWR {
     lda #0
-    sta .ram_blocks
-    sta .ram_blocks + 1
+    sta .ram_pages
+    sta .ram_pages + 1
 } else {
     ; General observation: Even thought this is a sideways RAM build, it's
     ; possible we have no sideways RAM at all. Examples might be a small game
@@ -487,21 +487,21 @@ SFTODOXX89
     ; model we will always have at least one bank, of course. But in general, we
     ; can't assume ram_bank_count>0.
 
-    ; {{{ Set .ram_blocks to reflect available sideways RAM.
+    ; {{{ Set .ram_pages to reflect available sideways RAM.
     ; We have 64 (2^6) 256-byte blocks per sideways RAM bank, if we have any.
     lda #0
-    sta .ram_blocks + 1
+    sta .ram_pages + 1
     lda ram_bank_count
     ldx #6
 -   asl
-    rol .ram_blocks + 1
+    rol .ram_pages + 1
     dex
     bne -
-    sta .ram_blocks
+    sta .ram_pages
     ; }}}
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-    ; {{{ Adjust .ram_blocks if we have a private 12K RAM bank.
+    ; {{{ Adjust .ram_pages if we have a private 12K RAM bank.
 
     ; Start with the sideways RAM hole disabled; this is nearly always right.
     lda #sideways_ram_hole_start_none
@@ -530,34 +530,34 @@ SFTODOXX89
     ; detection code.
     lda #0
     sta sideways_ram_hole_start
-    ; Now adjust .ram_blocks.
-    lda .ram_blocks
+    ; Now adjust .ram_pages.
+    lda .ram_pages
     sec
     sbc #(16 * 1024 - integra_b_private_ram_size) / 256
     jmp .subtract_private_ram_high_byte
 
 .b_plus_private_ram
-    lda .ram_blocks
+    lda .ram_pages
     sec
     sbc #(16 * 1024 - b_plus_private_ram_size) / 256
 .subtract_private_ram_high_byte
-    sta .ram_blocks
+    sta .ram_pages
     bcs +
-    dec .ram_blocks + 1
+    dec .ram_pages + 1
 +
 .no_private_ram
     ; }}}
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-    ; {{{ Add any spare shadow RAM to .ram_blocks
+    ; {{{ Add any spare shadow RAM to .ram_pages
 
-    ; Save a copy of .ram_blocks for later when we're calculating
+    ; Save a copy of .ram_pages for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
-    lda .ram_blocks
-    sta .swr_ram_blocks ; SFTODO: rename? We spell out "sideways" most of the time... (also "PIN Number" syndrome...)
-    lda .ram_blocks + 1
-    sta .swr_ram_blocks + 1
+    lda .ram_pages
+    sta .swr_ram_pages ; SFTODO: rename? We spell out "sideways" most of the time... (also "PIN Number" syndrome...)
+    lda .ram_pages + 1
+    sta .swr_ram_pages + 1
 
     ; We may have some additional RAM blocks in shadow RAM not being used for the
     ; screen display.
@@ -575,10 +575,10 @@ SFTODOLM2
     sec
     sbc #>shadow_start
     clc
-    adc .ram_blocks
-    sta .ram_blocks
+    adc .ram_pages
+    sta .ram_pages
     bcc +
-    inc .ram_blocks + 1
+    inc .ram_pages + 1
 +
 .no_spare_shadow
 ; }}}
@@ -589,7 +589,7 @@ SFTODOLM2
 ; above; this might or might not be clearer.
 
 !ifdef ACORN_TUBE_CACHE {
-    ; {{{ Initialise host cache and add its size to .ram_blocks.
+    ; {{{ Initialise host cache and add its size to .ram_pages.
 
     ; We have some blocks of cache in the host, which aren't directly accessible
     ; but are almost as good as our own RAM and which will benefit from
@@ -610,30 +610,30 @@ SFTODOLM2
     bit is_turbo
     bmi .host_cache_initialised
 }
-    ; Note that .ram_blocks is 0 at this point.
+    ; Note that .ram_pages is 0 at this point.
     ; X is cache size in 512-byte blocks, but we want to count 256-byte blocks here.
     txa
     asl
-    rol .ram_blocks + 1
-    sta .ram_blocks
+    rol .ram_pages + 1
+    sta .ram_pages
 .host_cache_initialised
 SFTODOLABELX1
     ; }}}
 }
 
 !ifdef ACORN_TURBO_SUPPORTED {
-    ; {{{ Add turbo RAM in banks 1 and 2 to .ram_blocks.
+    ; {{{ Add turbo RAM in banks 1 and 2 to .ram_pages.
     ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
     ; virtual memory cache.
     bit is_turbo
     bpl .dont_count_turbo_ram
-    inc .ram_blocks + 1
-    inc .ram_blocks + 1
+    inc .ram_pages + 1
+    inc .ram_pages + 1
 .dont_count_turbo_ram
     ; }}}
 }
 
-    ; {{{ Add spare main RAM to .ram_blocks.
+    ; {{{ Add spare main RAM to .ram_pages.
     ; We also have some blocks between data_start and flat_ramtop. We're doing a
     ; constant subtraction in code here, but a) this is deletable init code so
     ; it doesn't really cost anything b) if we don't, the relocation code fails
@@ -647,32 +647,32 @@ SFTODOLABELX1
     sbc acorn_screen_hole_pages
 }
     clc
-    adc .ram_blocks
-    sta .ram_blocks
+    adc .ram_pages
+    sta .ram_pages
     bcc +
-    inc .ram_blocks + 1
+    inc .ram_pages + 1
 +
     ; }}}
 
-    ; .ram_blocks now contains the number of 256-byte blocks of RAM we have
+    ; .ram_pages now contains the number of 256-byte blocks of RAM we have
     ; available, including RAM which will be used for dynamic memory. The build
     ; system and the loader will have worked together to guarantee that:
-    ; - .ram_blocks >= ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks *
+    ; - .ram_pages >= ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks *
     ;   vmem_block_pagecount), i.e. that we have enough RAM for the game's
     ;   dynamic memory and two 512-byte blocks of virtual memory cache.
     ; - the game always has at least one block of non-dynamic memory.
 
-    ; {{{ Set .ram_blocks = min(.ram_blocks, game_blocks). We do this in order to
+    ; {{{ Set .ram_pages = min(.ram_pages, game_blocks). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
 SFTODOEE2
     ldx #>ACORN_GAME_PAGES
     lda #<ACORN_GAME_PAGES
-    cpx .ram_blocks + 1
+    cpx .ram_pages + 1
     bne +
-    cmp .ram_blocks
+    cmp .ram_pages
 +   bcs +
-    stx .ram_blocks + 1
-    sta .ram_blocks
+    stx .ram_pages + 1
+    sta .ram_pages
 +
     ; }}}
 
@@ -765,36 +765,36 @@ SFTODOLABEL2X
     +assert_discardable_unreached
 +
 
-    ; If game_blocks == .ram_blocks, we want to set nonstored_pages to
+    ; If game_blocks == .ram_pages, we want to set nonstored_pages to
     ; .max_dynmem; there's no downside as we have enough RAM for the entire game
     ; and this will allow as much of the game as possible to be accessed via the
     ; faster dynamic memory code path.
-    ldy .ram_blocks + 1
-    lda .ram_blocks
+    ldy .ram_pages + 1
+    lda .ram_pages
     cpy #>ACORN_GAME_PAGES
-    bne .game_blocks_ne_ram_blocks
+    bne .game_blocks_ne_ram_pages
     cmp #<ACORN_GAME_PAGES
-    bne .game_blocks_ne_ram_blocks
+    bne .game_blocks_ne_ram_pages
 .use_max_dynmem
     lda .max_dynmem
     sta nonstored_pages
     jmp .initial_dynmem_adjust_done
 
-.game_blocks_ne_ram_blocks
-    ; Note that we can't have game_blocks < .ram_blocks because we reduced
-    ; .ram_blocks to match earlier, so game_blocks > .ram_blocks. We don't want to
+.game_blocks_ne_ram_pages
+    ; Note that we can't have game_blocks < .ram_pages because we reduced
+    ; .ram_pages to match earlier, so game_blocks > .ram_pages. We don't want to
     ; reduce flexibility by locking parts of the game into RAM instead of
     ; allowing the virtual memory system to choose what lives in RAM. It's only
     ; a clear win to increase nonstored_pages if it brings otherwise unusable
     ; RAM into play.
     ;
-    ; only_dynmem_addressable_blocks = .ram_blocks - (vmap_max_size *
+    ; only_dynmem_addressable_blocks = .ram_pages - (vmap_max_size *
     ; vmem_block_pagecount) is the number of 256-byte pages we can't address via
     ; the virtual memory code, and can therefore only address as dynamic memory.
     ; If this is negative, there is no memory we can't address, so leave things
     ; alone.
 .vmap_max_size_pages = vmap_max_size * vmem_block_pagecount
-    ; YA contains .ram_blocks.
+    ; YA contains .ram_pages.
     sec
     sbc #<.vmap_max_size_pages
     tax
@@ -816,14 +816,14 @@ SFTODOLABEL2X
 }
     ; }}}
 
-    ; {{{ Set .ram_blocks -= nonstored_pages, i.e. set .ram_blocks to the number
+    ; {{{ Set .ram_pages -= nonstored_pages, i.e. set .ram_pages to the number
     ; of RAM blocks we have available as virtual memory cache.
-    lda .ram_blocks
+    lda .ram_pages
     sec
     sbc nonstored_pages
-    sta .ram_blocks
+    sta .ram_pages
     bcs +
-    dec .ram_blocks + 1
+    dec .ram_pages + 1
 +
     ; }}}
 ; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
@@ -886,19 +886,19 @@ SFTODOLABEL2X
 
     ; We're on an Integra-B and are using the private RAM, so we need to set up
     ; sideways_ram_hole_start to skip the 1K of IBOS workspace at $8000.
-    ; SFTODONOW: Next couple of lines say "RAM banks including..." and then turn this into .ram_blocks >> 1 - this is at best inconsistent, because .ram_blocks potentially includes some spare main RAM (note that we subtracted off nonstored_pages by this poitn) used as vmem cache - I *suspect* the code here and when we use sideways_ram_hole_star  is correct and it is just the comment that's wrong, but need to think this through fresh
+    ; SFTODONOW: Next couple of lines say "RAM banks including..." and then turn this into .ram_pages >> 1 - this is at best inconsistent, because .ram_pages potentially includes some spare main RAM (note that we subtracted off nonstored_pages by this poitn) used as vmem cache - I *suspect* the code here and when we use sideways_ram_hole_star  is correct and it is just the comment that's wrong, but need to think this through fresh
     ; Set sideways_ram_hole_start
     ; = (RAM banks including private 12K - 1) * 32 - vmem_blocks_stolen_in_first_bank
     ; = (RAM banks including private 12K * 32) - 32 - vmem_blocks_stolen_in_first_blank
-    ; = (.ram_blocks >> 1) - 32 - vmem_blocks_stolen_in_first_bank
+    ; = (.ram_pages >> 1) - 32 - vmem_blocks_stolen_in_first_bank
     ; If this doesn't fit in a single byte, we will never try to access the
     ; private RAM anyway so we have no hole.
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start
-    lda .ram_blocks + 1
+    lda .ram_pages + 1
     lsr
     bne .no_sideways_ram_hole
-    lda .ram_blocks
+    lda .ram_pages
     ror
     sec
     sbc #32
@@ -914,17 +914,17 @@ SFTODOLABEL2X
 
     ; {{{ Calculate vmap_max_entries.
 
-    ; Now set vmap_max_entries = min(.ram_blocks / vmem_block_pagecount,
+    ; Now set vmap_max_entries = min(.ram_pages / vmem_block_pagecount,
     ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
     ; (If we're in the ACORN_TUBE_CACHE case on a normal second processor, we
     ; have that much RAM in total but the number of vmap entries we can support
     ; is lower. It's convenient to work with this larger value while we do the
     ; initial load, then vmap_max_entries is fixed up later.)
     ldx #vmap_max_size
-    lda .ram_blocks + 1
+    lda .ram_pages + 1
     lsr
     bne .cap_at_vmap_max_size
-    lda .ram_blocks
+    lda .ram_pages
     ror
     cmp #vmap_max_size
     bcs .cap_at_vmap_max_size
@@ -989,16 +989,16 @@ SFTODOTPP
     ; shadow RAM and it doesn't matter if we actually use fewer blocks than
     ; this. This value is just used to ensure that if a vmem block index *would*
     ; access past the end of sideways RAM, it's handled via shadow RAM.
-    ; .swr_ram_blocks is in 256-byte blocks, so convert it to 512-byte blocks.
+    ; .swr_ram_pages is in 256-byte blocks, so convert it to 512-byte blocks.
     ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well. SFTODONOW: I THINK THIS COMMENT IS OUTDATED BUT THIS ALL COULD DO WITH A RE-REVIEW
-    ; SFTODONOW: DON'T DESTROY .swr_ram_blocks IN NEXT LINE - UNLESS IT VASTLY SIMPLIFIES CODE, WE JUST DON'T nEED TO DO RISKY STUFF HERE IN DISCARDABLE INIT
-    lsr .swr_ram_blocks + 1
-    lda .swr_ram_blocks
+    ; SFTODONOW: DON'T DESTROY .swr_ram_pages IN NEXT LINE - UNLESS IT VASTLY SIMPLIFIES CODE, WE JUST DON'T nEED TO DO RISKY STUFF HERE IN DISCARDABLE INIT
+    lsr .swr_ram_pages + 1
+    lda .swr_ram_pages
     ror
     sec
     sbc vmem_blocks_stolen_in_first_bank
     sta vmem_blocks_in_sideways_ram
-    lda .swr_ram_blocks + 1
+    lda .swr_ram_pages + 1
     sbc #0
     beq +
     ; We have a result which won't fit in a single byte, but since we know the
@@ -1317,8 +1317,8 @@ SFTODOOOL
 +
     ; We must have nonstored_pages <= max_nonstored_pages, where
     ; max_nonstored_pages satisfies:
-    ;     (.ram_blocks - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
-    ; So max_nonstored_pages = .ram_blocks - min_vmem_blocks * vmem_block_pagecount.
+    ;     (.ram_pages - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
+    ; So max_nonstored_pages = .ram_pages - min_vmem_blocks * vmem_block_pagecount.
     ;
     ; This ensures that we always have min_vmem_blocks 512-byte blocks of vmem
     ; cache and won't deadlock in the vmem code if the Z-machine PC and data
@@ -1333,25 +1333,25 @@ SFTODOOOL
     ; blocks of vmem, but it's easier just to insist on meeting this condition
     ; all the time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
     ;
-    ; Note that although the above talks about .ram_blocks, on a normal second
-    ; processor with the host cache enabled, .ram_blocks is artifically inflated
+    ; Note that although the above talks about .ram_pages, on a normal second
+    ; processor with the host cache enabled, .ram_pages is artifically inflated
     ; to include the host cache, and we need to use a value reflecting only the
     ; second processor's own RAM here.
 
-    ; Set transient_zp = .ram_blocks; on a normal second processor with the host
+    ; Set transient_zp = .ram_pages; on a normal second processor with the host
     ; cache enabled, we need to count only the second processor's own RAM.
     ; SFTODO: I don't believe this code will ever actually execute on a normal
     ; second processor, but it doesn't really hurt to support this case here.
-    lda .ram_blocks
+    lda .ram_pages
     sta transient_zp
-    lda .ram_blocks + 1
+    lda .ram_pages + 1
     sta transient_zp + 1
 !ifdef ACORN_TUBE_CACHE {
 !ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
     bmi +
 }
-    jsr calculate_normal_tube_own_ram_blocks
+    jsr calculate_normal_tube_own_ram_pages
     sta transient_zp
     lda #0
     sta transient_zp + 1
@@ -1359,7 +1359,7 @@ SFTODOOOL
 }
 
     ; Set transient_zp = max_nonstored_pages =
-    ; .ram_blocks - min_vmem_blocks *  vmem_block_pagecount.
+    ; .ram_pages - min_vmem_blocks *  vmem_block_pagecount.
     sec
     lda transient_zp
     sbc #<(min_vmem_blocks * vmem_block_pagecount)
@@ -1372,7 +1372,7 @@ SFTODOOOL
     bcs +
     sta nonstored_pages
 +
-    ; Note that as we've already capped .ram_blocks at game_blocks, we don't have to
+    ; Note that as we've already capped .ram_pages at game_blocks, we don't have to
     ; explicitly check for nonstored_blocks being so large it's larger than the game.
     rts
     ; }}}

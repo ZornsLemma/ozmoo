@@ -68,7 +68,7 @@ full_block_graphic = 255
 ; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_PAGES), i.e. the number of
 ; pages of RAM we actually have on a normal second processor without counting
 ; host cache, capped at the actual size of the game.
-calculate_normal_tube_own_ram_blocks ; SFTODO: RENAME??
+calculate_normal_tube_own_ram_pages ; SFTODO: RENAME??
     lda #>(flat_ramtop - story_start)
 !if (>ACORN_GAME_PAGES) == 0 {
     cmp #<ACORN_GAME_PAGES
@@ -235,7 +235,7 @@ SFTODOLABELX2
     ; through the Ozmoo build process.
     lda vmap_max_entries
     sta inflated_vmap_max_entries
-    jsr calculate_normal_tube_own_ram_blocks
+    jsr calculate_normal_tube_own_ram_pages
     sec
     sbc nonstored_pages
     lsr
