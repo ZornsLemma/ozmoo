@@ -11,14 +11,14 @@ screenkernal_init
 .screenkernal_init_rts
     rts
 
-
-progress_indicator_blocks_per_step !fill 2
-progress_indicator_blocks_until_next_step !fill 2
-
-update_progress_indicator
-progress_indicator_one_block = 1 << progress_indicator_fractional_bits
 half_block_graphic = 181
 full_block_graphic = 255
+progress_indicator_one_block = 1 << progress_indicator_fractional_bits
+progress_indicator_blocks_per_step !fill 2
+progress_indicator_blocks_until_next_step !fill 2
+progress_indicator_graphic !byte half_block_graphic
+
+update_progress_indicator
     ; progress_indicator_blocks_until_next_step -= 1 (but fixed point)
     sec
     lda progress_indicator_blocks_until_next_step
@@ -39,18 +39,15 @@ full_block_graphic = 255
     ;
     ; Alternate between outputting a half block graphic and a backspace+full
     ; block graphic.
-.lda_imm_block_graphic
-; SFTODONOW: Are we really gaining anything with this self-modifying code?
-    lda #half_block_graphic ; patched at run time
+    lda progress_indicator_graphic
     cmp #half_block_graphic
     beq +
     lda #vdu_back
     jsr oswrch
     lda #full_block_graphic
 +   jsr oswrch
-    lda .lda_imm_block_graphic + 1
     eor #half_block_graphic xor full_block_graphic
-    sta .lda_imm_block_graphic + 1
+    sta progress_indicator_graphic
     clc
     lda progress_indicator_blocks_until_next_step
     adc progress_indicator_blocks_per_step
