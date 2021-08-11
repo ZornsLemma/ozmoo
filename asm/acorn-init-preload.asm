@@ -990,7 +990,8 @@ SFTODOTPP
     ; this. This value is just used to ensure that if a vmem block index *would*
     ; access past the end of sideways RAM, it's handled via shadow RAM.
     ; .swr_ram_blocks is in 256-byte blocks, so convert it to 512-byte blocks.
-    ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well.
+    ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well. SFTODONOW: I THINK THIS COMMENT IS OUTDATED BUT THIS ALL COULD DO WITH A RE-REVIEW
+    ; SFTODONOW: DON'T DESTROY .swr_ram_blocks IN NEXT LINE - UNLESS IT VASTLY SIMPLIFIES CODE, WE JUST DON'T nEED TO DO RISKY STUFF HERE IN DISCARDABLE INIT
     lsr .swr_ram_blocks + 1
     lda .swr_ram_blocks
     ror
