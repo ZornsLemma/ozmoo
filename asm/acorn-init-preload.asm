@@ -1138,7 +1138,6 @@ SFTODOXY7
     ; space freed up at the end of the vmap by this move is filled with dummy
     ; entries so those entries will be used first when the game needs to load
     ; more blocks from disc.
-    ; SFTODO: Couldn't we do this in the game-data code not the Z-machine stack code? SFTODONOW?
 SFTODOLABEL2
     ldx #255
 .find_first_non_promoted_entry_loop
