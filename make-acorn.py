@@ -196,7 +196,7 @@ def check_tool_version(name, min_version, quiet=False):
     if our_version < min_version:
         if quiet:
             return False
-        die("You need at least version %d.%02d of %s" % tuple(list(min_version) + [name]))
+        die("You need at least version %d.%02d of %s." % tuple(list(min_version) + [name]))
     return True
 
 
