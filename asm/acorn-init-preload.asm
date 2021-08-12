@@ -509,7 +509,7 @@ SFTODOXX89
 
     ; Start with the sideways RAM hole disabled; this is nearly always right.
     lda #sideways_ram_hole_start_none
-    sta sideways_ram_hole_start ; SFTODONOW: RENAME THIS acorn_sideway_ram_hole_block_index OR SOMETHING?
+    sta sideways_ram_hole_start
 
     ; The last RAM bank might be the B+ or Integra-B private RAM, which isn't
     ; the full 16K. (For the Integra-B we also need to set
