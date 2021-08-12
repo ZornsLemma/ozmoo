@@ -876,7 +876,7 @@ class OzmooExecutable(Executable):
         # block via the virtual memory code. In practice it shouldn't matter but we always
         # specify a timestamp of 0 (the oldest possible timestamp) when using invalid_addr
         # in a vmap entry, so the entry will be replaced by something useful ASAP in the
-        # unexpected case that the entry is used at runtime.
+        # unexpected case that the entry is used at runtime. SFTODONOW: Probably fine, but (after, if I do, I tinker with the sort code during init preload and the use of dummy entries there) this might be better changed.
         invalid_addr = 0
         invalid_timestamp = 0
         for i, block_index in enumerate(blocks):
