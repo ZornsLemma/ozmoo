@@ -1016,7 +1016,7 @@ SFTODOTPP
     ; }}}
 }
 
-    ; SFTODONOW EXPERIMENTAL
+    ; SFTODONOW EXPERIMENTAL - WE TRY TO VERIFY THAT sideways_ram_hole_start is calculated correctly, but it's not clear to me this will always work, and following my general rework of the code I'm less convinced this is necessary. For ACORN_DEBUG_ASSERT builds, it might be better (though could do both) to have convert_index... explicitly check for A in ($80, $82) and $F4>6=64 so we'd know in such a build we'd *never* go ahead and use private RAM but would die with an error instead. This would also avoid edge cases (e.g. where bcs + is taken) causing this code to "not test" anything.
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     lda sideways_ram_hole_start
     cmp #sideways_ram_hole_start_none
