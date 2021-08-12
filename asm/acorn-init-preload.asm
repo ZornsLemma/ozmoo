@@ -1018,41 +1018,6 @@ SFTODOTPP
     ; }}}
 }
 
-    ; SFTODONOW EXPERIMENTAL - WE TRY TO VERIFY THAT sideways_ram_hole_start is calculated correctly, but it's not clear to me this will always work, and following my general rework of the code I'm less convinced this is necessary. For ACORN_DEBUG_ASSERT builds, it might be better (though could do both) to have convert_index... explicitly check for A in ($80, $82) and $F4>6=64 so we'd know in such a build we'd *never* go ahead and use private RAM but would die with an error instead. This would also avoid edge cases (e.g. where bcs + is taken) causing this code to "not test" anything.
-!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
-    lda sideways_ram_hole_start
-    cmp #sideways_ram_hole_start_none
-    beq .no_sideways_ram_hole2
-
-    lda romsel_copy
-    pha
-    clc
-    lda vmem_blocks_in_main_ram
-    adc sideways_ram_hole_start
-    bcs +
-!if 0 { ; SFTODO DELETE
-    ; SFTODONOW NEXT TWO LINES TEMP TEST
-    sec
-    sbc #1
-}
-    tax
-    jsr convert_index_x_to_ram_bank_and_address
-    cmp #(>flat_ramtop) + sideways_ram_hole_vmem_blocks * vmem_block_pagecount
-    beq .private_ram_address_ok
-    +os_error 0, "SFTODONOW1"
-.private_ram_address_ok
-    lda romsel_copy
-    cmp #64
-    bcs .private_ram_selected
-    +os_error 0, "SFTODONOW2"
-.private_ram_selected
-
-+   pla
-    sta romsel_copy
-    sta bbc_romsel
-.no_sideways_ram_hole2
-}
-
 SFTODOXY7
     ; {{{ Calculate .dpages_to_load for the progress indicator.
     ; Now we know how much data we are going to load, we can calculate how many
