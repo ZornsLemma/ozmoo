@@ -1,9 +1,10 @@
 ; Initialization subroutines which will be placed inside the Z-machine stack.
+; SFTODONOW THIS FILE SHOULD BE REVIEWED, JUST POSSIBLY ADD SOME {{{ FOLD MARKERS TOO
 
 !zone deletable_init {
 
 !ifdef ACORN_TUBE_CACHE {
-host_cache_size !fill 1
+host_cache_size_vmem_blocks !fill 1
 }
 
 screenkernal_init
@@ -249,19 +250,19 @@ SFTODOLABELX2
     ; doesn't add a huge amount of value. SFTODO: OK?
     jsr check_vmap_max_entries
 }
-    ; Adjust host_cache_size so the following load loop won't try to put "too
-    ; much" into the host cache; if this happens we might not have enough blocks
-    ; to load into the local virtual memory cache and so some vmap entries would
-    ; be present but not have actually been loaded. (This can happen because the
-    ; cutover timestamp isn't that precise due to limited timestamp resolution,
-    ; especially for Z4+ games.) Note that this doesn't actually stop us using
-    ; more of the host cache; we will offer it blocks willy-nilly during play
-    ; and if it has space it will hold onto them.
+    ; Adjust host_cache_size_vmem_blocks so the following load loop won't try to
+    ; put "too much" into the host cache; if this happens we might not have
+    ; enough blocks to load into the local virtual memory cache and so some vmap
+    ; entries would be present but not have actually been loaded. (This can
+    ; happen because the cutover timestamp isn't that precise due to limited
+    ; timestamp resolution, especially for Z4+ games.) Note that this doesn't
+    ; actually stop us using more of the host cache; we will offer it blocks
+    ; willy-nilly during play and if it has space it will hold onto them.
 SFTODOLABELX3
     lda inflated_vmap_max_entries
     sec
     sbc vmap_max_entries
-    sta host_cache_size
+    sta host_cache_size_vmem_blocks
 
     ; We now need to load the inflated_vmap_max_entries blocks in the vmap from
     ; disk; vmap_max_entries blocks will go into our local memory as normal, the
@@ -303,9 +304,9 @@ SFTODOLABELX3
     and #$ff xor vmem_highbyte_mask
     cmp #.cutover_timestamp + 1
     bcs .dont_put_in_cache
-    ldx host_cache_size
+    ldx host_cache_size_vmem_blocks
     beq .dont_put_in_cache
-    dec host_cache_size
+    dec host_cache_size_vmem_blocks
     sta osword_cache_index_offered_timestamp_hint
     ; load_blocks_from_index will have set osword_cache_index_requested
     lda osword_cache_index_requested

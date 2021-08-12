@@ -605,7 +605,7 @@ SFTODOLM2
     tax
     lda #osbyte_initialise_cache
     jsr osbyte
-    stx host_cache_size ; SFTODONOW: Rename to include 'vmem_blocks' or 'dpages'
+    stx host_cache_size_vmem_blocks
 !ifdef ACORN_TURBO_SUPPORTED {
     ; A turbo second processor has enough RAM to preload everything in vmap
     ; without touching the host cache. The host cache will still work, but we
