@@ -50,6 +50,10 @@
 }
 }
 
+!ifdef ACORN_PRIVATE_RAM_SUPPORTED {
+.sideways_ram_hole_start_high !fill 1
+}
+
 ; }}}
 
 ; Initialization performed very early during startup.
@@ -893,22 +897,20 @@ SFTODOLABEL2X
     ; sideways_ram_hole_start_none.
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start
-WORKINGHIGH=$90 ; SFTODONOW COMPLETE HACK
-    ; Set (WORKINGHIGH A) = (RAM banks including private 12K - 1) * 32 - vmem_blocks_stolen_in_first_bank.
     lda #0
-    sta WORKINGHIGH
+    sta .sideways_ram_hole_start_high
     lda ram_bank_count
     sec
     sbc #1
     ldx #5 ; 32 == 1 << 5
 -   asl
-    rol WORKINGHIGH
+    rol .sideways_ram_hole_start_high
     dex
     bne -
     sec
     sbc vmem_blocks_stolen_in_first_bank
     tax
-    lda WORKINGHIGH
+    lda .sideways_ram_hole_start_high
     sbc #0 ; high byte of vmem_blocks_stolen_in_first_bank
     bne .no_sideways_ram_hole
     stx sideways_ram_hole_start
