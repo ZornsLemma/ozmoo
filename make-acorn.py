@@ -1579,6 +1579,7 @@ def parse_args():
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
     group.add_argument("--show-runtime-info", action="store_true", help="show debug info at runtime (implies -d)")
+    group.add_argument("--debug-assert", action="store_true", help="include debug assertion code")
 
     cmd_args = parser.parse_args()
 
@@ -1793,6 +1794,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DHISTORY_UPPER_CASE=1"]
     if cmd_args.show_runtime_info:
         ozmoo_base_args += ["-DACORN_SHOW_RUNTIME_INFO=1"]
+    if cmd_args.debug_assert:
+        ozmoo_base_args += ["-DACORN_DEBUG_ASSERT=1"]
 
     if z_machine_version in (3, 4, 5, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]

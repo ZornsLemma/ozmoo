@@ -91,7 +91,6 @@
 
 ; ACORN_DEBUG_ASSERT causes additional code to be included which *verifies but
 ; does not change state*.
-ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
 
 ; ACORN_DEBUG_INTRUSIVE causes additional code to be included which *does* change
 ; state, but in ways that should be harmless; this helps to verify the belief
