@@ -1578,6 +1578,7 @@ def parse_args():
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
+    # SFTODONOW: --show-runtime-info needs to imply --debug
     group.add_argument("--show-runtime-info", action="store_true", help="show debug info at runtime")
 
     cmd_args = parser.parse_args()
