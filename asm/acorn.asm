@@ -88,7 +88,17 @@
 ; Control a few small debug assertions and similar.
 ; SFTODO: Make this controllable via the build script?
 ; SFTODONOW: Should probably do some testing with these on - and make sure I turn them off after!
+
+; ACORN_DEBUG_ASSERT causes additional code to be included which *verifies but
+; does not change state*.
 ACORN_DEBUG_ASSERT = 1 ; SFTODO: PERHAPS RENAME THIS ACORN_DEBUG_EXTRA OR SOMETHING?
+
+; ACORN_DEBUG_INTRUSIVE causes additional code to be included which *does* change
+; state, but in ways that should be harmless; this helps to verify the belief
+; that they are indeed harmless.
+ACORN_DEBUG_INTRUSIVE = 1
+
+; SFTODO: COMMENT?
 DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 
 ; Macro used to generate an OS error.
@@ -123,7 +133,7 @@ assert_unreached_sub
 }
 }
 
-; Macros used to detect "impossible" values of the carry flag. This are intended
+; Macros used to detect "impossible" values of the carry flag. They are intended
 ; for use in space-conscious code and are no-ops unless ACORN_DEBUG_ASSERT is
 ; defined.
 ; SFTODONOW: Use this in more places?

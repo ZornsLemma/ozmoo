@@ -772,7 +772,7 @@ SFTODOBOOM
     bmi .not_main_ram
 .read_and_return_value_main_ram
     lda (mempointer),y
-!ifdef ACORN_DEBUG_ASSERT {
+!ifdef ACORN_DEBUG_INTRUSIVE {
     ; Let's just prove it's OK to be corrupting X and Y.
     ldx #42
     ldy #86
@@ -797,7 +797,7 @@ SFTODOBOOM
 } else {
     +acorn_swr_page_in_default_bank_using_y
 }
-!ifdef ACORN_DEBUG_ASSERT {
+!ifdef ACORN_DEBUG_INTRUSIVE {
     ; Let's just prove it's OK to be corrupting X and Y.
     ldx #42
     ldy #86
@@ -1397,7 +1397,7 @@ SFTODOLL8
 } else {
     +acorn_swr_page_in_default_bank_using_y
 }
-!ifdef ACORN_DEBUG_ASSERT {
+!ifdef ACORN_DEBUG_INTRUSIVE {
     ; Let's just prove it's OK to be corrupting X and Y.
     ldx #42
     ldy #86
