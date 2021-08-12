@@ -1578,8 +1578,7 @@ def parse_args():
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
-    # SFTODONOW: --show-runtime-info needs to imply --debug
-    group.add_argument("--show-runtime-info", action="store_true", help="show debug info at runtime")
+    group.add_argument("--show-runtime-info", action="store_true", help="show debug info at runtime (implies -d)")
 
     cmd_args = parser.parse_args()
 
@@ -1660,7 +1659,7 @@ def parse_args():
     if cmd_args.max_page is not None:
         cmd_args.max_page = our_parse_int(cmd_args.max_page)
 
-    if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps:
+    if cmd_args.benchmark or cmd_args.preload_opt or cmd_args.trace or cmd_args.trace_floppy or cmd_args.trace_vm or cmd_args.speed or cmd_args.print_swaps or cmd_args.show_runtime_info:
         cmd_args.debug = True
 
     if cmd_args.extra_build_at is not None:
