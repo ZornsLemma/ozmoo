@@ -7,6 +7,11 @@
 host_cache_size_vmem_blocks !fill 1
 }
 
+!ifdef VMEM {
+; SFTODO: This is kind of like vmap_used_entries, but since we "nearly always" have vmap_used_entries == vmap_max_entries on Acorn, we use this to handle the rare case where dynmem promotion means we don't have the vmap fully populated.
+vmap_meaningful_entries !fill 1 ; SFTODO: RENAME?
+}
+
 screenkernal_init
     +screenkernal_init_inline
 .screenkernal_init_rts
@@ -200,9 +205,10 @@ SFTODOXA9
     jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
-    cmp vmap_max_entries
+    cmp vmap_meaningful_entries
     bne .turbo_load_loop
 !ifdef HAVE_VMAP_USED_ENTRIES {
+    lda vmap_max_entries
     sta vmap_used_entries
 }
     jmp .all_loading_done
@@ -218,6 +224,7 @@ to_index = vmap_index
 load_scratch_space = flat_ramtop - vmem_blocksize
 SFTODOLABELX2
 
+; SFTODONOW: I think it's OK to use vmap_max_entries here not vmap_meaningful_entries as we *don't* do dynmem adjust on a normal non-tube 2P, but this feels a bit hacky.
     ; vmap_max_entries was deliberately artificially high up to this point so
     ; we'd retain and sort more of the initial vmap; set it to the correct value
     ; reflecting the size of the vmap Ozmoo's virtual memory has to work with.
@@ -371,10 +378,11 @@ SFTODOLABELX3
     jsr load_blocks_from_index
     inc vmap_index
     lda vmap_index
-    cmp vmap_max_entries
+    cmp vmap_meaningful_entries
     bne -
 SFTODOLABEL4
 !ifdef HAVE_VMAP_USED_ENTRIES {
+    lda vmap_max_entries
     sta vmap_used_entries
 }
 }

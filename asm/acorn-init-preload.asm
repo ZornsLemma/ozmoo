@@ -41,9 +41,6 @@
 .ram_pages !fill 2 ; SFTODO: rename to ram_pages???
 }
 
-; SFTODO: Probably not, but can the existence of .vmap_sort_entries help simplify the normal tube+cache loading code?
-.vmap_sort_entries !fill 1
-
 !ifndef ACORN_NO_DYNMEM_ADJUST {
 !ifdef ACORN_SWR {
 .max_dynmem_pages !fill 1
@@ -956,41 +953,71 @@ SFTODOLABEL2X
     jsr .check_vmap_max_entries
     ; }}}
 
-SFTODOLABEL5
-; SFTODONOW: So I am thinking:
-; - get rid of .vmap_sort_entries
-; - go through the vmap straight away after (but only if, just to save time) we've adjusted nonstored_pages so it's != ACORN_INITIAL_NONSTORED_PAGES - loop through reading from index x and writing to index y, but only writing (and bumping y) if index x is not (now) dynmem - this does not require the vmap to be sorted - probably we would fill any extra space at the end with dummy entries *and make them values which will sort to the end*, then we can probably just safely not worryh about them
-; - when sorting, just sort vmap_max_entries since we already handled the dynmem adjust and we don't need the complexity of vmap_sort_entries
-; - for dummy entries, probably use $ffff xor not(vmem_highbyte_mask << 8) - that will (check!) have oldest possible timestamp, so if it *does* end up in play somehow it will be overwritten asap, and highest possible Z-machine address so it will sort at the end automatically. That makes me a bit edgy though, because *if* it comes into play, it could match a real Z-machine address and we'd access junk. Probably all we need to do is cap vmap_max_entries (need to be careful to determine right value) so those entries could never come into play - that is *cleaner* than relying on them "maybe" being touched but it's OK because they're 0 and will never match. - I suppose actually the final value of index y (careful with off by one errors) is the valu ewe want for vmap_max_entries - simples!
-    ; {{{ Calculate .vmap_sort_entries.
-    ldx vmap_max_entries
 !ifndef ACORN_NO_DYNMEM_ADJUST {
-; SFTODONOW: This is probably true, but I probably also need to expand on this comment - it's not currently clear to me (dimly at back of mind, maybe) *why* we need to sort more - OK, rethink this later, but I suspect this is right - the vmap contains entries for pages which are going to be dynamic memory if we use ACORN_INITIAL_NONSTORED_PAGES. If we've grown dynmem, some of the entries in the vmap may be discarded (since they've been promoted to dynmem - this isn't guaranteed, if we used PREOPT) and therefore in order to be left with vmap_max_entries valid entries we need to sort the entire table
-; SFTODONOW: Instead could/should we "filter" the vmap to remove pages promoted to dynem, *then* just sort vmap_max_entries entries??? Don't rush into this, I will have had *some* kind of reason for doing it the way I currently am.
-    ; If we've adjusted nonstored_pages, we may need to sort more than
-    ; vmap_max_entries elements of vmap and it's definitely safe to sort all
-    ; vmap_max_size entries, because we either have enough RAM for vmap_max_size
-    ; blocks of virtual memory cache or we have enough RAM for the entire game.
-    ; (Note that we're only talking about *sorting* here; it's important we
-    ; don't sort "useful" things into parts of the vmap we don't have the memory
-    ; to load. We're not talking about *how much of the vmap contains useful
-    ; entries* - that is specified by vmap_max_entries.)
-    ; SFTODO: We *will* sort the dummy 0 entries put at the end of vmap by the
-    ; build script into the initial positions if the game didn't use the entire
-    ; vmap. This is "wrong" but they will be pruned away when we discard vmap
-    ; entries for memory promoted to dynmem (since 0 entries represent the first
-    ; page of dynmem) and start using only the first vmap_max_entries; since
-    ; this is a sort (we're just reordering things) they haven't actually
-    ; displaced anything useful in the meantime. All the same, it might be
-    ; neater to make the build script use $ffff for the dummy entries. SFTODONOW: Not intending to rework this now, but maybe just review this - TBH maybe I will rework it, but let's see
-    lda nonstored_pages
-    cmp #ACORN_INITIAL_NONSTORED_PAGES
-    beq +
-    ldx #vmap_max_size ; SFTODONOW IT'S PROB FINE BUT ANY ISSUES HERE WITH THE CASE WHERE WE'RE ON IB PRIVATE RAM AND HAVE BEEN USING A SLIGHTLY SMALLER MAX SIZE FOR VMAP_MAX_ENTRIES? - I BELIEVE IT'S TECHNICALLY INVALID, STILL THINKING ABOUT THIS
-+
-}
-    stx .vmap_sort_entries
+    ; {{{ Remove promoted dynmem from vmap, set vmap_meaningful_entries
+
+    ; If we promoted some read-only memory into dynamic memory, the vmap may contain entries for that now-dynamic memory which need to be removed. We remove them and set vmap_meaningful_entries (<= vmap_max_entries) to the number of entries left in the vmap afterwards. (If no dynamic memory adjustment took place, the vmap is unaltered and vmap_meaningful_entries == vmap_max_entries.)
+    ;
+    ; Any space freed up at the end of the vmap by removing these entries is filled with dummy entries; vmap_max_entries may include some of these dummy entries and the corresponding RAM can be used as vmem cache during gameplay, it is just not populated initially. We use vmap_meaningful_entries to avoid sorting any dummy entries within the first vmap_max_entries and to avoid trying to load the corresponding blocks.
+    ;
+    ; In principle we could generate valid vmap entries instead of dummy ones, filled in the addresses of read-only blocks of the game which aren't already in vmap. However - bearing in mind that in the case where we're using the results of a PREOPT run the vmap contains an arbitrary lits of blocks which are not consecutive or sorted - it's non-trivial to figure out which addresses are available for adding, so we just leave the space available for loading during gameplay.
+    ;
+    ; SFTODONOW: Review this, I suspect even if this is all true/correct the explanation can be rewritten to be clearer.
+    ldx #0
+    ldy #0
+.SFTODOLOOP
+    ; We need to shift the 16-bit vmap entry left one bit before comparing it
+    ; against nonstored_pages.
+    lda vmap_z_l,x
+    asl
+    lda vmap_z_h,x
+    and #vmem_highbyte_mask
+    rol
+    bne .not_dynmem_entry
+    lda vmap_z_l,x
+    asl
+    cmp nonstored_pages
+    beq .not_dynmem_entry
+    bcc .is_dynmem_entry
+.not_dynmem_entry
+    ; Entry X isn't dynamic memory, so copy it to entry Y and bump Y.
+    lda vmap_z_l,x
+    sta vmap_z_l,y
+    lda vmap_z_h,x
+    sta vmap_z_h,y
+    iny
+    cpy vmap_max_entries
+    beq .SFTODOXX99
+.is_dynmem_entry
+    inx
+    +assert vmap_max_size != 0 ; loop assumes we go round at least once
+    cpx #vmap_max_size
+    bne .SFTODOLOOP
+.SFTODOXX99
+    ; Y is now the number of "meaningful" vmap entries we have. We only want to sort and load that many entries; it's possible (although relatively unlikely) that Y<vmap_max_entries, which is why we need to make this distinction.
+    sty vmap_meaningful_entries
+    ; If Y<vmap_max_entries, entries Y-(vmap_max_entries-1) inclusive have RAM backing them and can usefully be used to cache blocks read in during gameplay; we just don't have anything to load into them during the initial loading. We fill them with $0000 dummy
+    ; entries; these can never match by accident when the game is trying to access a vmem block because the first 512-byte
+    ; block of the game is always dynamic memory, and these entries have the
+    ; oldest possible timestamp so we will be re-used first when reading more of
+    ; the game from disc during play (in preference to blocks which have been populated during the initial load).
+    lda #0
+.SFTODOLOOP2
+    ; SF: This loop could stop at Y==vmap_max_entries, but it doesn't take
+    ; significantly longer to create dummy entries for the entire vmap and it
+    ; seems safer to do that.
+    cpy #vmap_max_size
+    beq .SFTODODONE9999
+    sta vmap_z_l,y
+    sta vmap_z_h,y
+    iny
+    jmp .SFTODOLOOP2
+.SFTODODONE9999
     ; }}}
+} else {
+    lda vmap_max_entries
+    sta vmap_meaningful_entries
+}
 
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
@@ -1028,14 +1055,14 @@ SFTODOXY7
     ; Now we know how much data we are going to load, we can calculate how many
     ; dpages correspond to each progress indicator position.
     ; SFTODO: Move this down to after the VMEM sort and debug-show-info code, to keep progress indicator stuff together?
-    ; Set dpages = (nonstored_pages / vmem_block_pagecount) + vmap_max_entries.
+    ; Set dpages = (nonstored_pages / vmem_block_pagecount) + vmap_meaningful_entries.
     lda #0
     sta .dpages_to_load + 1
     lda nonstored_pages
     lsr
     ror .dpages_to_load + 1
     clc
-    adc vmap_max_entries
+    adc vmap_meaningful_entries
     sta .dpages_to_load
     bcc +
     inc .dpages_to_load + 1
@@ -1061,7 +1088,7 @@ SFTODOXY7
     ; Sort vmap into ascending order, preserving the timestamps but using just the
     ; addresses as keys. This avoids the drive head jumping around during the
     ; initial load. The build system can't do this sort, because we're sorting
-    ; the truncated list with just .vmap_sort_entries not the full list of
+    ; the truncated list with just vmap_meaningful_entries not the full list of
     ; vmap_max_size entries.
     ; SFTODONOW: Somewhere around here should probably be pointing out this code only "matters" for PREOPT - there is actually a comment like that, so this may be OK, but think about it
     ;
@@ -1137,63 +1164,9 @@ SFTODOXY7
     lda .temp_h_with_timestamp
     sta vmap_z_h,y
     inx
-    cpx .vmap_sort_entries
+    cpx vmap_meaningful_entries
     bne .outer_loop
     ; }}}
-
-!ifndef ACORN_NO_DYNMEM_ADJUST {
-    ; {{{ Fix up vmap if we increased nonstored_pages from default.
-    ; The initial vmap created by the build system assumes nonstored_pages ==
-    ; ACORN_INITIAL_NONSTORED_PAGES, so if we changed nonstored_pages earlier
-    ; we need to adjust the vmap to compensate. If we didn't adjust it, this
-    ; code is a no-op. As the vmap is now sorted by address we just need to find
-    ; the first entry which doesn't correspond to dynamic memory and move
-    ; everything down so that entry becomes the first entry in the vmap. The
-    ; space freed up at the end of the vmap by this move is filled with dummy
-    ; entries so those entries will be used first when the game needs to load
-    ; more blocks from disc.
-SFTODOLABEL2
-    ldx #255
-.find_first_non_promoted_entry_loop
-    ; We need to shift the 16-bit vmap entry left one bit before comparing it
-    ; against nonstored_pages.
-    inx
-    lda vmap_z_l,x
-    asl
-    lda vmap_z_h,x
-    and #vmem_highbyte_mask
-    rol
-    bne .found_first_non_promoted_entry
-    lda vmap_z_l,x
-    asl
-    cmp nonstored_pages
-    bcc .find_first_non_promoted_entry_loop
-.found_first_non_promoted_entry
-    txa
-    beq .no_dynmem_promotion
-    ldy #0
-.vmap_move_down_loop
-    cpx #vmap_max_size
-    beq .use_dummy_entry
-    lda vmap_z_h,x
-    sta vmap_z_h,y
-    lda vmap_z_l,x
-    inx
-    bne + ; Always branch
-    +assert_discardable_unreached
-.use_dummy_entry
-    ; We use $0000 as a dummy entry; this has the oldest possible timestamp so
-    ; the entry will be re-used ASAP and because $0000xx is always dynamic
-    ; memory the virtual memory code will never match against the dummy entry.
-    lda #0
-    sta vmap_z_h,y
-+   sta vmap_z_l,y
-    iny
-    cpy vmap_max_entries
-    bne .vmap_move_down_loop
-.no_dynmem_promotion
-    ; }}}
-}
 }
 }
 
@@ -1407,3 +1380,6 @@ initial_vmap_z_l
 }
 
 }
+
+
+; SFTODONOW: Should step through init on a Master 128 with 144K SWR and HHGG - it's probably fine, but I am a little surprised we don't seem to end up with vmap_max_entries==255 (I am seeing $fc==252).
