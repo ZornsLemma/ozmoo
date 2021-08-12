@@ -865,7 +865,7 @@ SFTODOLABEL2X
     lsr
     sta vmem_blocks_in_main_ram
 +
-} else {
+} else { ; ACORN_SWR_MEDIUM_DYNMEM
     lda nonstored_pages
     lsr
     sta vmem_blocks_stolen_in_first_bank
