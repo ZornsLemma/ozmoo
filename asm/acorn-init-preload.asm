@@ -1218,7 +1218,6 @@ SFTODOTPP
     sta .dpages_to_load + 1
 }
     ; }}}
-    ; SFTODONOW: REVIEW UP TO HERE
 
     ; fall through to .init_progress_indicator
 ; End of prepare_for_initial_load
@@ -1229,21 +1228,19 @@ SFTODOTPP
 ; virtual memory cache (and that's not going to happen in practice), so it is
 ; effectively a 9-bit value in 512-byte blocks. We can therefore afford 7 bits
 ; for the fractional component.
-progress_indicator_fractional_bits=7
+progress_indicator_fractional_bits = 7
 
 ; Set up the progress indicator so that .dpages_to_load calls to
 ; update_progress_indicator will completely fill the bar.
 .init_progress_indicator
     ; {{{
-    ; If we're not on the bottom line of the screen, set divisor = 2 *
-    ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
-    ; - cursor_x). This way we don't have to worry about causing a mildly ugly
-    ; scroll if we print in the bottom right position on the screen. The
-    ; multiplication by 2 allows for the use of half-character steps.
-    ;
-    ; (We haven't called screenkernal_init yet; that would be wrong because we
-    ; might be in mode 6/7 from the loader and not yet have changed into the
-    ; final mode for running the game. So we can't use s_screen_width here.)
+    ; The loader prints the "Loading: " prefix for us, but when this executable
+    ; re-executes itself to implement a restart it doesn't print a prefix. If
+    ; the cursor is in the first column of the screen, print the prefix
+    ; ourselves. This way we make the "Loading: " prefix printing code part of
+    ; the discardable init code instead of the restart code, at the cost of not
+    ; showing anything until the re-executed executable has been loaded from
+    ; disc.
     lda #osbyte_read_cursor_position
     jsr osbyte ; set X=cursor X, Y=cursor Y
     cpx #0
@@ -1268,8 +1265,20 @@ progress_indicator_fractional_bits=7
     lda #osbyte_read_cursor_position
     jsr osbyte ; set X=cursor X, Y=cursor Y
 .cursor_not_in_first_column
+    ; SFTODONOW: Since we're no longer ultra-squishing code in the discardable init, should we allocate named bytes for X and Y here instead of re-using divisor?
     stx divisor
     sty divisor + 1
+
+    ; SFTODONOW: REVIEW UP TO HERE
+    ; If we're not on the bottom line of the screen, set divisor = 2 *
+    ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
+    ; - cursor_x). This way we don't have to worry about causing a mildly ugly
+    ; scroll if we print in the bottom right position on the screen. The
+    ; multiplication by 2 allows for the use of half-character steps.
+    ;
+    ; (We haven't called screenkernal_init yet; that would be wrong because we
+    ; might be in mode 6/7 from the loader and not yet have changed into the
+    ; final mode for running the game. So we can't use s_screen_width here.)
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
     jsr osbyte ; set X=screen_height - 1, Y=screen width - 1
