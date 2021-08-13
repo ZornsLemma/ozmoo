@@ -1192,7 +1192,7 @@ SFTODOTPP
     jsr osrdch
 }
 
-    ; SFTODONOW: REVIEW UP TO HERE
+    ; SFTODO: Rename .dpages_to_load to .progress_indicator_full_steps or similar? The progress indicator is block-size agnostic - what we're saying is "we will call update_progress_indicator n times and we want it to go from empty to start with to full after n calls".
     ; {{{ Set .dpages_to_load for the progress indicator.
 !ifdef VMEM {
     ; Set .dpages_to_load = (nonstored_pages / vmem_block_pagecount) +
@@ -1218,6 +1218,7 @@ SFTODOTPP
     sta .dpages_to_load + 1
 }
     ; }}}
+    ; SFTODONOW: REVIEW UP TO HERE
 
     ; fall through to .init_progress_indicator
 ; End of prepare_for_initial_load
