@@ -641,7 +641,6 @@ SFTODOLM2
 ; }}}
 }
 }
-; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
 
     ; {{{ Add spare main RAM to .ram_pages.
     ; We also have some pages between data_start and flat_ramtop. We're doing a
@@ -674,7 +673,6 @@ SFTODOLM2
 
     ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
-SFTODOEE2
     ldx #>ACORN_GAME_PAGES
     lda #<ACORN_GAME_PAGES
     cpx .ram_pages + 1
@@ -686,6 +684,7 @@ SFTODOEE2
 +
     ; }}}
 
+; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
     ; {{{ Set nonstored_pages to the effective dynamic RAM size.
     ; Set nonstored_pages to the number of pages of RAM we are going to treat as
     ; dynamic memory. This is normally the game's actual dynamic memory rounded
