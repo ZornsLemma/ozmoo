@@ -262,6 +262,11 @@ deletable_init_start
 
 !ifdef ACORN_SCREEN_HOLE {
     ; {{{ Configure screen hole settings.
+    ; Note that just because we support a screen hole, it doesn't mean there is
+    ; going to be one. On a BBC this currently won't happen without manual
+    ; intervention, because we have separate executables for machines with and
+    ; without shadow RAM, but the Electron has a single executable which handles
+    ; both cases.
     lda screen_mode
     ora #shadow_mode_bit
     tax
@@ -369,7 +374,11 @@ deletable_init_start
     ; }}}
 }
 
-    ; SFTODO: just fall through to prepare_for_initial_load?
+    ; SFTODO: just fall through to prepare_for_initial_load? Or - more likely -
+    ; get rid of that label. This is the only caller of the subroutine so it
+    ; doesn't really add any significant clarity, and the work it does is really
+    ; just a continuation of this initialisation (whereas at least init progress
+    ; bar later on is conceptually a little separate).
     jsr prepare_for_initial_load
     rts
 ; End of deletable_init_start
@@ -878,7 +887,6 @@ SFTODOLABEL2X
 }
     ; }}}
 
-    ; SFTODONOW: REVIEW UP TO HERE
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
     lda sideways_ram_hole_start
@@ -916,6 +924,7 @@ SFTODOLABEL2X
 }
 }
 
+    ; SFTODONOW: REVIEW UP TO HERE
     ; {{{ Calculate vmap_max_entries.
 
     ; Now set vmap_max_entries = min(.ram_pages / vmem_block_pagecount,
