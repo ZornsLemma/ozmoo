@@ -533,10 +533,10 @@ SFTODOLABELX1
     ; }}}
 }
 } else { ; ACORN_SWR
-    ; General observation: Even thought this is a sideways RAM build, it's
+    ; General observation: Even though this is a sideways RAM build, it's
     ; possible we have no sideways RAM at all. Examples might be a small game
     ; where dynamic memory plus a couple of 512-byte blocks of vmem cache fit in
-    ; the base 32K, or a game built with the big dynamic memory model to support
+    ; a 32K machine, or a game built with the big dynamic memory model to support
     ; high-ish values of PAGE but where we're running on a machine with
     ; PAGE=&E00 but no sideways RAM and the game happens to fit. In the medium
     ; model we will always have at least one bank, of course. But in general, we
@@ -582,7 +582,9 @@ SFTODOLABELX1
     sta $fe34
     ; Set sideways_ram_hole_start to 0 as a temporary indication that we need to
     ; calculate this later; this saves repeating the Integra-B private RAM
-    ; detection code.
+    ; detection code. SFTODO: Shorter and clearer - after factoring in comments,
+    ; which are a concern here - to just repeat the test?
+    +assert sideways_ram_hole_start_none != 0
     lda #0
     sta sideways_ram_hole_start
     ; Now adjust .ram_pages.
@@ -618,13 +620,13 @@ SFTODOLABELX1
     ; screen display.
 SFTODOLM2
     lda vmem_cache_count_mem
-    beq .no_spare_shadow
+    beq .no_shadow_cache
     ; On an Electron with a Master RAM Board in shadow mode, the shadow RAM
     ; can't be turned off under software control and
-    ; osbyte_read_screen_address_for_mode will always return $8000. This makes
-    ; sense, but it's not much use to us here. We use our own table of start
-    ; addresses instead; we might as well do this on all platforms for
-    ; consistency.
+    ; osbyte_read_screen_address_for_mode will always return $8000 even for
+    ; modes without shadow_mode_bit set. This makes sense, but it's not much use
+    ; to us here. We use our own table of start addresses instead; we might as
+    ; well do this on all platforms for consistency.
     ldx screen_mode
     lda .screen_start_page_by_mode,x
     sec
@@ -635,10 +637,11 @@ SFTODOLM2
     bcc +
     inc .ram_pages + 1
 +
-.no_spare_shadow
+.no_shadow_cache
 ; }}}
 }
 }
+; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
 
     ; {{{ Add spare main RAM to .ram_pages.
     ; We also have some pages between data_start and flat_ramtop. We're doing a
