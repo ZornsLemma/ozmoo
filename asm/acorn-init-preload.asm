@@ -684,7 +684,6 @@ SFTODOLM2
 +
     ; }}}
 
-; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
     ; {{{ Set nonstored_pages to the effective dynamic RAM size.
     ; Set nonstored_pages to the number of pages of RAM we are going to treat as
     ; dynamic memory. This is normally the game's actual dynamic memory rounded
@@ -700,13 +699,13 @@ SFTODOLM2
     ;
     ; nonstored_pages must not be so large that we'd have less than
     ; min_vmem_blocks * vmem_block_pagecount pages of memory left over for vmem
-    ; cache, as doing so would risk a deadlock when paging. SFTODO: INTRODUCE max_nonstored_pages AND DEFINE IT HERE??
+    ; cache, as doing so would risk a deadlock when paging.
     ;
-    ; So we can vary nonstored_pages between those two hard limits. In general
-    ; setting nonstored_pages > ACORN_INITIAL_NONSTORED_PAGES isn't a good idea;
-    ; raising it will permanently lock more of the game into memory, reducing
-    ; the amount of memory we have to use flexibly as vmem cache and likely
-    ; increasing the amount of disc access we need to perform.
+    ; So we can vary nonstored_pages between those two hard limits, although
+    ; that doesn't mean we *should*. In general this isn't a good idea; raising
+    ; nonstored_pages will permanently lock more of the game into memory,
+    ; reducing the amount of memory we have to use flexibly as vmem cache and
+    ; likely increasing the amount of disc access we need to perform.
     ;
     ; The following code detects situations where it *is* useful to set
     ; nonstored_pages > ACORN_INITIAL_NONSTORED_PAGES.
@@ -725,7 +724,7 @@ SFTODOLM2
     sta nonstored_pages
 }
 
-SFTODOLABEL2X
+; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
 !ifdef ACORN_SWR {
     ; It may be useful to increase nonstored_pages to promote some additional
     ; data into dynamic memory, either for performance or to make use of more
