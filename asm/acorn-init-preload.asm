@@ -932,6 +932,7 @@ SFTODOLM2
     ; have that much RAM in total but the number of vmap entries we can support
     ; is lower. It's convenient to work with this larger value while we do the
     ; initial load, then vmap_max_entries is fixed up later.)
+    ; SFTODONOW: That "i.e." actually only describes first argument to min(), so probably tweak this comment. I *think* we only need the cap at vmap_max_size because of dynmem promotion, although in general if we didn't cap vmap_max_size at ACORN_VMEM_BLOCKS to avoid wasted memory we could obviously need to have this restriction (suppose vmap_max_size was always 255, which is wasteful but otherwise completely valid).
     ldx #vmap_max_size
     lda .ram_pages + 1
     lsr
