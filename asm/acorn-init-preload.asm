@@ -961,7 +961,6 @@ SFTODOLM2
     jsr .check_vmap_max_entries ; SFTODO: inline this?!
     ; }}}
 
-    ; SFTODONOW: REVIEW UP TO HERE
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; {{{ Remove promoted dynmem from vmap, set vmap_meaningful_entries
 
@@ -999,6 +998,8 @@ SFTODOLM2
     ; offer a huge benefit most of the time so we don't try.
     ;
     ; SFTODONOW: Review this, I suspect even if this is all true/correct the explanation can be rewritten to be clearer.
+    ; Remove entries in the vmap for dynamic memory, copying from index X to Y
+    ; as we go.
     ldx #0
     ldy #0
 .SFTODOLOOP
@@ -1030,16 +1031,12 @@ SFTODOLM2
     cpx #vmap_max_size
     bne .SFTODOLOOP
 .SFTODOXX99
-    ; Y is now the number of "meaningful" vmap entries we have. We only want to sort and load that many entries; it's possible (although relatively unlikely) that Y<vmap_max_entries, which is why we need to make this distinction.
     sty vmap_meaningful_entries
-    ; If Y<vmap_max_entries, entries Y-(vmap_max_entries-1) inclusive have RAM backing them and can usefully be used to cache blocks read in during gameplay; we just don't have anything to load into them during the initial loading. We fill them with $0000 dummy
-    ; entries; these can never match by accident when the game is trying to access a vmem block because the first 512-byte
-    ; block of the game is always dynamic memory, and these entries have the
-    ; oldest possible timestamp so we will be re-used first when reading more of
-    ; the game from disc during play (in preference to blocks which have been populated during the initial load).
+    ; If vmap_meaningful_entries < vmap_max_entries, fill the vmap from
+    ; vmap_meaningful_entries up with dummy entries.
     lda #0
 .SFTODOLOOP2
-    ; SF: This loop could stop at Y==vmap_max_entries, but it doesn't take
+    ; SF: This loop could stop at Y == vmap_max_entries, but it doesn't take
     ; significantly longer to create dummy entries for the entire vmap and it
     ; seems safer to do that.
     cpy #vmap_max_size
@@ -1066,6 +1063,7 @@ SFTODOLM2
     sta vmap_meaningful_entries
 }
 
+    ; SFTODONOW: REVIEW UP TO HERE
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
 SFTODOTPP
