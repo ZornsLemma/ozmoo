@@ -1092,11 +1092,7 @@ SFTODOTPP
 +
     ; }}}
 }
-    ; SFTODONOW: REVIEW UP TO HERE
 
-}
-
-!ifdef VMEM { ; SFTODO: MERGE WITH PREV BLOCK!?
 !ifndef PREOPT {
     ; {{{ Sort vmap to avoid drive head skipping during loading.
 
@@ -1142,10 +1138,9 @@ SFTODOTPP
     ; but it's discardable init code so it's not really harmful and it seems
     ; best for support purposes to keep the code identical whether or not preopt
     ; data is supplied or not.)
-    ; SFTODONOW: Don't risk re-use of zp_temp for this code? But it is mildly performance critical so use of zp may be appropriate, and if nothing *else* is using zp_temp this is probably OK.
 .temp_l = zp_temp
 .temp_h_with_timestamp = zp_temp + 1
-.temp_h_without_timestamp = zp_temp + 4 ; SFTODO: Make consecutive now prob no conflicts?
+.temp_h_without_timestamp = zp_temp + 2
     ldx #1
 .outer_loop
     lda vmap_z_l,x
@@ -1186,7 +1181,7 @@ SFTODOTPP
     bne .outer_loop
     ; }}}
 }
-}
+} ; VMEM
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     jsr print_following_string
@@ -1197,6 +1192,7 @@ SFTODOTPP
     jsr osrdch
 }
 
+    ; SFTODONOW: REVIEW UP TO HERE
     ; {{{ Set .dpages_to_load for the progress indicator.
 !ifdef VMEM {
     ; Set .dpages_to_load = (nonstored_pages / vmem_block_pagecount) +
