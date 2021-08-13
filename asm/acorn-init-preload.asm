@@ -923,7 +923,6 @@ SFTODOLM2
 }
 }
 
-    ; SFTODONOW: REVIEW UP TO HERE
     ; {{{ Calculate vmap_max_entries.
 
     ; Now set vmap_max_entries = min(.ram_pages / vmem_block_pagecount,
@@ -959,17 +958,35 @@ SFTODOLM2
 +
 }
 
-    jsr .check_vmap_max_entries
+    jsr .check_vmap_max_entries ; SFTODO: inline this?!
     ; }}}
 
+    ; SFTODONOW: REVIEW UP TO HERE
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; {{{ Remove promoted dynmem from vmap, set vmap_meaningful_entries
 
-    ; If we promoted some read-only memory into dynamic memory, the vmap may contain entries for that now-dynamic memory which need to be removed. We remove them and set vmap_meaningful_entries (<= vmap_max_entries) to the number of entries left in the vmap afterwards. (If no dynamic memory adjustment took place, the vmap is unaltered and vmap_meaningful_entries == vmap_max_entries.)
+    ; If we promoted some read-only memory into dynamic memory, the vmap may
+    ; contain entries for that now-dynamic memory which need to be removed. We
+    ; remove them and set vmap_meaningful_entries (<= vmap_max_entries) to the
+    ; number of entries left in the vmap afterwards. (If no dynamic memory
+    ; adjustment took place, the vmap is unaltered and vmap_meaningful_entries
+    ; == vmap_max_entries.)
     ;
-    ; Any space freed up at the end of the vmap by removing these entries is filled with dummy entries; vmap_max_entries may include some of these dummy entries and the corresponding RAM can be used as vmem cache during gameplay, it is just not populated initially. We use vmap_meaningful_entries to avoid sorting any dummy entries within the first vmap_max_entries and to avoid trying to load the corresponding blocks.
+    ; Any space freed up at the end of the vmap by removing these entries is
+    ; filled with dummy entries; vmap_max_entries may include some of these
+    ; dummy entries and the corresponding RAM can be used as vmem cache during
+    ; gameplay, it is just not populated initially. We use
+    ; vmap_meaningful_entries to avoid sorting any dummy entries within the
+    ; first vmap_max_entries and to avoid trying to load the corresponding
+    ; blocks.
     ;
-    ; In principle we could generate valid vmap entries instead of dummy ones, filled in the addresses of read-only blocks of the game which aren't already in vmap. However - bearing in mind that in the case where we're using the results of a PREOPT run the vmap contains an arbitrary lits of blocks which are not consecutive or sorted - it's non-trivial to figure out which addresses are available for adding, so we just leave the space available for loading during gameplay.
+    ; In principle we could generate valid vmap entries instead of dummy ones,
+    ; filled in the addresses of read-only blocks of the game which aren't
+    ; already in vmap. However - bearing in mind that in the case where we're
+    ; using the results of a PREOPT run the vmap contains an arbitrary lits of
+    ; blocks which are not consecutive or sorted - it's non-trivial to figure
+    ; out which addresses are available for adding, so we just leave the space
+    ; available for loading during gameplay.
     ;
     ; SFTODONOW: Review this, I suspect even if this is all true/correct the explanation can be rewritten to be clearer.
     ldx #0
