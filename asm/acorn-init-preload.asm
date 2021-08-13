@@ -1063,27 +1063,25 @@ SFTODOLM2
     sta vmap_meaningful_entries
 }
 
-    ; SFTODONOW: REVIEW UP TO HERE
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
 SFTODOTPP
     ; SFTODONOW: Rename 'vmem_blocks_in_sideways_ram' to 'sideways_ram_size_in_vmem_blocks'? It is the number of 512-byte blocks of SWR we have, which is *not* the same (because we have vmem_blocks_stolen_in_first_bank possibly > 0) as the number of *blocks of actual vmem* in sideways RAM. - NO, I GOT THAT WRONG - IT *IS* THE NUMBER OF *VMEM* BLOCKS IN SWR, SINCE WE HAVE SUBTRACTED OFF STOLEN
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
     ; convert_index_x_to_ram_bank_and_address to decide when a vmem block is in
-    ; shadow RAM and it doesn't matter if we actually use fewer blocks than
-    ; this. This value is just used to ensure that if a vmem block index *would*
-    ; access past the end of sideways RAM, it's handled via shadow RAM.
-    ; .swr_ram_pages is in pages so we shift right to convert it to 512-byte
-    ; vmem blocks.
+    ; shadow RAM. (If we have a lot of sideways RAM, it might be impossible for
+    ; a vmem block index to be high enough to touch shadow RAM, but that doesn't
+    ; matter here.)
     ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well. SFTODONOW: I THINK THIS COMMENT IS OUTDATED BUT THIS ALL COULD DO WITH A RE-REVIEW
-    ; SFTODONOW: DON'T DESTROY .swr_ram_pages IN NEXT LINE - UNLESS IT VASTLY SIMPLIFIES CODE, WE JUST DON'T nEED TO DO RISKY STUFF HERE IN DISCARDABLE INIT
-    lsr .swr_ram_pages + 1
+    lda .swr_ram_pages + 1
+    lsr ; convert from pages to 512-byte vmem blocks
+    pha
     lda .swr_ram_pages
     ror
     sec
     sbc vmem_blocks_stolen_in_first_bank
     sta vmem_blocks_in_sideways_ram
-    lda .swr_ram_pages + 1
+    pla
     sbc #0
     beq +
     ; We have a result which won't fit in a single byte, but since we know the
@@ -1094,6 +1092,7 @@ SFTODOTPP
 +
     ; }}}
 }
+    ; SFTODONOW: REVIEW UP TO HERE
 
 SFTODOXY7
     ; {{{ Calculate .dpages_to_load for the progress indicator.
