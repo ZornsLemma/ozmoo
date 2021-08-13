@@ -487,7 +487,52 @@ SFTODOXX89
     lda #0
     sta .ram_pages
     sta .ram_pages + 1
-} else {
+
+!ifdef ACORN_TUBE_CACHE {
+    ; {{{ Initialise host cache and add its size to .ram_pages.
+
+    ; We have some cache in the host, which isn't directly accessible but is
+    ; almost as good as our own RAM and which will benefit from preloading if
+    ; we're on a normal second processor. We count cache pages for now so we
+    ; process more of the initial vmap and fix up the inflated value of
+    ; vmap_max_entries later.
+    lda screen_mode
+    ora #shadow_mode_bit
+    tax
+    lda #osbyte_initialise_cache
+    jsr osbyte
+    stx host_cache_size_vmem_blocks
+!ifdef ACORN_TURBO_SUPPORTED {
+    ; A turbo second processor has enough RAM to preload everything in vmap
+    ; without touching the host cache. The host cache will still work, but we
+    ; don't have anything to preload into it, so having initialised it there's
+    ; nothing else to do.
+    bit is_turbo
+    bmi .host_cache_initialised
+}
+    ; Note that .ram_pages is 0 at this point.
+    ; X is cache size in 512-byte vmem blocks, but we want to count pages here.
+    txa
+    asl
+    rol .ram_pages + 1
+    sta .ram_pages
+.host_cache_initialised
+SFTODOLABELX1
+    ; }}}
+}
+
+!ifdef ACORN_TURBO_SUPPORTED {
+    ; {{{ Add turbo RAM in banks 1 and 2 to .ram_pages.
+    ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
+    ; virtual memory cache.
+    bit is_turbo
+    bpl .dont_count_turbo_ram
+    inc .ram_pages + 1
+    inc .ram_pages + 1
+.dont_count_turbo_ram
+    ; }}}
+}
+} else { ; ACORN_SWR
     ; General observation: Even thought this is a sideways RAM build, it's
     ; possible we have no sideways RAM at all. Examples might be a small game
     ; where dynamic memory plus a couple of 512-byte blocks of vmem cache fit in
@@ -593,54 +638,6 @@ SFTODOLM2
 .no_spare_shadow
 ; }}}
 }
-}
-
-; SFTODO: These next two blocks could move into the !ifndef ACORN_SWR block
-; above; this might or might not be clearer.
-
-!ifdef ACORN_TUBE_CACHE {
-    ; {{{ Initialise host cache and add its size to .ram_pages.
-
-    ; We have some cache in the host, which isn't directly accessible but is
-    ; almost as good as our own RAM and which will benefit from preloading if
-    ; we're on a normal second processor. We count cache pages for now so we
-    ; process more of the initial vmap and fix up the inflated value of
-    ; vmap_max_entries later.
-    lda screen_mode
-    ora #shadow_mode_bit
-    tax
-    lda #osbyte_initialise_cache
-    jsr osbyte
-    stx host_cache_size_vmem_blocks
-!ifdef ACORN_TURBO_SUPPORTED {
-    ; A turbo second processor has enough RAM to preload everything in vmap
-    ; without touching the host cache. The host cache will still work, but we
-    ; don't have anything to preload into it, so having initialised it there's
-    ; nothing else to do.
-    bit is_turbo
-    bmi .host_cache_initialised
-}
-    ; Note that .ram_pages is 0 at this point.
-    ; X is cache size in 512-byte vmem blocks, but we want to count pages here.
-    txa
-    asl
-    rol .ram_pages + 1
-    sta .ram_pages
-.host_cache_initialised
-SFTODOLABELX1
-    ; }}}
-}
-
-!ifdef ACORN_TURBO_SUPPORTED {
-    ; {{{ Add turbo RAM in banks 1 and 2 to .ram_pages.
-    ; On a turbo second processor, we will use all 128K in banks 1 and 2 as
-    ; virtual memory cache.
-    bit is_turbo
-    bpl .dont_count_turbo_ram
-    inc .ram_pages + 1
-    inc .ram_pages + 1
-.dont_count_turbo_ram
-    ; }}}
 }
 
     ; {{{ Add spare main RAM to .ram_pages.
