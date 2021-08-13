@@ -1269,7 +1269,6 @@ progress_indicator_fractional_bits = 7
     stx divisor
     sty divisor + 1
 
-    ; SFTODONOW: REVIEW UP TO HERE
     ; If we're not on the bottom line of the screen, set divisor = 2 *
     ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
     ; - cursor_x). This way we don't have to worry about causing a mildly ugly
@@ -1318,6 +1317,7 @@ progress_indicator_fractional_bits = 7
 .loading_string
     !text "Loading:", 0
     ; }}}
+    ; SFTODONOW: REVIEW UP TO HERE
 
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we
