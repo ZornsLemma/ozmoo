@@ -176,3 +176,5 @@ assert_carry_clear_sub
 ; SFTODONOW: Should I tweak the settings for the bRKV handler during the initial load so it uses an extra leading newline or two?
 
 ; SFTODONOW: This file has been extensively modified and I should review all SFTODOs to see if they need promoting to SFTODONOW
+
+; SFTODO: We could allow building an NFS-compatible game but writing it to a DFS floppy to be installed from - at the moment you can't install on NFS unless you have an ADFS-capable machine to install from.
