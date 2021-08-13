@@ -965,28 +965,38 @@ SFTODOLM2
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; {{{ Remove promoted dynmem from vmap, set vmap_meaningful_entries
 
-    ; If we promoted some read-only memory into dynamic memory, the vmap may
-    ; contain entries for that now-dynamic memory which need to be removed. We
-    ; remove them and set vmap_meaningful_entries (<= vmap_max_entries) to the
-    ; number of entries left in the vmap afterwards. (If no dynamic memory
-    ; adjustment took place, the vmap is unaltered and vmap_meaningful_entries
-    ; == vmap_max_entries.)
+    ; The vmap created by the loader assumes nonstored_pages ==
+    ; ACORN_INITIAL_NONSTORED_PAGES. If we've increased nonstored_pages, some
+    ; vmap entries may refer to memory which is now dynamic memory.
     ;
-    ; Any space freed up at the end of the vmap by removing these entries is
-    ; filled with dummy entries; vmap_max_entries may include some of these
-    ; dummy entries and the corresponding RAM can be used as vmem cache during
-    ; gameplay, it is just not populated initially. We use
-    ; vmap_meaningful_entries to avoid sorting any dummy entries within the
-    ; first vmap_max_entries and to avoid trying to load the corresponding
-    ; blocks.
+    ; We iterate over the vmap, removing any entries which now refer to dynamic
+    ; memory and shuffling everything down. Any space freed up at the end of the
+    ; vmap is populated by dummy entries, leaving us with
+    ; vmap_meaningful_entries non-dummy entries. vmap_meaningful_entries <=
+    ; vmap_max_entries; if nonstored_pages hasn't been increased, the loop has
+    ; no net effect and vmap_meaningful_entries == vmap_max_entries.
     ;
-    ; In principle we could generate valid vmap entries instead of dummy ones,
-    ; filled in the addresses of read-only blocks of the game which aren't
-    ; already in vmap. However - bearing in mind that in the case where we're
-    ; using the results of a PREOPT run the vmap contains an arbitrary lits of
-    ; blocks which are not consecutive or sorted - it's non-trivial to figure
-    ; out which addresses are available for adding, so we just leave the space
-    ; available for loading during gameplay.
+    ; If vmap_meaningful_entries < vmap_max_entries, the dummy entries do have
+    ; RAM backing them and can be used for vmem caching during gameplay; we just
+    ; don't have anything to load into them to start with. If we hadn't got rid
+    ; of vmap_used_entries, we might use to describe this situation, but the
+    ; dummy entries do the job. They are $0000, so:
+    ; - They have the oldest possible timestamp and the random junk they contain
+    ;   will be evicted in preference to anything else when/if we need to load
+    ;   more blocks from disc during play.
+    ; - They are associated with the initial 512-byte block of the Z-machine
+    ;   address space, which is always dynamic memory and therefore they can't
+    ;   ever be accessed by the vmem code when the game requests access to a
+    ;   read-only block of data.
+    ;
+    ; In principle we could create valid entries for part of the game which
+    ; aren't already present in the vmap intead of dummy entries, which would
+    ; cause us to load a little more data during the initial load. This isn't
+    ; entirely straightforward - remember the use of PREOPT can mean the vmap
+    ; contains an arbitrarily ordered subset of the game's 512-byte blocks; it
+    ; isn't guaranteed the vmap contains the 512-byte blocks starting at
+    ; ACORN_INITIAL_NONSTORED_PAGES in ascending order - and it isn't likely to
+    ; offer a huge benefit most of the time so we don't try.
     ;
     ; SFTODONOW: Review this, I suspect even if this is all true/correct the explanation can be rewritten to be clearer.
     ldx #0
@@ -1039,6 +1049,17 @@ SFTODOLM2
     iny
     jmp .SFTODOLOOP2
 .SFTODODONE9999
+
+    ; Assert that if we haven't increased nonstored_pages, vmap_max_entries ==
+    ; vmap_meaningful_entries.
+    lda nonstored_pages
+    cmp #ACORN_INITIAL_NONSTORED_PAGES
+    bne +
+    lda vmap_max_entries
+    cmp vmap_meaningful_entries
+    beq +
+    +os_error 0, "Unexpected vmap adjust"
++
     ; }}}
 } else {
     lda vmap_max_entries
