@@ -1108,7 +1108,6 @@ SFTODOTPP
     ; initial load. The build system can't do this sort, because we're sorting
     ; the truncated list with just vmap_meaningful_entries not the full list of
     ; vmap_max_size entries.
-    ; SFTODONOW: Somewhere around here should probably be pointing out this code only "matters" for PREOPT - there is actually a comment like that, so this may be OK, but think about it
     ;
     ; This only happens once and it's not a huge list so while we don't want it
     ; to be really slow, compactness and simplicity of code are also important.
@@ -1138,6 +1137,7 @@ SFTODOTPP
     ; list - as will happen if the preopt mode has not been used - it takes
     ; about 0.02 seconds to "sort" 255 entries, so there's no significant
     ; performance penalty when this is not doing anything useful.
+    ;
     ; (We could simply not include this code if we don't have any preopt data,
     ; but it's discardable init code so it's not really harmful and it seems
     ; best for support purposes to keep the code identical whether or not preopt
