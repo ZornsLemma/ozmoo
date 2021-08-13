@@ -2117,3 +2117,7 @@ show_deferred_output()
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
 
 # SFTODONOW: Should probably do a merge of latest upstream changes (fairly minor, but still) before I settle down to do significant amounts of testing. This can wait until I've finished dealing with any non-test-related SFTODONOW comments though.
+
+# SFTODO: It might be good to add a README.acorn.md or whatever. Contents would include (but not be limited to):
+# - notes on installing a game to an ADFS hard drive
+# - notes on installing a game to NFS
