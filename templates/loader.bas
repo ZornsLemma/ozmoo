@@ -145,6 +145,16 @@ IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
 die_top_y=VPOS
 
+REM A DFS build won't work on another filing system because (among other things)
+REM it uses OSWORD &7F to read game data. All sorts of oddness can occur if you
+REM try this, so let's at least make it obvious what's going on. If you find this
+REM comment by grepping the source for the error message below, you probably
+REM want to build with --adfs.
+fs=FNfs
+!ifndef ACORN_ADFS {
+IF fs<>4 THEN PROCdie("Sorry, this game will only work on DFS.")
+}
+
 PROCchoose_version_and_check_ram
 
 !ifdef SPLASH {
@@ -177,7 +187,6 @@ REM If there are no non-tube builds, ozmoo_relocate_target won't be defined.
 !ifdef ozmoo_relocate_target {
     IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
 }
-fs=FNfs
 IF fs<>4 THEN path$=FNpath
 REM Select user's home directory on NFS
 IF fs=5 THEN *DIR
