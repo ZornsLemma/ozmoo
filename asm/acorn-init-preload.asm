@@ -1094,33 +1094,7 @@ SFTODOTPP
 }
     ; SFTODONOW: REVIEW UP TO HERE
 
-SFTODOXY7
-    ; {{{ Calculate .dpages_to_load for the progress indicator.
-    ; Now we know how much data we are going to load, we can calculate how many
-    ; dpages correspond to each progress indicator position.
-    ; SFTODO: Move this down to after the VMEM sort and debug-show-info code, to keep progress indicator stuff together?
-    ; Set dpages = (nonstored_pages / vmem_block_pagecount) + vmap_meaningful_entries.
-    lda #0
-    sta .dpages_to_load + 1
-    lda nonstored_pages
-    lsr
-    ror .dpages_to_load + 1
-    clc
-    adc vmap_meaningful_entries
-    sta .dpages_to_load
-    bcc +
-    inc .dpages_to_load + 1
-+
-} else { ; Not VMEM
-    ; SFTODO: vmem_block_pagecount isn't defined for non-vmem builds; this feels
-    ; a bit hacky.
-.vmem_block_pagecount = 2
-    lda #<(ACORN_GAME_PAGES / .vmem_block_pagecount)
-    sta .dpages_to_load
-    lda #>(ACORN_GAME_PAGES / .vmem_block_pagecount)
-    sta .dpages_to_load + 1
 }
-    ; }}}
 
 !ifdef VMEM { ; SFTODO: MERGE WITH PREV BLOCK!?
 !ifndef PREOPT {
@@ -1223,23 +1197,45 @@ SFTODOXY7
     jsr osrdch
 }
 
+    ; {{{ Set .dpages_to_load for the progress indicator.
+!ifdef VMEM {
+    ; Set .dpages_to_load = (nonstored_pages / vmem_block_pagecount) +
+    ; vmap_meaningful_entries.
+    lda #0
+    sta .dpages_to_load + 1
+    lda nonstored_pages
+    lsr
+    ror .dpages_to_load + 1
+    clc
+    adc vmap_meaningful_entries
+    sta .dpages_to_load
+    bcc +
+    inc .dpages_to_load + 1
++
+} else { ; Not VMEM
+    ; SFTODO: vmem_block_pagecount isn't defined for non-vmem builds; this feels
+    ; a bit hacky.
+.vmem_block_pagecount = 2
+    lda #<(ACORN_GAME_PAGES / .vmem_block_pagecount)
+    sta .dpages_to_load
+    lda #>(ACORN_GAME_PAGES / .vmem_block_pagecount)
+    sta .dpages_to_load + 1
+}
+    ; }}}
+
     ; fall through to .init_progress_indicator
 ; End of prepare_for_initial_load
 
 ; We use 16-bit fixed point arithmetic to represent the number of blocks per
-; progress bar step, in order to get avoid the bar under-filling or over-filling
-; the screen width. .dpages_to_load can't be more than 64K dynamic memory plus
-; 128K virtual memory cache (and that's not going to happen in practice), so it
-; is effectively a 9-bit value in 512-byte blocks. We can therefore afford 7
-; bits for the fractional component.
+; progress bar step, in order to avoid the bar under-filling or over-filling the
+; screen width. .dpages_to_load can't be more than 64K dynamic memory plus 128K
+; virtual memory cache (and that's not going to happen in practice), so it is
+; effectively a 9-bit value in 512-byte blocks. We can therefore afford 7 bits
+; for the fractional component.
 progress_indicator_fractional_bits=7
 
-; SFTODONOW: Change these uses of block to dpage or vmem_block???
-; Initialise progress_indicator_blocks_until_next_step and
-; progress_indicator_blocks_per_step. This is only called once in any given
-; build so we could make it a macro and inline it, but since this code overlaps
-; the game data we're not under that much memory pressure and it's more readable
-; to just use a subroutine.
+; Set up the progress indicator so that .dpages_to_load calls to
+; update_progress_indicator will completely fill the bar.
 .init_progress_indicator
     ; {{{
     ; If we're not on the bottom line of the screen, set divisor = 2 *
@@ -1303,7 +1299,6 @@ progress_indicator_fractional_bits=7
     dex
     bne -
     sta dividend
-SFTODOOOL
     jsr divide16
     lda division_result
     sta progress_indicator_blocks_per_step
