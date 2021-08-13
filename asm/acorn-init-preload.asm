@@ -824,7 +824,6 @@ SFTODOLM2
 }
     ; }}}
 
-; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
     ; {{{ Set .ram_pages -= nonstored_pages, i.e. set .ram_pages to the number
     ; of RAM pages we have available as virtual memory cache.
     lda .ram_pages
@@ -861,8 +860,7 @@ SFTODOLM2
     bcc .some_vmem_in_main_ram
     lsr
     sta vmem_blocks_stolen_in_first_bank
-    bpl + ; Always branch
-    +assert_discardable_unreached
+    jmp +
 .some_vmem_in_main_ram
     ; Negate A.
     clc
@@ -887,6 +885,7 @@ SFTODOLM2
 }
     ; }}}
 
+; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
     lda sideways_ram_hole_start
