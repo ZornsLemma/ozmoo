@@ -885,7 +885,6 @@ SFTODOLM2
 }
     ; }}}
 
-; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
     ; SFTODONOW: Should I factor out "private 12K" tests into a subroutine? Then again, sometimes we're testing whether it's the first bank or not, so they're not all the same. I just don't entirely like relying on this special value of sideways_ram_hole_start here.
