@@ -724,7 +724,6 @@ SFTODOLM2
     sta nonstored_pages
 }
 
-; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
 !ifdef ACORN_SWR {
     ; It may be useful to increase nonstored_pages to promote some additional
     ; data into dynamic memory, either for performance or to make use of more
@@ -746,6 +745,7 @@ SFTODOLM2
     lda #>flat_ramtop
     ldy ram_bank_count
     beq .upper_bound_in_a
+    ; SFTODO: We could test b7/b6 using BIT here, might actually be clearer
     ldy ram_bank_list
     bmi .b_plus_private_12k
     cpy #64 ; SFTODO: MAGIC NUMBER
@@ -768,32 +768,32 @@ SFTODOLM2
     sbc #>story_start
     sta .max_dynmem_pages
     cmp nonstored_pages
-    bcs + ; Always branch
+    bcs + ; Always branch; .max_dynmem_pages >= nonstored_pages == ACORN_INITIAL_NONSTORED_PAGES
     +assert_discardable_unreached
 +
 
-    ; If game_pages == .ram_pages, we want to set nonstored_pages to
-    ; .max_dynmem_pages; there's no downside as we have enough RAM for the entire game
-    ; and this will allow as much of the game as possible to be accessed via the
-    ; faster dynamic memory code path.
+    ; Note that we can't have game_pages < .ram_pages because we capped
+    ; .ram_pages earlier, so game_pages >= .ram_pages. If game_pages ==
+    ; .ram_pages, we want to set nonstored_pages to .max_dynmem_pages; there's
+    ; no downside as we have enough RAM for the entire game and this will allow
+    ; as much of the game as possible to be accessed via the faster dynamic
+    ; memory code path.
     ldy .ram_pages + 1
     lda .ram_pages
     cpy #>ACORN_GAME_PAGES
-    bne .game_pages_ne_ram_pages
+    bne .game_pages_gt_ram_pages
     cmp #<ACORN_GAME_PAGES
-    bne .game_pages_ne_ram_pages
+    bne .game_pages_gt_ram_pages
 .use_max_dynmem_pages
     lda .max_dynmem_pages
     sta nonstored_pages
     jmp .initial_dynmem_adjust_done
 
-.game_pages_ne_ram_pages
-    ; Note that we can't have game_pages < .ram_pages because we reduced
-    ; .ram_pages to match earlier, so game_pages > .ram_pages. We don't want to
-    ; reduce flexibility by locking parts of the game into RAM instead of
-    ; allowing the virtual memory system to choose what lives in RAM. It's only
-    ; a clear win to increase nonstored_pages if it brings otherwise unusable
-    ; RAM into play.
+.game_pages_gt_ram_pages
+    ; We have game_pages > .ram_pages. We don't want to reduce flexibility by
+    ; locking parts of the game into RAM instead of allowing the virtual memory
+    ; system to choose what lives in RAM. It's only a clear win to increase
+    ; nonstored_pages if it brings otherwise unusable RAM into play.
     ;
     ; only_dynmem_addressable_pages = .ram_pages - (vmap_max_size *
     ; vmem_block_pagecount) is the number of 256-byte pages we can't address via
@@ -808,8 +808,9 @@ SFTODOLM2
     tya
     sbc #>.vmap_max_size_pages
     bcc .initial_dynmem_adjust_done ; branch if only_dynmem_addressable_pages negative
-    ; Set nonstored_pages = min(only_dynmem_addressable_pages, .max_dynmem_pages); we
-    ; can't use more dynamic memory than we have memory to support, of course.
+    ; Set nonstored_pages = min(only_dynmem_addressable_pages,
+    ; .max_dynmem_pages); we can't use more dynamic memory than
+    ; .max_dynmem_pages, of course.
     bne .use_max_dynmem_pages ; branch if only_dymem_addressable_blocks is > 8 bit
     ; We now have X=only_dynmem_addressable_pages, an 8-bit quantity.
     cpx .max_dynmem_pages
@@ -823,6 +824,7 @@ SFTODOLM2
 }
     ; }}}
 
+; SFTODONOW: NEW REVIEW UP TO HERE, THE OLD "UP TO HERE" COMMENT IS ALSO VALID, I JUST THOUGHT STARTING FROM THE TOP WOULD BE HELPFUL GIVEN VARIOUS CHANGES
     ; {{{ Set .ram_pages -= nonstored_pages, i.e. set .ram_pages to the number
     ; of RAM pages we have available as virtual memory cache.
     lda .ram_pages
