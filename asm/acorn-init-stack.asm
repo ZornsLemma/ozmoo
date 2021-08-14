@@ -1,8 +1,9 @@
 ; Initialization subroutines which will be placed inside the Z-machine stack.
-; SFTODONOW THIS FILE SHOULD BE REVIEWED, JUST POSSIBLY ADD SOME FOLD MARKERS TOO
 
-; SFTODONOW: This file should have similar comment to init-preload and try to use local labels where possible.
-
+; As the code in this file gets overwritten when we start to run the game, we
+; put it all in its own zone and make an effort to use local labels for almost
+; everything to reduce the risk of accidentally calling a subroutine in here
+; after it has been overwritten.
 !zone deletable_init {
 
 !ifdef ACORN_TUBE_CACHE {
@@ -228,12 +229,11 @@ deletable_init
 
 .host_cache_aware_vmem_load
     ; {{{ Do host cache-aware vmem load.
-; SFTODONOW: These labels should probably start with a "."
 ; SFTODONOW: ALLOCATE LOCAL MEMORY FOR THESE TO AVOID RISK OF CLASH?
-inflated_vmap_max_entries = zp_temp
-from_index = zp_temp + 1
-to_index = vmap_index
-load_scratch_space = flat_ramtop - vmem_blocksize
+.inflated_vmap_max_entries = zp_temp
+.from_index = zp_temp + 1
+.to_index = vmap_index
+.load_scratch_space = flat_ramtop - vmem_blocksize
 SFTODOLABELX2
 
 ; SFTODONOW: I think it's OK to use vmap_max_entries here not vmap_meaningful_entries as we *don't* do dynmem adjust on a normal non-tube 2P, but this feels a bit hacky.
@@ -253,7 +253,7 @@ SFTODOLABELX2
     ; game developer wants to switch in an updated data file without going
     ; through the Ozmoo build process. SFTODONOW: I think this comment is a bit outdated, check
     lda vmap_max_entries
-    sta inflated_vmap_max_entries
+    sta .inflated_vmap_max_entries
     jsr calculate_normal_tube_own_ram_pages
     sec
     sbc nonstored_pages
@@ -278,12 +278,12 @@ SFTODOLABELX2
     ; actually stop us using more of the host cache; we will offer it blocks
     ; willy-nilly during play and if it has space it will hold onto them.
 SFTODOLABELX3
-    lda inflated_vmap_max_entries
+    lda .inflated_vmap_max_entries
     sec
     sbc vmap_max_entries
     sta host_cache_size_vmem_blocks
 
-    ; We now need to load the inflated_vmap_max_entries blocks in the vmap from
+    ; We now need to load the .inflated_vmap_max_entries blocks in the vmap from
     ; disk; vmap_max_entries blocks will go into our local memory as normal, the
     ; remainder need to be handed over to the host cache. We want the newer
     ; (higher timestamp) blocks in local memory, but remember vmap is sorted by
@@ -304,21 +304,21 @@ SFTODOLABELX3
     ; vmap_max_entries blocks into local memory (blocks offered to the host
     ; cache don't count) or until we've loaded all the blocks in vmap.
     lda #0
-    sta from_index
-    sta to_index
+    sta .from_index
+    sta .to_index
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
 .first_load_loop
-    ldx from_index
-    ldy to_index
+    ldx .from_index
+    ldy .to_index
     lda vmap_z_l,x
     sta vmap_z_l,y
     lda vmap_z_h,x
     sta vmap_z_h,y
     jsr update_progress_indicator
     jsr load_blocks_from_index
-    ldy to_index
+    ldy .to_index
     lda vmap_z_h,y
     and #$ff xor vmem_highbyte_mask
     cmp #.cutover_timestamp + 1
@@ -337,10 +337,10 @@ SFTODOLABELX3
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
-    inc to_index
+    inc .to_index
 .continue
-    inc from_index
-    lda to_index
+    inc .from_index
+    lda .to_index
     cmp vmap_max_entries
     bne .first_load_loop
 
@@ -354,11 +354,11 @@ SFTODOLABELX3
     ; newest block in the host cache so it will spend a long time in there
     ; before being discarded, which should give plenty of opportunity for it to
     ; be requested during gameplay and moved into local memory before it's lost.
-    ; SFTODO: vmap_index is an alias for to_index, maybe use to_index in the follow loop to match the previous loop? This (double check) is just a labelling change, the code would be identical.
+    ; SFTODO: vmap_index is an alias for .to_index, maybe use .to_index in the follow loop to match the previous loop? This (double check) is just a labelling change, the code would be identical.
     dec vmap_index ; set vmap_index = vmap_max_entries - 1
 .second_load_loop
-    ldx from_index
-    cpx inflated_vmap_max_entries
+    ldx .from_index
+    cpx .inflated_vmap_max_entries
     beq .second_load_loop_done
     ldy vmap_index
     lda vmap_z_l,y
@@ -375,7 +375,7 @@ SFTODOLABELX3
     sta vmap_z_h,y
     jsr update_progress_indicator
     jsr load_blocks_from_index
-    inc from_index
+    inc .from_index
     jmp .second_load_loop
 .second_load_loop_done
     ; Now we've finished the initial load, specify no timestamp hint for cache
@@ -462,7 +462,7 @@ deletable_screen_init_2
     lda #vdu_set_mode
     jsr oswrch
     lda screen_mode
-    ora #128 ; force shadow mode on
+    ora #shadow_mode_bit
     jsr oswrch
     jmp .mode_set
 .already_in_right_mode
