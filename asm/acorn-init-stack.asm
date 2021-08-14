@@ -191,18 +191,42 @@ deletable_init
 }
     ; }}}
 
-    ; Now we've got vmap how we want it, load the corresponding blocks into
-    ; memory and initialise vmap_used_entries. (This roughly corresponds to the
-    ; C64 load_suggested_pages subroutine.)
+    ; Now load the read-only pages specified by the vmap. (This roughly
+    ; corresponds to the C64 load_suggested_pages subroutine.)
 
 !ifdef ACORN_TUBE_CACHE {
 !ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
-    bpl +
-    jmp .simple_vmem_load
-+
+    bpl .host_cache_aware_vmem_load
+} else {
+    jmp .host_cache_aware_vmem_load
 }
+}
+   ; {{{ Do simple vmem load.
+   ; On a tube build with cache support and no turbo support, this block of code
+   ; is redundant, but it's fiddly to exclude it and this is discardable init
+   ; code.
+!ifdef ACORN_TUBE_CACHE {
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
+    lda #osword_cache_no_timestamp_hint
+    sta osword_cache_index_offered_timestamp_hint
+}
+    lda #0
+    sta vmap_index
+-   jsr update_progress_indicator
+    jsr load_blocks_from_index
+    inc vmap_index
+    lda vmap_index
+    cmp vmap_meaningful_entries
+    bne -
+    ; }}}
 
+!ifdef ACORN_TUBE_CACHE {
+    jmp .all_loading_done
+
+.host_cache_aware_vmem_load
     ; {{{ Do host cache-aware vmem load.
 ; SFTODONOW: These labels should probably start with a "."
 ; SFTODONOW: ALLOCATE LOCAL MEMORY FOR THESE TO AVOID RISK OF CLASH?
@@ -359,32 +383,13 @@ SFTODOLABELX3
     lda #osword_cache_no_timestamp_hint
     sta osword_cache_index_offered_timestamp_hint
     ; }}}
-    jmp .all_loading_done
-
-.simple_vmem_load
-} ; ACORN_TUBE_CACHE
-
-!ifdef ACORN_TUBE_CACHE {
-    lda #$ff
-    sta osword_cache_index_offered
-    sta osword_cache_index_offered + 1
-    lda #osword_cache_no_timestamp_hint
-    sta osword_cache_index_offered_timestamp_hint
 }
-    lda #0
-    sta vmap_index
--   jsr update_progress_indicator
-    jsr load_blocks_from_index
-    inc vmap_index
-    lda vmap_index
-    cmp vmap_meaningful_entries
-    bne -
+
+.all_loading_done
 !ifdef HAVE_VMAP_USED_ENTRIES {
     lda vmap_max_entries
     sta vmap_used_entries
 }
-
-.all_loading_done
 
 } ; End of !ifndef PREOPT
 } ; End of !ifdef VMEM
