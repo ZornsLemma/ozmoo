@@ -186,7 +186,6 @@ vmap_z_l = scratch_page - vmap_max_size
 ; }}}
 }
 
-; SFTODO: REVIEW UP TO HERE
 ; {{{ Determine upper boundary of low memory
 ; SFTODO: Not too happy with name "low_end_vmap"
 !ifdef VMEM {
@@ -248,10 +247,10 @@ print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
 ; loader does not use, allowing the loader to write to them without BASIC
 ; overwriting them.
 
-; In order to avoid complicating the allocation macros further, we manually
-; assign some internal variables (not written to by the loader) to the page 4
-; memory below resident_integer_b.
-
+; In order to avoid complicating the allocation macros below any further, we
+; manually assign some internal variables (not written to by the loader) to the
+; page 4 memory below resident_integer_b rather than making the macros skip the
+; fixed allocations.
 low_start = $400
 num_rows = $400 ; 1 byte
 memory_buffer = $401 ; 7 bytes - larger on C64, but this is all we use
@@ -265,6 +264,7 @@ low_fixed_gap_start = *
 
 ; game_data_filename/restart_command have filename_size bytes allocated; we only
 ; need one or the other in any particular build.
+; SFTODONOW: Could/should we shrink the size of this buffer on a DFS build? We only need to store about 19 bytes and it would free up some more low memory.
 filename_size = 47
 game_data_filename_or_restart_command
 	* = * + filename_size
@@ -279,10 +279,9 @@ fg_colour
 bg_colour
 	* = * + 1
 
-; Start of optional loader-written variables. To avoid needing to complicate the
+; Start of optional loader-written variables. To avoid complicating the
 ; allocation macros further, we just manually assign other (internal) variables
 ; to unused space.
-
 !ifdef MODE_7_INPUT {
 input_colour
 	!if bg_colour + 1 != input_colour {
@@ -301,12 +300,13 @@ wordoffset
 }
 	* = * + 1
 
-zero_start
 low_fixed_gap_end = *
-
 !if * >= resident_integer_x {
 	!error "Fixed allocations have overflowed resident integer space"
 }
+
+zero_start
+; SFTODO: REVIEW UP TO HERE
 ; }}}
 
 ; {{{ Allocation macros and associated initialisation

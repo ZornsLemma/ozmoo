@@ -85,6 +85,7 @@ deletable_init_start
     cpx #low_fixed_gap_start - low_start
     bne -
 
+    ; SFTODONOW: Sure I had another TODO about this - rename zero_{start,end}? they are not *zero page* and I think it's potentially confusing.
 !if zero_end > zero_start {
     ; Clear memory betwen zero_start and zero_end; this is language workspace
     ; which holds miscellaneous variables and because it's not part of the
