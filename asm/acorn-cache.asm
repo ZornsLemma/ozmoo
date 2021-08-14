@@ -141,7 +141,7 @@ cache_entries_high = zp_temp ; 1 byte
     rts
 
     ; Waste some space so we avoid unwanted page crossing in time-critical loops.
-    !fill 3
+    !fill 4
 
 ; OSWORD &E0 - host cache access
 ;
@@ -246,8 +246,8 @@ have_free_block_index_in_x
     iny
     lda (osword_block_ptr),y
     sta cache_id_high,x
-    ; SFTODO: Potential to do iny instead of ldy #, but lack of assert in acme makes me a bit edgy about it
-    ldy #our_osword_block_offered_timestamp_hint_offset
+    iny
+    +assert our_osword_block_offered_offset + 2 == our_osword_block_offered_timestamp_hint_offset
     lda (osword_block_ptr),y
     cmp #$ff ; SFTODO: share osword_cache_no_timestamp_hint constant?
     beq no_timestamp_hint
