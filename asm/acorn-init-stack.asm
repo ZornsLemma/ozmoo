@@ -402,7 +402,7 @@ SFTODOLABELX3
     lda #0
     ldx #<story_start
     ldy #>story_start
-    jsr calculate_crc ; corrupts some zp_temp locations
+    jsr calculate_crc
     stx game_disc_crc
     sty game_disc_crc + 1
 
