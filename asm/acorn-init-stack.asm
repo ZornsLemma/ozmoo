@@ -1,5 +1,5 @@
 ; Initialization subroutines which will be placed inside the Z-machine stack.
-; SFTODONOW THIS FILE SHOULD BE REVIEWED, JUST POSSIBLY ADD SOME {{{ FOLD MARKERS TOO
+; SFTODONOW THIS FILE SHOULD BE REVIEWED, JUST POSSIBLY ADD SOME FOLD MARKERS TOO
 
 !zone deletable_init {
 
@@ -29,6 +29,7 @@ progress_indicator_blocks_until_next_step !fill 2
 progress_indicator_graphic !byte half_block_graphic
 
 update_progress_indicator
+    ; {{{
     ; progress_indicator_blocks_until_next_step -= 1 (but fixed point)
     sec
     lda progress_indicator_blocks_until_next_step
@@ -70,6 +71,7 @@ update_progress_indicator
     ora progress_indicator_blocks_until_next_step
     beq .while_loop
     rts
+    ; }}}
 
 
 !ifdef ACORN_TUBE_CACHE {
@@ -101,10 +103,12 @@ deletable_init
     ; to but not including .dynmem_load_loop could be moved into
     ; prepare_for_initial_load.
 
-    ; Load the nonstored blocks, or all the blocks if we're not using virtual
-    ; memory. We don't need to worry about reading past the end of the game data
-    ; here, because at worst we will read a final 512-byte block when we don't
-    ; have a full block and that's fine.
+    ; {{{ Load the dynamic memory, or everything if !VMEM.
+    ; Load the nonstored blocks (dynamic memory), or all the blocks if we're not
+    ; using virtual memory. We don't need to worry about reading past the end of
+    ; the game data here, because at worst we will read a final 512-byte block
+    ; when we don't have a full block and that's fine.
+
     ; Because this is initialisation code, we know the following variables are
     ; already set to predictable values. This optimisation was useful at one
     ; point but it's not really important right now; it isn't too confusing so
@@ -161,11 +165,11 @@ deletable_init
     sbc readblocks_numblocks
     sta .blocks_to_read
     bne .dynmem_load_loop
-SFTODOXA9
+    ; }}}
 
 !ifdef VMEM {
 !ifndef PREOPT {
-    ; Debugging code - use this in conjunction with --print-vm.
+    ; {{{ Debugging code - use this in conjunction with --print-vm.
 !if 0 {
     jsr streams_init
     ; vmap_used_entries is set later in normal use, but set it early here so
@@ -183,6 +187,7 @@ SFTODOXA9
     jsr newline
     jsr osrdch
 }
+    ; }}}
 
     ; Now we've got vmap how we want it, load the corresponding blocks into
     ; memory and initialise vmap_used_entries. (This roughly corresponds to the
