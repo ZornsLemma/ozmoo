@@ -1931,7 +1931,7 @@ def make_disc_image():
         output_file = user_prefix + user_extension
 
     if not cmd_args.adfs:
-        disc = DfsImage(disc_contents)
+        disc = DfsImage(disc_contents, boot_option=0 if cmd_args.nfs_install_only else 3)
         if not cmd_args.double_sided:
             # Because we read multiples of pages_per_vmem_block at a time, the data file must
             # start at a corresponding sector in order to avoid a read ever straddling a track
