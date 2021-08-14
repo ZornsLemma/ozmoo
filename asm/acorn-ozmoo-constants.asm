@@ -437,7 +437,7 @@ z_operand_value_low_arr	+allocate 8
 ;
 ; NOTE: This entire block of variables, except last byte of z_pc_mempointer is
 ; included in the save/restore files and _have_ to be stored in a contiguous
-; block of zero page addresses SFTODONOW: I AM NOT ENFORCING THIS, IN REALITY IT PROBABLY SUFFICES TO JUST +assert SOMETHING (MAYBE SIMPLY THAT THEY ARE ALL IN ZERO PAGE) AS A SANITY CHECK
+; block of zero page addresses
 ;
 z_local_vars_ptr	+allocate 2
 z_local_var_count	+allocate 1
@@ -455,7 +455,10 @@ zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
 ;
 ; End of contiguous zero page block
 ;
-;
+; We pretty much know this will all be allocated contiguously, so rather than
+; faff around doing a single allocation and chopping it up we just check the
+; size is as we expect.
+	+assert zp_bytes_to_save == 2 + 1 + 2 + 2 + 2 + 1 + 3
 
 zchar_triplet_cnt	+allocate 1
 packed_text	+allocate 2
