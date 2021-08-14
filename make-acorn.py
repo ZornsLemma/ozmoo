@@ -732,8 +732,7 @@ class Executable(object):
         return Executable(self.asm_filename, self.leafname, self.version_maker, start_addr, self.args)
 
     def add_loader_symbols(self, symbols):
-        # SFTODONOW: This might require some tweaking - if we're building DFS-with-OSGBPB (if we support that) we want the !adfs behavioru, but if we're building DFS-for-NFS-install we want the adfs behaviour here
-        if cmd_args.adfs:
+        if cmd_args.adfs or cmd_args.nfs_install_only:
             symbols[self.leafname + "_BINARY"] = self.leafname
         else:
             symbols[self.leafname + "_BINARY"] = ":%d.$.%s" % (self.surface, self.leafname)
@@ -1552,6 +1551,8 @@ def parse_args():
     group.add_argument("--force-beebasm", action="store_true", help="use beebasm to tokenise BASIC")
     group.add_argument("--force-basictool", action="store_true", help="use basictool to tokenise BASIC")
     group.add_argument("--no-build-file", action="store_true", help="disable creation of build file on generated disc image")
+    # SFTODO: Not an ideal argument name but it will do for now.
+    group.add_argument("--nfs-install-only", action="store_true", help="generate a disc image for installation to NFS")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -1737,9 +1738,17 @@ def make_disc_image():
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
+        if cmd_args.nfs_install_only:
+            # SFTODO: It would probably be a good idea to allow a double-sided
+            # NFS install build where the DATA file (uninterleaved) is put on
+            # surface 2; this would allow games up to just under 200K to be
+            # installed via DFS without needing stitching tools. But let's keep
+            # it simple for now until the NFS install option has seen some real
+            # use.
+            die("NFS install discs cannot be double-sided")
         ozmoo_base_args += ["-DACORN_DSD=1"]
     # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
-    if cmd_args.adfs:
+    if cmd_args.adfs or cmd_args.nfs_install_only:
         ozmoo_base_args += ["-DACORN_ADFS=1"]
     # SFTODO: assembly variable should be *ACORN_*MODE_7_STATUS
     if not cmd_args.no_mode_7_status:
