@@ -147,6 +147,13 @@ deletable_init
     lda #ACORN_GAME_PAGES
 }
     sta .blocks_to_read
+!ifdef ACORN_DEBUG_ASSERT {
+    ; .blocks_to_read should always be even, but let's be paranoid and check
+    ; here. Note that .dynmem_load_loop loops until .blocks_to_read is zero, so
+    ; there's a risk of it failing to terminate if this isn't true.
+    lsr
+    +assert_carry_clear
+}
 
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
     ; Page in the first bank as dynamic memory may overflow into it.

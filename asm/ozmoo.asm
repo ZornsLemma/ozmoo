@@ -1952,15 +1952,6 @@ story_start
 	config_load_address = SCREEN_ADDRESS
 }
 } else { ; ACORN
-	; SFTODONOW: I think I had been assuming - e.g. when rounding game_blocks up
-	; to be even in the loader - that data_start always had to be on a 512-byte
-	; boundary, but for non-VMEM (ie some tube games) that seems not to be the
-	; case. Need to think about this and see what implications it has and tweak
-	; things accordingly. Note that this won't necessarily just affect game_blocks
-	; rounding - I may have been assuming ram_blocks is always even, and for non-VMEM
-	; that is not true. It's probably mostly fine, but need to check - and it may be
-	; that I shouldn't round game_blocks up to an even multiple for non-VMEM builds, if
-	; that isn't too tricky.
 	!if (end_of_routines_in_stack_space - stack_start) > stack_size {
 		!error "Routines in stack space have overflowed stack by ", end_of_routines_in_stack_space - stack_start - stack_size, " bytes"
 	}

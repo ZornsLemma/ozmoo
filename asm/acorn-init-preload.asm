@@ -1207,6 +1207,9 @@ SFTODOTPP
     ; SFTODO: vmem_block_pagecount isn't defined for non-vmem builds; this feels
     ; a bit hacky.
 .vmem_block_pagecount = 2
+    ; Note that because the loader rounds the game up to a multiple of 512 bytes
+    ; we don't need to worry about rounding down (which would cause an over-fill
+    ; of the progress bar) here.
     lda #<(ACORN_GAME_PAGES / .vmem_block_pagecount)
     sta .dpages_to_load
     lda #>(ACORN_GAME_PAGES / .vmem_block_pagecount)
