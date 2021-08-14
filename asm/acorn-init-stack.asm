@@ -73,6 +73,7 @@ update_progress_indicator
 ; Set A=min(>(flat_ramtop - story_start), ACORN_GAME_PAGES), i.e. the number of
 ; pages of RAM we actually have on a normal second processor without counting
 ; host cache, capped at the actual size of the game.
+; SFTODO: Only one caller now - inline? Arguably clearer as a subroutine, think about it.
 calculate_normal_tube_own_ram_pages ; SFTODO: RENAME??
     lda #>(flat_ramtop - story_start)
 !if (>ACORN_GAME_PAGES) == 0 {
