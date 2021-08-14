@@ -101,15 +101,15 @@ calculate_normal_tube_own_ram_pages ; SFTODO: RENAME??
 ; which is why it has to live in the Z-machine stack so it doesn't overwrite
 ; itself.
 deletable_init
-    ; SF: If we got tight on space in the Z-machine stack, the following code up
-    ; to but not including .dynmem_load_loop could be moved into
-    ; prepare_for_initial_load.
-
     ; {{{ Load the dynamic memory, or everything if !VMEM.
     ; Load the nonstored blocks (dynamic memory), or all the blocks if we're not
     ; using virtual memory. We don't need to worry about reading past the end of
     ; the game data here, because at worst we will read a final 512-byte block
     ; when we don't have a full block and that's fine.
+
+    ; If we got tight on space in the Z-machine stack, the following code up to
+    ; but not including .dynmem_load_loop could be moved into
+    ; prepare_for_initial_load.
 
     ; Because this is initialisation code, we know the following variables are
     ; already set to predictable values. This optimisation was useful at one
