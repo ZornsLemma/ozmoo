@@ -408,7 +408,7 @@ SFTODOLABELX3
 
 !ifdef ACORN_SWR {
     ; We should page in the appropriate bank of sideways RAM when we first start
-    ; to execute Z-machine code. Page in the current language so we'll
+    ; to execute Z-machine code. Page in the current language so we'll crash
     ; consistently if that doesn't happen; sice this is discardable init code,
     ; we don't wrap this in ACORN_DEBUG_INTRUSIVE.
     +acorn_page_in_bank_using_a current_language
