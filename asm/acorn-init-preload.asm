@@ -1317,7 +1317,6 @@ progress_indicator_fractional_bits = 7
 .loading_string
     !text "Loading:", 0
     ; }}}
-    ; SFTODONOW: REVIEW UP TO HERE
 
 
 ; SFTODO: Don't forget more code can go here if it can be executed before we
@@ -1344,6 +1343,7 @@ progress_indicator_fractional_bits = 7
     sta nonstored_pages
     rts
 +
+    ; SFTODONOW: REVIEW UP TO HERE
     ; We must have nonstored_pages <= max_nonstored_pages, where
     ; max_nonstored_pages satisfies:
     ;     (.ram_pages - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
@@ -1358,9 +1358,9 @@ progress_indicator_fractional_bits = 7
     ; vmap_max_entries == 1, there is only one 512-byte block of non-dynamic
     ; memory in the whole game, and therefore we couldn't deadlock in the vmem
     ; code even with just one block of vmem cache. In this case, it's
-    ; unnecessarily strict to insist on at least vmem_block_pagecount 512-byte
-    ; blocks of vmem, but it's easier just to insist on meeting this condition
-    ; all the time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
+    ; unnecessarily strict to insist on at least min_vmem_blocks 512-byte blocks
+    ; of vmem, but it's easier just to insist on meeting this condition all the
+    ; time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
     ;
     ; Note that although the above talks about .ram_pages, on a normal second
     ; processor with the host cache enabled, .ram_pages is artifically inflated
@@ -1370,7 +1370,7 @@ progress_indicator_fractional_bits = 7
     ; Set transient_zp = .ram_pages; on a normal second processor with the host
     ; cache enabled, we need to count only the second processor's own RAM.
     ; SFTODO: I don't believe this code will ever actually execute on a normal
-    ; second processor, but it doesn't really hurt to support this case here.
+    ; second processor, but it doesn't really hurt to support this case here. SFTODONOW: Kind of thinking it does. It's extra complexity in the code and the comments. Probably easier just to note that .ram_pages is inflated but this case can't occur, and write a trivial assert to crash if it does.
     lda .ram_pages
     sta transient_zp
     lda .ram_pages + 1
