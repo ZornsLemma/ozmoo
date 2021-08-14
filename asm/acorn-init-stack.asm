@@ -12,6 +12,8 @@ host_cache_size_vmem_blocks !fill 1
 
 !ifdef VMEM {
 vmap_meaningful_entries !fill 1
+.inflated_vmap_max_entries !fill 1
+.from_index !fill 1
 }
 
 .blocks_to_read !fill 1 ; SFTODONOW: RENAME pages_to_read? But maybe not, because this is e.g. used with the upstream-named readblocks function etc.
@@ -229,9 +231,7 @@ deletable_init
 
 .host_cache_aware_vmem_load
     ; {{{ Do host cache-aware vmem load.
-; SFTODONOW: ALLOCATE LOCAL MEMORY FOR THESE TO AVOID RISK OF CLASH?
-.inflated_vmap_max_entries = zp_temp
-.from_index = zp_temp + 1
+; SFTODONOW: ALLOCATE LOCAL MEMORY FOR THESE TO AVOID RISK OF CLASH? BE CAREFUL - BUT MAYBE DO IT, IT *IS* POTENTIALLY CONFUSING - WITH TO_IDNEX AS IT IS ALIASING SOMETHING AND WE SORT OF RELY ON THAT
 .to_index = vmap_index
 SFTODOLABELX2
 
