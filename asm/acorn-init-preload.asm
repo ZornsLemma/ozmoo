@@ -1343,6 +1343,23 @@ progress_indicator_fractional_bits = 7
     sta nonstored_pages
     rts
 +
+
+    ; At this point we know nonstored_pages has been modified. We therefore
+    ; can't be running on a non-turbo second processor and can ignore the
+    ; complication that .ram_blocks may be inflated by the host cache, which
+    ; isn't helpful when checking nonstored_pages. (!ACORN_SWR &&
+    ; !ACORN_TURBO_SUPPORTED builds could omit all the code after
+    ; +assert_discardable_unreached but it's not worth the fuss; this is
+    ; discardable init code anyway.)
+!ifndef ACORN_SWR {
+!ifdef ACORN_TURBO_SUPPORTED {
+    bit is_turbo
+    bmi +
+}
+    +assert_discardable_unreached
++
+}
+
     ; SFTODONOW: REVIEW UP TO HERE
     ; We must have nonstored_pages <= max_nonstored_pages, where
     ; max_nonstored_pages satisfies:
@@ -1361,50 +1378,23 @@ progress_indicator_fractional_bits = 7
     ; unnecessarily strict to insist on at least min_vmem_blocks 512-byte blocks
     ; of vmem, but it's easier just to insist on meeting this condition all the
     ; time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
-    ;
-    ; Note that although the above talks about .ram_pages, on a normal second
-    ; processor with the host cache enabled, .ram_pages is artifically inflated
-    ; to include the host cache, and we need to use a value reflecting only the
-    ; second processor's own RAM here.
-
-    ; Set transient_zp = .ram_pages; on a normal second processor with the host
-    ; cache enabled, we need to count only the second processor's own RAM.
-    ; SFTODO: I don't believe this code will ever actually execute on a normal
-    ; second processor, but it doesn't really hurt to support this case here. SFTODONOW: Kind of thinking it does. It's extra complexity in the code and the comments. Probably easier just to note that .ram_pages is inflated but this case can't occur, and write a trivial assert to crash if it does.
-    lda .ram_pages
-    sta transient_zp
-    lda .ram_pages + 1
-    sta transient_zp + 1
-!ifdef ACORN_TUBE_CACHE {
-!ifdef ACORN_TURBO_SUPPORTED {
-    bit is_turbo
-    bmi +
-}
-    jsr calculate_normal_tube_own_ram_pages
-    sta transient_zp
-    lda #0
-    sta transient_zp + 1
-+
-}
 
     ; Set transient_zp = max_nonstored_pages =
     ; .ram_pages - min_vmem_blocks *  vmem_block_pagecount.
     ; SFTODONOW: CONFUSING COMMENT, SINCE THE REAL PURPOSE OF THIS CODE BLOCK IS TO SET NONSTORED_PAGES
     sec
-    lda transient_zp
+    lda .ram_pages
     sbc #<(min_vmem_blocks * vmem_block_pagecount)
-    sta transient_zp
-    lda transient_zp + 1
+    tax
+    lda .ram_pages + 1
     sbc #>(min_vmem_blocks * vmem_block_pagecount) ; 0
     bne + ; max_nonstored_pages >= 256, so nonstored_pages < max_nonstored_pages
-    lda transient_zp
-    cmp nonstored_pages
+    cpx nonstored_pages
     bcs +
-    sta nonstored_pages
+    stx nonstored_pages
 +
     ; Note that as we've already capped .ram_pages at game_pages, we don't have
-    ; to explicitly check for nonstored_pages being so large it's larger than
-    ; the game.
+    ; to worry about nonstored_pages being so large it's larger than the game.
     rts
     ; }}}
 
