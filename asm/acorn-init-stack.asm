@@ -231,9 +231,6 @@ deletable_init
 
 .host_cache_aware_vmem_load
     ; {{{ Do host cache-aware vmem load.
-; SFTODONOW: ALLOCATE LOCAL MEMORY FOR THESE TO AVOID RISK OF CLASH? BE CAREFUL - BUT MAYBE DO IT, IT *IS* POTENTIALLY CONFUSING - WITH TO_IDNEX AS IT IS ALIASING SOMETHING AND WE SORT OF RELY ON THAT
-.to_index = vmap_index
-SFTODOLABELX2
 
 ; SFTODONOW: I think it's OK to use vmap_max_entries here not vmap_meaningful_entries as we *don't* do dynmem adjust on a normal non-tube 2P, but this feels a bit hacky.
     ; vmap_max_entries was deliberately artificially high up to this point so
@@ -304,20 +301,20 @@ SFTODOLABELX3
     ; cache don't count) or until we've loaded all the blocks in vmap.
     lda #0
     sta .from_index
-    sta .to_index
+    sta vmap_index ; "to_index"
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
 .first_load_loop
     ldx .from_index
-    ldy .to_index
+    ldy vmap_index
     lda vmap_z_l,x
     sta vmap_z_l,y
     lda vmap_z_h,x
     sta vmap_z_h,y
     jsr update_progress_indicator
-    jsr load_blocks_from_index
-    ldy .to_index
+    jsr load_blocks_from_index ; loads block vmap_index
+    ldy vmap_index
     lda vmap_z_h,y
     and #$ff xor vmem_highbyte_mask
     cmp #.cutover_timestamp + 1
@@ -336,10 +333,10 @@ SFTODOLABELX3
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
-    inc .to_index
+    inc vmap_index
 .continue
     inc .from_index
-    lda .to_index
+    lda vmap_index
     cmp vmap_max_entries
     bne .first_load_loop
 
@@ -353,7 +350,6 @@ SFTODOLABELX3
     ; newest block in the host cache so it will spend a long time in there
     ; before being discarded, which should give plenty of opportunity for it to
     ; be requested during gameplay and moved into local memory before it's lost.
-    ; SFTODO: vmap_index is an alias for .to_index, maybe use .to_index in the follow loop to match the previous loop? This (double check) is just a labelling change, the code would be identical.
     dec vmap_index ; set vmap_index = vmap_max_entries - 1
 .second_load_loop
     ldx .from_index
