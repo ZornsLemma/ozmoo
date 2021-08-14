@@ -91,18 +91,17 @@ deletable_init_start
     ; executable will not automatically be zero-initialised. Some of these
     ; variables must be zero-initialised and for the others it's still helpful
     ; for consistency.
-    ; SFTODO: This code feels a bit clumsy, can I improve it? Just for satisfaction.
     lda #0
-.sta_zero_start
--   sta zero_start ; patched by following code
-    inc .sta_zero_start + 1
+    tax
+.sta_zero_start_x
+-   sta zero_start,x ; patched by following code
+    inx
     bne +
-    inc .sta_zero_start + 2
-+   ldx .sta_zero_start + 1
-    cpx #<zero_end
+    inc .sta_zero_start_x + 2
++   cpx #<zero_end
     bne -
-    ldx .sta_zero_start + 2
-    cpx #>zero_end
+    ldy .sta_zero_start_x + 2
+    cpy #>zero_end
     bne -
 }
 
