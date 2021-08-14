@@ -365,10 +365,11 @@ SFTODOLABELX3
 }
 
 !ifdef ACORN_TUBE_CACHE {
-    ; SFTODONOW: It looks to me like in the turbo-copro-with-host-cache cacse we are not setting no timestamp hint - note that the osword block in the code is inited with 0, we should probably init it with no_timestamp_hint and/or set that here, but probably good to just check this is the case in debugger first to see if i have it right
     lda #$ff
     sta osword_cache_index_offered
     sta osword_cache_index_offered + 1
+    lda #osword_cache_no_timestamp_hint
+    sta osword_cache_index_offered_timestamp_hint
 }
     lda #0
     sta vmap_index
