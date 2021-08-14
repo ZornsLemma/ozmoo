@@ -300,7 +300,7 @@ calculate_crc
     bne .loop
     iny
 .cpy_imm
-    cpy #$ff
+    cpy #$ff ; patched by code above
     bne .nbyt
     ldx .crc
     ldy .crc + 1

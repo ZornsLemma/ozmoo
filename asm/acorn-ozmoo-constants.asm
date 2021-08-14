@@ -31,6 +31,9 @@ stack = $100
 brkv = $202
 wrchv = $20e
 keyv = $228
+!ifdef ACORN_SWR {
+current_language = $28c
+}
 error_ptr = $fd
 osfind = $ffce
 osgbpb = $ffd1

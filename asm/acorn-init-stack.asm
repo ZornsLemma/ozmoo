@@ -407,12 +407,11 @@ SFTODOLABELX3
     sty game_disc_crc + 1
 
 !ifdef ACORN_SWR {
-    ; The load loop or the above CRC may have left a non-default bank of sideways
-    ; RAM paged in; we need to page the default bank back in. SFTODO: I am not
-    ; sure this is necessary, as we should page in the right bank when we first
-    ; try to get the page containing the initial Z-machine PC, but it doesn't
-    ; really hurt to do this anyway.
-    +acorn_swr_page_in_default_bank_using_y ; SFTODO: Should prob remove _swr_ from this macro for consistency
+    ; We should page in the appropriate bank of sideways RAM when we first start
+    ; to execute Z-machine code. Page in the current language so we'll
+    ; consistently if that doesn't happen; sice this is discardable init code,
+    ; we don't wrap this in ACORN_DEBUG_INTRUSIVE.
+    +acorn_page_in_bank_using_a current_language
 }
 
 ; parse_header section
@@ -420,7 +419,9 @@ SFTODOLABELX3
 !ifdef VMEM {
 !ifdef VMEM_STRESS {
 	lda #min_vmem_blocks ; one block for PC, one block for data
+!ifdef HAVE_VMAP_USED_ENTRIES {
 	sta vmap_used_entries
+}
 	sta vmap_max_entries
 }
 
