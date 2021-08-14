@@ -22,7 +22,7 @@ scratch_double_page = scratch_page
 
 ; SFTODONOW: As this is new code, it's probably worth reviewing it (particularly the macros) fresh
 
-; === Acorn OS and hardware constants
+; {{{ Acorn OS and hardware constants
 ;
 ; These could be moved into acorn-shared-constants.asm, but these aren't needed
 ; by anything except the main Ozmoo executable.
@@ -118,10 +118,10 @@ flat_ramtop = $f800
 !ifdef ACORN_SHADOW_VMEM {
 shadow_start = $3000
 }
-
-; === Virtual memory configuration
+; }}}
 
 !ifdef VMEM {
+; {{{ Virtual memory configuration
 
 ; Determine vmap_max_size; this code used to live in vmem.asm but it's better to
 ; put it here so we can use the value of vmap_max_size when allocating low
@@ -183,10 +183,10 @@ vmap_z_l = scratch_page - vmap_max_size
 	!error "vmap_z_l is too low"
 }
 
+; }}}
 }
 
-; === Determine upper boundary of low memory
-
+; {{{ Determine upper boundary of low memory
 ; SFTODO: Not too happy with name "low_end_vmap"
 !ifdef VMEM {
 	low_end_vmap = vmap_z_l
@@ -200,18 +200,45 @@ vmap_z_l = scratch_page - vmap_max_size
 	low_end = low_end_vmap - USE_HISTORY
 	low_history_end = low_end_vmap
 }
+;}}}
 
-; === Determine available zero page
-
+; {{{ Determine available zero page
 zp_start = $00
 !ifndef ACORN_SWR {
 	zp_end = $ee
 } else {
 	zp_end = $90
 }
+;}}}
 
-; === Fixed allocations
-;
+; {{{ Fixed allocations
+
+; SFTODO: Is it OK to use 162 bytes of the stack like this? In practice we
+; certainly seem to get away with it, and my brief experiments when I
+; implemented setjmp suggest Ozmoo won't ever get near 64 bytes of stack use,
+; but (particularly if we have some otherwise wasted space floating around due
+; to page alignment issues) it might be worth relocating at least one of these
+; buffers.
+; SFTODO: I think I can and probably should move these buffers to the *top* of
+; the stack and initialise the stack pointer to start just below them when we
+; intialise. This will burn about three bytes of totally discardable init code,
+; so it's virtually free, and it then means we are morally in the clear - Ozmoo
+; then uses "quite a lot" of stack (but it is the foreground application) and if
+; a filing system or interrupt handler goes bananas and uses loads of stack it
+; will cause a wrap (its fault!) rather than trampling over our data not
+; protected by being above the stack pointer (our fault). It is worth noting
+; this is a temporary buffer used only during printing, so there shouldn't be
+; any filing system calls, and an interrupt handler is unlikely to go crazy with
+; stack use, but even so, making this change would be slightly better I think.
+; (It *might* also remove the need for relocating these when using ACORN_OSRDCH,
+; though it's probably safest not to let the stack get "too full" if we can
+; help it.)
+!ifndef ACORN_OSRDCH {
+; SFTODO: Not specifically related to print_buffer etc, but do I need to tweak anything because SCREEN_WIDTH is variable at runtime on some Acorn builds? I don't know if it's variable at runtime on any Commodore platforms.
+print_buffer		  = $100 ; SCREEN_WIDTH + 1 bytes
+print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
+}
+
 ; These addresses are written to by the loader and read by the Ozmoo executable;
 ; in order to avoid needing complex logic in the loader, these need to be at the
 ; same fixed address in all executables they are relevant to (but in executables
@@ -279,8 +306,9 @@ low_fixed_gap_end = *
 !if * >= resident_integer_x {
 	!error "Fixed allocations have overflowed resident integer space"
 }
+; }}}
 
-; === Allocation macros and associated initialisation
+; {{{ Allocation macros and associated initialisation
 ; SFTODO: MIX OF "ALLOC" AND "ALLOCATION" IN MACROS/VARIABLES
 
 !set zp_alloc_ptr = zp_start
@@ -398,6 +426,7 @@ low_fixed_gap_end = *
 	; if we're actually going to perform a multi-byte allocation next.
 	+pre_allocate 1
 }
+;}}}
 
 ; === Non-fixed allocations
 
@@ -405,7 +434,7 @@ low_fixed_gap_end = *
 ; them are predictable across builds) as they're only used internally by an
 ; Ozmoo executable and the assembler obviously knows where they are.
 
-; === Non-fixed allocations, part 1: Guaranteed zero page allocations
+; {{{ Non-fixed allocations, part 1: Guaranteed zero page allocations
 ;
 ; These allocations are guaranteed to be allocated contiguously in zero page; we
 ; verify this afterwards. We put the non-conditionally-assembled things first,
@@ -600,8 +629,9 @@ mode_7_input_tmp = transient_zp ; 1 byte
 	!error "Unexpected non-zero page allocations"
 }
 !set check_pre_allocation = 1
+; }}}
 
-; === Non-fixed allocations, part 2: Flexible allocations
+; {{{ Non-fixed allocations, part 2: Flexible allocations
 ;
 ; The following allocations may end up in zero page, low memory or high memory.
 ; The allocation macros will pack them into the available memory and adjacent
@@ -819,37 +849,14 @@ top_line_buffer
 top_line_buffer_reverse
 	+allocate max_screen_width
 }
-
-; SFTODO: Is it OK to use 162 bytes of the stack like this? In practice we
-; certainly seem to get away with it, and my brief experiments when I
-; implemented setjmp suggest Ozmoo won't ever get near 64 bytes of stack use,
-; but (particularly if we have some otherwise wasted space floating around due
-; to page alignment issues) it might be worth relocating at least one of these
-; buffers.
-; SFTODO: I think I can and probably should move these buffers to the *top* of
-; the stack and initialise the stack pointer to start just below them when we
-; intialise. This will burn about three bytes of totally discardable init code,
-; so it's virtually free, and it then means we are morally in the clear - Ozmoo
-; then uses "quite a lot" of stack (but it is the foreground application) and if
-; a filing system or interrupt handler goes bananas and uses loads of stack it
-; will cause a wrap (its fault!) rather than trampling over our data not 
-; protected by being above the stack pointer (our fault). It is worth noting
-; this is a temporary buffer used only during printing, so there shouldn't be
-; any filing system calls, and an interrupt handler is unlikely to go crazy with
-; stack use, but even so, making this change would be slightly better I think.
-; (It *might* also remove the need for relocating these when using ACORN_OSRDCH,
-; though it's probably safest not to let the stack get "too full" if we can
-; help it.)
-!ifndef ACORN_OSRDCH {
-; SFTODO: Not specifically related to print_buffer etc, but do I need to tweak anything because SCREEN_WIDTH is variable at runtime on some Acorn builds? I don't know if it's variable at runtime on any Commodore platforms.
-print_buffer		  = $100 ; SCREEN_WIDTH + 1 bytes
-print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes
-}
+; }}}
 
 ; If we have a history buffer, it's cleared explicitly, not via the
 ; zero_start-zero_end clear operation - this is necessary in general because it
 ; might be located in the executable just below data_start.
 zero_end = low_alloc_ptr
+
+; {{{ Final allocations and checks depending on earlier allocations
 
 !ifdef USE_HISTORY {
 	; We should - by choice of low_end earlier - have at least USE_HISTORY bytes
@@ -869,6 +876,8 @@ turbo_bank_base = $301
 mempointer_turbo_bank = turbo_bank_base + mempointer
 z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 }
+
+; }}}
 
 ; Further assembly continues in high (executable) memory.
 * = high_alloc_ptr
