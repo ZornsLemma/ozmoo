@@ -1156,7 +1156,7 @@ def make_tube_executables():
         if game_pages <= tube_no_vmem.max_nonstored_pages():
             info("Game is small enough to run without virtual memory on second processor")
             return [tube_no_vmem]
-    args += ["-DVMEM=1"]
+    args += vmem_args
     if not cmd_args.no_tube_cache:
         args += ["-DACORN_TUBE_CACHE=1"]
         args += ["-DACORN_TUBE_CACHE_MIN_TIMESTAMP=%d" % min_timestamp]
@@ -1733,7 +1733,6 @@ def make_disc_image():
         "-DACORN_HW_SCROLL=1",
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
-        "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_pages - nonstored_pages, pages_per_vmem_block),
         "-DACORN_GAME_PAGES=%d" % game_pages,
     ]
     # SFTODO: Re-order these to match the --help output eventually
@@ -2015,13 +2014,6 @@ max_timestamp = 0xe0 # initial tick value
 if not os.path.exists("temp"):
     os.makedirs("temp")
 
-bbc_args = []
-tube_args = []
-swr_args = ["-DVMEM=1", "-DACORN_SWR=1"]
-relocatable_args = ["-DACORN_RELOCATABLE=1"]
-small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
-medium_dynmem_args = ["-DACORN_SWR_MEDIUM_DYNMEM=1"]
-
 host = 0xffff0000
 tube_start_addr = 0x700
 small_dynmem_page_threshold = 0x2000
@@ -2091,6 +2083,17 @@ while ((game_pages < nonstored_pages + pages_per_vmem_block) or
        (game_pages % pages_per_vmem_block != 0)):
     game_data += bytearray(bytes_per_page)
     game_pages = bytes_to_pages(len(game_data))
+
+bbc_args = []
+tube_args = []
+vmem_args = [
+    "-DVMEM=1",
+    "-DACORN_VMEM_BLOCKS=%d" % divide_round_up(game_pages - nonstored_pages, pages_per_vmem_block),
+]
+swr_args = vmem_args + ["-DACORN_SWR=1"]
+relocatable_args = ["-DACORN_RELOCATABLE=1"]
+small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
+medium_dynmem_args = ["-DACORN_SWR_MEDIUM_DYNMEM=1"]
 
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)
