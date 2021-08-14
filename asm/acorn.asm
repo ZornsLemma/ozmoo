@@ -179,3 +179,7 @@ assert_carry_clear_sub
 
 ; SFTODO: We could allow building an NFS-compatible game but writing it to a DFS floppy to be installed from - at the moment you can't install on NFS unless you have an ADFS-capable machine to install from. It's a bit confusing you need to use --adfs to build an NFS-compatible game - at the very least it might be nice to see if I can come up with some better command line options. (Off top of head - perhaps --dfs and --adfs specify image type, and there's an --nfs option which is (mostly/) redundant with --adfs but triggers the NFS build on DFS. Not too sure. But do *something*.)
 ; SFTODO: Perhaps given the problems with auto-detecting restart commad and the save directory, we could have --nfs-install-dir and/or --nfs-save-dir options or something which hard-code these values in the loader or something? Don't just give up on auto-detection if it can be made to work though.
+
+; SFTODO: In b-em, the benchmark seems to work on ReCo 65816 *except* the timestamps at start and end are wrong/odd. Might be worth having a quick look into this.
+
+; SFTODO: In b-em, the bencnhmark won't work on Dossy 65816. Might be worth having a quick look into this.
