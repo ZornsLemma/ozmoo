@@ -210,7 +210,7 @@ deletable_init_start
     ; Patch re_enter_language to enter the current language; reading it here
     ; saves a few bytes of non-deletable code.
     lda #osbyte_read_language
-    ; X is already 0
+    ldx #0
     ldy #$ff
     jsr osbyte
     stx re_enter_language_ldx_imm + 1
