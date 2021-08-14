@@ -358,11 +358,11 @@ SFTODOLABELX3
     ; operations; this setting will remain untouched for the rest of the game.
     lda #osword_cache_no_timestamp_hint
     sta osword_cache_index_offered_timestamp_hint
-    jmp .all_loading_done
     ; }}}
+    jmp .all_loading_done
 
 .simple_vmem_load
-}
+} ; ACORN_TUBE_CACHE
 
 !ifdef ACORN_TUBE_CACHE {
     lda #$ff
