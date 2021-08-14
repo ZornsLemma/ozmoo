@@ -230,7 +230,7 @@ deletable_init
     jmp .all_loading_done
 
 .host_cache_aware_vmem_load
-    ; {{{ Do host cache-aware vmem load.
+    ; {{{ Do host cache-aware vmem load. SFTODONOW: THIS HASN'T BEEN REVIEWED IN DETAIL YET
 
 ; SFTODONOW: I think it's OK to use vmap_max_entries here not vmap_meaningful_entries as we *don't* do dynmem adjust on a normal non-tube 2P, but this feels a bit hacky.
     ; vmap_max_entries was deliberately artificially high up to this point so
