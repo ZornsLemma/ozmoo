@@ -161,9 +161,8 @@ cache_entries_high = zp_temp ; 1 byte
 ;             modified
 ;
 ; In practice a block ID of $ABCD will correspond to the 512-byte block of
-; Z-machine address space starting at $ABCD00, but this code doesn't actually
-; care. SFTODO: We still don't care, but this is not quite true on 5.x due to
-; shfited vmap entry.
+; Z-machine address space starting at $ABCD00 >> 1, but this code doesn't
+; actually care.
 ;
 ; The implementation removes blocks from the cache when they are provided to the
 ; caller. This means that a block is either in this cache or in the caller's own
@@ -250,7 +249,7 @@ have_free_block_index_in_x
     ; SFTODO: Potential to do iny instead of ldy #, but lack of assert in acme makes me a bit edgy about it
     ldy #our_osword_block_offered_timestamp_hint_offset
     lda (osword_block_ptr),y
-    cmp #$ff
+    cmp #$ff ; SFTODO: share osword_cache_no_timestamp_hint constant?
     beq no_timestamp_hint
     ; We have a timestamp hint. current_tick isn't incremented automatically in
     ; this case (otherwise the initial cache population may end up squashing
