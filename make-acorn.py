@@ -1744,7 +1744,8 @@ def make_disc_image():
             # surface 2; this would allow games up to just under 200K to be
             # installed via DFS without needing stitching tools. But let's keep
             # it simple for now until the NFS install option has seen some real
-            # use.
+            # use. Or maybe we could add a simple BASIC CPYDATA program which will
+            # copy and de-interleave the data from a double-sided DFS disc.
             die("NFS install discs cannot be double-sided")
         ozmoo_base_args += ["-DACORN_DSD=1"]
     # SFTODO: I am not too happy with the ACORN_ADFS name here; I might prefer to use ACORN_OSWORD_7F for DFS and default to OSFIND/OSGBPB-for-game-data. But this will do for now while I get something working.
