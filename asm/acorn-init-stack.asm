@@ -233,7 +233,6 @@ deletable_init
 .inflated_vmap_max_entries = zp_temp
 .from_index = zp_temp + 1
 .to_index = vmap_index
-.load_scratch_space = flat_ramtop - vmem_blocksize
 SFTODOLABELX2
 
 ; SFTODONOW: I think it's OK to use vmap_max_entries here not vmap_meaningful_entries as we *don't* do dynmem adjust on a normal non-tube 2P, but this feels a bit hacky.
