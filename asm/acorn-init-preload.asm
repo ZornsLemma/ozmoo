@@ -199,8 +199,11 @@ deletable_init_start
     ; }}}
 }
 
-    ldx #0
-    stx mempointer
+    ; The low byte of mempointer is permanently 0. (SFTODO: This is technically
+    ; redundant as we already cleared all our zero page.)
+    lda #0
+    sta mempointer
+
 !ifndef ACORN_SWR {
     ; {{{ Arrange to re-enter BASIC on exit or soft-break.
 
