@@ -1338,11 +1338,12 @@ progress_indicator_fractional_bits = 7
     ; we're not respecting the game's real dynamic memory size.
     lda nonstored_pages
     cmp #ACORN_INITIAL_NONSTORED_PAGES
-    bcs +
-    lda #ACORN_INITIAL_NONSTORED_PAGES
+    beq +
+    bcs ++
++   lda #ACORN_INITIAL_NONSTORED_PAGES
     sta nonstored_pages
     rts
-+
+++
 
     ; At this point we know nonstored_pages has been modified. We therefore
     ; can't be running on a non-turbo second processor and can ignore the
