@@ -120,7 +120,6 @@ shadow_start = $3000
 }
 ; }}}
 
-; SFTODO: REVIEW UP TO HERE
 !ifdef VMEM {
 ; {{{ Virtual memory configuration
 
@@ -128,14 +127,14 @@ shadow_start = $3000
 ; put it here so we can use the value of vmap_max_size when allocating low
 ; memory.
 
-; The Acorn port takes advantage of knowing the game size at build time to avoid
-; wasting memory on a vmap_max_size larger than the game will ever need.
+; Set max_vmap_max_size to the largest vmap the hardware for this configuration
+; can possibly support.
 !ifndef ACORN_SWR {
     !ifndef ACORN_TUBE_CACHE {
         !ifdef ACORN_TURBO_SUPPORTED {
             ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
             max_vmap_max_size = 255
-        } else { ; !ACORN_TURBO_SUPPORTED
+        } else {
             max_vmap_max_size = (flat_ramtop - story_start) / 512
         }
     } else { ; ACORN_TUBE_CACHE
@@ -143,13 +142,13 @@ shadow_start = $3000
         max_vmap_max_size = 255
         !ifndef ACORN_TURBO_SUPPORTED {
             ; During execution (after the initial preload of the host cache),
-            ; vmap_max_entries only covers the second processor's own 64K, so we
-            ; don't need large vmap support.
+            ; the vmap only covers the second processor's own 64K, so we don't
+            ; need large vmap support.
             ACORN_SMALL_RUNTIME_VMAP = 1
         }
     }
 } else { ; ACORN_SWR
-    ; We might have enough main+sideways RAM to hold 255 512-byte blocks.
+    ; We might have enough main+sideways+shadow RAM to hold 255 512-byte blocks.
     max_vmap_max_size = 255
 }
 
@@ -187,6 +186,7 @@ vmap_z_l = scratch_page - vmap_max_size
 ; }}}
 }
 
+; SFTODO: REVIEW UP TO HERE
 ; {{{ Determine upper boundary of low memory
 ; SFTODO: Not too happy with name "low_end_vmap"
 !ifdef VMEM {
