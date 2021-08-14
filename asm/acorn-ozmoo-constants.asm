@@ -101,8 +101,8 @@ osbyte_read_language = $fc
 vdu_variable_text_window_bottom = $09
 vdu_variable_text_window_top = $0b
 vdu_status_cursor_editing = 1<<6
-cr = 13
-del = 127
+cr = 13 ; SFTODO: Duplicate with vdu_cr
+del = 127 ; SFTODO: Rename vdu_del and move up near other vdu_* constants???
 shadow_mode_bit = 128
 mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
@@ -120,6 +120,7 @@ shadow_start = $3000
 }
 ; }}}
 
+; SFTODO: REVIEW UP TO HERE
 !ifdef VMEM {
 ; {{{ Virtual memory configuration
 
