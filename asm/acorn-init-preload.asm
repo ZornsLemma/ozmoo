@@ -364,7 +364,6 @@ deletable_init_start
     ; {{{ Show some debug information.
     ; Call deletable_screen_init_1 here so we can output succesfully; this is a
     ; little bit hacky but not a huge problem (and this is debug-only code).
-    ; SFTODO: I am not sure this is always working...
     jsr deletable_screen_init_1
     jsr streams_init
     jsr print_following_string
@@ -376,19 +375,13 @@ deletable_init_start
     ; }}}
 }
 
-    ; SFTODO: just fall through to prepare_for_initial_load? Or - more likely -
-    ; get rid of that label. This is the only caller of the subroutine so it
-    ; doesn't really add any significant clarity, and the work it does is really
-    ; just a continuation of this initialisation (whereas at least init progress
-    ; bar later on is conceptually a little separate).
-    jsr prepare_for_initial_load
-    rts
+    ; fall through to .prepare_for_initial_load
 ; End of deletable_init_start
 
 
 ; Do as much as we can to prepare for the initial load of game data from disk,
 ; without actually loading anything (which would overwrite this code).
-prepare_for_initial_load
+.prepare_for_initial_load
 !ifdef TRACE_FLOPPY {
     ; Call streams_init so the tracing is able to show the readblocks calls
     ; performed here.
