@@ -161,6 +161,7 @@ shadow_start = $3000
 ; vmem code would not behave correctly. This should be impossible, noting that
 ; the build system ensures there is always at least one 512-byte block of
 ; non-dynamic memory.
++assert ACORN_VMEM_BLOCKS >= 1
 +assert vmap_max_size > 0
 
 min_vmem_blocks = 2
