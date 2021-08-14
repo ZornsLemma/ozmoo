@@ -157,6 +157,12 @@ shadow_start = $3000
     vmap_max_size = ACORN_VMEM_BLOCKS
 }
 
+; If vmap_max_size could be zero, vmap_max_entries would be zero as well and the
+; vmem code would not behave correctly. This should be impossible, noting that
+; the build system ensures there is always at least one 512-byte block of
+; non-dynamic memory.
++assert vmap_max_size > 0
+
 min_vmem_blocks = 2
 
 ; We only need to allocate space for vmap_used_entries in PREOPT builds.
