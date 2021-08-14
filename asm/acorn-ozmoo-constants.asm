@@ -434,7 +434,7 @@ z_operand_value_low_arr	+allocate 8
 ;
 ; NOTE: This entire block of variables, except last byte of z_pc_mempointer is
 ; included in the save/restore files and _have_ to be stored in a contiguous
-; block of zero page addresses
+; block of zero page addresses SFTODONOW: I AM NOT ENFORCING THIS, IN REALITY IT PROBABLY SUFFICES TO JUST +assert SOMETHING (MAYBE SIMPLY THAT THEY ARE ALL IN ZERO PAGE) AS A SANITY CHECK
 ;
 z_local_vars_ptr	+allocate 2
 z_local_var_count	+allocate 1

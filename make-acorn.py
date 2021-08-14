@@ -732,6 +732,7 @@ class Executable(object):
         return Executable(self.asm_filename, self.leafname, self.version_maker, start_addr, self.args)
 
     def add_loader_symbols(self, symbols):
+        # SFTODONOW: This might require some tweaking - if we're building DFS-with-OSGBPB (if we support that) we want the !adfs behavioru, but if we're building DFS-for-NFS-install we want the adfs behaviour here
         if cmd_args.adfs:
             symbols[self.leafname + "_BINARY"] = self.leafname
         else:
