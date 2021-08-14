@@ -546,16 +546,16 @@ zp_screenrow	+allocate 1 ; current cursor row
 ; OS transient command zero page at $a8-$af inclusive - these addresses cannot be
 ; trusted to retain their values across * commands or (being paranoid) any service
 ; call, but they can be used for very short term storage. On second processor builds,
-; we just allocate some of the available zero page for this.
-; SFTODO: There's no advantage to a small transient_zp_size on non-tube; on tube we could make it smaller (but would need to check code to see exactly how much smaller and be careful) SFTODONOW
-transient_zp_size = 5 ; bytes of transient zero page needed
-; SFTODO: Note at the moment code in acorn.asm uses transient_zp directly and assumes size >=2
-!if transient_zp_size > 8 {
-	!error "transient_zp_size is too large"
+; we just allocate some of the available zero page for this; we don't replicate the
+; space available on non-second processor builds as there's no point wasting zero
+; page when we won't use it.
+tube_transient_zp_size = 2 ; bytes of transient zero page needed
+!if tube_transient_zp_size > 8 {
+	!error "tube_transient_zp_size is too large"
 }
 !ifndef ACORN_SWR {
-				+pre_allocate transient_zp_size
-transient_zp	+allocate transient_zp_size
+				+pre_allocate tube_transient_zp_size
+transient_zp	+allocate tube_transient_zp_size
 } else {
 transient_zp = $a8
 }

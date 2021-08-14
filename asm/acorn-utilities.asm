@@ -269,7 +269,7 @@ printstring_os
 calculate_crc
 ; This must not use the same location as .result in acorn-disk.asm as otherwise
 ; when .get_game_disc_back calls calculate_crc it will be overwritten.
-.crc = transient_zp
+.crc = transient_zp ; 2 bytes
     sta .cpy_imm + 1
     stx .eor_abs + 1
     sty .eor_abs + 2
