@@ -628,6 +628,7 @@ load_blocks_from_index_done ; except for any tracing
 	rts
 
 !ifdef ACORN_TUBE_CACHE {
+; SFTODO: Allocate this via acorn-ozmoo-constants.asm?
 osword_cache_block
     !byte 12 ; send block length
     !byte 12 ; receive block length

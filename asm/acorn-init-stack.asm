@@ -1,6 +1,8 @@
 ; Initialization subroutines which will be placed inside the Z-machine stack.
 ; SFTODONOW THIS FILE SHOULD BE REVIEWED, JUST POSSIBLY ADD SOME FOLD MARKERS TOO
 
+; SFTODONOW: This file should have similar comment to init-preload and try to use local labels where possible.
+
 !zone deletable_init {
 
 !ifdef ACORN_TUBE_CACHE {
@@ -193,39 +195,17 @@ deletable_init
     ; memory and initialise vmap_used_entries. (This roughly corresponds to the
     ; C64 load_suggested_pages subroutine.)
 
-    ; SFTODO: I think we are duplicating code a bit here if we have
-    ; ACORN_TURBO_SUPPORTED and !ACORN_TUBE_CACHE - in that case we probably
-    ; don't need this special block of ACORN_TURBO_SUPPORTED code.
+!ifdef ACORN_TUBE_CACHE {
 !ifdef ACORN_TURBO_SUPPORTED {
     bit is_turbo
-    bpl .normal_tube_load
-    ; On a turbo second processor we don't do any preloading of the host cache
-    ; so we just use a straightforward load loop like the non-tube-cache case
-    ; below.
-    stz vmap_index
-!ifdef ACORN_TUBE_CACHE {
-    lda #$ff
-    sta osword_cache_index_offered
-    sta osword_cache_index_offered + 1
+    bpl +
+    jmp .simple_vmem_load
++
 }
-.turbo_load_loop
-    jsr update_progress_indicator
-    jsr load_blocks_from_index
-    inc vmap_index
-    lda vmap_index
-    cmp vmap_meaningful_entries
-    bne .turbo_load_loop
-!ifdef HAVE_VMAP_USED_ENTRIES {
-    lda vmap_max_entries
-    sta vmap_used_entries
-}
-    jmp .all_loading_done
 
-.normal_tube_load
-} ; ACORN_TURBO_SUPPORTED
-
-!ifdef ACORN_TUBE_CACHE {
-; SFTODO: These labels should probably start with a "."
+    ; {{{ Do host cache-aware vmem load.
+; SFTODONOW: These labels should probably start with a "."
+; SFTODONOW: ALLOCATE LOCAL MEMORY FOR THESE TO AVOID RISK OF CLASH?
 inflated_vmap_max_entries = zp_temp
 from_index = zp_temp + 1
 to_index = vmap_index
@@ -378,8 +358,18 @@ SFTODOLABELX3
     ; operations; this setting will remain untouched for the rest of the game.
     lda #osword_cache_no_timestamp_hint
     sta osword_cache_index_offered_timestamp_hint
-} else { ; not ACORN_TUBE_CACHE
-    ; Load the blocks in vmap.
+    jmp .all_loading_done
+    ; }}}
+
+.simple_vmem_load
+}
+
+!ifdef ACORN_TUBE_CACHE {
+    ; SFTODONOW: It looks to me like in the turbo-copro-with-host-cache cacse we are not setting no timestamp hint - note that the osword block in the code is inited with 0, we should probably init it with no_timestamp_hint and/or set that here, but probably good to just check this is the case in debugger first to see if i have it right
+    lda #$ff
+    sta osword_cache_index_offered
+    sta osword_cache_index_offered + 1
+}
     lda #0
     sta vmap_index
 -   jsr update_progress_indicator
@@ -388,12 +378,11 @@ SFTODOLABELX3
     lda vmap_index
     cmp vmap_meaningful_entries
     bne -
-SFTODOLABEL4
 !ifdef HAVE_VMAP_USED_ENTRIES {
     lda vmap_max_entries
     sta vmap_used_entries
 }
-}
+
 .all_loading_done
 
 } ; End of !ifndef PREOPT
