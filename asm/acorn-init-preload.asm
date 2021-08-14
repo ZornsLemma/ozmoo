@@ -1360,7 +1360,6 @@ progress_indicator_fractional_bits = 7
 +
 }
 
-    ; SFTODONOW: REVIEW UP TO HERE
     ; We must have nonstored_pages <= max_nonstored_pages, where
     ; max_nonstored_pages satisfies:
     ;     (.ram_pages - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
