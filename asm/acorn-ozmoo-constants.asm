@@ -345,7 +345,7 @@ zero_start
 ; https://scicomp.stackexchange.com/questions/26258/the-easiest-way-to-find-intersection-of-two-intervals,
 ; but tweaked to work with half-open intervals.
 
-; SFTODO: REVIEW UP TO HERE
+; SFTODONOW: NEED TO REVIEW THESE MACROS
 !macro skip_fixed_alloc fixed_start, fixed_size, current_size {
 	.fixed_end = fixed_start + fixed_size
 	.current_end = * + current_size
@@ -428,6 +428,7 @@ zero_start
 ;}}}
 
 ; === Non-fixed allocations
+; SFTODO: REVIEW UP TO HERE
 
 ; These allocations don't have fixed addresses (although in practice many of
 ; them are predictable across builds) as they're only used internally by an
@@ -486,6 +487,10 @@ zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
 ; We pretty much know this will all be allocated contiguously, so rather than
 ; faff around doing a single allocation and chopping it up we just check the
 ; size is as we expect.
+; SFTODONOW: This might seem superficially redundant given we check below that
+; all this fit into zero page, but the existence of skipping around is_turbo
+; probably invalidates that. In fact it probably invalidates the whole idea
+; of just doing that check at the end.
 	+assert zp_bytes_to_save == 2 + 1 + 2 + 2 + 2 + 1 + 3
 
 zchar_triplet_cnt	+allocate 1
