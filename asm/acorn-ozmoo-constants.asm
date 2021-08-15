@@ -345,7 +345,7 @@ zero_start
 ; https://scicomp.stackexchange.com/questions/26258/the-easiest-way-to-find-intersection-of-two-intervals,
 ; but tweaked to work with half-open intervals.
 
-; SFTODONOW: NEED TO REVIEW THESE MACROS
+; SFTODONOW: NEED TO REVIEW THESE MACROS - I SKIMMED THEM IN CURRENT ONGOING REVIEW AS I AM JUST NOT FEELING ENERGETIC ENOUGH TO DEAL WITH THEM...
 !macro skip_fixed_alloc fixed_start, fixed_size, current_size {
 	.fixed_end = fixed_start + fixed_size
 	.current_end = * + current_size
@@ -428,7 +428,6 @@ zero_start
 ;}}}
 
 ; === Non-fixed allocations
-; SFTODO: REVIEW UP TO HERE
 
 ; These allocations don't have fixed addresses (although in practice many of
 ; them are predictable across builds) as they're only used internally by an
@@ -524,6 +523,7 @@ stack_tmp	+allocate 5
 default_properties_ptr	+allocate 2
 zchars	+allocate 3
 
+; SFTODO: REVIEW UP TO HERE
 ; SF: I experimented with increasing vmap_quick_index_length to see if it helps
 ; on "big" systems with the maximum supported 144K of sideways RAM. Upping it
 ; to 12 knocked 0.9% off the run time for the benchmark; given the scarcity of
