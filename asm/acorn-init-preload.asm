@@ -62,14 +62,7 @@ deletable_init_start
     ; acorn-ozmoo-constants.asm ends up in zero page instead of low memory.
     lda #0
     tax
--
-!ifdef ACORN_TURBO_SUPPORTED {
-    ; We must avoid clearing is_turbo, which is set by the turbo test executable
-    ; during boot and never touched afterwards.
-    cpx #is_turbo
-    beq +
-}
-    sta $00,x
+-   sta $00,x
 +   inx
     cpx #zp_end
     bne -
@@ -85,46 +78,35 @@ deletable_init_start
     cpx #low_fixed_gap_start - low_start
     bne -
 
-    ; SFTODONOW: Sure I had another TODO about this - rename zero_{start,end}? they are not *zero page* and I think it's potentially confusing.
-!if zero_end > zero_start {
-    ; Clear memory betwen zero_start and zero_end; this is language workspace
-    ; which holds miscellaneous variables and because it's not part of the
-    ; executable will not automatically be zero-initialised. Some of these
-    ; variables must be zero-initialised and for the others it's still helpful
-    ; for consistency.
+    ; Clear memory betwen bulk_clear_start and bulk_clear_end; some of the
+    ; variables which may live here need to be zero initialised and it's good
+    ; for consistency to clear everything.
+    +assert bulk_clear_start < bulk_clear_end
     lda #0
     tax
-.sta_zero_start_x
--   sta zero_start,x ; patched by following code
+.sta_bulk_clear_start_x
+-   sta bulk_clear_start,x ; patched by following code
     inx
     bne +
-    inc .sta_zero_start_x + 2
-+   cpx #<zero_end
+    inc .sta_bulk_clear_start_x + 2
++   cpx #<bulk_clear_end
     bne -
-    ldy .sta_zero_start_x + 2
-    cpy #>zero_end
+    ldy .sta_bulk_clear_start_x + 2
+    cpy #>bulk_clear_end
     bne -
-}
 
-    ; maxwords and wordoffset are handled specially and won't always be automatically
-    ; cleared by the previous loop, so do them explicitly here.
+    ; Allocation of maxwords and wordoffset is handled specially and they won't
+    ; always be automatically cleared by the previous loop, so do them
+    ; explicitly here.
     lda #0
     sta maxwords
     sta wordoffset
 
 !ifdef USE_HISTORY {
-    ; Zero the history buffer; if this isn't done it is sometimes possible to
-    ; navigate to invalid history entries. (We don't fold this into the
-    ; zero_start to zero_end loop above, because the history might not be in low
-    ; memory.) SFTODO: This might be a bit redundant; *if* history is in high
-    ; memory it will be zero from loading executable, if it's in low memory we
-    ; could extend zero_end to cover it and get rid of this code.
-    ldx #history_size - 1
-    lda #0
--   sta history_start,x
-    dex
-    cpx #$ff
-    bne -
+    ; The history buffer must be zero-initialised, but it's either in low memory
+    ; - in which case the bulk clear loop above initialised it - or it's in high
+    ; memory and it's zero-initialised in the executable. SFTODONOW: Pretty sure
+    ; this is correct, but confirm
 }
 
     ; Initialise non-0 variables.

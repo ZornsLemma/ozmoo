@@ -193,6 +193,7 @@ vmap_z_l = scratch_page - vmap_max_size
 } else {
 	low_end_vmap = scratch_page
 }
+bulk_clear_end = low_end_vmap
 
 !ifndef USE_HISTORY {
 	low_end = low_end_vmap
@@ -312,7 +313,7 @@ low_fixed_gap_end = *
 	!error "Fixed allocations have overflowed resident integer space"
 }
 
-zero_start
+bulk_clear_start
 ; }}}
 
 ; {{{ Allocation macros and associated initialisation
@@ -789,8 +790,6 @@ jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if neces
 	  	+pre_allocate jmp_buf_size
 jmp_buf	+allocate jmp_buf_size
 
-; SFTODONOW: RENAME zero_start/end TO AVOID CONFUSION WITH ZERO *PAGE*? THE ZERO MEANS "IS CLEARED ON STARTUP" (DUPLICATE COMMENT, BUT NEVER MIND)
-
 	+pre_allocate 4
 streams_current_entry
 	+allocate 4
@@ -816,11 +815,6 @@ top_line_buffer_reverse
 	+allocate max_screen_width
 }
 ; }}}
-
-; If we have a history buffer, it's cleared explicitly, not via the
-; zero_start-zero_end clear operation - this is necessary in general because it
-; might be located in the executable just below data_start.
-zero_end = low_alloc_ptr
 
 ; {{{ Final allocations and checks depending on earlier allocations
 
