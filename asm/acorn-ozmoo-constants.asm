@@ -306,16 +306,18 @@ low_fixed_gap_end = *
 }
 
 zero_start
-; SFTODO: REVIEW UP TO HERE
 ; }}}
 
 ; {{{ Allocation macros and associated initialisation
 ; SFTODO: MIX OF "ALLOC" AND "ALLOCATION" IN MACROS/VARIABLES
+; SFTODONOW: ADD SOME MORE COMMENTS ON THESE MACRO DEFINITIONS AND HOW THEY WORK
 
 !set zp_alloc_ptr = zp_start
 !set low_alloc_ptr = low_fixed_gap_end
 
-!macro set_alloc_end {
+!macro set_alloc_star addr {
+	* = addr
+	; Set alloc_end to the end of the newly selected region.
 	!if * < zp_end {
 		!set alloc_end = zp_end
 	} else {
@@ -325,11 +327,6 @@ zero_start
 			!set alloc_end = $ffff
 		}
 	}
-}
-
-!macro set_alloc_star addr {
-	* = addr
-	+set_alloc_end ; SFTODO: inline this macro if this is only use of it?
 }
 
 !macro save_alloc_star {
@@ -348,6 +345,7 @@ zero_start
 ; https://scicomp.stackexchange.com/questions/26258/the-easiest-way-to-find-intersection-of-two-intervals,
 ; but tweaked to work with half-open intervals.
 
+; SFTODO: REVIEW UP TO HERE
 !macro skip_fixed_alloc fixed_start, fixed_size, current_size {
 	.fixed_end = fixed_start + fixed_size
 	.current_end = * + current_size
