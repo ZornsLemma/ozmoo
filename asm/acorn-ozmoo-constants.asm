@@ -326,6 +326,8 @@ bulk_clear_start
 !set zp_alloc_ptr = zp_start
 !set low_alloc_ptr = low_fixed_gap_end
 
+; Set * (the current assembly address) to 'addr' and set 'alloc_end' to be the
+; (exclusive) end address of the region containing 'addr'.
 !macro set_alloc_star addr {
 	* = addr
 	; Set alloc_end to the end of the newly selected region.
@@ -340,6 +342,8 @@ bulk_clear_start
 	}
 }
 
+; Update the relevant one of {zp, low, high}_alloc_ptr with the current value of
+; * (the current assembly address).
 !macro save_alloc_star {
 	!if * <= zp_end {
 		!set zp_alloc_ptr = *
@@ -352,6 +356,8 @@ bulk_clear_start
 	}
 }
 
+; Update * (the current assembly address) so it accesses n consecutive available bytes,
+; preferring the "best" region which has enough space.
 !macro pre_allocate n {
 	!if n < 1 {
 		!error "Invalid n"
@@ -371,6 +377,8 @@ bulk_clear_start
 	!set pre_allocation = n
 }
 
+; Advance * (the current assembly address) by n bytes, checking this doesn't
+; spill over the end of the region.
 !macro allocate n {
 	!if n < 1 {
 		!error "Invalid n"
