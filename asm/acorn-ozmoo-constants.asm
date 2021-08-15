@@ -864,7 +864,6 @@ top_line_buffer_reverse
 	+allocate max_screen_width
 }
 ; }}}
-; SFTODO: REVIEW UP TO HERE
 
 ; If we have a history buffer, it's cleared explicitly, not via the
 ; zero_start-zero_end clear operation - this is necessary in general because it
