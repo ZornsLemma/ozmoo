@@ -100,6 +100,8 @@ REM harmless if this wasn't necessary). See
 REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on this.
 */FINDSWR
 ON ERROR GOTO 500
+REM If we're on a real floppy, the disc will still be spinning after running
+REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
 *INFO XYZZY1
 500ON ERROR PROCerror
 shadow=potential_himem=&8000
