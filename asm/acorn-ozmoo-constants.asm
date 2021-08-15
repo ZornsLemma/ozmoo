@@ -272,8 +272,11 @@ low_fixed_gap_start = *
 
 ; game_data_filename/restart_command have filename_size bytes allocated; we only
 ; need one or the other in any particular build.
-; SFTODONOW: Could/should we shrink the size of this buffer on a DFS build? We only need to store about 19 bytes and it would free up some more low memory.
+!ifndef ACORN_ADFS {
+filename_size = 14 ; max is "/:0.$.OZMOOSH"+CHR$13
+} else {
 filename_size = 47
+}
 game_data_filename_or_restart_command
 	* = * + filename_size
 
