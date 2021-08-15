@@ -513,17 +513,12 @@ ENDPROC
 DEF PROCdetect_turbo
 !ifdef ACORN_TURBO_SUPPORTED {
     REM !BOOT will have run the TURBO executable, which will have set
-    REM zp_temp_turbo_flag to &FF if we're on a turbo copro or 0 otherwise.
-    REM It's just possible (e.g. on a hard drive installation) our !BOOT isn't
-    REM in use, so if zp_temp_turbo_flag isn't 0 or &FF let's complain. This
-    REM won't always catch the problem, but it's better than nothing.
-    IF ?${zp_temp_turbo_flag}<>0 AND ?${zp_temp_turbo_flag}<>&FF THEN PROCdie("Invalid turbo test flag")
-    REM SFTODO: This copying is a little pointless - we currently arrange for
-    REM is_turbo == zp_temp_turbo_flag, and since is_turbo must be a BASIC-safe
-    REM address anyway doing this copy doesn't allow us to just allocate an
-    REM arbitrary address to is_turbo.
-    turbo=0<>?${zp_temp_turbo_flag}
-    ?${is_turbo}=turbo:REM we only care about bit 7 being set
+    REM is_turbo to &FF if we're on a turbo copro or 0 otherwise. It's just
+    REM possible (e.g. on a hard drive installation) our !BOOT isn't in use, so
+    REM if is_turbo isn't 0 or &FF let's complain. This won't always catch the
+    REM problem, but it's better than nothing.
+    IF ?${is_turbo}<>0 AND ?${is_turbo}<>&FF THEN PROCdie("Invalid turbo test flag")
+    turbo=0<>?${is_turbo}
 } else {
     turbo=FALSE
 }

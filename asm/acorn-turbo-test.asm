@@ -2,8 +2,8 @@
 ; running on a turbo second processor.
 ;
 ; This should only be executed if we know we are running on a second processor
-; of some kind. In that case, zp_temp_turbo_flag is set to 0 for a non-turbo or
-; $ff for a turbo second processor.
+; of some kind. In that case, is_turbo is set to 0 for a non-turbo or $ff for a
+; turbo second processor.
 
 !source "acorn-shared-constants.asm"
 
@@ -18,8 +18,8 @@ copyright
     !word entry - start, 0 ; offset to entry
 entry
     lda #$ff
-    sta zp_temp_turbo_flag
+    sta is_turbo
     rts
 
-    !fill zp_temp_turbo_flag - *
+    !fill is_turbo - *
     !byte 0

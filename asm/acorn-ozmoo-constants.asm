@@ -204,8 +204,15 @@ vmap_z_l = scratch_page - vmap_max_size
 
 ; {{{ Determine available zero page
 zp_start = $00
+; zp_end is the *exclusive* address of the end of free zero page.
 !ifndef ACORN_SWR {
-	zp_end = $ee
+	!ifndef ACORN_TURBO_SUPPORTED {
+		zp_end = $ee
+	} else {
+		;
+		zp_end = $ed
+		+assert zp_end == is_turbo
+	}
 } else {
 	zp_end = $90
 }
@@ -341,35 +348,6 @@ zero_start
 	}
 }
 
-; Algorithm for detecting overapping intervals taken from
-; https://scicomp.stackexchange.com/questions/26258/the-easiest-way-to-find-intersection-of-two-intervals,
-; but tweaked to work with half-open intervals.
-
-; SFTODONOW: NEED TO REVIEW THESE MACROS - I SKIMMED THEM IN CURRENT ONGOING REVIEW AS I AM JUST NOT FEELING ENERGETIC ENOUGH TO DEAL WITH THEM...
-!macro skip_fixed_alloc fixed_start, fixed_size, current_size {
-	.fixed_end = fixed_start + fixed_size
-	.current_end = * + current_size
-	; acme's "not" is a bitwise operation and doesn't do what we want here...
-	!if (* >= .fixed_end) or (fixed_start >= .current_end) {
-	} else {
-		!if * != fixed_start {
-			!warn "Wasting ", fixed_start - *, " bytes before fixed allocation at ", fixed_start
-		}
-		* = .fixed_end
-		+pre_allocate current_size
-	}
-}
-
-!macro check_fixed_alloc fixed_start, fixed_size {
-	.fixed_end = fixed_start + fixed_size
-	.current_end = * + current_size
-	; acme's "not" is a bitwise operation and doesn't do what we want here...
-	!if (* >= .fixed_end) or (fixed_start >= .current_end) {
-	} else {
-		!error "Fixed allocation would be overwritten"
-	}
-}
-
 !macro pre_allocate n {
 	!if n < 1 {
 		!error "Invalid n"
@@ -384,10 +362,6 @@ zero_start
 		} else {
 			+set_alloc_star high_alloc_ptr
 		}
-	}
-
-	!ifdef ACORN_TURBO_SUPPORTED {
-		+skip_fixed_alloc zp_temp_turbo_flag, 1, n
 	}
 
 	!set pre_allocation = n
@@ -409,10 +383,6 @@ zero_start
 	!if (* + n) > alloc_end {
 		!error "No room for allocation of ", n, " bytes at ", *, " (alloc_end = ", alloc_end, ")"
 	}
-
-!ifdef ACORN_TURBO_SUPPORTED {
-	+check_fixed_alloc zp_temp_turbo_flag, 1
-}
 
 	!if * < low_end {
 		* = * + n
@@ -483,14 +453,6 @@ zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
 ;
 ; End of contiguous zero page block
 ;
-; We pretty much know this will all be allocated contiguously, so rather than
-; faff around doing a single allocation and chopping it up we just check the
-; size is as we expect.
-; SFTODONOW: This might seem superficially redundant given we check below that
-; all this fit into zero page, but the existence of skipping around is_turbo
-; probably invalidates that. In fact it probably invalidates the whole idea
-; of just doing that check at the end.
-	+assert zp_bytes_to_save == 2 + 1 + 2 + 2 + 2 + 1 + 3
 
 zchar_triplet_cnt	+allocate 1
 packed_text	+allocate 2
@@ -733,16 +695,6 @@ vmap_used_entries	+allocate 1
 
 !ifdef ACORN_HW_SCROLL {
 use_hw_scroll 	+allocate 1
-}
-
-!ifdef ACORN_TURBO_SUPPORTED {
-; is_turbo is a bit annoying. Because of the way we test for the presence of a
-; turbo second processor, we end up with the result at zp_temp_turbo_flag in
-; BASIC's user-allocated zero page. We need to avoid this code allocating
-; anything over the top of it, hence the special cases for it in the allocation
-; macros.
-; SFTODONOW: IT REALLY WOULD BE GOOD IF I COULD AVOID ALL THIS SOMEHOW
-is_turbo = zp_temp_turbo_flag ; 1 byte SFTODO: RENAME turbo_flag?
 }
 
 !ifdef ACORN_SWR {

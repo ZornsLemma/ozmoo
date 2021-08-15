@@ -1192,7 +1192,7 @@ def make_insv_executable():
 
 
 def make_turbo_test_executable():
-    return Executable("acorn-turbo-test.asm", "TURBO", None, 0x70, [])
+    return Executable("acorn-turbo-test.asm", "TURBO", None, 0xd0, turbo_supported_args)
 
 
 def make_cache_executable():
@@ -1758,7 +1758,7 @@ def make_disc_image():
         bbc_args += ["-DMODE_7_INPUT=1"]
         tube_args += ["-DMODE_7_INPUT=1"]
     if not cmd_args.no_turbo:
-        tube_args += ["-DACORN_TURBO_SUPPORTED=1"]
+        tube_args += turbo_supported_args
     if not cmd_args.force_6502:
         tube_args += ["-DCMOS=1"]
     if cmd_args.interpreter_num:
@@ -2094,6 +2094,7 @@ swr_args = vmem_args + ["-DACORN_SWR=1"]
 relocatable_args = ["-DACORN_RELOCATABLE=1"]
 small_dynmem_args = ["-DACORN_SWR_SMALL_DYNMEM=1"]
 medium_dynmem_args = ["-DACORN_SWR_MEDIUM_DYNMEM=1"]
+turbo_supported_args = ["-DACORN_TURBO_SUPPORTED=1"]
 
 if cmd_args.preload_config:
     cmd_args.preload_config = make_preload_blocks_list(cmd_args.preload_config)

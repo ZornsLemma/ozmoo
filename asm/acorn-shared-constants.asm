@@ -10,7 +10,18 @@ romsel_copy = $f4
 bbc_romsel = $fe30
 electron_romsel = $fe05
 
-zp_temp_turbo_flag = $8f
+!ifdef ACORN_TURBO_SUPPORTED {
+    ; We run the turbo test executable during boot if we're on a second
+    ; processor, which sets is_turbo accordingly. is_turbo needs to be untouched
+    ; by BASIC while the loader is running. On a second processor there's
+    ; additional zero page from $90 (inclusive) to $ee (exclusive) available for
+    ; the current language, but we know BASIC doesn't use that. We therefore
+    ; appropriate the last byte of that extra zero page for the is_turbo flag
+    ; where a) it will be safe b) it doesn't require any tricky special handling
+    ; to skip over in acorn-ozmoo-constants.asm when allocating other variables
+    ; to zero page. SFTODO: REVIEW THIS COMMENT LATER
+    is_turbo = $ed
+}
 
 !ifdef ACORN_SHADOW_VMEM {
     ; We steal the envelope buffers in page 8 for the shadow RAM driver. (It's
