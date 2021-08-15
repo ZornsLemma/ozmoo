@@ -634,7 +634,6 @@ mode_7_input_tmp = transient_zp ; 1 byte
 !set check_pre_allocation = 1
 ; }}}
 
-; SFTODO: REVIEW UP TO HERE
 ; {{{ Non-fixed allocations, part 2: Flexible allocations
 ;
 ; The following allocations may end up in zero page, low memory or high memory.
@@ -642,8 +641,18 @@ mode_7_input_tmp = transient_zp ; 1 byte
 ; allocations in the source code may not be adjacent in memory; if this is
 ; important, a single block must be allocated and divided up afterwards.
 
-; SFTODO: Reordering these to affect what happens to get into zp may have an
-; impact on performance, either directly or via reducing code size
+; Ideally allocations which would see a huge benefit from being in zero page
+; would have been handled in the previous section, and allocations which would
+; benefit mildly from being in zero page will appear towards the start of the
+; following code so they get first pick at any spare zero page. (It is worth
+; noting that allocations which are referenced by a lot of instructions, even if
+; those instructions aren't executed very often, might benefit from being in
+; zero page by shrinking the code, perhaps allowing an extra 512-byte block of
+; memory to be available for vmem cache.)
+; SFTODO: In practice I think all the huge benefit candidates have already been
+; identified by profiling (but of course I could be wrong, or something might
+; have changed) and I don't see any easy way to decide between the marginal
+; candidates.
 
 s_stored_x +allocate 1
 s_stored_y +allocate 1
@@ -732,6 +741,7 @@ use_hw_scroll 	+allocate 1
 ; BASIC's user-allocated zero page. We need to avoid this code allocating
 ; anything over the top of it, hence the special cases for it in the allocation
 ; macros.
+; SFTODONOW: IT REALLY WOULD BE GOOD IF I COULD AVOID ALL THIS SOMEHOW
 is_turbo = zp_temp_turbo_flag ; 1 byte SFTODO: RENAME turbo_flag?
 }
 
@@ -827,7 +837,7 @@ jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if neces
 	  	+pre_allocate jmp_buf_size
 jmp_buf	+allocate jmp_buf_size
 
-; SFTODO: RENAME zero_start/end TO AVOID CONFUSION WITH ZERO *PAGE*? THE ZERO MEANS "IS CLEARED ON STARTUP"
+; SFTODONOW: RENAME zero_start/end TO AVOID CONFUSION WITH ZERO *PAGE*? THE ZERO MEANS "IS CLEARED ON STARTUP" (DUPLICATE COMMENT, BUT NEVER MIND)
 
 	+pre_allocate 4
 streams_current_entry
@@ -854,6 +864,7 @@ top_line_buffer_reverse
 	+allocate max_screen_width
 }
 ; }}}
+; SFTODO: REVIEW UP TO HERE
 
 ; If we have a history buffer, it's cleared explicitly, not via the
 ; zero_start-zero_end clear operation - this is necessary in general because it
