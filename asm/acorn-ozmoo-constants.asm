@@ -386,9 +386,9 @@ zero_start
 		}
 	}
 
-!ifdef ACORN_TURBO_SUPPORTED {
-	+skip_fixed_alloc zp_temp_turbo_flag, 1, n
-}
+	!ifdef ACORN_TURBO_SUPPORTED {
+		+skip_fixed_alloc zp_temp_turbo_flag, 1, n
+	}
 
 	!set pre_allocation = n
 }
