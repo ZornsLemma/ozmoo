@@ -523,7 +523,6 @@ stack_tmp	+allocate 5
 default_properties_ptr	+allocate 2
 zchars	+allocate 3
 
-; SFTODO: REVIEW UP TO HERE
 ; SF: I experimented with increasing vmap_quick_index_length to see if it helps
 ; on "big" systems with the maximum supported 144K of sideways RAM. Upping it
 ; to 12 knocked 0.9% off the run time for the benchmark; given the scarcity of
@@ -635,6 +634,7 @@ mode_7_input_tmp = transient_zp ; 1 byte
 !set check_pre_allocation = 1
 ; }}}
 
+; SFTODO: REVIEW UP TO HERE
 ; {{{ Non-fixed allocations, part 2: Flexible allocations
 ;
 ; The following allocations may end up in zero page, low memory or high memory.
