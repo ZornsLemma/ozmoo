@@ -8,7 +8,11 @@ vmem_cache_page_index !fill cache_pages + 1, 0
 vmem_cache_bank_index !fill cache_pages + 1, 0
 }
 }
-; SFTODONOW: NOT A HUGE DEAL, BUT NOW VMAP VALUES ARE SHIFTED RIGHT BY ONE BIT TO AVOID WASTE, DO I NEED TO TWEAK ANY OF THE TRACE CODE TO UNDO THAT? I DON'T KNOW IF UPSTREAM HAS DONE THIS OR NOT, NOT CHECKED YET, BUT EVEN IF THEY DO IT CORRECTLY SOME OF MY TWEAKS MAY HAVE BROKEN IT. - HAVE ASKED UPSTREAM ABOUT THIS, I THINK THEY PLAN TO FIX IT SO DON'T DO IT MYSELF, AT LEAST NOT YET
+
+; SFTODO: Note that a lot of the vmap trace/debug code doesn't take into account
+; the right shift by one bit of vmap values to avoid wasting a bit. I've raised
+; this (in an aside) upstream and won't try to fix it myself yet; see
+; https://github.com/johanberntsson/ozmoo/issues/39.
 
 !ifndef ACORN {
 !ifdef TARGET_PLUS4 {
