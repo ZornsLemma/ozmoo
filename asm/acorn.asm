@@ -94,7 +94,7 @@
 
 ; ACORN_DEBUG_INTRUSIVE causes additional code to be included which *does* change
 ; state, but in ways that should be harmless; this helps to verify the belief
-; that they are indeed harmless.
+; that they are indeed harmless. SFTODONOW: Expose via make-acorn.py?
 ACORN_DEBUG_INTRUSIVE = 1
 
 ; SFTODO: COMMENT?

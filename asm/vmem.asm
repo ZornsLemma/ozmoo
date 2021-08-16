@@ -1470,7 +1470,6 @@ convert_index_x_to_ram_bank_and_address
     asl
     ; Carry is already clear
     adc #$80
-    ; SFTODONOW: I really should make ACORN_DEBUG_ASSERT settable from make-acorn, then I can encourage people to test with it - but I should probably tweak things (don't *delete* any existing checks/test type code, just split it up via different control constants) so it *checks* stuff but does not do "extra" stuff (like the ldy #fixedjunk stuff I do sometimes to "prove" it's OK - this might actually mask some problems)
 !ifdef ACORN_DEBUG_ASSERT {
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; Check that we are correctly avoiding trampling on the IBOS workspace. Note
