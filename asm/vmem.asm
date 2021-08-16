@@ -1479,7 +1479,6 @@ convert_index_x_to_ram_bank_and_address
     ; Check that we are correctly avoiding trampling on the IBOS workspace. Note
     ; that we don't test sideways_ram_hole_start - we should never trample on IBOS
     ; workspace, and a bug could mean sideways_ram_hole_start allows that.
-    ; SFTODONOW: Should this php/pla, just to make it as "inert" as possible?
     bit mempointer_ram_bank
     bvc .not_integra_b_private_ram
     cmp #(>flat_ramtop) + sideways_ram_hole_vmem_blocks * vmem_block_pagecount
