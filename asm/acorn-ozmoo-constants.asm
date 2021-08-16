@@ -320,6 +320,8 @@ bulk_clear_start
 ; }}}
 
 ; {{{ Allocation macros and associated initialisation
+; These macros work together to automatically split allocations up across spare
+; zero page, low and high memory.
 ; SFTODO: MIX OF "ALLOC" AND "ALLOCATION" IN MACROS/VARIABLES
 ; SFTODONOW: ADD SOME MORE COMMENTS ON THESE MACRO DEFINITIONS AND HOW THEY WORK
 
