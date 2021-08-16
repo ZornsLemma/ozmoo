@@ -800,7 +800,7 @@ SFTODOBOOM
 !ifndef ACORN_SWR {
 	+after_dynmem_read_corrupt_y
 } else {
-    +acorn_swr_page_in_default_bank_using_y
+    +acorn_page_in_default_bank_using_y
 }
 !ifdef ACORN_DEBUG_INTRUSIVE {
     ; Let's just prove it's OK to be corrupting X and Y.
@@ -1400,7 +1400,7 @@ SFTODOLL8
 !ifndef ACORN_SWR {
 	+after_dynmem_read_corrupt_y
 } else {
-    +acorn_swr_page_in_default_bank_using_y
+    +acorn_page_in_default_bank_using_y
 }
 !ifdef ACORN_DEBUG_INTRUSIVE {
     ; Let's just prove it's OK to be corrupting X and Y.

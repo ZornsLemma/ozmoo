@@ -388,7 +388,7 @@ read_header_word
 	lda story_start,y
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	pha
-	+acorn_swr_page_in_default_bank_using_a
+	+acorn_page_in_default_bank_using_a
 	pla
 }
 	rts
@@ -417,7 +417,7 @@ write_header_word
 	txa
 	sta story_start,y
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
-	+acorn_swr_page_in_default_bank_using_a
+	+acorn_page_in_default_bank_using_a
 }
 	rts
 }
@@ -446,7 +446,7 @@ write_header_byte
 	sta story_start,y
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	pha
-	+acorn_swr_page_in_default_bank_using_a
+	+acorn_page_in_default_bank_using_a
 	pla
 }
 	rts

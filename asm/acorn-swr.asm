@@ -85,11 +85,10 @@
 }
 }
 
-; SFTODONOW: acorn_swr->acorn in macro name? seems inconsistent
-!macro acorn_swr_page_in_default_bank_using_y {
+!macro acorn_page_in_default_bank_using_y {
     +acorn_page_in_bank_using_y z_pc_mempointer_ram_bank
 }
-!macro acorn_swr_page_in_default_bank_using_a {
+!macro acorn_page_in_default_bank_using_a {
     +acorn_page_in_bank_using_a z_pc_mempointer_ram_bank
 }
 
