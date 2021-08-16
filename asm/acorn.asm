@@ -119,7 +119,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in space-conscious code and is a no-op unless
 ; ACORN_DEBUG_ASSERT is defined.
-; SFTODONOW: Use this in more places?
 !ifndef ACORN_DEBUG_ASSERT {
 !macro assert_unreached {
 }
@@ -175,9 +174,6 @@ assert_carry_clear_sub
 
 ; SFTODONOW: Should I tweak the settings for the bRKV handler during the initial load so it uses an extra leading newline or two?
 
-; SFTODONOW: This file has been extensively modified and I should review all SFTODOs to see if they need promoting to SFTODONOW
-
-; SFTODO: We could allow building an NFS-compatible game but writing it to a DFS floppy to be installed from - at the moment you can't install on NFS unless you have an ADFS-capable machine to install from. It's a bit confusing you need to use --adfs to build an NFS-compatible game - at the very least it might be nice to see if I can come up with some better command line options. (Off top of head - perhaps --dfs and --adfs specify image type, and there's an --nfs option which is (mostly/) redundant with --adfs but triggers the NFS build on DFS. Not too sure. But do *something*.)
 ; SFTODO: Perhaps given the problems with auto-detecting restart commad and the save directory, we could have --nfs-install-dir and/or --nfs-save-dir options or something which hard-code these values in the loader or something? Don't just give up on auto-detection if it can be made to work though.
 
 ; SFTODO: In b-em, the benchmark seems to work on ReCo 65816 *except* the timestamps at start and end are wrong/odd. Might be worth having a quick look into this.

@@ -38,7 +38,7 @@
 .dpages_to_load !fill 2
 
 !ifdef VMEM {
-.ram_pages !fill 2 ; SFTODO: rename to ram_pages???
+.ram_pages !fill 2
 }
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
@@ -457,7 +457,6 @@ deletable_init_start
     ; }}}
 }
 
-SFTODOXX89
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
 
@@ -495,7 +494,6 @@ SFTODOXX89
     rol .ram_pages + 1
     sta .ram_pages
 .host_cache_initialised
-SFTODOLABELX1
     ; }}}
 }
 
@@ -560,7 +558,7 @@ SFTODOLABELX1
     sta $fe34
     ; Set sideways_ram_hole_start to 0 as a temporary indication that we need to
     ; calculate this later; this saves repeating the Integra-B private RAM
-    ; detection code. SFTODO: Shorter and clearer - after factoring in comments,
+    ; detection code. SFTODONOW: Shorter and clearer - after factoring in comments,
     ; which are a concern here - to just repeat the test?
     +assert sideways_ram_hole_start_none != 0
     lda #0
@@ -590,13 +588,12 @@ SFTODOLABELX1
     ; Save a copy of .ram_pages for later when we're calculating
     ; vmem_blocks_in_sideways_ram.
     lda .ram_pages
-    sta .swr_ram_pages ; SFTODO: rename? We spell out "sideways" most of the time... (also "PIN Number" syndrome...)
+    sta .swr_ram_pages ; SFTODONOW: rename? We spell out "sideways" most of the time... (also "PIN Number" syndrome...)
     lda .ram_pages + 1
     sta .swr_ram_pages + 1
 
     ; We may have some additional RAM pages in shadow RAM not being used for the
     ; screen display.
-SFTODOLM2
     lda vmem_cache_count_mem
     beq .no_shadow_cache
     ; On an Electron with a Master RAM Board in shadow mode, the shadow RAM
@@ -723,7 +720,7 @@ SFTODOLM2
     lda #>flat_ramtop
     ldy ram_bank_count
     beq .upper_bound_in_a
-    ; SFTODO: We could test b7/b6 using BIT here, might actually be clearer
+    ; SFTODONOW: We could test b7/b6 using BIT here, might actually be clearer
     ldy ram_bank_list
     bmi .b_plus_private_12k
     cpy #64 ; SFTODO: MAGIC NUMBER
@@ -1043,7 +1040,6 @@ SFTODOLM2
 
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
-SFTODOTPP
     ; SFTODONOW: Rename 'vmem_blocks_in_sideways_ram' to 'sideways_ram_size_in_vmem_blocks'? It is the number of 512-byte blocks of SWR we have, which is *not* the same (because we have vmem_blocks_stolen_in_first_bank possibly > 0) as the number of *blocks of actual vmem* in sideways RAM. - NO, I GOT THAT WRONG - IT *IS* THE NUMBER OF *VMEM* BLOCKS IN SWR, SINCE WE HAVE SUBTRACTED OFF STOLEN
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
     ; convert_index_x_to_ram_bank_and_address to decide when a vmem block is in

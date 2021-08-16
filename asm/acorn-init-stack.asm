@@ -280,7 +280,6 @@ deletable_init
     ; timestamp resolution, especially for Z4+ games.) Note that this doesn't
     ; actually stop us using more of the host cache; we will offer it blocks
     ; willy-nilly during play and if it has space it will hold onto them.
-SFTODOLABELX3
     lda .inflated_vmap_max_entries
     sec
     sbc vmap_max_entries
