@@ -323,16 +323,14 @@ bulk_clear_start
 ; These macros work together to automatically split allocations up across spare
 ; zero page, low and high memory.
 ; SFTODO: MIX OF "ALLOC" AND "ALLOCATION" IN MACROS/VARIABLES
-; SFTODONOW: ADD SOME MORE COMMENTS ON THESE MACRO DEFINITIONS AND HOW THEY WORK
 
 !set zp_alloc_ptr = zp_start
 !set low_alloc_ptr = low_fixed_gap_end
 
-; Set * (the current assembly address) to 'addr' and set 'alloc_end' to be the
-; (exclusive) end address of the region containing 'addr'.
+; Set * (the current assembly address) to addr and set alloc_end to be the
+; (exclusive) end address of the region containing addr.
 !macro set_alloc_star addr {
 	* = addr
-	; Set alloc_end to the end of the newly selected region.
 	!if * < zp_end {
 		!set alloc_end = zp_end
 	} else {
@@ -344,7 +342,7 @@ bulk_clear_start
 	}
 }
 
-; Update the relevant one of {zp, low, high}_alloc_ptr with the current value of
+; Update the relevant one of {zp,low,high}_alloc_ptr with the current value of
 ; * (the current assembly address).
 !macro save_alloc_star {
 	!if * <= zp_end {
@@ -358,8 +356,8 @@ bulk_clear_start
 	}
 }
 
-; Update * (the current assembly address) so it accesses n consecutive available bytes,
-; preferring the "best" region which has enough space.
+; Update * (the current assembly address) so it accesses n consecutive available
+; bytes, preferring the "best" region which has enough space.
 !macro pre_allocate n {
 	!if n < 1 {
 		!error "Invalid n"
@@ -386,7 +384,7 @@ bulk_clear_start
 		!error "Invalid n"
 	}
 
-	!if check_pre_allocation and (n > 1) and (n != pre_allocation) {
+	!if check_pre_allocation and (n != pre_allocation) {
 		!error "Missing/incorrect pre-allocation"
 	}
 
