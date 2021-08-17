@@ -1352,16 +1352,15 @@ progress_indicator_fractional_bits = 7
     ; unnecessarily strict to insist on at least min_vmem_blocks 512-byte blocks
     ; of vmem, but it's easier just to insist on meeting this condition all the
     ; time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
-
-    ; Set transient_zp = max_nonstored_pages =
-    ; .ram_pages - min_vmem_blocks *  vmem_block_pagecount.
-    ; SFTODONOW: CONFUSING COMMENT, SINCE THE REAL PURPOSE OF THIS CODE BLOCK IS TO SET NONSTORED_PAGES
+    ;
+    ; Calculate max_nonstored_pages and cap nonstored_pages if required.
     sec
     lda .ram_pages
     sbc #<(min_vmem_blocks * vmem_block_pagecount)
     tax
     lda .ram_pages + 1
     sbc #>(min_vmem_blocks * vmem_block_pagecount) ; 0
+    ; AX is now the 16-bit value of max_nonstored_pages
     bne + ; max_nonstored_pages >= 256, so nonstored_pages < max_nonstored_pages
     cpx nonstored_pages
     bcs +
