@@ -722,11 +722,9 @@ deletable_init_start
     lda #>flat_ramtop
     ldy ram_bank_count
     beq .upper_bound_in_a
-    ; SFTODONOW: We could test b7/b6 using BIT here, might actually be clearer
-    ldy ram_bank_list
+    bit ram_bank_list
     bmi .b_plus_private_12k
-    cpy #64 ; SFTODO: MAGIC NUMBER
-    bcs .upper_bound_in_a ; Integra-B private 12K
+    bvs .upper_bound_in_a ; Integra-B private 12K
     lda #>swr_ramtop
     jmp .upper_bound_in_a
 .b_plus_private_12k
