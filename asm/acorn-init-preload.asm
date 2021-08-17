@@ -899,12 +899,11 @@ deletable_init_start
     ; {{{ Calculate vmap_max_entries.
 
     ; Now set vmap_max_entries = min(.ram_pages / vmem_block_pagecount,
-    ; vmap_max_size), i.e. the number of vmap entries we have RAM to support.
-    ; (If we're in the ACORN_TUBE_CACHE case on a normal second processor, we
-    ; have that much RAM in total but the number of vmap entries we can support
-    ; is lower. It's convenient to work with this larger value while we do the
-    ; initial load, then vmap_max_entries is fixed up later.)
-    ; SFTODONOW: That "i.e." actually only describes first argument to min(), so probably tweak this comment. I *think* we only need the cap at vmap_max_size because of dynmem promotion, although in general if we didn't cap vmap_max_size at ACORN_VMEM_BLOCKS to avoid wasted memory we could obviously need to have this restriction (suppose vmap_max_size was always 255, which is wasteful but otherwise completely valid).
+    ; vmap_max_size), i.e. the number of vmap entries which exist and which we
+    ; have RAM for. (If we're in the ACORN_TUBE_CACHE case on a normal second
+    ; processor, we have that much RAM in total but the number of vmap entries
+    ; we can support is lower. It's convenient to work with this larger value
+    ; while we do the initial load, then vmap_max_entries is fixed up later.)
     ldx #vmap_max_size
     lda .ram_pages + 1
     lsr
