@@ -560,8 +560,7 @@ deletable_init_start
     sta $fe34
     ; Set sideways_ram_hole_start to 0 as a temporary indication that we need to
     ; calculate this later; this saves repeating the Integra-B private RAM
-    ; detection code. SFTODONOW: Shorter and clearer - after factoring in comments,
-    ; which are a concern here - to just repeat the test?
+    ; detection code.
     +assert sideways_ram_hole_start_none != 0
     lda #0
     sta sideways_ram_hole_start
@@ -862,7 +861,6 @@ deletable_init_start
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
-    ; SFTODONOW: Should I factor out "private 12K" tests into a subroutine? Then again, sometimes we're testing whether it's the first bank or not, so they're not all the same. I just don't entirely like relying on this special value of sideways_ram_hole_start here.
     lda sideways_ram_hole_start
     bne .no_sideways_ram_hole
 
