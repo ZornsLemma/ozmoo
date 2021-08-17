@@ -22,7 +22,7 @@ error_handler
 .error_handler_jmp
 +   jmp .press_break
 
-default_error_handler_newlines = 2
+default_error_handler_newlines = 4
 .error_handler_newlines !byte default_error_handler_newlines
 
 .press_break

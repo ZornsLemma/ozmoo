@@ -136,10 +136,12 @@ deletable_init_start
     ldx #1
     jsr do_osbyte_rw_escape_key
 
+    ; Call screenkernal_init and deletable_screen_init_1 so we can output text
+    ; via s_printchar.
     jsr screenkernal_init
+    jsr deletable_screen_init_1
 
-    ; Now screenkernal_init has been executed, it's safe to call s_printchar, so
-    ; install our own error handler which will use s_printchar by default. No
+    ; Install our own error handler, which will use s_printchar by default. No
     ; error should be able to occur before this point. If an error occurs during
     ; a restart, which will re-run the executable, there's not much we can do
     ; but it's probably OK because the load will just replace the code with an
