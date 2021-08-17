@@ -20,8 +20,6 @@ scratch_double_page = scratch_page
 
 !set high_alloc_ptr = *
 
-; SFTODONOW: As this is new code, it's probably worth reviewing it (particularly the macros) fresh
-
 ; {{{ Acorn OS and hardware constants
 ;
 ; These could be moved into acorn-shared-constants.asm, but these aren't needed
