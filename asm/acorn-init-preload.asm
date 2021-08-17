@@ -108,8 +108,7 @@ deletable_init_start
 !ifdef USE_HISTORY {
     ; The history buffer must be zero-initialised, but it's either in low memory
     ; - in which case the bulk clear loop above initialised it - or it's in high
-    ; memory and it's zero-initialised in the executable. SFTODONOW: Pretty sure
-    ; this is correct, but confirm
+    ; memory and it's zero-initialised in the executable.
 }
 
     ; Initialise non-0 variables.
