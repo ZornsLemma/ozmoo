@@ -51,6 +51,9 @@
 .sideways_ram_hole_start_high !fill 1
 }
 
+.cursor_x !fill 1
+.cursor_y !fill 1
+
 ; }}}
 
 ; Initialization performed very early during startup.
@@ -1238,9 +1241,8 @@ progress_indicator_fractional_bits = 7
     lda #osbyte_read_cursor_position
     jsr osbyte ; set X=cursor X, Y=cursor Y
 .cursor_not_in_first_column
-    ; SFTODONOW: Since we're no longer ultra-squishing code in the discardable init, should we allocate named bytes for X and Y here instead of re-using divisor?
-    stx divisor
-    sty divisor + 1
+    stx .cursor_x
+    sty .cursor_y
 
     ; If we're not on the bottom line of the screen, set divisor = 2 *
     ; (screen_width - cursor_x), otherwise set divisor = 2 * ((screen_width - 1)
@@ -1254,13 +1256,13 @@ progress_indicator_fractional_bits = 7
     lda #osbyte_read_vdu_variable
     ldx #vdu_variable_text_window_bottom
     jsr osbyte ; set X=screen_height - 1, Y=screen width - 1
-    cpx divisor + 1
+    cpx .cursor_y
     beq .cursor_on_bottom_line
     iny
 .cursor_on_bottom_line
     tya
     sec
-    sbc divisor
+    sbc .cursor_x
     asl
     sta divisor
     lda #0
