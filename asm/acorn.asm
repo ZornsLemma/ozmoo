@@ -172,8 +172,6 @@ assert_carry_clear_sub
 
 ; SFTODO: Would there be any value in always using $400-$800 as two pages of VM cache, and using $900-B00 plus space allocated within the binary itself to substitute for existing uses of $400-800?
 
-; SFTODONOW: Should I tweak the settings for the bRKV handler during the initial load so it uses an extra leading newline or two?
-
 ; SFTODO: Perhaps given the problems with auto-detecting restart commad and the save directory, we could have --nfs-install-dir and/or --nfs-save-dir options or something which hard-code these values in the loader or something? Don't just give up on auto-detection if it can be made to work though.
 
 ; SFTODO: In b-em, the benchmark seems to work on ReCo 65816 *except* the timestamps at start and end are wrong/odd. Might be worth having a quick look into this.
