@@ -32,7 +32,7 @@
 }
 
 !ifdef ACORN_SHADOW_VMEM {
-.swr_ram_pages !fill 2
+.sideways_ram_pages !fill 2
 }
 
 .dpages_to_load !fill 2
@@ -588,12 +588,12 @@ deletable_init_start
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Add any spare shadow RAM to .ram_pages
 
-    ; Save a copy of .ram_pages for later when we're calculating
-    ; vmem_blocks_in_sideways_ram.
+    ; Save a copy of .ram_pages with just the sideways RAM included for later
+    ; when we're calculating vmem_blocks_in_sideways_ram.
     lda .ram_pages
-    sta .swr_ram_pages ; SFTODONOW: rename? We spell out "sideways" most of the time... (also "PIN Number" syndrome...)
+    sta .sideways_ram_pages
     lda .ram_pages + 1
-    sta .swr_ram_pages + 1
+    sta .sideways_ram_pages + 1
 
     ; We may have some additional RAM pages in shadow RAM not being used for the
     ; screen display.
@@ -1045,10 +1045,10 @@ deletable_init_start
     ; a vmem block index to be high enough to touch shadow RAM, but that doesn't
     ; matter here.)
     ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well. SFTODONOW: I THINK THIS COMMENT IS OUTDATED BUT THIS ALL COULD DO WITH A RE-REVIEW
-    lda .swr_ram_pages + 1
+    lda .sideways_ram_pages + 1
     lsr ; convert from pages to 512-byte vmem blocks
     pha
-    lda .swr_ram_pages
+    lda .sideways_ram_pages
     ror
     sec
     sbc vmem_blocks_stolen_in_first_bank
