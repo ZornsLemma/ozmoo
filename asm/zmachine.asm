@@ -568,7 +568,7 @@ read_operand
 .read_global_var
 !ifdef SLOW {
 	cmp #128
-	bcs .read_high_global_var
+	bcs .asl_then_read_high_global_var
 	jsr z_get_low_global_variable_value
 } else {
 	asl
@@ -591,11 +591,13 @@ read_operand
 } else {
     jmp .store_operand ; SFTODO: carry not guaranteed to be clear, and it's probably too far for bcc anyway
 }
-.read_high_global_var
-	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
 !ifdef SLOW {
+.asl_then_read_high_global_var
 	asl ; This sets carry
 }
+.read_high_global_var
+	; If slow mode, carry was just set with ASL, otherwise we branched here with BCS, so carry is set either way
+	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
 	tay
 	iny
 	+before_dynmem_read_corrupt_a
@@ -610,7 +612,7 @@ read_operand
 } else {
     jmp .store_operand ; SFTODO: carry not guaranteed to be set, and it's (probably) too far for bcs anyway
 }
-} ; end COMPLEX_MEMORY
+} ; end not COMPLEX_MEMORY
 
 } ; zone read_operand
 
@@ -961,7 +963,6 @@ HANG	bcs HANG
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	rts
 .write_high_global_var
-;	and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 ; Pointless, since ASL will have removed top bit
 	tay
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp

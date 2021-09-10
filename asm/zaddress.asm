@@ -60,7 +60,7 @@ print_z_address
 
 get_z_himem_address
 	ldy z_address
-	; fall through into get_z_address
+	; fall through to get_z_address
 get_z_address
 	; input: 
 	; output: a,x
@@ -69,7 +69,6 @@ get_z_address
 	ldx z_address + 2 ; low
 	lda z_address + 1 ; high
 	rts
-
 
 read_next_byte
 	; input: 
