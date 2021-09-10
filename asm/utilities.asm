@@ -413,6 +413,7 @@ fatalerror
 	jsr printstring
 	pla
 	tax
+	stx SCREEN_ADDRESS + 79
 	lda #0
 	jsr printinteger
 	lda #$0d
@@ -427,13 +428,12 @@ fatalerror
 	!pet "fatal error ", 0
 	pla
 	tax
-	dex
 	jsr printa
 	jsr colon
 	jsr space
-	lda .error_message_high_arr,x
+	lda .error_message_high_arr - 1,x
 	tay
-	lda .error_message_low_arr,x
+	lda .error_message_low_arr - 1,x
 	jsr printstring
 	jsr newline
 	jsr print_trace

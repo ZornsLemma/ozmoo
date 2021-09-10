@@ -20,6 +20,7 @@
 	SUPPORT_REU = 1
 	SUPPORT_80COL = 1;
 	!ifdef SLOW {
+		; This is never used, since VMEM is always enabled for this target
 		!ifndef VMEM {
 			SKIP_BUFFER = 1
 		}
@@ -1468,7 +1469,9 @@ deletable_init
 	ldx #1
 	ldy boot_device
 	jsr read_track_sector
-;    jsr kernal_readchar   ; read keyboard
+	
+	
+
 ; Copy game id
 	ldx #3
 -	lda config_load_address,x
@@ -1766,6 +1769,10 @@ copy_data_from_disk_at_zp_temp_to_reu
 	
 	jsr print_reu_progress_bar
 
+!ifdef TARGET_MEGA65 {
+	jsr m65_start_disk_access
+}
+
 .initial_copy_loop
 	lda z_temp + 6
 	cmp z_temp + 4
@@ -1804,6 +1811,10 @@ copy_data_from_disk_at_zp_temp_to_reu
 
 .done_copying
 
+!ifdef TARGET_MEGA65 {
+	jsr m65_end_disk_access
+}
+
 	lda z_temp + 4
 	sta reu_last_disk_end_block
 	lda z_temp + 5
@@ -1828,6 +1839,7 @@ reu_start
 }
 ; REU detected, check size
 	jsr check_reu_size
+;	lda #0 ; SKIP REU FOR DEBUGGING PURPOSES
 	sta reu_banks
 	cmp #8
 	bcc .no_reu_present ; If REU size < 512 KB, don't use it.
@@ -1924,7 +1936,6 @@ print_reu_progress_bar
 	dex
 	bne -
 +
-
 	rts
 } ; zone insert_disks_at_boot
 
