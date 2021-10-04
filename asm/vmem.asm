@@ -419,16 +419,12 @@ print_vm_map
 +   jsr printy
 	jsr space
 	lda vmap_z_h,y ; zmachine mem offset ($0 -
-    ; SF: I changed the masks here, I think this is correct but it is a
-    ; divergence from upstream. SFTODO: IS THAT STILL TRUE? IF SO MAYBE SUGGEST THIS CHANGE TO UPSTREAM
-    and #($ff xor vmem_highbyte_mask)
-;	and #%11100000 ; SFTODO: OLD
+	and #$ff xor vmem_highbyte_mask
 	jsr print_byte_as_hex
 	jsr space
 	jsr dollar
-	lda vmap_z_h,y ; zmachine mem offset ($0 -
-    and #vmem_highbyte_mask
-	;and #%00011111 ; SFTODO: OLD
+	lda vmap_z_h,y ; zmachine mem offset ($0 - 
+	and #vmem_highbyte_mask
 	jsr printa
 	lda vmap_z_l,y ; zmachine mem offset ($0 - 
 	jsr print_byte_as_hex
