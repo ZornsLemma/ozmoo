@@ -130,9 +130,9 @@ write_next_byte
 	sbc dynmem_size + 1
 	bcs .write_outside_dynmem
 } else {
-	cmp #>ACORN_DYNAMIC_SIZE_BYTES
+	cmp #<ACORN_DYNAMIC_SIZE_BYTES
 	lda z_address + 1
-	sbc #<ACORN_DYNAMIC_SIZE_BYTES
+	sbc #>ACORN_DYNAMIC_SIZE_BYTES
 	bcs .write_outside_dynmem
 }
 }
