@@ -176,6 +176,7 @@ def get_tool_version(name):
         return None
     version = (0, 0)
     for line in child.stdout.readlines():
+        line = line.decode(sys.stdout.encoding)
         c = line.split()
         if len(c) >= 2 and c[0] == name:
             version_components = c[1].split(".")
