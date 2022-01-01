@@ -1433,8 +1433,8 @@ convert_index_x_to_ram_bank_and_address
     ; restricted vmap_max_entries to sideways_ram_hole_vmap_max_size==254 during
     ; initialisation, so we actually had 0<=X<=253 just above and therefore
     ; A<=253, so we're safe.
-    +assert sideways_ram_hole_vmem_blocks == 2
-    +assert sideways_ram_hole_vmap_max_size == 254
+    +assert sideways_ram_hole_vmem_blocks = 2
+    +assert sideways_ram_hole_vmap_max_size = 254
     adc #sideways_ram_hole_vmem_blocks - 1 ; -1 as carry is set
 .before_sideways_ram_hole
     CONVERT_INDEX_X_CARRY_CLEAR = 1

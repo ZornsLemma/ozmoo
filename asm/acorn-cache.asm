@@ -236,7 +236,7 @@ have_free_block_index_in_x
     lda (osword_block_ptr),y
     sta cache_id_high,x
     iny
-    +assert our_osword_block_offered_offset + 2 == our_osword_block_offered_timestamp_hint_offset
+    +assert our_osword_block_offered_offset + 2 = our_osword_block_offered_timestamp_hint_offset
     lda (osword_block_ptr),y
     cmp #$ff ; SFTODO: share osword_cache_no_timestamp_hint constant?
     beq no_timestamp_hint

@@ -1134,7 +1134,7 @@ z_trace_page
     }
 }
 
-!if z_trace_size == 0 {
+!if z_trace_size = 0 {
 !ifdef USE_HISTORY {
 high_history_end
 }

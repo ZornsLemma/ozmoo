@@ -210,7 +210,7 @@ zp_start = $00
 	} else {
 		;
 		zp_end = $ed
-		+assert zp_end == is_turbo
+		+assert zp_end = is_turbo
 	}
 } else {
 	zp_end = $90

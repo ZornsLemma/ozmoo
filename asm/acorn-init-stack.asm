@@ -86,7 +86,7 @@ update_progress_indicator
 ; SFTODO: Only one caller now - inline? Arguably clearer as a subroutine, think about it.
 calculate_normal_tube_own_ram_pages ; SFTODO: RENAME??
     lda #>(flat_ramtop - story_start)
-!if (>ACORN_GAME_PAGES) == 0 {
+!if (>ACORN_GAME_PAGES) = 0 {
     cmp #<ACORN_GAME_PAGES
     bcc +
     lda #<ACORN_GAME_PAGES
