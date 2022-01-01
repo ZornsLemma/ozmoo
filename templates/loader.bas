@@ -475,7 +475,7 @@ ENDPROC
     ENDPROC
     DEF PROChighlight_internal(x,y,on)
     REM We put the "normal background" code in at the right hand side first before
-    REM (maybe) putting a "coloured backgroudn" code in at the left hand side to try
+    REM (maybe) putting a "coloured background" code in at the left hand side to try
     REM to reduce visual glitches.
     IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
     PRINTTAB(menu_x(x)-1,menu_top_y+y);
