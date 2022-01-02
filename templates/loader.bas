@@ -734,11 +734,12 @@ NEXT
 ENDPROC
 
 DEF PROCassemble_shadow_driver_aries_watford
+REM SFTODO: Use of *FX34 here instead of *FX111 means this is probably Watford-only, but let's just go with that for now and worry about detecting which *FX is available later.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
 STA lda_abs_y+2:STY sta_abs_y+2
-LDA #&6F:LDX #0:JSR &FFF4 \ page in shadow RAM
+LDA #&22:LDX #0:JSR &FFF4 \ page in shadow RAM
 LDY #0
 .copy_loop
 .lda_abs_y
@@ -747,7 +748,7 @@ LDA &FF00,Y \ patched
 STA &FF00,Y \ patched
 DEY
 BNE copy_loop
-LDA #&6F:LDX #1:JSR &FFF4 \ page out shadow RAM
+LDA #&22:LDX #1:JSR &FFF4 \ page out shadow RAM
 RTS
 ]
 NEXT
