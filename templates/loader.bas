@@ -549,7 +549,12 @@ REM mode on a Watford/Aries machine.
 IF electron AND FNusr_osbyte_x(&EF,0,&FF)=&80 THEN PROCassemble_shadow_driver_electron_mrb:ENDPROC
 IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
-shadow_driver=FALSE:shadow_extra$="(screen only)"
+REM SFTODO: For now, we'll assume this machine has Aries/Watford shadow RAM.
+REM SFTODO: If this continues to be reasonable, shadow_extra$ is redundant.
+REM shadow_driver might be as well.
+PROCassemble_shadow_driver_aries_watford
+REM SFTODO: Just temp set shadow_extra$ to help with debugging
+shadow_extra$="(Aries/Watford)"
 ENDPROC
 REM SFTODO: Should we set shadow_extra$ to "(screen only)" or some other distinctive string if the game fits in memory but we have too little main RAM free to have a shadow cache? It might be prudent to offer some clue this is happening, because (e.g.) having ADFS+DFS vs DFS might be enough to tip us from one state to the other and performance would drop dramatically because we've suddenly lost access to the spare shadow RAM
 
@@ -723,6 +728,26 @@ STA &FF00,Y \ patched
 DEY
 BNE copy_loop
 LDA #4:TRB &FE34 \ page out shadow RAM
+RTS
+]
+NEXT
+ENDPROC
+
+DEF PROCassemble_shadow_driver_aries_watford
+FOR opt%=0 TO 2 STEP 2
+P%=${shadow_ram_copy}
+[OPT opt%
+STA lda_abs_y+2:STY sta_abs_y+2
+LDA #&6F:LDX #0:JSR &FFF4 \ page in shadow RAM
+LDY #0
+.copy_loop
+.lda_abs_y
+LDA &FF00,Y \ patched
+.sta_abs_y
+STA &FF00,Y \ patched
+DEY
+BNE copy_loop
+LDA #&6F:LDX #1:JSR &FFF4 \ page out shadow RAM
 RTS
 ]
 NEXT
