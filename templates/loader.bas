@@ -739,7 +739,7 @@ FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
 STA lda_abs_y+2:STY sta_abs_y+2
-LDA #&22:LDX #0:JSR &FFF4 \ page in shadow RAM
+LDA #&6F:LDX #0:JSR &FFF4 \ page in shadow RAM
 LDY #0
 .copy_loop
 .lda_abs_y
@@ -748,7 +748,7 @@ LDA &FF00,Y \ patched
 STA &FF00,Y \ patched
 DEY
 BNE copy_loop
-LDA #&22:LDX #1:JSR &FFF4 \ page out shadow RAM
+LDA #&6F:LDX #1:JSR &FFF4 \ page out shadow RAM
 RTS
 ]
 NEXT
