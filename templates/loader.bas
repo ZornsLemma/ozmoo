@@ -91,7 +91,7 @@ electron=host_os=0
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
 REM detection as that requires running a separate executable) before we change
 REM screen mode; this way if there's a splash screen it's visible during this delay.
-REM
+
 REM FINDSWR will play around with the user VIA as it probes for Solidisk-style
 REM sideways RAM. It does its best to reset things afterwards, but it's not enough
 REM for (at least) the TurboMMC filing system. We therefore deliberately generate and
@@ -104,8 +104,27 @@ REM If we're on a real floppy, the disc will still be spinning after running
 REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
 *INFO XYZZY1
 500ON ERROR PROCerror
+
 shadow=potential_himem=&8000
 shadow_extra$=""
+shadow_osbyte=111
+IF integra_b AND shadow THEN shadow_extra$="(Integra-B)"
+REM For a BBC B with non-Integra-B shadow RAM, we need to work out how to control it.
+IF NOT (shadow AND host_os=1 AND NOT integra_b) THEN GOTO 600
+REM SFTODO: Copy explanation of this logic in from stardot post 06/01/2022 once it's
+REM confirmed to work...
+REM SFTODO: "Aries" might be technically incorrect (Solidisk shadow RAM? others?) but let's go
+REM with it for now.
+shadow_extra$="(Aries)"
+ON ERROR GOTO 600
+REM Whether shadow mode is currently in operation is a little fuzzy, so use *FX34,64
+REM to read the current state and do nothing with it rather than setting a state. All
+REM we care about is whether an error occurs.
+*FX34,64
+shadow_osbyte=34
+shadow_extra$="(Watford)"
+600ON ERROR PROCerror
+
 tube=PAGE<&E00
 !ifdef OZMOO2P_BINARY {
     IF tube THEN PROCdetect_turbo
@@ -146,6 +165,14 @@ IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
 die_top_y=VPOS
+
+REM This check can't be done over the tube as the problematic Watford
+REM DFS OSBYTE 111 call returns a value in X which isn't tube compatible; luckily
+REM at the moment we don't try to use spare shadow RAM when running on tube systems
+REM so this is irrelevant anyway. (SFTODO: If/when the cache uses spare shadow RAM,
+REM we need to execute this test on the host, probably as part of a "shadow RAM
+REM driver installer" executable instead of here in the loader.)
+IF host_os=1 AND shadow AND shadow_osbyte=111 AND NOT tube THEN PROCcheck_osbyte_111_clash
 
 REM A DFS build won't work on another filing system because (among other things)
 REM it uses OSWORD &7F to read game data. All sorts of oddness can occur if you
@@ -237,6 +264,18 @@ PRINTTAB(0,${FOOTER_Y});:${FOOTER}
 IF POS=0 THEN VDU 30,11 ELSE VDU 30
 ${HEADER}
 PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
+ENDPROC
+
+DEF PROCcheck_osbyte_111_clash
+REM If OSBYTE 111 is controlling shadow RAM state, returned_x will be the shadow
+REM state (i.e. 1, as we're in a shadow mode at this point). If OSBYTE 111 is being
+REM picked up by an older Watford DFS and used to return the current drive,
+REM returned_x will *probably* be 0. (There's no guarantee; although Ozmoo assumes
+REM elsewhere it's being run from drive 0, it's possible Watford DFS is present but
+REM not the current filing system, in which case the "current drive" might not be
+REM 0.)
+A%=111:X%=&40:returned_x=(USR&FFF4 AND &FF00) DIV &100
+IF returned_x<>1 THEN PROCdie("Sorry, something (probably an older Watford DFS) is clashing with the *FX111 call needed to control the shadow RAM.")
 ENDPROC
 
 DEF PROCchoose_version_and_check_ram
@@ -541,11 +580,6 @@ REM reason to consider an alternate way of installing the correct shadow RAM
 REM driver.
 shadow_driver=TRUE
 IF integra_b THEN PROCassemble_shadow_driver_integra_b:ENDPROC
-REM SFTODO: I don't think it would be hard to support Watford/Aries shadow RAM
-REM on a BBC B, but unless/until I have an emulator which supports this or a
-REM user willing to test on real hardware I'm not going to write code and hope
-REM it works. As it stands Ozmoo will probably run in screen-only shadow RAM
-REM mode on a Watford/Aries machine.
 IF electron AND FNusr_osbyte_x(&EF,0,&FF)=&80 THEN PROCassemble_shadow_driver_electron_mrb:ENDPROC
 IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
 IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
@@ -553,8 +587,6 @@ REM SFTODO: For now, we'll assume this machine has Aries/Watford shadow RAM.
 REM SFTODO: If this continues to be reasonable, shadow_extra$ is redundant.
 REM shadow_driver might be as well.
 PROCassemble_shadow_driver_aries_watford
-REM SFTODO: Just temp set shadow_extra$ to help with debugging
-shadow_extra$="(Aries/Watford)"
 ENDPROC
 REM SFTODO: Should we set shadow_extra$ to "(screen only)" or some other distinctive string if the game fits in memory but we have too little main RAM free to have a shadow cache? It might be prudent to offer some clue this is happening, because (e.g.) having ADFS+DFS vs DFS might be enough to tip us from one state to the other and performance would drop dramatically because we've suddenly lost access to the spare shadow RAM
 
@@ -603,6 +635,9 @@ private_ram_in_use=FNprivate_ram_in_use(64)
 REM SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
 REM registers, we might as well do so here to page shadow RAM in and out; it
 REM would be faster. But I'll stick with this for now.
+REM SFTODO: This is actually identical to the Watford/Aries driver at the
+REM moment, so if we don't start driving hardware directly we should just
+REM combine them.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
@@ -734,12 +769,11 @@ NEXT
 ENDPROC
 
 DEF PROCassemble_shadow_driver_aries_watford
-REM SFTODO: Use of *FX34 here instead of *FX111 means this is probably Watford-only, but let's just go with that for now and worry about detecting which *FX is available later.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
 STA lda_abs_y+2:STY sta_abs_y+2
-LDA #&6F:LDX #0:JSR &FFF4 \ page in shadow RAM
+LDA #shadow_osbyte:LDX #0:JSR &FFF4 \ page in shadow RAM
 LDY #0
 .copy_loop
 .lda_abs_y
@@ -748,7 +782,7 @@ LDA &FF00,Y \ patched
 STA &FF00,Y \ patched
 DEY
 BNE copy_loop
-LDA #&6F:LDX #1:JSR &FFF4 \ page out shadow RAM
+LDA #shadow_osbyte:LDX #1:JSR &FFF4 \ page out shadow RAM
 RTS
 ]
 NEXT
