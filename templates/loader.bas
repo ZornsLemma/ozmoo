@@ -635,9 +635,9 @@ private_ram_in_use=FNprivate_ram_in_use(64)
 REM SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
 REM registers, we might as well do so here to page shadow RAM in and out; it
 REM would be faster. But I'll stick with this for now.
-REM SFTODO: This is actually identical to the Watford/Aries driver at the
-REM moment, so if we don't start driving hardware directly we should just
-REM combine them.
+REM SFTODO: This is *similar* to the Watford/Aries driver (though OSBYTE is 108,
+REM and the 1/0 codes are swapped) so there might be potential for sharing
+REM code. But this is moot if I switch to driving the hardware direct.
 FOR opt%=0 TO 2 STEP 2
 P%=${shadow_ram_copy}
 [OPT opt%
