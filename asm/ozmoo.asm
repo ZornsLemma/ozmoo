@@ -1996,3 +1996,5 @@ scratch_overlapping_game_start
 ; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.
 
 ; SFTODO: Don't forget the transient command workspace at &A8 is available for short-term use.
+
+; SFTODO: Possibly "too slow" and there may be other issues, but JGH's "portable ROM paging" trick (https://stardot.org.uk/forums/viewtopic.php?p=345669&sid=53743ef3b22a3ea1ccfd5e32b8cd1ddf#p345669) just might make it more practical to share an executable between Electron and BBC. In any event, if this is otherwise attractive, don't write it off without doing some timing - Ozmoo does page a lot, but it is moderately optimised and it would be best not to assume.
