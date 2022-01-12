@@ -1808,7 +1808,7 @@ def make_disc_image():
     if cmd_args.debug_assert:
         ozmoo_base_args += ["-DACORN_DEBUG_ASSERT=1"]
 
-    if z_machine_version in (3, 4, 5, 8):
+    if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
     else:
         die("Unsupported Z-machine version: %d" % (z_machine_version,))

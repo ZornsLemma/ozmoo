@@ -704,7 +704,7 @@ SFTODOQQ4
 	stx zp_temp + 1
 !ifdef TARGET_C128 {
 	dex
-	stx zp_temp + 2 ; Value $ff, meaning bank = 1
+	stx zp_temp + 2 ; Value $ff, meaning bank = 1
 }
 	asl
 	rol zp_temp + 1
@@ -870,14 +870,14 @@ nonexistent_local2
 }
 } ; end ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
-!ifdef Z3 {
-	Z3_OR_SLOW = 1
+!ifndef Z4PLUS {
+	NZ4PLUS_OR_SLOW = 1
 } else {
 	!ifdef SLOW {
-		Z3_OR_SLOW = 1
+		NZ4PLUS_OR_SLOW = 1
 	}
 }
-!ifdef Z3_OR_SLOW { ; SFTODO: I ADDED THIS, I THINK IT'S RIGHT, IF SO UPSTREAM IT
+!ifdef NZ4PLUS_OR_SLOW { ; SFTODO: I ADDED THIS, I THINK IT'S RIGHT, IF SO UPSTREAM IT
 ; z_get_variable_value
 z_get_low_global_variable_value
 	; Read global var 0-111
