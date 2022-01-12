@@ -2137,3 +2137,5 @@ show_deferred_output()
 # SFTODO: It might be good to add a README.acorn.md or whatever. Contents would include (but not be limited to):
 # - notes on installing a game to an ADFS hard drive
 # - notes on installing a game to NFS
+
+# SFTODONOW: We should probably offer the option to set CHECK_ERRORS; I don't think this has ever been tested.

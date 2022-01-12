@@ -20,7 +20,10 @@ header_screen_width_units = $22
 header_screen_height_units = $24
 header_font_width_units = $26
 header_font_height_units = $27
+; SFTODO: header_routine_offset and header_string_offset prob needed on Acorn but temp assume they aren't
 !ifndef ACORN {
+header_routine_offset = $28
+header_string_offset = $2a
 header_default_bg_colour = $2c
 header_default_fg_colour = $2d
 }

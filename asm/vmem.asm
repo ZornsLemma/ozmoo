@@ -236,11 +236,11 @@ vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
 ; SFTODO: IT LOOKS LIKE THE HIGH/MID BYTES IN THE VMAP ARE NOW STORED SHIFTED RIGHT ONE BIT IN 5.3, WHICH MEANS WE NO LONGER "WASTE" A BIT ON THE ALWAYS-ZERO LOW BIT, ALLOWING AN EXTRA BIT FOR THE TICK. SHOULD UPDATE THE DIAGRAM I DREW AND THE TEXT IN THE TECH MANUAL ACCORDINGLY AND SUBMIT A PULL REQUEST UPSTREAM FOR THIS (CHECK I HAVE THE RIGHT IDEA FIRST).
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	vmem_tick_increment = 4
 	vmem_highbyte_mask = $03
 } else {
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	vmem_tick_increment = 1
 	vmem_highbyte_mask = $00
 } else {
@@ -902,11 +902,16 @@ SFTODOLL8
 	; is there a block with this address in map?
 !ifdef HAVE_VMAP_USED_ENTRIES {
 	ldx vmap_used_entries
+    ; SFTODO: See comment in ozmoo.asm where vmap_used_entries is set to 1 for
+    ; PREOPT. The next line was added by upstream commit d62112e; it is
+    ; currently redundant on Acorn because vmap_used_entries is always non-zero,
+    ; but this may change.
+	beq .no_such_block
 } else {
-    ldx vmap_max_entries
+    ldx vmap_max_entries ; can't be 0 on Acorn
 }
 -   ; compare with low byte
-	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 -
+	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 - 
 	beq +
 .check_next_block
 	dex
@@ -930,7 +935,7 @@ SFTODOLL8
 }
 .correct_vmap_index_found
 	; vm index for this block found
-        dex
+	dex
 	stx vmap_index
 
 	ldy vmap_quick_index_match

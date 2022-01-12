@@ -1,9 +1,12 @@
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
-; Z1, Z2, Z6 and Z7 will (probably) never be supported
+; Z6 will never be supported
+;Z1 = 1
+;Z2 = 1
 ;Z3 = 1
 ;Z4 = 1
 ;Z5 = 1
+;Z7 = 1
 ;Z8 = 1
 
 ; Which machine to generate code for
@@ -109,22 +112,40 @@
 	TERPNO = 8
 }
 
+!ifdef Z1 {
+	ZMACHINEVERSION = 1
+}
+!ifdef Z2 {
+	ZMACHINEVERSION = 2
+}
 !ifdef Z3 {
 	ZMACHINEVERSION = 3
+	Z3PLUS = 1
 }
 !ifdef Z4 {
 	ZMACHINEVERSION = 4
+	Z3PLUS = 1
 	Z4PLUS = 1
 }
 !ifdef Z5 {
 	ZMACHINEVERSION = 5
+	Z3PLUS = 1
 	Z4PLUS = 1
 	Z5PLUS = 1
 }
-!ifdef Z8 {
-	ZMACHINEVERSION = 8
+!ifdef Z7 {
+	ZMACHINEVERSION = 7
+	Z3PLUS = 1
 	Z4PLUS = 1
 	Z5PLUS = 1
+	Z7PLUS = 1
+}
+!ifdef Z8 {
+	ZMACHINEVERSION = 8
+	Z3PLUS = 1
+	Z4PLUS = 1
+	Z5PLUS = 1
+	Z7PLUS = 1
 }
 
 !ifdef TRACE {
@@ -353,7 +374,7 @@ z_jump_high_arr
 }
 	!byte >z_ins_quit
 	!byte >z_ins_new_line
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!byte >z_ins_show_status
 } else {
 	!byte >z_ins_nop ; should be nop according to show_status/spec 1.0
@@ -544,7 +565,7 @@ z_jump_low_arr
 }
 	!byte <z_ins_quit
 	!byte <z_ins_new_line
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!byte <z_ins_show_status
 } else {
 	!byte <z_ins_nop ; should be nop according to show_status/spec 1.0
@@ -921,6 +942,30 @@ game_id		!byte 0,0,0,0
 }
 }
 
+!ifdef Z7 {
+calc_z7_offsets
+	ldy #header_string_offset
+	jsr read_header_word
+	sta string_offset + 1
+	stx string_offset + 2
+	ldy #header_routine_offset
+	jsr read_header_word
+	stx routine_offset + 2
+
+	ldx #3
+-	asl string_offset + 2
+	rol string_offset + 1
+	rol string_offset
+	asl routine_offset + 2
+	rol
+	rol routine_offset
+	dex
+	bne -
+	sta routine_offset + 1
+	rts
+}
+
+
 !ifdef TARGET_C128 {
 
 !ifdef Z4PLUS {
@@ -1173,7 +1218,7 @@ stack_start
 deletable_screen_init_1
 	; start text output from bottom of the screen
 
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!ifdef TARGET_C128 {
 		lda COLS_40_80
 		beq .width40
@@ -1213,7 +1258,7 @@ deletable_screen_init_1
 	ldy #0
 	sty current_window
 	sty window_start_row + 3
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	iny
 }
 	sty window_start_row + 2
@@ -1261,8 +1306,14 @@ z_init
 	iny
 	bne -
 }
+
+	; Calculate Z7 string offset and routine offset
+!ifdef Z7 {
+	jsr calc_z7_offsets
+}
 	
-!ifdef Z3 {
+	; Modify header to tell game about terp capabilities
+!ifndef Z4PLUS {
 	ldy #header_flags_1
 	jsr read_header_word
 	and #(255 - 16 - 64) ; Statusline IS available, variable-pitch font is not default
@@ -1296,7 +1347,7 @@ z_init
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
 	jsr write_header_byte
-	lda #72 ; "H" = release 8
+	lda #(64 + 9) ; "I" = release 9
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
 	jsr write_header_byte
 	+lda_screen_height
@@ -1491,9 +1542,6 @@ insert_disks_at_boot
 	sta reu_last_disk_end_block + 1
 }
 
-;	jsr dollar
-;	jsr kernal_readchar
-	jsr prepare_for_disk_msgs
 	lda #0
 	tay ; Disk#
 .next_disk
@@ -1604,8 +1652,6 @@ copy_data_from_disk_at_zp_temp_to_reu
 	jsr copy_page_to_reu
 	bcs .reu_error
 
-	ldx z_temp ; (Not) Already loaded
-
 	; Inc Z-machine page
 	inc z_temp
 	bne +
@@ -1620,7 +1666,7 @@ copy_data_from_disk_at_zp_temp_to_reu
 +	inc z_temp + 6
 	bne .initial_copy_loop
 	inc z_temp + 7
-+	bne .initial_copy_loop ; Always branch
+	bne .initial_copy_loop ; Always branch
 
 .done_copying
 
@@ -1704,10 +1750,10 @@ reu_start
 ; reu_last_disk_end_block = string_array ; 2 bytes
 
 reu_progress_base
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!byte 16 ; blocks read to REU per tick of progress bar
 } else {
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	!byte 64 ; blocks read to REU per tick of progress bar
 } else {
 	!byte 32 ; blocks read to REU per tick of progress bar
@@ -1723,7 +1769,7 @@ print_reu_progress_bar
 	lda z_temp + 5
 	sbc reu_last_disk_end_block + 1
 !ifdef Z4PLUS {
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	ldx #6
 } else {
 	ldx #5
@@ -1833,7 +1879,12 @@ prepare_static_high_memory
 } else { ; ACORN
 ; SFTODO: We're very close to being able to just remove prepare_static_high_memory on Acorn, including the jsr to it
 !ifdef PREOPT {
-    ; vmap_used_entries can't be 0. SFTODO: I think?
+    ; vmap_used_entries can't be 0. SFTODO: I think? Note that upstream commit d62112e (which I have merged; at worst it only slightly bloats PREOPT builds) fixed a bug where vmap_used_entries
+    ; was 0, so it *may* be that this would now be acceptable and we'd avoid wasting the zeroth entry in vmap for PREOPT
+    ; builds. However, PREOPT obviously worked on upstream before this fix, so it may be that's not directly related and
+    ; having vmap_used_entries be 0 could still cause problems elsewhere. For now I am going to leave this along but at
+    ; some point it's probably worth re-examining all the code and seeing if we can set vmap_used_entries to 0 safely here.
+
     lda #1
     sta vmap_used_entries
 } else {

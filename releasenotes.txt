@@ -234,7 +234,7 @@ Release 7: 4 May 2021
   
   
 ================================================
-Release 8: 
+Release 8: 3 Oct 2021
 
 - Fixed indexing bug in add_line_to_history (issue 36)
 - Changed history to allow cursor up/down even if there is pending user input
@@ -255,3 +255,23 @@ Release 8:
   vmap_z_h (highbytes of vmem map) when game had no preloaded vmem blocks.
 - Updated outdated debug code for TRACE_VM (Issue 39)
 
+================================================
+Release 9: 28 Nov 2021
+
+- Support for z1, z2 and z7 story files.
+ 
+================================================
+Release 10:
+
+- Fixed bug in parsing words with special characters in v1/v2.
+- Fixed bug in printing characters not in alphabet table in v1/v2.
+- Removed (a few lines of) superfluous code.
+- Fix bug: wrong character was deleted when pressing backspace on C128 in 
+  80 col mode.
+- Changed so a blinking cursor starts in ON phase instead of OFF phase.
+- make.rb option -u to enable "unsafe" mode to remove some runtime error
+  checks has been removed and this "unsafe" mode is now the default. There
+  is also a new option -re to enable all runtime error checks.
+- Improved Plus/4 colour matching to C64 colours.
+- Fixed a crash that sometimes occured when not preloading any blocks.
+- Faster multiplication in dictionary lookup and scrolling on C128 80 col.

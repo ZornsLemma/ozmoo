@@ -136,14 +136,22 @@ A stack frame consists of the following parts:
 1. The current values of all local variables of the routine (0-15 words).
 
 2. Frame header (2 words)
-   Frame header A has the following parts:
-     Byte 0, bit 7: 1 = The return value of this procedure call should be written into a variable 
-	 Byte 0, bit 4-6: In version 5+, the number of parameters this procedure was called with (0-7)
-	 Byte 0: bit 0-3: The number of local variables this procedure has (0-15)
-	 Byte 1, bit 7: 1 = this routine call was done due to an input interrupt
-	 Byte 1, bit 0-2: Bit 16-18 of the return address
-   Frame header B:
-     Bit 0-15 of the return address (highbyte first).
+
+> Frame header A has the following parts:
+
+>> Byte 0, bit 7: 1 = The return value of this procedure call should be written into a variable 
+
+>> Byte 0, bit 4-6: In version 5+, the number of parameters this procedure was called with (0-7)
+
+>> Byte 0: bit 0-3: The number of local variables this procedure has (0-15)
+
+>> Byte 1, bit 7: 1 = this routine call was done due to an input interrupt
+
+>> Byte 1, bit 0-2: Bit 16-18 of the return address
+
+> Frame header B:
+
+>> Bit 0-15 of the return address (highbyte first).
 	 
 3. Pushed words (0 or more words)
 
@@ -179,7 +187,7 @@ Ozmoo then starts a new stack frame - frame 1. The main routine at $514 has 0 lo
 
 Program execution now continues in our main routine at address $515 (the routine's official start address is 514, but the first instruction is on address $515.) The first instruction pushes the value 7 onto the stack. The second instructions performs a call_2n instruction to call the foo routine with one argument, which is the value 5. We can see that the value 7 has been pushed onto the stack, and that the counter says a total of 2 bytes have been pushed onto the stack in this frame.
 
-Ozmoo now opens stack frame 2. The routine being called (the foo routine located at address $4f4) has two local variables, so Ozmoo makes room for two words on the stack for part 1 of the frame. The first variable gets the value 5, since the procedure was called with this as a argument. Ozmoo then adds part 2, the header. Frame header A gets the value $12, $00 because the routine was not called with an instruction which expects the return value to be written into a variable, the routine call was made with 1 parameter, the routine has 2 local variables, the routine was not called due to an interrupt, and bit 16-18 of the return address are 0. Frame header B holds the value $051d, which is where execution should resume upon return from this routine.
+Ozmoo now opens stack frame 2. The routine being called (the foo routine located at address $4f4) has two local variables, so Ozmoo makes room for two words on the stack for part 1 of the frame. The first variable gets the value 5, since the procedure was called with this as an argument. Ozmoo then adds part 2, the header. Frame header A gets the value $12, $00 because the routine was not called with an instruction which expects the return value to be written into a variable, the routine call was made with 1 parameter, the routine has 2 local variables, the routine was not called due to an interrupt, and bit 16-18 of the return address are 0. Frame header B holds the value $051d, which is where execution should resume upon return from this routine.
 
 The foo routine pushes the value 9 and then the value 3. At the time when we inspect the stack, the value 3 is held in stack_top_value. If we were to push another value, or call a procedure, this value would be written to the stack as well.
 
@@ -224,7 +232,7 @@ The timestamps are packed into the high bits of the 16-bit entries in vmap, with
 
 Larger versions of the Z-machine need more bits for the high and mid bytes so fewer bits are available for the timestamp; a Z8 game (with 19 bit addresses for a maximum game size of 512K) only has 6 bits available for the timestamp. This limited timestamp resolution is the reason why vmem_tick is only incremented when a block needs to be read from disc, not every time read_byte_from_z_address is called.
 
-vmem_tick is actually held in memory "pre-shifted" for convenience of using it to compare or update the high byte of the 16-bit entries in vmap, so rather than incrementing by 1 at a time, it increments by 2 at a time for Z3 games, 8 at a time for Z8 games and 4 for everything else. (In the code, the increment is a constant called vmem_tick_increment.)
+vmem_tick is actually held in memory "pre-shifted" for convenience of using it to compare or update the high byte of the 16-bit entries in vmap, so rather than always incrementing by 1 at a time, it increments by 1 at a time for Z3 games, 2 at a time for Z4 and Z5 games and 4 at a time Z8 games. (In the code, the increment is a constant called vmem_tick_increment.)
 
 ## The quick index
 
@@ -412,7 +420,7 @@ Set the number of memory pages to use for stack.
 
     STATCOL=n
 
-Set the statusline colour. (only for z3).
+Set the statusline colour. (only for z1-z3).
 
     TARGET_C128
     TARGET_C64
@@ -437,12 +445,15 @@ Remove some checks for runtime errors, making the interpreter smaller and faster
 
 Utilize virtual memory. Without this, the complete game must fit in C64 RAM available above the interpreter, all in all about 50 KB. Also check section "Virtual memory flags" below. 
 
+    Z1
+    Z2
     Z3
     Z4
     Z5
+    Z7
     Z8
 
-Build the interpreter to run Z-machine version 3, 4, 5 or 8.
+Build the interpreter to run Z-machine version 1, 2, 3, 4, 5, 7 or 8.
 
     DANISH_CHARS
 	FRENCH_CHARS
@@ -563,13 +574,13 @@ Typical size for a 3-disk ( + save disk) game:
 
 An interpreter needs to reserve this space for disk information:
 
-z3: 1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + (1 + 1 + 2 + 1 + 40 + 6) = 4 + 2 * 8 + 51 = 71 bytes
+z1/z2/z3: 1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + (1 + 1 + 2 + 1 + 40 + 6) = 4 + 2 * 8 + 51 = 71 bytes
 
 z4/z5/z8:  1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + 2 * (1 + 1 + 2 + 1 + 40 + 5) = 4 + 2 * 8 + 2 * 50 = 120 bytes
 
 1571 drive support:
 
-- z3 games: No change
+- z1/z2/z3 games: No change
 - z4/z5 games: A single disk using only track 1-53 can hold all story data. Disk information will then fit in less than the number of bytes stated above.
 - z8 games: Disk information for a single drive game will fit in the number of bytes stated above. 
 
