@@ -6,10 +6,18 @@ A Z-machine interpreter for the Commodore 64 and similar computers
 
 Written by Johan Berntsson and Fredrik Ramsberg in 2018-2021
 
-![Curses running on Ozmoo](https://github.com/johanberntsson/ozmoo/blob/master/screenshots/minizork.png)
+![Mini-Zork I running on Ozmoo](https://github.com/johanberntsson/ozmoo/blob/master/screenshots/minizork.png)
 
 
 ## Status
+
+Update 2021-Nov-28: Release 9 with support for z1, z2 and z7 games.
+
+Update 2021-Oct-03: Release 8 with MEGA65 speedups, plus optimizations and bugfixes for all platforms.
+
+Update 2021-May-04: Release 7 with new MEGA65 target, improved z3 statusline on 80 column displays.
+
+Update 2021-Mar-19: Release 6 with input history, input colours, a new font and bug fixes.
 
 Update 2021-Mar-02: There is now an official port of [Ozmoo for Acorn computers](https://zornslemma.github.io/ozmoo.html).
 
@@ -19,7 +27,7 @@ Update 2020-Sep-20: Release 4. Bugfixes, new cursor customization options, and a
 
 Update 2020-Mar-04: Release 3 is here. Many bugfixes. Darkmode and splash screen added. Support for four new languages.
 
-Update 2019-Jun-04: We have created a new release, with several new features, many bugfixes, better docs and other improvements.
+Update 2019-Jun-04: We have created release 2, with several new features, many bugfixes, better docs and other improvements.
 
 Update 2018-Dec-27: We now consider Ozmoo ready for production use. A few minor features are missing, like output to printer and the ability to save and restore arbitrary parts of memory, and chances are they won't be added. 
 
@@ -48,7 +56,7 @@ There are some other implementations, but they have their limitations:
 The simple answer: Ozmoo should be able to run most Z-code games, regardless of size (A Z-code game can be up to 512 KB in size).
 
 The longer answer:
-* Ozmoo only supports version 3, 4, 5 and 8 of Z-code. This means you can't run the very first versions of Zork I and II, or the Infocom games with graphics.
+* Ozmoo supports version 1, 2, 3, 4, 5, 7 and 8 of Z-code. This means you can't run version 6 games, which means the Infocom games with graphics.
 * A Z-code file always starts with a section called dynamic memory. Ozmoo will not be able to handle games with more than roughly 35 KB of dynamic memory.
 * If you want to run Ozmoo on a system with a single 1541 drive (or an emulation of one), the part of the game file that is not dynamic memory can be no larger than 170 KB. This typically means the game file can be about 190 KB in size.
 * Most Inform 6 games and all Inform 7 games are too slow to be any fun on Ozmoo. The games that perform well are typically PunyInform games, ZIL games, Infocom games and Inform 5 games. Early Inform 6 games (using library 6/1 or 6/2) may also be fast enough.
@@ -61,7 +69,7 @@ Ozmoo supports:
 
 * Fitting a lot more text on screen than Infocom's interpreters - This is done by using all 40 columns, smart wordwrap and a MORE prompt which uses a single character.
 * Embedding a custom font. Currently two fonts are included in the distribution, plus some versions for Swedish, Danish, German, Italian, Spanish and French. And you can supply your own font.
-* Custom alphabets in Z-machine version 5 and 8.
+* Custom alphabets in Z-machine version 5, 7 and 8.
 * Custom character mappings, allowing for games using accented characters. Comes with predefined mappings for Swedish, Danish, German, Italian, Spanish and French.
 * Custom colour schemes.
 * A fully configurable secondary colour scheme (darkmode) which the player can toggle by pressing the F1 key.

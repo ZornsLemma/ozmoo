@@ -179,11 +179,11 @@ vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	vmem_tick_increment = 4
 	vmem_highbyte_mask = $03
 } else {
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	vmem_tick_increment = 1
 	vmem_highbyte_mask = $00
 } else {
@@ -521,10 +521,8 @@ read_byte_at_z_address
 
 	; is there a block with this address in map?
 	ldx vmap_used_entries
+	beq .no_such_block
 -   ; compare with low byte
-	; TODO: It would be helpful to ensure vmap_z_l - 1 is near the start of
-	; a page, so the following frequently executed instruction doesn't
-	; incur too many extra page-crossing cycles.
 	cmp vmap_z_l - 1,x ; zmachine mem offset ($0 - 
 	beq +
 .check_next_block
@@ -543,7 +541,7 @@ read_byte_at_z_address
 }
 .correct_vmap_index_found
 	; vm index for this block found
-        dex
+	dex
 	stx vmap_index
 
 	ldy vmap_quick_index_match

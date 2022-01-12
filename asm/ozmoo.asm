@@ -1,9 +1,12 @@
 ; Which Z-machine to generate binary for
 ; (usually defined on the acme command line instead)
-; Z1, Z2, Z6 and Z7 will (probably) never be supported
+; Z6 will never be supported
+;Z1 = 1
+;Z2 = 1
 ;Z3 = 1
 ;Z4 = 1
 ;Z5 = 1
+;Z7 = 1
 ;Z8 = 1
 
 ; Which machine to generate code for
@@ -94,22 +97,40 @@
 	TERPNO = 8
 }
 
+!ifdef Z1 {
+	ZMACHINEVERSION = 1
+}
+!ifdef Z2 {
+	ZMACHINEVERSION = 2
+}
 !ifdef Z3 {
 	ZMACHINEVERSION = 3
+	Z3PLUS = 1
 }
 !ifdef Z4 {
 	ZMACHINEVERSION = 4
+	Z3PLUS = 1
 	Z4PLUS = 1
 }
 !ifdef Z5 {
 	ZMACHINEVERSION = 5
+	Z3PLUS = 1
 	Z4PLUS = 1
 	Z5PLUS = 1
 }
-!ifdef Z8 {
-	ZMACHINEVERSION = 8
+!ifdef Z7 {
+	ZMACHINEVERSION = 7
+	Z3PLUS = 1
 	Z4PLUS = 1
 	Z5PLUS = 1
+	Z7PLUS = 1
+}
+!ifdef Z8 {
+	ZMACHINEVERSION = 8
+	Z3PLUS = 1
+	Z4PLUS = 1
+	Z5PLUS = 1
+	Z7PLUS = 1
 }
 
 !ifdef TRACE {
@@ -302,7 +323,7 @@ z_jump_high_arr
 }
 	!byte >z_ins_quit
 	!byte >z_ins_new_line
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!byte >z_ins_show_status
 } else {
 	!byte >z_ins_nop ; should be nop according to show_status/spec 1.0
@@ -493,7 +514,7 @@ z_jump_low_arr
 }
 	!byte <z_ins_quit
 	!byte <z_ins_new_line
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!byte <z_ins_show_status
 } else {
 	!byte <z_ins_nop ; should be nop according to show_status/spec 1.0
@@ -886,6 +907,30 @@ game_id		!byte 0,0,0,0
 	}
 }
 
+!ifdef Z7 {
+calc_z7_offsets
+	ldy #header_string_offset
+	jsr read_header_word
+	sta string_offset + 1
+	stx string_offset + 2
+	ldy #header_routine_offset
+	jsr read_header_word
+	stx routine_offset + 2
+
+	ldx #3
+-	asl string_offset + 2
+	rol string_offset + 1
+	rol string_offset
+	asl routine_offset + 2
+	rol
+	rol routine_offset
+	dex
+	bne -
+	sta routine_offset + 1
+	rts
+}
+
+
 !ifdef TARGET_C128 {
 
 !ifdef Z4PLUS {
@@ -1108,7 +1153,7 @@ stack_start
 deletable_screen_init_1
 	; start text output from bottom of the screen
 
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!ifdef TARGET_C128 {
 		lda COLS_40_80
 		beq .width40
@@ -1129,7 +1174,7 @@ deletable_screen_init_1
 	ldy #0
 	sty current_window
 	sty window_start_row + 3
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	iny
 }
 	sty window_start_row + 2
@@ -1172,9 +1217,14 @@ z_init
 	iny
 	bne -
 }
+
+	; Calculate Z7 string offset and routine offset
+!ifdef Z7 {
+	jsr calc_z7_offsets
+}
 	
 	; Modify header to tell game about terp capabilities
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	ldy #header_flags_1
 	jsr read_header_word
 	and #(255 - 16 - 64) ; Statusline IS available, variable-pitch font is not default
@@ -1203,7 +1253,7 @@ z_init
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
 	jsr write_header_byte
-	lda #72 ; "H" = release 8
+	lda #(64 + 9) ; "I" = release 9
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
 	jsr write_header_byte
 	lda #25
@@ -1531,7 +1581,6 @@ deletable_init
 
 ; parse_header section
 
-
 	; Store the size of dynmem AND (if VMEM is enabled)
 	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
 !ifdef TARGET_C128 {
@@ -1596,7 +1645,7 @@ deletable_init
 
 } ; End of !ifdef VMEM
 
-!ifndef UNSAFE {
+!ifdef CHECK_ERRORS {
 	; check z machine version
 	ldy #header_version
 	jsr read_header_word
@@ -1678,9 +1727,6 @@ insert_disks_at_boot
 	sta reu_last_disk_end_block + 1
 }
 
-;	jsr dollar
-;	jsr kernal_readchar
-	jsr prepare_for_disk_msgs
 	lda #0
 	tay ; Disk#
 .next_disk
@@ -1791,8 +1837,6 @@ copy_data_from_disk_at_zp_temp_to_reu
 	jsr copy_page_to_reu
 	bcs .reu_error
 
-	ldx z_temp ; (Not) Already loaded
-
 	; Inc Z-machine page
 	inc z_temp
 	bne +
@@ -1807,7 +1851,7 @@ copy_data_from_disk_at_zp_temp_to_reu
 +	inc z_temp + 6
 	bne .initial_copy_loop
 	inc z_temp + 7
-+	bne .initial_copy_loop ; Always branch
+	bne .initial_copy_loop ; Always branch
 
 .done_copying
 
@@ -1891,10 +1935,10 @@ reu_start
 ; reu_last_disk_end_block = string_array ; 2 bytes
 
 reu_progress_base
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!byte 16 ; blocks read to REU per tick of progress bar
 } else {
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	!byte 64 ; blocks read to REU per tick of progress bar
 } else {
 	!byte 32 ; blocks read to REU per tick of progress bar
@@ -1910,7 +1954,7 @@ print_reu_progress_bar
 	lda z_temp + 5
 	sbc reu_last_disk_end_block + 1
 !ifdef Z4PLUS {
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	ldx #6
 } else {
 	ldx #5

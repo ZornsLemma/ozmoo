@@ -75,7 +75,7 @@ bordercol	!byte BORDERCOL_FINAL, BORDERCOLDM_FINAL
 !ifdef USE_INPUTCOL {
 inputcol	!byte INPUTCOL, INPUTCOLDM
 }
-!ifdef Z3 {
+!ifndef Z4PLUS {
 statuslinecol !byte STATCOL, STATCOLDM
 }
 cursorcol !byte CURSORCOL, CURSORCOLDM
@@ -85,21 +85,21 @@ cursor_character !byte CURSORCHAR
 !ifdef TARGET_PLUS4 {
 plus4_vic_colours
 	;     PLUS4  VIC-II
-	!byte $00    ; black
-	!byte $71  ; white
-	!byte $32    ; red
+	!byte $00   ; black
+	!byte $71   ; white
+	!byte $32   ; red
 	!byte $63   ; cyan
-	!byte $54    ; purple
-	!byte $55   ; green
-	!byte $36    ; blue
-	!byte $77  ; yellow
-	!byte $28   ; orange
-	!byte $18   ; brown 
-	!byte $72   ; light red
-	!byte $11   ; dark grey
-	!byte $41   ; grey
+	!byte $44   ; purple
+	!byte $65   ; green
+	!byte $3e   ; blue
+	!byte $77   ; yellow
+	!byte $48   ; orange
+	!byte $39   ; brown 
+	!byte $62   ; light red
+	!byte $31   ; dark grey
+	!byte $51   ; grey
 	!byte $75   ; light green
-	!byte $76   ; light blue
+	!byte $56   ; light blue
 	!byte $61   ; light grey
 }
 
@@ -317,14 +317,12 @@ s_init
 	dec s_screen_height_minus_one
 
 	; calculate total screen size
-	lda s_screen_height
-	sta multiplier
-	lda s_screen_width
-	sta multiplicand
 	lda #0
 	sta multiplier + 1
-	sta multiplicand + 1
-	jsr mult16
+	lda s_screen_width
+	sta multiplier
+	lda s_screen_height
+	jsr mult8
 	lda product
 	sta s_screen_size;
 	lda product + 1
@@ -395,13 +393,7 @@ s_printchar
 	cmp #$0d
 	bne +
 	; newline
-	; but first, check if the current character is the cursor so that we may delete it
-	lda cursor_character
-	ldy zp_screencolumn
-	cmp (zp_screenline),y
-	bne +++
-	jsr s_delete_cursor
-+++	jmp .perform_newline
+	jmp .perform_newline
 +
 	cmp #20
 	bne +
@@ -731,14 +723,12 @@ s_erase_window
 	;
 	; calculate start position (start_row * screen_width)
 	pha
-	lda window_start_row + 1 ; how many top lines to protect
-	sta multiplier
 	lda s_screen_width
-	sta multiplicand
+	sta multiplier
 	lda #0
 	sta multiplier + 1
-	sta multiplicand + 1
-	jsr mult16
+	lda window_start_row + 1 ; how many top lines to protect
+	jsr mult8
 	; set up source and destination
 	pla
 	clc
@@ -1047,7 +1037,7 @@ toggle_darkmode
 	+SetBorderColour
 
 	; update colour memory with new colours
-!ifdef Z3 {
+!ifndef Z4PLUS {
 
 ; For Z3: Set statusline colour
 	ldy statuslinecol,x
@@ -1097,7 +1087,7 @@ toggle_darkmode
 	sty z_temp + 11
 	ldy #0
 	sty z_temp + 10
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	ldy s_screen_width ; Since we have coloured the statusline separately, skip it now
 }
 !ifndef Z5PLUS {

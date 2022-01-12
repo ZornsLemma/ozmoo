@@ -1,5 +1,10 @@
 ; z_address !byte 0,0,0
 ; z_address_temp !byte 0
+!ifdef Z7 {
+string_offset !byte 0,0,0
+routine_offset !byte 0,0,0
+}
+
 
 !zone zaddress {
 
@@ -106,13 +111,25 @@ set_z_paddress
 	rol
 }
 	sta z_address
+!ifdef Z7 {
+	lda z_address + 2
+	clc
+	adc string_offset + 2
+	sta z_address + 2
+	lda z_address + 1
+	adc string_offset + 1
+	sta z_address + 1
+	lda z_address
+	adc string_offset
+	sta z_address
+}	
 	rts
 
 write_next_byte
 ; input: value in a 
 ; a,x,y are preserved
 	sta z_address_temp
-!ifndef UNSAFE {
+!ifdef CHECK_ERRORS {
 	lda z_address
 	bne .write_outside_dynmem
 	lda z_address + 2
@@ -164,7 +181,7 @@ write_next_byte
 	inc z_address
 +	rts
 
-!ifndef UNSAFE {
+!ifdef CHECK_ERRORS {
 .write_outside_dynmem
 	lda #ERROR_WRITE_ABOVE_DYNMEM
 	jsr fatalerror

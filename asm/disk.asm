@@ -19,7 +19,7 @@ readblocks_currentblock	!byte 0,0 ; 257 = ff 1
 readblocks_currentblock_adjusted	!byte 0,0 ; 257 = ff 1
 readblocks_mempos		!byte 0,0 ; $2000 = 00 20
 disk_info
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	!fill 71
 }
 !ifdef Z4 {
@@ -28,7 +28,7 @@ disk_info
 !ifdef Z5 {
 	!fill 94
 }
-!ifdef Z8 {
+!ifdef Z7PLUS {
 	!fill 120
 }
 
@@ -158,7 +158,7 @@ readblock
 	inc .track
 	dec .disk_tracks
 	bne .check_track
-!ifndef UNSAFE {
+!ifdef CHECK_ERRORS {
 ; Broken config
 	lda #ERROR_CONFIG ; Config info must be incorrect if we get here
 	jmp fatalerror
@@ -166,14 +166,14 @@ readblock
 .next_disk
 	ldx .next_disk_index
 	iny
-!ifdef UNSAFE {
-	jmp .check_next_disk
-} else {
+!ifdef CHECK_ERRORS {
 	cpy disk_info + 2 ; # of disks
 	bcs +
 	jmp .check_next_disk
 +	lda #ERROR_OUT_OF_MEMORY ; Meaning request for Z-machine memory > EOF. Bad message? 
 	jmp fatalerror
+} else {
+	jmp .check_next_disk
 }
 
 .right_track_found
@@ -779,9 +779,6 @@ close_io
 	jmp kernal_clrchn ; call CLRCHN
 
 !zone disk_messages {
-prepare_for_disk_msgs
-	rts
-
 print_insert_disk_msg
 ; Parameters: y: memory index to start of info for disk in disk_info
 	sty .save_y
@@ -1018,7 +1015,7 @@ z_ins_restart
 }
 
 z_ins_restore
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	jsr restore_game
 	beq +
 	ldx #0
@@ -1043,7 +1040,7 @@ z_ins_restore
 }
 
 z_ins_save
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	jsr save_game
 	beq +
 	jmp make_branch_true
@@ -1432,7 +1429,6 @@ vdc_insertion_sort
 	lda current_disks - 8,x
 	sta .last_disk
 	beq .dont_print_insert_save_disk ; Save disk is already in drive.
-	jsr prepare_for_disk_msgs
 	ldy #0
 	jsr print_insert_disk_msg
 	ldx disk_info + 4 ; Device# for save disk
