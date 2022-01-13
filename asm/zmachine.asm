@@ -871,14 +871,17 @@ nonexistent_local2
 } ; end ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 
 !ifndef Z4PLUS {
-	NZ4PLUS_OR_SLOW = 1
+	GET_LOW_GLOBAL_NEEDED = 1
 } else {
-	!ifdef SLOW {
-		NZ4PLUS_OR_SLOW = 1
+	!ifndef COMPLEX_MEMORY {
+		!ifdef SLOW {
+			GET_LOW_GLOBAL_NEEDED = 1
+		}
 	}
 }
-!ifdef NZ4PLUS_OR_SLOW { ; SFTODO: I ADDED THIS, I THINK IT'S RIGHT, IF SO UPSTREAM IT
-; z_get_variable_value
+
+
+!ifdef GET_LOW_GLOBAL_NEEDED {
 z_get_low_global_variable_value
 	; Read global var 0-111
 	; input: a = variable# + 16 (16-127)
@@ -887,16 +890,6 @@ z_get_low_global_variable_value
 !ifdef TARGET_C128 {
 	lda #z_low_global_vars_ptr
 	jmp read_word_from_bank_1_c128
-	; sta $02aa
-	; ldx #$7f
-	; jsr $02a2
-	; pha
-	; iny
-	; ldx #$7f
-	; jsr $02a2
-	; tax
-	; pla
-	; rts
 } else {
 	; Not TARGET_C128
 	iny
@@ -910,7 +903,6 @@ z_get_low_global_variable_value
 	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not TARGET_C128
 }
-
 
 ; Used by z_set_variable
 .write_to_stack
