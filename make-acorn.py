@@ -175,6 +175,7 @@ def get_tool_version(name):
     except:
         return None
     version = (0, 0)
+    string_version = "unknown"
     for line in child.stdout.readlines():
         line = line.decode(sys.stdout.encoding)
         c = line.split()
@@ -182,7 +183,12 @@ def get_tool_version(name):
             version_components = c[1].split(".")
             if len(version_components) >= 2:
                 version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
+                string_version = line
                 break
+    global tool_versions
+    if name not in string_version:
+        string_version = name + ": " + string_version
+    tool_versions[name] = string_version
     return version
 
 
@@ -1249,6 +1255,8 @@ def make_build_file():
     # build system in the build file, and to keep the size down, we convert them
     # to just the basename.
     data = ""
+    for name, version in sorted(tool_versions.items()):
+        data += "%s\r" % version
     for arg in sys.argv:
         if arg.startswith('-'):
             i = arg.find('=')
@@ -1997,6 +2005,7 @@ if version_txt is None:
 min_beebasm_version = (1, 9)
 min_basictool_version = (0, 6)
 
+tool_versions = {}
 prechecks()
 
 loader_screen = LoaderScreen()
