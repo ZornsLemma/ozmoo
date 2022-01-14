@@ -183,7 +183,7 @@ def get_tool_version(name):
             version_components = c[1].split(".")
             if len(version_components) >= 2:
                 version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
-                string_version = line
+                string_version = line.strip()
                 break
     global tool_versions
     if name not in string_version:
