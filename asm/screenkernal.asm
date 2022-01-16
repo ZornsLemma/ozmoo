@@ -61,8 +61,15 @@
     ; SFTODO: THIS IS NOT TRUE ANY MORE, OF COURSE
     FIXED_SCREEN_SIZE = 1
 } else {
-    !ifdef ACORN_SCREEN_HOLE { ; SFTODO: MAY OR MAY NOT WANT TO KEEP THIS - IT IS SEMI-TRUE IF WE ASSUME WE'LL ALWAYS BE IN MODE 6 OR 7
-        FIXED_SCREEN_SIZE = 1
+    ; This is a minor optimisation for the BBC no-shadow-RAM executable, where
+    ; we know we will always be in mode 7. Note that this optimisation *cannot*
+    ; be used for the Electron executable, which handles machines with and
+    ; without shadow RAM and therefore could be running in any mode.
+    ; SFTODO: Worth it? Feels a little special case.
+    !ifdef ACORN_SCREEN_HOLE {
+        !ifndef ACORN_ELECTRON_SWR {
+            FIXED_SCREEN_SIZE = 1
+        }
     }
 }
 
