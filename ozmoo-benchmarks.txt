@@ -1,0 +1,75 @@
+Emulator is generally b-em except for Integra-B (Windows BeebEm) or Electron (Elkulator, MAME).
+Electron timings done by hand not using reported times.
+Times usually "best of 3"
+b-em 500% speed doesn't seem to affect the timings significantly even on floppy disc heavy runs so using that freely.
+Quoting times to two decimal places but in practice variation means it's probably best to round to one decimal place, if that
+
+=== Ozmoo 4.4 2021-02-18 ===
+
+Electron always used what we now call medium dynamic memory model on this version
+Other non-tube binaries use big dynamic memory model
+
+BBC B, 16K SWR, DFS 1.20, mode 7 $15a/$99c4 $159/$99c2 $15a/$99c0 -> 780.28 seconds
+- lots of disc access
+
+BBC B+, no SWR, DFS, mode 7 can't run the game
+
+M128, DFS, mode 7 $340/$4cac $340/$4cac $340/$4ca9 -> 375.86 seconds
+
+Electron (Elkulator), 16K SWR, E00 DFS, drive noises on, mode 6 [$f8/$c022] 37:30 -> 2250 seconds
+- lots of disc access
+- stopwatch timing means there's a good few seconds of variation possible here; I tried to start and stop when the automated timings appeared but it wasn't that precise
+
+=== Ozmoo 5.8 alpha 12 ===
+
+BBC shadow binary uses big dynamic memory model
+Other non-tube binaries use medium dynamic memory model
+
+BBC B, 16K SWR, DFS 1.20, mode 7 crashes! -> probably won't do any more testing with this version
+
+=== Ozmoo 6.0 alpha 15 ===
+
+BBC shadow binary uses big dynamic memory model
+Other non-tube binaries use medium dynamic memory model
+
+BBC B, 16K SWR, DFS 1.20, mode 7 crashes! -> probably won't do any more testing with this version
+
+=== Ozmoo 7.3 alpha 25 ===
+
+BBC shadow binary uses big dynamic memory model
+Other non-tube binaries use medium dynamic memory model
+
+BBC B, 16K SWR, DFS 1.20, mode 7 $29e/$126e6 $29e/$126ea $2a0/$126f0 -> 748.24 seconds
+- lots of disc access
+
+BBC B+, no SWR, DFS, mode 7 $3ee/$b356 $3f0/$b354 $3ee/$b34e -> 448.96 seconds
+- lots of disc access
+
+M128, DFS, mode 7 $7c9/$9479 $7ca/$9480 $7ca/$9480 -> 360.16 seconds
+
+Electron (Elkulator), 16K SWR, E00 DFS, drive noises on, mode 6 [$1df/$17614] 38:17 -> 2297 seconds
+- lots of disc access
+- disappointingly slower than 4.4, but I can't remember at what point I found a slowdown on Electron and tweaked it
+- this is only 2% slower and although the discrepancy is *not* caused by stopwatch inaccuracy, it isn't impossible miscellaneous changes in load on the Windows PC running Elkulator had some influence
+
+=== Ozmoo 9.16 alpha 37 ===
+
+BBC shadow binary uses big dynamic memory model
+Other non-tube binaries use medium dynamic memory model
+
+BBC B, 16K SWR, DFS 1.20, mode 7 $2a9/$11139 $2a9/$11139 $2a9/$1113f -> 692.64 seconds
+- lots of disc access
+- impressively faster compared to 7.3 (which is in turn impressively faster than 4.4) - I *suspect* the switch to medium dynamic memory model in 7.3 is responsible for a big part of this improvement, but I don't really know, and I am genuinely a bit surprised 9.16 is that much faster, unless (pure guesswork) the low memory rework means it has a bit of extra memory to play with and that makes all the difference.
+
+BBC B+, no SWR, DFS, mode 7 $3ef/$b361 $3ef/$b35f $3f0/$b35e -> 449.10 seconds
+- lots of disc access
+- fractionally slower than 7.3 alpha 25 but not worth worrying about
+
+M128, DFS, mode 7 $7c1/$93fd $7c1/$93fd $7c1/$93fd -> 359.00 seconds
+- fractionally faster than 7.3 alpha 25 but probably not significant, in any case this is fine
+
+Electron (Elkulator), 16K SWR, E00 DFS, drive noises on, mode 6 [$1df/$16aa7] 36:09 -> 2169 seconds
+- lots of disc access
+- pleasingly faster than even 4.4; it's only 3.6% faster than 4.4 but that's not bad
+- it is possible these times are actually quite variable as so far I've only done one run with each version due to the time taken (I don't see a "run >100%" option in Elkulator) - probably OK but worth checking
+- anyway, it looks like there's no performance regression (quite the opposite), which is the main thing
