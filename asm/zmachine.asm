@@ -1949,7 +1949,7 @@ sound_high_pitched_beep
     jmp osword
 
 .sound_block
-    !word 3   ; channel (buffers for channels 0-1 are used by INSV handler)
+    !word 3   ; channel (buffers for channels 0-1 are used by INSV handler) SFTODO: channels 0-2? doesn't matter that much but comment should be accurate...
     !word -15 ; amplitude
     !word 0   ; pitch
     !word 1   ; duration (twentieths of a second) - C64 bleep is ~(1/20) sec
