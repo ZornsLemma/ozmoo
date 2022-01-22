@@ -1184,9 +1184,18 @@ def make_findswr_executable():
 
 
 def make_insv_executable():
-    # We squeeze this executable into the CFS/RFS workspace at &380-&3DF inclusive.
-    workspace_start = 0x380
-    workspace_end = 0x3e0
+    # SFTODO: At the moment this lives at &A00; this doesn't conflict with FINDSWR because
+    # the loader runs FINDSWR first. This feels like a shame; it wouldn't be too hard to
+    # move the data FINDSWR leaves in page &9 into pages &4/5 and then pages &9/&A would
+    # (ignoring this code) be free during gameplay and might be usable as vmem cache or
+    # something. However, right now &A00 is free and I need somewhere to put this code.
+    # It used to live in the buffers for sound channels 0-2 but it's too big since I added
+    # Copy key support; it's just possible it could be squeezed down if I dropped some
+    # niceties like preserving A on exit even when Copy is pressed, but I'm not too
+    # optimistic. I thought I could put it in the CFS/RFS workspace at &380 but IBOS
+    # uses that.
+    workspace_start = 0xa00
+    workspace_end = 0xb00
     e = Executable("acorn-insv.asm", "INSV", None, workspace_start, ["-DUSE_HISTORY=1"])
     init = e.labels['init']
     assert e.start_addr + len(e.binary()) <= workspace_end

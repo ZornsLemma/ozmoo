@@ -44,7 +44,7 @@ ram_bank_count = $904
 ram_bank_list = $905
 
 !ifdef USE_HISTORY {
-    nominal_cursor_key_status = $380
+    nominal_cursor_key_status = $a00
 }
 
 buffer_keyboard = 0
