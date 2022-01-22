@@ -69,6 +69,8 @@ our_insv
     ; away with this, but it's not ideal. We also ignore the possibility of the
     ; first insertion failing because the buffer is full; again, not ideal but
     ; probably OK in practice.
+    ; SFTODONOW: This in fact does *not* work on the Electron at the moment - it
+    ; does seem to work fine on the BBC though.
     ldy #up_key
     jsr tya_jmp_old_insv
     ldy #down_key
