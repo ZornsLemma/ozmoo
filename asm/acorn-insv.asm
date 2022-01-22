@@ -76,6 +76,55 @@ SFTODOX
 jmp_old_insv
     jmp $ffff ; patched by init
 
+
+    xxxxxx ; code above is 19 bytes, this is 18 bytes with the bit trick
+    ; Check if this is a shifted or unshifted cursor key.
+    tya
+    and #%11111100
+    cmp #%10001100
+    beq unshifted_cursor
+    cmp #%10011100
+    bne not_unshifted_or_shifted_cursor
+    ; This is a shifted (b4 set) cursor key. Set cursor_key_status = 0.
+    txa
+    bitabsopcode
+unshifted_cursor
+    ; This is an unshifted (b4 clear) cursor key. Set cursor_key_status = 1.
+    lda #1
+cursor_key_status_in_a
+    sta cursor_key_status
+    xxxxxx
+
+    xxxxxx ; this is 17 bytes
+    ; Check if this is a shifted or unshifted cursor key.
+    ; SFTODO: Unlike original code, this will set cursor_key_status = 0 for non-cursor-keys - this is *probably* harmless, but might not be
+    stx cursor_key_status ; set cursor_key_status = 0
+    tya
+    and #%11111100
+    cmp #%10011100
+    beq shifted_cursor
+    cmp #%10001100
+    bne not_unshifted_or_shifted_cursor
+    ; This is an unshifted (b4 clear) cursor key.
+    inc cursor_key_status ; set cursor_key_status = 1
+shifted_cursor
+    xxxxxx
+
+    xxxxxx ; 17 bytes
+    ; SFTODO: Although tricksier than the previous version, this leaves cursor_key_status alone except when a cursor key is pressed
+    ; Check if this is a shifted or unshifted cursor key.
+    tya
+    and #%11111100
+    cmp #%10011100
+    beq shifted_cursor
+    cmp #%10001100
+    bne not_unshifted_or_shifted_cursor
+    ; This is an unshifted (b4 clear) cursor key.
+    inx ; set X = 1
+shifted_cursor
+    stx cursor_key_status
+    ldx #buffer_keyboard
+
 ; This code is for initialisation and can be overwritten afterwards.
 init
     lda insv
