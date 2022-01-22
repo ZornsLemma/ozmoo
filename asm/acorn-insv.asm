@@ -20,9 +20,13 @@ copy_key = 139
 ; rather than interfering with zp/low memory allocation which is more global.
 ; SFTODONOW: *Probably* nothing will do a VDU 7 when Ozmoo is running, but it might be possible - e.g. a * command
 ; might do it. Should we arrange (I think there's a *FX call) for VDU 7 beep to use sound channel 3 to avoid
-; trampling on this code? (Might be good to confirm just at BASIC prompt this *can* be a problem first.)
+; trampling on this code? (Might be good to confirm just at BASIC prompt this *can* be a problem first.) - OK, while a permanent
+; comment is probably helpful, this seems to be a non-issue because VDU 7 uses channel 3 by default. Of course a
+; utility ROM's *command might use one of the other channels, but that's not quite as likely.
 ; SFTODO: Not super keen, but we could maybe squeeze this code into CFS/RFS workspace &380-&3DF inclusive instead
-; of the sound buffers.
+; of the sound buffers. Cassette is currently probably not very interesting, it's *borderline* possible someone
+; would want to use RFS to hold a fixed copy of a saved game and using that workspace might break this. This isn't
+; super likely though.
 !if * != nominal_cursor_key_status {
     !error "nominal_cursor_key_status incorrect"
 }
