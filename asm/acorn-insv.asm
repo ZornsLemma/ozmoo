@@ -10,8 +10,8 @@ insv = $22a
 vdu_status = $d0
 cursor_key_status = $27d ; address updated by *FX4
 copy_key = 139
-up_key = 159
-down_key = 158
+shifted_up_key = 159
+shifted_down_key = 158
 
 ; SFTODO: We could claw a byte back by moving nominal_cursor_key_status to a fixed location in page 4/5/6,
 ; although it's perhaps going to be fiddly to do so (we don't want to "waste" a byte for it on tube client side).
@@ -70,10 +70,11 @@ our_insv
     ; first insertion failing because the buffer is full; again, not ideal but
     ; probably OK in practice.
     ; SFTODONOW: This in fact does *not* work on the Electron at the moment - it
-    ; does seem to work fine on the BBC though.
-    ldy #up_key
+    ; does seem to work fine on the BBC though. The parent INSV seems to interpret
+    ; these shifted codes as PLOT and OLD respectively.
+    ldy #shifted_up_key
     jsr tya_jmp_old_insv
-    ldy #down_key
+    ldy #shifted_down_key
 inserted_character_in_y
     ; The character being inserted is in Y. For cursor keys, b4 is set iff this
     ; is a shifted cursor key. To save code (space is very tight here) we don't
