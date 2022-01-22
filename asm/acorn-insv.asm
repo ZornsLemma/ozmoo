@@ -44,52 +44,51 @@ down_key = 158
 ;     Y undefined
 ;     C indicates insertion success/failure, but parent INSV takes care of that
 our_insv
+    tay ; save A for later reference
     ; If this isn't a keyboard buffer insertion, leave things alone.
-    cpx #buffer_keyboard
-    bne jmp_old_insv
+    +assert buffer_keyboard = 0
+    txa ; saves a byte compared to cpx #buffer_keyboard
+    bne tya_jmp_old_insv
     ; If split cursor editing is in progress, leave things alone.
     bit vdu_status
-    bvs jmp_old_insv
-    ; Save A.
-    pha
+    bvs tya_jmp_old_insv
     ; If nominal_cursor_key_status is 1, we always use that.
-    ldy nominal_cursor_key_status
-    bne cursor_key_status_in_y
+    lda nominal_cursor_key_status
+    bne cursor_key_status_in_a
     ; If the Copy key is pressed, fake shifted-up followed by shifted-down
     ; keypresses; this enters split cursor mode without needing a real
-    ; shift+cursor key press and without moving the cursor (except for a brief
-    ; unavoidable flick up onto the previous row). This allows split cursor mode
-    ; to be accessible on the Electron where the keyboard layout means INSV is
-    ; never called with shifted cursor key codes. It also works on the BBC
-    ; machines, if the user wants to use it.
-    cmp #copy_key
-    bne inserted_character_in_a
-    ; SFTODO: We are ignoring the possibility of the keyboard buffer being full
-    ; here... This is probably tolerable/unavoidable (what could we actually do about
-    ; it, even if we weren't tight for code space here?) but think about it fresh.
-    lda #up_key
-    jsr jmp_old_insv
-    lda #down_key
-    jsr jmp_old_insv
-    pla ; return with original A preserved as we should
-    ; We leave C set from the second jmp_old_insv call. SFTOD: OK!?!?!
-    rts
-inserted_character_in_a
-    ; The character being inserted is in A. For cursor keys, b4 is set iff this
+    ; shift+cursor key press while leaving the cursor where it is (except for a
+    ; brief flick up to the previous line). This allows split cursor mode to be
+    ; accessible on the Electron where the keyboard layout means INSV is never
+    ; called with shifted cursor key codes. It also works on the BBC machines,
+    ; if the user wants to use it.
+    cpy #copy_key
+    bne inserted_character_in_y
+    ; SFTODO: Note that in this case we are *not* preserving A on exit as we
+    ; should - our caller will see A=down_key not A=copy_key. In practice we get
+    ; away with this, but it's not ideal. We also ignore the possibility of the
+    ; first insertion failing because the buffer is full; again, not ideal but
+    ; probably OK in practice.
+    ldy #up_key
+    jsr tya_jmp_old_insv
+    ldy #down_key
+inserted_character_in_y
+    ; The character being inserted is in Y. For cursor keys, b4 is set iff this
     ; is a shifted cursor key. To save code (space is very tight here) we don't
     ; actually check if it *is* a cursor key; for other keys we will therefore
     ; end up setting cursor_key_status to arbitrary 0/1 values, but that won't
     ; be noticeable because it doesn't affect those keys. This does mean the
     ; Ctrl key will be ignored in combination with cursor keys instead of being
     ; treated as distinct, but I think that's OK.
+    tya
     and #%00010000
     eor #%00010000
-    ; Y is 0 at this point as we didn't "bne cursor_key_status_in_y" above.
-    beq cursor_key_status_in_y
-    iny ; Y=1
-cursor_key_status_in_y
-    sty cursor_key_status
-    pla
+    beq cursor_key_status_in_a
+    lda #1
+cursor_key_status_in_a
+    sta cursor_key_status
+tya_jmp_old_insv
+    tya
 jmp_old_insv
     jmp $ffff ; patched by init
 
