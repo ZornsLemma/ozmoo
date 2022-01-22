@@ -80,7 +80,10 @@ our_insv
     ; be processed correctly and engage split cursor mode. But we don't "need" to
     ; fall through to the following code in that case - though it may not hurt.
     ; The trick here is to do something a bit like this without bloating this
-    ; code.
+    ; code. "stx cursor_key_status" will set it to 0, but still takes 3 bytes.
+    ; (The thing is that the shifted codes are *reused* for something different on
+    ; the Electron, so my initial strategy of "fake those and pass them through"
+    ; doesn't work.)
     ldy #shifted_up_key
     jsr tya_jmp_old_insv
     ldy #shifted_down_key
