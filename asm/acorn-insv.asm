@@ -72,6 +72,15 @@ our_insv
     ; SFTODONOW: This in fact does *not* work on the Electron at the moment - it
     ; does seem to work fine on the BBC though. The parent INSV seems to interpret
     ; these shifted codes as PLOT and OLD respectively.
+    ; SFTODONOW: I think maybe a fix would be (ignoring code size problems) to do:
+    ; lda #0:sta cursor_key_status
+    ; ldy #unshifted_up_key:jsr tya_jmp_old_insv
+    ; ldy #unshifted_down_key
+    ; - my reasoning being that once we've set cks to 0, the unshifted up key will
+    ; be processed correctly and engage split cursor mode. But we don't "need" to
+    ; fall through to the following code in that case - though it may not hurt.
+    ; The trick here is to do something a bit like this without bloating this
+    ; code.
     ldy #shifted_up_key
     jsr tya_jmp_old_insv
     ldy #shifted_down_key
