@@ -10,6 +10,8 @@ insv = $22a
 vdu_status = $d0
 cursor_key_status = $27d ; address updated by *FX4
 copy_key = 139
+up_key = 159
+down_key = 158
 
 ; SFTODO: We could claw a byte back by moving nominal_cursor_key_status to a fixed location in page 4/5/6,
 ; although it's perhaps going to be fiddly to do so (we don't want to "waste" a byte for it on tube client side).
@@ -43,6 +45,7 @@ copy_key = 139
 ;     C indicates insertion success/failure, but parent INSV takes care of that
 our_insv
     tay ; save A for later reference
+    ; If this isn't a keyboard buffer insertion, leave things alone.
     +assert buffer_keyboard = 0
     txa ; saves a byte compared to cpx #buffer_keyboard
     bne tya_jmp_old_insv
@@ -52,18 +55,28 @@ our_insv
     ; If nominal_cursor_key_status is 1, we always use that.
     lda nominal_cursor_key_status
     bne cursor_key_status_in_a
-    ; SFTODO: *If* we are willing (perhaps no hardship; need to think about it) to ignore ctrl in combination
-    ; with cursor keys, at this point we could just (ignoring new copy key stuff) test b4 and invert it to set
-    ; cursor_key_status. This would set cursor_key_status to "arbitrary" 0/1 values for non cursor keys, but
-    ; no one can tell because it only makes a difference when a cursor key is pressed. And once we do enter
-    ; split cursor mode the earlier test of vdu_status means we don't get here in the first place.
-    ; SFTODO: COMMENT
+    ; If the Copy key is pressed, fake shifted-up followed by shifted-down
+    ; keypresses; this enters split cursor mode without needing a real
+    ; shift+cursor key press. This allows split cursor mode to be accessible on
+    ; the Electron where the keyboard layout means INSV is never called with
+    ; shifted cursor key codes. It also works on the BBC machines, if the user
+    ; wants to use it.
     cpy #copy_key
-    bne SFTODOA
-    ldy #159
-    jsr SFTODOX
-    ldy #158
-SFTODOA
+    bne inserted_character_in_y
+    ; SFTODO: Note that in this case we are *not* preserving A on exit as we
+    ; should - our caller will see A=down_key not A=copy_key. In practice we
+    ; get away with this, but it's not ideal.
+    ldy #up_key
+    jsr tya_jmp_old_insv
+    ldy #down_key
+inserted_character_in_y
+    ; The character being inserted is in Y. For cursor keys, b4 is set iff this
+    ; is a shifted cursor key. To save code (space is very tight here) we don't
+    ; actually check if it *is* a cursor key; for other keys we will therefore
+    ; end up setting cursor_key_status to arbitrary 0/1 values, but that won't
+    ; be noticeable because it doesn't affect those keys. This does mean the
+    ; Ctrl key will be ignored in combination with cursor keys instead of being
+    ; treated as distinct, but I think that's OK.
     tya
     and #%00010000
     eor #%00010000
@@ -71,8 +84,6 @@ SFTODOA
     lda #1
 cursor_key_status_in_a
     sta cursor_key_status
-not_unshifted_or_shifted_cursor
-SFTODOX
 tya_jmp_old_insv
     tya
 jmp_old_insv
