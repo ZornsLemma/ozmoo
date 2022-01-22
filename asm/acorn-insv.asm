@@ -84,6 +84,7 @@ our_insv
     ; (The thing is that the shifted codes are *reused* for something different on
     ; the Electron, so my initial strategy of "fake those and pass them through"
     ; doesn't work.)
+    ; SFTODO: I'm not entirely sure how this works on BBC - does it work relaibly? Doesn't actually matter if reworking it anyway, but what if we are in *FX4,1 state when we send the shifted up key through? We haven't altered cursor_key_status at this point.
     ldy #shifted_up_key
     jsr tya_jmp_old_insv
     ldy #shifted_down_key
