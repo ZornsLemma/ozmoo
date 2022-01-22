@@ -41,28 +41,25 @@ our_insv
     tay ; save A for later reference
     +assert buffer_keyboard = 0
     txa ; saves a byte compared to cpx #buffer_keyboard
-    bne jmp_old_insv
+    bne tya_jmp_old_insv
     ; If split cursor editing is in progress, leave things alone.
     bit vdu_status
-    bvs jmp_old_insv
+    bvs tya_jmp_old_insv
     ; If nominal_cursor_key_status is 1, we always use that.
     lda nominal_cursor_key_status
     bne cursor_key_status_in_a
+    ; SFTODO: *If* we are willing (perhaps no hardship; need to think about it) to ignore ctrl in combination
+    ; with cursor keys, at this point we could just (ignoring new copy key stuff) test b4 and invert it to set
+    ; cursor_key_status. This would set cursor_key_status to "arbitrary" 0/1 values for non cursor keys, but
+    ; no one can tell because it only makes a difference when a cursor key is pressed. And once we do enter
+    ; split cursor mode the earlier test of vdu_status means we don't get here in the first place.
     ; SFTODO: COMMENT
     cpy #copy_key
     bne SFTODOA
-    ;ldy #159
-    ;jsr SFTODOX
-    ;ldy #158
+    ldy #159
+    jsr SFTODOX
+    ldy #158
 SFTODOA
-    ; Check if this is a shifted or unshifted cursor key.
-    tya
-    and #%11101100
-    cmp #%10001100
-    bne not_unshifted_or_shifted_cursor
-    ; This is a shifted (b4 set) or unshifted (b4 clear) cursor key. Set
-    ; cursor_key_status = !b4, so unshifted cursor keys return codes to the
-    ; application and shifted cursor keys trigger split cursor editing.
     tya
     and #%00010000
     eor #%00010000
@@ -72,58 +69,10 @@ cursor_key_status_in_a
     sta cursor_key_status
 not_unshifted_or_shifted_cursor
 SFTODOX
+tya_jmp_old_insv
     tya
 jmp_old_insv
     jmp $ffff ; patched by init
-
-
-    xxxxxx ; code above is 19 bytes, this is 18 bytes with the bit trick
-    ; Check if this is a shifted or unshifted cursor key.
-    tya
-    and #%11111100
-    cmp #%10001100
-    beq unshifted_cursor
-    cmp #%10011100
-    bne not_unshifted_or_shifted_cursor
-    ; This is a shifted (b4 set) cursor key. Set cursor_key_status = 0.
-    txa
-    bitabsopcode
-unshifted_cursor
-    ; This is an unshifted (b4 clear) cursor key. Set cursor_key_status = 1.
-    lda #1
-cursor_key_status_in_a
-    sta cursor_key_status
-    xxxxxx
-
-    xxxxxx ; this is 17 bytes
-    ; Check if this is a shifted or unshifted cursor key.
-    ; SFTODO: Unlike original code, this will set cursor_key_status = 0 for non-cursor-keys - this is *probably* harmless, but might not be
-    stx cursor_key_status ; set cursor_key_status = 0
-    tya
-    and #%11111100
-    cmp #%10011100
-    beq shifted_cursor
-    cmp #%10001100
-    bne not_unshifted_or_shifted_cursor
-    ; This is an unshifted (b4 clear) cursor key.
-    inc cursor_key_status ; set cursor_key_status = 1
-shifted_cursor
-    xxxxxx
-
-    xxxxxx ; 17 bytes
-    ; SFTODO: Although tricksier than the previous version, this leaves cursor_key_status alone except when a cursor key is pressed
-    ; Check if this is a shifted or unshifted cursor key.
-    tya
-    and #%11111100
-    cmp #%10011100
-    beq shifted_cursor
-    cmp #%10001100
-    bne not_unshifted_or_shifted_cursor
-    ; This is an unshifted (b4 clear) cursor key.
-    inx ; set X = 1
-shifted_cursor
-    stx cursor_key_status
-    ldx #buffer_keyboard
 
 ; This code is for initialisation and can be overwritten afterwards.
 init
