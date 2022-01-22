@@ -1184,17 +1184,12 @@ def make_findswr_executable():
 
 
 def make_insv_executable():
-    # We squeeze this executable into the sound buffers at &840-&87f inclusive.
-    # The resident part of this code is small enough that the buffer for channel
-    # 3 is still usable without corrupting it.
-    sound_buffer_0 = 0x840
-    sound_buffer_2 = 0x860
-    sound_buffer_3 = 0x870
-    sound_buffer_3_end = 0x880
-    e = Executable("acorn-insv.asm", "INSV", None, sound_buffer_0, ["-DUSE_HISTORY=1"])
+    # We squeeze this executable into the CFS/RFS workspace at &380-&3DF inclusive.
+    workspace_start = 0x380
+    workspace_end = 0x3e0
+    e = Executable("acorn-insv.asm", "INSV", None, workspace_start, ["-DUSE_HISTORY=1"])
     init = e.labels['init']
-    assert init <= sound_buffer_3
-    assert e.start_addr + len(e.binary()) <= sound_buffer_3_end
+    assert e.start_addr + len(e.binary()) <= workspace_end
     e.exec_addr = host | init
     return e
 
