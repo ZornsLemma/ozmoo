@@ -52,6 +52,7 @@ terminating_characters !byte $0d
 !ifdef Z5PLUS {	
 	!byte $81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c
 
+; SFTODONOW: I believe parse_terminating_characters is called only from discardable init code, so it too could be moved to be discardable init code.
 parse_terminating_characters
 	; read terminating characters list ($2e)
 	; must be one of function keys 129-154, 252-254.
@@ -63,6 +64,7 @@ parse_terminating_characters
 	; 254 single click (not C64)
 	; 255 means any function key
 	ldy #header_terminating_chars_table
+; SFTODONOW: I believe parse_terminating_characters is called only from discardable init code, so it too could be moved to be discardable init code.
 	jsr read_header_word
 	cpx #0
 	bne +
@@ -1582,6 +1584,7 @@ read_text
 	sty .read_text_column
 	dey ; the length of the text
 !ifdef USE_HISTORY {
+	; SFTODONOW: Isn't this effectively a no-op? Is this present upstream? If so perhaps report it, if not why is it different here?
 	bne ++
 	; all input deleted, so enable history again
 ;	jsr enable_history_keys

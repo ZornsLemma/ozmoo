@@ -261,7 +261,15 @@ def check_if_special_game():
         if cmd_args.interpreter_num is None:
             cmd_args.interpreter_num = 2
         cmd_args.function_keys = True
-        cmd_args.no_cursor_editing = True # SFTODONOW!?
+        # Ozmoo command history doesn't work in Beyond Zork; this probably applies on the Commodore machines
+        # too but I haven't been able to test it. I think this is because the cursor keys are specified as
+        # terminating characters so they are passed to the game instead of being left for the Ozmoo read line
+        # code to deal with. (frotz command history does work in Beyond Zork, FWIW, although I can't help
+        # thinking Ozmoo's beaviour is more technically correct, not that I'm any expert here.) There's
+        # therefore no point bloating the code with history support.
+        cmd_args.no_history = True
+        # SFTODONOW: WRIOTE ABOUT THIS
+        cmd_args.no_cursor_editing = False # True # SFTODONOW!?
         # We don't patch if the game is only going to be run in 80 column modes.
         if not cmd_args.only_80_column:
             patch = beyond_zork_releases[game_key].split(" ")
@@ -2154,6 +2162,6 @@ show_deferred_output()
 
 # SFTODONOW: We should probably offer the option to set CHECK_ERRORS; I don't think this has ever been tested.
 
-# SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat.
+# SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat. (This *may* now be fixed in practice by not building with history support, but it would be good to check older versions and see if that's why or if there is some other source of bloat here.)
 
-# SFTODONOW: Down cursor key doesn't seem to work in menu at start of Beyond Zork!?
+# SFTODONOW: Down cursor key doesn't seem to work in menu at start of Beyond Zork!? OK, this seems to start working when you build (as is probably now being done automatically) with "no history", but I don't understand why that makes a difference and it would be good to get to the bottom of this in case there's a lurking bug.
