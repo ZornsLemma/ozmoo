@@ -55,7 +55,7 @@ our_insv
 
     pha ; save original A
     ; If nominal_cursor_key_status is 1, we always use that.
-    ldy nominal_cursor_key_status
+    lda nominal_cursor_key_status
     bne cursor_key_status_in_a
     ; Check for Copy key.
     cmp #copy_key
