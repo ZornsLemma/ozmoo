@@ -2155,3 +2155,5 @@ show_deferred_output()
 # SFTODONOW: We should probably offer the option to set CHECK_ERRORS; I don't think this has ever been tested.
 
 # SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat.
+
+# SFTODONOW: Down cursor key doesn't seem to work in menu at start of Beyond Zork!?
