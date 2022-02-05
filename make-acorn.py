@@ -268,8 +268,8 @@ def check_if_special_game():
         # thinking Ozmoo's beaviour is more technically correct, not that I'm any expert here.) There's
         # therefore no point bloating the code with history support.
         cmd_args.no_history = True
-        # SFTODONOW: WRIOTE ABOUT THIS
-        cmd_args.no_cursor_editing = False # True # SFTODONOW!?
+        # We don't override the user's choice of --no-cursor-editing; this is just a matter of user preference,
+        # both work in Beyond Zork the same as they would anywhere else.
         # We don't patch if the game is only going to be run in 80 column modes.
         if not cmd_args.only_80_column:
             patch = beyond_zork_releases[game_key].split(" ")
@@ -2165,3 +2165,5 @@ show_deferred_output()
 # SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat. (This *may* now be fixed in practice by not building with history support, but it would be good to check older versions and see if that's why or if there is some other source of bloat here.)
 
 # SFTODONOW: Down cursor key doesn't seem to work in menu at start of Beyond Zork!? OK, this seems to start working when you build (as is probably now being done automatically) with "no history", but I don't understand why that makes a difference and it would be good to get to the bottom of this in case there's a lurking bug.
+
+# SFTODONOW: In Beyond Zork with --no-cursor-editing, COPY keys acts like f2 (=STATUS). Not necessarily a big deal but suggests something is subtlely awry. (Might not actually be f2 technically; I am pressing f2 on my PC keyboard but that may be f1 or something really. I don't think that's the issue, just don't get too hung up on *f2* specifically; key point is that COPY acts like one of the f keys and there's no obvious reason it should.) (FWIW, f2 *does* also work without --no-cursor-editing.)
