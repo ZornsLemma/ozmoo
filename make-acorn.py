@@ -2153,3 +2153,5 @@ show_deferred_output()
 # - notes on installing a game to NFS
 
 # SFTODONOW: We should probably offer the option to set CHECK_ERRORS; I don't think this has ever been tested.
+
+# SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat.
