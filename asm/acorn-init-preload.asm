@@ -364,7 +364,6 @@ deletable_init_start
     jsr print_byte_as_hex
     ; }}}
 }
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
     ; fall through to .prepare_for_initial_load
 ; End of deletable_init_start
@@ -420,6 +419,7 @@ deletable_init_start
     ; The directory name will have the top bit set iff the file is locked; we
     ; don't care about that here, so we need to strip it off. It's harmless to
     ; just do this for all characters.
+    ; SFTODO: Should we also be case-insensitive, just to be nice?
     and #$7f
     cmp .data_filename-(-8 & $ff),x
     bne .not_this_entry
@@ -436,6 +436,8 @@ deletable_init_start
     sta .dir_ptr
     bne .find_file_loop
     +os_error 0, "DATA not found"
+.data_misaligned
+    +os_error 0, "DATA misaligned"
 .file_found
     ; We found the file's name using sector 0, we now want to look at the
     ; corresponding part of sector 1. Adjust .dir_ptr for convenience.
@@ -449,6 +451,12 @@ deletable_init_start
     iny
     lda (.dir_ptr),y
     sta readblocks_base
+    ; In this case the start sector must be even so a 512-byte read never
+    ; straddles a track boundary. make-acorn.py takes care of this when building
+    ; the disc image but let's double check this hasn't been lost since, as this
+    ; is discardable init code.
+    lsr
+    bcs .data_misaligned
 } else {
     sta dividend + 1
     iny
@@ -461,10 +469,20 @@ deletable_init_start
     jsr divide16
     lda division_result
     sta readblocks_base
+    ; In this case the start sector must be the first sector on a track as
+    ; readblocks assumes this to simplify its calculations. make-acorn.py takes
+    ; care of this when building the disc image but let's double check this
+    ; hasn't been lost since, as this is discardable init code.
+    ; SFTODO: This won't catch errors if the DATA file on the second surface has
+    ; been misaligned. We could check the catalogue on that surface, but it's
+    ; not trivial to do.
+    lda remainder
+    bne .data_misaligned
 }
     ; }}}
 }
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
 
