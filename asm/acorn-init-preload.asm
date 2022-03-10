@@ -482,7 +482,6 @@ deletable_init_start
     ; }}}
 }
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifdef VMEM {
     ; How much RAM do we have available for game data?
 
@@ -607,6 +606,7 @@ deletable_init_start
     ; }}}
 }
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Add any spare shadow RAM to .ram_pages
 
@@ -640,7 +640,7 @@ deletable_init_start
 .no_shadow_cache
 ; }}}
 }
-}
+} ; end ACORN_SWR
 
     ; {{{ Add spare main RAM to .ram_pages.
     ; We also have some pages between data_start and flat_ramtop. We're doing a
