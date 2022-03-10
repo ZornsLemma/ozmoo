@@ -173,6 +173,8 @@ deletable_init_start
     ; choose a base of 133 (=ZSCII f1) for f0 because if we set a base of 132 so
     ; Acorn f1=ZSCII f1, Acorn f0 would act like cursor right. If we want Acorn
     ; f1=ZSCII f1 we'll fix that up in the translation table. SFTODO: I HAVEN'T ADDED THIS OPTION TO THE TRANSLATION TABLE YET
+    ; SFTODONOW: This is likely to change as part of addressing SFTODONOW elsewhere
+    ; about COPY acting like one of the function keys in Beyond Zork.
     lda #osbyte_rw_function_key_status
     ldx #133
     jsr do_osbyte_y_0
@@ -186,8 +188,9 @@ deletable_init_start
     ; }}}
 }
 
-    ; The low byte of mempointer is permanently 0. (SFTODO: This is technically
-    ; redundant as we already cleared all our zero page.)
+    ; The low byte of mempointer is permanently 0. (SF: This is technically
+    ; redundant as we already cleared all our zero page, but let's be explicit
+    ; as this is discardable init code.)
     lda #0
     sta mempointer
 
