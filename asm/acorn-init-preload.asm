@@ -347,16 +347,14 @@ deletable_init_start
     ; }}}
 }
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     +prepare_static_high_memory_inline
     +init_readtime_inline
     jsr init_cursor_control
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     ; {{{ Show some debug information.
-    ; Call deletable_screen_init_1 here so we can output succesfully; this is a
-    ; little bit hacky but not a huge problem (and this is debug-only code).
-    jsr deletable_screen_init_1
+    ; Call streams_init here so we can output succesfully; this is a little bit
+    ; hacky but not a huge problem (and this is debug-only code).
     jsr streams_init
     jsr print_following_string
     !text 13, "program_start=$", 0
@@ -366,6 +364,7 @@ deletable_init_start
     jsr print_byte_as_hex
     ; }}}
 }
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
     ; fall through to .prepare_for_initial_load
 ; End of deletable_init_start
