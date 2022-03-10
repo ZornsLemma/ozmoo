@@ -1220,10 +1220,6 @@ progress_indicator_fractional_bits = 7
     jsr osbyte ; set X=cursor X, Y=cursor Y
     cpx #0
     bne .cursor_not_in_first_column
-    ; The cursor's in the first column, so this is a restart; the loader prints
-    ; the "Loading: " prefix for us but a restart doesn't, so do it now. By
-    ; doing this here instead of in the restart code, this can be discardable
-    ; init code.
     ldx #<.loading_string
     lda #>.loading_string
     jsr printstring_os
