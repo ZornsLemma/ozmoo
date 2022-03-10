@@ -606,7 +606,6 @@ deletable_init_start
     ; }}}
 }
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Add any spare shadow RAM to .ram_pages
 
@@ -647,7 +646,7 @@ deletable_init_start
     ; constant subtraction in code here, but a) this is deletable init code so
     ; it doesn't really cost anything b) if we don't, the relocation code fails
     ; because we have a variation which doesn't follow the simple fixed
-    ; relationship we expect.
+    ; relationship it expects.
     lda #>flat_ramtop
     sec
     sbc #>data_start
@@ -669,6 +668,7 @@ deletable_init_start
     ; - .ram_pages >= ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks *
     ;   vmem_block_pagecount), i.e. that we have enough RAM for the game's
     ;   dynamic memory and two 512-byte blocks of virtual memory cache.
+    ;   SFTODONOW: It's probably not hard to assert this; should we?
     ; - the game always has at least one 512-byte block of non-dynamic memory.
 
     ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
@@ -684,6 +684,7 @@ deletable_init_start
 +
     ; }}}
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     ; {{{ Set nonstored_pages to the effective dynamic RAM size.
     ; Set nonstored_pages to the number of pages of RAM we are going to treat as
     ; dynamic memory. This is normally the game's actual dynamic memory rounded
