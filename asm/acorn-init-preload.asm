@@ -684,7 +684,6 @@ deletable_init_start
 +
     ; }}}
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     ; {{{ Set nonstored_pages to the effective dynamic RAM size.
     ; Set nonstored_pages to the number of pages of RAM we are going to treat as
     ; dynamic memory. This is normally the game's actual dynamic memory rounded
@@ -754,7 +753,7 @@ deletable_init_start
 .b_plus_private_12k
     lda #>(flat_ramtop + b_plus_private_ram_size)
 .upper_bound_in_a
-} else {
+} else { ; not ACORN_SWR_MEDIUM_OR_BIG_DYNMEM, i.e. ACORN_SWR_SMALL_DYNMEM
     lda #>flat_ramtop
 }
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
@@ -820,8 +819,9 @@ deletable_init_start
     ; The above adjustments deliberately ignored some general constraints on
     ; nonstored_pages to simplify the code; apply those constraints now.
     jsr .constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
-}
+} ; end not ACORN_NO_DYNMEM_ADJUST
     ; }}}
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
     ; {{{ Set .ram_pages -= nonstored_pages, i.e. set .ram_pages to the number
     ; of RAM pages we have available as virtual memory cache.
