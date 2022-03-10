@@ -318,11 +318,12 @@ deletable_init_start
     lda screen_mode
     beq .mode_0
     ; We have as many pages of cache as there are between PAGE and
-    ; program_start. In practice this is whatever the loader deliberately set
-    ; aside for us plus maybe an extra page if we had to relocate down to
-    ; PAGE+256 to keep the right alignment. (That extra page must be below
-    ; $3000; the loader enforces this in general, but we have to do it here as
-    ; the loader doesn't know about the extra page.)
+    ; min(program_start, shadow_start). We can't use memory above shadow_start
+    ; to cache shadow RAM, of course; this is unlikely in practice (it would
+    ; imply a very high PAGE or a very large shadow cache) and the loader will
+    ; also try to enforce this restriction, but the double page alignment just
+    ; might cause it to occur without the loader knowing so we have to check
+    ; here anyway.
     lda #osbyte_read_oshwm
     jsr osbyte
     sty vmem_cache_start_mem
@@ -346,6 +347,7 @@ deletable_init_start
     ; }}}
 }
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     +prepare_static_high_memory_inline
     +init_readtime_inline
     jsr init_cursor_control
