@@ -86,16 +86,16 @@ deletable_init_start
     ; for consistency to clear everything.
     +assert bulk_clear_start < bulk_clear_end
     lda #0
-    tax
-.sta_bulk_clear_start_x
--   sta bulk_clear_start,x ; patched by following code
-    inx
+.sta_bulk_clear_start
+-   sta bulk_clear_start ; patched by following code
+    inc .sta_bulk_clear_start + 1
     bne +
-    inc .sta_bulk_clear_start_x + 2
-+   cpx #<bulk_clear_end
+    inc .sta_bulk_clear_start + 2
++   ldx .sta_bulk_clear_start + 1
+    cpx #<bulk_clear_end
     bne -
-    ldy .sta_bulk_clear_start_x + 2
-    cpy #>bulk_clear_end
+    ldx .sta_bulk_clear_start + 2
+    cpx #>bulk_clear_end
     bne -
 
     ; Allocation of maxwords and wordoffset is handled specially and they won't
