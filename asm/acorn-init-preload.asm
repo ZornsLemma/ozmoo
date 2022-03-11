@@ -1058,15 +1058,14 @@ deletable_init_start
 }
 ; SFTODONOW: Should we show vmap_max_entries and/or vmap_meaningful_entries if "show runtime" is in effect?
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
+
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
     ; convert_index_x_to_ram_bank_and_address to decide when a vmem block is in
     ; shadow RAM. (If we have a lot of sideways RAM, it might be impossible for
     ; a vmem block index to be high enough to touch shadow RAM, but that doesn't
     ; matter here.)
-    ; SFTODO: I *think* this code is correct and 8-bit-overflow free, but - probably once I've rethought the Integra-B SWR hole support - it may be cleaner to convert this to work with a vmem index as well. SFTODONOW: I THINK THIS COMMENT IS OUTDATED BUT THIS ALL COULD DO WITH A RE-REVIEW
     lda .sideways_ram_pages + 1
     lsr ; convert from pages to 512-byte vmem blocks
     pha
@@ -1080,13 +1079,15 @@ deletable_init_start
     beq +
     ; We have a result which won't fit in a single byte, but since we know the
     ; maximum vmap index is 254, we can just set vmem_blocks_in_sideways_ram to
-    ; 255. SFTODONOW: This is fine if it really is a vmap index, which I think it is, but need to double check
+    ; 255 to effectively disable the check for vmem in shadow RAM.
     lda #255
     sta vmem_blocks_in_sideways_ram
 +
+; SFTODONOW: Dump vmem_blocks_in_sideways_ram if "show runtime info"?
     ; }}}
 }
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifndef PREOPT {
     ; {{{ Sort vmap to avoid drive head skipping during loading.
 

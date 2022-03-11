@@ -157,6 +157,7 @@ shadow_start = $3000
 } else {
     vmap_max_size = ACORN_VMEM_BLOCKS
 }
++assert vmap_max_size <= 255 ; so vmap index is 0-254
 
 ; If vmap_max_size could be zero, vmap_max_entries would be zero as well and the
 ; vmem code would not behave correctly. This should be impossible, noting that
