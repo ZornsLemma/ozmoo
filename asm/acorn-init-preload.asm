@@ -821,7 +821,6 @@ deletable_init_start
     jsr .constrain_nonstored_pages ; SFTODO: INLINE IF ONLY ONE CALLER? MAYBE NOT.
 } ; end not ACORN_NO_DYNMEM_ADJUST
     ; }}}
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
     ; {{{ Set .ram_pages -= nonstored_pages, i.e. set .ram_pages to the number
     ; of RAM pages we have available as virtual memory cache.
@@ -835,10 +834,6 @@ deletable_init_start
     ; }}}
 ; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
-    ; SFTODONOW: Not just here - I wonder if I should aggresively factor some of this into
-    ; subroutines and/or actually indent nested !if blocks, yes that isn't the general Ozmoo
-    ; style, but this code is !ifdef-tastic. (But do note acme warns noisily if labels are
-    ; not flush left, which somewhat spoils this idea.)
 !ifdef ACORN_SWR {
     ; {{{ Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
     lda #0
@@ -883,6 +878,7 @@ deletable_init_start
     sta vmem_blocks_in_main_ram
 }
     ; }}}
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
@@ -918,8 +914,8 @@ deletable_init_start
     stx sideways_ram_hole_start
 .no_sideways_ram_hole
     ; }}}
-}
-}
+} ; end ACORN_PRIVATE_RAM_SUPPORTED
+} ; end ACORN_SWR
 
     ; {{{ Calculate vmap_max_entries.
 
