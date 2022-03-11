@@ -878,7 +878,6 @@ deletable_init_start
     sta vmem_blocks_in_main_ram
 }
     ; }}}
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     ; {{{ Calculate sideways_ram_hole_start for the Integra-B.
@@ -893,6 +892,7 @@ deletable_init_start
     ;   sideways_ram_hole_start > 255 >= vmap_max_size
     ; and therefore we effectively don't have a hole, so we set it to
     ; sideways_ram_hole_start_none.
+    ; SFTODONOW: It is probably correct, but it's not currently obvious to me that subtracting vmem_blocks_stolen_in_first_bank *is* correct - re-review this and comment why if it is correct (or obviously fix if it isn't).
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start
     lda #0
@@ -916,6 +916,7 @@ deletable_init_start
     ; }}}
 } ; end ACORN_PRIVATE_RAM_SUPPORTED
 } ; end ACORN_SWR
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
     ; {{{ Calculate vmap_max_entries.
 
