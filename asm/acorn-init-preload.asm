@@ -1135,7 +1135,6 @@ deletable_init_start
     ; but it's discardable init code so it's not really harmful and it seems
     ; best for support purposes to keep the code identical whether or not preopt
     ; data is supplied.)
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 .temp_l = zp_temp
 .temp_h_with_timestamp = zp_temp + 1
 .temp_h_without_timestamp = zp_temp + 2
@@ -1191,6 +1190,7 @@ deletable_init_start
     jsr osrdch
 }
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     ; SFTODO: Rename .dpages_to_load to .progress_indicator_full_steps or similar? The progress indicator is block-size agnostic - what we're saying is "we will call update_progress_indicator n times and we want it to go from empty to start with to full after n calls".
     ; {{{ Set .dpages_to_load for the progress indicator.
 !ifdef VMEM {
