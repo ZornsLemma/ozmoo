@@ -1087,18 +1087,18 @@ deletable_init_start
     ; }}}
 }
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifndef PREOPT {
     ; {{{ Sort vmap to avoid drive head skipping during loading.
 
     ; vmem_highbyte_mask might be 0 and that enables some small optimisations, but
     ; in this one-off discardable init code we favour simplicity and don't bother.
 
-    ; Sort vmap into ascending order, preserving the timestamps but using just the
-    ; addresses as keys. This avoids the drive head jumping around during the
-    ; initial load. The build system can't do this sort, because we're sorting
-    ; the truncated list with just vmap_meaningful_entries not the full list of
-    ; vmap_max_size entries.
+    ; Sort vmap into ascending order, preserving the timestamps but using just
+    ; the addresses as keys. This avoids the drive head jumping around during
+    ; the initial load. The build system can't do this sort, because we're
+    ; sorting the truncated list with just vmap_meaningful_entries (which will
+    ; vary with the RAM available at runtime) not the full list of vmap_max_size
+    ; entries.
     ;
     ; This only happens once and it's not a huge list so while we don't want it
     ; to be really slow, compactness and simplicity of code are also important.
@@ -1121,6 +1121,8 @@ deletable_init_start
     ; Invariants:
     ;       1 <= x <= length(vmap_z) <= vmap_max_size <= 255
     ;      -1 <= y < x, so -1 <= y <= 254
+    ; So x and y can be 8-bit unsigned values without any problems, provided we
+    ; take care to recognise y=255 as meaning -1. SFTODONOW: WE PROB DO, BUT CHECK...
     ;
     ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
     ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
@@ -1132,7 +1134,8 @@ deletable_init_start
     ; (We could simply not include this code if we don't have any preopt data,
     ; but it's discardable init code so it's not really harmful and it seems
     ; best for support purposes to keep the code identical whether or not preopt
-    ; data is supplied or not.)
+    ; data is supplied.)
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 .temp_l = zp_temp
 .temp_h_with_timestamp = zp_temp + 1
 .temp_h_without_timestamp = zp_temp + 2
