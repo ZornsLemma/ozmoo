@@ -916,7 +916,6 @@ deletable_init_start
     ; }}}
 } ; end ACORN_PRIVATE_RAM_SUPPORTED
 } ; end ACORN_SWR
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
     ; {{{ Calculate vmap_max_entries.
 
@@ -951,9 +950,11 @@ deletable_init_start
     sta vmap_max_entries
 +
 }
+; SFTODONOW: Should I show vmap_max_entries if ACORN_SHOW_RUNTIME_INFO?
 
     jsr .check_vmap_max_entries ; SFTODO: inline this?!
     ; }}}
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; {{{ Remove promoted dynmem from vmap, set vmap_meaningful_entries
