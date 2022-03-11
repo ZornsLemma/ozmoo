@@ -1174,6 +1174,7 @@ deletable_init_start
     sta vmap_z_l,y
     lda .temp_h_with_timestamp
     sta vmap_z_h,y
+; SFTODONOW: Is there any risk vmap_meaningful_entries==1 here and therefore we go wrong here when X=1:inx->X=2?
     inx
     cpx vmap_meaningful_entries
     bne .outer_loop
