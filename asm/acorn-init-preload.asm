@@ -954,7 +954,6 @@ deletable_init_start
 
     jsr .check_vmap_max_entries ; SFTODO: inline this?!
     ; }}}
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 
 !ifndef ACORN_NO_DYNMEM_ADJUST {
     ; {{{ Remove promoted dynmem from vmap, set vmap_meaningful_entries
@@ -972,9 +971,10 @@ deletable_init_start
     ;
     ; If vmap_meaningful_entries < vmap_max_entries, the dummy entries do have
     ; RAM backing them and can be used for vmem caching during gameplay; we just
-    ; don't have anything to load into them to start with. If we hadn't got rid
-    ; of vmap_used_entries, we might use to describe this situation, but the
-    ; dummy entries do the job. They are $0000, so:
+    ; don't have anything to load into them to start with. If the Acorn port
+    ; hadn't mostly got rid of vmap_used_entries as a distinct value, we might
+    ; use to describe this situation, but the dummy entries do the job. They are
+    ; $0000, so:
     ; - They have the oldest possible timestamp and the random junk they contain
     ;   will be evicted in preference to anything else when/if we need to load
     ;   more blocks from disc during play.
@@ -983,8 +983,8 @@ deletable_init_start
     ;   ever be accessed by the vmem code when the game requests access to a
     ;   read-only block of data.
     ;
-    ; In principle we could create valid entries for part of the game which
-    ; aren't already present in the vmap intead of dummy entries, which would
+    ; In principle we could create valid entries for parts of the game which
+    ; aren't already present in the vmap instead of dummy entries, which would
     ; cause us to load a little more data during the initial load. This isn't
     ; entirely straightforward - remember the use of PREOPT can mean the vmap
     ; contains an arbitrarily ordered subset of the game's 512-byte blocks; it
@@ -992,12 +992,11 @@ deletable_init_start
     ; ACORN_INITIAL_NONSTORED_PAGES in ascending order - and it isn't likely to
     ; offer a huge benefit most of the time so we don't try.
     ;
-    ; SFTODONOW: Review this, I suspect even if this is all true/correct the explanation can be rewritten to be clearer.
     ; Remove entries in the vmap for dynamic memory, copying from index X to Y
     ; as we go.
     ldx #0
     ldy #0
-.SFTODOLOOP
+.vmap_dynmem_removal_loop
     ; We need to shift the 16-bit vmap entry left one bit before comparing it
     ; against nonstored_pages.
     lda vmap_z_l,x
@@ -1009,7 +1008,7 @@ deletable_init_start
     lda vmap_z_l,x
     asl
     cmp nonstored_pages
-    beq .not_dynmem_entry
+    beq .not_dynmem_entry ; SFTODO: technically redundant? but harmless even if so.
     bcc .is_dynmem_entry
 .not_dynmem_entry
     ; Entry X isn't dynamic memory, so copy it to entry Y and bump Y.
@@ -1019,28 +1018,28 @@ deletable_init_start
     sta vmap_z_h,y
     iny
     cpy vmap_max_entries
-    beq .SFTODOXX99
+    beq .vmap_dynmem_removal_done
 .is_dynmem_entry
     inx
     +assert vmap_max_size != 0 ; loop assumes we go round at least once
     cpx #vmap_max_size
-    bne .SFTODOLOOP
-.SFTODOXX99
+    bne .vmap_dynmem_removal_loop
+.vmap_dynmem_removal_done
     sty vmap_meaningful_entries
     ; If vmap_meaningful_entries < vmap_max_entries, fill the vmap from
     ; vmap_meaningful_entries up with dummy entries.
     lda #0
-.SFTODOLOOP2
+.vmap_add_dummy_entry_loop
     ; SF: This loop could stop at Y == vmap_max_entries, but it doesn't take
     ; significantly longer to create dummy entries for the entire vmap and it
     ; seems safer to do that.
     cpy #vmap_max_size
-    beq .SFTODODONE9999
+    beq .vmap_add_dummy_entries_done
     sta vmap_z_l,y
     sta vmap_z_h,y
     iny
-    jmp .SFTODOLOOP2
-.SFTODODONE9999
+    jmp .vmap_add_dummy_entry_loop
+.vmap_add_dummy_entries_done
 
     ; Assert that if we haven't increased nonstored_pages, vmap_max_entries ==
     ; vmap_meaningful_entries.
@@ -1057,7 +1056,9 @@ deletable_init_start
     lda vmap_max_entries
     sta vmap_meaningful_entries
 }
+; SFTODONOW: Should we show vmap_max_entries and/or vmap_meaningful_entries if "show runtime" is in effect?
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
     ; Calculate vmem_blocks_in_sideways_ram. This is used in
