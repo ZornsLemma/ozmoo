@@ -1430,6 +1430,15 @@ convert_index_x_to_ram_bank_and_address
     bcs .in_shadow_ram
     CONVERT_INDEX_X_CARRY_CLEAR = 1
 }
+    ; At this point A is logical block number *within sideways RAM*, numbering
+    ; the available 512-byte blocks of sideways RAM consecutively. We need to
+    ; convert into a physical block number where $8000 in the first bank is
+    ; block 0, $8400 in the first bank is block 1, $8000 in the second bank is
+    ; block 32, etc, as this is trivial to turn into an actual bank number and
+    ; address. In the physical block numbering system some blocks are occupied
+    ; by dynamic memory in sideways RAM (in the first block; indicated by
+    ; vmem_blocks_stolen_in_first_bank) or by IBOS workspace (in the private 12K
+    ; on Integra-B).
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
     cmp sideways_ram_hole_start
     bcc .before_sideways_ram_hole
@@ -1456,9 +1465,9 @@ convert_index_x_to_ram_bank_and_address
 !ifndef ACORN_SWR_SMALL_DYNMEM {
     adc vmem_blocks_stolen_in_first_bank ; always 0 for small dynmem model
 }
-    ; CA is now the 9-bit block offset of the required data from the start of
-    ; our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so
-    ; we need to divide by 32=2^5 to get the bank index.
+    ; CA is now the 9-bit physical block offset of the required data from the
+    ; start of our first sideways RAM bank. Each 16K bank has 32 512-byte
+    ; blocks, so we need to divide by 32=2^5 to get the bank index.
     pha
     ror
     lsr

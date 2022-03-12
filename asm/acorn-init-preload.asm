@@ -912,7 +912,23 @@ deletable_init_start
     ;   sideways_ram_hole_start > 255 >= vmap_max_size
     ; and therefore we effectively don't have a hole, so we set it to
     ; sideways_ram_hole_start_none.
-    ; SFTODONOW: It is probably correct, but it's not currently obvious to me that subtracting vmem_blocks_stolen_in_first_bank *is* correct - re-review this and comment why if it is correct (or obviously fix if it isn't).
+    ;
+    ; We subtract off vmem_blocks_stolen_in_first_bank because
+    ; sideways_ram_hole_start is a logical block number within sideways RAM and
+    ; (in convert_index_x_to_ram_bank_and_address) we compare it against the
+    ; required such block number, *before* adding vmem_blocks_stolen_in_first_bank
+    ; back in as we start to convert to physical block numbers. Conceptually we
+    ; could do this the other way around:
+    ; - make sideways_ram_hole_start be a physical sideways RAM block number
+    ; - therefore don't subtract off vmem_blocks_stolen_in_first_bank when
+    ;   calculating it
+    ; - compare the physical block number against it *after* adding
+    ;   vmem_blocks_stolen_in_first_bank in convert_index_x_to_ram_bank_and_address.
+    ; The reason we don't do this is simply that it would require treating
+    ; sideways_ram_hole_start as a 16-bit value, slowing things down slightly.
+    ; (There are never more than 255 logical blocks of vmem cache, but non-vmem
+    ; uses of sideways RAM mean there can be up to 288 physical blocks of
+    ; addressable sideways RAM.)
     lda #sideways_ram_hole_start_none
     sta sideways_ram_hole_start
     lda #0
