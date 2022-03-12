@@ -886,6 +886,17 @@ deletable_init_start
     lsr
     sta vmem_blocks_in_main_ram
 }
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    jsr print_following_string
+    !text 13, "vmem_blocks_in_main_ram=$", 0
+    lda vmem_blocks_in_main_ram
+    jsr print_byte_as_hex
+    jsr print_following_string
+    !text 13, "vmem_blocks_stolen_in_first_bank=$", 0
+    lda vmem_blocks_stolen_in_first_bank
+    jsr print_byte_as_hex
+}
     ; }}}
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
