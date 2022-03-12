@@ -21,6 +21,7 @@
 
 .dir_ptr = zp_temp ; 2 bytes
 
+!ifndef ACORN_ADFS {
 !ifndef ACORN_SWR_MEDIUM_DYNMEM {
 .catalogue = scratch_overlapping_game_start
 } else {
@@ -29,6 +30,7 @@
 ; scratch_double_page. We can't simply always use that, because it doesn't exist
 ; on second processor builds.
 .catalogue = scratch_double_page
+}
 }
 
 !ifdef ACORN_SHADOW_VMEM {
