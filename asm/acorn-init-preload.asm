@@ -986,7 +986,13 @@ deletable_init_start
     sta vmap_max_entries
 +
 }
-; SFTODONOW: Should I show vmap_max_entries if ACORN_SHOW_RUNTIME_INFO?
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    jsr print_following_string
+    !text 13, "vmap_max_entries=$", 0
+    lda vmap_max_entries
+    jsr print_byte_as_hex
+}
 
     jsr .check_vmap_max_entries ; SFTODO: inline this?!
     ; }}}
@@ -1092,7 +1098,13 @@ deletable_init_start
     lda vmap_max_entries
     sta vmap_meaningful_entries
 }
-; SFTODONOW: Should we show vmap_max_entries and/or vmap_meaningful_entries if "show runtime" is in effect?
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    jsr print_following_string
+    !text 13, "vmap_meaningful_entries=$", 0
+    lda vmap_meaningful_entries
+    jsr print_byte_as_hex
+}
 
 !ifdef ACORN_SHADOW_VMEM {
     ; {{{ Calculate vmem_blocks_in_sideways_ram.
