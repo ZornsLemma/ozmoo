@@ -1131,7 +1131,13 @@ deletable_init_start
     lda #255
     sta vmem_blocks_in_sideways_ram
 +
-; SFTODONOW: Dump vmem_blocks_in_sideways_ram if "show runtime info"?
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    jsr print_following_string
+    !text 13, "vmem_blocks_in_sideways_ram=$", 0
+    lda vmem_blocks_in_sideways_ram
+    jsr print_byte_as_hex
+}
     ; }}}
 }
 
