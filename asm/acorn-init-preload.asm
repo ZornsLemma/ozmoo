@@ -663,13 +663,22 @@ deletable_init_start
     ; }}}
 
     ; .ram_pages now contains the number of pages of RAM we have available,
-    ; including RAM which will be used for dynamic memory. The build system and
-    ; the loader will have worked together to guarantee that:
+    ; including RAM which will be used for dynamic memory. Assert that the build
+    ; system and the loader have worked together to guarantee that:
     ; - .ram_pages >= ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks *
     ;   vmem_block_pagecount), i.e. that we have enough RAM for the game's
     ;   dynamic memory and two 512-byte blocks of virtual memory cache.
-    ;   SFTODONOW: It's probably not hard to assert this; should we?
+.initial_nonstored_plus_min_vmem_pages = ACORN_INITIAL_NONSTORED_PAGES + (min_vmem_blocks * vmem_block_pagecount)
+    sec
+    lda .ram_pages
+    sbc #<.initial_nonstored_plus_min_vmem_pages
+    lda .ram_pages + 1
+    sbc #>.initial_nonstored_plus_min_vmem_pages
+    bcs +
+    +os_error 0, "Not enough RAM"
++
     ; - the game always has at least one 512-byte block of non-dynamic memory.
+    +assert ACORN_GAME_PAGES >= ACORN_INITIAL_NONSTORED_PAGES + vmem_block_pagecount
 
     ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
@@ -1359,7 +1368,6 @@ progress_indicator_fractional_bits = 7
 +
 }
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     ; We must have nonstored_pages <= max_nonstored_pages, where
     ; max_nonstored_pages satisfies:
     ;     (.ram_pages - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
@@ -1370,13 +1378,13 @@ progress_indicator_fractional_bits = 7
     ; pointers both need to address different blocks of read-only memory.
     ;
     ; There is a superficial contradiction with this check (note min_vmem_blocks
-    ; == 2) and check_vmap_max_entries (which checks vmap_max_entries >= 1). If
+    ; == 2) and .check_vmap_max_entries (which checks vmap_max_entries >= 1). If
     ; vmap_max_entries == 1, there is only one 512-byte block of non-dynamic
     ; memory in the whole game, and therefore we couldn't deadlock in the vmem
     ; code even with just one block of vmem cache. In this case, it's
     ; unnecessarily strict to insist on at least min_vmem_blocks 512-byte blocks
     ; of vmem, but it's easier just to insist on meeting this condition all the
-    ; time. SFTODONOW: I THINK THIS IS CORRECT BUT REVIEW LATER
+    ; time.
     ;
     ; Calculate max_nonstored_pages and cap nonstored_pages if required.
     sec

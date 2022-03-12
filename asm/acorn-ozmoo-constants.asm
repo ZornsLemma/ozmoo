@@ -178,9 +178,7 @@ min_vmem_blocks = 2
 ; we have the largest possible contiguous space for the allocations in page 4 to
 ; spill over into page 5.
 vmap_z_l = scratch_page - vmap_max_size
-!if vmap_z_l < $501 {
-	!error "vmap_z_l is too low"
-}
++assert vmap_z_l >= $501
 
 ; }}}
 }
