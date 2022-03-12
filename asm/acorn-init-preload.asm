@@ -1190,7 +1190,6 @@ deletable_init_start
     jsr osrdch
 }
 
-; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     ; SFTODO: Rename .dpages_to_load to .progress_indicator_full_steps or similar? The progress indicator is block-size agnostic - what we're saying is "we will call update_progress_indicator n times and we want it to go from empty to start with to full after n calls".
     ; {{{ Set .dpages_to_load for the progress indicator.
 !ifdef VMEM {
@@ -1301,6 +1300,8 @@ progress_indicator_fractional_bits = 7
     dex
     bne -
     sta dividend
+
+    ; Divide and save the result.
     jsr divide16
     lda division_result
     sta progress_indicator_blocks_per_step
@@ -1358,6 +1359,7 @@ progress_indicator_fractional_bits = 7
 +
 }
 
+; SFTODONOW: UP TO HERE WITH MAR 2022 REVIEW
     ; We must have nonstored_pages <= max_nonstored_pages, where
     ; max_nonstored_pages satisfies:
     ;     (.ram_pages - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
