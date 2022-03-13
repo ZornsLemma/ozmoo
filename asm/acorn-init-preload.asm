@@ -215,6 +215,8 @@ deletable_init_start
     ; language name gets printed twice, a soft break otherwise gives a clean
     ; result similar to that on a non-second processor. This code is harmless
     ; if we're not running on a second processor, but it's not necessary either.
+    ; SF: It would probably be possible to patch this to enter the "restart"
+    ; code, but it's not clear to me that's desirable.
     lda #<re_enter_language
     sta initial_jmp + 1
     lda #>re_enter_language
@@ -343,9 +345,12 @@ deletable_init_start
     lda #0
 +   sta vmem_cache_count_mem
 .mode_0
+    ; SFTODO: We could show vmem_cache_count_mem if ACORN_SHOW_RUNTIME_INFO.
 
     ; SF: We don't need to zero vmem_cache_cnt and vmem_cache_page_index
     ; explicitly because we cleared all our zero page and low memory on startup.
+    ; (Careful if doing this; we haven't called streams_init yet, that might
+    ; need to be reordered or we'd postpone the output for a bit.)
     ; }}}
 }
 
@@ -521,6 +526,7 @@ deletable_init_start
     rol .ram_pages + 1
     sta .ram_pages
 .host_cache_initialised
+    ; SFTODONOW: Showing host_cache_size_vmem_blocks for runtime info probably a good idea
     ; }}}
 }
 
@@ -682,6 +688,7 @@ deletable_init_start
     ; - the game always has at least one 512-byte block of non-dynamic memory.
     +assert ACORN_GAME_PAGES >= ACORN_INITIAL_NONSTORED_PAGES + vmem_block_pagecount
 
+    ; SFTODONOW: Showing .ram_pages at (probably) this point if runtime-info might be a good idea
     ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
     ldx #>ACORN_GAME_PAGES
@@ -950,6 +957,7 @@ deletable_init_start
     sbc #0 ; high byte of vmem_blocks_stolen_in_first_bank
     bne .no_sideways_ram_hole
     stx sideways_ram_hole_start
+    ; SFTODONOW: We should show sideways_ram_hole_start for runtime info
 .no_sideways_ram_hole
     ; }}}
 } ; end ACORN_PRIVATE_RAM_SUPPORTED
@@ -1471,3 +1479,5 @@ initial_vmap_z_l
 
 
 ; SFTODONOW: Should step through init on a Master 128 with 144K SWR and HHGG - it's probably fine, but I am a little surprised we don't seem to end up with vmap_max_entries==255 (I am seeing $fc==252).
+
+; SFTODO: It might - given it's discardable init code - be nice to always build with runtime info support, but have some mechanism to allow it to be turned on at runtime (off by default of course) - this way any user who needs support will be able to provide this info from the known-buggy executable, rather than needing to rebuild and maybe changing something accidentally.
