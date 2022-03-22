@@ -359,7 +359,8 @@ deletable_init_start
     jsr init_cursor_control
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
-    ; {{{ Show some debug information.
+    ; {{{ Enable or disable runtime debug information.
+
     ; Set .show_runtime_info to 0 unless CTRL-TAB is pressed, in which case set
     ; it to non-0 to trigger display of runtime debug information.
     ; SFTODONOW: TEMP HACKED TO JUST CHECK CTRL AS TAB gets into the keyboard
@@ -383,8 +384,10 @@ deletable_init_start
     ; Call streams_init here so we can output succesfully; this is a little bit
     ; hacky but not a huge problem (and this is debug-only code).
     jsr streams_init
-    ; SFTODONOW: Perhaps do a few extra newlines to make output neater now this
-    ; is slightly less debug-only (as it's built in by default).
+    ; Output a couple of newlines to make things look neater with the standard
+    ; loading screen. This is debug code so we don't try to be too fancy.
+    jsr newline
+    jsr newline
     jsr print_following_string
     !text 13, "program_start=$", 0
     lda #>program_start
