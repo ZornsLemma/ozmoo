@@ -720,9 +720,19 @@ deletable_init_start
     ; - the game always has at least one 512-byte block of non-dynamic memory.
     +assert ACORN_GAME_PAGES >= ACORN_INITIAL_NONSTORED_PAGES + vmem_block_pagecount
 
-    ; SFTODONOW: Showing .ram_pages at (probably) this point if runtime-info might be a good idea
     ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
+
+    lda .show_runtime_info
+    beq +
+    jsr print_following_string
+    !text 13, ".ram_pages (uncapped)=$", 0
+    lda .ram_pages + 1
+    jsr print_byte_as_hex
+    lda .ram_pages
+    jsr print_byte_as_hex
++
+
     ldx #>ACORN_GAME_PAGES
     lda #<ACORN_GAME_PAGES
     cpx .ram_pages + 1
