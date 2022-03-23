@@ -1002,8 +1002,15 @@ deletable_init_start
     sbc #0 ; high byte of vmem_blocks_stolen_in_first_bank
     bne .no_sideways_ram_hole
     stx sideways_ram_hole_start
-    ; SFTODONOW: We should show sideways_ram_hole_start for runtime info
 .no_sideways_ram_hole
+
+    lda .show_runtime_info
+    beq +
+    jsr print_following_string
+    !text 13, "sideways_ram_hole_start=$", 0
+    lda sideways_ram_hole_start
+    jsr print_byte_as_hex
++
     ; }}}
 } ; end ACORN_PRIVATE_RAM_SUPPORTED
 } ; end ACORN_SWR
