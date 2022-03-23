@@ -552,7 +552,13 @@ deletable_init_start
     rol .ram_pages + 1
     sta .ram_pages
 .host_cache_initialised
-    ; SFTODONOW: Showing host_cache_size_vmem_blocks for runtime info probably a good idea
+    lda .show_runtime_info
+    beq +
+    jsr print_following_string
+    !text 13, "host_cache_size_vmem_blocks=$", 0
+    lda host_cache_size_vmem_blocks
+    jsr print_byte_as_hex
++
     ; }}}
 }
 
