@@ -1654,6 +1654,6 @@ newline
 }
 
 
-; SFTODONOW: Should step through init on a Master 128 with 144K SWR and HHGG - it's probably fine, but I am a little surprised we don't seem to end up with vmap_max_entries==255 (I am seeing $fc==252).
+; SFTODONOW: Should step through init on a Master 128 with 144K SWR and HHGG - it's probably fine, but I am a little surprised we don't seem to end up with vmap_max_entries==255 (I am seeing $fc==252). - OK, trying this just now on 24/03/2022 I see vmap_max_entries=$fa FWIW, ACORN_GAME_PAGES==$26c, ACORN_INITIAL_NONSTORED_PAGES==$3c, uncapped .ram_pages=$02c4, nonstored_pages=$78, data_start will be $4800 I think, vmem_blocks_stolen_in_first_bank=$20 - OK, we have grown nonstored_pages so we are using all free main RAM and entire first 16K bank of sideways RAM for dynamic memory (which is good/right; $4800+$7800=$c000) and that only leaves $fa 512-byte blocks of game data left, so it makes sense vmap_max_entries is $fa. I will leave this comment for now to re-check later (and I'd like to commit to git FTR, although I may never manage to find it again if I do want it) but I think this is OK.
 
 ; SFTODO: It might - given it's discardable init code - be nice to always build with runtime info support, but have some mechanism to allow it to be turned on at runtime (off by default of course) - this way any user who needs support will be able to provide this info from the known-buggy executable, rather than needing to rebuild and maybe changing something accidentally.
