@@ -265,7 +265,7 @@ def check_if_special_game():
         # too but I haven't been able to test it. I think this is because the cursor keys are specified as
         # terminating characters so they are passed to the game instead of being left for the Ozmoo read line
         # code to deal with. (frotz command history does work in Beyond Zork, FWIW, although I can't help
-        # thinking Ozmoo's beaviour is more technically correct, not that I'm any expert here.) There's
+        # thinking Ozmoo's behaviour is more technically correct, not that I'm any expert here.) There's
         # therefore no point bloating the code with history support.
         cmd_args.no_history = True
         # We don't override the user's choice of --no-cursor-editing; this is just a matter of user preference,
