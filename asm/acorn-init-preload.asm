@@ -256,6 +256,10 @@ deletable_init_start
     ; }}}
 }
 
+    +prepare_static_high_memory_inline
+    +init_readtime_inline
+    jsr init_cursor_control
+
 !ifdef ACORN_SCREEN_HOLE {
     ; {{{ Configure screen hole settings.
     ; Note that just because we support a screen hole, it doesn't mean there is
@@ -353,10 +357,6 @@ deletable_init_start
     ; need to be reordered or we'd postpone the output for a bit.)
     ; }}}
 }
-
-    +prepare_static_high_memory_inline
-    +init_readtime_inline
-    jsr init_cursor_control
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     ; {{{ Enable or disable runtime debug information.
