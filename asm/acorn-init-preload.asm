@@ -592,6 +592,7 @@ deletable_init_start
     rol .ram_pages + 1
     sta .ram_pages
 .host_cache_initialised
+!ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
     jsr print_following_string
@@ -599,6 +600,7 @@ deletable_init_start
     lda host_cache_size_vmem_blocks
     jsr print_byte_as_hex
 +
+}
     ; }}}
 }
 

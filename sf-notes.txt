@@ -1,3 +1,18 @@
+TODO BENCHMARK --max-page 0xe00 M128 (ie known shadow):
+- small dynmem (default with these settings) $7cd to $8e3b = 344.14s
+- med dyn $7c5 to $9291 = 355.32s
+- big dyn $7c5 to $91ed = 353.68s
+TODO PROB SHOULD COMMENT SOMEWHERE (NOT NEC HERE) WHY BIG DYN IS SLIGHTLY FASTER THAN MEDDYN - I BELIEVE IT'S THE B15 SET OPTIMISATION IN READ_DYNMEM
+
+--max-page 0x1900 (prob irrelevant) B-no-shadow 64K SWR:
+- small dynmem won't fit (with benchmark; would fit as real game)
+- med dyn (default) $642 to $8ed6 = 349.64s TODO NOTE THIS IS *FASTER* THAN M128, WHY? (*PROB* SHADOW PAGING, BUT MAYBE NOT)
+- big dyn $639 to $902d = 353.16s
+
+
+
+
+
 benchmark, M128 bigdyn, mode 3
 - default (4) pages shadow cache: $00ae4c $00ae4b
 - 2 pages shadow cache: $00ae5f $00ae5d $00ae5d
