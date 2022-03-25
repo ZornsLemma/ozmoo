@@ -20,13 +20,14 @@ ptr = $70
     sta ptr
     lda #>SPLASH_SCREEN_ADDRESS
     sta ptr + 1
+    +assert (<SPLASH_SCREEN_ADDRESS) = 0
 loop
     ldy #0
     lda (ptr),y
     bit just_rts ; set V
     ldx ptr
     ldy ptr + 1
-    jsr mrb_read_write
+    jsr mrb_read_write ; preserves X and Y
     inc ptr
     bne loop
     inc ptr + 1
