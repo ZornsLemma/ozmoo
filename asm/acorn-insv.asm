@@ -58,6 +58,8 @@ our_insv
     lda nominal_cursor_key_status
     bne cursor_key_status_in_a
     ; Check for Copy key.
+    pla
+    pha
     cmp #copy_key
     beq is_copy_key
 
