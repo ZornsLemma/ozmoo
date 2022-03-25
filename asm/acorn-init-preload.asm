@@ -323,6 +323,20 @@ deletable_init_start
     tax
     dex
     stx acorn_screen_hole_pages_minus_one
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    lda .show_runtime_info
+    beq +
+    jsr print_following_string
+    !text 13, "acorn_screen_hole_start_page=$", 0
+    lda acorn_screen_hole_start_page
+    jsr print_byte_as_hex
+    jsr print_following_string
+    !text 13, "acorn_screen_hole_pages=$", 0
+    lda acorn_screen_hole_pages
+    jsr print_byte_as_hex
++
+}
     ; }}}
 }
 
