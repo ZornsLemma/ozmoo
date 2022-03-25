@@ -388,6 +388,7 @@ deletable_init_start
     ; loading screen. This is debug code so we don't try to be too fancy.
     jsr newline
     jsr newline
+    ; SFTODONOW: Should I output data_start? And/or the memory model?
     jsr print_following_string
     !text 13, "program_start=$", 0
     lda #>program_start
