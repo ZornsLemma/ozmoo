@@ -281,7 +281,7 @@ deletable_init_start
     jsr osbyte
 +   sty .show_runtime_info
     lda .show_runtime_info
-    beq +
+    beq .no_runtime_info
 
     ; Call streams_init here so we can output succesfully; this is a little bit
     ; hacky but not a huge problem (and this is debug-only code).
@@ -292,14 +292,37 @@ deletable_init_start
     jsr newline
 
     ; Output some basic information we know already without further logic.
-    ; SFTODONOW: Should I output data_start? And/or the memory model?
     jsr print_following_string
+    !text 13, "memory model="
+!ifndef ACORN_SWR {
+    !text "tube"
+!ifdef ACORN_TUBE_CACHE {
+    !text "+host cache"
+}
+} else { ; not ACORN_SWR
+!ifdef ACORN_SWR_MEDIUM_DYNMEM {
+    !text "medium"
+} else {
+!ifdef ACORN_SWR_BIG_DYNMEM {
+    !text "big"
+} else {
+    !text "small"
+}
+}
+}
     !text 13, "program_start=$", 0
     lda #>program_start
     jsr print_byte_as_hex
     lda #<program_start
     jsr print_byte_as_hex
-+
+    jsr print_following_string
+    !text 13, "data_start=$", 0
+    lda #>data_start
+    jsr print_byte_as_hex
+    lda #<data_start
+    jsr print_byte_as_hex
+
+.no_runtime_info
     ; }}}
 }
 
