@@ -1287,7 +1287,7 @@ deletable_init_start
     ;       1 <= x <= length(vmap_z) <= vmap_max_size <= 255
     ;      -1 <= y < x, so -1 <= y <= 254
     ; So x and y can be 8-bit unsigned values without any problems, provided we
-    ; take care to recognise y=255 as meaning -1. SFTODONOW: WE PROB DO, BUT CHECK...
+    ; take care to recognise y=255 as meaning -1.
     ;
     ; This takes about 0.42 seconds to sort 255 shuffled entries at 2MHz; that's
     ; not great but it's not terrible. It takes about 0.1 seconds to sort 122
