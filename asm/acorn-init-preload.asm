@@ -299,7 +299,7 @@ deletable_init_start
 !ifdef ACORN_TUBE_CACHE {
     !text "+host cache"
 }
-} else { ; not ACORN_SWR
+} else {
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
     !text "medium"
 } else {
