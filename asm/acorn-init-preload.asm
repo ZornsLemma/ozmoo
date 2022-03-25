@@ -260,6 +260,28 @@ deletable_init_start
     +init_readtime_inline
     jsr init_cursor_control
 
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    ; {{{ Enable or disable runtime debug information.
+    ; Set .show_runtime_info to 0 unless CTRL-TAB is pressed, in which case set
+    ; it to non-0 to trigger display of runtime debug information.
+    ; SFTODONOW: TEMP HACKED TO JUST CHECK CTRL AS TAB gets into the keyboard
+    ; buffer and seems to (maybe? hard to be sure) cause problems. If nothing
+    ; else it gets picked up by the osrdch used to pause after showing this
+    ; info. May just stick with CTRL on its own but come back to this later.
+    lda #osbyte_read_key
+    ldx #inkey_ctrl
+    ldy #$ff
+    jsr osbyte
+    jmp + ; SFTODONOW TEMP HACK
+    cpy #0
+    beq +
+    ldx #inkey_tab
+    ldy #$ff
+    jsr osbyte
++   sty .show_runtime_info
+    ; }}}
+}
+
 !ifdef ACORN_SCREEN_HOLE {
     ; {{{ Configure screen hole settings.
     ; Note that just because we support a screen hole, it doesn't mean there is
@@ -359,26 +381,7 @@ deletable_init_start
 }
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
-    ; {{{ Enable or disable runtime debug information.
-
-    ; Set .show_runtime_info to 0 unless CTRL-TAB is pressed, in which case set
-    ; it to non-0 to trigger display of runtime debug information.
-    ; SFTODONOW: TEMP HACKED TO JUST CHECK CTRL AS TAB gets into the keyboard
-    ; buffer and seems to (maybe? hard to be sure) cause problems. If nothing
-    ; else it gets picked up by the osrdch used to pause after showing this
-    ; info. May just stick with CTRL on its own but come back to this later.
-    lda #osbyte_read_key
-    ldx #inkey_ctrl
-    ldy #$ff
-    jsr osbyte
-    jmp + ; SFTODONOW TEMP HACK
-    cpy #0
-    beq +
-    ldx #inkey_tab
-    ldy #$ff
-    jsr osbyte
-+   sty .show_runtime_info
-
+    ; {{{ Show program_start if runtime info is enabled.
     lda .show_runtime_info
     beq +
     ; Call streams_init here so we can output succesfully; this is a little bit
