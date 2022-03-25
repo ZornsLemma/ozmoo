@@ -262,6 +262,7 @@ deletable_init_start
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     ; {{{ Enable or disable runtime debug information.
+
     ; Set .show_runtime_info to 0 unless CTRL-TAB is pressed, in which case set
     ; it to non-0 to trigger display of runtime debug information.
     ; SFTODONOW: TEMP HACKED TO JUST CHECK CTRL AS TAB gets into the keyboard
@@ -279,6 +280,14 @@ deletable_init_start
     ldy #$ff
     jsr osbyte
 +   sty .show_runtime_info
+
+    ; Call streams_init here so we can output succesfully; this is a little bit
+    ; hacky but not a huge problem (and this is debug-only code).
+    jsr streams_init
+    ; Output a couple of newlines to make things look neater with the standard
+    ; loading screen. This is debug code so we don't try to be too fancy.
+    jsr newline
+    jsr newline
     ; }}}
 }
 
@@ -384,13 +393,6 @@ deletable_init_start
     ; {{{ Show program_start if runtime info is enabled.
     lda .show_runtime_info
     beq +
-    ; Call streams_init here so we can output succesfully; this is a little bit
-    ; hacky but not a huge problem (and this is debug-only code).
-    jsr streams_init
-    ; Output a couple of newlines to make things look neater with the standard
-    ; loading screen. This is debug code so we don't try to be too fancy.
-    jsr newline
-    jsr newline
     ; SFTODONOW: Should I output data_start? And/or the memory model?
     jsr print_following_string
     !text 13, "program_start=$", 0
