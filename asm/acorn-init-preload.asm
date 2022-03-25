@@ -280,6 +280,8 @@ deletable_init_start
     ldy #$ff
     jsr osbyte
 +   sty .show_runtime_info
+    lda .show_runtime_info
+    beq +
 
     ; Call streams_init here so we can output succesfully; this is a little bit
     ; hacky but not a huge problem (and this is debug-only code).
@@ -288,6 +290,16 @@ deletable_init_start
     ; loading screen. This is debug code so we don't try to be too fancy.
     jsr newline
     jsr newline
+
+    ; Output some basic information we know already without further logic.
+    ; SFTODONOW: Should I output data_start? And/or the memory model?
+    jsr print_following_string
+    !text 13, "program_start=$", 0
+    lda #>program_start
+    jsr print_byte_as_hex
+    lda #<program_start
+    jsr print_byte_as_hex
++
     ; }}}
 }
 
@@ -400,21 +412,6 @@ deletable_init_start
     ; explicitly because we cleared all our zero page and low memory on startup.
     ; (Careful if doing this; we haven't called streams_init yet, that might
     ; need to be reordered or we'd postpone the output for a bit.)
-    ; }}}
-}
-
-!ifdef ACORN_SHOW_RUNTIME_INFO {
-    ; {{{ Show program_start if runtime info is enabled.
-    lda .show_runtime_info
-    beq +
-    ; SFTODONOW: Should I output data_start? And/or the memory model?
-    jsr print_following_string
-    !text 13, "program_start=$", 0
-    lda #>program_start
-    jsr print_byte_as_hex
-    lda #<program_start
-    jsr print_byte_as_hex
-+
     ; }}}
 }
 
