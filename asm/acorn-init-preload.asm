@@ -1348,7 +1348,6 @@ deletable_init_start
     bne .outer_loop
     ; }}}
 }
-} ; VMEM
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
@@ -1357,7 +1356,17 @@ deletable_init_start
     !text 13, "nonstored_pages=$", 0
     lda nonstored_pages
     jsr print_byte_as_hex
-    jsr newline
++
+}
+} ; VMEM
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    lda .show_runtime_info
+    beq +
+    ; I'll indulge myself with a brief but technically incorrect "any key" (not
+    ; Shift, not Ctrl, not Break...) message here.
+    jsr print_following_string
+    !text 13, "[press any key]", 0
     jsr osrdch
 +
 }
