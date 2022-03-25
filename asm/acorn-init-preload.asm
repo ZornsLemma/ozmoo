@@ -932,7 +932,6 @@ deletable_init_start
     dec .ram_pages + 1
 +
     ; }}}
-; SFTODONOW: WE SHOULD RUNTIME ASSERT WHATEVER WE CAN IN ALL CASES
 
 !ifdef ACORN_SWR {
     ; {{{ Calculate vmem_blocks_in_main_ram and vmem_blocks_stolen_in_first_bank.
