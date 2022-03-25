@@ -763,6 +763,7 @@ deletable_init_start
     ; {{{ Set .ram_pages = min(.ram_pages, game_pages). We do this in order to
     ; avoid accessing nonexistent game data as we try to use all available RAM.
 
+!ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
     jsr print_following_string
@@ -772,6 +773,7 @@ deletable_init_start
     lda .ram_pages
     jsr print_byte_as_hex
 +
+}
 
     ldx #>ACORN_GAME_PAGES
     lda #<ACORN_GAME_PAGES
@@ -1043,6 +1045,7 @@ deletable_init_start
     stx sideways_ram_hole_start
 .no_sideways_ram_hole
 
+!ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
     jsr print_following_string
@@ -1050,6 +1053,7 @@ deletable_init_start
     lda sideways_ram_hole_start
     jsr print_byte_as_hex
 +
+}
     ; }}}
 } ; end ACORN_PRIVATE_RAM_SUPPORTED
 } ; end ACORN_SWR
