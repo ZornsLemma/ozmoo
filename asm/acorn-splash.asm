@@ -15,23 +15,23 @@ BACKWARD_DECOMPRESS = 1
     bpl just_rts
     ; We are in a shadow mode, so use the MRB OS to copy the decompressed data
     ; into video RAM.
-ptr = $70
-    lda #<SPLASH_SCREEN_ADDRESS
-    sta ptr
-    lda #>SPLASH_SCREEN_ADDRESS
-    sta ptr + 1
+ptr = lda_abs_x + 1
     +assert (<SPLASH_SCREEN_ADDRESS) = 0
-loop
-    ldy #0
-    lda (ptr),y
+    ldx #0
+    stx ptr
+    ldy #>SPLASH_SCREEN_ADDRESS
+    sty ptr + 1
+outer_loop
+inner_loop
+lda_abs_x
+    lda $8000,x ; patched
     bit just_rts ; set V
-    ldx ptr
-    ldy ptr + 1
     jsr mrb_read_write ; preserves X and Y
-    inc ptr
-    bne loop
+    inx
+    bne inner_loop
     inc ptr + 1
-    bpl loop
+    iny
+    bpl outer_loop
 
 just_rts
     rts
