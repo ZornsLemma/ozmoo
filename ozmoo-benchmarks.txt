@@ -54,7 +54,7 @@ Electron (Elkulator), 16K SWR, E00 DFS, drive noises on, mode 6 [$1df/$17614] 38
 
 === Ozmoo 9.16 alpha 37 ===
 
-BBC shadow binary uses big dynamic memory model
+BBC shadow binary uses big dynamic memory model TODO: This was probably done with DEBUG_BIG_DYNMEM=1, which will harm performance (maybe not much, but a bit)did feel a bit of stretch in back, can't do hp as in Skegness
 Other non-tube binaries use medium dynamic memory model
 
 BBC B, 16K SWR, DFS 1.20, mode 7 $2a9/$11139 $2a9/$11139 $2a9/$1113f -> 692.64 seconds
