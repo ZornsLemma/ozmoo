@@ -971,8 +971,15 @@ class OzmooExecutable(Executable):
                 with open(os.path.join("temp", "go.asm"), "w") as f:
                     f.write('!text "GO %X", 13' % (self.load_addr & 0xffff))
             e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, extra_args)
-            # TODO: Use 0x8000? Or use 0x7c00 above not 0x8000?
-            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x7c00
+            # print("QXX", self.leafname, hex(self.load_addr), hex(new_load_addr), hex(len(e.binary())))
+            # The executable mustn't load into memory at 0x8000 or above as
+            # there's no RAM there (except on a second processor). We'd *prefer*
+            # it to fit below the screen memory to avoid ugly loading, but
+            # that's not essential. If this happens *_max_start_addr can be
+            # tweaked to try to prevent it, although if PAGE is high enough, it
+            # may be unavoidable, particularly on the Electron with no shadow
+            # RAM.
+            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x8000
             self.load_addr = new_load_addr
             self.exec_addr = new_load_addr + os.path.getsize(compressed_binary_filename)
             binary = e.binary()
