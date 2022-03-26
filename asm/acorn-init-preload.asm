@@ -1668,10 +1668,12 @@ initial_vmap_z_l
     ; We don't want to make any definite assumptions about what the loader
     ; screen looks like, and we also don't want to allocate a memory location
     ; for the loader to convey the row after the end of the hardware detected
-    ; list to this code. We therefore try to find a blank row starting at row 4
+    ; list to this code. We therefore try to find a blank row starting at row 5
     ; or lower and use that as our starting point. We know we're in a 40x25 mode
-    ; (6 or 7) here.
-    lda #4
+    ; (6 or 7) here. (Row 5 should mean that whether we have a single or double
+    ; height title and whether or not we have a subtitle, we always skip the
+    ; blank line above "Hardware detected:" on the default loader screen.)
+    lda #5
     sta .runtime_info_start_row
 .row_loop
     lda #0
