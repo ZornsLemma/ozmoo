@@ -1371,6 +1371,7 @@ deletable_init_start
     beq +
     ; I'll indulge myself with a brief but technically incorrect "any key" (not
     ; Shift, not Ctrl, not Break...) message here.
+    ; SFTODONOW: PERHAPS ADD A DOUBLE NEWLINE AT FRONT AND TWEAK MESSAGE NOW
     jsr print_following_string
     !text 13, "[press any key]", 0
     jsr osrdch
