@@ -286,10 +286,7 @@ deletable_init_start
     ; Call streams_init here so we can output succesfully; this is a little bit
     ; hacky but not a huge problem (and this is debug-only code).
     jsr streams_init
-    ; Output a couple of newlines to make things look neater with the standard
-    ; loading screen. This is debug code so we don't try to be too fancy.
-    jsr newline
-    jsr newline
+    jsr .prepare_for_runtime_info_output
 
     ; Output some basic information we know already without further logic.
     jsr print_following_string
@@ -1379,6 +1376,7 @@ deletable_init_start
     ; .init_progress_indicator below to set up the progress bar correctly (using the
     ; "we are restarting and have to print Loading: ourselves" code path).
     jsr newline
+    jsr newline
     jsr s_cursor_to_screenrowcolumn
 +
 }
@@ -1606,6 +1604,78 @@ initial_vmap_z_l
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
 .show_runtime_info !fill 1
+.runtime_info_start_row !fill 1
+.column !fill 1 ; SFTODO: rename?
+
+; Position the cursor and (if appropriate) clear part of the screen so the
+; runtime information appears relatively neatly.
+.prepare_for_runtime_info_output
+    ; We try to leave the "Hardware detected:" part of the loader screen intact
+    ; and output the runtime info below that. This might not be present at all,
+    ; if we're being re-executed as part of a restart - we can detect this as
+    ; .init_progress_indicator does by checking if the cursor is in the leftmost
+    ; column. In this case we just leave the cursor where it is so the info
+    ; appears at the bottom left of the screen.
+    lda #osbyte_read_cursor_position
+    jsr osbyte ; set X=cursor X, Y=cursor Y
+    cpx #0
+    beq .prepare_for_runtime_info_output_done
+
+    ; We're probably being run for the first time with the loader screen visible.
+    ; We don't want to make any definite assumptions about what it looks like, and
+    ; we also don't want to allocate a memory location for the loader to convey the
+    ; row after the end of the hardware detected list to this code. We therefore
+    ; try to find a blank row starting at row 4 or lower and use that as our starting
+    ; point. We know we're in a 40x25 mode (6 or 7) here.
+    lda #4
+    sta .runtime_info_start_row
+.row_loop
+    lda #0
+    sta .column
+.column_loop
+    ldx .column
+    ldy .runtime_info_start_row
+    jsr do_oswrch_vdu_goto_xy
+    lda #osbyte_read_screen_mode ; also returns character at cursor in X
+    jsr osbyte
+    txa
+    and #$7f ; SFTODO: comment?!
+    cmp #' '+1
+    bcs .not_blank
+    inc .column
+    lda .column
+    cmp #40
+    bne .column_loop
+    ; We found a blank row. Clear from here to the bottom of the screen.
+    lda #vdu_define_text_window
+    jsr oswrch
+    lda #0 ; left X
+    jsr oswrch
+    lda #24 ; bottom Y
+    jsr oswrch
+    lda #39 ; right X
+    jsr oswrch
+    lda .runtime_info_start_row ; top left Y
+    jsr oswrch
+    lda #vdu_cls
+    jsr oswrch
+    lda #vdu_reset_text_window
+    jsr oswrch
+    jmp .SFTODONOWFINISH
+.not_blank
+    inc .runtime_info_start_row
+    lda .runtime_info_start_row
+    cmp #25
+    bne .row_loop
+    ; We couldn't find a blank row. Just start at row 10.
+    lda #10
+    sta .runtime_info_start_row
+.SFTODONOWFINISH
+    ldx .runtime_info_start_row
+    ldy #0 ; column
+    jsr set_cursor
+.prepare_for_runtime_info_output_done
+    rts
 
 ; ACORN_SHOW_RUNTIME_INFO needs these utility subroutines which are normally only included
 ; in debug builds. We don't want to bloat the non-discardable code with them if they're not
