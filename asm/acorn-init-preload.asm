@@ -1374,6 +1374,11 @@ deletable_init_start
     jsr print_following_string
     !text 13, "[press any key]", 0
     jsr osrdch
+    ; Start a new line and force the OS cursor to the right position; this will cause
+    ; .init_progress_indicator below to set up the progress bar correctly (using the
+    ; "we are restarting and have to print Loading: ourselves" code path).
+    jsr newline
+    jsr s_cursor_to_screenrowcolumn
 +
 }
 
