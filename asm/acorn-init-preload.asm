@@ -1649,6 +1649,17 @@ initial_vmap_z_l
     lda .column
     cmp #40
     bne .column_loop
+    beq .blank_row_found
+.not_blank
+    inc .runtime_info_start_row
+    lda .runtime_info_start_row
+    cmp #25
+    bne .row_loop
+    ; We couldn't find a blank row. Just start at row 10.
+    ; SFTODONOW TEST THIS CASE
+    lda #10
+    sta .runtime_info_start_row
+.blank_row_found
     ; We found a blank row. Clear from here to the bottom of the screen.
     lda #vdu_define_text_window
     jsr oswrch
@@ -1664,16 +1675,6 @@ initial_vmap_z_l
     jsr oswrch
     lda #vdu_reset_text_window
     jsr oswrch
-    jmp .SFTODONOWFINISH
-.not_blank
-    inc .runtime_info_start_row
-    lda .runtime_info_start_row
-    cmp #25
-    bne .row_loop
-    ; We couldn't find a blank row. Just start at row 10.
-    lda #10
-    sta .runtime_info_start_row
-.SFTODONOWFINISH
 
     ; SFTODONOW COMMENT
     ; SFTODONOW NEED TO DETECT MODE 6
@@ -1686,25 +1687,17 @@ initial_vmap_z_l
     cpy #7
     bne .runtime_info_not_mode_7
 .runtime_info_colour = 3 ; SFTODONOW!? MOVE ANYWAY
-    lda #mode_7_graphics_colour_base + .runtime_info_colour
+    lda #mode_7_text_colour_base + .runtime_info_colour
     jsr oswrch
-    ldx #39
-    jmp .line_loop
+    inc .ldy_imm_column + 1
 .runtime_info_not_mode_7
-    lda #128
-    sta .lda_imm_line_char + 1
-    ldx #40
-.line_loop
-.lda_imm_line_char
-    lda #172 ; patched by code above if we're in mode 6
-    jsr oswrch
-    dex
-    bne .line_loop
-
     ldx .runtime_info_start_row
     inx
-    ldy #0 ; column
+.ldy_imm_column
+    ldy #0 ; column - patched to 1 above if mode 7 (to skip colour code)
     jsr set_cursor
+    jsr print_following_string
+    !text "Technical details:", 0 ; SFTODONOW: TWEAK STRING
     rts
 
 ; ACORN_SHOW_RUNTIME_INFO needs these utility subroutines which are normally only included
