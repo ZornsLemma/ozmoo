@@ -1382,12 +1382,23 @@ deletable_init_start
     cmp #vdu_cr
     bne -
 ++
-    ; Start a new line and force the OS cursor to the right position; this will cause
-    ; .init_progress_indicator below to set up the progress bar correctly (using the
-    ; "we are restarting and have to print Loading: ourselves" code path).
+    ; Start a new line and force the OS cursor to the right position.
     jsr newline
     jsr newline
     jsr s_cursor_to_screenrowcolumn
+
+    ; If we're in mode 7, print "Loading:" ourselves in order to get it to line
+    ; up nicely with everything else. Otherwise leave it alone and let
+    ; .init_progress_indicator handle it using the "restart" code path.
+    lda #osbyte_read_screen_mode
+    jsr osbyte ; set Y=current screen mode
+    cpy #7
+    bne +
+    jsr .print_indented_following_string
+    !text " Loading:", 0
+    jsr s_cursor_to_screenrowcolumn
+    lda #mode_7_graphics_colour_base + 7
+    jsr oswrch
 +
 }
 
