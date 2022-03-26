@@ -289,7 +289,7 @@ deletable_init_start
     jsr .prepare_for_runtime_info_output
 
     ; Output some basic information we know already without further logic.
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "memory model="
 !ifndef ACORN_SWR {
     !text "tube"
@@ -312,7 +312,7 @@ deletable_init_start
     jsr print_byte_as_hex
     lda #<program_start
     jsr print_byte_as_hex
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "data_start=$", 0
     lda #>data_start
     jsr print_byte_as_hex
@@ -359,11 +359,11 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "acorn_screen_hole_start_page=$", 0
     lda acorn_screen_hole_start_page
     jsr print_byte_as_hex
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "acorn_screen_hole_pages=$", 0
     lda acorn_screen_hole_pages
     jsr print_byte_as_hex
@@ -592,7 +592,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "host_cache_size_vmem_blocks=$", 0
     lda host_cache_size_vmem_blocks
     jsr print_byte_as_hex
@@ -765,7 +765,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, ".ram_pages (uncapped)=$", 0
     lda .ram_pages + 1
     jsr print_byte_as_hex
@@ -981,11 +981,11 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "vmem_blocks_in_main_ram=$", 0
     lda vmem_blocks_in_main_ram
     jsr print_byte_as_hex
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "vmem_blocks_stolen_in_first_bank=$", 0
     lda vmem_blocks_stolen_in_first_bank
     jsr print_byte_as_hex
@@ -1047,7 +1047,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "sideways_ram_hole_start=$", 0
     lda sideways_ram_hole_start
     jsr print_byte_as_hex
@@ -1094,7 +1094,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "vmap_max_entries=$", 0
     lda vmap_max_entries
     jsr print_byte_as_hex
@@ -1215,7 +1215,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "vmap_meaningful_entries=$", 0
     lda vmap_meaningful_entries
     jsr print_byte_as_hex
@@ -1251,7 +1251,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "vmem_blocks_in_sideways_ram=$", 0
     lda vmem_blocks_in_sideways_ram
     jsr print_byte_as_hex
@@ -1355,7 +1355,7 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text 13, "nonstored_pages=$", 0
     lda nonstored_pages
     jsr print_byte_as_hex
@@ -1369,8 +1369,9 @@ deletable_init_start
     ; I'll indulge myself with a brief but technically incorrect "any key" (not
     ; Shift, not Ctrl, not Break...) message here.
     ; SFTODONOW: PERHAPS ADD A DOUBLE NEWLINE AT FRONT AND TWEAK MESSAGE NOW
-    jsr print_following_string
-    !text 13, "[press any key]", 0
+    jsr newline
+    jsr .print_indented_following_string
+    !text "[press any key]", 0
     jsr osrdch
     ; Start a new line and force the OS cursor to the right position; this will cause
     ; .init_progress_indicator below to set up the progress bar correctly (using the
@@ -1689,29 +1690,29 @@ initial_vmap_z_l
 .runtime_info_colour = 3 ; SFTODONOW!? MOVE ANYWAY
     lda #mode_7_text_colour_base + .runtime_info_colour
     jsr oswrch
+    ; Patch a couple of instructions to allow for mode 7 control codes.
     inc .ldy_imm_column + 1
+    inc .print_indented_following_string_ldx_imm_indent + 1
 .runtime_info_not_mode_7
     ldx .runtime_info_start_row
     inx
 .ldy_imm_column
     ldy #0 ; column - patched to 1 above if mode 7 (to skip colour code)
     jsr set_cursor
-    jsr print_following_string
+    jsr .print_indented_following_string
     !text "Technical details:", 0 ; SFTODONOW: TWEAK STRING
     rts
 
-; ACORN_SHOW_RUNTIME_INFO needs these utility subroutines which are normally only included
-; in debug builds. We don't want to bloat the non-discardable code with them if they're not
-; otherwise needed, so we duplicate the code here. (This isn't ideal, but this isn't critical
-; code, nor is it likely to change much.)
-!ifndef DEBUG {
-print_following_string
+    ; SFTODONOW: Tweak name of this?
+    ; Since this is discardable init code and we used to include a copy of print_following_string in the
+    ; "!ifndef DEBUG {" block below anyway, we're indulgent and have a tweaked copy here which includes an
+    ; indent after a newline to make the runtime info look nicer.
+.print_indented_following_string
 	; print text (implicit argument passing)
 	; input:
 	; output:
 	; used registers: a
 	; side effects:
-!zone {
 	; usage:
 	;    jsr print_following_string
 	;    !pet "message",0
@@ -1733,8 +1734,20 @@ print_following_string
 .return_address
 	lda $0000 ; self-modifying code (aaarg! but oh, so efficent)
 	beq +
-	jsr streams_print_output
+    cmp #13 ; SFTODO: MAGIC CONSTANT
+    beq .do_indent
+    jsr streams_print_output
 	jmp -
+.do_indent
+    ; Print 2 (in mode 6) or 3 (in mode 7) spaces after the newline.
+    jsr streams_print_output
+.print_indented_following_string_ldx_imm_indent
+    ldx #2 ; patched at runtime if SFTODO
+--  lda #' '
+    jsr streams_print_output
+    dex
+    bne --
+    beq -
 
 	; put updated return address on stack
 +   lda .return_address + 2
@@ -1742,8 +1755,12 @@ print_following_string
 	lda .return_address + 1
 	pha
 	rts
-}
 
+; ACORN_SHOW_RUNTIME_INFO needs these utility subroutines which are normally only included
+; in debug builds. We don't want to bloat the non-discardable code with them if they're not
+; otherwise needed, so we duplicate the code here. (This isn't ideal, but this isn't critical
+; code, nor is it likely to change much.)
+!ifndef DEBUG {
 print_byte_as_hex
 	pha
 	lda #$ff
