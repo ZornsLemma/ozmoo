@@ -1607,6 +1607,9 @@ initial_vmap_z_l
 .runtime_info_start_row !fill 1
 .column !fill 1 ; SFTODO: rename?
 
+.prepare_for_runtime_info_done
+    rts
+
 ; Position the cursor and (if appropriate) clear part of the screen so the
 ; runtime information appears relatively neatly.
 .prepare_for_runtime_info_output
@@ -1619,7 +1622,7 @@ initial_vmap_z_l
     lda #osbyte_read_cursor_position
     jsr osbyte ; set X=cursor X, Y=cursor Y
     cpx #0
-    beq .prepare_for_runtime_info_output_done
+    beq .prepare_for_runtime_info_done
 
     ; We're probably being run for the first time with the loader screen visible.
     ; We don't want to make any definite assumptions about what it looks like, and
@@ -1671,10 +1674,37 @@ initial_vmap_z_l
     lda #10
     sta .runtime_info_start_row
 .SFTODONOWFINISH
+
+    ; SFTODONOW COMMENT
+    ; SFTODONOW NEED TO DETECT MODE 6
+    ldx #0
+    ldy .runtime_info_start_row
+    iny
+    jsr do_oswrch_vdu_goto_xy
+    lda #osbyte_read_screen_mode
+    jsr osbyte
+    cpy #7
+    bne .runtime_info_not_mode_7
+.runtime_info_colour = 3 ; SFTODONOW!? MOVE ANYWAY
+    lda #mode_7_graphics_colour_base + .runtime_info_colour
+    jsr oswrch
+    ldx #39
+    jmp .line_loop
+.runtime_info_not_mode_7
+    lda #128
+    sta .lda_imm_line_char + 1
+    ldx #40
+.line_loop
+.lda_imm_line_char
+    lda #172 ; patched by code above if we're in mode 6
+    jsr oswrch
+    dex
+    bne .line_loop
+
     ldx .runtime_info_start_row
+    inx
     ldy #0 ; column
     jsr set_cursor
-.prepare_for_runtime_info_output_done
     rts
 
 ; ACORN_SHOW_RUNTIME_INFO needs these utility subroutines which are normally only included
