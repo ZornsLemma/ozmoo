@@ -1366,13 +1366,22 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
-    ; I'll indulge myself with a brief but technically incorrect "any key" (not
-    ; Shift, not Ctrl, not Break...) message here.
-    ; SFTODONOW: PERHAPS ADD A DOUBLE NEWLINE AT FRONT AND TWEAK MESSAGE NOW
+
+    ; Print "continue" message after runtime info and wait for SPACE/RETURN.
     jsr newline
+    jsr newline
+    jsr .space_if_mode_7
     jsr .print_indented_following_string
-    !text "[press any key]", 0
-    jsr osrdch
+    !text "Press SPACE/RETURN to continue...", 0
+    lda #osbyte_flush_buffer
+    ldx #buffer_keyboard
+    jsr osbyte
+-   jsr osrdch
+    cmp #' '
+    beq ++
+    cmp #vdu_cr
+    bne -
+++
     ; Start a new line and force the OS cursor to the right position; this will cause
     ; .init_progress_indicator below to set up the progress bar correctly (using the
     ; "we are restarting and have to print Loading: ourselves" code path).
@@ -1607,6 +1616,15 @@ initial_vmap_z_l
 .show_runtime_info !fill 1
 .runtime_info_start_row !fill 1
 .column !fill 1 ; SFTODO: rename?
+
+.space_if_mode_7
+    lda #osbyte_read_screen_mode
+    jsr osbyte ; set Y=current screen mode
+    cpy #7
+    bne +
+    lda #' '
+    jsr streams_print_output
++   rts
 
 .prepare_for_runtime_info_done
     rts
