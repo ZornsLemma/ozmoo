@@ -1697,7 +1697,6 @@ initial_vmap_z_l
     cmp #25
     bne .row_loop
     ; We couldn't find a blank row. Just start at row 10.
-    ; SFTODONOW TEST THIS CASE
     lda #10
     sta .runtime_info_start_row
 .blank_row_found
@@ -1717,15 +1716,15 @@ initial_vmap_z_l
     lda #vdu_reset_text_window
     jsr oswrch
 
-    ; SFTODONOW COMMENT
-    ; SFTODONOW NEED TO DETECT MODE 6
+    ; Write a header line for the runtime info.
     ldx #0
     ldy .runtime_info_start_row
     iny
     jsr do_oswrch_vdu_goto_xy
     lda .runtime_info_indent
     beq +
-.runtime_info_colour = 3 ; SFTODONOW!? MOVE ANYWAY
+    ; SFTODONOW: Can we easily get this colour from the loader's parsing of any custom screen? If not demote this to SFTODO and explain why it's not completely trivial.
+.runtime_info_colour = 3 ; SFTODO: MOVE?
     lda #mode_7_text_colour_base + .runtime_info_colour
     jsr oswrch
 +
@@ -1735,13 +1734,13 @@ initial_vmap_z_l
     jsr set_cursor
 .show_runtime_info_header
     jsr .print_indented_following_string
-    !text "Technical details:", 0 ; SFTODONOW: TWEAK STRING
+    !text "Technical details:", 0
     rts
 
-    ; SFTODONOW: Tweak name of this?
-    ; Since this is discardable init code and we used to include a copy of print_following_string in the
-    ; "!ifndef DEBUG {" block below anyway, we're indulgent and have a tweaked copy here which includes an
-    ; indent after a newline to make the runtime info look nicer.
+; Since this is discardable init code and we used to include a copy of print_following_string in the
+; "!ifndef DEBUG {" block below anyway, we're indulgent and have a tweaked copy here which includes an
+; indent after a newline to make the runtime info look nicer.
+; SFTODO: Rename this? It only indents after a CR.
 .print_indented_following_string
 	; print text (implicit argument passing)
 	; input:
