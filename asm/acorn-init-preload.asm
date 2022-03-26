@@ -1370,7 +1370,7 @@ deletable_init_start
     ; Print "continue" message after runtime info and wait for SPACE/RETURN.
     jsr newline
     jsr newline
-    jsr .space_if_mode_7
+    jsr .space_if_indent
     jsr .print_indented_following_string
     !text "Press SPACE/RETURN to continue...", 0
     lda #osbyte_flush_buffer
@@ -1387,13 +1387,11 @@ deletable_init_start
     jsr newline
     jsr s_cursor_to_screenrowcolumn
 
-    ; If we're in mode 7, print "Loading:" ourselves in order to get it to line
-    ; up nicely with everything else. Otherwise leave it alone and let
+    ; If we're indeintg print "Loading:" ourselves in order to get it to line up
+    ; nicely with everything else. Otherwise leave it alone and let
     ; .init_progress_indicator handle it using the "restart" code path.
-    lda #osbyte_read_screen_mode
-    jsr osbyte ; set Y=current screen mode
-    cpy #7
-    bne +
+    lda .runtime_info_indent
+    beq +
     jsr .print_indented_following_string
     !text " Loading:", 0
     jsr s_cursor_to_screenrowcolumn
@@ -1625,14 +1623,14 @@ initial_vmap_z_l
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
 .show_runtime_info !fill 1
+.runtime_info_indent !fill 1 ; defaults to 0
 .runtime_info_start_row !fill 1
 .column !fill 1 ; SFTODO: rename?
 
-.space_if_mode_7
-    lda #osbyte_read_screen_mode
-    jsr osbyte ; set Y=current screen mode
-    cpy #7
-    bne +
+; SFTODO: Inline if only one caller
+.space_if_indent
+    lda .runtime_info_indent
+    beq +
     lda #' '
     jsr streams_print_output
 +   rts
@@ -1652,14 +1650,27 @@ initial_vmap_z_l
     lda #osbyte_read_cursor_position
     jsr osbyte ; set X=cursor X, Y=cursor Y
     cpx #0
-    beq .prepare_for_runtime_info_done
+    bne .loader_screen_visible
+    jsr newline
+    jmp .show_runtime_info_header
 
+.loader_screen_visible
     ; We're probably being run for the first time with the loader screen visible.
-    ; We don't want to make any definite assumptions about what it looks like, and
-    ; we also don't want to allocate a memory location for the loader to convey the
-    ; row after the end of the hardware detected list to this code. We therefore
-    ; try to find a blank row starting at row 4 or lower and use that as our starting
-    ; point. We know we're in a 40x25 mode (6 or 7) here.
+    ; Make a note of that as if we're *also* running in mode 7, we want to indent
+    ; an extra column in various places for consistency.
+    lda #osbyte_read_screen_mode
+    jsr osbyte ; set Y=current screen mode
+    cpy #7
+    bne +
+    inc .runtime_info_indent
++
+
+    ; We don't want to make any definite assumptions about what the loader
+    ; screen looks like, and we also don't want to allocate a memory location
+    ; for the loader to convey the row after the end of the hardware detected
+    ; list to this code. We therefore try to find a blank row starting at row 4
+    ; or lower and use that as our starting point. We know we're in a 40x25 mode
+    ; (6 or 7) here.
     lda #4
     sta .runtime_info_start_row
 .row_loop
@@ -1712,22 +1723,17 @@ initial_vmap_z_l
     ldy .runtime_info_start_row
     iny
     jsr do_oswrch_vdu_goto_xy
-    lda #osbyte_read_screen_mode
-    jsr osbyte
-    cpy #7
-    bne .runtime_info_not_mode_7
+    lda .runtime_info_indent
+    beq +
 .runtime_info_colour = 3 ; SFTODONOW!? MOVE ANYWAY
     lda #mode_7_text_colour_base + .runtime_info_colour
     jsr oswrch
-    ; Patch a couple of instructions to allow for mode 7 control codes.
-    inc .ldy_imm_column + 1
-    inc .print_indented_following_string_ldx_imm_indent + 1
-.runtime_info_not_mode_7
++
     ldx .runtime_info_start_row
     inx
-.ldy_imm_column
-    ldy #0 ; column - patched to 1 above if mode 7 (to skip colour code)
+    ldy .runtime_info_indent
     jsr set_cursor
+.show_runtime_info_header
     jsr .print_indented_following_string
     !text "Technical details:", 0 ; SFTODONOW: TWEAK STRING
     rts
@@ -1770,8 +1776,9 @@ initial_vmap_z_l
 .do_indent
     ; Print 2 (in mode 6) or 3 (in mode 7) spaces after the newline.
     jsr streams_print_output
-.print_indented_following_string_ldx_imm_indent
-    ldx #2 ; patched at runtime if SFTODO
+    ldx .runtime_info_indent
+    inx
+    inx
 --  lda #' '
     jsr streams_print_output
     dex
