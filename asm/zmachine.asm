@@ -498,7 +498,8 @@ read_operand
 	+read_next_byte_at_z_pc
 	tax
 	lda z_temp + 2
-	jmp .store_operand ; Always branch
+	jmp .store_operand ; Always branch
+
 .operand_is_not_large_constant
 	+read_next_byte_at_z_pc
 	cpx #%00000001
@@ -704,7 +705,8 @@ SFTODOQQ4
 	stx zp_temp + 1
 !ifdef TARGET_C128 {
 	dex
-	stx zp_temp + 2 ; Value $ff, meaning bank = 1
+	stx zp_temp + 2 ; Value $ff, meaning bank = 1
+
 }
 	asl
 	rol zp_temp + 1
@@ -1869,60 +1871,17 @@ z_ins_random
 	
 ; z_ins_output_stream jumps directly to streams_output_stream.
 
+!ifdef ACORN {
+; SF: Commodore z_ins_sound_effect has moved to sound.asm.
+; SFTODO: Should I move the Acorn code in there?
 z_ins_sound_effect
-!ifndef ACORN {
-	lda #$08
-} else {
     lda #0 ; B1
-}
 	ldx z_operand_value_low_arr
 	dex
 	beq .sound_high_pitched_beep
 	dex
 	beq .sound_low_pitched_beep
 	rts
-!ifndef ACORN {
-!ifdef HAS_SID {
-.sound_high_pitched_beep
-	lda #$40
-.sound_low_pitched_beep
-	sta $d401
-	lda #$21
-	sta $d404
-	ldy #40
---	ldx #0
--	dex
-	bne -
-	dey
-	bne --
-	lda #$20
-	sta $d404
-	rts
-} else {
-	!ifdef TARGET_PLUS4 {
-.sound_high_pitched_beep
-	lda #$f2
-.sound_low_pitched_beep
-	sta ted_voice_2_low
-	sta ted_voice_2_high
-	lda #32 + 15
-	sta ted_volume
-	ldy #40
---	ldx #0
--	dex
-	bne -
-	dey
-	bne --
-	lda #0 + 15
-	sta ted_volume
-	rts
-	} else {
-.sound_high_pitched_beep
-.sound_low_pitched_beep
-	rts
-	}
-}
-} else {
     ; MOS 6581 SID datasheet says for standard 1.0MHz clock, frequency is given
     ; by Fout = (Fn * 0.0596) Hz. The C64 code uses Fn=$4000->976 Hz for the
     ; high-pitched bleep and Fn=$0800->122 Hz for the low-pitched bleep. Looking

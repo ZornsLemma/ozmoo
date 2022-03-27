@@ -913,6 +913,10 @@ game_id		!byte 0,0,0,0
 !source "streams.asm" ; Must come before "text.asm"
 !ifndef ACORN {
 	!source "disk.asm"
+	; SFTODO: Does it make sense to try to support sound on Acorn?
+;!ifdef SOUND {
+!source "sound.asm"
+;}
 } else {
 	!source "acorn-disk.asm"
 }
@@ -1319,6 +1323,9 @@ z_init
 	and #(255 - 16 - 64) ; Statusline IS available, variable-pitch font is not default
 	ora #32 ; Split screen available
 	jsr write_header_byte
+!ifdef SOUND {
+	jsr init_sound
+}
 } else {
 !ifdef Z4 {
 	ldy #header_flags_1
@@ -1339,8 +1346,25 @@ z_init
 	jsr write_header_byte
 	ldy #header_flags_2 + 1
 	jsr read_header_word
+!ifdef SOUND {
+	pha
+	and #$80
+	beq + ; Game doesn't want to play sounds
+	jsr init_sound
+	bcc +
+	; No sound files found, so tell game sound isn't supported
+	pla
+	and #(255 - 128) 
+	ldy #header_flags_2 + 1
+	pha
++	pla
+	and #(255 - 8 - 16 - 32) ; pictures, undo and mouse not available
+	ldy #header_flags_2 + 1
+	jsr write_header_byte
+} else {
 	and #(255 - 8 - 16 - 32 - 128) ; pictures, undo, mouse, sound effect not available
 	jsr write_header_byte
+}
 }
 }
 !ifdef Z4PLUS {
