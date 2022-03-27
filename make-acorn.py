@@ -233,11 +233,30 @@ def prechecks():
                     (min_basictool_version + min_beebasm_version))
 
 
+def apply_patch(patch, game_name):
+    patch = patch.split(" ")
+    def pop():
+        return int(patch.pop(0),16)
+    patch_address = pop()
+    patch_check = pop()
+    if read_be_word(game_data, patch_address) == patch_check:
+        while len(patch) > 0:
+            game_data[patch_address] = pop()
+            patch_address += 1
+    else:
+        warn("Story file matches serial number and version for %s, but contents differ; failed to patch" % game_name)
+
+
 def check_if_special_game():
     release = read_be_word(game_data, header_release)
     serial = game_data[header_serial:header_serial+6].decode("ascii")
     game_key = "r%d-s%s" % (release, serial)
 
+    trinity_releases = {
+	    "r11-s860509": "fddd 2058 01",
+	    "r12-s860926": "fddd 2048 01",
+	    "r15-s870628": "fd8d 2048 01"
+    }
     # This (Ozmoo upstream) patch shortens a message to work better on 40 column
     # screens. The diff is approximately:
     #         PRINT           "  "
@@ -257,7 +276,13 @@ def check_if_special_game():
         "r57-s871221": "f384 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
         "r60-s880610": "f2dc 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1"
     }
+    is_trinity = (z_machine_version == 4) and game_key in trinity_releases
     is_beyond_zork = (z_machine_version == 5) and game_key in beyond_zork_releases
+    if is_trinity:
+        info("Game recognised as 'Trinity'")
+        # We don't patch if the game is only going to be run in 80 column modes.
+        if not cmd_args.only_80_column:
+            apply_patch(trinity_releases[game_key], "Trinity")
     if is_beyond_zork:
         info("Game recognised as 'Beyond Zork'")
         # SFTODO: Should probably offer a command line option to disable this special case handling of BZ (with a generic name, in case other games can be patched later - eg "--no-special-game-check")
@@ -275,17 +300,7 @@ def check_if_special_game():
         # both work in Beyond Zork the same as they would anywhere else.
         # We don't patch if the game is only going to be run in 80 column modes.
         if not cmd_args.only_80_column:
-            patch = beyond_zork_releases[game_key].split(" ")
-            def pop():
-                return int(patch.pop(0),16)
-            patch_address = pop()
-            patch_check = pop()
-            if read_be_word(game_data, patch_address) == patch_check:
-                while len(patch) > 0:
-                    game_data[patch_address] = pop()
-                    patch_address += 1
-            else:
-                warn("Story file matches serial number and version for Beyond Zork, but contents differ; failed to patch")
+            apply_patch(beyond_zork_releases[game_key], "Beyond Zork")
 
 
 # common_labels contains the value of every label which had the same value in
