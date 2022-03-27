@@ -8,6 +8,9 @@ import re
 import subprocess
 import sys
 
+MAX_DFS_DISC_TITLE_LEN = 12
+MAX_ADFS_DISC_TITLE_LEN = 19
+
 # TODO: Should this script always refer to the "temp" directory in the same directory as itself? at the moment if you were to run make-acorn.py from some random directory I think you'd end up with a temp directory there. I just tried it and it actually fails because it can't find "asm", but again, should that be accessed using the same path as make-acorn.py?
 # SFTODO: We should not refuse to build for Electron if the game won't fit on a sideways RAM only machine but will work on one with shadow RAM - obviously the loader should give a sensible message if the resulting game is run on an Electron without shadow RAM.
 
@@ -485,12 +488,15 @@ class DfsImage(object):
     tracks = 80
     bytes_per_surface = tracks * bytes_per_track
 
-    def __init__(self, contents, boot_option = 3): # 3 = *EXEC
+    def __init__(self, contents, title, boot_option = 3): # 3 = *EXEC
         self.data = bytearray(2 * DfsImage.bytes_per_sector)
         sectors = DfsImage.tracks * DfsImage.sectors_per_track
         self.data[0x107] = sectors & 0xff
         self.data[0x106] = ((sectors >> 8) & 0x3) | (boot_option << 4)
-        # SFTODO: DISC TITLE
+        title = title[:MAX_DFS_DISC_TITLE_LEN]
+        title = pad_to(bytearray(title, "ascii"), MAX_DFS_DISC_TITLE_LEN)
+        self.data[0x000:0x008] = title[:8]
+        self.data[0x100:0x104] = title[8:]
         for f in contents:
             self.add_file(f)
 
@@ -567,7 +573,7 @@ class AdfsImage(object):
     LOCKED = 1
     SUBDIRECTORY = 2
 
-    def __init__(self, contents, boot_option = 3): # 3 = *EXEC
+    def __init__(self, contents, title, boot_option = 3): # 3 = *EXEC
         self.catalogue = []
         self.data = bytearray(AdfsImage.bytes_per_sector * 2)
         self.total_sectors = AdfsImage.tracks * AdfsImage.sectors_per_track
@@ -575,9 +581,8 @@ class AdfsImage(object):
             self.total_sectors *= 2
         write_le(self.data, 0xfc, self.total_sectors, 2)
         self.data[0x1fd] = boot_option
-        self.data += AdfsImage._make_directory("$")
+        self.data += AdfsImage._make_directory("$", title)
         self.md5 = hashlib.md5()
-        # SFTODO: DISC TITLE
         for f in contents:
             self.add_file(f)
 
@@ -599,16 +604,17 @@ class AdfsImage(object):
         return start_sector
 
     @staticmethod
-    def _make_directory(name):
+    def _make_directory(name, title=None):
+        if title is None:
+            title = name
         data = bytearray(5 * AdfsImage.bytes_per_sector)
         data[0x001:0x005] = b"Hugo"
         data[0x005] = 0 # number of catalogue entries
         if name == "$":
             data[0x4cc] = ord("$")
-            data[0x4d9] = ord("$")
         else:
             data[0x4cc:0x4d6] = (name.encode("ascii") + b"\r" + b"\0"*10)[:10]
-            data[0x4d9:0x4ec] = (name.encode("ascii") + b"\r" + b"\0"*19)[:19]
+        data[0x4d9:0x4ec] = (title.encode("ascii") + b"\r" + b"\0"*MAX_ADFS_DISC_TITLE_LEN)[:MAX_ADFS_DISC_TITLE_LEN]
         data[0x4d6] = 2 # parent is always $ in this code
         data[0x4fb:0x4ff] = b"Hugo"
         assert data[0] == data[0x4fa]
@@ -1582,6 +1588,7 @@ def parse_args():
     group.add_argument("--no-build-file", action="store_true", help="disable creation of build file on generated disc image")
     # SFTODO: Not an ideal argument name but it will do for now.
     group.add_argument("--nfs-install-only", action="store_true", help="generate a disc image for installation to NFS")
+    group.add_argument("--disc-title", metavar="DISCTITLE", type=str, help="set disc image title")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -1959,8 +1966,16 @@ def make_disc_image():
             user_extension = preferred_extension
         output_file = user_prefix + user_extension
 
+    # If the user explicitly specifies a disc title we warn if it's too long,
+    # otherwise we silently truncate the title from the loader screen to make it
+    # fit.
+    max_disc_title_len = MAX_ADFS_DISC_TITLE_LEN if cmd_args.adfs else MAX_DFS_DISC_TITLE_LEN
+    disc_title = cmd_args.disc_title if cmd_args.disc_title is not None else cmd_args.title[:max_disc_title_len]
+    if len(disc_title) > max_disc_title_len:
+        warn('Truncating disc title to %d characters: "%s"' % (max_disc_title_len, disc_title[:max_disc_title_len]))
+
     if not cmd_args.adfs:
-        disc = DfsImage(disc_contents, boot_option=0 if cmd_args.nfs_install_only else 3)
+        disc = DfsImage(disc_contents, disc_title, boot_option=0 if cmd_args.nfs_install_only else 3)
         if not cmd_args.double_sided:
             # Because we read multiples of pages_per_vmem_block at a time, the data file must
             # start at a corresponding sector in order to avoid a read ever straddling a track
@@ -1973,7 +1988,7 @@ def make_disc_image():
                 disc.add_file(make_build_file())
             DfsImage.write_ssd(disc, output_file)
         else:
-            disc2 = DfsImage(disc2_contents, boot_option=0) # 0 = no action
+            disc2 = DfsImage(disc2_contents, disc_title, boot_option=0) # 0 = no action
             # The game data must start on a track boundary at the same place on both surfaces.
             max_first_free_sector = max(disc.first_free_sector(), disc2.first_free_sector())
             def pad_predicate(sector):
@@ -1992,7 +2007,7 @@ def make_disc_image():
                 disc.add_file(make_build_file())
             DfsImage.write_dsd(disc, disc2, output_file)
     else:
-        disc = AdfsImage(disc_contents)
+        disc = AdfsImage(disc_contents, disc_title)
         # There are no alignment requirements for ADFS so we don't need a pad file..
         disc.add_file(File("DATA", 0, 0, game_data))
         disc.add_directory("SAVES")
@@ -2172,5 +2187,3 @@ show_deferred_output()
 # SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat. (This *may* now be fixed in practice by not building with history support, but it would be good to check older versions and see if that's why or if there is some other source of bloat here.)
 
 # SFTODONOW: In Beyond Zork with --no-cursor-editing, COPY keys acts like f2 (=STATUS). Not necessarily a big deal but suggests something is subtlely awry. (Might not actually be f2 technically; I am pressing f2 on my PC keyboard but that may be f1 or something really. I don't think that's the issue, just don't get too hung up on *f2* specifically; key point is that COPY acts like one of the f keys and there's no obvious reason it should.) (FWIW, f2 *does* also work without --no-cursor-editing.) - *OK*, I see what's happening, if not what the best fix is. We explicitly set --function-keys option for BZ. This sets things up so f0 returns 133(=ZSCII f1; there is no f0 in ZSCII), so COPY key's *FX4,1 return value of 135 is indistinguishable from f2. I suspect the "right" fix would be to have the function keys return some "spare" codes and use the input character translation to map those to ZSCII function key codes, then COPY wouldn't get mixed up. But this would - admittedly only in games using --function-keys - add about 16 (8 function keys - due to no need to change, we are I believe constrained by C64's 8 function keys when parsing termination chars) bytes to the translation table. That's probably OK if a game *does* care about function keys, but think about it.
-
-# SFTODONOW: Should add support for a disc title - this isn't as cosmetic as it might seem, thinks like MMB Manager will use it
