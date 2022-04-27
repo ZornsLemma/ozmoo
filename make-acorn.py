@@ -739,11 +739,19 @@ class Executable(object):
         self._asm_output_filename = os.path.join("temp", output_name)
 
         os.chdir("asm")
-        def up(path):
-            return os.path.join("..", path)
-        cpu = "65c02" if "-DCMOS=1" in args else "6502"
-        run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], None, lambda x: x.startswith(b"Warning"))
-        os.chdir("..")
+        try:
+            def up(path):
+                return os.path.join("..", path)
+            cpu = "65c02" if "-DCMOS=1" in args else "6502"
+            def acme_output_filter(line):
+                game_wont_fit_str = b"GameWontFit"
+                i = line.find(game_wont_fit_str)
+                if i != -1:
+                    raise GameWontFit(line[i+len(game_wont_fit_str)+2:].strip())
+                return True
+            run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], acme_output_filter, lambda x: x.startswith(b"Warning"))
+        finally:
+            os.chdir("..")
 
         self.labels = self._parse_labels()
         with open(self._asm_output_filename, "rb") as f:
@@ -1208,8 +1216,9 @@ def make_tube_executables():
     # We don't pay attention to cmd_args.extra_build_at here; tube builds have a fixed
     # address anyway.
     tube_vmem = make_ozmoo_executable(leafname, tube_start_addr, args, "second processor")
-    if tube_vmem is not None:
-        info("Game will be run using virtual memory on second processor")
+    if tube_vmem is None:
+        return None
+    info("Game will be run using virtual memory on second processor")
     if cmd_args.no_tube_cache:
         return [tube_vmem]
     return [make_cache_executable(), tube_vmem]
@@ -1906,7 +1915,9 @@ def make_disc_image():
     if want_tube:
         if not cmd_args.no_turbo:
             turbo_test_executable = make_turbo_test_executable()
-        ozmoo_variants.append(make_tube_executables())
+        tube_executables = make_tube_executables()
+        if tube_executables is not None:
+            ozmoo_variants.append(tube_executables)
     if len(ozmoo_variants) == 0:
         die("No builds succeeded, can't generate disc image.")
 

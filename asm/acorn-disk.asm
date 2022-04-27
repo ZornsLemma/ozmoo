@@ -944,7 +944,7 @@ save_game
     !word 0 ; exec address high
     !word stack_start - zp_bytes_to_save ; start address low
     !word 0 ; start address high
-    !word story_start + ACORN_DYNAMIC_SIZE_BYTES ; end address low
+    !word (story_start + ACORN_DYNAMIC_SIZE_BYTES) & $ffff ; end address low
     !word 0 ; end address high
 .osfile_save_load_block_master_end
 .osfile_save_load_block_length = .osfile_save_load_block_master_end - .osfile_save_load_block_master

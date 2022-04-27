@@ -2073,3 +2073,13 @@ scratch_overlapping_game_start
 ; SFTODO: Don't forget the transient command workspace at &A8 is available for short-term use.
 
 ; SFTODO: Possibly "too slow" and there may be other issues, but JGH's "portable ROM paging" trick (https://stardot.org.uk/forums/viewtopic.php?p=345669&sid=53743ef3b22a3ea1ccfd5e32b8cd1ddf#p345669) just might make it more practical to share an executable between Electron and BBC. In any event, if this is otherwise attractive, don't write it off without doing some timing - Ozmoo does page a lot, but it is moderately optimised and it would be best not to assume. (Although there is some overlap here with the idea of having a "page_in_rom_a" subroutine which the loader sets up or which the initialisation code patches to do the right thing for the current host. And JGH's trick corrupts a lot of registers, which is not ideal for Ozmoo I suspect. Still, it would probably be worth replacing STA &F4:STA &FE30 (and similarly for other registers) with JSR page_in_rom_a where page_in_rom_a is STA &F4:STA &FE30:RTS and seeing how that affects performance. There *might* be a worthwhile saving in code size which would help pay for any slowdown. Also remember there's another TODO knocking around somewhere about using the standard "BBC" sequence inline but dynamically patching it to JSR on systems needing a different and longer (thus not patchable in place) paging sequence.)
+
+; In acorn-disk.asm we truncate this sum to 16 bits to avoid build errors, but
+; if the truncation actually has any effect the game is broken. We can't
+; generate this error at that point because story_start isn't defined there on
+; the first pass, so we have to do it here.
+!ifdef ACORN_SAVE_RESTORE_OSFILE {
+!if story_start + ACORN_DYNAMIC_SIZE_BYTES > $ffff {
+    !error "GameWontFit: dynamic memory overflows address space"
+}
+}
