@@ -109,12 +109,49 @@ shadow=potential_himem=&8000
 shadow_extra$=""
 shadow_osbyte=111
 IF integra_b AND shadow THEN shadow_extra$="(Integra-B)"
-REM For a BBC B with non-Integra-B shadow RAM, we need to work out how to control it.
+REM For a BBC B with shadow RAM, we need to work out how to control it. So far
+REM Ozmoo has been tested with Integra-B, Watford and Aries shadow RAM cards.
+REM We can explicitly detect the Integra-B, so that's easy.
 IF NOT (shadow AND host_os=1 AND NOT integra_b) THEN GOTO 600
-REM SFTODO: Copy explanation of this logic in from stardot post 06/01/2022 once it's
-REM confirmed to work...
-REM SFTODO: "Aries" might be technically incorrect (Solidisk shadow RAM? others?) but let's go
-REM with it for now.
+REM We're on a BBC B with non-Integra-B shadow RAM.
+REM
+REM There are two competing standards for controlling shadow RAM paging on a
+REM BBC B, one using *FX34 ("Watford") and the other using *FX111 ("Aries").
+REM
+REM With the Watford 32K RAM card, *FX34 is supported by Watford ROMs 2.00 and
+REM 2.40. *FX111 is only supported by 2.40.
+REM
+REM With the Aries B20, *FX34 is not supported, *FX111 is supported.
+REM
+REM As an extra complication, Watford DFS versions prior to 1.43/Watford DDFS
+REM versions prior to 1.53 use *FX111 to read the drive number of the last
+REM *LOAD or *RUN read.
+REM
+REM In order to try to cope with all this:
+REM
+REM We try *FX34 first, because probably the only thing that implements this is
+REM the Watford RAM card driver ROM (either version). So we should with luck
+REM avoid any false positives and if *FX34 works, we can use it to control
+REM shadow RAM paging.
+REM
+REM If *FX34 doesn't work, we assume we can use *FX111, which I believe is
+REM reasonable. 
+REM
+REM If the user has an older version of Watford (D)DFS, Ozmoo's preference for
+REM using *FX34 will reduce the chances of a clash over the two different uses
+REM of *FX111. Only a user with an older version of Watford (D)DFS and a
+REM non-Watford shadow RAM card will experience problems, and probably only if
+REM they have the DFS in a higher priority bank than the shadow RAM support ROM
+REM as well. Anyone with that kind of setup is likely to run into problems with
+REM other software trying to use *FX111 as well. We try to detect this (in a
+REM way that's probably fairly reliable in practice, but not guaranteed) and
+REM generate an error rather than crashing when *FX111 doesn't do what we
+REM expect during the game. To solve this, the user either needs to upgrade the
+REM DFS, disable their shadow RAM or, probably, reorder their ROMs so the
+REM shadow RAM driver ROM gets dibs on *FX111.
+REM
+REM SFTODO: "Aries" might be technically incorrect (Solidisk shadow RAM?
+REM others?) but let's go with it for now.
 shadow_extra$="(Aries)"
 ON ERROR GOTO 600
 REM Whether shadow mode is currently in operation is a little fuzzy, so use *FX34,64
@@ -167,7 +204,7 @@ PRINT
 die_top_y=VPOS
 
 REM This check can't be done over the tube as the problematic Watford
-REM DFS OSBYTE 111 call returns a value in X which isn't tube compatible; luckily
+REM DFS OSBYTE 111 call returns a value in X, which isn't tube compatible; luckily
 REM at the moment we don't try to use spare shadow RAM when running on tube systems
 REM so this is irrelevant anyway. (SFTODO: If/when the cache uses spare shadow RAM,
 REM we need to execute this test on the host, probably as part of a "shadow RAM
