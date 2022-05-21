@@ -105,6 +105,14 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; SFTODONOW: Should I have some kind of single --debug switch in make-acorn.py which turns on multiple things?
 
 ; Macro used to generate an OS error.
+; SFTODO: On one of my machines where acme is:
+;     This is ACME, release 0.95.8 ("Fenchurch"), 8 Oct 2016
+;       Platform independent version.
+; macros cannot take string arguments and all the uses of this fail. Should I
+; get rid of this (and any other, if there are any) macros which take string
+; arguments, or just require a newer acme? (Right now I am not sure exactly
+; which versions work, and acme seems to have a few forks floating around.) I
+; noticed this myself, no one else has run into problems with this yet.
 !macro os_error error_number, error_message {
     brk
     !byte error_number
