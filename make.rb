@@ -2,9 +2,6 @@
 
 require 'fileutils'
 
-$sound_format = "wav"
-#$sound_format = "aiff"
-
 $is_windows = (ENV['OS'] == 'Windows_NT')
 
 if $is_windows then
@@ -103,11 +100,18 @@ $zip_file = File.join($TEMPDIR, 'ozmoo_zip')
 $good_zip_file = File.join($TEMPDIR, 'ozmoo_zip_good')
 $compmem_filename = File.join($TEMPDIR, 'compmem.tmp')
 $universal_file = File.join($TEMPDIR, 'universal')
+$config_filename = File.join($TEMPDIR, 'config.tmp')
 
 $trinity_releases = {
 	"r11-s860509" => "fddd 2058 01",
 	"r12-s860926" => "fddd 2048 01",
 	"r15-s870628" => "fd8d 2048 01"
+}
+
+$lurkinghorror_releases = {
+	"r203-s870506" => "",
+	"r219-s870912" => "",
+	"r221-s870918" => ""
 }
 
 $beyondzork_releases = {
@@ -117,6 +121,23 @@ $beyondzork_releases = {
     "r57-s871221" => "f384 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1",
     "r60-s880610" => "f2dc 14c2 00 a6 0b 64 23 57 62 97 80 84 a0 02 ca b2 13 44 d4 a5 8c 00 09 b2 11 24 50 9c 92 65 e5 7f 5d b1 b1 b1 b1 b1 b1 b1 b1 b1 b1 b1"
 }
+
+$d81interleave = [
+	# 0:No interleave
+	{},
+	# 1: 0,1,  4,5,  8,9,  12,13, ...
+	{	1 => 4, 5 => 8, 9 => 12, 13 => 16, 17 => 20, 21 => 24, 25 => 28, 29 => 32, 33 => 36, 37 => 0, 
+		3 => 6, 7 => 10, 11 => 14, 15 => 18, 19 => 22, 23 => 26, 27 => 30, 31 => 34, 35 => 38, 39 => 2
+	},
+	# 2: 0, 4, 8, 12, ...
+	{	0 => 4, 4 => 8, 8 => 12, 12 => 16, 16 => 20, 20 => 24, 24 => 28, 28 => 32, 32 => 36, 36 => 1,
+		1 => 5, 5 => 9, 9 => 13, 13 => 17, 17 => 21, 21 => 25, 25 => 29, 29 => 33, 33 => 37, 37 => 2,
+		2 => 6, 6 => 10, 10 => 14, 14 => 18, 18 => 22, 22 => 26, 26 => 30, 30 => 34, 34 => 38, 38 => 3,
+		3 => 7, 7 => 11, 11 => 15, 15 => 19, 19 => 23, 23 => 27, 27 => 31, 31 => 35, 35 => 39
+	},
+]
+
+$i81 = $d81interleave[1] # Optimal scheme for MEGA65, as far as we can tell. File copying is not done in make.rb for other platforms.
 
 class Disk_image
 	def base_initialize
@@ -146,6 +167,16 @@ class Disk_image
 	def interleave
 		@interleave
 	end
+
+	attr_accessor :interleave_scheme
+	
+	# def interleave_scheme
+		# @interleave_scheme
+	# end
+	
+	# def interleave_scheme = (interleave_scheme)
+		# @interleave_scheme = interleave_scheme
+	# end
 	
 	def add_story_data(max_story_blocks:, add_at_end:)
 	
@@ -295,7 +326,7 @@ class D64_image < Disk_image
 
 		# NOTE: Blocks to skip can only be 0, 2, 4 or 6, or entire track.
 		@reserved_sectors[18] = 2 # 2: Skip BAM and 1 directory block, 19: Skip entire track
-		@reserved_sectors[@config_track] = 2 if @is_boot_disk
+		@reserved_sectors[@config_track] = 2 if @is_boot_disk and @config_track
 
 		calculate_initial_free_blocks()
 			
@@ -368,7 +399,7 @@ class D64_image < Disk_image
 			@track1800[0x90 + charno] = c64_title[charno].ord
 		end
 		
-		if @is_boot_disk then
+		if @is_boot_disk  and @config_track then
 			allocate_sector(@config_track, 0)
 			allocate_sector(@config_track, 1)
 		end
@@ -434,7 +465,7 @@ class D71_image < Disk_image
 		# NOTE: Blocks to skip can only be 0, 2, 4 or 6, or entire track.
 		@reserved_sectors[18] = 2 # 2: Skip BAM and 1 directory block, 19: Skip entire track
 		@reserved_sectors[53] = 2 # 2: Skip BAM and 1 extra block (we can't skip just 1 block)
-		@reserved_sectors[@config_track] = 2 if @is_boot_disk
+		@reserved_sectors[@config_track] = 2 if @is_boot_disk and @config_track
 
 		calculate_initial_free_blocks()
 			
@@ -566,7 +597,7 @@ class D71_image < Disk_image
 			@track1800[0x90 + charno] = c64_title[charno].ord
 		end
 		
-		if @is_boot_disk then
+		if @is_boot_disk and @config_track then
 			allocate_sector(@config_track, 0)
 			allocate_sector(@config_track, 1)
 		end
@@ -629,12 +660,15 @@ class D81_image < Disk_image
 		@tracks = 80
 		@track_length = Array.new(@tracks + 1, 40)
 		@track_length[0] = 0
+		@add_to_dir = []
 
 		base_initialize()
 
 		# NOTE: Blocks to skip can only be 0, 2, 4 or 6, or entire track.
 		@reserved_sectors[40] = 40 # 4: Skip BAM and 1 directory block, 6: Skip BAM and 3 directory blocks, 40: Skip entire track
-		@reserved_sectors[@config_track] = 2
+		if @config_track
+			@reserved_sectors[@config_track] = 2
+		end
 
 		calculate_initial_free_blocks()
 			
@@ -693,6 +727,9 @@ class D81_image < Disk_image
 			0x28,0xFF,0xFF,0xFF,0xFF,0xFF,0x28,0xFF,0xFF,0xFF,0xFF,0xFF,0x28,0xFF,0xFF,0xFF,0xFF,0xFF,0x28,0xFF,0xFF,0xFF,0xFF,0xFF  # Track 77-80
 		]
 
+		# Add BAM at 40:01 and 40:02
+		@contents[(@track_offset[40] + 1) * 256 .. (@track_offset[40] + 1) * 256 + @track4001.length - 1] = @track4001
+
 		# Create a disk image. Return number of free blocks, or -1 for failure.
 
 		# Set disk title
@@ -702,8 +739,10 @@ class D81_image < Disk_image
 			@track4000[0x04 + charno] = c64_title[charno].ord
 		end
 		
-		allocate_sector(@config_track, 0)
-		allocate_sector(@config_track, 1)
+		if @config_track
+			allocate_sector(@config_track, 0)
+			allocate_sector(@config_track, 1)
+		end
 
 		@free_blocks
 	end # initialize
@@ -736,6 +775,50 @@ class D81_image < Disk_image
 		end
 	end
 
+	def add_file(filename, filecontents)
+		sector_count = 0
+		if filecontents == nil or filecontents.length == 0
+			start_sector = [0,0]
+		else
+			start_sector = find_free_file_start_sector
+			if start_sector == nil
+				puts "ERROR: No free blocks left on disk."
+				exit 1
+			end
+			sector_count += 1
+			this_sector = start_sector
+			while filecontents.length > 254
+				next_sector = find_next_free_sector(this_sector[0], this_sector[1])
+				if next_sector == nil
+					puts "ERROR: No free blocks left on disk."
+					exit 1
+				end
+				
+				sector_count += 1
+				block_contents = next_sector.pack("CC") + filecontents[0 .. 253]
+				filecontents = filecontents[254 .. filecontents.size - 1]
+				@contents[256 * (@track_offset[this_sector[0]] + this_sector[1]) .. 
+							256 * (@track_offset[this_sector[0]] + this_sector[1]) + 255] =
+					block_contents.unpack("C*")
+				this_sector = next_sector
+			end
+			block_contents = [0, filecontents.length + 2 - 1].pack("CC") + filecontents + Array.new(254 - filecontents.length).fill(0).pack("c*")
+			@contents[256 * (@track_offset[this_sector[0]] + this_sector[1]) .. 
+						256 * (@track_offset[this_sector[0]] + this_sector[1]) + 255] =
+				block_contents.unpack("C*")
+		end
+		
+		# Add file to directory
+		dir_entry = ([0x81] + start_sector).pack("CCC") + 
+			name_to_c64(filename).ljust(16, 0xa0.chr) +
+			"".ljust(9, 0.chr) + 
+			[sector_count % 256, sector_count / 256].pack("CC")
+		
+		@add_to_dir.push dir_entry
+			
+	end
+
+	
 
 	private
 	
@@ -745,22 +828,120 @@ class D81_image < Disk_image
 		index2 = index1 + 1 + (sector / 8)
 
 		# adjust number of free sectors
-		@track4001[index1] -= 1
+
+		free = @contents[(@track_offset[40] + 1) * 256 + index1]
+		if free < 1 or free > 40
+			puts "BAD FREE TRACK SPACE: #{track}, #{sector}"
+		end
+		
+		@contents[(@track_offset[40] + 1) * 256 + index1] = free - 1
 		# allocate sector
 		index3 = 255 - 2**(sector % 8)
-		@track4001[index2] &= index3
+		@contents[(@track_offset[40] + 1) * 256 + index2] &= index3
+	end
+
+	def sector_allocated?(track, sector)
+		index1 = (track > 40 ? 0x100: 0) + 0x10 +  6 * ((track - 1) % 40)
+		index2 = index1 + 1 + (sector / 8)
+		index3 = 2**(sector % 8)
+
+		# is sector allocated?
+		return @contents[(@track_offset[40] + 1) * 256 + index2] & index3 == 0
+	end
+	
+	def find_free_file_start_sector
+		1.upto 40 do |t|
+			40.times do |s|
+				unless t > 39 or sector_allocated?(40 - t, s)
+					allocate_sector(40 - t, s)
+					return [40 - t, s]
+				end
+				unless sector_allocated?(40 + t, s)
+					allocate_sector(40 + t, s)
+					return [40 + t, s]
+				end
+			end
+		end
+		return nil
+	end
+
+	def find_next_free_sector(track, sector)
+		start_track = track
+		tried_track_1 = nil
+		tried_track_80 = nil
+		tried_sectors = []
+		if interleave_scheme && interleave_scheme.has_key?(sector)
+			next_sector = interleave_scheme[sector]
+		else
+			next_sector = (sector + 1) % 40
+		end
+		loop do
+			unless sector_allocated?(track, next_sector)
+				allocate_sector(track, next_sector)
+				return [track, next_sector]
+			end
+			tried_sectors.push next_sector unless tried_sectors.include? next_sector 
+			if tried_sectors.length > 39
+				# This track is full, go to next
+				tried_track_1 = true if track == 1
+				tried_track_80 = true if track == 80
+				return nil if tried_track_1 and tried_track_80 # No free sectors, fail!
+				# Choose a track to try next
+				if track < 40
+					if track > 1
+						track -= 1
+					else
+						track = 41
+					end
+				else
+					if track < 80
+						track += 1
+					else
+						track = 39
+					end
+				end
+				next_sector = (sector + 8)
+				next_sector = next_sector - (next_sector % 2)
+				next_sector = next_sector % 40
+			else
+				next_sector = (next_sector > 38) ? 0 : next_sector + 1
+			end
+		end
 	end
 
 	def add_directory()
 		# Add disk info at 40:00
 		@contents[@track_offset[40] * 256 .. @track_offset[40] * 256 + @track4000.length - 1] = @track4000
 
-		# Add BAM at 40:01 and 40:02
-		@contents[(@track_offset[40] + 1) * 256 .. (@track_offset[40] + 1) * 256 + @track4001.length - 1] = @track4001
-
 		# Add directory at 40:03
 		@contents[(@track_offset[40] + 3) * 256] = 0 
-		@contents[(@track_offset[40] + 3) * 256 + 1] = 0xff 
+		@contents[(@track_offset[40] + 3) * 256 + 1] = 0xff
+
+		add_files_to_dir(3,2)
+	end
+
+	def add_files_to_dir(sector, entry)
+		unless @add_to_dir.empty?
+			block_data = @contents[(@track_offset[40] + sector) * 256 .. (@track_offset[40] + sector) * 256 + 255]
+			block_data[1] = 0xff
+			while !@add_to_dir.empty? do
+				while entry < 8 and block_data[0x20 * entry + 2] > 0
+					entry += 1
+				end
+				if entry > 7
+					block_data[0] = 40
+					block_data[1] = sector + 1
+					allocate_sector(40, sector + 1)
+					add_files_to_dir(sector + 1, 0)
+				else
+					dir_entry = @add_to_dir[0]
+					@add_to_dir = @add_to_dir.drop(1)
+					block_data[0x20 * entry + 2 .. 0x20 * entry + 0x1f] = dir_entry.unpack("C*")
+				end
+			end
+			@contents[(@track_offset[40] + sector) * 256 .. (@track_offset[40] + sector) * 256 + 255] = block_data
+			@add_to_dir = []
+		end
 	end
 
 	def create_a_partition(sector, start_track, end_track, name)
@@ -824,7 +1005,8 @@ def name_to_c64(name)
 end
 
 def build_interpreter()
-	necessarysettings =  " --setpc #{$start_address} -DCACHE_PAGES=#{$CACHE_PAGES} -DSTACK_PAGES=#{$stack_pages} -D#{$ztype}=1 -DCONF_TRK=#{$CONFIG_TRACK}"
+	necessarysettings =  " --setpc #{$start_address} -DCACHE_PAGES=#{$CACHE_PAGES} -DSTACK_PAGES=#{$stack_pages} -D#{$ztype}=1"
+	necessarysettings +=  " -DCONF_TRK=#{$CONFIG_TRACK}" if $CONFIG_TRACK
 	if $target == 'mega65' then
 		necessarysettings +=  " --cpu m65"
 	else
@@ -837,6 +1019,11 @@ def build_interpreter()
 	optionalsettings += " -DNOSECTORPRELOAD=1" if $no_sector_preload
 	if $target
 		optionalsettings += " -DTARGET_#{$target.upcase}=1"
+	end
+	if $is_lurkinghorror
+		# need to know if compiling a Lurking Horror game
+		# since the sound in this game doesn't follow the spec
+		optionalsettings += " -DLURKING_HORROR=1"
 	end
 	if $use_history
 		# set default history size
@@ -941,6 +1128,7 @@ def read_labels(label_file_name)
 		$storystart = $1.to_i(16) if line =~ /\tstory_start\t=\s*\$(\w{3,4})\b/;
 		$program_end_address = $1.to_i(16) if line =~ /\tprogram_end\t=\s*\$(\w{3,4})\b/;
 		$loader_pic_start = $1.to_i(16) if line =~ /\tloader_pic_start\t=\s*\$(\w{3,4})\b/;
+		$config_load_address = $1.to_i(16) if line =~ /\tconfig_load_address\t=\s*\$(\w{3,4})\b/;
 	end
 end
 
@@ -1101,11 +1289,14 @@ def add_boot_file(finaldiskname, diskimage_filename)
 	c1541_cmd = "#{$C1541} #{opt}-attach \"#{finaldiskname}\" -write \"#{$good_zip_file}\" #{$file_name}"
 	if $target == "mega65" then	
 		c1541_cmd = "#{$C1541} #{opt}-attach \"#{finaldiskname}\" -write \"#{$universal_file}\" autoboot.c65"
-		$soundfiles.each do |file|
-			f = file
-			f = f.gsub(/\//,"\\") if $is_windows 
-		    c1541_cmd += " -write \"#{f}\""
-		end
+#		c1541_cmd += " -write \"#{$story_file}\" \"zcode,s\""
+#		c1541_cmd += " -write \"#{$config_filename}\" \"ozmoo.cfg,p\"" # No longer needed
+		# $sound_files.each do |file|
+			# f = file
+			# tf = f.gsub(/^.*\//,'')
+			# f = f.gsub(/\//,"\\") if $is_windows
+		    # c1541_cmd += " -write \"#{f}\" \")#{tf},s\""
+		# end
 	end
 	if $verbose
 		puts c1541_cmd 
@@ -1221,7 +1412,7 @@ def build_P(storyname, diskimage_filename, config_data, vmem_data, vmem_contents
 		exit 1
 	end
 	
-	disk = D64_image.new(disk_title: storyname, diskimage_filename: diskimage_filename, is_boot_disk: boot_disk, forty_tracks: extended_tracks)
+	disk = D64_image.new(disk_title: $disk_title, diskimage_filename: diskimage_filename, is_boot_disk: boot_disk, forty_tracks: extended_tracks)
 
 	disk.add_story_data(max_story_blocks: max_story_blocks, add_at_end: extended_tracks) # Has to be run to finalize the disk
 
@@ -1264,7 +1455,7 @@ def build_S1(storyname, diskimage_filename, config_data, vmem_data, vmem_content
 
 	diskfilename = "#{$target}_#{storyname}.d64"
 
-	disk = D64_image.new(disk_title: storyname, diskimage_filename: diskimage_filename, is_boot_disk: boot_disk, forty_tracks: extended_tracks)
+	disk = D64_image.new(disk_title: $disk_title, diskimage_filename: diskimage_filename, is_boot_disk: boot_disk, forty_tracks: extended_tracks)
 
 	disk.add_story_data(max_story_blocks: max_story_blocks, add_at_end: extended_tracks)
 	if $story_file_cursor < $story_file_data.length
@@ -1335,9 +1526,11 @@ def build_S2(storyname, d64_filename_1, d64_filename_2, config_data, vmem_data, 
 	config_data[7] = 3 # 3 disks used in total
 	outfile1name = "#{$target}_#{storyname}_boot.d64"
 	outfile2name = "#{$target}_#{storyname}_story.d64"
+	disk1title = $disk_title + ($disk_title.length < 13 ? ' 1/2' : '')
+	disk2title = $disk_title + ($disk_title.length < 13 ? ' 2/2' : '')
 	max_story_blocks = 9999
-	disk1 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_1, is_boot_disk: true, forty_tracks: false)
-	disk2 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_2, is_boot_disk: false, forty_tracks: extended_tracks)
+	disk1 = D64_image.new(disk_title: disk1title, diskimage_filename: d64_filename_1, is_boot_disk: true, forty_tracks: false)
+	disk2 = D64_image.new(disk_title: disk2title, diskimage_filename: d64_filename_2, is_boot_disk: false, forty_tracks: extended_tracks)
 	free_blocks = disk1.add_story_data(max_story_blocks: 0, add_at_end: false)
 	free_blocks = disk2.add_story_data(max_story_blocks: max_story_blocks, add_at_end: false)
 	puts "Free disk blocks after story data has been written: #{free_blocks}" if $verbose
@@ -1410,8 +1603,10 @@ def build_D2(storyname, d64_filename_1, d64_filename_2, config_data, vmem_data, 
 	config_data[7] = 3 # 3 disks used in total
 	outfile1name = "#{$target}_#{storyname}_boot_story_1.d64"
 	outfile2name = "#{$target}_#{storyname}_story_2.d64"
-	disk1 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_1, is_boot_disk: true, forty_tracks: extended_tracks)
-	disk2 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_2, is_boot_disk: false, forty_tracks: extended_tracks)
+	disk1title = $disk_title + ($disk_title.length < 13 ? ' 1/2' : '')
+	disk2title = $disk_title + ($disk_title.length < 13 ? ' 2/2' : '')
+	disk1 = D64_image.new(disk_title: disk1title, diskimage_filename: d64_filename_1, is_boot_disk: true, forty_tracks: extended_tracks)
+	disk2 = D64_image.new(disk_title: disk2title, diskimage_filename: d64_filename_2, is_boot_disk: false, forty_tracks: extended_tracks)
 
 	# Figure out how to put story blocks on the disks in optimal way.
 	# Rule 1: Save 160 blocks for bootfile on boot disk, if possible. 
@@ -1512,9 +1707,12 @@ def build_D3(storyname, d64_filename_1, d64_filename_2, d64_filename_3, config_d
 	outfile1name = "#{$target}_#{storyname}_boot.d64"
 	outfile2name = "#{$target}_#{storyname}_story_1.d64"
 	outfile3name = "#{$target}_#{storyname}_story_2.d64"
-	disk1 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_1, is_boot_disk: true, forty_tracks: false)
-	disk2 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_2, is_boot_disk: false, forty_tracks: extended_tracks)
-	disk3 = D64_image.new(disk_title: storyname, diskimage_filename: d64_filename_3, is_boot_disk: false, forty_tracks: extended_tracks)
+	disk1title = $disk_title + ($disk_title.length < 13 ? ' 1/3' : '')
+	disk2title = $disk_title + ($disk_title.length < 13 ? ' 2/3' : '')
+	disk3title = $disk_title + ($disk_title.length < 13 ? ' 3/3' : '')
+	disk1 = D64_image.new(disk_title: disk1title, diskimage_filename: d64_filename_1, is_boot_disk: true, forty_tracks: false)
+	disk2 = D64_image.new(disk_title: disk2title, diskimage_filename: d64_filename_2, is_boot_disk: false, forty_tracks: extended_tracks)
+	disk3 = D64_image.new(disk_title: disk3title, diskimage_filename: d64_filename_3, is_boot_disk: false, forty_tracks: extended_tracks)
 
 	# Figure out how to put story blocks on the disks in optimal way.
 	# Rule: Spread story data as evenly as possible, so heads will move less.
@@ -1611,7 +1809,7 @@ def build_71(storyname, diskimage_filename, config_data, vmem_data, vmem_content
 
 	diskfilename = "#{$target}_#{storyname}.d71"
 
-	disk = D71_image.new(disk_title: storyname, diskimage_filename: diskimage_filename, is_boot_disk: boot_disk)
+	disk = D71_image.new(disk_title: $disk_title, diskimage_filename: diskimage_filename, is_boot_disk: boot_disk)
 
 	disk.add_story_data(max_story_blocks: max_story_blocks, add_at_end: nil)
 	if $story_file_cursor < $story_file_data.length
@@ -1681,9 +1879,27 @@ def build_81(storyname, diskimage_filename, config_data, vmem_data, vmem_content
 
 	diskfilename = "#{$target}_#{storyname}.d81"
 	
-	disk = D81_image.new(disk_title: storyname, diskimage_filename: diskimage_filename)
+	disk = D81_image.new(disk_title: $disk_title, diskimage_filename: diskimage_filename)
+	if $i81
+		disk.interleave_scheme = $i81
+	end
 
-	disk.add_story_data(max_story_blocks: 9999, add_at_end: false)
+	if $target == "mega65" then
+		$sound_files.each do |file|
+			f = file
+			tf = ')' + f.gsub(/^.*\//,'')
+			f = f.gsub(/\//,"\\") if $is_windows
+			file_contents = IO.binread(f)
+			disk.add_file(tf, file_contents);
+		end
+		dynbytes = $dynmem_blocks * $VMEM_BLOCKSIZE
+		disk.add_file('zcode-dyn', $story_file_data[0 .. dynbytes - 1])
+		disk.add_file('zcode-stat', $story_file_data[dynbytes .. $story_file_data.length - 1])
+#		disk.add_file('zcode', $story_file_data)
+		disk.add_story_data(max_story_blocks: 0, add_at_end: false)
+	else
+		disk.add_story_data(max_story_blocks: 9999, add_at_end: false)
+	end
 	free_blocks = disk.free_blocks()
 	puts "Free disk blocks after story data has been written: #{free_blocks}" if $verbose
 
@@ -1719,12 +1935,23 @@ def build_81(storyname, diskimage_filename, config_data, vmem_data, vmem_content
 	config_data += vmem_data
 
 	#	puts config_data
-	disk.set_config_data(config_data)
+	# if $target == "mega65" then
+		# config_filehandle = File.open($config_filename, "wb")
+		# config_filehandle.write [$config_load_address % 256, $config_load_address / 256].pack("C*")
+		# config_filehandle.write config_data.pack("C*")
+		# config_filehandle.close
+	# else
+	unless $target == "mega65" then
+		disk.set_config_data(config_data)
+	end
 	
-	if $statmem_blocks > 0
-		if disk.create_story_partition() == false
-			puts "ERROR: Could not create partition to protect data on disk."
-			exit 1
+	
+	unless $target == "mega65" then
+		if $statmem_blocks > 0
+			if disk.create_story_partition() == false
+				puts "ERROR: Could not create partition to protect data on disk."
+				exit 1
+			end
 		end
 	end
 	
@@ -1762,8 +1989,7 @@ def print_usage
 	puts "         [-rc:[n]=[c],[n]=[c]...] [-dc:[n]:[n]] [-bc:[n]] [-sc:[n]] [-ic:[n]]"
 	puts "         [-dmdc:[n]:[n]] [-dmbc:[n]] [-dmsc:[n]] [-dmic:[n]] [-ss[1-4]:\"text\"]"
 	puts "         [-sw:[nnn]] [-cb:[n]] [-cc:[n]] [-dmcc:[n]] [-cs:[b|u|l]] "
-	puts "         <storyfile>"
-#	puts "         [-as <soundpath>] <storyfile>"
+	puts "         [-dt:\"text\"] [-as(a|w) <soundpath>] <storyfile>"
 	puts "  -t: specify target machine. Available targets are c64 (default), c128, plus4 and mega65."
 	puts "  -S1|-S2|-D2|-D3|-71|-81|-P: build mode. Defaults to S1 (71 for C128, 81 for MEGA65). See docs."
 	puts "  -v: Verbose mode. Print as much details as possible about what make.rb is doing."
@@ -1772,7 +1998,7 @@ def print_usage
 	puts "  -o: build interpreter in PREOPT (preload optimization) mode. See docs for details."
 	puts "  -c: read preload config from preloadfile, previously created with -o"
 	puts "  -cf: read preload config (see -c) + fill up with best-guess vmem blocks"
-	puts "  -sp: Use the specified number of pages for stack (2-9, default is 4)."
+	puts "  -sp: Use the specified number of pages for stack (2-64, default is 4)."
 	puts "  -re: Perform all checks for runtime errors, making code slightly bigger and slower."
 	puts "  -s: start game in Vice if build succeeds"
 	puts "  -fn: boot file name (default: story)"
@@ -1794,7 +2020,9 @@ def print_usage
 	puts "  -cb: Set cursor blink frequency (1-99, where 1 is fastest)."
 	puts "  -cc/dmcc: Use the specified cursor colour.  Defaults to foreground colour."
 	puts "  -cs: Use the specified cursor shape.  ([b]lock (default), [u]nderscore or [l]ine)"
-#	puts "  -as: Add the sound files found at the specified path (003.#{$sound_format} - 255.#{$sound_format})"
+	puts "  -dt: Set the disk title to the specified text."
+	puts "  -asa: Add the .aiff sound files found at the specified path (003.aiff - 255.aiff)."
+	puts "  -asw: Add the .wav sound files found at the specified path (003.wav - 255.wav)."
 	puts "  storyfile: path optional (e.g. infocom/zork1.z3)"
 end
 
@@ -1810,8 +2038,8 @@ await_preloadfile = false
 await_fontfile = false
 await_imagefile = false
 preloadfile = nil
-$soundpath = nil
-$soundfiles = []
+$sound_path = nil
+$sound_files = []
 $font_filename = nil
 $font_address = nil
 $loader_pic_file = nil
@@ -1847,6 +2075,8 @@ $verbose = nil
 $use_history = nil
 $no_sector_preload = nil
 $file_name = 'story'
+$sound_format = nil
+$disk_title = nil
 
 begin
 	while i < ARGV.length
@@ -1855,7 +2085,7 @@ begin
 			preloadfile = ARGV[i]
 		elsif await_soundpath then
 			await_soundpath = false
-			$soundpath = ARGV[i]
+			$sound_path = ARGV[i]
 		elsif await_fontfile then
 			await_fontfile = false
 			$font_filename = ARGV[i]
@@ -1927,11 +2157,23 @@ begin
 			$input_colour = $1.to_i
 		elsif ARGV[i] =~ /^-dmic:([2-9])$/ then
 			$input_colour_dm = $1.to_i
-		elsif ARGV[i] =~ /^-sp:([2-9])$/ then
+		elsif ARGV[i] =~ /^-sp:(0?[2-9]|[1-5][0-9]|6[0-4])$/ then
 			$stack_pages = $1.to_i
 		elsif ARGV[i] =~ /^-cm:(sv|da|de|it|es|fr)$/ then
 			$char_map = $1
-		elsif ARGV[i] =~ /^-as$/ then
+		elsif ARGV[i] =~ /^-asa$/ then
+			if $sound_format
+				puts "ERROR: Only one sound path can be specified."
+				exit 1
+			end
+			$sound_format = 'aiff'
+			await_soundpath = true
+		elsif ARGV[i] =~ /^-asw$/ then
+			if $sound_format
+				puts "ERROR: Only one sound path can be specified."
+				exit 1
+			end
+			$sound_format = 'wav'
 			await_soundpath = true
 		elsif ARGV[i] =~ /^-cf$/ then
 			await_preloadfile = true
@@ -1945,6 +2187,8 @@ begin
 			$loader_flicker = ARGV[i] =~ /f$/
 		elsif ARGV[i] =~ /^-ss([1-4]):(.*)$/ then
 			splashes[$1.to_i - 1] = $2
+		elsif ARGV[i] =~ /^-dt:(.*)$/ then
+			$disk_title = $1
 		elsif ARGV[i] =~ /^-sw:(\d{1,3})$/ then
 			$splash_wait = $1
 		elsif ARGV[i] =~ /^-cc:([0-9])$/ then
@@ -1982,6 +2226,19 @@ rescue => e
 	print "ERROR: "
 	puts e.message
 	exit 1
+end
+
+if $target == "mega65"
+	if preloadfile or (limit_preload_vmem_blocks and preload_max_vmem_blocks > 0) then
+		puts "ERROR: Preloading blocks (option -c/-cf/-p) is not supported on this target platform."
+		exit 1
+	end
+	# No config track
+	$CONFIG_TRACK = nil
+	# Force -p:0 -b (Don't include any vmem blocks in boot file, and don't preload any at start
+	preload_max_vmem_blocks = 0
+	limit_preload_vmem_blocks = true
+	$no_sector_preload = true
 end
 
 print_usage_and_exit() if await_soundpath or await_preloadfile or await_fontfile or await_imagefile
@@ -2061,27 +2318,33 @@ if $font_filename
 	end
 end
 
-if $soundpath
+if $sound_path
 	if $target != 'mega65'
 		puts "ERROR: Sound is only supported for the MEGA65 target platform."
 		exit 1
 	end
-	$soundpath += '/' if $soundpath !~ /\/$/ 
-	$soundfiles = Dir.glob($soundpath + '*').select { |e|
+	$sound_path += '/' if $sound_path !~ /\/$/ 
+	$sound_files = Dir.glob($sound_path + '*').select { |e|
 #		/^([0-9]{3})\.#{$sound_format}$/
 #		puts e
-		File.file?(e) && m = e[$soundpath.length .. -1].match(/^([0-9]{3})\.#{$sound_format}$/) # && m[1].to_i.between?(3,255)
+		File.file?(e) && m = e[$sound_path.length .. -1].match(/^([0-9]{3})r?\.#{$sound_format}$/) and m[1].to_i.between?(3,255)
 	}
-	if $soundfiles.empty?
-		puts "ERROR: No sound files found. Note that sound files must be named 003.#{$sound_format}, 004.#{$sound_format} etc."
+	if $sound_files.empty?
+		puts "ERROR: No sound files found. Note that sound files must be named " + 
+			"003.#{$sound_format}, 004.#{$sound_format} etc, and the highest number allowed is 255."
 		exit 1
 	end
-	$soundfiles.sort!
-	$GENERALFLAGS.push('SOUND');
-#	puts $soundfiles
+	$sound_files.sort!
+	$GENERALFLAGS.push('SOUND')
+	if $sound_format == 'wav'
+		$GENERALFLAGS.push('SOUND_WAV_ENABLED')
+	else
+		$GENERALFLAGS.push('SOUND_AIFF_ENABLED')
+	end
+#	puts $sound_files
 end
 
-$VMEM = (mode != MODE_P)
+$VMEM = (mode != MODE_P && $target != 'mega65')
 
 $GENERALFLAGS.push('DANISH_CHARS') if $char_map == 'da'
 $GENERALFLAGS.push('SWEDISH_CHARS') if $char_map == 'sv'
@@ -2120,7 +2383,7 @@ if optimize and mode == MODE_P
 	exit 1
 end
 
-if limit_preload_vmem_blocks and !$VMEM
+if limit_preload_vmem_blocks and !$VMEM and $target != 'mega65'
 	puts "ERROR: Option -p can't be used with this build mode."
 	exit 1
 end
@@ -2160,6 +2423,8 @@ path = File.dirname($story_file)
 extension = File.extname($story_file)
 filename = File.basename($story_file)
 storyname = File.basename($story_file, extension)
+$disk_title = filename unless $disk_title
+
 #puts "storyname: #{storyname}" 
 
 begin
@@ -2208,6 +2473,7 @@ serial = $story_file_data[18 .. 23]
 storyfile_key = "r%d-s%s" % [ release, serial ]
 is_trinity = $zcode_version == 4 && $trinity_releases.has_key?(storyfile_key)
 is_beyondzork = $zcode_version == 5 && $beyondzork_releases.has_key?(storyfile_key)
+$is_lurkinghorror = $zcode_version == 3 && $lurkinghorror_releases.has_key?(storyfile_key)
 
 $no_darkmode = nil
 if is_beyondzork
@@ -2331,7 +2597,8 @@ build_interpreter()
 
 $dynmem_and_vmem_size_bank_0 = $memory_end_address - $storystart
 
-if $storystart + $dynmem_blocks * $VMEM_BLOCKSIZE > $normal_ram_end_address then
+if $target != 'mega65' and 
+		$storystart + $dynmem_blocks * $VMEM_BLOCKSIZE > $normal_ram_end_address then
 	puts "ERROR: Dynamic memory is too big (#{$dynmem_blocks * $VMEM_BLOCKSIZE} bytes), would pass end of normal RAM. Maximum dynmem size is #{$normal_ram_end_address - $storystart} bytes." 
 	exit 1
 end
@@ -2346,7 +2613,8 @@ end
 puts "VMEM blocks in RAM is #{$vmem_blocks_in_ram}" if $verbose
 puts "Unbanked VMEM blocks in RAM is #{$unbanked_vmem_blocks}" if $verbose 
 
-if $unbanked_vmem_blocks == 0 and $story_size != $dynmem_blocks * $VMEM_BLOCKSIZE then
+if $target != 'mega65' and
+		$unbanked_vmem_blocks == 0 and $story_size != $dynmem_blocks * $VMEM_BLOCKSIZE then
 	puts "ERROR: Dynamic memory is too big (#{$dynmem_blocks * $VMEM_BLOCKSIZE} bytes), there would be zero unbanked VMEM blocks." 
 	exit 1
 end
@@ -2440,13 +2708,18 @@ else # No preload data available
 	vmem_data += lowbytes;
 end
 
-vmem_contents = $story_file_data[0 .. $dynmem_blocks * $VMEM_BLOCKSIZE - 1]
-vmem_data[2].times do |i|
-	start_address = (vmem_data[4 + i] & $vmem_highbyte_mask) * 512 * 256 + vmem_data[4 + vmem_data[2] + i] * 512
-	# puts start_address
-	# puts $story_file_data.length
-	vmem_contents += $story_file_data[start_address .. start_address + $VMEM_BLOCKSIZE - 1]
+if $target == 'mega65'
+	vmem_contents = '';
+else
+	vmem_contents = $story_file_data[0 .. $dynmem_blocks * $VMEM_BLOCKSIZE - 1]
+	vmem_data[2].times do |i|
+		start_address = (vmem_data[4 + i] & $vmem_highbyte_mask) * 512 * 256 + vmem_data[4 + vmem_data[2] + i] * 512
+		# puts start_address
+		# puts $story_file_data.length
+		vmem_contents += $story_file_data[start_address .. start_address + $VMEM_BLOCKSIZE - 1]
+	end
 end
+
 ############################# End of moved block
 
 limit_vmem_data_preload(vmem_data)

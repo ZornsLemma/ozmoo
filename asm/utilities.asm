@@ -139,6 +139,16 @@ plus4_enable_rom = $ff3e
 
 
 !ifdef SLOW {
+!ifdef TARGET_MEGA65 {
+!macro read_next_byte_at_z_pc {
+	ldz #0
+	lda [z_pc_mempointer],z
+	inc z_pc_mempointer ; Also increases z_pc
+	bne ++
+	jsr inc_z_pc_page
+++
+}
+} else {
 read_next_byte_at_z_pc_sub
 	ldy #0
 !ifdef TARGET_PLUS4 { ; SF: Upstream has this, but it's redundant because it's inside another ifdef TARGET_PLUS4
@@ -167,6 +177,8 @@ read_next_byte_at_z_pc_sub
 	jsr read_next_byte_at_z_pc_sub
 }
 
+}
+	
 } else {
 
 ; SF: This must preserve X, but it can corrupt Y; we don't need to return with Y=0.
@@ -385,6 +397,69 @@ convert_byte_to_two_digits
 	rts
 }
 }
+
+!ifdef TARGET_C128 {
+; Macros for far memory read and write 
+!macro read_far_byte .vector {
+	lda #.vector
+	sta $02aa
+	ldx #$7f
+	jsr $02a2
+}
+
+!macro write_far_byte .vector {
+	ldx #.vector
+	stx $02b9
+	ldx #$7f
+	jsr $02af
+}
+}
+
+!ifdef TARGET_MEGA65 {
+; Macros for far memory read and write 
+
+!macro read_far_byte .vector {
+	lda #.vector
+	jsr m65_read_far_byte
+}
+
+!macro write_far_byte .vector {
+	ldx #.vector
+	jsr m65_write_far_byte
+}
+
+m65_read_far_byte
+; a = zp vector holding address in far memory
+; y = offset from address in zp vector
+; Returns value in a
+; y retains its value
+	tax
+	lda 0,x
+	sta dynmem_pointer
+	lda 1,x
+	sta dynmem_pointer + 1
+	tya
+	taz
+	lda [dynmem_pointer],z
+	rts
+
+m65_write_far_byte
+; a = value to write
+; x = zp vector holding address in far memory
+; y = offset from address in zp vector
+; y retains its value
+	pha
+	lda 0,x
+	sta dynmem_pointer
+	lda 1,x
+	sta dynmem_pointer + 1
+	tya
+	taz
+	pla
+	sta [dynmem_pointer],z
+	rts
+}
+
 
 
 ERROR_UNSUPPORTED_STREAM = 1
@@ -827,8 +902,8 @@ print_trace
 	jsr newline
 	lda z_trace_index
 	tay
-	and #%11
-	cmp #%11
+	and #%00000011
+	cmp #%00000011
 	bne +
 	jsr print_following_string
 !ifndef ACORN {

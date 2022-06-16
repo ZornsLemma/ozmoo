@@ -19,232 +19,304 @@
 
 !ifdef SOUND {
 !zone sound_support {
+
+!ifdef Z5PLUS {
+LOOPING_SUPPORTED = 1
+}
+
+!ifdef LURKING_HORROR {
+; Lurking horror isn't following the standard, and we add hardcoded
+; looping support instead
+LOOPING_SUPPORTED=1
+.lh_repeats
+!byte $00, $00, $00, $01, $ff, $00, $01, $01, $01, $01
+!byte $ff, $01, $01, $ff, $00, $ff, $ff, $ff, $ff, $ff
+}
+
 !ifdef TARGET_MEGA65 {
 
 ;TRACE_SOUND = 1
 ;SOUND_AIFF_ENABLED = 1
-SOUND_WAV_ENABLED = 1
+;SOUND_WAV_ENABLED = 1
 
-sound_load_msg !pet "Loading sound: ",0
-sound_load_msg_2 !pet 13,"Done.",0
-sound_file_name 
-	!pet "000."
+sound_load_msg !pet "Loading sound: ",13,0
+;sound_load_msg_2 !pet 13,"Done.",0
+.sound_file_extension
 !ifdef SOUND_AIFF_ENABLED {
-	!pet "aiff"
+	!pet ".aiff"
+	.filename_extension_len = 5
 }
 !ifdef SOUND_WAV_ENABLED {
-	!pet "wav"
+	!pet ".wav"
+	.filename_extension_len = 4
 }
-	!byte $a0,$a0,$a0,$a0,$a0,$a0,$a0,$a0
-sound_nums !byte 100,10,1
-sound_data_base = z_temp + 3
-sound_file_target = sound_data_base ; 4 bytes
-dir_entry_start = sound_data_base +  4 ; 1 byte
-sound_file_track = sound_data_base + 5 ; 1 byte
-sound_file_sector = sound_data_base + 6 ; 1 byte
-.dir_pointer = sound_data_base + 7 ; 2 bytes
+sound_file_name 
+	!pet "#000xx.aiff........." ; Must have room for a full name + ",s"
+sound_start_page_low !fill 253,0
+sound_start_page_high !fill 253,0
+sound_length_pages !fill 253,0
+sound_base_value = 1024*1024/256 ; 1 MB into Attic RAM
+sound_next_page !byte <sound_base_value, >sound_base_value
 
-sound_index_ptr = z_operand_value_low_arr ; 4 bytes
-; sound_index = z_operand_value_low_arr + 4 ; 1 byte
+;sound_nums !byte 100,10,1
+;sound_data_base = z_temp + 3
+sound_file_target = z_temp + 3 ; 4 bytes
+;dir_entry_start = sound_data_base +  4 ; 1 byte
+.fx_number = z_temp + 8
+.sound_temp = z_temp + 9
+;sound_index_ptr = z_operand_value_low_arr ; 4 bytes
+;sound_index_base_ptr = z_operand_value_low_arr + 4; 4 bytes
+sound_dir_ptr = z_operand_value_high_arr
+;.sound_repeating !byte 0
+sound_files_read !byte 0
 
-top_soundfx_plus_1 !byte 0
-
-read_sound_file
-	; a: Sound file number (3-255)
-	
-	; Set filename
-	ldx #0
--	ldy #48 ; "0"
---	cmp sound_nums,x
-	bcc +
-	sbc sound_nums,x
-	iny
-	bne -- ; Always branch
-+	sty sound_file_name,x
+.read_filename_char
+	jsr read_sound_dir_char
+	sta sound_file_name,x
 	inx
-	cpx #3
-	bcc -
-
-	jsr get_free_vmem_buffer
-
-	; Set pointers
-	sta readblocks_mempos + 1 ; Low byte is always 0
-	sta .dir_pointer + 1
-	ldy #0
-	sty .dir_pointer
-	
-; Read a directory sector
-	lda #40
-	ldx #3
-.read_next_dir_sector
-
-	jsr read_track_sector
-	lda #2
-	sta dir_entry_start
-.compare_next_dir_entry
-	ldy dir_entry_start
-	lda (.dir_pointer),y
-	cmp #$82
-	bne .dir_not_match
-	iny
-	lda (.dir_pointer),y
-	sta sound_file_track
-	iny
-	lda (.dir_pointer),y
-	sta sound_file_sector
-	iny
-	ldx #0
---	lda sound_file_name,x
-	cmp (.dir_pointer),y
-	bne .dir_not_match
-	inx
-	iny
-	cpx #7 ; Should be 16, but during testing it's easier if the stop after 7 characters, so 003.aif is recognized (final f is missing) 
-	bcc --
-
-; We have a match - Read the file!
-	jmp .read_file
-	
-.dir_not_match
-	lda dir_entry_start
-	clc
-	adc #$20
-	sta dir_entry_start
-	bcc .compare_next_dir_entry
-	
-; Check next directory block here
-	ldy #0
-	lda (.dir_pointer),y
-	beq .fail
-	pha
-	iny
-	lda (.dir_pointer),y
-	tax
-	pla
-	bne .read_next_dir_sector ; Always branch
-.fail
-	sec
 	rts
 
-.read_file
-
-	lda sound_file_track
-	ldx sound_file_sector
-.read_next_file_sector
-	jsr read_track_sector
-
-	; Copy to target address
-	lda .dir_pointer + 1
-	sta dma_source_address + 1
-	lda sound_file_target
-	sta dma_dest_address
-	lda sound_file_target + 1
-	sta dma_dest_address + 1
-	lda sound_file_target + 2
-	and #$0f
-	sta dma_dest_bank_and_flags
-	
-	lda sound_file_target + 2
-	sta vmem_temp
-	lda sound_file_target + 3
-	
-	ldy #4
--	asl vmem_temp
-	rol
-	dey
-	bne -
-	sta dma_dest_address_top
-
-	ldy #2
-	sty dma_source_address
-	ldy #0
-	sty dma_count + 1 ; Transfer 254 bytes
-	sty dma_source_bank_and_flags
-	sty dma_source_address_top
-	ldx #254
-	lda (.dir_pointer),y
-	bne +
-	iny
-	lda (.dir_pointer),y
-	tax
-	dex
-+	stx dma_count
-
-	jsr m65_run_dma
-
-; Increase the address
-	lda #0
-	tax
-	tay
-	taz
-	lda dma_count
-	clc
-	adcq sound_file_target
-	stq sound_file_target
-
-	ldy #1
-	lda (.dir_pointer),y
-	tax
-	dey
-	lda (.dir_pointer),y
-	bne .read_next_file_sector	
-
-	lda top_soundfx_plus_1
-	adc #62
-	jsr s_printchar
-	clc
+reset_sound_dir_ptr
+; Read directory into Attic RAM at $08080000
+	lda #$00
+	sta sound_dir_ptr
+	sta sound_dir_ptr + 1
+	lda #$08
+	sta sound_dir_ptr + 2
+	sta sound_dir_ptr + 3
 	rts
 
-store_sound_effect_start
-	; Insert code here to copy the 4-byte value in sound_file_target to the table for sound effect
-	; start addresses. The index to use is in top_soundfx_plus_1
-	ldq sound_file_target
-	stq [sound_index_ptr]
-	lda #0
-	tax
-	tay
-	taz
-	lda #4
-	clc
-	adcq sound_index_ptr
-	stq sound_index_ptr
+read_sound_dir_char
+	lda [sound_dir_ptr],z
+	inq sound_dir_ptr
 	rts
 
-read_all_sound_files
+read_sound_files
 	lda #>sound_load_msg
 	ldx #<sound_load_msg
 	jsr printstring_raw
 
-; Init target address ($08080000) and index address ($0807FC00)
-; Init target address ($08100000) and index address ($0807FC00)
-	ldz #$08
-	ldy #$10
-	lda #$00
-	tax
-	stq sound_file_target
-	ldy #$07
-	ldx #$fc
-	stq sound_index_ptr
+; ==================== NEW CODE TO READ DIR
 
-	lda #3
-	sta top_soundfx_plus_1
--	jsr store_sound_effect_start
-	lda top_soundfx_plus_1
-	jsr read_sound_file
-	bcs +
-	inc top_soundfx_plus_1
-	bne -
-+
-	; A file couldn't be read. We're done.
+	ldz #0
+	jsr reset_sound_dir_ptr
+
+	lda #directory_name_len
+	ldx #<directory_name
+	ldy #>directory_name
+	jsr kernal_setnam ; call SETNAM
+
+	lda #3      ; file number
+	ldx boot_device
+	ldy #0      ; secondary address
+	jsr kernal_setlfs ; call SETLFS
+	jsr kernal_open     ; call OPEN
+;	bcs disk_error    ; if carry set, the file could not be opened
+
+	ldx #3      ; filenumber
+	jsr kernal_chkin ; call CHKIN (file# in x now used as input)
+
+	ldx #0 ; Status for sound counter
+-	jsr kernal_readchar
+	sta [sound_dir_ptr],z
+	inq sound_dir_ptr
+
+	cpx #0
+	bne +
+	cmp #$22 ; "
+	bne ++
+	inx
+	bne ++ ; Always branch
++	cmp #$29
+	bne +
+	lda #$24
+	jsr s_printchar
++	ldx #0
+++	jsr kernal_readst
+	bne .dir_copying_done
+
+	jmp -
+
+.dir_copying_done
+	lda #$03      ; filenumber 2
+	jsr kernal_close ; call CLOSE
+
+	jsr reset_sound_dir_ptr
 	
-	lda #>sound_load_msg_2
-	ldx #<sound_load_msg_2
-	jsr printstring_raw
+	; Skip load address and disk title
+	ldy #31
+-	jsr read_sound_dir_char
+	dey
+	bne -
+
+.skip_to_end_of_line
+-	jsr read_sound_dir_char
+	cmp #0
+	bne -
+
+.read_next_line	
+	lda #0
+	sta zp_temp + 1
+	; Read row pointer
+	jsr read_sound_dir_char
+	sta zp_temp
+	jsr read_sound_dir_char
+	ora zp_temp
+	bne +
+	jmp .end_of_dir
++
+
+; Skip line number
+	jsr read_sound_dir_char
+	jsr read_sound_dir_char
+
+; Find first "
+-	jsr read_sound_dir_char
+	cmp #0
+	beq .read_next_line
+	cmp #$22 ; Charcode for "
+	bne -
+
+; Reset number
+	ldx #0 ; Counter for filename characters read
+	stx .fx_number ; The number of the sound (3-255)
+
+; Check that first char is )
+	jsr .read_filename_char
+	cmp #$29 ; ')'
+	bne .skip_to_end_of_line
+
+; Read digits
+.read_next_digit
+	jsr .read_filename_char
+	and #$0f
+	sta .sound_temp
+	lda .fx_number
+	asl
+	asl
+	adc .fx_number
+	asl
+	adc .sound_temp
+	sta .fx_number
+	cpx #4
+	bcc .read_next_digit
+
+; ; Read loop/music markers (Music marker NOT CURRENTLY IMPLEMENTED)
+	; lda #0
+	; sta .sound_repeating
+	; jsr .read_filename_char
+	ldy #0
+	; cmp #$52 ; 'r' for Repeating
+	; bne +
+	; dec .sound_repeating
+
+; Read file extension
+; .filename_end_of_markers
+;	ldy #0
+-	jsr .read_filename_char
++	cmp .sound_file_extension,y
+	bne .skip_to_end_of_line
+	iny
+	cpy #.filename_extension_len ; Length; should be 4 for ".wav" or 5 for ".aiff" 
+	bcc -
+
+	stx zp_temp
+
+; Add ,s to filename (to read it as a SEQ file)
+	ldx zp_temp
+	lda #$2c ; ','
+	sta sound_file_name,x
+	inx
+	lda #$53 ; 's'
+	sta sound_file_name,x
+	inx
+	lda #$2c ; ','
+	sta sound_file_name,x
+	inx
+	lda #$52 ; 'r'
+	sta sound_file_name,x
+	inx
+	stx zp_temp
+
+!ifdef DEBUG {
+; Print filename for debug purposes
+	lda #34
+	jsr s_printchar
+	ldx #0
+-	lda sound_file_name,x
+	jsr s_printchar
+	inx
+	cpx zp_temp
+	bcc -
+	lda #34
+	jsr s_printchar
+}
+	
+
+; Load file to Attic RAM
+	lda zp_temp
+	ldx #<sound_file_name
+	ldy #>sound_file_name
+	jsr kernal_setnam ; call SETNAM
+
+	; Signal that REU copy routine should not update progress bar
+	lda #0
+	sta reu_progress_bar_updates
+
+; Load to adress 1024K and onward in Attic RAM
+	ldx sound_next_page
+	lda sound_next_page + 1
+	ldy .fx_number
+	stx sound_start_page_low - 3,y
+	sta sound_start_page_high - 3,y
+	
+	jsr m65_load_file_to_reu ; in reu.asm
+	inc sound_files_read
+
+!ifdef DEBUG {
+; Print pages loaded for debug purposes (a = 1, b=2, ...)
+	pha
+	lsr
+	lsr
+	clc
+	adc #$40
+	jsr s_printchar
+	lda #13
+	jsr s_printchar
+	pla
+} else {
+	pha
+	lda #20 ; delete
+	jsr s_printchar
+	pla
+}
+
+	
+	ldy .fx_number
+	sta sound_length_pages - 3,y
+	clc
+	adc sound_next_page
+	sta sound_next_page
+	bcc +
+	inc sound_next_page + 1
++ 
+	jmp .skip_to_end_of_line
+
+.end_of_dir
+	jsr close_io
+
 	jsr wait_a_sec
+	jsr wait_a_sec
+
 	ldx #$ff
 	jsr erase_window
-	lda #3
-	cmp top_soundfx_plus_1 ; Set carry if no sound files could be loaded
+	
+	; Set carry if no files could be read
+	clc
+	lda sound_files_read
+	bne +
+	sec
++
 	rts
 
 init_sound
@@ -260,7 +332,7 @@ init_sound
     lda #251 ; low raster bit (1 raster beyond visible screen)
     sta $d012
     cli
-    jmp read_all_sound_files
+    jmp read_sound_files
 
 .sound_is_playing !byte 0
 
@@ -274,7 +346,7 @@ init_sound
     ; the sound has stopped
     lda #0
     sta .sound_is_playing
-!ifdef Z5PLUS {
+!ifdef LOOPING_SUPPORTED {
     ; are we looping?
     lda sound_arg_repeats
 	
@@ -299,6 +371,7 @@ init_sound
     sta trigger_sound_routine
 ++
 }
+	jsr .play_next_sound
 .sound_callback_done
     ; finish interrupt handling
     asl $d019 ; acknowlege irq
@@ -306,10 +379,21 @@ init_sound
 
 
 ; This is set by z_ins_sound_effect
+sound_arg_number !byte 0
 sound_arg_effect !byte 0
 sound_arg_volume !byte 0
 sound_arg_repeats !byte 0
 sound_arg_routine !byte 0, 0
+
+; This is for queueing sounds
+; (Lurking horror is issuing another @sound_effect command
+; before the first is finished)
+next_sound_available !byte 0
+next_sound_arg_number !byte 0
+next_sound_arg_effect !byte 0
+next_sound_arg_volume !byte 0
+next_sound_arg_repeats !byte 0
+next_sound_arg_routine !byte 0, 0
 
 sound_tmp !byte 0,0
 
@@ -328,11 +412,40 @@ sample_stop_address !byte 0,0,0,0 ; 32 bit pointer
 .sample_clock !byte 0,0,0
 
 sound_effect
+    ; input: x = sound effect (3, 4 ...)
+!ifdef LURKING_HORROR {
+	lda .lh_repeats,x
+	sta sound_arg_repeats
+}
+
     ; currently we ignore 1 prepare and 4 finish with
     lda sound_arg_effect
     cmp #2 ; start
-    beq .play_sound_effect
-    cmp #3 ; stop
+    bne ++
+	; Queue the effect if already playing
+	lda .sound_is_playing
+	beq .play_sound_effect
+	; is the next sound effect the same that is already playing?
+	cpx sound_arg_number
+	beq .play_sound_effect
+	; new sound, let's remember it and play it later
+	lda #1
+	sta next_sound_available
+	stx next_sound_arg_number
+	lda sound_arg_effect
+	sta next_sound_arg_effect
+	lda sound_arg_volume
+	sta next_sound_arg_volume
+	lda sound_arg_repeats
+	sta next_sound_arg_repeats
+	lda sound_arg_repeats
+	sta next_sound_arg_repeats
+	lda sound_arg_routine
+	sta next_sound_arg_routine
+	lda sound_arg_routine + 1
+	sta next_sound_arg_routine + 1
+	rts
+++  cmp #3 ; stop
     beq .stop_sound_effect
 .return
     rts
@@ -340,11 +453,12 @@ sound_effect
 .play_sound_effect
     ; input: x = sound effect (3, 4 ...)
     ; convert to zero indexed
-    cpx top_soundfx_plus_1
-    bcs .return
+	stx sound_arg_number
     dex
     dex
     dex
+	lda sound_start_page_high,x
+	beq .return
 !ifdef TRACE_SOUND {
     jsr print_following_string
     !pet "play_sound_effect ",0
@@ -382,10 +496,30 @@ sound_effect
     sta $d720
     sta $d740
     sta .sound_is_playing
-    rts
+    ; continue to .play_next_sound
+    ; rts
+
+.play_next_sound
+	lda next_sound_available
+	beq +
+	lda #0
+	sta next_sound_available
+	lda next_sound_arg_effect
+	sta sound_arg_effect
+	lda next_sound_arg_volume
+	sta sound_arg_volume
+	lda next_sound_arg_repeats
+	sta sound_arg_repeats
+	lda next_sound_arg_routine
+	sta sound_arg_routine
+	lda next_sound_arg_routine + 1
+	sta sound_arg_routine + 1
+	ldx next_sound_arg_number
+	jmp sound_effect
++   rts
 
 .calculate_sample_clock
-   ; frequency (assuming CPU running at 40.5 MHz)
+    ; frequency (assuming CPU running at 40.5 MHz)
     ;
     ; max sample clock $ffffff is about 40 MHz sample rate
     ; (stored in $d724-$d726)
@@ -419,110 +553,49 @@ sound_effect
     rts
 
 .play_sample
-    ; TODO: it should be possible to use channel 0 only and mirror
-    ; it using $d71c, but I can't get it to work
-    ; .play_sample_ch3 can be removed if this is solved
-	ldx #$0
-	ldy #$20
-    jsr .play_sample_ch_xy ; left
+    ; NOTE: it should be possible to use channel 0 only and mirror it
+    ; using $d71c, but this only work on real HW, not in the emulator
+    ; stop playback while loading new sample data
+    lda #$00
+    sta $d720
+    ; store sample start address in base and current address
+    lda sample_start_address
+    sta $d721 ; base 
+    sta $d72a ; current
+    lda sample_start_address + 1
+    sta $d722
+    sta $d72b
+    lda sample_start_address + 2
+    sta $d723
+    sta $d72c
+    ; store sample stop address
+    lda sample_stop_address
+    sta $d727
+    lda sample_stop_address + 1
+    sta $d728
+    ; volume
+    lda sound_arg_volume
+    sta $d729
+    sta $d71c ; mirror the sound for stereo
+    ; sample clock/rate
+    jsr .calculate_sample_clock
+    lda .sample_clock
+    sta $d724
+    lda .sample_clock + 1
+    sta $d725
+    lda .sample_clock + 2
+    sta $d726
+    ; Enable playback of channel 0
+    lda #$82 ; CH0EN + CH0SBITS (10 = 8 bits sample)
+    ldx sample_is_signed
+    beq +
+    ora #$20 ; CH0SGN
++   sta $d720
     ; enable audio dma
     lda #$80 ; AUDEN
     sta $d711
     sta .sound_is_playing ; tell the interrupt that we are running
     rts
-
-.play_sample_ch_xy
-	; stop playback while loading new sample data
-	lda #$00
-	sta $d720,x
-	sta $d720,y
-	; store sample start address in base and current address
-	lda sample_start_address
-	sta $d721,x ; base 
-	sta $d721,y ; base 
-	sta $d72a,x ; current
-	sta $d72a,y ; current
-	lda sample_start_address + 1
-	sta $d722,x
-	sta $d722,y
-	sta $d72b,x
-	sta $d72b,y
-	lda sample_start_address + 2
-	sta $d723,x
-	sta $d723,y
-	sta $d72c,x
-	sta $d72c,y
-	; store sample stop address
-	lda sample_stop_address
-	sta $d727,x
-	sta $d727,y
-	lda sample_stop_address + 1
-	sta $d728,x
-	sta $d728,y
-	; volume
-	lda sound_arg_volume
-	sta $d729,x
-	sta $d729,y
-;    sta $d71c ; mirror the sound for stereo (TODO: doesn't work!)
-;    sta $d71e ; mirror the sound for stereo (TODO: doesn't work!)
-	; sample clock/rate
-	jsr .calculate_sample_clock
-	lda .sample_clock
-	sta $d724,x
-	sta $d724,y
-	lda .sample_clock + 1
-	sta $d725,x
-	sta $d725,y
-	lda .sample_clock + 2
-	sta $d726,x
-	sta $d726,y
-	; Enable playback of channel 0
-	lda #$82 ; CH0EN + CH0SBITS (10 = 8 bits sample)
-	bit sample_is_signed
-	bpl +
-	ora #$20 ; CH0SGN
-+   sta $d720,x
-	sta $d720,y
-	rts
-
-;.play_sample_ch0
-;    ; stop playback while loading new sample data
-;    lda #$00
-;    sta $d720
-;    ; store sample start address in base and current address
-;    lda sample_start_address
-;    sta $d721 ; base 
-;    sta $d72a ; current
-;    lda sample_start_address + 1
-;    sta $d722
-;    sta $d72b
-;    lda sample_start_address + 2
-;    sta $d723
-;    sta $d72c
-;    ; store sample stop address
-;    lda sample_stop_address
-;    sta $d727
-;    lda sample_stop_address + 1
-;    sta $d728
-;    ; volume
-;    lda sound_arg_volume
-;    sta $d729
-;    sta $d71c ; mirror the sound for stereo (TODO: doesn't work!)
-;    ; sample clock/rate
-;    jsr .calculate_sample_clock
-;    lda .sample_clock
-;    sta $d724
-;    lda .sample_clock + 1
-;    sta $d725
-;    lda .sample_clock + 2
-;    sta $d726
-;    ; Enable playback of channel 0
-;    lda #$82 ; CH0EN + CH0SBITS (10 = 8 bits sample)
-;    ldx sample_is_signed
-;    beq +
-;    ora #$20 ; CH0SGN
-;+   sta $d720
-;    rts
 
 !ifdef SOUND_WAV_ENABLED {
 !source "sound-wav.asm"
@@ -534,37 +607,28 @@ sound_effect
 .copy_effect_to_fastram
     ; copy effect .current_effect to fastRAM so it can be played
 	; index = effect * 4
-    lda #0
-    tax
-    tay
-    taz
-    lda .current_effect
-	stq sound_index_ptr
-	clc
-	rolq sound_index_ptr
-	rolq sound_index_ptr
-    ; add index (base = $0807FC00)
-    clc
-    ldz #8
-    ldy #7
-    ldx #$fc
-    lda #0
-    adcq sound_index_ptr
-	stq sound_index_ptr
-	; read index
-	ldz #0 ; note that ldq uses z
-	ldq [sound_index_ptr]
-    ; store source address
-    sta dma_source_address
-    stx dma_source_address + 1
-    sty dma_source_bank_and_flags
-    lda #$80 ; base of attic ram (HyperRAM)
-    sta dma_source_address_top
-    ; copy the whole bank
-    lda #$ff
+    ldx .current_effect
+	lda #0
+	sta dma_source_address
+	lda sound_start_page_low,x
+	sta dma_source_address + 1
+	lda sound_start_page_high,x
+	and #$0f
+	sta dma_source_bank_and_flags
+	lda sound_start_page_high,x
+	lsr
+	lsr
+	lsr
+	lsr
+	ora #$80 ; Base of Attic RAM
+	sta dma_source_address_top
+
+    ; Set the size of the sound data
+    lda #$00
     sta dma_count
-    sta dma_count + 1
-    ; copy to $4000
+	lda sound_length_pages,x
+	sta dma_count + 1
+    ; copy to $40000
     lda #$00
     sta dma_dest_address
     sta dma_dest_address + 1
@@ -573,8 +637,6 @@ sound_effect
     sta dma_dest_bank_and_flags
     ; copy
     jmp m65_run_dma
-
-
 } ; ifdef TARGET_MEGA65
 } ; zone sound_support
 } ; ifdef SOUND
@@ -626,7 +688,12 @@ z_ins_sound_effect
 	asl
 	sec
 	sbc z_operand_value_low_arr + 2
-+	sta sound_arg_volume
++	; MEGA65's volume is [0,64]. Convert from z-machine [0,255]
+	clc
+	ror
+	clc
+	ror
+	sta sound_arg_volume
 !ifdef Z5PLUS {
 	lda z_operand_value_high_arr + 2 ; repeats
 	bne +

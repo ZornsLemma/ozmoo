@@ -5,11 +5,54 @@ current_disks !byte $ff, $ff, $ff, $ff,$ff, $ff, $ff, $ff
 boot_device !byte 0
 ask_for_save_device !byte $ff
 
+!ifdef TARGET_MEGA65 {
+
+nonstored_pages			!byte 0
+
+m65_run_dma
+	
+	jsr mega65io
+	lda #0
+	sta $d702 ; DMA list is in bank 0
+	lda #>dma_list
+	sta $d701
+	lda #<dma_list
+	sta $d705 
+	cli
+	clc
+	rts	
+
+dma_list
+	!byte $0b ; Use 12-byte F011B DMA list format
+	!byte $80 ; Set source address bit 20-27
+dma_source_address_top		!byte 0
+	!byte $81 ; Set destination address bit 20-27
+dma_dest_address_top		!byte 0
+	!byte $00 ; End of options
+dma_command_lsb			!byte 0		; 0 = Copy
+dma_count					!word $100	; Always copy one page
+dma_source_address			!word 0
+dma_source_bank_and_flags	!byte 0
+dma_dest_address			!word 0
+dma_dest_bank_and_flags	!byte 0
+dma_command_msb			!byte 0		; 0 for linear addressing for both src and dest
+dma_modulo					!word 0		; Ignored, since we're not using the MODULO flag
+
+}
+
 !ifndef VMEM {
+	!ifdef TARGET_MEGA65 {
 disk_info
-	!byte 0, 0, 1  ; Interleave, save slots, # of disks
-	!byte 8, 8, 0, 0, 0, 130, 131, 0 
+		!byte 0, 0, 2  ; Interleave, save slots, # of disks
+		!byte 8, 8, 0, 0, 0, 130, 131, 0 
+		!pet 11, 8, 0, 0, 0, 128, "/ ", 129, 131, 0 
+	} else { 
+disk_info
+		!byte 0, 0, 1  ; Interleave, save slots, # of disks
+		!byte 8, 8, 0, 0, 0, 130, 131, 0 
+	}
 } else {
+; VMEM
 
 device_map !byte 0,0,0,0,0,0,0,0
 
@@ -67,10 +110,12 @@ readblocks
 .readblock_from_reu
 	ldx readblocks_currentblock_adjusted
 	ldy readblocks_currentblock_adjusted + 1
+	; Statmem begins on page 1 (page 0 is reserved for copy operations)
 	inx
 	bne +
 	iny
-+	tya
++
+	tya
 	ldy readblocks_mempos + 1 ; Assuming lowbyte is always 0 (which it should be)
 	jmp copy_page_from_reu
 }
@@ -260,387 +305,6 @@ readblock
 .skip_sectors 	!byte 0
 .temp_y 		!byte 0
 
-
-!ifdef TARGET_MEGA65 {
-
-read_track_sector
-	; a: track (1-80)
-	; x: sector (0-39)
-	; y: device# (currently ignored for MEGA65)
-	; Word at readblocks_mempos holds storage address
-	sta .track
-	stx .sector
-	sty .device
-.have_set_device_track_sector
-	ldy #0 ; Side
-	lda .sector
-	cmp #20
-	bcc +
-	iny
-	sec
-	sbc #20
-	sta .sector
-+	tya
-	ldx .track
-	dex
-	jsr m65_get_track_address
-
-	; Copy a logical sector (256 bytes) to main RAM
-	
-	clc
-	adc .sector
-	sta dma_source_address + 1
-	lda readblocks_mempos
-	sta dma_dest_address
-	lda readblocks_mempos + 1
-	sta dma_dest_address + 1
-	ldy #1
-	sty dma_count + 1 ; Transfer 1 page
-	sty dma_source_bank_and_flags
-	dey ; Set y to 0
-	sty dma_dest_bank_and_flags
-	sty dma_source_address
-	sty dma_dest_address_top
-	sty dma_source_address_top
-	sty dma_count
-
-m65_run_dma
-	
-	jsr mega65io
-	lda #0
-	sta $d702 ; DMA list is in bank 0
-	lda #>dma_list
-	sta $d701
-	lda #<dma_list
-	sta $d705 
-	cli
-	clc
-	rts	
-
-m65_start_disk_access
-	jsr mega65io
-	inc m65_disk_enabled
-	lda m65_disk_enabled
-	cmp #1
-	bne .return
-
-	lda $d689
-	ora #$10
-	sta $d689 ; Turn off autoseek
-	lda $d6a1
-	and #%11111101
-	sta $d6a1 ; Turn off TARGANY
-	lda #$60
-	sta $d080 ; Enable drive motor AND select side
-	lda #$20
-	sta $d081 ; Send SPINUP command
-m65_busy_wait
-	jsr m65_pause_1ms
--	bit $d082
-	bmi -
-	rts
-
-m65_end_disk_access
-	dec m65_disk_enabled
-	bne .return
-
-	lda #$00
-	sta $d080 ; Disable drive motor
-	jmp m65_busy_wait
-
-m65_get_current_trackno
-	lda m65_current_trackno
-	bpl .return
-
-; m65_reset_trackno
-	; lda #48
-	; sta SCREEN_ADDRESS + 3*80 ; Show status "0"
--	jsr m65_busy_wait
-	lda $d082
-	and #$01
-	bne + ; Track 0 reached
-	; lda #49
-	; sta SCREEN_ADDRESS + 3*80 ; Show status "1"
-	lda #$10
-	sta $d081
-;	inc $d020
-;	inc SCREEN_ADDRESS
-;	jsr m65_pause_6ms
-	jmp - ; Always branch
-+
-	; lda #50
-	; sta SCREEN_ADDRESS + 3*80 ; Show status "2"
-	lda #0
-	sta m65_current_trackno
-.return
-	rts
-
-m65_get_track_address
-	; x = physical track# (0-79)
-	; a = side (0-1)
-	; Returns: a = page in bank 1 where the track starts
-	tay
-	txa
-	cpy #0
-	beq +
-	ora #$80
-+	sta m65_disk_tmp ; Track + side
-	ldy #11
--	cmp m65_track_buffer_trackno,y
-	beq .match
-	dey
-	bpl -
-	; Track was not found in list.
-	; Find the next slot from m65_track_buffer_next with flag = 0
-	ldy m65_track_buffer_next
--	lda m65_track_buffer_flag,y
-	beq .read_into_pos_y
-	; Flag is 1: Set it to 0 and check next slot
-	lda #0
-	sta m65_track_buffer_flag,y
-	lda m65_track_buffer_next_pos,y
-	tay
-	jmp - ; Always branch ; BPL
-.read_into_pos_y
-	lda m65_disk_tmp
-	sta m65_track_buffer_trackno,y
-	and #%01111111
-	tax
-
-	; Point at the next buffer pos
-	sty m65_mempos_tmp
-	lda m65_track_buffer_next_pos,y
-	sta m65_track_buffer_next
-	; Retrieve the current buffer pos
-	ldy m65_mempos_tmp
-
-	lda #0
-	asl m65_disk_tmp
-	rol
-	jsr m65_read_track
-	ldy m65_mempos_tmp
-.match
-	lda #1
-	sta m65_track_buffer_flag,y
-	lda m65_track_buffer_startpage,y
-	rts
-
-m65_read_track
-	; x = physical track# (0-79)
-	; a = side (0-1)
-	; y = memory position (0-11)
-	pha
-
-	asl
-	asl
-	asl
-	eor #$68 ; After this we have either $68 (side 0) or $60 (side 1)
-	pha
-
-	jsr m65_start_disk_access
-;	lda #51
-;	sta SCREEN_ADDRESS + 3*80 ; Show status "3"
-	pla
-	sta $d080 ; Enable drive motor AND select side
-	jsr m65_busy_wait
-
-	pla
-	sta $d086 ; Set disk side register
-;	sta SCREEN_ADDRESS + 5*80 + 2 ; About to read this side
-
-	lda m65_track_buffer_startpage,y
-	sta m65_track_mempos ; The page in bank 1 where we store this track
-	
-	; lda #52
-	; sta SCREEN_ADDRESS + 3*80 ; Show status "4"
-	jsr m65_get_current_trackno
-	; lda #54
-	; sta SCREEN_ADDRESS + 3*80 ; Show status "6"
-
-.check_trackno_again
-	cpx m65_current_trackno
-	beq .found_track
-	bcs .step_out
-	dec m65_current_trackno
-	lda #$10
-	bne .send_track_change
-.step_out ; Higher track#
-	inc m65_current_trackno
-	lda #$18
-.send_track_change
-	jsr m65_busy_wait
-	sta $d081
-	; lda #55
-	; sta SCREEN_ADDRESS + 3*80 ; Show status "7"
-	jsr m65_pause_1ms
-	jmp .check_trackno_again
-.found_track
-	stx $d084
-;	stx SCREEN_ADDRESS + 5*80 + 0 ; About to read this track
-
-	; Prepare DMA transfers
-	ldy #$0d
-	sty dma_source_bank_and_flags
-	ldy #$6c
-	sty dma_source_address + 1
-	ldy #2
-	sty dma_count + 1 ; Transfer 2 pages
-	dey ; Set y to 1
-	sty dma_dest_bank_and_flags
-	dey ; Set y to 0
-	sty dma_count ; Transfer 2 pages (lowbyte = 0)
-	sty dma_source_address
-	sty dma_dest_address
-	sty dma_dest_address_top
-	sty $d702 ; DMA list is in bank 0
-	dey ; Set y to $ff
-	sty dma_source_address_top
-
-	jsr m65_pause_30ms ; Pause to let head stabilize before trying to read sectors
-
-	; Iterate over sectors, in fastest order, reading sector and copying it to memory
-	ldx #9
-.read_next_sector
-	; lda #0
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "@", meaning haven't read yet.
-	lda m65_sector_order,x
-	tay
-	iny
-	sty $d085
-;	sty SCREEN_ADDRESS + 5*80 + 1 ; About to read this sector
-	jsr m65_busy_wait
-	; lda #1
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "A"
-
-	lda #$40
-	sta $d081 ; Issue READ command
-	jsr m65_pause_1ms
-;-	bit $d082
-;	bpl - ; Wait until BUSY goes high (BREAKS IN XEMU, SO ADDED PAUSE INSTEAD)
-	; lda #2
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "B"
--	lda $d082
-	and #$54
-	beq -
-	jsr m65_busy_wait
-	; lda #2
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "C"
--	lda $d082
-	and #$10
-	bne .dnf
-;	lda $d083
-;	bpl - ; Wait for RDREQ = 1
-	; lda #3
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "D"
-
-; .expected_flags = $40 ; This should be $60 according to the MEGA65 manual, but $40 is what currently works
-; -	lda $d082
-	; and #.expected_flags
-	; cmp #.expected_flags
-	; bne - ; Wait for DRQ = 1 and EQ = 1
-
-	; lda #5
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "E"
-
-	
-	; Copy physical sector (512 bytes) from FDC buffer to bank 1
-
-	lda $d689
-	and #%01111111
-	sta $d689 ; Clear BUFSEL
-	
-	lda m65_sector_order,x ; Physical sector# - 1 (0 .. 9)
-	asl ; 2 pages per sector
-	adc m65_track_mempos ; Carry is already clear
-	sta dma_dest_address + 1
-
-	; lda #6
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "F"
-
-	jsr m65_run_dma
-
-	; lda #7
-	; sta SCREEN_ADDRESS + 5*80 + 4 ; Show status "G"
-
-	; lda #0
-	; sta 198
-;	jsr kernal_readchar
-	
-	dex
-	bpl .read_next_sector
-
-	jmp m65_end_disk_access
-
-.dnf
-	lda #ERROR_FLOPPY_READ_ERROR
-	jsr fatalerror
-
-m65_pause_30ms
-	lda #3
-	sta m65_pause
---	lda ti_variable + 2
--	cmp ti_variable + 2
-	beq -
-	dec m65_pause
-	bne --
-	rts
-
-; m65_pause_6ms
-	; jsr m65_pause_1ms
-	; jsr m65_pause_1ms
-	; jsr m65_pause_1ms
-	; jsr m65_pause_1ms
-	; jsr m65_pause_1ms
-
-m65_pause_1ms
-	pha
-	tya
-	pha
-	ldy #0
---	lda #23
--	sec
-	sbc #1
-	bne -
-	dey
-	bne --
-	pla
-	tay
-	pla
-	rts
-
-
-m65_disk_enabled			!byte 0 ; Increases with every call to m65_start_disk_access, 
-m65_pause					!byte 0
-m65_track_buffer_trackno 	!fill 12, $ff
-m65_track_buffer_flag	 	!fill 12, 0
-m65_track_buffer_startpage	!byte 0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220
-m65_track_buffer_next_pos	!byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0
-m65_track_buffer_next		!byte 0
-m65_track_mempos			!byte 0
-m65_current_trackno			!byte $ff
-m65_disk_tmp				!byte 0
-m65_mempos_tmp				!byte 0
-m65_sector_order			!byte 9,7,5,3,1,8,6,4,2,0 ; Read in reverse order. Uses our internal numbering 0-9, add 1 to get physical sector.
-	
-dma_list
-	!byte $0b ; Use 12-byte F011B DMA list format
-	!byte $80 ; Set source address bit 20-27
-dma_source_address_top		!byte 0
-	!byte $81 ; Set destination address bit 20-27
-dma_dest_address_top		!byte 0
-	!byte $00 ; End of options
-dma_command_lsb			!byte 0		; 0 = Copy
-dma_count					!word $100	; Always copy one page
-dma_source_address			!word 0
-dma_source_bank_and_flags	!byte 0
-dma_dest_address			!word 0
-dma_dest_bank_and_flags	!byte 0
-dma_command_msb			!byte 0		; 0 for linear addressing for both src and dest
-dma_modulo					!word 0		; Ignored, since we're not using the MODULO flag
-
-} else {
-	; Not MEGA65
-
 	; convert track/sector to ascii and update drive command
 read_track_sector
 	; input: a: track, x: sector, y: device#, Word at readblocks_mempos holds storage address
@@ -680,7 +344,6 @@ read_track_sector
 	sta reg_2mhz	;CPU = 1MHz
 }
 
-
 	; open the channel file
 	lda #cname_len
 	ldx #<.cname
@@ -697,7 +360,7 @@ read_track_sector
 	jsr kernal_setbnk
 }
 	jsr kernal_open     ; call OPEN
-	bcs .error    ; if carry set, the file could not be opened
+	bcs is_error    ; if carry set, the file could not be opened
 
 	; open the command channel
 
@@ -715,8 +378,15 @@ read_track_sector
 	jsr kernal_setbnk
 }
 	jsr kernal_open ; call OPEN (open command channel and send U1 command)
-	bcs .error    ; if carry set, the file could not be opened
+	bcs is_error    ; if carry set, the file could not be opened
 
+	; DEBUG print
+;	lda #>.uname
+;	ldx #<.uname
+;	jsr printstring_raw
+;	lda #$0d
+;	jsr s_printchar
+	
 	; check drive error channel here to test for
 	; FILE NOT FOUND error etc.
 
@@ -740,24 +410,20 @@ read_track_sector
 	jmp close_io
 }
 
-.error
-	; accumulator contains BASIC error code
-	; most likely errors:
-	; A = $05 (DEVICE NOT PRESENT)
-	jsr close_io    ; even if OPEN failed, the file has to be closed
-	lda #ERROR_FLOPPY_READ_ERROR
-	jsr fatalerror
 .cname !text "#"
 cname_len = * - .cname
-
 .uname !text "U1 2 0 "
 .uname_track !text "18 "
 .uname_sector !text "00"
+uname_len = * - .uname
 	!byte 0 ; end of string, so we can print debug messages
 
-uname_len = * - .uname
+is_error
+	; accumulator contains BASIC error code
+	; most likely errors:
+	; A = $05 (DEVICE NOT PRESENT)
+	jmp disk_error
 
-} ; End of non-MEGA65 read_track_sector routines
 
 .track  !byte 0
 .sector !byte 0
@@ -778,6 +444,7 @@ close_io
 	jsr kernal_close ; call CLOSE
 
 	jmp kernal_clrchn ; call CLRCHN
+
 
 !zone disk_messages {
 print_insert_disk_msg
@@ -825,33 +492,18 @@ print_insert_disk_msg
 	jsr s_printchar
 	pla
 +	jsr s_printchar
-	; tax
-	; cmp #10
-	; bcc +
-	; lda #$31
-	; jsr s_printchar
-	; txa
-	; sec
-	; sbc #10
-; +	clc
-	; adc #$30
-	; jsr s_printchar
 	lda #>insert_msg_3
 	ldx #<insert_msg_3
 	jsr printstring_raw
 	;jsr kernal_readchar ; this shows the standard kernal prompt (not good)
 -	jsr kernal_getchar
 	beq -
-	; lda .print_row
-	; clc
-	; adc #3
-	; sta .print_row
+
 	ldy .save_y
 	rts
 .save_x	!byte 0
 .save_y	!byte 0
 .print_row	!byte 14
-;.device_no	!byte 0
 .special_string_128
 	!pet "Boot ",0
 .special_string_129
@@ -873,26 +525,16 @@ insert_msg_3
 }
 
 
-!ifdef VMEM {
-WANT_RESTART = 1
+!ifdef RESTART_SUPPORTED {
 z_ins_restart
 	; Find right device# for boot disk
-	ldx disk_info + 3
+	ldx boot_device
 
-!ifndef TARGET_MEGA65 {
 	lda disk_info + 4,x
 	jsr convert_byte_to_two_digits
 	stx .device_no
 	sta .device_no + 1
-	; cmp #10
-	; bcc +
-	; inc .device_no
-	; sec
-	; sbc #10
-; +	ora #$30
-	; sta .device_no + 1
-	ldx disk_info + 3
-}
+	ldx boot_device
 
 	; Check if disk is in drive
 	lda disk_info + 4,x
@@ -903,16 +545,18 @@ z_ins_restart
 	jsr print_insert_disk_msg
 +
 
-!if SUPPORT_REU = 1 {
-	lda use_reu
-	beq +
-	; Write the game id as a signature to say that REU is already loaded.
-	ldx #3
--	lda game_id,x
-	sta reu_filled,x
-	dex
-	bpl -
+!ifndef TARGET_MEGA65 {
+	!if SUPPORT_REU = 1 {
+		lda use_reu
+		beq +
+		; Write the game id as a signature to say that REU is already loaded.
+		ldx #3
+-		lda game_id,x
+		sta reu_filled,x
+		dex
+		bpl -
 +
+	}
 }
 
 !ifdef TARGET_MEGA65 {
@@ -1056,7 +700,7 @@ z_ins_save
 !zone save_restore {
 .inputlen !byte 0
 .filename !pet "!0" ; 0 is changed to slot number
-.inputstring !fill 15 ; filename max 16 chars (fileprefix + 14)
+.inputstring !fill 19 ; filename max 20 chars (fileprefix + 14 + ",s,w")
 .input_alphanum
 	; read a string with only alphanumeric characters into .inputstring
 	; return: x = number of characters read
@@ -1111,16 +755,38 @@ z_ins_save
 	sta .inputstring,x
 	rts
 
-.error
+disk_error
 	; accumulator contains BASIC error code
 	; most likely errors:
 	; A = $05 (DEVICE NOT PRESENT)
-	sta zp_temp + 1 ; Store error code for printing
+	pha ; Store error code for printing
 	jsr close_io    ; even if OPEN failed, the file has to be closed
+	jsr printchar_flush
 	lda #>.disk_error_msg
 	ldx #<.disk_error_msg
 	jsr printstring_raw
 	; Add code to print error code!
+	pla
+	tax
+	lda #0
+	jsr printinteger
+	jsr printchar_flush
+
+	lda #$25
+	jsr s_printchar
+	lda #0
+	ldx $d68b
+	jsr printinteger
+	jsr printchar_flush
+	lda #$25
+	jsr s_printchar
+	lda #0
+	ldx $d6a1
+	jsr printinteger
+	jsr printchar_flush
+
+	lda #$0d
+	jsr s_printchar
 	lda #0
 	rts
 	
@@ -1147,9 +813,9 @@ list_save_files
 	tax
 	jsr kernal_setbnk
 }
-	lda #1
-	ldx #<.dirname
-	ldy #>.dirname
+	lda #directory_name_len
+	ldx #<directory_name
+	ldy #>directory_name
 	jsr kernal_setnam ; call SETNAM
 
 	lda #2      ; file number 2
@@ -1157,7 +823,7 @@ list_save_files
 +   ldy #0      ; secondary address 2
 	jsr kernal_setlfs ; call SETLFS
 	jsr kernal_open     ; call OPEN
-	bcs .error    ; if carry set, the file could not be opened
+	bcs disk_error    ; if carry set, the file could not be opened
 
 	ldx #2      ; filenumber 2
 	jsr kernal_chkin ; call CHKIN (file 2 now used as input)
@@ -1412,8 +1078,9 @@ vdc_insertion_sort
 +	tax
 	tya
 	rts
-.dirname
+directory_name
 	!pet "$"
+directory_name_len = * - directory_name
 .occupied_slots
 	!fill 10,0
 .disk_error_msg
@@ -1586,9 +1253,11 @@ restore_game
 	ldx #1
 	rts
 .restore_failed
-!if SUPPORT_REU = 1 {
- 	lda use_reu
-	bmi .restore_fail_dont_insert_story_disk
+!ifndef TARGET_MEGA65 {
+	!if SUPPORT_REU = 1 {
+		lda use_reu
+		bmi .restore_fail_dont_insert_story_disk
+	}
 }
 	jsr .insert_story_disk
 	; Return failed status
@@ -1692,7 +1361,96 @@ save_game
 	ldx #1
 	rts
 
+.m65_save_start = z_temp + 4 ; 4 bytes	
+.m65_save_count = 	z_temp + 8 ; 2 bytes
+
 do_restore
+!ifdef TARGET_MEGA65 {
+	jsr close_io
+
+	lda #3
+	ldx #<.restore_filename
+	ldy #>.restore_filename
+	jsr kernal_setnam
+
+	lda #2      ; file# 2
+	ldx disk_info + 4 ; Device# for save disk
+	tay         ; secondary address: 3
+	jsr kernal_setlfs
+
+	jsr kernal_open     ; call OPEN
+	bcc +
+	; TODO: No fatal error
+	lda #ERROR_FLOPPY_READ_ERROR
+	jsr fatalerror
++
+	ldx #2      ; filenumber 2
+	jsr kernal_chkin ; (file 2 now used for output)
+	
+	lda #>(stack_start - zp_bytes_to_save)
+	ldx #<(stack_start - zp_bytes_to_save)
+	sta .m65_save_start + 1
+	stx .m65_save_start
+	lda #0
+	sta .m65_save_start + 2
+	sta .m65_save_start + 3
+	lda #>(stack_size + zp_bytes_to_save)
+	ldx #<(stack_size + zp_bytes_to_save)
+	jsr .m65_restore_read_from_file
+	bcs .end_do_restore
+	
+	lda #0
+	sta .m65_save_start
+	sta .m65_save_start + 1
+	sta .m65_save_start + 2
+	lda #$08
+	sta .m65_save_start + 3
+	ldy #header_static_mem
+	jsr read_header_word
+	jsr .m65_restore_read_from_file
+	
+.end_do_restore
+	php ; store c flag so error can be checked by calling routine
+	jsr close_io
+	plp ; restore c flag
+	rts
+
+.m65_restore_read_from_file
+	; In: a,x: number of bytes to read from file
+	; Returns: Carry set if failed
+	; File should already be open and be default channel for input
+	sta .m65_save_count + 1
+	stx .m65_save_count
+	
+	
+	ldz #0
+-	
+	; jsr kernal_readst
+	; bne .file_reading_broken
+
+	jsr kernal_readchar
+	sta [.m65_save_start],z
+
+	inc .m65_save_start
+	bne +
+	inc .m65_save_start + 1
+
++	dec .m65_save_count
+	bne -
+	lda .m65_save_count + 1
+	beq .file_reading_done
+	dec .m65_save_count + 1
+	jmp -
+
+.file_reading_done
+	clc
+	rts
+.file_reading_broken
+	clc ; Should do SEC, but this leads to horrible terp behaviour, for unknown reasons
+	rts
+
+
+} else {
 !ifdef TARGET_C128 {
 	lda #$01
 	ldx #$00
@@ -1713,8 +1471,99 @@ do_restore
 	jsr kernal_close
 	plp ; restore c flag
 	rts
+} ; Not TARGET_MEGA65
 
 do_save
+!ifdef TARGET_MEGA65 {
+	jsr close_io
+
+	ldx .inputlen
+	lda #$2c
+	sta .filename + 2,x
+	sta .filename + 4,x
+	lda #$53
+	sta .filename + 3,x
+	lda #$57
+	sta .filename + 5,x
+
+
+	lda .inputlen
+	clc
+	adc #6 ; add 2 bytes for prefix
+	ldx #<.filename
+	ldy #>.filename
+	jsr kernal_setnam
+
+	lda #2      ; file# 2
+	ldx disk_info + 4 ; Device# for save disk
+	tay         ; secondary address: 3
+	jsr kernal_setlfs
+
+	jsr kernal_open     ; call OPEN
+	bcc +
+	; TODO: No fatal error
+	lda #ERROR_FLOPPY_READ_ERROR
+	jsr fatalerror
++
+	ldx #2      ; filenumber 2
+	jsr kernal_chkout ; (file 2 now used for output)
+	
+	lda #>(stack_start - zp_bytes_to_save)
+	ldx #<(stack_start - zp_bytes_to_save)
+	sta .m65_save_start + 1
+	stx .m65_save_start
+	lda #0
+	sta .m65_save_start + 2
+	sta .m65_save_start + 3
+	lda #>(stack_size + zp_bytes_to_save)
+	ldx #<(stack_size + zp_bytes_to_save)
+	jsr .m65_save_write_to_file
+	
+	lda #0
+	sta .m65_save_start
+	sta .m65_save_start + 1
+	sta .m65_save_start + 2
+	lda #$08
+	sta .m65_save_start + 3
+	ldy #header_static_mem
+	jsr read_header_word
+	jsr .m65_save_write_to_file
+	
+	php ; store c flag so error can be checked by calling routine
+	jsr close_io
+	plp ; restore c flag
+	rts
+
+.m65_save_write_to_file
+	; In: a,x: number of bytes to write to file
+	; Returns: Carry set if failed
+	; File should already be open and be default channel for output
+	sta .m65_save_count + 1
+	stx .m65_save_count
+	
+	; jsr kernal_readst
+	; bne .file_copying_done
+	
+	ldz #0
+-	lda [.m65_save_start],z
+	jsr kernal_printchar
+
+	inc .m65_save_start
+	bne +
+	inc .m65_save_start + 1
+
++	dec .m65_save_count
+	bne -
+	lda .m65_save_count + 1
+	beq .file_copying_done
+	dec .m65_save_count + 1
+	jmp -
+
+.file_copying_done
+	rts
+
+
+} else {
 !ifdef TARGET_C128 {
 	lda #$01
 	ldx #$00
@@ -1731,8 +1580,8 @@ do_save
 	tay         ; secondary address: 1
 	jsr kernal_setlfs
 !ifdef TARGET_C128 {
-	lda #<(story_start_bank_1 - stack_size - zp_bytes_to_save)
-	ldx #>(story_start_bank_1 - stack_size - zp_bytes_to_save)
+	lda #<(story_start_far_ram - stack_size - zp_bytes_to_save)
+	ldx #>(story_start_far_ram - stack_size - zp_bytes_to_save)
 } else {
 	lda #<(stack_start - zp_bytes_to_save)
 	ldx #>(stack_start - zp_bytes_to_save)
@@ -1745,9 +1594,9 @@ do_save
 ;	jsr read_header_word
 	clc
 !ifdef TARGET_C128 {
-	adc #>story_start_bank_1
+	adc #>story_start_far_ram
 } else {
-	adc #>story_start
+ 	adc #>story_start
 }	
 	tay
 	lda #savefile_zp_pointer ; start address located in zero page
@@ -1757,6 +1606,7 @@ do_save
 	jsr kernal_close
 	plp ; restore c flag
 	rts
+} ; End of not TARGET_MEGA65
 	
 .last_disk	!byte 0
 .saveslot !byte 0
@@ -1795,7 +1645,7 @@ do_save
 	sta z_temp ; vmem_cache page for copying
 	lda #(>stack_start) - 1
 	sta z_temp + 1 ; Source page
-	lda #(>story_start_bank_1) - (>stack_size) - 1
+	lda #(>story_start_far_ram) - (>stack_size) - 1
 	sta z_temp + 2 ; Destination page
 	lda #(>stack_size) + 1
 	sta z_temp + 3 ; # of pages to copy
@@ -1828,7 +1678,7 @@ do_save
 	adc #>vmem_cache_start
 	sta z_temp + 4 ; vmem_cache page for copying
 	tay
-	lda #(>story_start_bank_1) - 1
+	lda #(>story_start_far_ram) - 1
 	sta z_temp + 1 ; Source page
 	lda #(>story_start) - 1
 	sta z_temp + 2 ; Destination page

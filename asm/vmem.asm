@@ -81,6 +81,15 @@ read_byte_at_z_address
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
 
+!ifdef TARGET_MEGA65 {
+	sta mempointer + 2
+	stx mempointer + 1
+	sty mempointer
+	ldz #0
+	lda [mempointer],z
+	rts
+	
+} else {
 	; same page as before?
 	cpx zp_pc_l
 	bne .read_new_byte
@@ -162,7 +171,7 @@ read_byte_at_z_address
 } ; Not SKIP_VMEM_BUFFERS
 } ; Not TARGET_PLUS4
 } ; Not ACORN
-	
+} ; Not target MEGA65	
 } else {
 ; virtual memory
 
@@ -736,14 +745,12 @@ SFTODOBOOM
 	; This is in dynmem, so we always read from bank 1
 	txa
 	clc
-	adc #>story_start_bank_1
+	adc #>story_start_far_ram
 	sta vmem_temp + 1
 	lda #0
 	sta vmem_temp
-	lda #vmem_temp
-	sta $02aa
-	ldx #$7f
-	jmp $02a2
+	+read_far_byte vmem_temp
+	rts
 	
 .not_dynmem	
 }
