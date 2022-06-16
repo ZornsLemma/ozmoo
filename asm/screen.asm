@@ -361,14 +361,6 @@ z_ins_get_cursor
 	; stx string_array
 	lda z_operand_value_high_arr
 	jsr set_z_address
-	; clc
-	; adc #>story_start
-	; sta string_array + 1
-	; lda #0
-	; ldy #0
-	; sta (string_array),y
-	; ldy #2
-	; sta (string_array),y
 	ldx current_window
 	beq + ; We are in lower window, jump to read last cursor pos in upper window
 	jsr get_cursor ; x=row, y=column	
@@ -382,16 +374,6 @@ z_ins_get_cursor
 	jsr write_next_byte
 	tya
 	jmp write_next_byte
-	; tya
-	; pha
-	; ldy #1
-	; txa ; row
-	; sta (string_array),y
-	; pla ; column
-	; ldy #3
-	; sta (string_array),y
-; .do_nothing_2
-	; rts
 +	ldx cursor_row + 1
 	ldy cursor_column + 1
 	jmp -	
@@ -814,7 +796,9 @@ draw_status_line
 	ldy #header_flags_1
 	jsr read_header_word
 	and #$02
-	bne .timegame
+	beq +
+	jmp .timegame
++
 }
 	; score game
 	lda z_operand_value_low_arr
@@ -872,6 +856,32 @@ draw_status_line
 	pla
 	sta z_operand_value_low_arr
 	jmp .statusline_done
+
+!ifdef Z3 {
+.time_str !pet "Time: ",0
+.ampm_str !pet " AM",0
+
+.print_clock_number
+	sty z_temp + 11
+	txa
+	ldy #0
+-	cmp #10
+	bcc .print_tens
+	sbc #10 ; C is already set
+	iny
+	bne - ; Always branch
+.print_tens
+	tax
+	tya
+	bne +
+	lda z_temp + 11
+	bne ++
++	ora #$30
+++	jsr s_printchar
+	txa
+	ora #$30
+	jmp s_printchar
+
 .timegame
 	; time game
 	ldx #0
@@ -912,6 +922,7 @@ draw_status_line
 	lda #>.ampm_str
 	ldx #<.ampm_str
 	jsr printstring_raw
+}
 .statusline_done
 	ldx darkmode
 	ldy fgcol,x 
@@ -922,32 +933,11 @@ draw_status_line
 	pla
 	sta current_window
 	jmp restore_cursor
-.print_clock_number
-	sty z_temp + 11
-	txa
-	ldy #0
--	cmp #10
-	bcc .print_tens
-	sbc #10 ; C is already set
-	iny
-	bne - ; Always branch
-.print_tens
-	tax
-	tya
-	bne +
-	lda z_temp + 11
-	bne ++
-+	ora #$30
-++	jsr s_printchar
-	txa
-	ora #$30
-	jmp s_printchar
+
 
 .score_str !pet "Score: ",0
 !ifdef SUPPORT_80COL {
 .turns_str !pet "Moves: ",0
 }
-.time_str !pet "Time: ",0
-.ampm_str !pet " AM",0
 }
 

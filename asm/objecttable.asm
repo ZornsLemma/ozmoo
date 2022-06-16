@@ -46,11 +46,8 @@ z_ins_get_child
 	+before_dynmem_read
 !ifndef Z4PLUS {
 
-!ifdef TARGET_C128 {
-	lda #object_tree_ptr
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte object_tree_ptr
 } else {
 	lda (object_tree_ptr),y
 }
@@ -60,10 +57,10 @@ z_ins_get_child
 	lda #0
 } else  {
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #object_tree_ptr
 	dey
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 	stx object_temp
 	tay
 	ora object_temp
@@ -98,11 +95,8 @@ z_ins_get_parent
 !ifndef Z4PLUS {
 	ldy #4
 
-!ifdef TARGET_C128 {
-	lda #object_tree_ptr
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte object_tree_ptr
 } else {
 	lda (object_tree_ptr),y
 }
@@ -111,10 +105,10 @@ z_ins_get_parent
 	lda #0
 } else  {
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	ldy #6
 	lda #object_tree_ptr
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 } else {
 	ldy #7
 	lda (object_tree_ptr),y
@@ -157,10 +151,9 @@ z_ins_get_prop_len
 +   ; this is byte 2 of a 2-byte property block
 	pla
 	and #$3f
-	sta .property_length
-	bne ++
-	lda #64
-	sta .property_length
+	bne +
+	lda #$40
++	sta .property_length
 } else {
 	lsr
 	lsr
@@ -206,9 +199,9 @@ z_ins_remove_obj_body
 !ifdef Z4PLUS {
 	ldy #6  ; parent
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_object
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 	sta .parent_num
 	stx .parent_num + 1
 } else {
@@ -224,11 +217,8 @@ z_ins_remove_obj_body
 	lda #0
 	sta .parent_num
 
-!ifdef TARGET_C128 {
-	lda #.zp_object
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte .zp_object
 } else {
 	lda (.zp_object),y
 }
@@ -255,9 +245,9 @@ z_ins_remove_obj_body
 !ifdef Z4PLUS {
 	ldy #10  ; child
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_parent
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 	sta .child_num
 	stx .child_num + 1
 } else {
@@ -273,11 +263,8 @@ z_ins_remove_obj_body
 	lda #0
 	sta .child_num
 
-!ifdef TARGET_C128 {
-	lda #.zp_parent
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte .zp_parent
 } else {
 	lda (.zp_parent),y
 }
@@ -301,14 +288,14 @@ z_ins_remove_obj_body
 !ifdef Z4PLUS {
 	ldy #8  ; sibling
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_object
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 	ldy #.zp_parent
-	sty write_word_c128_zp_1
-	sty write_word_c128_zp_2
+	sty write_word_far_dynmem_zp_1
+	sty write_word_far_dynmem_zp_2
 	ldy #10
-	jsr write_word_to_bank_1_c128
+	jsr write_word_to_far_dynmem
 } else {
 	lda (.zp_object),y
 	pha
@@ -324,22 +311,16 @@ z_ins_remove_obj_body
 } else {
 	ldy #5  ; sibling
 
-!ifdef TARGET_C128 {
-	lda #.zp_object
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte .zp_object
 } else {
 	lda (.zp_object),y
 }
 
 	ldy #6  ; child
 
-!ifdef TARGET_C128 {
-	ldx #.zp_parent
-	stx $02b9
-	ldx #$7f
-	jsr $02af
+!ifdef FAR_DYNMEM {
+	+write_far_byte .zp_parent
 } else {
 	sta (.zp_parent),y
 }
@@ -365,9 +346,9 @@ z_ins_remove_obj_body
 !ifdef Z4PLUS {
 	ldy #8  ; sibling
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_sibling
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 	sta .sibling_num
 	stx .sibling_num + 1
 } else {
@@ -383,11 +364,8 @@ z_ins_remove_obj_body
 	lda #0
 	sta .sibling_num
 
-!ifdef TARGET_C128 {
-	lda #.zp_sibling
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte .zp_sibling
 } else {
 	lda (.zp_sibling),y
 }
@@ -407,13 +385,13 @@ z_ins_remove_obj_body
 !ifdef Z4PLUS {
 	ldy #8  ; sibling
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_sibling
-	sta write_word_c128_zp_1
-	sta write_word_c128_zp_2
+	sta write_word_far_dynmem_zp_1
+	sta write_word_far_dynmem_zp_2
 	lda #.zp_object
-	jsr read_word_from_bank_1_c128
-	jsr write_word_to_bank_1_c128
+	jsr read_word_from_far_dynmem
+	jsr write_word_to_far_dynmem
 } else {
 	lda (.zp_object),y
 	sta (.zp_sibling),y
@@ -425,15 +403,9 @@ z_ins_remove_obj_body
 } else {
 	ldy #5  ; sibling
 
-!ifdef TARGET_C128 {
-	lda #.zp_object
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
-	ldx #.zp_sibling
-	stx $02b9
-	ldx #$7f
-	jsr $02af
+!ifdef FAR_DYNMEM {
+	+read_far_byte .zp_object
+	+write_far_byte .zp_sibling
 } else {
 	lda (.zp_object),y
 	sta (.zp_sibling),y
@@ -449,17 +421,17 @@ z_ins_remove_obj_body
 !ifdef Z4PLUS {
 	ldy #6  ; parent
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_object
-	sta write_word_c128_zp_1
-	sta write_word_c128_zp_2
+	sta write_word_far_dynmem_zp_1
+	sta write_word_far_dynmem_zp_2
 	lda #0
 	tax
-	jsr write_word_to_bank_1_c128 ; increases y by 1
+	jsr write_word_to_far_dynmem ; increases y by 1
 	lda #0
 	tax
 	iny ; sibling (8)
-	jsr write_word_to_bank_1_c128
+	jsr write_word_to_far_dynmem
 } else {
 	sta (.zp_object),y
 	iny
@@ -474,13 +446,13 @@ z_ins_remove_obj_body
 } else {
 	ldy #4  ; parent
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_object
-	sta write_word_c128_zp_1
-	sta write_word_c128_zp_2
+	sta write_word_far_dynmem_zp_1
+	sta write_word_far_dynmem_zp_2
 	lda #0
 	tax
-	jmp write_word_to_bank_1_c128 ; increases y by 1
+	jmp write_word_to_far_dynmem ; increases y by 1
 } else {
 	sta (.zp_object),y
 	iny ; sibling (5)
@@ -532,10 +504,10 @@ print_obj
 }
 
 	+before_dynmem_read
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	dey
 	lda #object_tree_ptr
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 } else {
 	lda (object_tree_ptr),y ; low byte
 	tax
@@ -558,11 +530,8 @@ z_ins_jin
 !ifndef Z4PLUS {
 	ldy #4  ; parent
 
-!ifdef TARGET_C128 {
-	lda #object_tree_ptr
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte object_tree_ptr
 } else {
 	lda (object_tree_ptr),y
 }
@@ -573,9 +542,9 @@ z_ins_jin
 } else {
 	ldy #6  ; parent
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #object_tree_ptr
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 	cmp z_operand_value_high_arr + 1
 	bne .branch_false
 	cpx z_operand_value_low_arr + 1
@@ -597,11 +566,8 @@ z_ins_test_attr
 	jsr find_attr
 
 	+before_dynmem_read
-!ifdef TARGET_C128 {
-	lda #object_tree_ptr
-	sta $02aa
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte object_tree_ptr
 	ldx .bitmask_index
 } else {
 	lda (object_tree_ptr),y
@@ -625,20 +591,16 @@ z_ins_set_attr
 .do_set_attr
 	jsr find_attr
 	+before_dynmem_read
-!ifdef TARGET_C128 {
-	lda #object_tree_ptr
-	sta $02aa
-	sta $02b9
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte object_tree_ptr
 	sta object_temp
 	ldx .bitmask_index
 	and .bitmask,x
 	bne +
 	lda object_temp
 	ora .bitmask,x
-	ldx #$7f
-	jmp $02af
+	+write_far_byte object_tree_ptr
+	rts
 } else {
 	lda (object_tree_ptr),y
 	ora .bitmask,x
@@ -659,20 +621,16 @@ z_ins_clear_attr
 .do_clear_attr
 	jsr find_attr
 	+before_dynmem_read
-!ifdef TARGET_C128 {
-	lda #object_tree_ptr
-	sta $02aa
-	sta $02b9
-	ldx #$7f
-	jsr $02a2
+!ifdef FAR_DYNMEM {
+	+read_far_byte object_tree_ptr
 	sta object_temp
 	ldx .bitmask_index
 	and .bitmask,x
 	beq +
 	lda object_temp
 	eor .bitmask,x
-	ldx #$7f
-	jmp $02af
+	+write_far_byte object_tree_ptr
+	rts
 } else {
 	lda (object_tree_ptr),y
 	and .bitmask,x
@@ -706,26 +664,26 @@ z_ins_insert_obj
 	ldy #6 ; parent
 
 	+before_dynmem_read
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #.zp_object
-	sta write_word_c128_zp_1
-	sta write_word_c128_zp_2
+	sta write_word_far_dynmem_zp_1
+	sta write_word_far_dynmem_zp_2
 	lda .dest_num
 	ldx .dest_num + 1
-	jsr write_word_to_bank_1_c128 ; increases y by 1
+	jsr write_word_to_far_dynmem ; increases y by 1
 	ldy #10 ; child
 	lda #.zp_dest
-	jsr read_word_from_bank_1_c128
-	ldy #8
-	jsr write_word_to_bank_1_c128 ; increases y by 1
+	jsr read_word_from_far_dynmem
+	ldy #8 ; sibling	
+	jsr write_word_to_far_dynmem ; increases y by 1
 	lda #.zp_dest
-	sta write_word_c128_zp_1
-	sta write_word_c128_zp_2
+	sta write_word_far_dynmem_zp_1
+	sta write_word_far_dynmem_zp_2
 	lda object_num
 	ldx object_num + 1
 	ldy #10
 	+after_dynmem_read
-	jmp write_word_to_bank_1_c128 ; increases y by 1
+	jmp write_word_to_far_dynmem ; increases y by 1
 } else {
 	lda .dest_num
 	sta (.zp_object),y
@@ -756,31 +714,22 @@ z_ins_insert_obj
 
 } else {
 
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	; object.parent = destination
-	lda #.zp_object
-	sta $02b9
-	ldx #$7f
-	ldy #4 ; parent
 	lda .dest_num + 1
-	jsr $02af
+	ldy #4 ; parent
+	+write_far_byte .zp_object
 	; object.sibling = destination.child
-	lda #.zp_dest
-	sta $02aa
 	ldy #6; child
-	ldx #$7f
-	jsr $02a2
+	+read_far_byte .zp_dest
 	dey
-	ldx #$7f
-	jsr $02af
+	+write_far_byte .zp_object
 	; destination.child = object
-	lda #.zp_dest
-	sta $02b9
-	ldy #6 ; child
 	lda object_num + 1
-	ldx #$7f
+	ldy #6 ; child
+	+write_far_byte .zp_dest
 	+after_dynmem_read
-	jmp $02af
+	rts
 	
 } else {
 	; object.parent = destination
@@ -830,11 +779,10 @@ calculate_property_length_number
 .two_bytes
 	pla ; we don't care about byte 1, bit 6 anymore
 	jsr read_next_byte ; property_length
-	and #$3f ; property number
-	sta .property_length
-	bne .end_pf_property_list
-	lda #64
-	sta .property_length
+	and #$3f ; property length
+	bne +
+	lda #$40
++	sta .property_length
 } else {
 	pha
 	and #$1f ; property number
@@ -865,10 +813,10 @@ find_first_prop
 }
 
 	+before_dynmem_read
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	dey
 	lda #object_tree_ptr
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 } else {
 	lda (object_tree_ptr),y ; low byte
 	tax
@@ -936,10 +884,10 @@ z_ins_get_prop
 	dey
 
 	+before_dynmem_read
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	dey
 	lda #default_properties_ptr
-	jsr read_word_from_bank_1_c128
+	jsr read_word_from_far_dynmem
 } else {
 	lda (default_properties_ptr),y
 	tax
@@ -1036,8 +984,8 @@ parse_object_table
 	; property defaults table
 	stx default_properties_ptr
 	clc
-!ifdef TARGET_C128 {
-	adc #>story_start_bank_1
+!ifdef FAR_DYNMEM {
+	adc #>story_start_far_ram
 } else {
 	adc #>story_start
 }

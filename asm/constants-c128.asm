@@ -180,7 +180,7 @@ print_buffer2         = print_buffer + 81 ; SCREEN_WIDTH + 1 bytes
 
 first_banked_memory_page = $c0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
 
-story_start_bank_1 = $1000 + (STACK_PAGES + 2 -  (STACK_PAGES & 1))  * $100 ; NOTE: This is in bank 1
+story_start_far_ram = $1000 + (STACK_PAGES + 2 -  (STACK_PAGES & 1))  * $100 ; NOTE: This is in bank 1
 
 ; --- I/O registers ---
 reg_screen_char_mode  = $0a2c
@@ -206,6 +206,7 @@ c128_mmu_load_pcrd    = $ff04
 kernal_delay_1ms      = $eeb3 ; delay 1 ms
 kernal_reset          = $ff3d ; cold reset of the C128
 kernal_setbnk         = $ff68 ; set bank for I/O
+kernal_readst         = $ffb7 ; set file parameters
 kernal_setlfs         = $ffba ; set file parameters
 kernal_setnam         = $ffbd ; set file name
 kernal_open           = $ffc0 ; open a file

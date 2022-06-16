@@ -534,23 +534,14 @@ z_set_variable_reference_to_value
 	; input: Value in a,x.
 	;        (zp_temp) must point to variable, possibly using zp_temp + 2 to store bank
 	; affects registers: a,x,y,p
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	bit zp_temp + 2
 	bpl .set_in_bank_0
 	ldy #zp_temp
-	sty write_word_c128_zp_1
-	sty write_word_c128_zp_2
+	sty write_word_far_dynmem_zp_1
+	sty write_word_far_dynmem_zp_2
 	ldy #0
-	jmp write_word_to_bank_1_c128
-	; sty $02b9
-	; stx zp_temp + 3
-	; ldx #$7f
-	; ldy #0
-	; jsr $02af
-	; lda zp_temp + 3
-	; iny
-	; ldx #$7f
-	; jmp $02af
+	jmp write_word_to_far_dynmem
 .set_in_bank_0
 }
 	ldy #0
@@ -562,16 +553,17 @@ z_set_variable_reference_to_value
 
 z_get_variable_reference_and_value
 	; input: Variable in y
-	; output: Address is stored in (zp_temp), bank may be stored in zp_temp + 2
+	; output: Address is stored in (zp_temp).
+	;         For C128 and MEGA65, zp_temp + 2 is $ff if value is in far memory, 0 if not
 	;         Value in a,x
 	; affects registers: p
+!ifdef FAR_DYNMEM {
+	ldx #0
+	stx zp_temp + 2 ; 0 for bank 0, $ff for far memory
+}
 	cpy #0
 	bne +
 	; Find on stack
-!ifdef TARGET_C128 {
-	ldx #0
-	stx zp_temp + 2
-}
 	jsr stack_get_ref_to_top_value
 	stx zp_temp
 	sta zp_temp + 1
@@ -580,10 +572,6 @@ z_get_variable_reference_and_value
 	cmp #16
 	bcs .find_global_var
 	; Local variable
-!ifdef TARGET_C128 {
-	ldx #0
-	stx zp_temp + 2
-}
 	dey
 !ifdef CHECK_ERRORS {
 	cpy z_local_var_count
@@ -597,23 +585,12 @@ z_get_variable_reference_and_value
 	sta zp_temp + 1
 
 z_get_referenced_value
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	bit zp_temp + 2
 	bpl .in_bank_0
 	lda #zp_temp
 	ldy #0
-	jmp read_word_from_bank_1_c128
-	; sta $02aa
-	; ldx #$7f
-	; ldy #0
-	; jsr $02a2
-	; pha
-	; iny
-	; ldx #$7f
-	; jsr $02a2
-	; tax
-	; pla
-	; rts
+	jmp read_word_from_far_dynmem
 .in_bank_0
 }
 	ldy #1
@@ -628,9 +605,8 @@ z_get_referenced_value
 .find_global_var
 	ldx #0
 	stx zp_temp + 1
-!ifdef TARGET_C128 {
-	dex
-	stx zp_temp + 2 ; Value $ff, meaning bank = 1
+!ifdef FAR_DYNMEM {
+	dec zp_temp + 2 ; Set to $ff, meaning referenced value is in far memory
 }
 	asl
 	rol zp_temp + 1
@@ -664,11 +640,11 @@ z_get_low_global_variable_value
 	; input: a = variable# + 16 (16-127)
 	asl ; Clears carry
 	tay
-!ifdef TARGET_C128 {
+!ifdef FAR_DYNMEM {
 	lda #z_low_global_vars_ptr
-	jmp read_word_from_bank_1_c128
+	jmp read_word_from_far_dynmem
 } else {
-	; Not TARGET_C128
+	; Not FAR_DYNMEM
 	iny
 	+before_dynmem_read
 	lda (z_low_global_vars_ptr),y
@@ -677,7 +653,7 @@ z_get_low_global_variable_value
 	lda (z_low_global_vars_ptr),y
 	+after_dynmem_read
 	rts ; Note that caller may assume that carry is clear on return!
-} ; End else - Not TARGET_C128
+} ; End else - Not FAR_DYNMEM
 } ; End ifdef GET_LOW_GLOBAL_NEEDED
 
 ; Used by z_set_variable
@@ -906,8 +882,15 @@ z_ins_rfalse
 
 z_ins_quit
 !ifdef TARGET_MEGA65 {
-	; TODO: how to reset without activating autoboot?
+	; call hyppo_d81detach to unmount d81 and prevent
+	; autoboot.c65 from running
+	lda #$42
+	sta $d640
+	clv
 }
+	; some games (e.g. Hollywood Hijinx) show a final text,
+	; so use the more prompt to pause before the reset
+	; (otherwise we wouldn't be able to read it).
 	jsr printchar_flush
 	jsr show_more_prompt
 	jmp kernal_reset
@@ -1924,7 +1907,3 @@ z_ins_save_restore_undo
 	
 	
 }
-
-
-	
-	

@@ -24,12 +24,99 @@ reu_error
 	!pet 13,"REU error, disabled. [SPACE]",0
 
 
+!ifdef TARGET_MEGA65 {
+
+.m65_reu_load_address = object_temp
+.m65_reu_memory_buffer = zp_temp + 2
+.m65_reu_page_count = z_temp + 11
+m65_reu_break_after_first_page !byte 0
+
+;.m65_reu_page_count !byte 0
+
+m65_load_file_to_reu
+	; In: a,x: REU load page (0 means first address of Attic RAM)
+	; Returns: a: Number of pages loaded.
+	; Call SETNAM before calling this
+	; Opens file as #2. Closes file at end.
+
+	; Prepare for copying data to REU
+	stx .m65_reu_load_address ; Lowbyte of current page in REU memory
+	sta .m65_reu_load_address + 1 ; Highbyte of current page in REU memory
+
+	lda #0
+	sta .m65_reu_page_count
+	; Prepare a page where we can store data
+;	jsr get_free_vmem_buffer
+	lda #>reu_copy_buffer
+	sta .m65_reu_memory_buffer + 1
+	lda #<reu_copy_buffer
+	sta .m65_reu_memory_buffer
+	
+	lda #2      ; file number 2
+	tay
+	ldx boot_device
+	jsr kernal_setlfs ; call SETLFS
+
+	jsr kernal_open     ; call OPEN
+	bcc +
+	lda #ERROR_FLOPPY_READ_ERROR
+	jsr fatalerror
++
+	ldx #2      ; filenumber 2
+	jsr kernal_chkin ; call CHKIN (file 2 now used as input)
+	
+.initial_copy_loop
+
+	jsr kernal_readst
+	bne .file_copying_done
+	
+	ldy #0
+-	jsr kernal_readchar
+	sta(.m65_reu_memory_buffer),y
+	iny
+	bne -
+
+	lda .m65_reu_load_address + 1
+	ldx .m65_reu_load_address
+	ldy .m65_reu_memory_buffer + 1 ; Current C64 memory page
+	jsr copy_page_to_reu
+	bcs reu_error
+
+	inc .m65_reu_page_count
+
+	bit m65_reu_break_after_first_page
+	bmi .file_copying_done
+
+	; Inc REU page
+	inc .m65_reu_load_address
+	bne .initial_copy_loop
+	inc .m65_reu_load_address + 1
+	jmp .initial_copy_loop ; Always branch
+	
+	
+.file_copying_done
+	lda #$00     
+	sta m65_reu_break_after_first_page
+	jsr kernal_chkin  ; restore input to keyboard
+	lda #$02      ; filenumber 2
+	jsr kernal_close ; call CLOSE
+	lda .m65_reu_page_count
+	rts
+
+;reu_copy_buffer !fill 256
+reu_copy_buffer = $cf00
+
+} ; End TARGET_MEGA65
+
+
 copy_page_to_reu
 	; a,x = REU page
 	; y = C64 page
 
 !ifdef TARGET_MEGA65 {
 	stx dma_dest_address + 1
+	pha
+	and #$0f
 	sta dma_dest_bank_and_flags
 	sty dma_source_address + 1
 
@@ -41,7 +128,12 @@ copy_page_to_reu
 	stx dma_source_address
 	stx dma_source_bank_and_flags
 	stx dma_source_address_top
-	lda #$80 ; Base of HyperRAM
+	pla
+	lsr
+	lsr
+	lsr
+	lsr
+	ora #$80 ; Base of HyperRAM
 	sta dma_dest_address_top
 
 	jsr m65_run_dma
@@ -69,6 +161,8 @@ copy_page_to_reu
 
 .update_progress_bar
 	; Update progress bar
+	lda reu_progress_bar_updates
+	beq +
 	dec progress_reu
 	bne +
 	lda reu_progress_base
@@ -78,13 +172,15 @@ copy_page_to_reu
 +	clc
 	rts
 
-
+reu_progress_bar_updates	!byte 0
 
 copy_page_from_reu
 	; a,x = REU page
 	; y = C64 page
 !ifdef TARGET_MEGA65 {
 	stx dma_source_address + 1
+	pha
+	and #$0f
 	sta dma_source_bank_and_flags
 	sty dma_dest_address + 1
 
@@ -96,7 +192,12 @@ copy_page_from_reu
 	stx dma_dest_address
 	stx dma_dest_address_top
 	stx dma_dest_bank_and_flags
-	lda #$80 ; Base of HyperRAM
+	pla
+	lsr
+	lsr
+	lsr
+	lsr
+	ora #$80 ; Base of HyperRAM
 	sta dma_source_address_top
 
 	jmp m65_run_dma
@@ -344,4 +445,59 @@ check_reu_size
 
 }
 
+; progress_reu = parse_array
+; reu_progress_ticks = parse_array + 1
+; reu_last_disk_end_block = string_array ; 2 bytes
+
+reu_progress_base
+!ifndef Z4PLUS {
+	!byte 16 ; blocks read to REU per tick of progress bar for games < 128 KB
+} else {
+	!ifdef Z7PLUS {
+		!byte 64 ; blocks read to REU per tick of progress bar for games < 512 KB
+	} else {
+		!byte 32 ; blocks read to REU per tick of progress bar for games < 256 KB
+	}
+}
+
+
+print_reu_progress_bar
+	lda z_temp + 4
+	sec
+	sbc reu_last_disk_end_block
+	sta reu_progress_ticks
+	lda z_temp + 5
+	sbc reu_last_disk_end_block + 1
+!ifdef Z4PLUS {
+	!ifdef Z7PLUS {
+		ldx #6 ; One tick is 2^6 = 64 blocks
+	} else {
+		ldx #5 ; One tick is 2^5 = 32 blocks
+	}
+} else {
+	ldx #4 ; One tick is 2^4 = 16 blocks
+}
+-	lsr 
+	ror reu_progress_ticks
+	dex
+	bne -
+
+	lda reu_progress_base
+	sta progress_reu
+
+; Print progress bar
+	lda #13
+	jsr s_printchar
+	ldx reu_progress_ticks
+	beq +
+-	lda #47
+	jsr s_printchar
+	dex
+	bne -
++
+	; Signal that REU copy routine should update progress bar
+	lda #$ff
+	sta reu_progress_bar_updates
+
+	rts
 	

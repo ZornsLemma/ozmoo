@@ -77,6 +77,7 @@ read_next_byte
 	lda z_address
 	ldx z_address + 1
 	ldy z_address + 2
+
 	jsr read_byte_at_z_address
 	inc z_address + 2
 	bne +
@@ -148,21 +149,27 @@ write_next_byte
 	sta mem_temp
 	lda z_address + 1
 	clc
-	adc #>story_start_bank_1
+	adc #>story_start_far_ram
 	sta mem_temp + 1
-	ldx #mem_temp
-	stx $02b9
-	ldx #$7f
-	ldy #0
 	lda z_address_temp
-	jsr $02af ; y has correct value already
+	ldy #0
+	+write_far_byte mem_temp
 	pla
 	tay
 	pla
 	tax
 	lda z_address_temp
+} else {
+!ifdef TARGET_MEGA65 {
+	lda z_address + 2
+	sta dynmem_pointer
+	lda z_address + 1
+	sta dynmem_pointer + 1
+	ldz #0
+	lda z_address_temp
+	sta [dynmem_pointer],z
 } else { 
-	; not TARGET_C128
+	; not TARGET_C128 or MEGA65
 	lda z_address + 2
 	sta .write_byte + 1
 	lda z_address + 1
@@ -172,6 +179,7 @@ write_next_byte
 	lda z_address_temp
 .write_byte
 	sta $8000 ; This address is modified above
+}
 }
 
 	inc z_address + 2
