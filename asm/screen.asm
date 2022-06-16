@@ -894,7 +894,6 @@ draw_status_line
 	beq +
 	jmp .timegame
 +
-}
 	; score game
 	lda z_operand_value_low_arr
 	pha
@@ -952,7 +951,6 @@ draw_status_line
 	sta z_operand_value_low_arr
 	jmp .statusline_done
 
-!ifdef Z3 {
 !ifndef ACORN {
 .time_str !pet "Time: ",0
 .ampm_str !pet " AM",0
@@ -1030,7 +1028,6 @@ draw_status_line
 	lda #>.ampm_str
 	ldx #<.ampm_str
 	jsr printstring_raw
-}
 .statusline_done
 !ifndef ACORN {
 	ldx darkmode
@@ -1046,7 +1043,7 @@ draw_status_line
 	pla
 	sta current_window
 	jmp restore_cursor
-
+}
 
 !ifndef ACORN {
 .score_str !pet "Score: ",0
@@ -1057,6 +1054,7 @@ draw_status_line
 .score_str !text "Score: ",0
 !ifdef SUPPORT_80COL {
 .turns_str !text "Moves: ",0
+}
 }
 }
 

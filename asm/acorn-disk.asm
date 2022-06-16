@@ -303,7 +303,7 @@ wait_for_space
     bne -
     rts
 
-WANT_RESTART = 1
+RESTART_SUPPORTED = 1 ; SFTODO: move into ozmoo.asm?
 z_ins_restart
 
     ; SFTODO: We should probably check the game disc is in the drive here,
