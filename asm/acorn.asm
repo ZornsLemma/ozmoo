@@ -115,6 +115,8 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; noticed this myself, no one else has run into problems with this yet.
 ; (I tried updating to release 0.96.4 ("Fenchurch"), 1 Feb 2019, platform
 ; independent version but I still get the same error.)
+; - OK, the machine which *does* build this OK has 0.97 ("Zem"), 31 Jan 2021,
+; platform independent version.
 !macro os_error error_number, error_message {
     brk
     !byte error_number
