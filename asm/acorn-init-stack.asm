@@ -16,7 +16,7 @@ vmap_meaningful_entries !fill 1
 .from_index !fill 1
 }
 
-.blocks_to_read !fill 1 ; SFTODONOW: RENAME pages_to_read? But maybe not, because this is e.g. used with the upstream-named readblocks function etc.
+.blocks_to_read !fill 1 ; SFTODO: RENAME pages_to_read? But maybe not, because this is e.g. used with the upstream-named readblocks function etc.
 
 
 screenkernal_init
@@ -242,19 +242,8 @@ deletable_init
 ; SFTODONOW: I think it's OK to use vmap_max_entries here not vmap_meaningful_entries as we *don't* do dynmem adjust on a normal non-tube 2P, but this feels a bit hacky.
     ; vmap_max_entries was deliberately artificially high up to this point so
     ; we'd retain and sort more of the initial vmap; set it to the correct value
-    ; reflecting the size of the vmap Ozmoo's virtual memory has to work with.
-    ; SFTODO: Worth noting that here - and might be useful in some other code
-    ; too - we are calculating using known-at-build-time values. I could
-    ; potentially simplify/shorten the code in a few places by not treating this
-    ; dynamically, e.g. we wouldn't need the code to populate game_blocks in
-    ; the first place. (on SWR builds the dynmem growth optimisation means
-    ; nonstored_pages is not precisely known at build time, but that's not an
-    ; issue for a tube build) This might also simplify some corner cases in the
-    ; "grow nonstored_pages" logic, because the game size is no longer a
-    ; runtime variable. I just worry a little bit about this breaking
-    ; already-not-supposed-to-work-but-sort-of-does-just-about things where a
-    ; game developer wants to switch in an updated data file without going
-    ; through the Ozmoo build process. SFTODONOW: I think this comment is a bit outdated, check
+    ; reflecting the available memory now we're about to actually load the
+    ; blocks.
     lda vmap_max_entries
     sta .inflated_vmap_max_entries
     jsr calculate_normal_tube_own_ram_pages
