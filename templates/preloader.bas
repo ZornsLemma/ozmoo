@@ -73,3 +73,8 @@ DEF FNmode_himem(X%):A%=&85:=(USR&FFF4 AND &FFFF00) DIV &100
 DEF PROCerror:REPORT:PRINT" at line ";ERL:*FX229
 *FX4
 END
+
+REM SFTODO: Should we run FINDSWR from the preloader? That way the user gets to
+REM admire the title screen while it's run - it doesn't take long, but it's not
+REM nothing. We could deduct the time it takes to run it from any splash_wait
+REM time as well.
