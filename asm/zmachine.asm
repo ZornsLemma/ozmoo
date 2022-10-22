@@ -296,6 +296,11 @@ dumptovice
 }
 	+read_next_byte_at_z_pc
 	sta z_opcode
+!ifdef TRACE {
+	ldy z_trace_index
+	sta z_trace_page,y
+	inc z_trace_index
+}
 	
 !ifdef DEBUG {	
 	;jsr print_following_string
@@ -328,7 +333,8 @@ SFTODONOW OR DO WE RELY ON Y=0?
 	sta z_opcode_number
 	lda z_opcode
 	and #%00100000
-	beq + ; This is a 2OP instruction, with up to 4 operands
+	beq .var_form_2op ; This is a 2OP instruction, with up to 4 operands
+
 ; This is a VAR instruction
 !ifdef Z4PLUS {	
 	lda z_opcode
