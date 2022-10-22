@@ -1,6 +1,9 @@
 !zone disk {
 
 first_unavailable_save_slot_charcode	!byte 0
+; current_disks holds $ff for a drive which doesn't contain an Ozmoo disk OR
+; the index into disk_info where information about this disk starts *MINUS 3*
+; So 0 means save disk, 8 means boot disk or boot/story disk etc.
 current_disks !byte $ff, $ff, $ff, $ff,$ff, $ff, $ff, $ff
 boot_device !byte 0
 ask_for_save_device !byte $ff
@@ -41,16 +44,16 @@ dma_modulo					!word 0		; Ignored, since we're not using the MODULO flag
 }
 
 !ifndef VMEM {
-	!ifdef TARGET_MEGA65 {
+;	!ifdef TARGET_MEGA65 {
 disk_info
 		!byte 0, 0, 2  ; Interleave, save slots, # of disks
 		!byte 8, 8, 0, 0, 0, 130, 131, 0 
 		!pet 11, 8, 0, 0, 0, 128, "/ ", 129, 131, 0 
-	} else { 
-disk_info
-		!byte 0, 0, 1  ; Interleave, save slots, # of disks
-		!byte 8, 8, 0, 0, 0, 130, 131, 0 
-	}
+	; } else { 
+; disk_info
+		; !byte 0, 0, 1  ; Interleave, save slots, # of disks
+		; !byte 8, 8, 0, 0, 0, 130, 131, 0 
+	; }
 } else {
 ; VMEM
 
@@ -527,21 +530,21 @@ insert_msg_3
 
 !ifdef RESTART_SUPPORTED {
 z_ins_restart
-	; Find right device# for boot disk
-	ldx boot_device
-
-	lda disk_info + 4,x
+	; insert device# for boot disk in LOAD command
+	lda disk_info + 4 + 8 ; Device# for story disk (typically 8)
 	jsr convert_byte_to_two_digits
 	stx .device_no
 	sta .device_no + 1
-	ldx boot_device
 
 	; Check if disk is in drive
-	lda disk_info + 4,x
-	tay
-	txa
+	ldy disk_info + 4 + 8 ; Device# for story disk (typically 8)
+;	lda disk_info + 4,x
+;	tay
+;	txa
+	lda #8; Index of story disk in disk_info - 3
 	cmp current_disks - 8,y
 	beq +
+	tay
 	jsr print_insert_disk_msg
 +
 
@@ -560,11 +563,52 @@ z_ins_restart
 }
 
 !ifdef TARGET_MEGA65 {
-	; reset will autoboot the game again from disk
-	jmp kernal_reset
+	; ; reset will autoboot the game again from disk
+	; jmp kernal_reset
+	lda #$00
+	ldx #$04
+	sta $d060
+	stx $d061
+	sta $d062
+	sta $d063
+
+	lda #$40
+	sta $d031
+	lda #$09
+	sta $D016
+
+
+	; Enable VIC-II hot registers
+	lda $d05d
+	ora #$80
+	sta $d05d
+	
+	lda #$0
+	sta $d02f
+	sta $d02f
+	lda #$17
+	sta reg_screen_char_mode
+
+	sei
+	lda #$37
+	sta $01
+	lda #0
+	tax
+	tay
+	taz
+	map
+	eom
+	cli
+
+	lda #>$0400 		; Make sure screen memory set to sensible location
+	sta $0288		; before we call screen init $FF5B
+	jsr $ff5b ; more init
+
+	
+
 }
 
-!ifndef TARGET_MEGA65 {
+;!ifndef TARGET_MEGA65 {
 	sei
 	cld
 !ifdef TARGET_C128 {
@@ -578,7 +622,7 @@ z_ins_restart
 !ifdef TARGET_C128 {
 	sta c128_mmu_load_pcra
 }
-}
+;}
 
 	; Copy restart code
 	ldx #.restart_code_end - .restart_code_begin
@@ -618,44 +662,25 @@ z_ins_restart
 	beq +
 	jsr $ffd2
 	inx
-	bne -
+	bne - ; Always branch
 +	; Setup	key sequence
-!ifdef TARGET_PLUS4_OR_C128 {
-	lda #19 ; home
-	sta keyboard_buff
-	lda #17 ; down
-	sta keyboard_buff + 1
-	lda #17 ; down
-	sta keyboard_buff + 2
-	lda #13 ; run
-	sta keyboard_buff + 3
-	lda #13 ; run
-	sta keyboard_buff + 4
-	lda #5
-} else {
-	lda #131 ; run
-	sta keyboard_buff
-	lda #1
-}
-	sta keyboard_buff_len
+	ldx #0
+-	lda .restart_code_keys,x
+	beq +
+	sta keyboard_buff,x
+	inx
+	bne - ; Always branch
++	stx keyboard_buff_len
 	rts
 
 .restart_code_string
-!ifdef TARGET_PLUS4_OR_C128 {
-	!pet 147,17,17,"lO",34,":"
-!source "file_name.asm"
+	!pet 147,"lO",34,":"
+!source "file-name.asm"
     !pet 34,","
 .device_no
-	!pet "08",17,17,17,17,17,"rU",19,0
-} else { ; Not Plus4 or C128
-	!pet 147,17,17,"    ",34,":"
-!source "file_name.asm"
-    !pet 34,","
-.device_no
-	!pet "08",19,0
-}
-; .restart_code_keys
-	; !pet 131,0
+	!pet "08",17,17,17,17,13,"rU",13,13,0
+.restart_code_keys
+	!byte 19,13,13,0
 .restart_code_end
 
 }
@@ -1431,16 +1456,20 @@ do_restore
 	jsr kernal_readchar
 	sta [.m65_save_start],z
 
+	jsr kernal_readst
+	bne .file_reading_done
+
 	inc .m65_save_start
 	bne +
 	inc .m65_save_start + 1
 
 +	dec .m65_save_count
-	bne -
-	lda .m65_save_count + 1
-	beq .file_reading_done
+	lda .m65_save_count
+	cmp #255
+	bne +
 	dec .m65_save_count + 1
-	jmp -
++	ora .m65_save_count + 1
+	bne -
 
 .file_reading_done
 	clc
@@ -1527,7 +1556,12 @@ do_save
 	sta .m65_save_start + 3
 	ldy #header_static_mem
 	jsr read_header_word
-	jsr .m65_save_write_to_file
+	; Increase by one, since the last byte is skipped (ROM bug?)
+	inx
+	bne +
+	clc
+	adc #1
++	jsr .m65_save_write_to_file
 	
 	php ; store c flag so error can be checked by calling routine
 	jsr close_io
@@ -1538,28 +1572,30 @@ do_save
 	; In: a,x: number of bytes to write to file
 	; Returns: Carry set if failed
 	; File should already be open and be default channel for output
-	sta .m65_save_count + 1
-	stx .m65_save_count
-	
-	; jsr kernal_readst
-	; bne .file_copying_done
-	
+	tay
 	ldz #0
--	lda [.m65_save_start],z
+
+-	cpx #0
+	bne +
+	cpy #0
+	beq .file_copying_done
+
++	lda [.m65_save_start],z
 	jsr kernal_printchar
 
 	inc .m65_save_start
 	bne +
 	inc .m65_save_start + 1
 
-+	dec .m65_save_count
++	dex
+	cpx #255
 	bne -
-	lda .m65_save_count + 1
-	beq .file_copying_done
-	dec .m65_save_count + 1
+	dey
+	
 	jmp -
 
 .file_copying_done
+	clc
 	rts
 
 
@@ -1701,33 +1737,74 @@ do_save
 
 }	
 
+interval_length = 30 ; Unit: ms
+
+
+!ifdef TARGET_C128 {
+wait_an_interval
+; Delay a little for scrolling
+	ldx #interval_length*6/100
+	bne .wait_any_jiffies ; Always branch
+
 wait_a_sec
 ; Delay ~1.2 s so player can read the last text before screen is cleared
-!ifdef TARGET_C128 {
-	ldx #40 ; How many frames to wait
---	ldy #1
--	bit $d011
-	bmi --
-	cpy #0
-	beq -
-	; This is the beginning of a new frame
-	dey
-	dex
-	bne -
+	ldx #60
+.wait_any_jiffies
+	sei
+	stx $0a1d ; Timer
+	ldx #0
+	stx $0a1e
+	stx $0a1f
+	cli
+-	bit $0a1f
+	bpl -
+	; ldx #40 ; How many frames to wait
+; --	ldy #1
+; -	bit $d011
+	; bmi --
+	; cpy #0
+	; beq -
+	; ; This is the beginning of a new frame
+	; dey
+	; dex
+	; bne -
+	rts
 } else {
+wait_a_sec
+; Delay ~1.2 s so player can read the last text before screen is cleared
 	ldx #0
 !ifdef TARGET_MEGA65 {
 	ldy #40*5
 } else {
 	ldy #5
 }
+; -	jsr kernal_delay_1ms
+	; dex
+	; bne -
+	; dey
+	; bne -
+	; rts
+
+wait_yx_ms
 -	jsr kernal_delay_1ms
 	dex
 	bne -
 	dey
 	bne -
-}
 	rts
+
+wait_an_interval
+;	inc reg_bordercolour
+	; Used for scrolling
+!ifdef TARGET_MEGA65 {
+	ldx #(<(40 * interval_length + 256))
+	ldy #(>(40 * interval_length + 256))
+} else {
+	ldx #(<(interval_length + 256))
+	ldy #(>(interval_length + 256))
+}
+	jmp wait_yx_ms
+}
 
 	
 }

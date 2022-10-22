@@ -1,3 +1,6 @@
+!ifdef PRINTSPEED {
+printspeed_counter !byte 0,0
+}
 ; z_extended_opcode 	!byte 0
 ; z_operand_count		!byte 0
 ; z_operand_type_arr  !byte 0, 0, 0, 0, 0, 0, 0, 0
@@ -57,11 +60,11 @@ z_opcode_call_vn2 = 250
 z_opcode_call_vs2 = 236
 }
 
-z_opcode_opcount_0op = 0
-z_opcode_opcount_1op = 16
-z_opcode_opcount_2op = 32
-z_opcode_opcount_var = 64
-z_opcode_opcount_ext = 96
+; z_opcode_opcount_0op = 0
+; z_opcode_opcount_1op = 16
+; z_opcode_opcount_2op = 32
+; z_opcode_opcount_var = 64
+; z_opcode_opcount_ext = 96
 
 z_exe_mode_normal = $0
 z_exe_mode_return_from_read_interrupt = $80
@@ -98,13 +101,18 @@ z_execute
 	sta ti_variable
 	sta ti_variable + 1
 	sta ti_variable + 2
-	sta object_num
-	sta object_num + 1
+	sta printspeed_counter
+	sta printspeed_counter + 1
 }
 }
 
 main_loop_normal_exe_mode
+	jsr read_and_execute_an_instruction
+jmp_main_loop
+	jmp main_loop_normal_exe_mode ; target patched by set_z_exe_mode_subroutine
 
+
+read_and_execute_an_instruction
 ; Timing
 !ifdef TIMING {
 	lda ti_variable + 1
@@ -116,13 +124,15 @@ main_loop_normal_exe_mode
 !ifdef DEBUG {
 !ifdef PRINTSPEED {
 	lda ti_variable + 2
-	cmp #60
+	cmp #30
 	bcc ++
 	bne +
 	lda ti_variable + 1
 	bne +
-	lda object_num + 1
-	ldx object_num
+	lda printspeed_counter + 1
+	asl printspeed_counter
+	rol
+	ldx printspeed_counter
 	jsr printinteger
 	jsr comma
 	
@@ -130,12 +140,12 @@ main_loop_normal_exe_mode
 	sta ti_variable
 	sta ti_variable + 1
 	sta ti_variable + 2
-	sta object_num
-	sta object_num + 1
+	sta printspeed_counter
+	sta printspeed_counter + 1
 
-++	inc object_num
+++	inc printspeed_counter
 	bne +
-	inc object_num + 1
+	inc printspeed_counter + 1
 +
 }
 }
@@ -214,11 +224,14 @@ dumptovice
 
 	lda #0
 	sta z_operand_count
-!ifdef Z4PLUS {	
-	sta z_temp + 5 ; Signal to NOT read up to four more operands
-}
+
 	+read_next_byte_at_z_pc
 	sta z_opcode
+!ifdef TRACE {
+	ldy z_trace_index
+	sta z_trace_page,y
+	inc z_trace_index
+}
 	
 !ifdef DEBUG {	
 	;jsr print_following_string
@@ -238,14 +251,18 @@ dumptovice
 	bvc .top_bits_are_10
 
 	; Top bits are 11. Form = Variable
+!ifdef Z4PLUS {	
+	ldy #0
+	sty z_temp + 5 ; Signal to NOT read up to four more operands
+}
 	and #%00011111
 	sta z_opcode_number
-	ldy #z_opcode_opcount_2op
 	lda z_opcode
 	and #%00100000
-	beq + ; This is a 2OP instruction, with up to 4 operands
+	beq .var_form_2op ; This is a 2OP instruction, with up to 4 operands
+
 ; This is a VAR instruction
-!ifdef Z4PLUS {	
+!ifdef Z4PLUS {
 	lda z_opcode
 	cmp #z_opcode_call_vs2
 !ifdef Z5PLUS {
@@ -259,8 +276,20 @@ dumptovice
 	dec z_temp + 5 ; Signal to read up to four more operands, and first four operand types are in x
 .dont_get_4_extra_op_types
 }
-	ldy #z_opcode_opcount_var
-+	sty z_opcode_opcount
+	ldy z_opcode_number
+	lda z_opcount_var_jump_high_arr,y
+	pha
+	lda z_opcount_var_jump_low_arr,y
+	pha
+	jmp .get_4_op_types ; Always branch
+
+.var_form_2op
+	; Put jump address on stack, so jump can be done with RTS when args have been read
+	ldy z_opcode_number
+	lda z_opcount_2op_jump_high_arr,y
+	pha
+	lda z_opcount_2op_jump_low_arr,y
+	pha
 	jmp .get_4_op_types ; Always branch
 
 .top_bits_are_10
@@ -275,37 +304,32 @@ dumptovice
 	and #%00110000
 	cmp #%00110000
 	beq .short_0op
-	ldx #z_opcode_opcount_1op
-	stx z_opcode_opcount
+	; This is a short form 1OP
 	lsr
 	lsr
 	lsr
 	lsr
 	tax
 	jsr read_operand
-	jmp .perform_instruction
+	ldx z_opcode_number
+	lda z_opcount_1op_jump_high_arr,x
+	pha
+	lda z_opcount_1op_jump_low_arr,x
+	pha
+	rts ; RTS pulls the address off the stack, adds one to it and jumps there
 .short_0op
-	lda #z_opcode_opcount_0op 
-	sta z_opcode_opcount
-	beq .perform_instruction ; Always branch
+	ldx z_opcode_number
+	lda z_opcount_0op_jump_high_arr,x
+	pha
+	lda z_opcount_0op_jump_low_arr,x
+	pha
+	rts ; RTS pulls the address off the stack, adds one to it and jumps there
 
-!ifdef Z5PLUS {
-.extended_form
-	; Form = Extended
-	lda #z_opcode_opcount_ext
-	sta z_opcode_opcount ; Set to EXT
-	+read_next_byte_at_z_pc
-	sta z_extended_opcode
-	sta z_opcode_number
-	jmp .get_4_op_types
-}
 
 .top_bits_are_0x
 	; Form = Long
 	and #%00011111
 	sta z_opcode_number
-	lda #z_opcode_opcount_2op 
-	sta z_opcode_opcount
 	lda z_opcode
 	asl
 	asl
@@ -320,7 +344,34 @@ dumptovice
 	bcs +
 	dex
 +	jsr read_operand
-	jmp .perform_instruction
+	ldx z_opcode_number
+	lda z_opcount_2op_jump_high_arr,x
+	pha
+	lda z_opcount_2op_jump_low_arr,x
+	pha
+	rts ; RTS pulls the address off the stack, adds one to it and jumps there
+
+!ifdef Z5PLUS {
+.extended_form
+	; Form = Extended
+	lda #0
+	sta z_temp + 5 ; Signal to NOT read up to four more operands
+	+read_next_byte_at_z_pc
+!ifdef CHECK_ERRORS {
+	cmp #z_number_of_ext_opcodes_implemented
+	bcs z_not_implemented
+}
+	sta z_extended_opcode
+	sta z_opcode_number
+	; Put jump address on stack, so jump can be done with RTS when args have been read
+	tax
+	lda z_opcount_ext_jump_high_arr,x
+	pha
+	lda z_opcount_ext_jump_low_arr,x
+	pha
+;	jmp .get_4_op_types
+}
+
 
 .get_4_op_types
 ; If z_temp + 5 = $ff, x holds first byte of arg types and we need to read one more byte and store in z_temp + 4 
@@ -367,27 +418,7 @@ dumptovice
 }
 	
 .perform_instruction
-	lda z_opcode_opcount
-	clc
-	adc z_opcode_number
-!ifdef TRACE {
-	ldy z_trace_index
-	sta z_trace_page,y
-	inc z_trace_index
-}
-!ifdef CHECK_ERRORS {
-	cmp #z_number_of_opcodes_implemented
-	bcs z_not_implemented
-}
-	tax 
-	lda z_jump_low_arr,x
-	sta .jsr_perform + 1
-	lda z_jump_high_arr,x
-	sta .jsr_perform + 2
-.jsr_perform
-	jsr $8000
-jmp_main_loop
-	jmp main_loop_normal_exe_mode ; target patched by set_z_exe_mode_subroutine
+	rts ; RTS pulls the address off the stack, adds one to it and jumps there
 
 
 z_not_implemented
@@ -510,7 +541,6 @@ read_operand
 }
 .read_high_global_var
 	; If slow mode, carry was just set with ASL, otherwise we branched here with BCS, so carry is set either way
-	; and #$7f ; Change variable# 128->0, 129->1 ... 255 -> 127 (Pointless, since ASL will remove top bit anyway)
 	tay
 	iny
 	lda (z_high_global_vars_ptr),y
@@ -678,9 +708,9 @@ z_set_variable
 	cmp #16
 	bcs .write_global_var
 	; Local variable
+!ifdef CHECK_ERRORS {
 	tay
 	dey
-!ifdef CHECK_ERRORS {
 	cpy z_local_var_count
 	bcs .nonexistent_local
 }
@@ -884,15 +914,28 @@ z_ins_quit
 !ifdef TARGET_MEGA65 {
 	; call hyppo_d81detach to unmount d81 and prevent
 	; autoboot.c65 from running
-	lda #$42
-	sta $d640
-	clv
+	; !ifdef CUSTOM_FONT {
+		; lda #$0
+		; sta $d02f
+		; lda #$26 ; screen/font: $0800 $1800 (character ROM)
+		; sta reg_screen_char_mode
+		; lda #$0
+		; sta $d02f
+	; }
+	; lda #$42
+	; sta $d640
+	; clv
 }
 	; some games (e.g. Hollywood Hijinx) show a final text,
 	; so use the more prompt to pause before the reset
 	; (otherwise we wouldn't be able to read it).
 	jsr printchar_flush
 	jsr show_more_prompt
+
+!ifdef TARGET_MEGA65 {
+	lda #$42
+	sta $d6cf
+}
 	jmp kernal_reset
 
 ; z_ins_restart (moved to disk.asm)

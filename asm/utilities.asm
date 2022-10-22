@@ -971,32 +971,73 @@ mult8
 ++	rts
 	
 
-mult16
-	;16-bit multiply with 32-bit product
-	;http://codebase64.org/doku.php?id=base:16bit_multiplication_32-bit_product
-	lda #$00
-	sta product+2 ; clear upper bits of product
-	sta product+3 
-	ldx #$10 ; set binary count to 16 
-shift_r
-	lsr multiplier+1 ; divide multiplier by 2 
-	ror multiplier
-	bcc rotate_r 
-	lda product+2 ; get upper half of product and add multiplicand
-	clc
-	adc multiplicand
-	sta product+2
-	lda product+3 
-	adc multiplicand+1
-rotate_r
-	ror ; rotate partial product 
-	sta product+3 
-	ror product+2
-	ror product+1 
-	ror product 
-	dex
-	bne shift_r 
-	rts
+; mult16
+	; ;16-bit multiply with 32-bit product
+	; ;http://codebase64.org/doku.php?id=base:16bit_multiplication_32-bit_product
+; !ifdef TARGET_MEGA65 {
+	; jsr mega65io
+	; lda #0
+	; sta $d772
+	; sta $d773
+	; sta $d776
+	; sta $d777
+	; lda multiplier
+	; sta $d770
+	; lda multiplier + 1
+	; sta $d771
+	; lda multiplicand
+	; sta $d774
+	; lda multiplicand + 1
+	; sta $d775
+	; ldq $d778
+	; stq product
+	; rts
+; } else {
+	; lda #$00
+	; sta product+2 ; clear upper bits of product
+	; sta product+3 
+	; ldx #$10 ; set binary count to 16 
+; shift_r
+	; lsr multiplier+1 ; divide multiplier by 2 
+	; ror multiplier
+	; bcc rotate_r 
+	; lda product+2 ; get upper half of product and add multiplicand
+	; clc
+	; adc multiplicand
+	; sta product+2
+	; lda product+3 
+	; adc multiplicand+1
+; rotate_r
+	; ror ; rotate partial product 
+	; sta product+3 
+	; ror product+2
+	; ror product+1 
+	; ror product 
+	; dex
+	; bne shift_r 
+	; rts
+; }
+; !ifdef TARGET_MEGA65 {
+; m65_mult16
+	; jsr mega65io
+	; lda #0
+	; sta $d772
+	; sta $d773
+	; sta $d776
+	; sta $d777
+	; lda multiplier
+	; sta $d770
+	; lda multiplier + 1
+	; sta $d771
+	; lda multiplicand
+	; sta $d774
+	; lda multiplicand + 1
+	; sta $d775
+	; ldq $d778
+	; stq product
+	; rts
+; }
+
 multiplier
 divisor
 	!byte 0, 0
@@ -1042,3 +1083,46 @@ divide16
 }
 
 ; screen update routines
+
+!ifdef TARGET_C128 {
+SETBORDERMACRO_DEFINED = 1
+!macro SetBorderColour {
+	jsr C128SetBorderColour
+}
+!macro SetBackgroundColour {
+	jsr C128SetBackgroundColour
+}
+}
+
+
+!ifdef TARGET_PLUS4 {
+SETBORDERMACRO_DEFINED = 1
+!macro SetBorderColour {
+	stx s_stored_x
+	pha
+	tax
+	lda plus4_vic_colours,x
+	sta reg_bordercolour
+	pla
+	ldx s_stored_x
+}
+!macro SetBackgroundColour {
+	stx s_stored_x
+	pha
+	tax
+	lda plus4_vic_colours,x
+	sta reg_backgroundcolour
+	pla
+	ldx s_stored_x
+}
+}
+
+!ifndef SETBORDERMACRO_DEFINED {
+!macro SetBorderColour {
+	sta reg_bordercolour
+}
+!macro SetBackgroundColour {
+	sta reg_backgroundcolour
+}
+}
+

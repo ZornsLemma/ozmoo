@@ -315,6 +315,7 @@ z_ins_read
 
 
 !ifdef USE_INPUTCOL {
+	; x = 3 means the routine does not turn on input colour
 	jsr activate_inputcol
 }
 
@@ -953,22 +954,47 @@ init_read_text_timer
 	ora .read_text_time + 1
 	bne +
 	rts ; no timer
-+   ; calculate timer interval in jiffys (1/60 second NTSC, 1/50 second PAL)
-	lda .read_text_time
-	sta multiplier + 1
-	lda .read_text_time + 1
-	sta multiplier
++   ; calculate timer interval in jiffys (1/60 second, regardless of TV standard)
 	lda #0
-	sta multiplicand + 1
-	lda #6
-	sta multiplicand ; t*6 to get jiffies
-	jsr mult16
-	lda product
-	sta .read_text_time_jiffy + 2
-	lda product + 1
+	sta z_temp ; Top byte of result
+	lda .read_text_time ; High byte
+	sta z_temp + 1 ; Middle byte of result
+	lda .read_text_time + 1 ; Low byte
+	; Multiply by 2
+	asl
+	rol z_temp + 1
+	rol z_temp
+	; Add starting value
+	clc
+	adc .read_text_time + 1
+	pha
+	lda z_temp + 1
+	adc .read_text_time
 	sta .read_text_time_jiffy + 1
-	lda product + 2
+	lda z_temp
+	adc #0
 	sta .read_text_time_jiffy
+	; Multiply by 2
+	pla
+	asl
+	sta .read_text_time_jiffy + 2
+	rol .read_text_time_jiffy + 1
+	rol .read_text_time_jiffy
+	; lda .read_text_time
+	; sta multiplier + 1
+	; lda .read_text_time + 1
+	; sta multiplier
+	; lda #0
+	; sta multiplicand + 1
+	; lda #6
+	; sta multiplicand ; t*6 to get jiffies
+	; jsr mult16
+	; lda product
+	; sta .read_text_time_jiffy + 2
+	; lda product + 1
+	; sta .read_text_time_jiffy + 1
+	; lda product + 2
+	; sta .read_text_time_jiffy
 update_read_text_timer
 	; prepare time for next routine call (current time + time_jiffy)
 	jsr kernal_readtime  ; read current time (in jiffys)
@@ -985,17 +1011,61 @@ update_read_text_timer
 }
 
 getchar_and_maybe_toggle_darkmode
-!ifdef NODARKMODE {
-	jmp kernal_getchar
-} else {
+	stx .getchar_save_x
 	jsr kernal_getchar
+!ifndef NODARKMODE {
  	cmp #133 ; Charcode for F1
 	bne +
 	jsr toggle_darkmode
-	ldx #40 ; Side effect to help when called from MORE prompt
-	lda #0
-+	rts
+	jmp .did_something
++	
 }
+!ifdef SCROLLBACK {
+	cmp #135 ; F5
+	bne +
+	jsr launch_scrollback
+	jmp .did_something
++	
+}
+	ldx #3
+-	cmp .scroll_delay_keys,x
+	beq .is_scroll_delay_key
+	dex
+	bpl -
+	bmi +
+.is_scroll_delay_key
+	stx scroll_delay
+	jmp .did_something
++
+	cmp #18 ; Ctrl-R for key repeating
+	bne +
+	; Toggle key repeat (People using fast emulators want to turn it off)
+	lda #64
+	bit key_repeat
+	bvc ++
+	lda #0
+++	sta key_repeat
+	jmp .did_something
++
+
+	cmp #4 ; Ctrl-D to forget device# for saves
+	bne .did_nothing
+	; Forget device# for saves
+	dec ask_for_save_device ; Normally 0. Even if we decrease 100 times, we still get the same effect
+	; Fall through to .did_something
+	
+.did_something
+	ldx #2
+	jsr play_beep
+	lda #0
+.did_nothing
+	ldx .getchar_save_x
+	rts
+
+.scroll_delay_keys !byte 146, 144, 5, 28 ; Ctrl-0, 1, 2, 3
+.getchar_save_x !byte 0
+
+
 
 read_char
 	; return: 0,1: return value of routine (false, true)
@@ -1116,6 +1186,11 @@ s_cursorswitch !byte 0
 s_cursormode !byte 0
 }
 turn_on_cursor
+!ifdef USE_BLINKING_CURSOR {
+	jsr reset_cursor_blink
+	lda #CURSORCHAR
+	sta cursor_character
+}
 	lda #1
 	sta s_cursorswitch
 	bne update_cursor ; always branch
@@ -1195,6 +1270,15 @@ read_text
 }
 	sta string_array + 1
 	jsr printchar_flush
+!ifdef SCROLLBACK {
+	lda read_text_level
+	bne +
+	; Entering top level read_text call - pause copying to scrollback buffer
+	jsr s_reset_scrolled_lines
+	lda zp_screenrow
+	sta read_text_screenrow_start
++	inc read_text_level
+}	
 	; clear [More] counter
 	jsr clear_num_rows
 !ifdef USE_BLINKING_CURSOR {
@@ -1324,7 +1408,7 @@ read_text
 	iny
 	cpy num_terminating_characters
 	bne -
-+   cmp #8
++   cmp #8 ; delete key
 	bne +
 	; allow delete if anything in the buffer
 	ldy .read_text_column
@@ -1347,16 +1431,19 @@ read_text
 	cmp #32
 	bcs ++
 	jmp .readkey
-++	cmp #128
+++	cmp #128 ; < 128 is delete, newline, and standard ascii keys
 	bcc .char_is_ok
 !ifdef USE_HISTORY {
+	; cursor: 129,130,131,132 = up,down,left,right
 	cmp #131
-	bcc handle_history ; 129 and 130 are cursor up and down
+	bcs +
+	jmp handle_history 
++
 }
-	cmp #155
-	bpl +
+	cmp #155 ; start of extra characters
+	bcs +
 	jmp .readkey
-+	cmp #252
++	cmp #252 ; end of extra characters
 	bcc .char_is_ok
 	jmp .readkey	
 	; print the allowed char and store in the array
@@ -1415,6 +1502,54 @@ read_text
 !ifdef Z5PLUS {
 	sta .read_text_return_value
 }
+!ifdef SCROLLBACK {
+	dec read_text_level
+	bne .dont_copy_to_scrollback
+
+	; Copy any lines on screen that haven't been copied to scrollback buffer yet (but not current line)
+	lda zp_screenrow
+	sec
+	sbc	read_text_screenrow_start
+	clc
+	adc s_scrolled_lines
+	beq .dont_copy_to_scrollback ; 0 lines to copy
+	bmi .dont_copy_to_scrollback ; Unreasonable result
+	cmp s_screen_height_minus_one
+	bcs .dont_copy_to_scrollback ; Unreasonable result
+
+	; Copy A lines above current to scrollback buffer
+	
+	; Make zp_screenline point to first line
+	tax
+	pha
+-	lda zp_screenline
+	sec
+	sbc s_screen_width
+	sta zp_screenline
+	bcs +
+	dec zp_screenline + 1
++	dex
+	bne -
+
+	; Copy a line to scrollback buffer
+-	jsr copy_line_to_scrollback
+	; Move zp_screenline pointer one line ahead
+	lda zp_screenline
+	clc
+	adc s_screen_width
+	sta zp_screenline
+	bcc +
+	inc zp_screenline + 1
+	; Decrease the counter for number lines to print
++	pla
+	sec
+	sbc #1
+	beq .dont_copy_to_scrollback ; We're done
+	pha
+	bne - ; Always branch
+.dont_copy_to_scrollback
+}
+
 	; turn off blinking cursor
 	jsr turn_off_cursor
 !ifndef Z5PLUS {
@@ -1689,6 +1824,10 @@ add_line_to_history
 }
 !ifdef USE_BLINKING_CURSOR {
 .cursor_jiffy !byte 0,0,0  ; next cursor update time
+}
+!ifdef SCROLLBACK {
+read_text_level !byte 0 ; Depth of read_text calls ( > 1 only if an interrupt routine calls read_text.)
+read_text_screenrow_start !byte 0
 }
 
 tokenise_text

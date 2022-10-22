@@ -28,10 +28,12 @@
 		SLOW = 1
 	}
 	!ifdef SLOW {
-		; This is never used, since VMEM is always enabled for this target
 		!ifndef VMEM {
 			SKIP_BUFFER = 1
 		}
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
 	}
 }
 !ifdef TARGET_PLUS4 {
@@ -42,6 +44,14 @@
 	SUPPORT_REU = 0
 	!ifndef SLOW {
 		SLOW = 1
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
+		; SCROLLBACK_RAM_PAGES may be set by make.rb;
+		; Must be an even number, where 6 * 4 <= SCROLLBACK_RAM_PAGES <= 11 * 4
+		!ifndef SCROLLBACK_RAM_PAGES {
+			SCROLLBACK_RAM_PAGES = 6 * 4
+		}
 	}
 }
 !ifdef TARGET_C64 {
@@ -55,8 +65,15 @@
 	VMEM_END_PAGE = $fc
 	HAS_SID = 1
 	SUPPORT_80COL = 1;
+	SUPPORT_REU = 1
+;	REUBOOST = 1
 	!ifndef SLOW {
 		SLOW = 1
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
+		; SCROLLBACK_RAM_PAGES may be set by make.rb;
+		; Must be an even number, where 6 * 4 <= SCROLLBACK_RAM_PAGES <= 11 * 4
 	}
 }
 
@@ -71,6 +88,9 @@
 		!ifndef VMEM {
 			SKIP_BUFFER = 1
 		}
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
 	}
 }
 
@@ -97,6 +117,10 @@
 	} else {
 		cache_pages = 4 ; Note, this is not final. One page may be added. vmem_cache_count will hold final # of pages.
 	}
+}
+
+!ifdef SCROLLBACK_RAM_PAGES {
+	SCROLLBACK_RAM_START_PAGE = (VMEM_END_PAGE - SCROLLBACK_RAM_PAGES) & $ff ; VMEM_END_PAGE is 0 for C64, hence & $ff
 }
 
 !ifndef TERPNO {
@@ -275,7 +299,26 @@
 }
 
 !ifndef SPLASHWAIT {
-	SPLASHWAIT = 3
+	SPLASHWAIT = 15
+}
+
+!ifndef Z5PLUS {
+	COLOURFUL_LOWER_WIN = 1
+}
+!ifdef USE_INPUTCOL {
+	!ifndef COLOURFUL_LOWER_WIN {
+		COLOURFUL_LOWER_WIN = 1
+	}
+}
+!if CURSORCOL > 1 {
+	!ifndef COLOURFUL_LOWER_WIN {
+		COLOURFUL_LOWER_WIN = 1
+	}
+}
+!if CURSORCOLDM > 1 {
+	!ifndef COLOURFUL_LOWER_WIN {
+		COLOURFUL_LOWER_WIN = 1
+	}
 }
 
 
@@ -283,14 +326,8 @@
 
 program_start
 
-;	lda #4
-;	sta $d020
-
-;	lda #$41
-;	jsr $ffd2
-;	jsr wait_a_sec
-
 !ifdef TARGET_C128 {
+	lda #$f0 ; Background colour
 	jsr VDCInit
 	; initialize is in Basic LO ROM in C128 mode, so we need
 	; to turn off BASIC already here. Since the set_memory_no_basic
@@ -311,384 +348,398 @@ program_start
 ; =========================================== Highbytes of jump table
 
 z_jump_high_arr
+
 ; 0OP
-	!byte >z_ins_rtrue
-	!byte >z_ins_rfalse
-	!byte >z_ins_print
-	!byte >z_ins_print_ret
-	!byte >z_ins_nop
+
+z_opcount_0op_jump_high_arr
+	!byte >z_ins_rtrue - 1
+	!byte >(z_ins_rfalse - 1)
+	!byte >(z_ins_print - 1)
+	!byte >(z_ins_print_ret - 1)
+	!byte >(z_ins_nop - 1)
 !ifndef Z5PLUS {
-	!byte >z_ins_save
-	!byte >z_ins_restore
+	!byte >(z_ins_save - 1)
+	!byte >(z_ins_restore - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 !ifdef RESTART_SUPPORTED {
-	!byte >z_ins_restart
+	!byte >(z_ins_restart - 1)
 } else {
-	!byte >z_ins_not_supported
+	!byte >(z_ins_not_supported - 1)
 }
-	!byte >z_ins_ret_popped
+	!byte >(z_ins_ret_popped - 1)
 !ifndef Z5PLUS {
-	!byte >stack_pull ; z_ins_pop
+	!byte >(stack_pull - 1) ; z_ins_pop
 } else {
-	!byte >z_ins_catch
+	!byte >(z_ins_catch - 1)
 }
-	!byte >z_ins_quit
-	!byte >z_ins_new_line
+	!byte >(z_ins_quit - 1)
+	!byte >(z_ins_new_line - 1)
 !ifndef Z4PLUS {
-	!byte >z_ins_show_status
+	!byte >(z_ins_show_status - 1)
 } else {
-	!byte >z_ins_nop ; should be nop according to show_status/spec 1.0
+	!byte >(z_ins_nop - 1) ; should be nop according to show_status/spec 1.0
 }
-	!byte >make_branch_true ; z_ins_verify
+	!byte >(make_branch_true - 1) ; z_ins_verify
 !ifdef Z5PLUS {
-	!byte >z_not_implemented
-	!byte >make_branch_true ; z_ins_piracy
+	!byte >(z_not_implemented - 1)
+	!byte >(make_branch_true - 1) ; z_ins_piracy
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 
 ; 1OP
 
-	!byte >z_ins_jz
-	!byte >z_ins_get_sibling
-	!byte >z_ins_get_child
-	!byte >z_ins_get_parent
-	!byte >z_ins_get_prop_len
-	!byte >z_ins_inc
-	!byte >z_ins_dec
-	!byte >z_ins_print_addr
-	!byte >z_ins_call_xs
-	!byte >z_ins_remove_obj
-	!byte >z_ins_print_obj
-	!byte >z_ins_ret
-	!byte >z_ins_jump
-	!byte >z_ins_print_paddr
-	!byte >z_ins_load
+z_opcount_1op_jump_high_arr
+	!byte >(z_ins_jz - 1)
+	!byte >(z_ins_get_sibling - 1)
+	!byte >(z_ins_get_child - 1)
+	!byte >(z_ins_get_parent - 1)
+	!byte >(z_ins_get_prop_len - 1)
+	!byte >(z_ins_inc - 1)
+	!byte >(z_ins_dec - 1)
+	!byte >(z_ins_print_addr - 1)
+	!byte >(z_ins_call_xs - 1)
+	!byte >(z_ins_remove_obj - 1)
+	!byte >(z_ins_print_obj - 1)
+	!byte >(z_ins_ret - 1)
+	!byte >(z_ins_jump - 1)
+	!byte >(z_ins_print_paddr - 1)
+	!byte >(z_ins_load - 1)
 !ifndef Z5PLUS {
-	!byte >z_ins_not
+	!byte >(z_ins_not - 1)
 } else {
-	!byte >z_ins_call_xn
+	!byte >(z_ins_call_xn - 1)
 }
 
 ; 2OP
 
-	!byte >z_not_implemented
-	!byte >z_ins_je
-	!byte >z_ins_jl
-	!byte >z_ins_jg
-	!byte >z_ins_dec_chk
-	!byte >z_ins_inc_chk
-	!byte >z_ins_jin
-	!byte >z_ins_test
-	!byte >z_ins_or
-	!byte >z_ins_and
-	!byte >z_ins_test_attr
-	!byte >z_ins_set_attr
-	!byte >z_ins_clear_attr
-	!byte >z_ins_store
-	!byte >z_ins_insert_obj
-	!byte >z_ins_loadw_and_storew
-	!byte >z_ins_loadb
-	!byte >z_ins_get_prop
-	!byte >z_ins_get_prop_addr
-	!byte >z_ins_get_next_prop
-	!byte >z_ins_add
-	!byte >z_ins_sub
-	!byte >z_ins_mul
-	!byte >z_ins_div
-	!byte >z_ins_mod
+z_opcount_2op_jump_high_arr
+	!byte >(z_not_implemented - 1)
+	!byte >(z_ins_je - 1)
+	!byte >(z_ins_jl - 1)
+	!byte >(z_ins_jg - 1)
+	!byte >(z_ins_dec_chk - 1)
+	!byte >(z_ins_inc_chk - 1)
+	!byte >(z_ins_jin - 1)
+	!byte >(z_ins_test - 1)
+	!byte >(z_ins_or - 1)
+	!byte >(z_ins_and - 1)
+	!byte >(z_ins_test_attr - 1)
+	!byte >(z_ins_set_attr - 1)
+	!byte >(z_ins_clear_attr - 1)
+	!byte >(z_ins_store - 1)
+	!byte >(z_ins_insert_obj - 1)
+	!byte >(z_ins_loadw_and_storew - 1)
+	!byte >(z_ins_loadb - 1)
+	!byte >(z_ins_get_prop - 1)
+	!byte >(z_ins_get_prop_addr - 1)
+	!byte >(z_ins_get_next_prop - 1)
+	!byte >(z_ins_add - 1)
+	!byte >(z_ins_sub - 1)
+	!byte >(z_ins_mul - 1)
+	!byte >(z_ins_div - 1)
+	!byte >(z_ins_mod - 1)
 !ifndef Z4PLUS {
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
 } else {
-	!byte >z_ins_call_xs
+	!byte >(z_ins_call_xs - 1)
 }
 !ifndef Z5PLUS {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 } else {
-	!byte >z_ins_call_xn
-	!byte >z_ins_set_colour
-	!byte >z_ins_throw
+	!byte >(z_ins_call_xn - 1)
+	!byte >(z_ins_set_colour - 1)
+	!byte >(z_ins_throw - 1)
 }
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 
 ; VAR	
 
-	!byte >z_ins_call_xs
-	!byte >z_ins_loadw_and_storew
-	!byte >z_ins_storeb
-	!byte >z_ins_put_prop
-	!byte >z_ins_read
-	!byte >z_ins_print_char
-	!byte >z_ins_print_num
-	!byte >z_ins_random
-	!byte >z_ins_push
-	!byte >z_ins_pull
-	!byte >z_ins_split_window
-	!byte >z_ins_set_window
+z_opcount_var_jump_high_arr
+	!byte >(z_ins_call_xs - 1)
+	!byte >(z_ins_loadw_and_storew - 1)
+	!byte >(z_ins_storeb - 1)
+	!byte >(z_ins_put_prop - 1)
+	!byte >(z_ins_read - 1)
+	!byte >(z_ins_print_char - 1)
+	!byte >(z_ins_print_num - 1)
+	!byte >(z_ins_random - 1)
+	!byte >(z_ins_push - 1)
+	!byte >(z_ins_pull - 1)
+	!byte >(z_ins_split_window - 1)
+	!byte >(z_ins_set_window - 1)
 !ifdef Z4PLUS {
-	!byte >z_ins_call_xs
-	!byte >z_ins_erase_window
-	!byte >z_ins_erase_line
-	!byte >z_ins_set_cursor
-	!byte >z_ins_get_cursor
-	!byte >z_ins_set_text_style
-	!byte >z_ins_buffer_mode
+	!byte >(z_ins_call_xs - 1)
+	!byte >(z_ins_erase_window - 1)
+	!byte >(z_ins_erase_line - 1)
+	!byte >(z_ins_set_cursor - 1)
+	!byte >(z_ins_get_cursor - 1)
+	!byte >(z_ins_set_text_style - 1)
+	!byte >(z_ins_buffer_mode - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
-	!byte >z_ins_output_stream
-	!byte >z_ins_not_supported
-	!byte >z_ins_sound_effect
+	!byte >(z_ins_output_stream - 1)
+	!byte >(z_ins_not_supported - 1)
+	!byte >(z_ins_sound_effect - 1)
 !ifdef Z4PLUS {
-	!byte >z_ins_read_char
-	!byte >z_ins_scan_table
+	!byte >(z_ins_read_char - 1)
+	!byte >(z_ins_scan_table - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 !ifdef Z5PLUS {
-	!byte >z_ins_not
-	!byte >z_ins_call_xn
-	!byte >z_ins_call_xn
-	!byte >z_ins_tokenise_text
-	!byte >z_ins_encode_text
-	!byte >z_ins_copy_table
-	!byte >z_ins_print_table
-	!byte >z_ins_check_arg_count
+	!byte >(z_ins_not - 1)
+	!byte >(z_ins_call_xn - 1)
+	!byte >(z_ins_call_xn - 1)
+	!byte >(z_ins_tokenise_text - 1)
+	!byte >(z_ins_encode_text - 1)
+	!byte >(z_ins_copy_table - 1)
+	!byte >(z_ins_print_table - 1)
+	!byte >(z_ins_check_arg_count - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 
 ; EXT
 
+z_opcount_ext_jump_high_arr
 !ifdef Z5PLUS {
-	!byte >z_ins_save
-	!byte >z_ins_restore
-	!byte >z_ins_log_shift
-	!byte >z_ins_art_shift
-	!byte >z_ins_set_font
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_ins_save_restore_undo
-	!byte >z_ins_save_restore_undo
-	!byte >z_ins_print_unicode
-	!byte >z_ins_check_unicode
-	!byte >z_ins_set_true_colour
+	!byte >(z_ins_save - 1)
+	!byte >(z_ins_restore - 1)
+	!byte >(z_ins_log_shift - 1)
+	!byte >(z_ins_art_shift - 1)
+	!byte >(z_ins_set_font - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_ins_save_restore_undo - 1)
+	!byte >(z_ins_save_restore_undo - 1)
+	!byte >(z_ins_print_unicode - 1)
+	!byte >(z_ins_check_unicode - 1)
+	!byte >(z_ins_set_true_colour - 1)
 }
 
 
 ; =========================================== Lowbytes of jump table
 	
 z_jump_low_arr
-	!byte <z_ins_rtrue
-	!byte <z_ins_rfalse
-	!byte <z_ins_print
-	!byte <z_ins_print_ret
-	!byte <z_ins_nop
+
+; 0OP
+
+z_opcount_0op_jump_low_arr
+	!byte <(z_ins_rtrue - 1)
+	!byte <(z_ins_rfalse - 1)
+	!byte <(z_ins_print - 1)
+	!byte <(z_ins_print_ret - 1)
+	!byte <(z_ins_nop - 1)
 !ifndef Z5PLUS {
-	!byte <z_ins_save
-	!byte <z_ins_restore
+	!byte <(z_ins_save - 1)
+	!byte <(z_ins_restore - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 !ifdef RESTART_SUPPORTED {
-	!byte <z_ins_restart
+	!byte <(z_ins_restart - 1)
 } else {
-	!byte <z_ins_not_supported
+	!byte <(z_ins_not_supported - 1)
 }
-	!byte <z_ins_ret_popped
+	!byte <(z_ins_ret_popped - 1)
 !ifndef Z5PLUS {
-	!byte <stack_pull ; z_ins_pop
+	!byte <(stack_pull - 1) ; z_ins_pop
 } else {
-	!byte <z_ins_catch
+	!byte <(z_ins_catch - 1)
 }
-	!byte <z_ins_quit
-	!byte <z_ins_new_line
+	!byte <(z_ins_quit - 1)
+	!byte <(z_ins_new_line - 1)
 !ifndef Z4PLUS {
-	!byte <z_ins_show_status
+	!byte <(z_ins_show_status - 1)
 } else {
-	!byte <z_ins_nop ; should be nop according to show_status/spec 1.0
+	!byte <(z_ins_nop - 1) ; should be nop according to show_status/spec 1.0
 }
-	!byte <make_branch_true ; z_ins_verify
+	!byte <(make_branch_true - 1) ; z_ins_verify
 !ifdef Z5PLUS {
-	!byte <z_not_implemented
-	!byte <make_branch_true ; z_ins_piracy
+	!byte <(z_not_implemented - 1)
+	!byte <(make_branch_true - 1) ; z_ins_piracy
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 
 ; 1OP
 
-	!byte <z_ins_jz
-	!byte <z_ins_get_sibling
-	!byte <z_ins_get_child
-	!byte <z_ins_get_parent
-	!byte <z_ins_get_prop_len
-	!byte <z_ins_inc
-	!byte <z_ins_dec
-	!byte <z_ins_print_addr
-	!byte <z_ins_call_xs
-	!byte <z_ins_remove_obj
-	!byte <z_ins_print_obj
-	!byte <z_ins_ret
-	!byte <z_ins_jump
-	!byte <z_ins_print_paddr
-	!byte <z_ins_load
+z_opcount_1op_jump_low_arr
+	!byte <(z_ins_jz - 1)
+	!byte <(z_ins_get_sibling - 1)
+	!byte <(z_ins_get_child - 1)
+	!byte <(z_ins_get_parent - 1)
+	!byte <(z_ins_get_prop_len - 1)
+	!byte <(z_ins_inc - 1)
+	!byte <(z_ins_dec - 1)
+	!byte <(z_ins_print_addr - 1)
+	!byte <(z_ins_call_xs - 1)
+	!byte <(z_ins_remove_obj - 1)
+	!byte <(z_ins_print_obj - 1)
+	!byte <(z_ins_ret - 1)
+	!byte <(z_ins_jump - 1)
+	!byte <(z_ins_print_paddr - 1)
+	!byte <(z_ins_load - 1)
 !ifndef Z5PLUS {
-	!byte <z_ins_not
+	!byte <(z_ins_not - 1)
 } else {
-	!byte <z_ins_call_xn
+	!byte <(z_ins_call_xn - 1)
 }
 	
 ; 2OP
 
-	!byte <z_not_implemented
-	!byte <z_ins_je
-	!byte <z_ins_jl
-	!byte <z_ins_jg
-	!byte <z_ins_dec_chk
-	!byte <z_ins_inc_chk
-	!byte <z_ins_jin
-	!byte <z_ins_test
-	!byte <z_ins_or
-	!byte <z_ins_and
-	!byte <z_ins_test_attr
-	!byte <z_ins_set_attr
-	!byte <z_ins_clear_attr
-	!byte <z_ins_store
-	!byte <z_ins_insert_obj
-	!byte <z_ins_loadw_and_storew
-	!byte <z_ins_loadb
-	!byte <z_ins_get_prop
-	!byte <z_ins_get_prop_addr
-	!byte <z_ins_get_next_prop
-	!byte <z_ins_add
-	!byte <z_ins_sub
-	!byte <z_ins_mul
-	!byte <z_ins_div
-	!byte <z_ins_mod
+z_opcount_2op_jump_low_arr
+	!byte <(z_not_implemented - 1)
+	!byte <(z_ins_je - 1)
+	!byte <(z_ins_jl - 1)
+	!byte <(z_ins_jg - 1)
+	!byte <(z_ins_dec_chk - 1)
+	!byte <(z_ins_inc_chk - 1)
+	!byte <(z_ins_jin - 1)
+	!byte <(z_ins_test - 1)
+	!byte <(z_ins_or - 1)
+	!byte <(z_ins_and - 1)
+	!byte <(z_ins_test_attr - 1)
+	!byte <(z_ins_set_attr - 1)
+	!byte <(z_ins_clear_attr - 1)
+	!byte <(z_ins_store - 1)
+	!byte <(z_ins_insert_obj - 1)
+	!byte <(z_ins_loadw_and_storew - 1)
+	!byte <(z_ins_loadb - 1)
+	!byte <(z_ins_get_prop - 1)
+	!byte <(z_ins_get_prop_addr - 1)
+	!byte <(z_ins_get_next_prop - 1)
+	!byte <(z_ins_add - 1)
+	!byte <(z_ins_sub - 1)
+	!byte <(z_ins_mul - 1)
+	!byte <(z_ins_div - 1)
+	!byte <(z_ins_mod - 1)
 !ifndef Z4PLUS {
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
 } else {
-	!byte <z_ins_call_xs
+	!byte <(z_ins_call_xs - 1)
 }
 !ifndef Z5PLUS {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 } else {
-	!byte <z_ins_call_xn
-	!byte <z_ins_set_colour
-	!byte <z_ins_throw
+	!byte <(z_ins_call_xn - 1)
+	!byte <(z_ins_set_colour - 1)
+	!byte <(z_ins_throw - 1)
 }
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 
 ; VAR	
 
-	!byte <z_ins_call_xs
-	!byte <z_ins_loadw_and_storew
-	!byte <z_ins_storeb
-	!byte <z_ins_put_prop
-	!byte <z_ins_read
-	!byte <z_ins_print_char
-	!byte <z_ins_print_num
-	!byte <z_ins_random
-	!byte <z_ins_push
-	!byte <z_ins_pull
-	!byte <z_ins_split_window
-	!byte <z_ins_set_window
+z_opcount_var_jump_low_arr
+	!byte <(z_ins_call_xs - 1)
+	!byte <(z_ins_loadw_and_storew - 1)
+	!byte <(z_ins_storeb - 1)
+	!byte <(z_ins_put_prop - 1)
+	!byte <(z_ins_read - 1)
+	!byte <(z_ins_print_char - 1)
+	!byte <(z_ins_print_num - 1)
+	!byte <(z_ins_random - 1)
+	!byte <(z_ins_push - 1)
+	!byte <(z_ins_pull - 1)
+	!byte <(z_ins_split_window - 1)
+	!byte <(z_ins_set_window - 1)
 !ifdef Z4PLUS {
-	!byte <z_ins_call_xs
-	!byte <z_ins_erase_window
-	!byte <z_ins_erase_line
-	!byte <z_ins_set_cursor
-	!byte <z_ins_get_cursor
-	!byte <z_ins_set_text_style
-	!byte <z_ins_buffer_mode
+	!byte <(z_ins_call_xs - 1)
+	!byte <(z_ins_erase_window - 1)
+	!byte <(z_ins_erase_line - 1)
+	!byte <(z_ins_set_cursor - 1)
+	!byte <(z_ins_get_cursor - 1)
+	!byte <(z_ins_set_text_style - 1)
+	!byte <(z_ins_buffer_mode - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
-	!byte <z_ins_output_stream
-	!byte <z_ins_not_supported
-	!byte <z_ins_sound_effect
+	!byte <(z_ins_output_stream - 1)
+	!byte <(z_ins_not_supported - 1)
+	!byte <(z_ins_sound_effect - 1)
 !ifdef Z4PLUS {
-	!byte <z_ins_read_char
-	!byte <z_ins_scan_table
+	!byte <(z_ins_read_char - 1)
+	!byte <(z_ins_scan_table - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 !ifdef Z5PLUS {
-	!byte <z_ins_not
-	!byte <z_ins_call_xn
-	!byte <z_ins_call_xn
-	!byte <z_ins_tokenise_text
-	!byte <z_ins_encode_text
-	!byte <z_ins_copy_table
-	!byte <z_ins_print_table
-	!byte <z_ins_check_arg_count
+	!byte <(z_ins_not - 1)
+	!byte <(z_ins_call_xn - 1)
+	!byte <(z_ins_call_xn - 1)
+	!byte <(z_ins_tokenise_text - 1)
+	!byte <(z_ins_encode_text - 1)
+	!byte <(z_ins_copy_table - 1)
+	!byte <(z_ins_print_table - 1)
+	!byte <(z_ins_check_arg_count - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 
 ; EXT
 
 z_opcount_ext_jump_low_arr
 !ifdef Z5PLUS {
-	!byte <z_ins_save
-	!byte <z_ins_restore
-	!byte <z_ins_log_shift
-	!byte <z_ins_art_shift
-	!byte <z_ins_set_font
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_ins_save_restore_undo
-	!byte <z_ins_save_restore_undo
-	!byte <z_ins_print_unicode
-	!byte <z_ins_check_unicode
-	!byte <z_ins_set_true_colour
+	!byte <(z_ins_save - 1)
+	!byte <(z_ins_restore - 1)
+	!byte <(z_ins_log_shift - 1)
+	!byte <(z_ins_art_shift - 1)
+	!byte <(z_ins_set_font - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_ins_save_restore_undo - 1)
+	!byte <(z_ins_save_restore_undo - 1)
+	!byte <(z_ins_print_unicode - 1)
+	!byte <(z_ins_check_unicode - 1)
+	!byte <(z_ins_set_true_colour - 1)
 }
 
 z_number_of_ext_opcodes_implemented = * - z_opcount_ext_jump_low_arr
@@ -768,9 +819,28 @@ c128_border_phase1
 progress_reu = parse_array
 reu_progress_ticks = parse_array + 1
 reu_last_disk_end_block = string_array ; 2 bytes
+!ifdef REUBOOST {
+!ifdef Z4PLUS {
+	!ifdef Z7PLUS {
+		reu_boost_hash_pages = 8
+	} else {
+		reu_boost_hash_pages = 4
+	}
+} else {
+	reu_boost_hash_pages = 2
 }
 
+reu_boost_mode !byte 0 ; Set to $ff to activate
+reu_boost_hash_table = (first_banked_memory_page - reu_boost_hash_pages) * 256
 
+; The values calculated here for reu_boost_area_start_page and reu_boost_area_pagecount
+; are correct for C128. For C64, they are changed at runtime, as they can't be calculated
+; until dynmem size is known. 
+
+reu_boost_area_start_page !byte >story_start
+reu_boost_area_pagecount !byte (>reu_boost_hash_table) - (>story_start)
+} ; ifdef REUBOOST
+} ; if SUPPORT_REU = 1
 
 ; global variables
 ; filelength !byte 0, 0, 0
@@ -781,7 +851,6 @@ fileblocks !byte 0, 0, 0
 !ifdef VMEM {
 game_id		!byte 0,0,0,0
 }
-
 
 .initialize
 	cld
@@ -816,8 +885,63 @@ game_id		!byte 0,0,0,0
 	; https://www.lemon64.com/forum/viewtopic.php?t=68824&sid=330a8c62e22ebd2cf654c14ae8073fb9
 	;
 !if SUPPORT_REU = 1 {
+	lda #0
+	sta z_temp + 1
+	lda story_start + header_filelength
+	!ifndef Z4PLUS {
+		asl
+		rol z_temp + 1
+	} else {
+		!ifdef Z7PLUS {
+			ldx #3
+-			asl
+			rol z_temp + 1
+			dex
+			bne -
+		} else {
+			asl
+			rol z_temp + 1
+			asl
+			rol z_temp + 1
+		}
+	}
+	sec
+	sbc story_start + header_static_mem
+	tay
+	lda z_temp + 1
+	sbc #0
+	tax
+	tya
+	clc
+	adc #4 ; Add 1 KB for rounding errors + empty block in REU
+	txa
+	adc #1
+	; A now holds an upper limit on statmem size in 64 KB blocks
+	sta statmem_reu_banks
+
 	jsr reu_start
+
+	!ifdef SCROLLBACK {
+		ldx use_reu
+		beq .store_bank_number
+		ldx statmem_reu_banks
+		cpx scrollback_bank
+		bcs +
+.store_bank_number
+		stx scrollback_bank
+		inx
+		stx scrollback_bank + 1
++		jsr init_reu_scrollback
+	}
+	lda #147
+	jsr s_printchar
+} else {
+	; This case is used by Plus/4 only
+	!ifdef SCROLLBACK_RAM_PAGES {
+		jsr init_reu_scrollback
+	}
 }
+
 .supercpu
 }
 	jsr deletable_init
@@ -836,6 +960,9 @@ game_id		!byte 0,0,0,0
 	jsr stack_init
 
 	jsr deletable_screen_init_2
+
+	lda #0
+	sta keyboard_buff_len
 
 	jsr z_init
 
@@ -872,6 +999,10 @@ game_id		!byte 0,0,0,0
 }
 	cli
 
+!ifdef SCROLLBACK {
+	lda scrollback_supported
+	sta scrollback_enabled
+}
 
 	jsr z_execute
 
@@ -896,6 +1027,9 @@ game_id		!byte 0,0,0,0
 
 ; include other assembly files
 !source "utilities.asm"
+!ifdef SCROLLBACK {
+!source "scrollback.asm"
+}
 !source "screenkernal.asm"
 !source "streams.asm" ; Must come before "text.asm"
 !source "disk.asm"
@@ -1004,6 +1138,7 @@ c128_move_dynmem_and_calc_vmem
 	dec zp_temp + 2
 	bne -
 
+	; Copy any preloaded statmem pages down in memory, now that dynmem has moved
 	lda #>story_start
 	sta zp_temp + 1 ; First destination page
 	clc
@@ -1021,14 +1156,17 @@ c128_move_dynmem_and_calc_vmem
 	bne - ; Always branch
 
 .done_vmem_move
-
 	; Add free RAM in bank 1 as vmem memory
 
 	lda #>story_start
 	sta vmap_first_ram_page
 
 	; Remember above which index in vmem the blocks are in bank 1
+!ifdef SCROLLBACK_RAM_PAGES {
+	lda #SCROLLBACK_RAM_START_PAGE
+} else {
 	lda #VMEM_END_PAGE
+}
 	sec
 	sbc #>story_start
 	lsr ; Convert from 256-byte pages to 512-byte vmem blocks
@@ -1040,16 +1178,12 @@ c128_move_dynmem_and_calc_vmem
 	sta vmap_first_ram_page_in_bank_1
 
 	; Calculate how many vmem pages we can fit in bank 1
-	lda nonstored_pages
-	lsr ; To get # of dynmem blocks, which are 512 bytes instead of 256
-	sta object_temp
 	lda #VMEM_END_PAGE
 	sec
 	sbc vmap_first_ram_page_in_bank_1
 	lsr ; Convert from 256-byte pages to 512-byte vmem blocks
 	; Now A holds the # of vmem blocks we can fit in bank 1
-	adc vmap_max_entries ; Add the # we had room for in bank 0 from the start
-	adc object_temp ; Add the # we made room for by moving dynmem to bank 1
+	adc first_vmap_entry_in_bank_1 ; Add the # of vmem blocks in bank 0
 	cmp #vmap_max_size
 	bcc +
 	lda #vmap_max_size
@@ -1292,7 +1426,7 @@ z_init
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
 	jsr write_header_byte
-	lda #(64 + 10) ; "J" = release 10
+	lda #(64 + 11) ; "K" = release 11
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
 	jsr write_header_byte
 	lda #25
@@ -1412,8 +1546,27 @@ z_init
 }
 
 !zone deletable_init {
+!ifdef TARGET_PLUS4_OR_C128 {
+fkey_codes !byte $85,$89,$86,$8a,$87,$8b,$88,$8c
+}
 
 deletable_init_start
+
+; Turn off function key strings, to let F1 work for darkmode and F keys work in BZ 
+!ifdef TARGET_PLUS4_OR_C128 {
+	ldx #8
+-	lda #1
+	sta fkey_string_lengths - 1,x
+	lda fkey_codes - 1,x
+	sta fkey_string_area - 1,x
+	dex
+	bne -
+!ifdef TARGET_C128 {
+	stx fkey_string_lengths + 8
+	stx fkey_string_lengths + 9
+}
+}
+
 
 !ifdef TARGET_PLUS4 {
 	!ifdef CUSTOM_FONT {
@@ -1486,24 +1639,48 @@ c128_mmu_values !byte $0e,$3f,$7f
 .first_value = z_temp
 .different_values !byte 0
 m65_statmem_already_loaded !byte 0
+m65_attic_checksum_page = ($08000000 + 512 * 1024) / 256
 }
+
+calc_dynmem_size
+	; Store the size of dynmem AND (if VMEM is enabled)
+	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
+!ifdef TARGET_C128 {
+	; Special case because we need to read a header word from dynmem before dynmem
+	; has been moved to its final location.
+	lda story_start + header_static_mem
+	ldx story_start + header_static_mem + 1
+} else {
+	; Target is not C128
+	ldy #header_static_mem
+	jsr read_header_word
+}
+	stx dynmem_size
+	sta dynmem_size + 1
+	
+!ifdef TARGET_MEGA65 {
+	tay
+	cpx #0
+	beq .maybe_inc_nonstored_pages
+	iny ; Add one page if statmem doesn't start on a new page ($xx00)
+.maybe_inc_nonstored_pages
+	tya
+;	and #vmem_indiv_block_mask ; keep index into kB chunk
+	and #%00000001 ; keep index into kB chunk
+	beq .store_nonstored_pages
+	iny
+.store_nonstored_pages
+	sty nonstored_pages
+}
+	rts
 
 deletable_init
 	cld
 
-	; stop key repeat (preventing problems with input in fast emulators)
-!ifdef TARGET_C64 {
-	lda #127
-	sta $028a
-}
-!ifdef TARGET_C128 {
-	lda #96
-	sta $0a22
-}
-!ifdef TARGET_PLUS4 {
-	lda #96
-	sta $0540
-}
+	; Set only space, del, cursor to repeat
+	lda #0
+	sta key_repeat
+
 
 !ifdef TARGET_C128 {
 	jsr c128_setup_mmu
@@ -1525,24 +1702,6 @@ deletable_init
 
 
 
-; Turn off function key strings, to let F1 work for darkmode and F keys work in BZ 
-!ifdef TARGET_PLUS4_OR_C128 {
-	ldx #$85
--	lda #1
-	sta fkey_string_lengths - $85,x
-	txa
-	sta fkey_string_area - $85,x
-	inx
-	cpx #$85 + 8
-	bcc -
-!ifdef TARGET_C128 {
-	lda #0
-	sta fkey_string_lengths + 8
-	sta fkey_string_lengths + 9
-}
-}
-
-
 ; Read and parse config from boot disk
 	ldy CURRENT_DEVICE
 	cpy #8
@@ -1555,15 +1714,21 @@ deletable_init
 	sty boot_device ; Boot device# stored
 
 !ifdef TARGET_MEGA65 {
-	jsr m65_load_header
+	jsr m65_init_reu
 
 !ifdef Z3PLUS {
-	; Start 512KB into Attic RAM
-	lda #>(512 * 1024 / 256)
+	jsr m65_load_header
+	jsr calc_dynmem_size
+	; Header of game on disk is now loaded, starting at beginning of Attic RAM
+
+	lda #<m65_attic_checksum_page
+	sta mempointer + 1
+	lda #>m65_attic_checksum_page
 	sta mempointer + 2
 	ldz #header_filelength
 	lda [dynmem_pointer],z
 	sta .first_value
+
 -	lda [dynmem_pointer],z
 	cmp .first_value
 	beq +
@@ -1576,12 +1741,9 @@ deletable_init
 	; Header values for file length and checksum are indentical
 	lda .different_values
 	beq .must_load_statmem ; All four bytes have the same value. Header can't be trusted.
-	lda #$ff
-	sta m65_statmem_already_loaded
+	dec m65_statmem_already_loaded ; Set it to $ff
 
 .must_load_statmem
-
-	
 }
 
 	lda #0
@@ -1591,7 +1753,7 @@ deletable_init
 	lda #0
 	sta z_temp + 5
 	ldz #header_filelength
-	lda [mempointer],z
+	lda [dynmem_pointer],z
 !ifdef Z4PLUS {
 	!ifdef Z7PLUS {
 		ldx #3 ; File size multiplier is 2^3 = 8
@@ -1612,14 +1774,14 @@ deletable_init
 
 	; We are only to load dynmem
 	ldz #header_static_mem
-	lda [mempointer],z
+	lda [dynmem_pointer],z
 	sta z_temp + 4
 	lda #0
 	sta z_temp + 5
 	
 +	jsr print_reu_progress_bar
 
-	jsr m65_load_dynmem
+	jsr m65_load_dynmem_maybe_statmem
 }
 
 
@@ -1674,10 +1836,16 @@ deletable_init
 	jsr auto_disk_config
 ;	jsr init_screen_colours
 } else { ; End of !ifdef VMEM
+!ifdef TARGET_MEGA65 {
 	ldy boot_device ; Boot device# stored
 	sty disk_info + 4 ; Device# for save disk
-!ifdef TARGET_MEGA65 {
 	sty disk_info + 4 + 8 ; Device# for boot/story disk
+	; Store boot device in current_disks
+	lda #8 ; Index of story disk in disk_info - 3
+	sta current_disks - 8,y
+
+	lda #$ff ; Use REU
+	sta use_reu
 }
 	ldy #header_static_mem
 	jsr read_header_word ; Note: This does not work on C128, but we don't support non-vmem on C128!
@@ -1713,38 +1881,20 @@ deletable_init
 
 ; parse_header section
 
-	; Store the size of dynmem AND (if VMEM is enabled)
-	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
-!ifdef TARGET_C128 {
-	; Special case because we need to read a header word from dynmem before dynmem
-	; has been moved to its final location.
-	lda story_start + header_static_mem
-	ldx story_start + header_static_mem + 1
-} else {
-	; Target is not C128
-	ldy #header_static_mem
-	jsr read_header_word
-}
-	stx dynmem_size
-	sta dynmem_size + 1
-	
-!ifdef TARGET_MEGA65 {
-	tay
-	cpx #0
-	beq .maybe_inc_nonstored_pages
-	iny ; Add one page if statmem doesn't start on a new page ($xx00)
-.maybe_inc_nonstored_pages
-	tya
-;	and #vmem_indiv_block_mask ; keep index into kB chunk
-	and #%00000001 ; keep index into kB chunk
-	beq .store_nonstored_pages
-	iny
-.store_nonstored_pages
-	sty nonstored_pages
+	jsr calc_dynmem_size
 
+!ifdef TARGET_MEGA65 {
 	bit m65_statmem_already_loaded
 	bmi + 
-	jsr m65_load_statmem
+;	jsr m65_load_statmem
+	jsr init_screen_colours
+!ifdef SOUND {
+	; When we had to load statmem, we will also need to load sound effects, if any
+	jsr setup_sound_mempointer_32
+	lda #0
+	taz
+	sta [sound_mempointer_32],z
+}	
 +
 }
 	
@@ -1764,7 +1914,11 @@ deletable_init
 	clc
 	adc #>story_start
 	sta vmap_first_ram_page
+!ifdef SCROLLBACK_RAM_PAGES {
+	lda #SCROLLBACK_RAM_START_PAGE
+} else {
 	lda #VMEM_END_PAGE
+}
 	sec
 	sbc vmap_first_ram_page
 	lsr
@@ -1809,11 +1963,31 @@ deletable_init
 .supported_version
 }
 
-	rts
 
-; .configname
-	; !pet "ozmoo.cfg"
-; .configname_len = * - .configname
+!ifdef TARGET_MEGA65 {
+
+!ifdef Z3PLUS {
+	; Store header values for file length and checksum in Attic RAM to say the game has been loaded
+
+	; dynmem_pointer may have been altered by read_word_from_far_dynmem
+	lda #$0
+	sta dynmem_pointer
+	sta dynmem_pointer + 1
+
+	lda #<m65_attic_checksum_page
+	sta mempointer + 1
+	lda #>m65_attic_checksum_page
+	sta mempointer + 2
+	ldz #header_filelength
+-	lda [dynmem_pointer],z
+	sta [mempointer],z
+	inz
+	cpz #header_filelength + 4 ; Compare file length (2 bytes) + checksum (2 bytes)
+	bcc -	
+}
+}
+
+	rts
 
 }
 
@@ -1901,8 +2075,9 @@ insert_disks_at_boot
 
 	cpy #2
 !if SUPPORT_REU = 1 {
-	bcc .copy_data_from_disk_1_to_reu
-	lda reu_needs_loading
+	bcs +
+	jmp .copy_data_from_disk_1_to_reu
++	lda reu_needs_loading
 	beq .dont_need_to_insert_this
 } else {
 	bcc .dont_need_to_insert_this
@@ -1920,7 +2095,6 @@ insert_disks_at_boot
 
 }
 .restore_xy_disk_done
-;	inc $d020
 	ldx zp_temp
 	ldy zp_temp + 1
 
@@ -1938,6 +2112,52 @@ insert_disks_at_boot
 	beq .dont_use_reu
 	lda #$ff ; Use REU
 	sta use_reu
+!ifdef REUBOOST {
+	; Init and enable REU Boost Mode
+	sta reu_boost_mode
+
+!ifdef TARGET_C64 {
+	lda vmap_first_ram_page
+	sta reu_boost_area_start_page
+	lda #>reu_boost_hash_table
+	sec
+	sbc reu_boost_area_start_page
+	bcc .no_boost
+	cmp #4
+	bcc .no_boost
+	sta reu_boost_area_pagecount
+	bcs + ; Always branch
+.no_boost
+	inc reu_boost_mode
+	rts
++	
+}
+
+	lda #<reu_boost_hash_table
+	sta z_temp
+	lda #>reu_boost_hash_table
+	sta z_temp + 1
+	ldx #reu_boost_hash_pages ; Need 2-8 pages depending on game size
+	ldy #0
+	sty reu_boost_vmap_clock
+	tya
+-	sta (z_temp),y
+	iny
+	bne -
+	inc z_temp + 1
+	dex
+	bne -
+	ldy reu_boost_area_pagecount
+	cpy #vmap_max_size
+	bcc +
+	ldy #vmap_max_size
++	sty vmap_max_entries
+	sty vmap_used_entries
+-	sta vmap_z_h - 1,y
+	sta vmap_z_l - 1,y
+	dey
+	bne -
+}
 }
 .dont_use_reu
 	rts
@@ -2023,6 +2243,8 @@ copy_data_from_disk_at_zp_temp_to_reu
 .reu_error
 	jmp reu_error
 
+statmem_reu_banks !byte 0
+
 reu_start
 	lda #0
 	sta use_reu
@@ -2036,9 +2258,8 @@ reu_start
 	jsr check_reu_size
 ;	lda #0 ; SKIP REU FOR DEBUGGING PURPOSES
 	sta reu_banks
-	cmp #8
-	bcc .no_reu_present ; If REU size < 512 KB, don't use it.
-;	sta $0700
+	cmp statmem_reu_banks
+	bcc .no_reu_present ; REU is too small to cache this game
 
 	lda #>.use_reu_question
 	ldx #<.use_reu_question
@@ -2071,7 +2292,7 @@ reu_start
 	rts
 
 .use_reu_question
-	!pet 13,"Use REU? (Y/N) ",0
+	!pet 13,"Use REU for faster play? (Y/N)",0
 
 
 } ; if SUPPORT_REU = 1
@@ -2157,63 +2378,66 @@ prepare_static_high_memory
 
 } ; End of VMEM
 
+!ifdef TARGET_MEGA65 {
+m65_init_reu
+	jsr check_reu_size
+	sta reu_banks
+	rts
+}
+
 
 !ifdef TARGET_MEGA65 {
 m65_load_header
 	ldx #$00
 	stx reu_progress_bar_updates
-	dex
-	stx m65_reu_break_after_first_page
+	inx
+	stx m65_reu_load_page_limit
+	stx m65_reu_enable_load_page_limit
+	bne ++ ; Always branch
 
-	lda #.dynmemfilenamelen
-	ldx #<.dynmemfilename
-	ldy #>.dynmemfilename
-	jsr kernal_setnam ; call SETNAM
+m65_load_dynmem_maybe_statmem
+	ldx m65_statmem_already_loaded
+	beq ++ ; Statmem is not loaded => load entire zcode file
+	ldx nonstored_pages
+	stx m65_reu_load_page_limit
+	ldx #$ff ; Don't store value of nonstored_pages, since it's $00 if dynmem size is >= $fe00
+	stx m65_reu_enable_load_page_limit
 
-	; Start 512KB into Attic RAM
-	lda #>(512 * 1024 / 256)
-	ldx #<(512 * 1024 / 256)
-	
-	jsr m65_load_file_to_reu ; in reu.asm
-
-	rts
-
-
-
-m65_load_dynmem
-	lda #.dynmemfilenamelen
-	ldx #<.dynmemfilename
-	ldy #>.dynmemfilename
+++	lda #.zcodefilenamelen
+	ldx #<.zcodefilename
+	ldy #>.zcodefilename
 	jsr kernal_setnam ; call SETNAM
 
 	ldx #0 ; Start on page 0 (page 0 isn't needed for copy ops on MEGA65)
 	txa
 	
-	jsr m65_load_file_to_reu ; in reu.asm
+	jmp m65_load_file_to_reu ; in reu.asm
 
-	rts
+.zcodefilename
+	!pet "zcode,s,r"
+.zcodefilenamelen = * - .zcodefilename
 
-.dynmemfilename
-	!pet "zcode-dyn,s,r"
-.dynmemfilenamelen = * - .dynmemfilename
-+	
+; .dynmemfilename
+	; !pet "zcode-dyn,s,r"
+; .dynmemfilenamelen = * - .dynmemfilename
+; +	
 
-m65_load_statmem
-	lda #.statmemfilenamelen
-	ldx #<.statmemfilename
-	ldy #>.statmemfilename
-	jsr kernal_setnam ; call SETNAM
+; m65_load_statmem
+	; lda #.statmemfilenamelen
+	; ldx #<.statmemfilename
+	; ldy #>.statmemfilename
+	; jsr kernal_setnam ; call SETNAM
 
-	ldx nonstored_pages
-	lda #0
+	; ldx nonstored_pages
+	; lda #0
 	
-	jsr m65_load_file_to_reu ; in reu.asm
+	; jsr m65_load_file_to_reu ; in reu.asm
 
-	rts
+	; rts
 
-.statmemfilename
-	!pet "zcode-stat,s,r"
-.statmemfilenamelen = * - .statmemfilename
+; .statmemfilename
+	; !pet "zcode-stat,s,r"
+; .statmemfilenamelen = * - .statmemfilename
 }
 
 

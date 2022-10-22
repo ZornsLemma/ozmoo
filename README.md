@@ -11,6 +11,8 @@ Written by Johan Berntsson and Fredrik Ramsberg in 2018-2022
 
 ## Status
 
+Update 2022-Aug-09: Release 11 with support for a scrollback buffer on MEGA65, C64 with REU and C128 with REU. Ozmoo can also utilize smaller REUs now.
+
 Update 2022-Jun-16: Release 10 with MEGA65 support for sound, unlimited dynamic memory and large stack (the stack mod makes it possible to play some lightweight Inform 7 games).
 
 Update 2021-Nov-28: Release 9 with support for z1, z2 and z7 games.
@@ -59,7 +61,7 @@ The simple answer: Ozmoo should be able to run most Z-code games, regardless of 
 
 The longer answer:
 * Ozmoo supports version 1, 2, 3, 4, 5, 7 and 8 of Z-code. This means you can run all but version 6 games (version 6 = Infocom games with graphics).
-* A Z-code file always starts with a section called dynamic memory. On C64, C128 and Plus/4, Ozmoo can handle games with up to roughly 35 KB of dynamic memory. It differs a bit depending on platform. On the MEGA65, there is no limtation.
+* A Z-code file always starts with a section called dynamic memory. On C64, C128 and Plus/4, Ozmoo can handle games with up to roughly 35 KB of dynamic memory. It differs a bit depending on platform. On the MEGA65, there is no limitation.
 * If you want to run Ozmoo on a system with a single 1541 drive (or an emulation of one), the part of the game file that is not dynamic memory can be no larger than 170 KB. This typically means the game file can be about 190 KB in size.
 * When using the C64, C128 or Plus/4, most Inform 6 games and all Inform 7 games are too slow to be any fun on Ozmoo. Inform 7 games can also be expected to crash at any time because they expect a much bigger stack than Ozmoo can offer. The games that perform well are typically PunyInform games, ZIL games, Infocom games and Inform 5 games. Early Inform 6 games (using library 6/1 or 6/2) may also be fast enough. On the MEGA65, pretty much any Inform 6 game should work well, and you can even create a huge stack with option `-sp:64` to support Inform 7 games. Less demanding Inform 7 games can work pretty well on the MEGA65.
 
@@ -75,6 +77,7 @@ Ozmoo supports:
 * Custom character mappings, allowing for games using accented characters. Comes with predefined mappings for Swedish, Danish, German, Italian, Spanish and French.
 * Custom colour schemes.
 * A fully configurable secondary colour scheme (darkmode) which the player can toggle by pressing the F1 key.
+* A scrollback buffer, letting the player reread the text that has scrolled off the screen. Requires a MEGA65, a C64 with an REU or a C128 with an REU.
 * A configurable splash screen which is shown just before the game starts.
 * Up to ten save slots on a save disk (and most games will get the full ten slots).
 * Writing a name for each saves position.

@@ -8,7 +8,13 @@ inc_z_pc_page
 !ifdef VMEM {
 	bne +
 	inc z_pc
-+	lda z_pc + 1
++
+!ifdef REUBOOST {
+	; If REU Boost Mode is enabled, we must always search for the next page
+	bit reu_boost_mode
+	bmi get_page_at_z_pc_did_pha
+}
+	lda z_pc + 1
 	and #vmem_indiv_block_mask
 	beq get_page_at_z_pc_did_pha
 	lda z_pc_mempointer + 1
@@ -52,6 +58,12 @@ set_z_pc
 		; Different page.
 	!ifdef VMEM {
 		; Let's find out if it's the same vmem block.
+		!ifdef REUBOOST {
+			; In REU Boost Mode, a vmem block is just 1 page
+			; so now we have to retrieve a new page
+			bit reu_boost_mode
+			bmi .unsafe_2
+		}
 		txa
 		eor z_pc + 1
 		and #(255 - vmem_indiv_block_mask)
@@ -160,42 +172,89 @@ get_page_at_z_pc_did_pha
 }
 
 !zone {
-; !ifdef VMEM {
-; .reu_copy
-	; ; a = source C64 page
-	; ; y = destination C64 page
-	; stx mem_temp
-	; sty mem_temp + 1
-	; ; Copy to REU
-	; tay
-	; lda #0
-	; tax
-	; jsr store_reu_transfer_params
-	; lda #%10000000;  c64 -> REU with delayed execution
-	; sta reu_command
-	; sei
-	; +set_memory_all_ram_unsafe
-	; lda $ff00
-	; sta $ff00
-	; +set_memory_no_basic_unsafe
-	; cli
-	; ; Copy to C64
-	; txa ; X is already 0, set a to 0 too
-	; ldy mem_temp + 1
-	; jsr store_reu_transfer_params
-	; lda #%10000001;  REU -> c64 with delayed execution
-	; sta reu_command
-	; sei
-	; +set_memory_all_ram_unsafe
-	; lda $ff00
-	; sta $ff00
-	; +set_memory_no_basic_unsafe
-	; cli
-	; ldx mem_temp
-	; ldy #0
-	; rts
-; }	
 !ifdef TARGET_C128 {
+copy_page_c128_via_reu
+
+	sei
+	stx .load_bank_again + 1
+	sty .load_dest_page + 1
+
+	tay
+	cmp #$10
+	bcc + ; If source address < $1000, it's always in bank 0
+	; Copy bank bit to VIC bank selection bit, which also controls REU bank
+	txa
+	lsr
+	ror
+	lsr ; Bank bit is now in bit 6
+	ora $d506
+	sta $d506
++	
+
+	lda #0
+	tax
+	clc
+	jsr store_reu_transfer_params
+
+	lda #0
+	sta allow_2mhz_in_40_col
+	sta reg_2mhz	;CPU = 1MHz
+
+	lda #%10100000;  c128 -> REU with delayed execution
+	sta reu_command
+.load_bank_again
+	ldx #00  ; This value is altered at the start of this routine
+	beq +
+	jsr perform_reu_copy_bank_1
++
+;	sta c128_mmu_load_pcrb,x
+	sta c128_mmu_load_pcrb
+	lda $ff00
+	sta $ff00
+	sta c128_mmu_load_pcra
+
+.load_dest_page
+	ldy #00 ; This value is altered at the start of this routine
+	sty reu_c64base + 1
+
+;	ldx .load_bank_again + 1 ; Already loaded
+	cpy #$10
+	bcs + ; If source address >= $1000, use the bank in x
+	ldx #0 ; Source address < $1000, set bank to 0
+	; Copy bank bit to VIC bank selection bit, which also controls REU bank
++	txa
+	lsr
+	ror
+	lsr ; Bank bit is now in bit 6
+	sta .ora_bank_bit + 1
+	lda $d506
+	and #%00111111
+.ora_bank_bit
+	ora #0
+	sta $d506
+
+	lda #%10100001;  REU -> c128 with delayed execution
+	sta reu_command
+
+	ldx .load_bank_again + 1
+	beq +
+	jsr perform_reu_copy_bank_1
++
+;	ldx .load_bank_again + 1 ; Already loaded
+	sta c128_mmu_load_pcrb
+;	sta c128_mmu_load_pcrb,x
+	lda $ff00
+	sta $ff00
+
+	sta c128_mmu_load_pcra
+
+	lda $d506
+	and #%00111111
+	sta $d506
+
+	cli
+	jmp restore_2mhz
+
 copy_page_c128_src
 ; a = source
 ; y = destination
@@ -207,7 +266,16 @@ copy_page_c128_src
 
 ; Skip speed decrease if we can
 	lda COLS_40_80
+!if SUPPORT_REU = 1 {
+	beq ++
+	lda use_reu
+	beq +
+	lda .copy + 2
+	jmp copy_page_c128_via_reu
+++	
+} else {
 	bne + ; In 80 col mode, there is no reason to lower speed
+}
 	bit $d011
 	bmi + ; If we're at raster line > 255, stay at 2 MHz
 	lda $d012
@@ -230,6 +298,15 @@ copy_page_c128_src
 	sta c128_mmu_load_pcra
 	cli
 	rts
+
+!if SUPPORT_REU = 1 {
+perform_reu_copy_bank_1
+	sta c128_mmu_load_pcrc
+	lda $ff00
+	sta $ff00
+	sta c128_mmu_load_pcra
+	rts
+}
 
 read_word_from_far_dynmem
 ; a = zp vector pointing to base address
@@ -358,10 +435,13 @@ write_word_far_dynmem_zp_2 = .write_word_2 + 1
 
 } else { ; not TARGET_MEGA65
 
-; !ifdef VMEM {
-	; bit use_reu
-	; bmi .reu_copy
-; }
+; This is not for C128 or MEGA65
+
+
+!if SUPPORT_REU = 1 {
+	bit use_reu
+	bmi .reu_copy
+}
 	sta .copy + 2
 	sty .copy + 5
 	sei
@@ -377,6 +457,42 @@ write_word_far_dynmem_zp_2 = .write_word_2 + 1
 	+set_memory_no_basic_unsafe
 	cli
 	rts
+
+!if SUPPORT_REU = 1 {
+.reu_copy
+	sty .load_dest_page + 1
+	tay
+	lda #0
+	tax
+	clc
+	jsr store_reu_transfer_params
+	lda #%10100000;  c64 -> REU with delayed execution
+	sta reu_command
+	sei
+	+set_memory_all_ram_unsafe
+	+before_dynmem_read
+	lda $ff00
+	sta $ff00
+	+after_dynmem_read
+	+set_memory_no_basic_unsafe
+
+.load_dest_page
+	ldy #00 ; This value is altered at the start of this routine
+	sty reu_c64base + 1
+	lda #%10100001;  REU -> c64 with delayed execution
+	sta reu_command
+	+set_memory_all_ram_unsafe
+	+before_dynmem_read
+	lda $ff00
+	sta $ff00
+	+after_dynmem_read
+	+set_memory_no_basic_unsafe
+	cli
+
+	rts
+}
+
+
 } ; Not TARGET_MEGA65
 
 } ; end zone

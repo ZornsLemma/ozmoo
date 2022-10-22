@@ -13,6 +13,7 @@ CURRENT_DEVICE        = $ba
 COLS_40_80            = $d7
 keyboard_buff_len     = $d0
 keyboard_buff         = $34a
+key_repeat            = $0a22
 
 ; --- ZERO PAGE -- ; available zero page variables (pseudo registers)
 mempointer_y          = $08 ; !byte 0 ### OK C128
@@ -98,7 +99,7 @@ abbreviation_command  = $75 ; ### OK C128
 z_opcode              = $77 ; ### OK C128
 z_extended_opcode     = $78 ; ### OK C128
 z_opcode_number       = $79 ; ### OK C128
-z_opcode_opcount      = $7b ; ### OK C128
+;z_opcode_opcount      = $7b ; ### OK C128
 z_operand_count       = $7c ; ### OK C128
 
 vmap_max_entries      = $80 ; ### OK C128 Was $92
@@ -138,6 +139,9 @@ max_chars_on_line      = $c5 ; ### OK C128
 
 z_address			   = $c8 ; 3 bytes ### OK C128
 z_address_temp		   = $cb ; ### OK C128
+
+;reu_boost_pointer      = $e6 ; 2 bytes
+reu_boost_vmap_clock   = $e6
 
 zp_screenline          = $f1 ; 2 bytes current line (pointer to screen memory)
 zp_screencolumn        = $f3 ; 1 byte current cursor column
