@@ -146,7 +146,7 @@ The Commodore Plus/4 version makes use of the simplified memory map compared to 
 
 ## MEGA65
 
-The MEGA65 version is very similar to the C64 version of Ozmoo. It runs in C64 mode on the MEGA65, but uses the 80 column screen mode, extended sound support, higher clockspeed, and the extra RAM of the MEGA65. The maximum amount of dynamic memory is about 35 KB. The only supported build mode is -81. A loader image is currently not supported.
+The MEGA65 version is very similar to the C64 version of Ozmoo. It runs in C64 mode on the MEGA65, but uses the 80 column screen mode, extended sound support, higher clockspeed, and the extra RAM of the MEGA65. There is no limitation on dynamic memory size. The only supported build mode is -81. A loader image is currently not supported.
 
 ## Other targets
 
@@ -285,8 +285,8 @@ Ozmoo lets you pick two different colour schemes for your game. We refer to thes
 
 make.rb has the following switches to control colours:
 
-    -dd
-Disables darkmode.
+    -dm:0
+Disables darkmode. (-dm or -dm:1 can be used to enable it, but it's already enabled by default unless the game is Beyond Zork)
 
     -rc:(Z-code colour)=(C64 colour), ...
 Replace colours: Replaces one or more colours in the Z-code palette with the specified colours in the C64 palette.
@@ -439,17 +439,17 @@ Since sound effect 1 and 2 are reserved for beeps, the sample based sound effect
 
 ## Legacy support for Sherlock and The Lurking Horror
 
-Ozmoo has includes support for Sherlock and The Lurking Horror from Infocom. The easiest way of getting these games complete with sound effects for the MEGA65 is to generate them from Ozmoo Online: https://microheaven.com/ozmooonline/, but it is also possible to convert and use sound files from the Amiga version of the games with Ozmoo.
+Ozmoo includes support for Sherlock and The Lurking Horror from Infocom, with sound effects. While they can't be built with sound support on Ozmoo Online, there is a link there to download them for the MEGA65. Go to https://microheaven.com/ozmooonline/ and search for "sherlock" on the page. 
 
-The original sound files can be found in various places on the Internet, including at the Interactive Fiction Archive: https://ifarchive.org/indexes/if-archive/infocom/media/sound/
+If you have Ozmoo installed on your own computer, you can download a Blorb archive of AIFF versions of the sound files from: https://ifarchive.org/indexes/if-archive/infocom/media/blorb/
 
 The individial sound files must be extracted from the archive. For blorb files there are various tools, such as rezrov, available: https://ifarchive.org/indexes/if-archiveXprogrammingXblorb.html
 
-The blorb files contain sound files in aiff format, that should be moved to a folder that is later included with the -asa switch when using the make.rb script to build the game. Make sure that the filenames follow the pattern described above (staring with 003.aiff). 
+The AIFF files should be moved to a folder that is later included with the -asa switch when using the make.rb script to build the game. Make sure that the filenames follow the pattern described above (starting with 003.aiff). 
 
-Example: assuming that the sound files are stored in a folder called "lurking", this command will build and start the Lurking Horror in the xemu-xmega65 emulator
+Example: assuming that the sound files are stored in a folder called "lurking_sounds", this command will build and start the Lurking Horror in the xemu-xmega65 emulator
 
-    ruby make.rb -s -ch -t:mega65 -asw lurking lurkinghorror-r221-s870918.z3
+    ruby make.rb -s -ch -t:mega65 -asw lurking_sounds lurkinghorror-r221-s870918.z3
 
 # Loader image
 
@@ -462,10 +462,14 @@ make.rb -i spaceship.mb -t:plus4 game.z5
 
 # Command line history
 
-There is an optional command line history feature that can be activated by -ch. If activated, it uses the wasted space between the interpreter and the virtual memory buffers to store command lines, that can later be retrieved using the cursor up and down keys. The maximum space allowed for the history is 256 bytes, but the stored lines are saved compactly so if only short commands like directions, "i" and "open door" etc are used it will fit quite a lot.
+There is an optional command line history feature that can be activated by -ch. If activated, it uses the wasted space between the interpreter and the virtual memory buffers to store command lines, that can later be retrieved using the cursor up and down keys. The maximum space allowed for the history is 255 bytes, but the stored lines are saved compactly so if only short commands like directions, "i" and "open door" etc are used it will fit quite a lot.
 
-Since memory is limited on old computers this feature is disabled by default. To
-enable it use -ch. This will allocate a history buffer large enough to be useful. It is also possible to manually define the minimal size of the history buffer with -ch:n, where n is 20-255 bytes.
+Since memory is limited on old computers this feature is disabled by default, except for MEGA65. To
+enable it use -ch or -ch:1. This will allocate a history buffer large enough to be useful. It is also possible to manually define the minimal size of the history buffer with -ch:n, where n is 20-255 (bytes). Use -ch:0 to disable it.
+
+# Scrollback buffer
+
+Allows the player to press F5 to enter scrollback mode, where they can scroll up and down through the text that has scrolled off the screen. Requires a MEGA65, or a C64 or C128 with REU. Also, the REU has to be big enough to hold the buffer. The buffer is 1 MB in size for the MEGA65, 64 KB for a C64 or C128 with REU. Scrollback buffer is enabled by default for MEGA65 only. Enable it with -sb or -sb:1. Disable it with -sb:0.
 
 # Miscellaneous options
 
@@ -473,13 +477,11 @@ enable it use -ch. This will allocate a history buffer large enough to be useful
 
 -sp:n is used to set the size of the Z-machine stack, in pages (1 page = 256 bytes). The default value is 4. Many games, especially ones from Infocom, can be run with just two pages of stack. The main reason for reducing this to two pages would be to squeeze in a slightly bigger game in build mode P, or to build a game where dynamic memory is slightly too big with the standard settings.
 
-## Option -u
-
--u is used to enable the "unsafe" mode, which remove some runtime checks, reducing code size and increasing speed. This is typically used when the game is in a good state, but you need to make it smaller to fit into the available memory.
+To run an Inform 7 game (which may be feasible on the MEGA65), you want to set the number of stack pages to its highest setting: 64.
 
 ## Option -cm:[xx]
 
-Ozmoo has some support for using accented characters in games. This is documented in detail in the tech report, but assuming that suitable fonts and character maps have been prepared, the -cm option is used to enable this character map. By default, Ozmoo have support for these character maps: sv, da, de, it, es and fr, for Swedish, Danish, German, Italian, Spanish and French, respectivily.
+Ozmoo has some support for using accented characters in games. This is documented in detail in the tech report, but assuming that suitable fonts and character maps have been prepared, the -cm option is used to enable this character map. By default, Ozmoo has support for these character maps: sv, da, de, it, es and fr, for Swedish, Danish, German, Italian, Spanish and French, respectivily.
 
 ## Option -in:[n]
 
@@ -500,3 +502,15 @@ The interpreter numbers, originally defined by Infocom, are as follows:
     11 = Tandy Color
 
 The interpreter number is used by a few games to modify the screen output format. In Ozmoo we set 2 for Beyond Zork, 7 for C128 builds,  and 8 for other games by default, but -in allows you to try other interpreter numbers.
+
+## Option -rb[:0|1]
+
+-rb or -rb:1 enables REU Boost, while -rb:0 disables it. REU Boost adds ~160 bytes to the interpreter size.
+
+## Option -re[:0|1]
+
+-re or -re:1 enables extended runtime error checks, while -re:0 disables them. They are enabled by default on MEGA65 only.
+
+## Option -sl[:0|1]
+
+-sl or -sl:1 enables slow mode, while -sl:0 disables it. This has an effect on builds for C64 only, and not in -P build mode. Slow mode removes some optimizations for speed, making the interpreter slightly smaller.

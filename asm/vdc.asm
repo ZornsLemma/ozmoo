@@ -35,7 +35,12 @@ VDC_CPYSRC_HI = 32 ; $20
 VDC_CPYSRC_LO = 33 ; $21
 
 VDCInit
+	; In: A = Background colour
+	
 	; set the default VDC configuration
+	; colours
+	ldx #VDC_COLORS
+	jsr VDCWriteReg
 	; screen $0000 (reg 12,13)
 	lda #$00  ; 7f
 	ldx #VDC_DSP_HI
@@ -54,10 +59,6 @@ VDCInit
 	lda #$2f
 	ldx #VDC_CSET
 	jsr VDCWriteReg
-	; colours
-	lda #$f0
-	ldx #VDC_COLORS
-	jsr VDCWriteReg
 	; number of lines
 	lda #$19
 	ldx #VDC_VDISP
@@ -67,13 +68,21 @@ VDCInit
 VDCSetAddress
 	; sets the current address of the VDC
 	; input: a low, y = high
-	pha
-	tya
-	ldx     #VDC_DATA_HI
-	jsr     VDCWriteReg
-	pla
 	ldx     #VDC_DATA_LO
-	bne     VDCWriteReg
+	stx     VDC_ADDR_REG
+	sta     VDC_DATA_REG
+	ldx     #VDC_DATA_HI
+	stx     VDC_ADDR_REG
+	sty     VDC_DATA_REG
+	rts
+	
+	; pha
+	; tya
+	; ldx     #VDC_DATA_HI
+	; jsr     VDCWriteReg
+	; pla
+	; ldx     #VDC_DATA_LO
+	; bne     VDCWriteReg
 
 VDCSetCopySourceAddress
 	; sets the copy source address of the VDC
@@ -101,7 +110,7 @@ VDCWriteByte
 	; writes a byte (character) from the current VDC address
 	ldx     #VDC_DATA ; write data (byte/character)
 VDCWriteReg
-	; reads to a VDC register
+	; writes to a VDC register
 	stx     VDC_ADDR_REG
 -   bit     VDC_ADDR_REG
 	bpl     -

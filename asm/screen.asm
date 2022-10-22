@@ -521,7 +521,7 @@ show_more_prompt
 	jsr colour1k
 }
 .check_for_keypress
-	ldx s_screen_width
+	ldx #40
 ---	lda ti_variable + 2 ; $a2
 -	cmp ti_variable + 2 ; $a2
 	beq -
@@ -713,6 +713,9 @@ printchar_buffered
 	beq +
 	txa ; kernal_printchar destroys x,y
 	pha
+!ifndef ACORN {
+	!error "Big chunk of non-Acorn code deleted here"
+}
 	lda print_buffer2,x
 	sta s_reverse
 	lda print_buffer,x

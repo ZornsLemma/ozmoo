@@ -29,10 +29,12 @@
 		SLOW = 1
 	}
 	!ifdef SLOW {
-		; This is never used, since VMEM is always enabled for this target
 		!ifndef VMEM {
 			SKIP_BUFFER = 1
 		}
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
 	}
 }
 !ifdef TARGET_PLUS4 {
@@ -43,6 +45,14 @@
 	SUPPORT_REU = 0
 	!ifndef SLOW {
 		SLOW = 1
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
+		; SCROLLBACK_RAM_PAGES may be set by make.rb;
+		; Must be an even number, where 6 * 4 <= SCROLLBACK_RAM_PAGES <= 11 * 4
+		!ifndef SCROLLBACK_RAM_PAGES {
+			SCROLLBACK_RAM_PAGES = 6 * 4
+		}
 	}
 }
 !ifdef TARGET_C64 {
@@ -56,8 +66,15 @@
 	VMEM_END_PAGE = $fc
 	HAS_SID = 1
 	SUPPORT_80COL = 1;
+	SUPPORT_REU = 1
+;	REUBOOST = 1
 	!ifndef SLOW {
 		SLOW = 1
+	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
+		; SCROLLBACK_RAM_PAGES may be set by make.rb;
+		; Must be an even number, where 6 * 4 <= SCROLLBACK_RAM_PAGES <= 11 * 4
 	}
 }
 } else {
@@ -83,6 +100,9 @@
 			SKIP_BUFFER = 1
 		}
 	}
+	!ifndef NOSCROLLBACK {
+		SCROLLBACK = 1
+	}
 }
 
 !ifndef ACORN { ; SFTODO!?
@@ -94,6 +114,7 @@
 	!ifndef SUPPORT_REU {
 		SUPPORT_REU = 0
 	}
+	; SFTODO: SCROLLBACK/NOSCROLLBACK?
 }
 
 
@@ -112,6 +133,10 @@
 	}
 }
 }
+}
+
+!ifdef SCROLLBACK_RAM_PAGES {
+	SCROLLBACK_RAM_START_PAGE = (VMEM_END_PAGE - SCROLLBACK_RAM_PAGES) & $ff ; VMEM_END_PAGE is 0 for C64, hence & $ff
 }
 
 !ifndef TERPNO {
@@ -290,7 +315,26 @@
 }
 
 !ifndef SPLASHWAIT {
-	SPLASHWAIT = 3
+	SPLASHWAIT = 15
+}
+
+!ifndef Z5PLUS {
+	COLOURFUL_LOWER_WIN = 1
+}
+!ifdef USE_INPUTCOL {
+	!ifndef COLOURFUL_LOWER_WIN {
+		COLOURFUL_LOWER_WIN = 1
+	}
+}
+!if CURSORCOL > 1 {
+	!ifndef COLOURFUL_LOWER_WIN {
+		COLOURFUL_LOWER_WIN = 1
+	}
+}
+!if CURSORCOLDM > 1 {
+	!ifndef COLOURFUL_LOWER_WIN {
+		COLOURFUL_LOWER_WIN = 1
+	}
 }
 
 ; To improve readability of code and avoid double-nesting so we can test for
@@ -329,14 +373,8 @@ ACORN_PRIVATE_RAM_SUPPORTED = 1
 
 program_start
 
-;	lda #4
-;	sta $d020
-
-;	lda #$41
-;	jsr $ffd2
-;	jsr wait_a_sec
-
 !ifdef TARGET_C128 {
+	lda #$f0 ; Background colour
 	jsr VDCInit
 	; initialize is in Basic LO ROM in C128 mode, so we need
 	; to turn off BASIC already here. Since the set_memory_no_basic
@@ -362,384 +400,398 @@ initial_jmp
 ; =========================================== Highbytes of jump table
 
 z_jump_high_arr
+
 ; 0OP
-	!byte >z_ins_rtrue
-	!byte >z_ins_rfalse
-	!byte >z_ins_print
-	!byte >z_ins_print_ret
-	!byte >z_ins_nop
+
+z_opcount_0op_jump_high_arr
+	!byte >z_ins_rtrue - 1
+	!byte >(z_ins_rfalse - 1)
+	!byte >(z_ins_print - 1)
+	!byte >(z_ins_print_ret - 1)
+	!byte >(z_ins_nop - 1)
 !ifndef Z5PLUS {
-	!byte >z_ins_save
-	!byte >z_ins_restore
+	!byte >(z_ins_save - 1)
+	!byte >(z_ins_restore - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 !ifdef RESTART_SUPPORTED {
-	!byte >z_ins_restart
+	!byte >(z_ins_restart - 1)
 } else {
-	!byte >z_ins_not_supported
+	!byte >(z_ins_not_supported - 1)
 }
-	!byte >z_ins_ret_popped
+	!byte >(z_ins_ret_popped - 1)
 !ifndef Z5PLUS {
-	!byte >stack_pull ; z_ins_pop
+	!byte >(stack_pull - 1) ; z_ins_pop
 } else {
-	!byte >z_ins_catch
+	!byte >(z_ins_catch - 1)
 }
-	!byte >z_ins_quit
-	!byte >z_ins_new_line
+	!byte >(z_ins_quit - 1)
+	!byte >(z_ins_new_line - 1)
 !ifndef Z4PLUS {
-	!byte >z_ins_show_status
+	!byte >(z_ins_show_status - 1)
 } else {
-	!byte >z_ins_nop ; should be nop according to show_status/spec 1.0
+	!byte >(z_ins_nop - 1) ; should be nop according to show_status/spec 1.0
 }
-	!byte >make_branch_true ; z_ins_verify
+	!byte >(make_branch_true - 1) ; z_ins_verify
 !ifdef Z5PLUS {
-	!byte >z_not_implemented
-	!byte >make_branch_true ; z_ins_piracy
+	!byte >(z_not_implemented - 1)
+	!byte >(make_branch_true - 1) ; z_ins_piracy
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 
 ; 1OP
 
-	!byte >z_ins_jz
-	!byte >z_ins_get_sibling
-	!byte >z_ins_get_child
-	!byte >z_ins_get_parent
-	!byte >z_ins_get_prop_len
-	!byte >z_ins_inc
-	!byte >z_ins_dec
-	!byte >z_ins_print_addr
-	!byte >z_ins_call_xs
-	!byte >z_ins_remove_obj
-	!byte >z_ins_print_obj
-	!byte >z_ins_ret
-	!byte >z_ins_jump
-	!byte >z_ins_print_paddr
-	!byte >z_ins_load
+z_opcount_1op_jump_high_arr
+	!byte >(z_ins_jz - 1)
+	!byte >(z_ins_get_sibling - 1)
+	!byte >(z_ins_get_child - 1)
+	!byte >(z_ins_get_parent - 1)
+	!byte >(z_ins_get_prop_len - 1)
+	!byte >(z_ins_inc - 1)
+	!byte >(z_ins_dec - 1)
+	!byte >(z_ins_print_addr - 1)
+	!byte >(z_ins_call_xs - 1)
+	!byte >(z_ins_remove_obj - 1)
+	!byte >(z_ins_print_obj - 1)
+	!byte >(z_ins_ret - 1)
+	!byte >(z_ins_jump - 1)
+	!byte >(z_ins_print_paddr - 1)
+	!byte >(z_ins_load - 1)
 !ifndef Z5PLUS {
-	!byte >z_ins_not
+	!byte >(z_ins_not - 1)
 } else {
-	!byte >z_ins_call_xn
+	!byte >(z_ins_call_xn - 1)
 }
 
 ; 2OP
 
-	!byte >z_not_implemented
-	!byte >z_ins_je
-	!byte >z_ins_jl
-	!byte >z_ins_jg
-	!byte >z_ins_dec_chk
-	!byte >z_ins_inc_chk
-	!byte >z_ins_jin
-	!byte >z_ins_test
-	!byte >z_ins_or
-	!byte >z_ins_and
-	!byte >z_ins_test_attr
-	!byte >z_ins_set_attr
-	!byte >z_ins_clear_attr
-	!byte >z_ins_store
-	!byte >z_ins_insert_obj
-	!byte >z_ins_loadw_and_storew
-	!byte >z_ins_loadb
-	!byte >z_ins_get_prop
-	!byte >z_ins_get_prop_addr
-	!byte >z_ins_get_next_prop
-	!byte >z_ins_add
-	!byte >z_ins_sub
-	!byte >z_ins_mul
-	!byte >z_ins_div
-	!byte >z_ins_mod
+z_opcount_2op_jump_high_arr
+	!byte >(z_not_implemented - 1)
+	!byte >(z_ins_je - 1)
+	!byte >(z_ins_jl - 1)
+	!byte >(z_ins_jg - 1)
+	!byte >(z_ins_dec_chk - 1)
+	!byte >(z_ins_inc_chk - 1)
+	!byte >(z_ins_jin - 1)
+	!byte >(z_ins_test - 1)
+	!byte >(z_ins_or - 1)
+	!byte >(z_ins_and - 1)
+	!byte >(z_ins_test_attr - 1)
+	!byte >(z_ins_set_attr - 1)
+	!byte >(z_ins_clear_attr - 1)
+	!byte >(z_ins_store - 1)
+	!byte >(z_ins_insert_obj - 1)
+	!byte >(z_ins_loadw_and_storew - 1)
+	!byte >(z_ins_loadb - 1)
+	!byte >(z_ins_get_prop - 1)
+	!byte >(z_ins_get_prop_addr - 1)
+	!byte >(z_ins_get_next_prop - 1)
+	!byte >(z_ins_add - 1)
+	!byte >(z_ins_sub - 1)
+	!byte >(z_ins_mul - 1)
+	!byte >(z_ins_div - 1)
+	!byte >(z_ins_mod - 1)
 !ifndef Z4PLUS {
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
 } else {
-	!byte >z_ins_call_xs
+	!byte >(z_ins_call_xs - 1)
 }
 !ifndef Z5PLUS {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 } else {
-	!byte >z_ins_call_xn
-	!byte >z_ins_set_colour
-	!byte >z_ins_throw
+	!byte >(z_ins_call_xn - 1)
+	!byte >(z_ins_set_colour - 1)
+	!byte >(z_ins_throw - 1)
 }
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 
 ; VAR	
 
-	!byte >z_ins_call_xs
-	!byte >z_ins_loadw_and_storew
-	!byte >z_ins_storeb
-	!byte >z_ins_put_prop
-	!byte >z_ins_read
-	!byte >z_ins_print_char
-	!byte >z_ins_print_num
-	!byte >z_ins_random
-	!byte >z_ins_push
-	!byte >z_ins_pull
-	!byte >z_ins_split_window
-	!byte >z_ins_set_window
+z_opcount_var_jump_high_arr
+	!byte >(z_ins_call_xs - 1)
+	!byte >(z_ins_loadw_and_storew - 1)
+	!byte >(z_ins_storeb - 1)
+	!byte >(z_ins_put_prop - 1)
+	!byte >(z_ins_read - 1)
+	!byte >(z_ins_print_char - 1)
+	!byte >(z_ins_print_num - 1)
+	!byte >(z_ins_random - 1)
+	!byte >(z_ins_push - 1)
+	!byte >(z_ins_pull - 1)
+	!byte >(z_ins_split_window - 1)
+	!byte >(z_ins_set_window - 1)
 !ifdef Z4PLUS {
-	!byte >z_ins_call_xs
-	!byte >z_ins_erase_window
-	!byte >z_ins_erase_line
-	!byte >z_ins_set_cursor
-	!byte >z_ins_get_cursor
-	!byte >z_ins_set_text_style
-	!byte >z_ins_buffer_mode
+	!byte >(z_ins_call_xs - 1)
+	!byte >(z_ins_erase_window - 1)
+	!byte >(z_ins_erase_line - 1)
+	!byte >(z_ins_set_cursor - 1)
+	!byte >(z_ins_get_cursor - 1)
+	!byte >(z_ins_set_text_style - 1)
+	!byte >(z_ins_buffer_mode - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
-	!byte >z_ins_output_stream
-	!byte >z_ins_not_supported
-	!byte >z_ins_sound_effect
+	!byte >(z_ins_output_stream - 1)
+	!byte >(z_ins_not_supported - 1)
+	!byte >(z_ins_sound_effect - 1)
 !ifdef Z4PLUS {
-	!byte >z_ins_read_char
-	!byte >z_ins_scan_table
+	!byte >(z_ins_read_char - 1)
+	!byte >(z_ins_scan_table - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 !ifdef Z5PLUS {
-	!byte >z_ins_not
-	!byte >z_ins_call_xn
-	!byte >z_ins_call_xn
-	!byte >z_ins_tokenise_text
-	!byte >z_ins_encode_text
-	!byte >z_ins_copy_table
-	!byte >z_ins_print_table
-	!byte >z_ins_check_arg_count
+	!byte >(z_ins_not - 1)
+	!byte >(z_ins_call_xn - 1)
+	!byte >(z_ins_call_xn - 1)
+	!byte >(z_ins_tokenise_text - 1)
+	!byte >(z_ins_encode_text - 1)
+	!byte >(z_ins_copy_table - 1)
+	!byte >(z_ins_print_table - 1)
+	!byte >(z_ins_check_arg_count - 1)
 } else {
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
 }
 
 ; EXT
 
+z_opcount_ext_jump_high_arr
 !ifdef Z5PLUS {
-	!byte >z_ins_save
-	!byte >z_ins_restore
-	!byte >z_ins_log_shift
-	!byte >z_ins_art_shift
-	!byte >z_ins_set_font
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_not_implemented
-	!byte >z_ins_save_restore_undo
-	!byte >z_ins_save_restore_undo
-	!byte >z_ins_print_unicode
-	!byte >z_ins_check_unicode
-	!byte >z_ins_set_true_colour
+	!byte >(z_ins_save - 1)
+	!byte >(z_ins_restore - 1)
+	!byte >(z_ins_log_shift - 1)
+	!byte >(z_ins_art_shift - 1)
+	!byte >(z_ins_set_font - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_not_implemented - 1)
+	!byte >(z_ins_save_restore_undo - 1)
+	!byte >(z_ins_save_restore_undo - 1)
+	!byte >(z_ins_print_unicode - 1)
+	!byte >(z_ins_check_unicode - 1)
+	!byte >(z_ins_set_true_colour - 1)
 }
 
 
 ; =========================================== Lowbytes of jump table
 	
 z_jump_low_arr
-	!byte <z_ins_rtrue
-	!byte <z_ins_rfalse
-	!byte <z_ins_print
-	!byte <z_ins_print_ret
-	!byte <z_ins_nop
+
+; 0OP
+
+z_opcount_0op_jump_low_arr
+	!byte <(z_ins_rtrue - 1)
+	!byte <(z_ins_rfalse - 1)
+	!byte <(z_ins_print - 1)
+	!byte <(z_ins_print_ret - 1)
+	!byte <(z_ins_nop - 1)
 !ifndef Z5PLUS {
-	!byte <z_ins_save
-	!byte <z_ins_restore
+	!byte <(z_ins_save - 1)
+	!byte <(z_ins_restore - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 !ifdef RESTART_SUPPORTED {
-	!byte <z_ins_restart
+	!byte <(z_ins_restart - 1)
 } else {
-	!byte <z_ins_not_supported
+	!byte <(z_ins_not_supported - 1)
 }
-	!byte <z_ins_ret_popped
+	!byte <(z_ins_ret_popped - 1)
 !ifndef Z5PLUS {
-	!byte <stack_pull ; z_ins_pop
+	!byte <(stack_pull - 1) ; z_ins_pop
 } else {
-	!byte <z_ins_catch
+	!byte <(z_ins_catch - 1)
 }
-	!byte <z_ins_quit
-	!byte <z_ins_new_line
+	!byte <(z_ins_quit - 1)
+	!byte <(z_ins_new_line - 1)
 !ifndef Z4PLUS {
-	!byte <z_ins_show_status
+	!byte <(z_ins_show_status - 1)
 } else {
-	!byte <z_ins_nop ; should be nop according to show_status/spec 1.0
+	!byte <(z_ins_nop - 1) ; should be nop according to show_status/spec 1.0
 }
-	!byte <make_branch_true ; z_ins_verify
+	!byte <(make_branch_true - 1) ; z_ins_verify
 !ifdef Z5PLUS {
-	!byte <z_not_implemented
-	!byte <make_branch_true ; z_ins_piracy
+	!byte <(z_not_implemented - 1)
+	!byte <(make_branch_true - 1) ; z_ins_piracy
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 
 ; 1OP
 
-	!byte <z_ins_jz
-	!byte <z_ins_get_sibling
-	!byte <z_ins_get_child
-	!byte <z_ins_get_parent
-	!byte <z_ins_get_prop_len
-	!byte <z_ins_inc
-	!byte <z_ins_dec
-	!byte <z_ins_print_addr
-	!byte <z_ins_call_xs
-	!byte <z_ins_remove_obj
-	!byte <z_ins_print_obj
-	!byte <z_ins_ret
-	!byte <z_ins_jump
-	!byte <z_ins_print_paddr
-	!byte <z_ins_load
+z_opcount_1op_jump_low_arr
+	!byte <(z_ins_jz - 1)
+	!byte <(z_ins_get_sibling - 1)
+	!byte <(z_ins_get_child - 1)
+	!byte <(z_ins_get_parent - 1)
+	!byte <(z_ins_get_prop_len - 1)
+	!byte <(z_ins_inc - 1)
+	!byte <(z_ins_dec - 1)
+	!byte <(z_ins_print_addr - 1)
+	!byte <(z_ins_call_xs - 1)
+	!byte <(z_ins_remove_obj - 1)
+	!byte <(z_ins_print_obj - 1)
+	!byte <(z_ins_ret - 1)
+	!byte <(z_ins_jump - 1)
+	!byte <(z_ins_print_paddr - 1)
+	!byte <(z_ins_load - 1)
 !ifndef Z5PLUS {
-	!byte <z_ins_not
+	!byte <(z_ins_not - 1)
 } else {
-	!byte <z_ins_call_xn
+	!byte <(z_ins_call_xn - 1)
 }
 	
 ; 2OP
 
-	!byte <z_not_implemented
-	!byte <z_ins_je
-	!byte <z_ins_jl
-	!byte <z_ins_jg
-	!byte <z_ins_dec_chk
-	!byte <z_ins_inc_chk
-	!byte <z_ins_jin
-	!byte <z_ins_test
-	!byte <z_ins_or
-	!byte <z_ins_and
-	!byte <z_ins_test_attr
-	!byte <z_ins_set_attr
-	!byte <z_ins_clear_attr
-	!byte <z_ins_store
-	!byte <z_ins_insert_obj
-	!byte <z_ins_loadw_and_storew
-	!byte <z_ins_loadb
-	!byte <z_ins_get_prop
-	!byte <z_ins_get_prop_addr
-	!byte <z_ins_get_next_prop
-	!byte <z_ins_add
-	!byte <z_ins_sub
-	!byte <z_ins_mul
-	!byte <z_ins_div
-	!byte <z_ins_mod
+z_opcount_2op_jump_low_arr
+	!byte <(z_not_implemented - 1)
+	!byte <(z_ins_je - 1)
+	!byte <(z_ins_jl - 1)
+	!byte <(z_ins_jg - 1)
+	!byte <(z_ins_dec_chk - 1)
+	!byte <(z_ins_inc_chk - 1)
+	!byte <(z_ins_jin - 1)
+	!byte <(z_ins_test - 1)
+	!byte <(z_ins_or - 1)
+	!byte <(z_ins_and - 1)
+	!byte <(z_ins_test_attr - 1)
+	!byte <(z_ins_set_attr - 1)
+	!byte <(z_ins_clear_attr - 1)
+	!byte <(z_ins_store - 1)
+	!byte <(z_ins_insert_obj - 1)
+	!byte <(z_ins_loadw_and_storew - 1)
+	!byte <(z_ins_loadb - 1)
+	!byte <(z_ins_get_prop - 1)
+	!byte <(z_ins_get_prop_addr - 1)
+	!byte <(z_ins_get_next_prop - 1)
+	!byte <(z_ins_add - 1)
+	!byte <(z_ins_sub - 1)
+	!byte <(z_ins_mul - 1)
+	!byte <(z_ins_div - 1)
+	!byte <(z_ins_mod - 1)
 !ifndef Z4PLUS {
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
 } else {
-	!byte <z_ins_call_xs
+	!byte <(z_ins_call_xs - 1)
 }
 !ifndef Z5PLUS {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 } else {
-	!byte <z_ins_call_xn
-	!byte <z_ins_set_colour
-	!byte <z_ins_throw
+	!byte <(z_ins_call_xn - 1)
+	!byte <(z_ins_set_colour - 1)
+	!byte <(z_ins_throw - 1)
 }
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 
 ; VAR	
 
-	!byte <z_ins_call_xs
-	!byte <z_ins_loadw_and_storew
-	!byte <z_ins_storeb
-	!byte <z_ins_put_prop
-	!byte <z_ins_read
-	!byte <z_ins_print_char
-	!byte <z_ins_print_num
-	!byte <z_ins_random
-	!byte <z_ins_push
-	!byte <z_ins_pull
-	!byte <z_ins_split_window
-	!byte <z_ins_set_window
+z_opcount_var_jump_low_arr
+	!byte <(z_ins_call_xs - 1)
+	!byte <(z_ins_loadw_and_storew - 1)
+	!byte <(z_ins_storeb - 1)
+	!byte <(z_ins_put_prop - 1)
+	!byte <(z_ins_read - 1)
+	!byte <(z_ins_print_char - 1)
+	!byte <(z_ins_print_num - 1)
+	!byte <(z_ins_random - 1)
+	!byte <(z_ins_push - 1)
+	!byte <(z_ins_pull - 1)
+	!byte <(z_ins_split_window - 1)
+	!byte <(z_ins_set_window - 1)
 !ifdef Z4PLUS {
-	!byte <z_ins_call_xs
-	!byte <z_ins_erase_window
-	!byte <z_ins_erase_line
-	!byte <z_ins_set_cursor
-	!byte <z_ins_get_cursor
-	!byte <z_ins_set_text_style
-	!byte <z_ins_buffer_mode
+	!byte <(z_ins_call_xs - 1)
+	!byte <(z_ins_erase_window - 1)
+	!byte <(z_ins_erase_line - 1)
+	!byte <(z_ins_set_cursor - 1)
+	!byte <(z_ins_get_cursor - 1)
+	!byte <(z_ins_set_text_style - 1)
+	!byte <(z_ins_buffer_mode - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
-	!byte <z_ins_output_stream
-	!byte <z_ins_not_supported
-	!byte <z_ins_sound_effect
+	!byte <(z_ins_output_stream - 1)
+	!byte <(z_ins_not_supported - 1)
+	!byte <(z_ins_sound_effect - 1)
 !ifdef Z4PLUS {
-	!byte <z_ins_read_char
-	!byte <z_ins_scan_table
+	!byte <(z_ins_read_char - 1)
+	!byte <(z_ins_scan_table - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 !ifdef Z5PLUS {
-	!byte <z_ins_not
-	!byte <z_ins_call_xn
-	!byte <z_ins_call_xn
-	!byte <z_ins_tokenise_text
-	!byte <z_ins_encode_text
-	!byte <z_ins_copy_table
-	!byte <z_ins_print_table
-	!byte <z_ins_check_arg_count
+	!byte <(z_ins_not - 1)
+	!byte <(z_ins_call_xn - 1)
+	!byte <(z_ins_call_xn - 1)
+	!byte <(z_ins_tokenise_text - 1)
+	!byte <(z_ins_encode_text - 1)
+	!byte <(z_ins_copy_table - 1)
+	!byte <(z_ins_print_table - 1)
+	!byte <(z_ins_check_arg_count - 1)
 } else {
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
 }
 
 ; EXT
 
 z_opcount_ext_jump_low_arr
 !ifdef Z5PLUS {
-	!byte <z_ins_save
-	!byte <z_ins_restore
-	!byte <z_ins_log_shift
-	!byte <z_ins_art_shift
-	!byte <z_ins_set_font
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_not_implemented
-	!byte <z_ins_save_restore_undo
-	!byte <z_ins_save_restore_undo
-	!byte <z_ins_print_unicode
-	!byte <z_ins_check_unicode
-	!byte <z_ins_set_true_colour
+	!byte <(z_ins_save - 1)
+	!byte <(z_ins_restore - 1)
+	!byte <(z_ins_log_shift - 1)
+	!byte <(z_ins_art_shift - 1)
+	!byte <(z_ins_set_font - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_not_implemented - 1)
+	!byte <(z_ins_save_restore_undo - 1)
+	!byte <(z_ins_save_restore_undo - 1)
+	!byte <(z_ins_print_unicode - 1)
+	!byte <(z_ins_check_unicode - 1)
+	!byte <(z_ins_set_true_colour - 1)
 }
 
 z_number_of_ext_opcodes_implemented = * - z_opcount_ext_jump_low_arr
@@ -824,9 +876,28 @@ c128_border_phase1
 progress_reu = parse_array
 reu_progress_ticks = parse_array + 1
 reu_last_disk_end_block = string_array ; 2 bytes
+!ifdef REUBOOST {
+!ifdef Z4PLUS {
+	!ifdef Z7PLUS {
+		reu_boost_hash_pages = 8
+	} else {
+		reu_boost_hash_pages = 4
+	}
+} else {
+	reu_boost_hash_pages = 2
 }
 
+reu_boost_mode !byte 0 ; Set to $ff to activate
+reu_boost_hash_table = (first_banked_memory_page - reu_boost_hash_pages) * 256
 
+; The values calculated here for reu_boost_area_start_page and reu_boost_area_pagecount
+; are correct for C128. For C64, they are changed at runtime, as they can't be calculated
+; until dynmem size is known. 
+
+reu_boost_area_start_page !byte >story_start
+reu_boost_area_pagecount !byte (>reu_boost_hash_table) - (>story_start)
+} ; ifdef REUBOOST
+} ; if SUPPORT_REU = 1
 
 ; global variables
 ; filelength !byte 0, 0, 0
@@ -839,12 +910,18 @@ fileblocks !byte 0, 0, 0
 game_id		!byte 0,0,0,0
 }
 }
+; SFTODO: Looks like upstream supports scrollback with a REU; could we support this on Acorn?
 
 
 .initialize2
 	jsr stack_init
 
 	jsr deletable_screen_init_2
+
+!ifndef ACORN {
+	lda #0
+	sta keyboard_buff_len
+}
 
 	jsr z_init
 
@@ -883,6 +960,10 @@ game_id		!byte 0,0,0,0
 	cli
 }
 
+!ifdef SCROLLBACK {
+	lda scrollback_supported
+	sta scrollback_enabled
+}
 
 	jsr z_execute
 
@@ -925,6 +1006,9 @@ game_id		!byte 0,0,0,0
 	!source "acorn-utilities.asm"
 }
 !source "utilities.asm"
+!ifdef SCROLLBACK {
+!source "scrollback.asm"
+}
 !source "screenkernal.asm"
 !source "streams.asm" ; Must come before "text.asm"
 !ifndef ACORN {
@@ -1040,6 +1124,7 @@ c128_move_dynmem_and_calc_vmem
 	dec zp_temp + 2
 	bne -
 
+	; Copy any preloaded statmem pages down in memory, now that dynmem has moved
 	lda #>story_start
 	sta zp_temp + 1 ; First destination page
 	clc
@@ -1057,14 +1142,17 @@ c128_move_dynmem_and_calc_vmem
 	bne - ; Always branch
 
 .done_vmem_move
-
 	; Add free RAM in bank 1 as vmem memory
 
 	lda #>story_start
 	sta vmap_first_ram_page
 
 	; Remember above which index in vmem the blocks are in bank 1
+!ifdef SCROLLBACK_RAM_PAGES {
+	lda #SCROLLBACK_RAM_START_PAGE
+} else {
 	lda #VMEM_END_PAGE
+}
 	sec
 	sbc #>story_start
 	lsr ; Convert from 256-byte pages to 512-byte vmem blocks
@@ -1076,16 +1164,12 @@ c128_move_dynmem_and_calc_vmem
 	sta vmap_first_ram_page_in_bank_1
 
 	; Calculate how many vmem pages we can fit in bank 1
-	lda nonstored_pages
-	lsr ; To get # of dynmem blocks, which are 512 bytes instead of 256
-	sta object_temp
 	lda #VMEM_END_PAGE
 	sec
 	sbc vmap_first_ram_page_in_bank_1
 	lsr ; Convert from 256-byte pages to 512-byte vmem blocks
 	; Now A holds the # of vmem blocks we can fit in bank 1
-	adc vmap_max_entries ; Add the # we had room for in bank 0 from the start
-	adc object_temp ; Add the # we made room for by moving dynmem to bank 1
+	adc first_vmap_entry_in_bank_1 ; Add the # of vmem blocks in bank 0
 	cmp #vmap_max_size
 	bcc +
 	lda #vmap_max_size
@@ -1387,7 +1471,7 @@ z_init
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
 	jsr write_header_byte
-	lda #(64 + 10) ; "J" = release 10
+	lda #(64 + 11) ; "K" = release 11
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
 	jsr write_header_byte
 	+lda_screen_height

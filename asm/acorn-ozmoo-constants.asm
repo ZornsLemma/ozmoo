@@ -436,7 +436,7 @@ mempointer_y +allocate 1
 z_opcode_number	+allocate 1
 zp_pc_h +allocate 1
 zp_pc_l	+allocate 1
-z_opcode_opcount	+allocate 1; 0 = 0OP, 1=1OP, 2=2OP, 3=VAR
+;z_opcode_opcount	+allocate 1; 0 = 0OP, 1=1OP, 2=2OP, 3=VAR
 z_operand_count	+allocate 1
 zword	+allocate 6
 

@@ -214,6 +214,7 @@ max_lines = s_screen_height
     }
 }
 
+!ifndef ACORN {
 !ifdef TARGET_C128 {
 SETBORDERMACRO_DEFINED = 1
 !macro SetBorderColour {
@@ -257,7 +258,6 @@ SETBORDERMACRO_DEFINED = 1
 }
 
 
-!ifndef ACORN {
 ; colours		!byte 144,5,28,159,156,30,31,158,129,149,150,151,152,153,154,155
 zcolours	!byte $ff,$ff ; current/default colour
 			!byte COL2,COL3,COL4,COL5  ; black, red, green, yellow
@@ -275,6 +275,7 @@ statuslinecol !byte STATCOL, STATCOLDM
 cursorcol !byte CURSORCOL, CURSORCOLDM
 current_cursor_colour !byte CURSORCOL
 cursor_character !byte CURSORCHAR
+scroll_delay !byte 0
 }
 
 !ifdef TARGET_PLUS4 {
@@ -286,7 +287,7 @@ plus4_vic_colours
 	!byte $63   ; cyan
 	!byte $44   ; purple
 	!byte $65   ; green
-	!byte $3e   ; blue
+	!byte $26   ; blue
 	!byte $77   ; yellow
 	!byte $48   ; orange
 	!byte $39   ; brown 
@@ -323,24 +324,24 @@ plus4_vic_colours
 ; 13 = light yellow
 ; 14 = dark white (light gray)
 ; 15 = light white
-vdc_vic_colours
-	;     VDC    VIC-II
-	!byte 0    ; black
-	!byte 15   ; white
-	!byte 8    ; red
-	!byte 7    ; cyan
-	!byte 10   ; purple
-	!byte 4    ; green
-	!byte 3    ; blue
-	!byte 13   ; yellow
-	!byte 12   ; orange
-	!byte 12   ; brown 
-	!byte 9    ; light red
-	!byte 1    ; dark grey
-	!byte 14   ; grey
-	!byte 5    ; light green
-	!byte 3    ; light blue
-	!byte 14   ; light grey
+vdc_vic_colours = $ce5c ; The official conversion table in ROM
+	; ;     VDC    VIC-II
+	; !byte 0    ; black
+	; !byte 15   ; white
+	; !byte 8    ; red
+	; !byte 7    ; cyan
+	; !byte 10   ; purple
+	; !byte 4    ; green
+	; !byte 3    ; blue
+	; !byte 13   ; yellow
+	; !byte 12   ; orange
+	; !byte 12   ; brown 
+	; !byte 9    ; light red
+	; !byte 1    ; dark grey
+	; !byte 14   ; grey
+	; !byte 5    ; light green
+	; !byte 3    ; light blue
+	; !byte 14   ; light grey
 
 C128SetBackgroundColour
 	stx .stored_x_or_y
@@ -387,7 +388,7 @@ VDCGetChar
 VDCPrintChar
 	; 80 columns, use VDC screen
 	sty .stored_x_or_y
-	sta .stored_a
+	pha
 	lda zp_screenline + 1
 	sec
 	sbc #$04 ; adjust from $0400 (VIC-II) to $0000 (VDC)
@@ -398,7 +399,7 @@ VDCPrintChar
 	bcc +
 	iny
 +	jsr VDCSetAddress
-	lda .stored_a
+	pla
 	ldy .stored_x_or_y
 	ldx #VDC_DATA
 	jmp VDCWriteReg
@@ -410,7 +411,7 @@ VDCPrintColour
 	tax
 	lda vdc_vic_colours,x
 	ora #$80 ; lower-case
-	sta .stored_a
+	pha
 	lda zp_colourline + 1
 	sec
 	sbc #$d0 ; adjust from $d800 (VIC-II) to $0800 (VDC)
@@ -421,7 +422,7 @@ VDCPrintColour
 	bcc +
 	iny
 +	jsr VDCSetAddress
-	lda .stored_a
+	pla
 	ldy .stored_x_or_y
 	ldx #VDC_DATA
 	jmp VDCWriteReg
@@ -448,8 +449,12 @@ init_mega65
 	; set 80-column mode
 	lda #$c0
 	sta $d031
-	lda #$c9
+	lda #$c8 + 1 ; +1 loses one pixel on the left, +2 loses one pixel on the right. Leftmost pixel usually empty.
 	sta $D016
+	; Set colour RAM offset to 0
+	lda #0
+	sta $d064 
+	sta $d065
 	; set screen at $0800
 	;lda #$26
 	;sta $d018
@@ -949,24 +954,8 @@ s_printchar
 	bcs .outside_current_window
 .resume_printing_normal_char	
 !ifndef ACORN {
-   ; convert from pet ascii to screen code
-	cmp #$40
-	bcc ++    ; no change if numbers or special chars
-	cmp #$60
-	bcs +
-	and #%00111111
-	bcc ++ ; always jump
-+   cmp #$80
-	bcs +
-	and #%11011111
-	bcc ++ ; always jump
-+	cmp #$c0
-	bcs +
-	eor #%11000000
-+	and #%01111111
-++  ; print the char
-	clc
-	adc s_reverse
+	jsr convert_petscii_to_screencode
+	ora s_reverse
 	pha
 	jsr .update_screenpos
 	pla
@@ -989,10 +978,11 @@ s_printchar
 	!ifdef TARGET_MEGA65 {
 		jsr colour2k
 	}
-	lda s_colour
 !ifdef TARGET_PLUS4 {
-	tax
+	ldx s_colour
 	lda plus4_vic_colours,x
+} else {
+	lda s_colour
 }
 	sta (zp_colourline),y
 	!ifdef TARGET_MEGA65 {
@@ -1006,6 +996,9 @@ s_printchar
 	cpy s_screen_width ; #SCREEN_WIDTH
 	bcc .printchar_end
 	dec s_ignore_next_linebreak,x ; Goes from 0 to $ff
+!ifdef SCROLLBACK {
+	jsr copy_line_to_scrollback
+}
 	lda #0
 	sta zp_screencolumn
 	inc zp_screenrow
@@ -1131,7 +1124,15 @@ s_printchar
 	bpl +
 	inc s_ignore_next_linebreak,x
 	jmp .printchar_end
-+	lda #0
++	
+!ifdef SCROLLBACK {
+	; Copy to scrollback buffer, if we're in lower window
+	ldx current_window
+	bne +
+	jsr copy_line_to_scrollback
++
+}
+	lda #0
 	sta zp_screencolumn
 	inc zp_screenrow
 !ifdef TARGET_C128 {
@@ -1248,7 +1249,19 @@ s_erase_window
 	cmp s_screen_height
 	bpl +
 	rts
-+   ; set up copy mode
++   
+	ldx scroll_delay
+	beq .done_delaying_vdc
+-	txa
+	pha
+	jsr wait_an_interval
+	pla
+	tax
+	dex
+	bne -
+.done_delaying_vdc
+
+	; set up copy mode
 	ldx #VDC_VSCROLL
 	jsr VDCReadReg
 	ora #$80 ; set copy bit
@@ -1299,6 +1312,17 @@ s_erase_window
 	rts
 }
 
+!ifdef SCROLLBACK {
+s_reset_scrolled_lines
+	pha
+	lda #0
+	sta s_scrolled_lines
+	pla
+	rts
+
+s_scrolled_lines !byte 0
+}
+
 .s_scroll
 	lda zp_screenrow
 	cmp s_screen_height
@@ -1306,6 +1330,20 @@ s_erase_window
 	rts
 +
 !ifndef ACORN {
+	ldx scroll_delay
+	beq .done_delaying
+-	txa
+	pha
+	jsr wait_an_interval
+	pla
+	tax
+	dex
+	bne -
+.done_delaying
+
+!ifdef SCROLLBACK {
+	inc s_scrolled_lines
+}
 !ifdef TARGET_MEGA65 {
 	jsr colour2k	
 }
@@ -1400,23 +1438,87 @@ s_erase_line
 	jmp .done_erasing	
 .col80_5
 	; erase line in VDC
+
 	tya
+	clc 
+	adc zp_screenline
 	pha
--	cpy s_screen_width
-	bcs +
+	lda zp_screenline + 1
+	adc #$00
+	sec
+	sbc #$04
+	sta .stored_a
+	ldx #VDC_DATA_HI
+	jsr VDCWriteReg
+	pla
+	pha
+	ldx #VDC_DATA_LO
+	jsr VDCWriteReg
 	lda #$20
-	jsr VDCPrintChar
-	iny
-	bne -
+
+	ldx #VDC_DATA
+	jsr VDCWriteReg
+	; We have written a space character to the first position
+	; Now fill the rest of the line.
+	lda #0 ; Set to Fill mode
+	ldx #VDC_VSCROLL
+	jsr VDCWriteReg
+	sty .stored_x_or_y
+	lda #79
+	sec
+	sbc .stored_x_or_y
+	beq +
+	ldx #VDC_COUNT
+	jsr VDCWriteReg
++
+
+	lda .stored_a
+	clc
+	adc #$08 ; Colour RAM starts at $0800, while screen RAM starts at $0000
+	ldx #VDC_DATA_HI
+	jsr VDCWriteReg
+	pla
+	ldx #VDC_DATA_LO
+	jsr VDCWriteReg
+
+	ldx s_colour
+	lda vdc_vic_colours,x
+	ora #$80 ; lower-case
+	ldx #VDC_DATA
+	jsr VDCWriteReg
+	; We have written the first byte to colour memory
+	; Now fill the rest of the line.
+	lda #0 ; Set to Fill mode
+	ldx #VDC_VSCROLL
+	jsr VDCWriteReg
+	sty .stored_x_or_y
+	lda #79
+	sec
+	sbc .stored_x_or_y
+	beq +
+	ldx #VDC_COUNT
+	jsr VDCWriteReg
++
+
+
+	; tya
+	; pha
+; -	cpy s_screen_width
+	; bcs +
+	; lda #$20
+	; jsr VDCPrintChar
+	; iny
+	; bne -
 	; also reset attributes/colours
-+	pla
-	tay
--	cpy s_screen_width
-	bcs .done_erasing
-	lda s_colour
-	jsr VDCPrintColour
-	iny
-	bne -
+;+	pla
+;	tay
+
+; -	cpy s_screen_width
+	; bcs .done_erasing
+	; lda s_colour
+	; jsr VDCPrintColour
+	; iny
+	; bne -
 } else {
 -	cpy s_screen_width
 	bcs .done_erasing
@@ -1691,7 +1793,10 @@ toggle_darkmode
 } ; USE_INPUTCOL	
 	
 ; Set fgcolour
-	ldy fgcol,x
+	lda fgcol,x
+	ldy #header_default_fg_colour
+	jsr write_header_byte
+	tay
 	lda zcolours,y
 	sta z_temp + 6 ; New foreground colour, as C64 colour 
 	jsr s_set_text_colour
@@ -1719,7 +1824,10 @@ toggle_darkmode
 	lda zcolours,y
 +	sta current_cursor_colour
 ; Set bgcolour
-	ldy bgcol,x
+	lda bgcol,x
+	ldy #header_default_bg_colour
+	jsr write_header_byte
+	tay
 	lda zcolours,y
 	+SetBackgroundColour
 !ifdef Z5PLUS {
@@ -2037,8 +2145,10 @@ z_ins_set_colour
 	beq .current_background
 	lda zcolours,x
 	bpl +
-	ldy #header_default_bg_colour
+	sty zp_temp
+	ldy #header_default_bg_colour - 1
 	jsr read_header_word
+	ldy zp_temp
 	lda zcolours,x
 +   
 	+SetBackgroundColour
@@ -2053,8 +2163,10 @@ z_ins_set_colour
 	beq .current_foreground
 	lda zcolours,x
 	bpl + ; Branch unless it's the special value $ff, which means "default colour"
-	ldy #header_default_fg_colour
+	sty zp_temp
+	ldy #header_default_fg_colour - 1
 	jsr read_header_word
+	ldy zp_temp
 	lda zcolours,x
 +
 ; Also set bordercolour to same as foreground colour, if bordercolour is set to the magic value 1
