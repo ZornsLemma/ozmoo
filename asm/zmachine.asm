@@ -112,12 +112,12 @@ z_execute
 	sta printspeed_counter + 1
 } else {
     lda #0
+    sta printspeed_counter
+    sta printspeed_counter + 1
     jsr kernal_readtime
     sta .printspeed_last_time
     stx .printspeed_last_time + 1
     sty .printspeed_last_time + 2
-    sta printspeed_counter
-    sta printspeed_counter + 1
     jmp +
 .printspeed_last_time
     !byte 0, 0, 0
@@ -203,8 +203,8 @@ read_and_execute_an_instruction
     lda .printspeed_this_time + 2
     sta .printspeed_last_time + 2
     lda #0
-    sta .printspeed_count
-    sta .printspeed_count + 1
+    sta .printspeed_counter
+    sta .printspeed_counter + 1
     php
 
 ++  plp
@@ -943,7 +943,7 @@ z_set_variable
 	tay
 	dey
 	cpy z_local_var_count
-	bcs .nonexistent_local
+	bcs .nonexistent_local2
 }
 	asl
 	tay
