@@ -171,7 +171,7 @@ def run_and_check(args, output_filter=None, warning_filter=None):
 # with (0, 0) meaning we couldn't determine the version. This won't handle
 # arbitrary tools but works well enough for beebasm and basictool, which is all
 # we need.
-def get_tool_version(name):
+def get_tool_version(name, version_finder=None):
     try:
         child = subprocess.Popen([name, "--help"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         child.wait()
@@ -182,12 +182,20 @@ def get_tool_version(name):
     for line in child.stdout.readlines():
         # TODO: tee-ing the output to a file breaks the next line (at least with Python 2 on Linux, not tried other variants)
         line = line.decode(sys.stdout.encoding)
-        c = line.split()
-        if len(c) >= 2 and c[0] == name:
-            version_components = c[1].split(".")
-            if len(version_components) >= 2:
-                version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
-                string_version = line.strip()
+        if version_finder is None:
+            c = line.split()
+            if len(c) >= 2 and c[0] == name:
+                version_components = c[1].split(".")
+                if len(version_components) >= 2:
+                    print("QQQ", line, c)
+                    version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
+                    string_version = line.strip()
+                    break
+        else:
+            possible_version, possible_string_version = version_finder(line)
+            if possible_version is not None:
+                version = possible_version
+                string_version = possible_string_version
                 break
     global tool_versions
     if name not in string_version:
@@ -198,8 +206,8 @@ def get_tool_version(name):
 
 # Check to see if we have at least a minimum version of a tool. Return True if
 # we do, if we don't then return False (if quiet) or die (if not quiet).
-def check_tool_version(name, min_version, quiet=False):
-    our_version = get_tool_version(name)
+def check_tool_version(name, min_version, quiet=False, version_finder=None):
+    our_version = get_tool_version(name, version_finder=version_finder)
     if our_version is None:
         if quiet:
             return False
@@ -211,10 +219,26 @@ def check_tool_version(name, min_version, quiet=False):
     return True
 
 
+# Parse a line of acme --help output for the version
+def acme_version_finder(line):
+    i = line.find("release")
+    if i == -1:
+        return None, None
+    line = line[i:]
+    c = line.split()
+    if len(c) >= 2:
+        version_components = c[1].split(".")
+        if len(version_components) >= 2:
+            version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
+            string_version = c[1]
+            return version, string_version
+    return None, None
+
+
 # Generate a relatively clear error message if we can't find one of our tools,
 # rather than failing on a complex build command.
 def prechecks():
-    test_executable("acme")
+    check_tool_version("acme", min_acme_version, version_finder=acme_version_finder)
     if cmd_args.force_beebasm:
         check_tool_version("beebasm", min_beebasm_version)
     elif cmd_args.force_basictool:
@@ -2063,6 +2087,7 @@ cmd_args = parse_args()
 if version_txt is None:
     die("Can't find version.txt")
 
+min_acme_version = (0, 97)
 min_beebasm_version = (1, 9)
 min_basictool_version = (0, 6)
 
