@@ -1181,7 +1181,10 @@ getchar_and_maybe_toggle_darkmode
 .scroll_delay_keys !byte 146, 144, 5, 28 ; Ctrl-0, 1, 2, 3
 .getchar_save_x !byte 0
 } else { ; ACORN
-    stx .ldx_imm_old_x + 1 ; SFTODONOW: Do we need to be doing this on Acorn? If not get rid of it, but upstream does it so playing safe for now
+    ; Commodore code saves X here but I don't think we need that on Acorn - on
+    ; the Commodore it's needed for the loop at .check_for_keypress in
+    ; screen.asm.
+
     ; In non-teletext modes, copying characters with COPY will only work if they
     ; share the current OS foreground and background colours. There's a fair
     ; chance the OS colours are still set to reverse video from drawing the
@@ -1216,10 +1219,9 @@ getchar_and_maybe_toggle_darkmode
     lda #vdu_escape
 .not_escape
 }
-    jsr check_user_interface_controls
-.ldx_imm_old_x
-    ldx #0 ; patched on entry
-    rts
+    ; Commodore code restores X at end (i.e. "after"
+    ; check_user_interface_controls) but I don't think we need that on Acorn.
+    jmp check_user_interface_controls
 }
 
 read_char
