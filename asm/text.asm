@@ -1053,6 +1053,10 @@ init_read_text_timer
 	rts ; no timer
 +   ; calculate timer interval in jiffys (1/60 second, regardless of TV standard)
 !ifdef ACORN { ; SFTODONOW: PROB WANT TO RECODE THIS TO DO AN IN-PLACE MULT BY 10 (MULTIPLY BY 4, ADD STARTING VALUE, THEN MULTIPLY BY 2???)
+	lda .read_text_time
+	sta multiplier + 1
+	lda .read_text_time + 1
+	sta multiplier
 	lda #0
 	sta multiplicand + 1
     lda #10 ; Acorn kernal_readtime uses 1/100 second jiffys (lda #6 when this code was used on Commodore)
