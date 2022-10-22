@@ -1051,24 +1051,44 @@ init_read_text_timer
 	ora .read_text_time + 1
 	bne +
 	rts ; no timer
-+   ; calculate timer interval in jiffys (1/60 second, regardless of TV standard)
-!ifdef ACORN { ; SFTODONOW: PROB WANT TO RECODE THIS TO DO AN IN-PLACE MULT BY 10 (MULTIPLY BY 4, ADD STARTING VALUE, THEN MULTIPLY BY 2???)
-	lda .read_text_time
-	sta multiplier + 1
-	lda .read_text_time + 1
-	sta multiplier
+!ifdef ACORN {
+    ; SFTODONOW: Review this fresh - it certainly seems to work, but I may have mixed up something in high bytes - the big-endianness of the Z-machine values is confusing
++   ; calculate timer interval in jiffys (1/100 second on Acorn) - we need to multiply provided value by 10
 	lda #0
-	sta multiplicand + 1
-    lda #10 ; Acorn kernal_readtime uses 1/100 second jiffys (lda #6 when this code was used on Commodore)
-	sta multiplicand ; t*6 to get jiffies
-	jsr mult16
-	lda product
+	sta z_temp ; Top byte of result
+	lda .read_text_time ; High byte
+	sta z_temp + 1 ; Middle byte of result
+	lda .read_text_time + 1 ; Low byte
+	; Multiply by 2
+	asl
+	rol z_temp + 1
+	rol z_temp
+    ; Save read_text_time*2
 	sta .read_text_time_jiffy + 2
-	lda product + 1
-	sta .read_text_time_jiffy + 1
-	lda product + 2
-	sta .read_text_time_jiffy
+    lda z_temp + 1
+    sta .read_text_time_jiffy + 1
+    lda z_temp
+    sta .read_text_time_jiffy
+    ; Multiply by 4, so we have read_text_time*8
+    lda .read_text_time_jiffy + 2
+	asl
+	rol z_temp + 1
+	rol z_temp
+	asl
+	rol z_temp + 1
+	rol z_temp
+    ; Add the saved value so we have read_text_time*8+read_text_time*2, i.e. read_text_time*10.
+    clc
+    adc .read_text_time_jiffy + 2
+    sta .read_text_time_jiffy + 2
+    lda .read_text_time_jiffy + 1
+    adc z_temp + 1
+    sta .read_text_time_jiffy + 1
+    lda .read_text_time_jiffy
+    adc z_temp
+    sta .read_text_time_jiffy
 } else {
++   ; calculate timer interval in jiffys (1/60 second, regardless of TV standard)
 	lda #0
 	sta z_temp ; Top byte of result
 	lda .read_text_time ; High byte
