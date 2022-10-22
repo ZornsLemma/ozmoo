@@ -326,7 +326,6 @@ dumptovice
 	sty z_temp + 5 ; Signal to NOT read up to four more operands
 } else {
 	stz z_temp + 5 ; Signal to NOT read up to four more operands
-SFTODONOW OR DO WE RELY ON Y=0?
 }
 }
 	and #%00011111
