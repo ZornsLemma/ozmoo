@@ -64,7 +64,6 @@ parse_terminating_characters
 	; 254 single click (not C64)
 	; 255 means any function key
 	ldy #header_terminating_chars_table
-; SFTODONOW: I believe parse_terminating_characters is called only from discardable init code, so it too could be moved to be discardable init code.
 	jsr read_header_word
 	cpx #0
 	bne +
