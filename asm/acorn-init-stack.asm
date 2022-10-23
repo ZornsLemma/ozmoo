@@ -495,4 +495,8 @@ deletable_screen_init_2
 	jmp start_buffering
 ; End of deletable_screen_init_2
 
+!ifdef Z5PLUS {
+parse_terminating_characters
+    +parse_terminating_characters_subroutine
+}
 }

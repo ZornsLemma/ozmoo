@@ -52,8 +52,8 @@ terminating_characters !byte $0d
 !ifdef Z5PLUS {	
 	!byte $81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c
 
-; SFTODONOW: I believe parse_terminating_characters is called only from discardable init code, so it too could be moved to be discardable init code.
-parse_terminating_characters
+; SF: We put the subroutine body into a macro so we can move it into the discardable init code on Acorn. Might be worth suggesting this to upstream.
+!macro parse_terminating_characters_subroutine {
 	; read terminating characters list ($2e)
 	; must be one of function keys 129-154, 252-254.
 	; 129-132: cursor u/d/l/r
@@ -88,6 +88,11 @@ parse_terminating_characters
 	bne -
 	sty num_terminating_characters
 	rts
+}
+!ifndef ACORN {
+parse_terminating_characters
+    +macro parse_terminating_characters_subroutine
+}
 }
 
 !ifdef BENCHMARK {
