@@ -1051,7 +1051,6 @@ init_read_text_timer
 	bne +
 	rts ; no timer
 !ifdef ACORN {
-    ; SFTODONOW: Review this fresh - it certainly seems to work, but I may have mixed up something in high bytes - the big-endianness of the Z-machine values is confusing
 +   ; calculate timer interval in jiffys (1/100 second on Acorn) - we need to multiply provided value by 10
 	lda #0
 	sta z_temp ; Top byte of result
