@@ -198,7 +198,7 @@ def get_tool_version(name, version_finder=None):
                 break
     global tool_versions
     if name not in string_version:
-        string_version = name + ": " + string_version
+        string_version = name + " " + string_version
     tool_versions[name] = string_version
     return version
 
