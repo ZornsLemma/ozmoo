@@ -1,5 +1,5 @@
 ; Acorn-specific code factored out into its own file for readability.
-; SFTODONOW: Maybe rename this file to acorn-something.asm now we've pulled some code out into other acorn-*.asm files
+; SFTODO: Maybe rename this file to acorn-something.asm now we've pulled some code out into other acorn-*.asm files
 
 ; General note on terminology for the Acorn port: Upstream code overloads the
 ; word "block" to refer to both 256-byte and 512-byte blocks. I am not changing
@@ -9,7 +9,7 @@
 ; SFTODO: I don't really like the pseudo-word "dpage", but it will do, and it
 ; would probably by easy to search and replace to change this later.
 ; SFTODO: Update this comment to reflect the fact I seem to want to talk about "vmem blocks" to mean 512-byte dpages in some places; I think this is OK, but it's misleading to say that I will try to always use dpage when it's not true.
-; SFTODONOW: I HAVEN'T PUT THIS INTO EFFECT YET
+; SFTODO: I HAVEN'T PUT THIS INTO EFFECT YET
 
 ; A note on Acorn memory models - this affects code in many places, but I have
 ; to write this somewhere. SFTODO: This is perhaps not best file any more
@@ -150,7 +150,7 @@ assert_unreached_sub
 ; Macros used to detect "impossible" values of the carry flag. They are intended
 ; for use in space-conscious code and are no-ops unless ACORN_DEBUG_ASSERT is
 ; defined.
-; SFTODONOW: Use this in more places?
+; SFTODO: Use this in more places?
 !ifndef ACORN_DEBUG_ASSERT {
 !macro assert_carry_set {
 }

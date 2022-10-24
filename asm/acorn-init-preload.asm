@@ -263,24 +263,14 @@ deletable_init_start
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     ; {{{ Enable or disable runtime debug information.
 
-    ; Set .show_runtime_info to 0 unless CTRL-TAB is pressed, in which case set
-    ; it to non-0 to trigger display of runtime debug information.
-    ; SFTODONOW: TEMP HACKED TO JUST CHECK CTRL AS TAB gets into the keyboard
-    ; buffer and seems to (maybe? hard to be sure) cause problems. If nothing
-    ; else it gets picked up by the osrdch used to pause after showing this
-    ; info. May just stick with CTRL on its own but come back to this later.
+    ; Set .show_runtime_info to 0 unless CTRL is pressed, in which case set it
+    ; to non-0 to trigger display of runtime debug information.
     lda #osbyte_read_key
     ldx #inkey_ctrl
     ldy #$ff
     jsr osbyte
-    jmp + ; SFTODONOW TEMP HACK
-    cpy #0
-    beq +
-    ldx #inkey_tab
-    ldy #$ff
-    jsr osbyte
-+   sty .show_runtime_info
-    lda .show_runtime_info
+    sty .show_runtime_info
+    tya
     beq .no_runtime_info
 
     ; Call streams_init here so we can output succesfully; this is a little bit
@@ -1725,9 +1715,7 @@ initial_vmap_z_l
     jsr do_oswrch_vdu_goto_xy
     lda .runtime_info_indent
     beq +
-    ; SFTODONOW: Can we easily get this colour from the loader's parsing of any custom screen? If not demote this to SFTODO and explain why it's not completely trivial.
-.runtime_info_colour = 3 ; SFTODO: MOVE?
-    lda #mode_7_text_colour_base + .runtime_info_colour
+    lda #ACORN_LOADER_HIGHLIGHT_FG
     jsr oswrch
 +
     ldx .runtime_info_start_row

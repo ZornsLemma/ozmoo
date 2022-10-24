@@ -1821,6 +1821,7 @@ def make_disc_image():
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
         "-DACORN_GAME_PAGES=%d" % game_pages,
+        "-DACORN_LOADER_HIGHLIGHT_FG=%d" % loader_screen.highlight_fg,
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
