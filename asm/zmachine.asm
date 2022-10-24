@@ -2250,5 +2250,3 @@ z_ins_save_restore_undo
 	
 	
 }
-
-; SFTODO: A few bits of code reference UNSAFE macro, which I suspect has been retired/renamed.

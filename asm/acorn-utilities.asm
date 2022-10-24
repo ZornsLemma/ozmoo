@@ -122,11 +122,11 @@ setjmp
     sta jmp_buf+1-.initial_y,y
     iny
     bne - ; branch if we have't overflowed jmp_buf, which shouldn't happen in practice
-    ; SFTODO: UNSAFE is not necessarily the best way to control this. Especially
+    ; SFTODO: CHECK_ERRORS is not necessarily the best way to control this. Especially
     ; (do another code review) if Ozmoo doesn't use arbitrary amounts of stack
     ; depending on the Z-code being executed, this isn't something that should
     ; be triggered by buggy Z-code; it's internal to the interpreter.
-!ifndef UNSAFE {
+!ifdef CHECK_ERRORS {
     ; Y starts at -jmp_buf_size and is incremented every time we store a byte,
     ; so if it reaches 0 will have written jmp_buf_size bytes starting at
     ; jmp_buf+1 and have therefore overflowed the buffer (remember jmp_buf holds
