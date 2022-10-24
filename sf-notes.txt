@@ -1,3 +1,15 @@
+Bit of benchmarking 10.x against 11.x - the change from UNSAFE->CHECK_ERRORS and the fact these have opposite senses and both default to off, plus the changes in 11.x make this a little confusing/unfair, so don't read too much into this. Also remember 11.x has the change to how instructions are dispatched to in principle should be faster there.
+B 144K
+10.x $123 to $87c7 = 344.68
+11.x --check-errors $120 to $8780 = 344.00
+11.x no-check-errors $120 to $85c2 = 339.54 ~1.5% faster than 10.x
+
+M128
+10.x $7bf to $93fb = 359.00
+11.x --check-errors $7bf to $9411 = 359.22
+11.x no-check-errors $7cc to $9202 = 353.82 ~1.5% faster than 10.x
+
+
 TODO BENCHMARK --max-page 0xe00 M128 (ie known shadow):
 - small dynmem (default with these settings) $7cd to $8e3b = 344.14s
 - med dyn $7c5 to $9291 = 355.32s
