@@ -771,7 +771,7 @@ z_get_variable_reference_and_value
 	dey
 !ifdef CHECK_ERRORS {
 	cpy z_local_var_count
-	bcs nonexistent_local2
+	bcs .nonexistent_local
 }
 	asl ; Also clears carry
 	adc z_local_vars_ptr
@@ -817,8 +817,6 @@ z_get_referenced_value
 	rts
 
 !ifdef CHECK_ERRORS {
-; SFTODO: I may have duplicate/redundant labels/code for *nonexistent_local*; need to clean this up later.
-nonexistent_local2
 .nonexistent_local
 	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
 	jsr fatalerror
@@ -856,11 +854,6 @@ SFTODOTEMP
 	lda screen_hole_tmp
 	+after_dynmem_read_corrupt_y_slow
 	rts
-!ifndef UNSAFE {
-nonexistent_local2
-	lda #ERROR_USED_NONEXISTENT_LOCAL_VAR
-	jsr fatalerror
-}
 .zp_y_not_ok
 	; SF: I have forced this case to execute by manually fiddling around with
 	; the screen hole location.
@@ -948,7 +941,7 @@ z_set_variable
 	tay
 	dey
 	cpy z_local_var_count
-	bcs .nonexistent_local2
+	bcs .nonexistent_local
 }
 	asl
 	tay
@@ -2257,3 +2250,5 @@ z_ins_save_restore_undo
 	
 	
 }
+
+; SFTODO: A few bits of code reference UNSAFE macro, which I suspect has been retired/renamed.

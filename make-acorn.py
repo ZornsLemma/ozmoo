@@ -1665,6 +1665,10 @@ def parse_args():
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
     group.add_argument("--no-runtime-info", action="store_true", help="disable debug info at runtime")
     group.add_argument("--debug-assert", action="store_true", help="include debug assertion code")
+    # Not copying the "perform all checks for runtime errors" description make.rb uses for its equivalent
+    # of --check-errors, because it would suggest that things like --debug-assert are implied by it, and
+    # they aren't.
+    group.add_argument("--check-errors", action="store_true", help="enable runtime error checking")
 
     cmd_args = parser.parse_args()
 
@@ -1889,6 +1893,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_SHOW_RUNTIME_INFO=1"]
     if cmd_args.debug_assert:
         ozmoo_base_args += ["-DACORN_DEBUG_ASSERT=1"]
+    if cmd_args.check_errors:
+        ozmoo_base_args += ["-DCHECK_ERRORS=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
