@@ -10,6 +10,7 @@ New/changed features:
 - Empty keyboard buffer when game starts, so player doesn't accidentally miss an initial quote screen or something.
 - Allow a non-standard boot file name on MEGA65 too (makes the game not auto-boot, which may be what you want.)
 - Let player choose slower scrolling, key repeat mode and change device# for saves.
+- Fixed bug that could cause z5+ games that use colour to print invisible text.
 
 Optimizations:
 
@@ -18,6 +19,7 @@ Optimizations:
 - Faster screen clearing on C128 in 80 col mode.
 - Faster writing of characters to screen on C128 in 80 col mode.
 - Faster writing of buffered text to screen (faster on all platforms, a lot faster on C128 in 80 col mode).
+- Optimized scrolling (don't scroll colour memory for games that don't use colour).
 
 Bugfixes:
 

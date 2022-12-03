@@ -1035,6 +1035,9 @@ find_word_in_dictionary
 !ifdef USE_BLINKING_CURSOR {
 update_cursor_timer
 	; calculate when the next cursor update occurs
+!ifdef SMOOTHSCROLL {
+	jsr wait_smoothscroll
+}
 	jsr kernal_readtime  ; read current time (in jiffys)
 	clc
 	adc #USE_BLINKING_CURSOR
@@ -1135,6 +1138,9 @@ init_read_text_timer
 }
 update_read_text_timer
 	; prepare time for next routine call (current time + time_jiffy)
+!ifdef SMOOTHSCROLL {
+	jsr wait_smoothscroll
+}
 	jsr kernal_readtime  ; read current time (in jiffys)
 	clc
 	adc .read_text_time_jiffy + 2
@@ -1151,6 +1157,9 @@ update_read_text_timer
 getchar_and_maybe_toggle_darkmode
 !ifndef ACORN {
 	stx .getchar_save_x
+!ifdef SMOOTHSCROLL {
+	jsr wait_smoothscroll
+}
 	jsr kernal_getchar
 !ifndef NODARKMODE {
  	cmp #133 ; Charcode for F1
@@ -1158,6 +1167,13 @@ getchar_and_maybe_toggle_darkmode
 	jsr toggle_darkmode
 	jmp .did_something
 +	
+}
+!ifdef SMOOTHSCROLL {
+	cmp #137 ; F2
+	bne +
+	jsr toggle_smoothscroll
+	jmp .did_something
++
 }
 !ifdef SCROLLBACK {
 	cmp #135 ; F5
@@ -1265,6 +1281,9 @@ read_char
 !ifdef USE_BLINKING_CURSOR {
 	; check if time for to update the blinking cursor
 	; http://www.6502.org/tutorials/compare_beyond.html#2.2
+!ifdef SMOOTHSCROLL {
+	jsr wait_smoothscroll
+}
 	jsr kernal_readtime   ; read start time (in jiffys) in a,x,y (low to high)
 	cmp .cursor_jiffy + 2
 	txa
@@ -1319,6 +1338,9 @@ read_char
 	lda .read_text_time
 	ora .read_text_time + 1
 	beq .no_timer
+!ifdef SMOOTHSCROLL {
+	jsr wait_smoothscroll
+}
 	jsr kernal_readtime   ; read start time (in jiffys) in a,x,y (low to high)
 	cmp .read_text_jiffy + 2
 	txa

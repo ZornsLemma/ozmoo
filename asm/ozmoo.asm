@@ -318,7 +318,7 @@
 	SPLASHWAIT = 15
 }
 
-!ifndef Z5PLUS {
+!ifdef Z5PLUS {
 	COLOURFUL_LOWER_WIN = 1
 }
 !ifdef USE_INPUTCOL {
@@ -821,6 +821,7 @@ use_2mhz_in_80_col !byte 0 ; Initial value should always be 0
 
 use_2mhz_in_80_col_in_game_value = 1 ; This value is used after setup
 
+!ifndef SMOOTHSCROLL {
 ;phase 2 of 2MHz speed-up = change CPU to 2MHz
 ;and set raster IRQ for top-of-screen less 1 raster
 ;and do normal KERNAL routines of IRQ
@@ -861,6 +862,7 @@ c128_border_phase1
 	lsr		; A = 0
 	sta reg_2mhz	;CPU = 1MHz
 	jmp $ff33	;return from IRQ
+}
 
 } else {
 !ifdef ACORN {
@@ -943,6 +945,7 @@ game_id		!byte 0,0,0,0
 	sta $d011
 	jmp ++
 +	; 40 columns mode
+!ifndef SMOOTHSCROLL {
 	; use 2MHz only when rasterline is in the border for VIC-II
 	sei 
 	lda #<c128_border_phase2
@@ -954,10 +957,9 @@ game_id		!byte 0,0,0,0
 	sta $d011
 	lda #251 ; low raster bit (1 raster beyond visible screen)
 	sta $d012
-++
-}
-!ifndef ACORN {
 	cli
+}
+++
 }
 
 !ifdef SCROLLBACK {
@@ -1004,6 +1006,9 @@ game_id		!byte 0,0,0,0
 	!source "acorn.asm"
 	!source "acorn-swr.asm" ; SFTODO: rename this file? screen hole is not exactly swr (although it kind of us, because screen hole is trivial if we have no swr)
 	!source "acorn-utilities.asm"
+}
+!ifdef SMOOTHSCROLL {
+!source "smoothscroll.asm"
 }
 !source "utilities.asm"
 !ifdef SCROLLBACK {
@@ -1374,6 +1379,17 @@ deletable_screen_init_1
 	sty is_buffered_window
 	ldx #$ff
 	jmp erase_window
+
+deletable_screen_init_2
+!ifdef SMOOTHSCROLL {
+	jsr toggle_smoothscroll
+}
+	; clear and unsplit screen, start text output from bottom of the screen (top of screen if z5)
+	ldy #1
+	sty is_buffered_window
+	ldx #$ff
+	jsr erase_window
+	jmp start_buffering
 } else {
     ; Don't clear the screen; on Acorn we are going to spend several seconds
     ; doing the preload in deletable_init so we want to leave whatever the

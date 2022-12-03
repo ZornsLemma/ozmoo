@@ -615,6 +615,11 @@ printchar_flush
 	; We have re-selected the upper window, restore cursor position
 	jmp restore_cursor
 
+    ; SF: Upstream has a change here to introduce a print_line_from_buffer
+    ; subroutine. As far as I can tell this allows sharing some code to avoid
+    ; inconsistent output on various Commodore machines, but it isn't clear to
+    ; me there's actually a bugfix and the change just looks more verbose from
+    ; an Acorn perspective.
 printchar_buffered
 	; a is PETSCII character to print
 	sta .buffer_char

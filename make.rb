@@ -1049,7 +1049,7 @@ def build_interpreter()
 	if $use_history and $use_history > 0
 		optionalsettings += " -DUSE_HISTORY=#{$use_history}"
 	end
-	
+
 	generalflags = $GENERALFLAGS.empty? ? '' : " -D#{$GENERALFLAGS.join('=1 -D')}=1"
 	debugflags = $DEBUGFLAGS.empty? ? '' : " -D#{$DEBUGFLAGS.join('=1 -D')}=1"
 	colourflags = $colour_replacement_clause
@@ -2003,7 +2003,7 @@ def print_usage
 	puts "         [-i <imagefile>] [-if <imagefile>] [-ch[:n]] [-sb[:0|1|6|8|10|12]] [-rb[:0|1]]"
 	puts "         [-rc:[n]=[c],[n]=[c]...] [-dc:[n]:[n]] [-bc:[n]] [-sc:[n]] [-ic:[n]]"
 	puts "         [-dm[:0|1]] [-dmdc:[n]:[n]] [-dmbc:[n]] [-dmsc:[n]] [-dmic:[n]]"
-	puts "         [-ss[1-4]:\"text\"] [-sw:[nnn]]"
+	puts "         [-ss[1-4]:\"text\"] [-sw:[nnn]] [-smooth[:0|1]]"
 	puts "         [-cb:[n]] [-cc:[n]] [-dmcc:[n]] [-cs:[b|u|l]] "
 	puts "         [-dt:\"text\"] [-rd] [-as(a|w) <soundpath>] <storyfile>"
 	puts "  -t: specify target machine. Available targets are c64 (default), c128, plus4 and mega65."
@@ -2035,6 +2035,7 @@ def print_usage
 	puts "  -dm: Enable the ability to switch to dark mode"
 	puts "  -ss1, -ss2, -ss3, -ss4: Add up to four lines of text to the splash screen."
 	puts "  -sw: Set the splash screen wait time (1-999 s), or 0 to disable splash screen."
+	puts "  -smooth: Enable smooth-scrolling support (C64, C128)."
 	puts "  -cb: Set cursor blink frequency (1-99, where 1 is fastest)."
 	puts "  -cc/dmcc: Use the specified cursor colour.  Defaults to foreground colour."
 	puts "  -cs: Use the specified cursor shape.  ([b]lock (default), [u]nderscore or [l]ine)"
@@ -2101,6 +2102,7 @@ $scrollback_ram_pages = nil
 reserve_dir_track = nil
 check_errors = nil
 dark_mode = nil
+smooth_scroll = nil
 scrollback = nil
 reu_boost = nil
 
@@ -2249,6 +2251,12 @@ begin
 			else
 				dark_mode = $1.to_i
 			end
+		elsif ARGV[i] =~ /^-smooth(?::([01]))?$/ then
+			if $1 == nil
+				smooth_scroll = 1
+			else
+				smooth_scroll = $1.to_i
+			end
 		elsif ARGV[i] =~ /^-sb(?::(0|1|6|8|10|12))?$/ then
 			if $1 == nil
 				scrollback = 1
@@ -2301,6 +2309,14 @@ if reu_boost == 1
 		puts "ERROR: REU Boost is not available for this platform." 
 		exit 1
 	end
+end
+
+if smooth_scroll == nil
+	smooth_scroll = 0
+end
+if $target !~ /^(c64|c128)$/ and smooth_scroll == 1
+	puts "ERROR: Smooth scroll is not available for this platform." 
+	exit 1
 end
 
 if $target == "mega65" and $use_history == nil
@@ -2617,6 +2633,10 @@ $is_lurkinghorror = $zcode_version == 3 && $lurkinghorror_releases.has_key?(stor
 if dark_mode == 0
 	$GENERALFLAGS.push('NODARKMODE') unless $GENERALFLAGS.include?('NODARKMODE')
 end	
+
+if smooth_scroll == 1
+	$GENERALFLAGS.push('SMOOTHSCROLL') unless $GENERALFLAGS.include?('SMOOTHSCROLL')
+end
 
 if is_beyondzork
 	$interpreter_number = 2 unless $interpreter_number
