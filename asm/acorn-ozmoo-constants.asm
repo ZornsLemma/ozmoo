@@ -137,7 +137,13 @@ inkey_tab = -97
             ; A turbo second processor has enough RAM to hold 255 512-byte blocks.
             max_vmap_max_size = 255
         } else {
-            max_vmap_max_size = (flat_ramtop - story_start) / 512
+            ; We'd like to do: 
+            ;     max_vmap_max_size = (flat_ramtop - story_start) / 512
+            ; here, but story_start isn't known. Since this is just a maximum,
+            ; we can use a very conservative (low) value of story_start.
+            ; SFTODO: Be good to check this value *is* conservative as the code
+            ; evolves...
+            max_vmap_max_size = (flat_ramtop - $2800)
         }
     } else { ; ACORN_TUBE_CACHE
         ; The host cache is initialised using "extra" entries in the vmap.
