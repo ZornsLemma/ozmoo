@@ -1073,6 +1073,8 @@ s_printchar
     bne .no_hw_scroll1
     lda use_hw_scroll
     beq .no_hw_scroll1
+    ; SFTODO: Is there any value in trying to only redraw the top line after
+    ; all "short term" updates are done? Suppose the game scrolls a five line room description onto the screen. At the moment we'll redraw the top line after every single line. It would be faster to just redraw once output has finished and we're waiting for user input. I don't know if this is feasible - what if the game decides to (making this up as a simple example) pause for 10 seconds, expecting the status line to be there but we haven't shown it because there's no user input happening? It might also look ugly even if there were no implementation concerns, but I'm just speculating - it might look nicer overall due to the faster scroll and reduced flicker.
     jsr .redraw_top_line
     jmp .printchar_oswrch_done
 .no_hw_scroll1
