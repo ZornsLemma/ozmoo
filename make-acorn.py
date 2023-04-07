@@ -1100,6 +1100,8 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     # calculation may cause us to load so high there's no room for the
     # relocation data before &8000, so we never load much higher than
     # max_start_addr.
+    # SFTODO: This logic is duplicated in make_best_model_executable(), we
+    # should pull max_start_addr() out as a function.
     max_start_addr = electron_max_start_addr if "-DACORN_ELECTRON_SWR=1" in args else bbc_max_start_addr
     if not same_double_page_alignment(e_low.start_addr, max_start_addr):
         max_start_addr += 256
