@@ -1377,7 +1377,7 @@ deletable_init_start
     jsr newline
     jsr s_cursor_to_screenrowcolumn
 
-    ; If we're indeintg print "Loading:" ourselves in order to get it to line up
+    ; If we're indenting print "Loading:" ourselves in order to get it to line up
     ; nicely with everything else. Otherwise leave it alone and let
     ; .init_progress_indicator handle it using the "restart" code path.
     lda .runtime_info_indent
