@@ -46,33 +46,9 @@
 
 !zone screenkernal {
 
-; The Commodore 64 and one Acorn build have a fixed screen size while other
-; Acorn builds have a variable screen size. We don't want to penalise the
-; former so we use these macros which assemble using either immediate values
-; or memory accesses as appropriate.
-; SFTODO: This probably needs tweaking/simplifying for 5.3 port; I shouldn't be
-; gratuitously different from Commodore port now it has support for non-40x25
-; screens. Probably best to avoid making any changes in this area until I look
-; at supporting extra modes on non-shadow machines if they happen to have enough
-; spare RAM (e.g. mode 6 on a model B, maybe even mode 3 on a B/Electron with an
-; E00 DFS and a small game)
-
-!ifndef ACORN {
-    ; SFTODO: THIS IS NOT TRUE ANY MORE, OF COURSE
-    FIXED_SCREEN_SIZE = 1
-} else {
-    !error "TODO"
-    ; This is a minor optimisation for the BBC no-shadow-RAM executable, where
-    ; we know we will always be in mode 7. Note that this optimisation *cannot*
-    ; be used for the Electron executable, which handles machines with and
-    ; without shadow RAM and therefore could be running in any mode.
-    ; SFTODO: Worth it? Feels a little special case.
-    !ifdef ACORN_SCREEN_HOLE {
-        !ifndef ACORN_ELECTRON_SWR {
-            FIXED_SCREEN_SIZE = 1
-        }
-    }
-}
+; SFTODO: We no longer use FIXED_SCREEN_SIZE = 1 at all, so we can probably remove
+; the associated code. I will leave it for now as it might be useful for checking
+; the performance impact on the B-no-shadow-in-mode-7 case.
 
 !ifdef FIXED_SCREEN_SIZE {
 !ifndef Z4PLUS {

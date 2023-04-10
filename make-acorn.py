@@ -1142,7 +1142,7 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     adjusted_small_dynmem_page_threshold = min(small_dynmem_page_threshold, max_start_addr)
 
     small_e = None
-    if not (cmd_args.force_medium_dynmem or cmd_args.force_big_dynmem):
+    if not (cmd_args.force_medium_dynmem or cmd_args.force_big_dynmem or not cmd_args.try_support_32k):
         small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
         # Some systems may have PAGE too high to run small_e, but those systems
         # would be able to run the game if built with the big dynamic memory model.
@@ -1647,6 +1647,7 @@ def parse_args():
     # SFTODO: Not an ideal argument name but it will do for now.
     group.add_argument("--nfs-install-only", action="store_true", help="generate a disc image for installation to NFS")
     group.add_argument("--disc-title", metavar="DISCTITLE", type=str, help="set disc image title")
+    group.add_argument("--try-support-32k", action="store_true", help="try to support unexpanded 32K machines")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
