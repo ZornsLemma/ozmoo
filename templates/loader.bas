@@ -9,10 +9,6 @@ REM As this code is not performance-critical, I have used real variables instead
 REM of integer variables most of the time to shorten things slightly by avoiding
 REM constant use of "%".
 
-REM SFTODO: It would be nice if the loader and build system could work
-REM together to allow the user to *optionally* specify a high-res title
-REM screen before we go into the mode 7 loader.
-
 REM SFTODO: Note that for Z3 games, anything shown on the top line of
 REM the screen will remain present occupying the not-yet-displayed
 REM status line until the game starts. This means that if any disc
