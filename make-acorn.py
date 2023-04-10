@@ -1213,10 +1213,6 @@ def make_electron_swr_executable():
 
 def make_bbc_swr_executable():
     leafname = "OZMOOB"
-    # SFTODO: We could shave a few bytes off this executable by having an
-    # ACORN_MODE_7_ONLY build flag which would disable some unnecessary mode
-    # support. We get most of the benefit by removing "-DACORN_HW_SCROLL=1";
-    # hardware scrolling is always disabled in mode 7 anyway.
     args = ozmoo_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
     return extra_build_wrapper(make_best_model_executable(leafname, args, "BBC B sideways RAM"))
 
