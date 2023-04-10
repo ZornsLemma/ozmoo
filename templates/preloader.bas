@@ -62,6 +62,11 @@ REM shadow mode (as the loader will do), so we change into a shadow mode now if
 REM that's a possibility. The Integra-B can fake the value of host_os but still
 REM retains the possibility of this corruption (it depends on the SHX setting)
 REM so we test for it explicitly.
+REM SFTODO: Maybe we should add "AND HIMEM<>&8000" to the following line?
+REM That would avoid doing an unnecessary mode change where shadow RAM is permanently
+REM forced on but we take whatever steps are necessary to load the image into video
+REM RAM - currently this is just the Electron MRB shadow case, but in principle it
+REM could happen on other machines so better to handle it via this generic kind of test.
 IF NOT tube AND (host_os<=1 OR integra_b) AND FNmode_himem(135)=&8000 AND PAGE+${loader_size}>=&2F00 THEN change_now=TRUE
 IF change_now THEN MODE 135:VDU 23,1,0;0;0;0;
 CHAIN "LOADER"
