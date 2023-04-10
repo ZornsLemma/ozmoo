@@ -2138,6 +2138,10 @@ bbc_max_start_addr = 0x3000
 # relatively low address which should be >=PAGE on nearly all systems.
 # SFTODO: The fuzziness around interpretation of max_start_addr means in
 # practice we may slip *two* pages above this, which isn't ideal.
+# SFTODONOW: Now that a non-shadow machine *can* run in modes other than the
+# minimal screen RAM (e.g. a B running in mode 6 instead of mode 7), should
+# we try to avoid loading "extra high" on the B as well? Maybe lower
+# bbc_max_start_addr to something like 0x2000?
 if not cmd_args.adfs:
     electron_max_start_addr = 0x1900
 else:
