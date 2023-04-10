@@ -908,7 +908,7 @@ class OzmooExecutable(Executable):
     def _patch_vmem(self):
         # Can we fit the nonstored pages into memory?
         nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
-        if nonstored_pages_up_to > self.pseudo_ramtop():
+        if nonstored_pages_up_to > self.max_pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
             # Note that swr_dynmem may be negative; this means there will be
@@ -924,7 +924,7 @@ class OzmooExecutable(Executable):
         # memory.
         if "ACORN_SWR" not in self.labels:
             nsmv_up_to = nonstored_pages_up_to + min_vmem_blocks * bytes_per_vmem_block
-            if nsmv_up_to > self.pseudo_ramtop():
+            if nsmv_up_to > self.max_pseudo_ramtop():
                 raise GameWontFit("not enough free RAM for any swappable memory")
 
         # Generate initial virtual memory map. We just populate the entire table; if the
@@ -966,26 +966,35 @@ class OzmooExecutable(Executable):
             self._asm_output[vmap_z_l_offset + i] = vmap_entry & 0xff
             self._asm_output[vmap_z_h_offset + i] = (vmap_entry >> 8) & 0xff
 
-    def screen_hole_size(self):
-        # SFTODO: This adjustment for screen memory is correct as long as
-        # the screen hole executables always run on machines with a fixed
-        # screen hole, which is currently true but won't be eventually (e.g.
-        # when a B-no-shadow has the option to run in mode 6).
+    # SFTODO: This function is perhaps slightly mis-named. It returns the
+    # smallest screen hole we can have for this build *ignoring* the prospect
+    # that we might actually have shadow RAM even though we can cope without
+    # it. It should do the right thing, it is just the name that's slightly
+    # less than ideal.
+    def min_screen_hole_size(self):
+        # SFTODO: This will need changing if we add an option to build a game
+        # disallowing the use of mode 7 (e.g. for a game which must have
+        # accented characters).
         if "ACORN_SCREEN_HOLE" in self.labels:
-            return 0x2000 if "ACORN_ELECTRON_SWR" in self.labels else 0x400
+            if cmd_args.only_80_column:
+                return 0x4000 # mode 3 screen RAM size
+            elif "ACORN_ELECTRON_SWR" in self.labels:
+                return 0x2000 # mode 6 screen RAM size
+            else:
+                return 0x400 # mode 7 screen RAM size
         return 0
 
-    def pseudo_ramtop(self):
+    def max_pseudo_ramtop(self):
         if "ACORN_SWR" in self.labels:
             result = 0x8000 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 0xc000
             if "ACORN_SWR_MEDIUM_DYNMEM" not in self.labels:
-                result -= self.screen_hole_size()
+                result -= self.min_screen_hole_size()
             return result
         else:
             return self.labels["flat_ramtop"]
 
     def max_nonstored_pages(self):
-        return (self.pseudo_ramtop() - self.labels["story_start"]) // bytes_per_page
+        return (self.max_pseudo_ramtop() - self.labels["story_start"]) // bytes_per_page
 
     # Return the size of the binary, ignoring any relocation data (which isn't
     # important for the limited use we make of the return value).
@@ -1112,7 +1121,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
         max_start_addr = min(e_low.start_addr + surplus_nonstored_pages * bytes_per_page, max_start_addr)
     else:
         main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
-        main_ram_vmem -= e_low.screen_hole_size()
+        main_ram_vmem -= e_low.min_screen_hole_size()
         assert main_ram_vmem >= 0
         assert main_ram_vmem % (2 * bytes_per_page) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
@@ -1922,8 +1931,9 @@ def make_disc_image():
         want_bbc_shr_swr = False
     if cmd_args.no_tube:
         want_tube = False
-    if cmd_args.only_80_column:
-        want_bbc_swr = False # mode 7 only build
+    # SFTODO: Test this, it may be useless/wrong
+    #if cmd_args.only_80_column:
+    #    want_bbc_swr = False # mode 7 only build
     if not any([want_electron, want_bbc_swr, want_bbc_shr_swr, want_tube]):
         die("All possible builds have been disabled by command line options, nothing to do!")
 

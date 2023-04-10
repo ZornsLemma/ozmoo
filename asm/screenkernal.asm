@@ -61,6 +61,7 @@
     ; SFTODO: THIS IS NOT TRUE ANY MORE, OF COURSE
     FIXED_SCREEN_SIZE = 1
 } else {
+    !error "TODO"
     ; This is a minor optimisation for the BBC no-shadow-RAM executable, where
     ; we know we will always be in mode 7. Note that this optimisation *cannot*
     ; be used for the Electron executable, which handles machines with and
