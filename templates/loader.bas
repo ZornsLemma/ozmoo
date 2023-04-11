@@ -446,9 +446,10 @@ p=PAGE
 }
 
 DEF PROCchoose_non_tube_version
-!ifdef ONLY_80_COLUMN {
-    IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
-}
+REM SFTODO: Delete this commented out code once tested only 80 column does work (or fail cleanly, depending on free RAM) on no-shadow no-2P machines now
+REM !ifdef ONLY_80_COLUMN {
+REM    IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
+REM }
 !ifdef OZMOOE_BINARY {
     IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:medium_dynmem=${OZMOOE_SWR_MEDIUM_DYNMEM}:ENDPROC
 } else {
