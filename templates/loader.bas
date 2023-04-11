@@ -226,9 +226,11 @@ PROCchoose_version_and_check_ram
 }
 
 !ifdef AUTO_START {
+    REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7.
     IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
     mode_keys_vpos=VPOS:PROCshow_mode_keys
 } else {
+    REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7.
     IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
@@ -320,6 +322,65 @@ REM The tube build works on both the BBC and Electron, so we check that first.
 }
 PROCchoose_non_tube_version
 
+XXX NEW WIP START
+
+REM SFTODO: Review all the following fresh; I think it's right but I got seriously
+REM agitated trying to write it.
+
+REM For builds which can use sideways RAM, we need to check if we have enough
+REM main RAM and/or sideways RAM to run successfully. Check this machine has an
+REM acceptable value of PAGE, and note any extra RAM we have free compared to a
+REM machine with the maximum supported PAGE.
+IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
+extra_main_ram=max_page-PAGE
+
+!ifdef ONLY_80_COLUMN {
+    max_mode=3
+} else {
+    REM SFTODO: We might at some point want to add optional support for refusing
+    REM to run in mode 7, e.g. for games needing accented characters.
+    max_mode=7+electron
+}
+
+REM If we have shadow RAM, all modes have the same (0K) screen RAM requirement so we
+REM only need to do the test once for mode 0. Remember the screen RAM isn't the only
+REM factor here - we need enough main and/or sideways RAM to run successfully, so we
+REM still need to do the test. If we don't have shadow RAM, we test the modes in
+REM increasing order of RAM requirement and stop testing once we experience a
+REM failure.
+REM SFTODO: We could do the tests in the other order; which is faster (hopefully
+REM mostly imperceptibly) will depend on how many modes are acceptable compared to
+REM how many aren't.
+IF shadow THEN RESTORE 3010 ELSE RESTORE 3000
+3000DATA 7,6,4,3
+3010DATA 0
+ok=TRUE
+REPEAT
+READ mode
+IF mode<=max_mode THEN ok=FNmode_ok(mode, shadow OR mode=max_mode):IF ok THEN min_mode=mode
+UNTIL mode=0 OR NOT ok
+
+SFTODONOW: WE NEED TO RESPECT THE VALUE OF MIN_MODE AND MAX_MODE WHEN DISPLAYING THE MODE MENU
+
+ENDPROC
+
+
+
+
+
+SFTODONOW FOR SMALL DYNMEM WE NEED TO CALCULATE MAIN RAM FREE FOR DYN MEM AND CHECK IT'S ENOUGH IN THE SELECTED MODE
+DEF FNmode_ok(mode, die_if_not_ok)
+SFTODONOW - WE SHOULD PROB CHECK 128+MODE WRT SCREEN RAM USED, SINCE WE *MAY* HAVE SHADOW RAM (ON AN ELECTRON, AT LEAST, CURRENTLY) DESPITE SUPPORTING NON-SHADOW WITH SCREEN HOLE
+SFTODONOW
+SFTODONOW REMEMBER TO RESPECT die_if_not_ok AND GIVE AS HELPFUL A MESSAGE AS POSSIBLE IF WE DIE FROM THIS
+=SFTODONOW
+
+XXX NEW WIP END
+
+XXX OLD FOR REF --------------------- START
+
+SFTODONOW - I AM THINKING I MAY NEED THE BUILD SYSTEM TO COMMUNICATE THE min_screen_hole_size() VALUE TO THIS CODE VIA A SUBSTITUTION - WE CAN THEN USE THAT TO WORK OUT WHETHER THE GAME WILL FIT IN VARIOUS MODES (INCLUDING, DON'T FORGET, SHADOW MODES ON SHADOW+NON-SHADOW CAPABLE BUILDS LIKE THE ELECTRON, WHERE THE SCREEN HOLE SIZE NEEDS TO BE HANDLED CORRECTLY SO WE TAKE ADVANTAGE OF HAVING NO SCREEN HOLE IN PRACTICE)
+
 REM SFTODO: Review all the following fresh; I think it's right but I got seriously
 REM agitated trying to write it.
 
@@ -388,6 +449,8 @@ IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n
 IF flexible_swr>0 THEN d=FNmin(n,flexible_swr):flexible_swr=flexible_swr-d:n=n-d
 extra_main_ram=extra_main_ram-n
 ENDPROC
+
+XXX OLD FOR REF --------------------- END
 
 DEF FNcode_start
 REM 'p' is used to work around a beebasm tokenisation bug.
