@@ -335,15 +335,9 @@ IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &
 
 REM At this point we have three different kinds of memory available:
 REM - extra_main_ram bytes free in main RAM SFTODONOW: NOT QUITE RIGHT DESCRIPTION AS IT DOESN'T TAKE SCREEN RAM INTO ACCOUNT, TWEAK COMMENT AND/OR CODE? I THINK CODE IS *RIGHT* BUT COULD MAYBE EXPRESS DIFFERENTLY
-REM - flexible_swr bytes of normal, contiguous sideways RAM
-REM - vmem_only_swr bytes of non-contiguous sideways RAM
-!ifdef integra_b_private_ram_size {
-    IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
-} else {
-    REM This shouldn't happen normally, and if it does this code shouldn't execute. SFTODONOW: PROB TRUE BUT RETHINK JUST TO CHECK
-    PROCdie("Sorry, unsupported machine.")
-}
-flexible_swr=swr_size-vmem_only_swr
+REM - flexible_swr bytes of sideways RAM which can be used as dynamic memory or vmem cache
+REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
+vmem_only_swr=swr_size-flexible_swr
 
 !ifdef ONLY_80_COLUMN {
     max_mode=3
@@ -398,6 +392,7 @@ IF SFTODOISSMALLMODEL AND
 =SFTODONOW
 
 SFTODONOW BEING SUPER INCONSISTENT ABOUT WHAT'S PASSED AS ARGS AND WHAT IS JUST SET AS VARIABLES BY PARENT
+SFTODONOW FOR EXAMPLE, IT MAY BE DIE_IF_NOT_OK SHOULD JUST BE A GLOBAL FLAG
 
 SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT (EG BY HARD-CODING THE STRINGS INTO THE DIE FUNCTIONS, PERHAPS LETTING DIE FUNCTIONS HANDLE THE CONDITIONAL 1-OR-2 SUBMESSAGES BEHAVIOUR)
 
@@ -420,10 +415,9 @@ IF main_ram_shortfall>0 THEN =FNmaybe_die_ram(die_if_not_ok,main_ram_shortfall,"
 =FNmaybe_die_ram(die_if_not_ok,any_ram_shortfall,"main or sideways RAM")
 
 DEF FNmode_ok_medium_dynmem(mode,die_if_not_ok)
-SFTODONOW
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
-REM game's dynamic memory; nothing else can substitute.
-SFTODONOW AND IN FACT WE MUST HAVE ENOUGH FLEXIBLE_SWR *IN THE FIRST BANK*, AND BEAR IN MIND THAT MAY BE AN "11K-ISH" BANK NOT A FULL 16K
+REM game's dynamic memory; main RAM can't be used as dynamic memory.
+REM SFTODONOW: TEST A GAME WITH >11.5K (IDEALLY >12K) BUT <=16K DYNMEM ON A MEDIUM BUILD ON A B+64K NO SWR - IT SHOULD FAIL, I SUSPECT IT MAY NOT HAVE DONE BEFORE
 flexible_swr=flexible_swr-swr_dynmem_needed:SFTODONOW MODIFYING A GLOBAL VARIABLE HERE WHICH WON'T WORK NOW WE LOOP ROUND OVER MULTIPLE MODES
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
@@ -437,21 +431,19 @@ IF flexible_swr<0 THEN =FNmaybe_die_ram(die_if_not_ok,-flexible_swr,"sideways RA
 =FNmaybe_die_ram(die_if_not_ok,-extra_main_ram,"main RAM")
 
 DEF FNmode_ok_big_dynmem(mode,die_if_not_ok)
-SFTODONOW
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
 REM calculation we prefer to take it from flexible_swr so we can use the result to
 REM determine the available main RAM for shadow vmem cache if that's enabled.
-SFTODONOW WILL THIS CORRECTLY DETECT THE CASE WHERE WE HAVE ENOUGH MAIN+SIDEWAYS RAM FOR THE GAME'S DYNMEM BUT *NOT* ENOUGH MAIN+*SINGLE BANK* SWR FOR GAME'S DYNMEM AND THUS IT CAN'T RUN? CAN THIS CASE OCCUR? RIGHT NOW NOT SURE IF BUILD SYSTEM WILL GUARANTEE IT. DOES JUST-12K SWR POSSIBILITY ON B+ AFFECT THIS?
 flexible_swr=flexible_swr-swr_dynmem_needed SFTODONOW MODIFYING GLOBAL STATE INSIDE LOOP, BAD
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 SFTODO OLD SEMI TEMP FOR REF BELOW HERE
-IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
+IF extra_main_ram<0 THEN =FNmaybe_die_ram(die_if_not_ok,-extra_main_ram,"main or sideways RAM")
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
     free_main_ram=extra_main_ram
 }
-=SFTODONOW
+=TRUE
 
 XXX NEW WIP END
 
@@ -975,6 +967,10 @@ REM to host memory, but that's not a big deal. More to the point is that CACHE2P
 REM doesn't know how to skip the IBOS workspace on an Integra-B, so we'll just
 REM avoid this altogether for the moment.
 swr_adjust=0
+REM flexible_swr is the amount of sideways RAM in the first bank which can be
+REM used as dynamic memory (perhaps in combination with main RAM, depending on the
+REM memory model) or vmem cache. Other sideways RAM can only be used as vmem cache.
+IF swr_banks>0 THEN flexible_swr=&4000 ELSE flexible_swr=0
 IF NOT tube AND NOT private_ram_in_use THEN PROCadd_private_ram_as_swr
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)":PROCupdate_swr_banks(0)
 swr_size=&4000*swr_banks-swr_adjust
@@ -998,7 +994,7 @@ REM defined.
     IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
 }
 !ifdef b_plus_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}
+    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr=${b_plus_private_ram_size}
 }
 ENDPROC
 
