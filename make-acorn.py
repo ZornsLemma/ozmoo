@@ -1072,7 +1072,7 @@ make_ozmoo_executable._cache = {}
 # builds will have 256 bytes less of padding before data_start - that's the one
 # we want to use, as it avoids wasting memory if PAGE happens to have the right
 # 512-byte alignment, and if PAGE has the opposite alignment we will "waste" 256
-# bytes before program_start to get the right alginment instead of wasting 256
+# bytes before program_start to get the right alignment instead of wasting 256
 # bytes on internal alignment, so we're no worse off. (The space below PAGE is
 # not necessarily wasted either, since it may be used as shadow RAM cache on
 # some machines.)

@@ -401,13 +401,17 @@ SFTODONOW BEING SUPER INCONSISTENT ABOUT WHAT'S PASSED AS ARGS AND WHAT IS JUST 
 
 SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT (EG BY HARD-CODING THE STRINGS INTO THE DIE FUNCTIONS, PERHAPS LETTING DIE FUNCTIONS HANDLE THE CONDITIONAL 1-OR-2 SUBMESSAGES BEHAVIOUR)
 
+SFTODONOW AM I ACTUALLY CHECKING DYNAMIC MEMORY SIZE IN ANY OF THESE CASES!?!?!?!?
+
 DEF FNmode_ok_small_dynmem(mode,die_if_not_ok)
 REM SFTODO: Is it confusing that main_ram_shortfall and any_ram_shortfall are "positive for not enough" whereas we are generally tracking available RAM and using "negative for not enough"?
-REM We must have main RAM for the dynamic memory; in order to report the
-REM requirements correctly if we don't have enough, we take a (tweaked) copy of
-REM extra_main_ram before trying to allocate ${MIN_VMEM_BYTES}.
+REM We must have main RAM for the dynamic memory. The build system checked that
+REM the binary would have enough main RAM when built at the maximum value of PAGE
+REM and with the assumed screen RAM, so we're OK for dynamic memory iff
+REM extra_main_ram>=0. In order to report the requirements correctly if we don't
+REM have enough, we take a (tweaked) copy of extra_main_ram before trying to
+REM allocate ${MIN_VMEM_BYTES}.
 main_ram_shortfall=-FNmin(extra_main_ram,0)
-SFTODO DIFFICULT TO REPORT HERE AS WE CAN ONLY HAVE MAIN RAM FOR THE DYNMEM
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
@@ -419,6 +423,7 @@ DEF FNmode_ok_medium_dynmem(mode,die_if_not_ok)
 SFTODONOW
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; nothing else can substitute.
+SFTODONOW AND IN FACT WE MUST HAVE ENOUGH FLEXIBLE_SWR *IN THE FIRST BANK*, AND BEAR IN MIND THAT MAY BE AN "11K-ISH" BANK NOT A FULL 16K
 flexible_swr=flexible_swr-swr_dynmem_needed:SFTODONOW MODIFYING A GLOBAL VARIABLE HERE WHICH WON'T WORK NOW WE LOOP ROUND OVER MULTIPLE MODES
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
@@ -433,6 +438,19 @@ IF flexible_swr<0 THEN =FNmaybe_die_ram(die_if_not_ok,-flexible_swr,"sideways RA
 
 DEF FNmode_ok_big_dynmem(mode,die_if_not_ok)
 SFTODONOW
+REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
+REM calculation we prefer to take it from flexible_swr so we can use the result to
+REM determine the available main RAM for shadow vmem cache if that's enabled.
+SFTODONOW WILL THIS CORRECTLY DETECT THE CASE WHERE WE HAVE ENOUGH MAIN+SIDEWAYS RAM FOR THE GAME'S DYNMEM BUT *NOT* ENOUGH MAIN+*SINGLE BANK* SWR FOR GAME'S DYNMEM AND THUS IT CAN'T RUN? CAN THIS CASE OCCUR? RIGHT NOW NOT SURE IF BUILD SYSTEM WILL GUARANTEE IT. DOES JUST-12K SWR POSSIBILITY ON B+ AFFECT THIS?
+flexible_swr=flexible_swr-swr_dynmem_needed SFTODONOW MODIFYING GLOBAL STATE INSIDE LOOP, BAD
+IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
+PROCsubtract_ram(${MIN_VMEM_BYTES})
+SFTODO OLD SEMI TEMP FOR REF BELOW HERE
+IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
+!ifdef ACORN_SHADOW_VMEM {
+    REM SFTODO: I think this is right, but think about it fresh!
+    free_main_ram=extra_main_ram
+}
 =SFTODONOW
 
 XXX NEW WIP END
@@ -964,8 +982,9 @@ IF swr_banks=0 THEN ENDPROC
 REM SFTODO: Maybe a bit confusing that we call it "private RAM" here but sideways RAM if we have real sideways RAM to go with it - also as per TODO above we may not actually have the full 12K, and while it's maybe confusing to say "11.5K private RAM" we also don't want the user adding up their memory and finding it doesn't come out right - arguably we *can* say 12K private RAM (at least on B+, not sure about Integra-B) because we *do* have it all, it's just we set aside the last 512 bytes for other uses, but still for Ozmoo
 IF swr_size<=12*1024 THEN swr$="12K private RAM":ENDPROC
 REM We use integer division here so that the 11.5K sideways RAM from the B+/
-REM Integra-B private RAM doesn't cause wrapping if we have a lot of sideways
-REM RAM banks. SFTODO: I'm not entirely happy with this, is there a better way?
+REM Integra-B private RAM doesn't cause the text to wrap at the screen right
+REM margin if we have a lot of sideways RAM banks.
+REM SFTODO: I'm not entirely happy with this, is there a better way?
 swr$=STR$(swr_size DIV 1024)+"K sideways RAM (bank":IF swr_banks>1 THEN swr$=swr$+"s"
 swr$=swr$+" &":FOR i=0 TO swr_banks-1:bank=FNpeek(${ram_bank_list}+i)
 IF bank>=64 THEN bank$="P" ELSE bank$=STR$~bank
