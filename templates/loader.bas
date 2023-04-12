@@ -47,7 +47,7 @@ REM details.
 *EXEC
 CLOSE #0
 
-A%=&85:X%=135:potential_himem=(USR&FFF4 AND &FFFF00) DIV &100
+potential_himem=FNhimem_for_mode(135)
 !ifndef SPLASH {
     REM With third-party shadow RAM on an Electron or BBC B, we *may* experience
     REM corruption of memory from &3000 upwards when changing between shadow and
@@ -334,11 +334,23 @@ REM machine with the maximum supported PAGE.
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 extra_main_ram=max_page-PAGE
 
+REM At this point we have three different kinds of memory available:
+REM - extra_main_ram bytes free in main RAM SFTODONOW: NOT QUITE RIGHT DESCRIPTION AS IT DOESN'T TAKE SCREEN RAM INTO ACCOUNT, TWEAK COMMENT AND/OR CODE? I THINK CODE IS *RIGHT* BUT COULD MAYBE EXPRESS DIFFERENTLY
+REM - flexible_swr bytes of normal, contiguous sideways RAM
+REM - vmem_only_swr bytes of non-contiguous sideways RAM
+!ifdef integra_b_private_ram_size {
+    IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
+} else {
+    REM This shouldn't happen normally, and if it does this code shouldn't execute. SFTODONOW: PROB TRUE BUT RETHINK JUST TO CHECK
+    PROCdie("Sorry, unsupported machine.")
+}
+flexible_swr=swr_size-vmem_only_swr
+
 !ifdef ONLY_80_COLUMN {
     max_mode=3
 } else {
-    REM SFTODO: We might at some point want to add optional support for refusing
-    REM to run in mode 7, e.g. for games needing accented characters.
+    REM SFTODO: We might at some point want to add optional support for forcing
+    REM max_mode=6 on a BBC, e.g. for games needing accented characters.
     max_mode=7+electron
 }
 
@@ -371,8 +383,48 @@ ENDPROC
 SFTODONOW FOR SMALL DYNMEM WE NEED TO CALCULATE MAIN RAM FREE FOR DYN MEM AND CHECK IT'S ENOUGH IN THE SELECTED MODE
 DEF FNmode_ok(mode, die_if_not_ok)
 SFTODONOW - WE SHOULD PROB CHECK 128+MODE WRT SCREEN RAM USED, SINCE WE *MAY* HAVE SHADOW RAM (ON AN ELECTRON, AT LEAST, CURRENTLY) DESPITE SUPPORTING NON-SHADOW WITH SCREEN HOLE
+SFTODONOW - I MAY NEED TO BE ABLE TO TELL THE EXACT MEMORY MODEL RATHER THAN JUST MEDIUM VS NOT-MEDIUM, BECAUSE FOR SMALL MODEL I NEED TO CHECK THERE'S ENOUGH MAIN RAM AFTER EXTRA SCREEN RAM CONSUMED BY NON-MINIMAL SCREEN MOVE (OR WITH EXTRA MAIN RAM BECAUSE WE HAVE SHADOW ON THIS SPECIFIC MACHINE)
 SFTODONOW
 SFTODONOW REMEMBER TO RESPECT die_if_not_ok AND GIVE AS HELPFUL A MESSAGE AS POSSIBLE IF WE DIE FROM THIS
+
+REM We may have shadow RAM even if we don't require it (the Electron executable
+REM currently handles both types of system), so we check the potential value of
+REM HIMEM in the shadow version of the mode we're interested in, if it exists.
+screen_ram=&8000-FNhimem_for_mode(128+mode)
+
+IF SFTODOISSMALLMODEL AND
+
+=SFTODONOW
+
+SFTODONOW BEING SUPER INCONSISTENT ABOUT WHAT'S PASSED AS ARGS AND WHAT IS JUST SET AS VARIABLES BY PARENT
+
+DEF FNmode_ok_small_dynmem(mode,die_if_not_ok)
+free_main_ram=extra_main_ram+(assumed_screen_ram-screen_ram)
+REM SFTODO: I think this code might be correct, but should/could we use PROCsubtract_ram()?
+excess_vmem_ram=FNmax(free_main_ram,0)+flexible_swr+vmem_only_swr-${MIN_VMEM_BYTES}
+IF free_main_ram>=0 AND excess_vmem_ram>=0 THEN =TRUE
+IF free_main_ram<0 AND excess_vmem_ram<0 THEN =FNmaybe_die_ram2(die_if_not_ok,-free_main_ram,"main RAM and a further",-excess_vmem_ram,"main or sideways RAM")
+IF free_main_ram<0 THEN =FNmaybe_die_ram(die_if_not_ok,-free_main_ram,"main RAM")
+=FNmaybe_die_ram(die_if_not_ok,-excess_vmem_ram,"main or sideways RAM")
+
+DEF FNmode_ok_medium_dynmem(mode,die_if_not_ok)
+SFTODONOW
+REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
+REM game's dynamic memory; nothing else can substitute.
+flexible_swr=flexible_swr-swr_dynmem_needed
+PROCsubtract_ram(${MIN_VMEM_BYTES})
+!ifdef ACORN_SHADOW_VMEM {
+    REM SFTODO: I think this is right, but think about it fresh!
+    REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
+    free_main_ram=extra_main_ram
+}
+IF flexible_swr>=0 AND extra_main_ram>=0 THEN =TRUE
+IF flexible_swr<0 AND extra_main_ram<0 THEN =FNmaybe_die_ram2(die_if_not_ok,-flexible_swr,"sideways RAM and a further",-extra_main_ram,"main or sideways RAM")
+IF flexible_swr<0 THEN =FNmaybe_die_ram(die_if_not_ok,-flexible_swr,"sideways RAM")
+=FNmaybe_die_ram(die_if_not_ok,-extra_main_ram,"main RAM")
+
+DEF FNmode_ok_big_dynmem(mode,die_if_not_ok)
+SFTODONOW
 =SFTODONOW
 
 XXX NEW WIP END
@@ -453,6 +505,7 @@ ENDPROC
 XXX OLD FOR REF --------------------- END
 
 DEF FNcode_start
+SFTODONOWTHISPROBNEEDS TWEAKING - NOTE IT USES free_main_ram
 REM 'p' is used to work around a beebasm tokenisation bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 p=PAGE
@@ -993,3 +1046,5 @@ REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 =s$
 
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
+
+DEF FNhimem_for_mode(mode):A%=&85:X%=mode:=(USR&FFF4 AND &FFFF00) DIV &100

@@ -1132,6 +1132,7 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     return e
 
 
+# SFTODO: Since the Electron executable handles both shadow and non-shadow machines, *if* even a big model executable will require shadow RAM, should we retry small and medium models on the assumption we *do* have shadow RAM before settling on big model? I don't know if this case is possible, though without thinking too carefully I suspect it is possible but relatively unlikely.
 def make_best_model_executable(leafname, args, report_failure_prefix):
     # Calculate adjusted_small_dynmem_page_threshold; it doesn't make sense to refuse to
     # build using the small model because it requires assuming PAGE>=max_start_addr.
