@@ -332,7 +332,6 @@ REM main RAM and/or sideways RAM to run successfully. Check this machine has an
 REM acceptable value of PAGE, and note any extra RAM we have free compared to a
 REM machine with the maximum supported PAGE.
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-extra_main_ram=max_page-PAGE
 
 REM At this point we have three different kinds of memory available:
 REM - extra_main_ram bytes free in main RAM SFTODONOW: NOT QUITE RIGHT DESCRIPTION AS IT DOESN'T TAKE SCREEN RAM INTO ACCOUNT, TWEAK COMMENT AND/OR CODE? I THINK CODE IS *RIGHT* BUT COULD MAYBE EXPRESS DIFFERENTLY
@@ -382,6 +381,7 @@ ENDPROC
 
 SFTODONOW FOR SMALL DYNMEM WE NEED TO CALCULATE MAIN RAM FREE FOR DYN MEM AND CHECK IT'S ENOUGH IN THE SELECTED MODE
 DEF FNmode_ok(mode, die_if_not_ok)
+SFTODONOW IF WE'RE MODIFYING ANY OF THE GLOBAL "X MEM TYPE FREE" VARS AS WE DO THESE CHECKS, WE NEED TO ENSURE WE EITHER DON'T OR THAT WE RESET THE VALUES EACH TIME ROUND THE MODE LOOP. extra_main_ram SHOULD BE FINE NOW, AS WE SET IT HERE AFTER TAKING SCREEN_RAM INTO ACCOUNT.
 SFTODONOW - WE SHOULD PROB CHECK 128+MODE WRT SCREEN RAM USED, SINCE WE *MAY* HAVE SHADOW RAM (ON AN ELECTRON, AT LEAST, CURRENTLY) DESPITE SUPPORTING NON-SHADOW WITH SCREEN HOLE
 SFTODONOW - I MAY NEED TO BE ABLE TO TELL THE EXACT MEMORY MODEL RATHER THAN JUST MEDIUM VS NOT-MEDIUM, BECAUSE FOR SMALL MODEL I NEED TO CHECK THERE'S ENOUGH MAIN RAM AFTER EXTRA SCREEN RAM CONSUMED BY NON-MINIMAL SCREEN MOVE (OR WITH EXTRA MAIN RAM BECAUSE WE HAVE SHADOW ON THIS SPECIFIC MACHINE)
 SFTODONOW
@@ -391,6 +391,7 @@ REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
+extra_main_ram=max_page-PAGE+(assumed_screen_ram-screen_ram)
 
 IF SFTODOISSMALLMODEL AND
 
@@ -398,20 +399,27 @@ IF SFTODOISSMALLMODEL AND
 
 SFTODONOW BEING SUPER INCONSISTENT ABOUT WHAT'S PASSED AS ARGS AND WHAT IS JUST SET AS VARIABLES BY PARENT
 
+SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT (EG BY HARD-CODING THE STRINGS INTO THE DIE FUNCTIONS, PERHAPS LETTING DIE FUNCTIONS HANDLE THE CONDITIONAL 1-OR-2 SUBMESSAGES BEHAVIOUR)
+
 DEF FNmode_ok_small_dynmem(mode,die_if_not_ok)
-free_main_ram=extra_main_ram+(assumed_screen_ram-screen_ram)
-REM SFTODO: I think this code might be correct, but should/could we use PROCsubtract_ram()?
-excess_vmem_ram=FNmax(free_main_ram,0)+flexible_swr+vmem_only_swr-${MIN_VMEM_BYTES}
-IF free_main_ram>=0 AND excess_vmem_ram>=0 THEN =TRUE
-IF free_main_ram<0 AND excess_vmem_ram<0 THEN =FNmaybe_die_ram2(die_if_not_ok,-free_main_ram,"main RAM and a further",-excess_vmem_ram,"main or sideways RAM")
-IF free_main_ram<0 THEN =FNmaybe_die_ram(die_if_not_ok,-free_main_ram,"main RAM")
-=FNmaybe_die_ram(die_if_not_ok,-excess_vmem_ram,"main or sideways RAM")
+REM SFTODO: Is it confusing that main_ram_shortfall and any_ram_shortfall are "positive for not enough" whereas we are generally tracking available RAM and using "negative for not enough"?
+REM We must have main RAM for the dynamic memory; in order to report the
+REM requirements correctly if we don't have enough, we take a (tweaked) copy of
+REM extra_main_ram before trying to allocate ${MIN_VMEM_BYTES}.
+main_ram_shortfall=-FNmin(extra_main_ram,0)
+SFTODO DIFFICULT TO REPORT HERE AS WE CAN ONLY HAVE MAIN RAM FOR THE DYNMEM
+PROCsubtract_ram(${MIN_VMEM_BYTES})
+IF extra_main_ram>=0 THEN =TRUE
+any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
+IF main_ram_shortfall>0 AND any_ram_shortfall>0 THEN =FNmaybe_die_ram2(die_if_not_ok,main_ram_shortfall,"main RAM and a further",any_ram_shortfall,"main or sideways RAM")
+IF main_ram_shortfall>0 THEN =FNmaybe_die_ram(die_if_not_ok,main_ram_shortfall,"main RAM")
+=FNmaybe_die_ram(die_if_not_ok,any_ram_shortfall,"main or sideways RAM")
 
 DEF FNmode_ok_medium_dynmem(mode,die_if_not_ok)
 SFTODONOW
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; nothing else can substitute.
-flexible_swr=flexible_swr-swr_dynmem_needed
+flexible_swr=flexible_swr-swr_dynmem_needed:SFTODONOW MODIFYING A GLOBAL VARIABLE HERE WHICH WON'T WORK NOW WE LOOP ROUND OVER MULTIPLE MODES
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
