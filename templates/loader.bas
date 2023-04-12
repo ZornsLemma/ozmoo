@@ -408,6 +408,10 @@ REM have enough, we take a (tweaked) copy of extra_main_ram before trying to
 REM allocate ${MIN_VMEM_BYTES}.
 main_ram_shortfall=-FNmin(extra_main_ram,0)
 PROCsubtract_ram(${MIN_VMEM_BYTES})
+!ifdef ACORN_SHADOW_VMEM {
+    REM SFTODO: I think this is right, but think about it fresh!
+    free_main_ram=extra_main_ram
+}
 IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
 IF main_ram_shortfall>0 AND any_ram_shortfall>0 THEN =FNmaybe_die_ram2(die_if_not_ok,main_ram_shortfall,"main RAM and a further",any_ram_shortfall,"main or sideways RAM")
