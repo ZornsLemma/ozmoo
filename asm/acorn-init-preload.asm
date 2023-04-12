@@ -399,6 +399,12 @@ deletable_init_start
     ; also try to enforce this restriction, but the double page alignment just
     ; might cause it to occur without the loader knowing so we have to check
     ; here anyway.
+    ; SFTODO: Should we allow the user (at their own risk) to set PAGE by (e.g.)
+    ; editing !BOOT, and then respect that (saving it somewhere in LOADER so we
+    ; can read it here, and anywhere else we currently ask the OS for the value)?
+    ; The user has the possibility of knowing that (e.g.) on their system the
+    ; only ROM claiming workspace is DFS and therefore (from memory, not checked
+    ; this) things will work with PAGE=&1300 because we only need one open file.
     lda #osbyte_read_oshwm
     jsr osbyte
     sty vmem_cache_start_mem
