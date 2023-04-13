@@ -1658,6 +1658,7 @@ s_pre_scroll
     tay
     jmp do_oswrch_vdu_goto_xy
 .s_pre_scroll_leave_bottom_right
+    ; SFTODO: hoglet points out that we define and clear this text window a lot - we may get better performance if we can leave it in place most of the time.
     lda #vdu_define_text_window
     jsr oswrch
     lda #0
