@@ -418,9 +418,7 @@ PROCsubtract_ram(${MIN_VMEM_BYTES})
 }
 IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
-IF main_ram_shortfall>0 AND any_ram_shortfall>0 THEN =FNmaybe_die_ram2(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
-IF main_ram_shortfall>0 THEN =FNmaybe_die_ram(main_ram_shortfall,"main RAM")
-=FNmaybe_die_ram(any_ram_shortfall,"main or sideways RAM")
+=FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
 
 DEF FNmode_ok_medium_dynmem(mode)
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
@@ -433,10 +431,7 @@ PROCsubtract_ram(${MIN_VMEM_BYTES})
     REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
     free_main_ram=extra_main_ram
 }
-IF flexible_swr>=0 AND extra_main_ram>=0 THEN =TRUE
-IF flexible_swr<0 AND extra_main_ram<0 THEN =FNmaybe_die_ram2(-flexible_swr,"sideways RAM and a further",-extra_main_ram,"main or sideways RAM")
-IF flexible_swr<0 THEN =FNmaybe_die_ram(-flexible_swr,"sideways RAM")
-=FNmaybe_die_ram(-extra_main_ram,"main RAM")
+=FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main or sideways RAM")
 
 DEF FNmode_ok_big_dynmem(mode)
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
@@ -445,15 +440,11 @@ REM determine the available main RAM for shadow vmem cache if that's enabled.
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-IF extra_main_ram<0 THEN =FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM")
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
     free_main_ram=extra_main_ram
 }
-=TRUE
-
-XXX NEW WIP END
-
+=FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM",0,"")
 
 REM Subtract n bytes in total from vmem_only_swr, flexible_swr_ro and extra_main_ram,
 REM preferring to take from them in that order. Only extra_main_ram will be allowed
