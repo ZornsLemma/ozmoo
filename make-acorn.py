@@ -1144,7 +1144,7 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     adjusted_small_dynmem_page_threshold = min(small_dynmem_page_threshold, max_start_addr)
 
     small_e = None
-    if not (cmd_args.force_medium_dynmem or cmd_args.force_big_dynmem or not cmd_args.try_support_32k):
+    if (not (cmd_args.force_medium_dynmem or cmd_args.force_big_dynmem)) and ("-DACORN_SCREEN_HOLE=1" not in args or cmd_args.try_support_32k):
         small_e = make_highest_possible_executable(leafname, args + small_dynmem_args, None)
         # Some systems may have PAGE too high to run small_e, but those systems
         # would be able to run the game if built with the big dynamic memory model.
