@@ -926,7 +926,8 @@ DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+m
 REM SFTODONOW DELETE DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF FNmaybe_die_ram(amount1,ram_type1$,amount2,ram_type2$)
-IF NOT die_if_not_ok THEN =(amount1<=0 AND amount2<=0)
+IF amount1<=0 AND amount2<=0 THEN =TRUE
+IF NOT die_if_not_ok THEN =FALSE
 IF amount1<=0 THEN amount1=amount2:ram_type1$=ram_type2$:amount2=0
 message$="Sorry, you need at least " + STR$(amount1/1024)+"K more "+ram_type1$
 IF amount2>0 THEN message$=message$+" and at least "+STR$(amount2/1024)+"K more "+ram_type2$+" as well"
