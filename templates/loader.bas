@@ -380,6 +380,7 @@ REM HIMEM in the shadow version of the mode we're interested in, if it exists.
 REM For shadow only executables, swr_min_screen_hole_size = screen_ram = 0, so this
 REM adjustment has no effect.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
+SFTODONOW I THINK THE NEXT LINE IS WRONG - SINCE MAX_PAGE IS CAPPED, WE MAY HAVE SOME EXTRA MAIN RAM THAT IS NOT FACTORED IN - I AM FEELING A BIT CONFUSED ABOUT THIS SO THINK CAREFULLY
 extra_main_ram=max_page-PAGE+(swr_min_screen_hole_size-screen_ram)
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
@@ -407,11 +408,13 @@ IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
 =FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
 
+SFTODONOW IT IS KIND OF SILLY PASSING MODE INTO THESE FNS WHEN IT IS NOT USED AT LL - THE TOP LEVEL ONE COULD REASONABLY TAKE IT, BUT THE OTHERS PROB BEST NOT
 DEF FNmode_ok_medium_dynmem(mode)
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; main RAM can't be used as dynamic memory.
 REM SFTODONOW: TEST A GAME WITH >11.5K (IDEALLY >12K) BUT <=16K DYNMEM ON A MEDIUM BUILD ON A B+64K NO SWR - IT SHOULD FAIL, I SUSPECT IT MAY NOT HAVE DONE BEFORE
 flexible_swr=flexible_swr-swr_dynmem_needed
+IF mode=4 THEN END:REM SFTODONOW TEMP
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
@@ -445,7 +448,7 @@ extra_main_ram=extra_main_ram-n
 ENDPROC
 
 DEF FNcode_start
-SFTODONOWTHISPROBNEEDS TWEAKING - NOTE IT USES free_main_ram
+REM SFTODONOWTHISPROBNEEDS TWEAKING - NOTE IT USES free_main_ram
 REM 'p' is used to work around a beebasm tokenisation bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 p=PAGE
