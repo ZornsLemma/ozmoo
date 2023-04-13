@@ -322,8 +322,6 @@ REM The tube build works on both the BBC and Electron, so we check that first.
 }
 PROCchoose_non_tube_version
 
-XXX NEW WIP START
-
 REM SFTODO: Review all the following fresh; I think it's right but I got seriously
 REM agitated trying to write it.
 
@@ -375,32 +373,21 @@ ENDPROC
 
 
 
-SFTODONOW FOR SMALL DYNMEM WE NEED TO CALCULATE MAIN RAM FREE FOR DYN MEM AND CHECK IT'S ENOUGH IN THE SELECTED MODE
 DEF FNmode_ok(mode)
-SFTODONOW IF WE'RE MODIFYING ANY OF THE GLOBAL "X MEM TYPE FREE" VARS AS WE DO THESE CHECKS, WE NEED TO ENSURE WE EITHER DON'T OR THAT WE RESET THE VALUES EACH TIME ROUND THE MODE LOOP. extra_main_ram SHOULD BE FINE NOW, AS WE SET IT HERE AFTER TAKING SCREEN_RAM INTO ACCOUNT.
-SFTODONOW - WE SHOULD PROB CHECK 128+MODE WRT SCREEN RAM USED, SINCE WE *MAY* HAVE SHADOW RAM (ON AN ELECTRON, AT LEAST, CURRENTLY) DESPITE SUPPORTING NON-SHADOW WITH SCREEN HOLE
-SFTODONOW - I MAY NEED TO BE ABLE TO TELL THE EXACT MEMORY MODEL RATHER THAN JUST MEDIUM VS NOT-MEDIUM, BECAUSE FOR SMALL MODEL I NEED TO CHECK THERE'S ENOUGH MAIN RAM AFTER EXTRA SCREEN RAM CONSUMED BY NON-MINIMAL SCREEN MOVE (OR WITH EXTRA MAIN RAM BECAUSE WE HAVE SHADOW ON THIS SPECIFIC MACHINE)
-SFTODONOW
-SFTODONOW REMEMBER TO RESPECT die_if_not_ok AND GIVE AS HELPFUL A MESSAGE AS POSSIBLE IF WE DIE FROM THIS
-
 REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
-REM For shadow only executables, swr_min_screen_ram = screen_ram = 0, so this
+REM For shadow only executables, swr_min_screen_hole_size = screen_ram = 0, so this
 REM adjustment has no effect.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
-extra_main_ram=max_page-PAGE+(swr_min_screen_ram-screen_ram)
-
+extra_main_ram=max_page-PAGE+(swr_min_screen_hole_size-screen_ram)
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
-
 IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem(mode)
 IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem(mode)
 =FNmode_ok_big_dynmem(mode)
 
-SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT (EG BY HARD-CODING THE STRINGS INTO THE DIE FUNCTIONS, PERHAPS LETTING DIE FUNCTIONS HANDLE THE CONDITIONAL 1-OR-2 SUBMESSAGES BEHAVIOUR)
-
-SFTODONOW AM I ACTUALLY CHECKING DYNAMIC MEMORY SIZE IN ANY OF THESE CASES!?!?!?!?
+SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT
 
 DEF FNmode_ok_small_dynmem(mode)
 REM SFTODO: Is it confusing that main_ram_shortfall and any_ram_shortfall are "positive for not enough" whereas we are generally tracking available RAM and using "negative for not enough"?
