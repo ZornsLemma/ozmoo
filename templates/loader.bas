@@ -328,13 +328,12 @@ REM SFTODO: Review all the following fresh; I think it's right but I got serious
 REM agitated trying to write it.
 
 REM For builds which can use sideways RAM, we need to check if we have enough
-REM main RAM and/or sideways RAM to run successfully. Check this machine has an
-REM acceptable value of PAGE, and note any extra RAM we have free compared to a
-REM machine with the maximum supported PAGE.
+REM main RAM and/or sideways RAM to run successfully.
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 
 REM At this point we have three different kinds of memory available:
-REM - extra_main_ram bytes free in main RAM SFTODONOW: NOT QUITE RIGHT DESCRIPTION AS IT DOESN'T TAKE SCREEN RAM INTO ACCOUNT, TWEAK COMMENT AND/OR CODE? I THINK CODE IS *RIGHT* BUT COULD MAYBE EXPRESS DIFFERENTLY
+REM - extra_main_ram bytes free in main RAM; this varies with screen mode on
+REM   non-shadow systems, so is calculated later for each mode we consider
 REM - flexible_swr_ro bytes of sideways RAM which can be used as dynamic memory or vmem cache
 REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
 vmem_only_swr=swr_size-flexible_swr_ro
@@ -367,7 +366,8 @@ die_if_not_ok=(shadow OR mode=max_mode)
 IF mode<=max_mode THEN ok=FNmode_ok(mode):IF ok THEN min_mode=mode
 UNTIL mode=0 OR NOT ok
 
-SFTODONOW: WE NEED TO RESPECT THE VALUE OF MIN_MODE AND MAX_MODE WHEN DISPLAYING THE MODE MENU
+REM SFTODONOW: WE NEED TO RESPECT THE VALUE OF MIN_MODE AND MAX_MODE WHEN DISPLAYING THE MODE MENU
+TX=POS:TY=VPOS:PRINTTAB(0,0);"SFTODONOW TEMP min_mode=";min_mode;", max_mode=";max_mode;TAB(TX,TY);
 
 ENDPROC
 
@@ -386,18 +386,17 @@ SFTODONOW REMEMBER TO RESPECT die_if_not_ok AND GIVE AS HELPFUL A MESSAGE AS POS
 REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
+REM For shadow only executables, swr_min_screen_ram = screen_ram = 0, so this
+REM adjustment has no effect.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
-extra_main_ram=max_page-PAGE+(assumed_screen_ram-screen_ram)
+extra_main_ram=max_page-PAGE+(swr_min_screen_ram-screen_ram)
 
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
 
-IF SFTODOISSMALLMODEL AND
-
-=SFTODONOW
-
-SFTODONOW BEING SUPER INCONSISTENT ABOUT WHAT'S PASSED AS ARGS AND WHAT IS JUST SET AS VARIABLES BY PARENT
-SFTODONOW FOR EXAMPLE, IT MAY BE DIE_IF_NOT_OK SHOULD JUST BE A GLOBAL FLAG
+IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem(mode)
+IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem(mode)
+=FNmode_ok_big_dynmem(mode)
 
 SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT (EG BY HARD-CODING THE STRINGS INTO THE DIE FUNCTIONS, PERHAPS LETTING DIE FUNCTIONS HANDLE THE CONDITIONAL 1-OR-2 SUBMESSAGES BEHAVIOUR)
 
@@ -419,34 +418,33 @@ PROCsubtract_ram(${MIN_VMEM_BYTES})
 }
 IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
-IF main_ram_shortfall>0 AND any_ram_shortfall>0 THEN =FNmaybe_die_ram2(main_ram_shortfall,"main RAM and a further",any_ram_shortfall,"main or sideways RAM")
+IF main_ram_shortfall>0 AND any_ram_shortfall>0 THEN =FNmaybe_die_ram2(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
 IF main_ram_shortfall>0 THEN =FNmaybe_die_ram(main_ram_shortfall,"main RAM")
 =FNmaybe_die_ram(any_ram_shortfall,"main or sideways RAM")
 
 DEF FNmode_ok_medium_dynmem(mode)
-REM For the medium dynamic memory model, we *must* have enough flexible_swr_ro for the
+REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; main RAM can't be used as dynamic memory.
 REM SFTODONOW: TEST A GAME WITH >11.5K (IDEALLY >12K) BUT <=16K DYNMEM ON A MEDIUM BUILD ON A B+64K NO SWR - IT SHOULD FAIL, I SUSPECT IT MAY NOT HAVE DONE BEFORE
-flexible_swr_ro=flexible_swr_ro-swr_dynmem_needed:SFTODONOW MODIFYING A GLOBAL VARIABLE HERE WHICH WON'T WORK NOW WE LOOP ROUND OVER MULTIPLE MODES
+flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
     REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
     free_main_ram=extra_main_ram
 }
-IF flexible_swr_ro>=0 AND extra_main_ram>=0 THEN =TRUE
-IF flexible_swr_ro<0 AND extra_main_ram<0 THEN =FNmaybe_die_ram2(-flexible_swr_ro,"sideways RAM and a further",-extra_main_ram,"main or sideways RAM")
-IF flexible_swr_ro<0 THEN =FNmaybe_die_ram(-flexible_swr_ro,"sideways RAM")
+IF flexible_swr>=0 AND extra_main_ram>=0 THEN =TRUE
+IF flexible_swr<0 AND extra_main_ram<0 THEN =FNmaybe_die_ram2(-flexible_swr,"sideways RAM and a further",-extra_main_ram,"main or sideways RAM")
+IF flexible_swr<0 THEN =FNmaybe_die_ram(-flexible_swr,"sideways RAM")
 =FNmaybe_die_ram(-extra_main_ram,"main RAM")
 
 DEF FNmode_ok_big_dynmem(mode)
-REM Dynamic memory can come from a combination of main RAM and flexible_swr_ro. For this
-REM calculation we prefer to take it from flexible_swr_ro so we can use the result to
+REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
+REM calculation we prefer to take it from flexible_swr so we can use the result to
 REM determine the available main RAM for shadow vmem cache if that's enabled.
-flexible_swr_ro=flexible_swr_ro-swr_dynmem_needed SFTODONOW MODIFYING GLOBAL STATE INSIDE LOOP, BAD
-IF flexible_swr_ro<0 THEN extra_main_ram=extra_main_ram+flexible_swr_ro:flexible_swr_ro=0
+flexible_swr=flexible_swr-swr_dynmem_needed
+IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-SFTODO OLD SEMI TEMP FOR REF BELOW HERE
 IF extra_main_ram<0 THEN =FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM")
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
@@ -456,67 +454,6 @@ IF extra_main_ram<0 THEN =FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM"
 
 XXX NEW WIP END
 
-XXX OLD FOR REF --------------------- START
-
-SFTODONOW - I AM THINKING I MAY NEED THE BUILD SYSTEM TO COMMUNICATE THE min_screen_hole_size() VALUE TO THIS CODE VIA A SUBSTITUTION - WE CAN THEN USE THAT TO WORK OUT WHETHER THE GAME WILL FIT IN VARIOUS MODES (INCLUDING, DON'T FORGET, SHADOW MODES ON SHADOW+NON-SHADOW CAPABLE BUILDS LIKE THE ELECTRON, WHERE THE SCREEN HOLE SIZE NEEDS TO BE HANDLED CORRECTLY SO WE TAKE ADVANTAGE OF HAVING NO SCREEN HOLE IN PRACTICE)
-
-REM SFTODO: Review all the following fresh; I think it's right but I got seriously
-REM agitated trying to write it.
-
-REM For builds which can use sideways RAM, we need to check if we have enough
-REM main RAM and/or sideways RAM to run successfully.
-IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
-extra_main_ram=max_page-PAGE
-
-REM Small dynamic memory model builds must have enough main RAM free for dynamic
-REM memory, but the build system takes care of this by knowing the worst-case
-REM start of screen RAM and choosing max_page accordingly. SFTODO: This won't be
-REM true once we allow runtime choice of screen mode on non-shadow systems; the
-REM loader will have to be involved in the decision.
-
-REM At this point we have three different kinds of memory available:
-REM - extra_main_ram bytes free in main RAM
-REM - flexible_swr_ro bytes of normal, contiguous sideways RAM
-REM - vmem_only_swr bytes of non-contiguous sideways RAM
-!ifdef integra_b_private_ram_size {
-    IF integra_b THEN vmem_only_swr=${integra_b_private_ram_size} ELSE vmem_only_swr=0
-} else {
-    REM This shouldn't happen normally, and if it does this code shouldn't execute.
-    PROCdie("Sorry, unsupported machine.")
-}
-flexible_swr_ro_master=swr_size-vmem_only_swr
-
-IF medium_dynmem THEN PROCcheck_ram_medium_dynmem:ENDPROC
-
-REM Dynamic memory can come from a combination of main RAM and flexible_swr_ro. For this
-REM calculation we prefer to take it from flexible_swr_ro so we can use the result to
-REM determine the available main RAM for shadow vmem cache if that's enabled.
-flexible_swr_ro_master=flexible_swr_ro-swr_dynmem_needed
-IF flexible_swr_ro<0 THEN extra_main_ram=extra_main_ram+flexible_swr_ro:flexible_swr_ro_master=0
-PROCsubtract_ram(${MIN_VMEM_BYTES})
-IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main or sideways RAM")
-!ifdef ACORN_SHADOW_VMEM {
-    REM SFTODO: I think this is right, but think about it fresh!
-    free_main_ram=extra_main_ram
-}
-ENDPROC
-
-DEF PROCcheck_ram_medium_dynmem
-REM For the medium dynamic memory model, we *must* have enough flexible_swr_ro for the
-REM game's dynamic memory; nothing else can substitute.
-flexible_swr_ro=flexible_swr_ro-swr_dynmem_needed
-PROCsubtract_ram(${MIN_VMEM_BYTES})
-REM SFTODO: The errors we generate here are true but because they're separate it's
-REM possible a user would fix one, try again and get another. extra_main_ram<0 is
-REM very unlikely so this is probably OK.
-IF flexible_swr_ro<0 THEN PROCdie_ram(-flexible_swr_ro,"sideways RAM")
-IF extra_main_ram<0 THEN PROCdie_ram(-extra_main_ram,"main RAM")
-!ifdef ACORN_SHADOW_VMEM {
-    REM SFTODO: I think this is right, but think about it fresh!
-    REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
-    free_main_ram=extra_main_ram
-}
-ENDPROC
 
 REM Subtract n bytes in total from vmem_only_swr, flexible_swr_ro and extra_main_ram,
 REM preferring to take from them in that order. Only extra_main_ram will be allowed
@@ -528,8 +465,6 @@ IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n
 IF flexible_swr_ro>0 THEN d=FNmin(n,flexible_swr_ro):flexible_swr_ro=flexible_swr_ro-d:n=n-d
 extra_main_ram=extra_main_ram-n
 ENDPROC
-
-XXX OLD FOR REF --------------------- END
 
 DEF FNcode_start
 SFTODONOWTHISPROBNEEDS TWEAKING - NOTE IT USES free_main_ram
@@ -594,13 +529,13 @@ REM !ifdef ONLY_80_COLUMN {
 REM    IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
 REM }
 !ifdef OZMOOE_BINARY {
-    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:medium_dynmem=${OZMOOE_SWR_MEDIUM_DYNMEM}:ENDPROC
+    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOE_SWR_MIN_SCREEN_HOLE_SIZE}:ENDPROC
 } else {
     IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Should I make the loader support some sort of line-continuation character, then I could split up some of these very long lines?
 !ifdef OZMOOSH_BINARY {
-    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:medium_dynmem=${OZMOOSH_SWR_MEDIUM_DYNMEM}:ENDPROC
+    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOSH_SWR_MIN_SCREEN_HOLE_SIZE}:ENDPROC
 } else {
     REM If - although I don't believe this is currently possible - we don't have
     REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
@@ -610,7 +545,7 @@ REM SFTODO: Should I make the loader support some sort of line-continuation char
     }
 }
 !ifdef OZMOOB_BINARY {
-    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:medium_dynmem=${OZMOOB_SWR_MEDIUM_DYNMEM}
+    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOB_SWR_MIN_SCREEN_HOLE_SIZE}
 } else {
     !ifdef OZMOOSH_BINARY {
         PROCunsupported_machine("a BBC B without shadow RAM")
@@ -1010,7 +945,14 @@ ENDPROC
 DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
-DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
+REM SFTODONOW DELETE DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
+
+DEF FNmaybe_die_ram(amount1,ram_type1$,amount2,ram_type2$)
+IF NOT die_if_not_ok THEN =(amount1<=0 AND amount2<=0)
+IF amount1<=0 THEN amount1=amount2:ram_type1$=ram_type2$:amount2=0
+message$="Sorry, you need at least " + STR$(amount1/1024)+"K more "+ram_type1$
+IF amount2>0 THEN message$=message$+" and at least "+STR$(amount2/1024)+"K more "+ram_type2$+" as well"
+PROCdie(message$+".")
 
 DEF PROCshow_mode_keys
 mode_keys_last_max_y=mode_keys_last_max_y:REM set variable to 0 if it doesn't exist

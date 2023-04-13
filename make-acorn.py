@@ -1008,8 +1008,9 @@ class OzmooExecutable(Executable):
         Executable.add_loader_symbols(self, symbols)
         symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_addr)
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
+        symbols[self.leafname + "_SWR_DYNMEM_MODEL"] = 0 if "ACORN_SWR_SMALL_DYNMEM" in self.labels else 1 if "ACORN_SWR_MEDIUM_DYNMEM" in self.labels else 2 if "ACORN_SWR_BIG_DYNMEM" in self.labels else -1
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
-        symbols[self.leafname + "_SWR_MEDIUM_DYNMEM"] = basic_string("ACORN_SWR_MEDIUM_DYNMEM" in self.labels)
+        symbols[self.leafname + "_SWR_MIN_SCREEN_HOLE_SIZE"] = basic_int(self.min_screen_hole_size())
 
     def binary(self):
         # It's important to check self._binary isn't None so we don't compress
