@@ -380,8 +380,7 @@ REM HIMEM in the shadow version of the mode we're interested in, if it exists.
 REM For shadow only executables, swr_min_screen_hole_size = screen_ram = 0, so this
 REM adjustment has no effect.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
-SFTODONOW I THINK THE NEXT LINE IS WRONG - SINCE MAX_PAGE IS CAPPED, WE MAY HAVE SOME EXTRA MAIN RAM THAT IS NOT FACTORED IN - I AM FEELING A BIT CONFUSED ABOUT THIS SO THINK CAREFULLY
-extra_main_ram=max_page-PAGE+(swr_min_screen_hole_size-screen_ram)
+extra_main_ram=swr_main_ram_free+(max_page-PAGE)-screen_ram
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
 IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem(mode)
@@ -414,7 +413,6 @@ REM For the medium dynamic memory model, we *must* have enough flexible_swr for 
 REM game's dynamic memory; main RAM can't be used as dynamic memory.
 REM SFTODONOW: TEST A GAME WITH >11.5K (IDEALLY >12K) BUT <=16K DYNMEM ON A MEDIUM BUILD ON A B+64K NO SWR - IT SHOULD FAIL, I SUSPECT IT MAY NOT HAVE DONE BEFORE
 flexible_swr=flexible_swr-swr_dynmem_needed
-IF mode=4 THEN END:REM SFTODONOW TEMP
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
     REM SFTODO: I think this is right, but think about it fresh!
@@ -509,14 +507,15 @@ REM SFTODO: Delete this commented out code once tested only 80 column does work 
 REM !ifdef ONLY_80_COLUMN {
 REM    IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
 REM }
+REM SFTODONOW: Get rid of swr_min_screen_hole_size.
 !ifdef OZMOOE_BINARY {
-    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOE_SWR_MIN_SCREEN_HOLE_SIZE}:ENDPROC
+    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOE_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
 } else {
     IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Should I make the loader support some sort of line-continuation character, then I could split up some of these very long lines?
 !ifdef OZMOOSH_BINARY {
-    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOSH_SWR_MIN_SCREEN_HOLE_SIZE}:ENDPROC
+    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOSH_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOSH_SWR_MAIN_RAM_FREE}:ENDPROC
 } else {
     REM If - although I don't believe this is currently possible - we don't have
     REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
@@ -526,7 +525,7 @@ REM SFTODO: Should I make the loader support some sort of line-continuation char
     }
 }
 !ifdef OZMOOB_BINARY {
-    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOB_SWR_MIN_SCREEN_HOLE_SIZE}
+    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOB_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
 } else {
     !ifdef OZMOOSH_BINARY {
         PROCunsupported_machine("a BBC B without shadow RAM")
