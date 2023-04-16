@@ -304,7 +304,7 @@ def check_if_special_game():
     if is_trinity:
         info("Game recognised as 'Trinity'")
         # We don't patch if the game is only going to be run in 80 column modes.
-        if not cmd_args.only_80_column:
+        if cmd_args.max_mode > 3:
             apply_patch(trinity_releases[game_key], "Trinity")
     if is_beyond_zork:
         info("Game recognised as 'Beyond Zork'")
@@ -322,7 +322,7 @@ def check_if_special_game():
         # We don't override the user's choice of --no-cursor-editing; this is just a matter of user preference,
         # both work in Beyond Zork the same as they would anywhere else.
         # We don't patch if the game is only going to be run in 80 column modes.
-        if not cmd_args.only_80_column:
+        if cmd_args.max_mode > 3:
             apply_patch(beyond_zork_releases[game_key], "Beyond Zork")
 
 
@@ -973,16 +973,10 @@ class OzmooExecutable(Executable):
     # it. It should do the right thing, it is just the name that's slightly
     # less than ideal.
     def min_screen_hole_size(self):
-        # SFTODO: This will need changing if we add an option to build a game
-        # disallowing the use of mode 7 (e.g. for a game which must have
-        # accented characters).
         if "ACORN_SCREEN_HOLE" in self.labels:
-            if cmd_args.only_80_column:
-                return 0x4000 # mode 3 screen RAM size
-            elif "ACORN_ELECTRON_SWR" in self.labels:
-                return 0x2000 # mode 6 screen RAM size
-            else:
-                return 0x400 # mode 7 screen RAM size
+            if "ACORN_ELECTRON_SWR" in self.labels:
+                return 0x8000 - himem_by_mode(max(cmd_args.max_mode, 6))
+            return 0x8000 - himem_by_mode(cmd_args.max_mode)
         return 0
 
     def max_pseudo_ramtop(self):
@@ -1510,6 +1504,9 @@ def make_tokenised_loader(symbols):
 
 
 def splash_screen_address():
+    return himem_by_mode(cmd_args.splash_mode)
+
+def himem_by_mode(mode):
     return {
         0: 0x3000,
         1: 0x3000,
@@ -1518,7 +1515,7 @@ def splash_screen_address():
         4: 0x5800,
         5: 0x5800,
         6: 0x6000,
-        7: 0x7000}[cmd_args.splash_mode]
+        7: 0x7c00}[mode]
 
 
 def mode_colours(mode):
@@ -1617,7 +1614,7 @@ def parse_args():
     group.add_argument("--splash-wait", metavar="N", type=int, help="show the splash screen for N seconds (0 means 'wait for any key')")
 
     group = parser.add_argument_group("optional title page arguments")
-    group.add_argument("--default-mode", metavar="N", type=int, help="default to mode N if possible")
+    group.add_argument("--default-mode", metavar="N", type=int, default=None, help="default to mode N if possible")
     group.add_argument("--auto-start", action="store_true", help="don't wait for SPACE on title page")
     group.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
     group.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
@@ -1632,6 +1629,8 @@ def parse_args():
     group.add_argument("--default-mode-7-input-colour", metavar="N", type=int, help="set the default colour (0-7) for mode 7 player input")
     group.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
     group.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
+    group.add_argument("--min-mode", metavar="N", type=int, help="set the minimum allowed screen mode (0-7)")
+    group.add_argument("--max-mode", metavar="N", type=int, help="set the maximum allowed screen mode (0-7)")
 
     group = parser.add_argument_group("optional advanced user arguments") # SFTODO: tweak description
     group.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
@@ -1700,6 +1699,25 @@ def parse_args():
 
     if cmd_args.only_40_column and cmd_args.only_80_column:
         die("--only-40-column and --only-80-column are incompatible")
+    if (cmd_args.only_40_column and cmd_args.min_mode):
+        die("--only-40-column and --min-mode are incompatible")
+    if (cmd_args.only_80_column and cmd_args.min_mode):
+        die("--only-80-column and --min-mode are incompatible")
+    if (cmd_args.only_40_column and cmd_args.max_mode):
+        die("--only-40-column and --max-mode are incompatible")
+    if (cmd_args.only_80_column and cmd_args.max_mode):
+        die("--only-80-column and --max-mode are incompatible")
+    if cmd_args.only_40_column:
+        cmd_args.min_mode = 4
+    elif cmd_args.only_80_column:
+        cmd_args.max_mode = 3
+    if cmd_args.min_mode is None:
+        cmd_args.min_mode = 0
+    if cmd_args.max_mode is None:
+        cmd_args.max_mode = 7
+    if cmd_args.default_mode is None:
+        cmd_args.default_mode = cmd_args.max_mode
+    print("AXZX", cmd_args.min_mode, cmd_args.max_mode)
     if cmd_args.force_65c02 and cmd_args.force_6502:
         die("--force-65c02 and --force-6502 are incompatible")
     if cmd_args.preload_opt and cmd_args.preload_config:
@@ -1729,6 +1747,17 @@ def parse_args():
     cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6, True)
     cmd_args.default_mode_7_input_colour = validate_colour(cmd_args.default_mode_7_input_colour, 3, True)
 
+    def validate_mode(mode, argument):
+        if mode not in (0, 3, 4, 6, 7):
+            die("Invalid mode specified for " + argument)
+    validate_mode(cmd_args.default_mode, "--default-mode")
+    validate_mode(cmd_args.min_mode, "--min-mode")
+    validate_mode(cmd_args.max_mode, "--max-mode")
+    if cmd_args.min_mode > cmd_args.max_mode:
+        die("--max-mode cannot be smaller than --min-mode")
+    if not (cmd_args.min_mode <= cmd_args.default_mode <= cmd_args.max_mode):
+        die("--default_mode must be within the range of acceptable modes specified by --min-mode/--max-mode/--only-40-column/--only-80-column")
+
     cmd_args.splash_wait = 10 if cmd_args.splash_wait is None else cmd_args.splash_wait
     if cmd_args.splash_mode is not None:
         if cmd_args.splash_mode < 0 or cmd_args.splash_mode > 7:
@@ -1756,12 +1785,6 @@ def parse_args():
             cmd_args.double_sided = True
         elif user_extension.lower() == '.adf':
             cmd_args.adfs = True
-
-    if cmd_args.default_mode is not None:
-        if cmd_args.default_mode not in (0, 3, 4, 6, 7):
-            die("Invalid default mode specified")
-    else:
-        cmd_args.default_mode = 7
 
     if cmd_args.interpreter_num is not None:
         if not (0 <= cmd_args.interpreter_num <= 19):
@@ -1992,12 +2015,9 @@ def make_disc_image():
     for executable_group in ozmoo_variants:
         for e in executable_group:
             e.add_loader_symbols(loader_symbols)
-    if cmd_args.only_40_column:
-        loader_symbols["ONLY_40_COLUMN"] = basic_int(1)
-    if cmd_args.only_80_column:
-        loader_symbols["ONLY_80_COLUMN"] = basic_int(1)
-    if not cmd_args.only_40_column and not cmd_args.only_80_column:
-        loader_symbols["NO_ONLY_COLUMN"] = basic_int(1)
+    print("CCS", cmd_args.min_mode, cmd_args.max_mode)
+    loader_symbols["MIN_MODE"] = basic_int(cmd_args.min_mode)
+    loader_symbols["MAX_MODE"] = basic_int(cmd_args.max_mode)
     if cmd_args.auto_start:
         loader_symbols["AUTO_START"] = basic_int(1)
     if cmd_args.leave_caps_lock_alone:

@@ -336,16 +336,9 @@ REM - flexible_swr_ro bytes of sideways RAM which can be used as dynamic memory 
 REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
 vmem_only_swr=swr_size-flexible_swr_ro
 
-REM SFTODONOW: I AM NOT SURE THE LOADER WAS SUPPORTING --only-40-columns MODE CORRECTLY. WHETHER IT WAS OR NOT, THINK ABOUT THIS FOR THE NEW STYLE.
-REM SFTODONOW: MAY WANT TO ADD --min-mode AND --max-mode BUILD OPTIONS, AND HAVE --only-{40,80}-columns OPTIONS SET THOSE, AND INFER ONLY_{40,80}_COLUMNS MACROS FOR CONDITIONAL ASSEMBLY FROM THE VALUES OF MIN MODE AND MAX MODE.
-
-!ifdef ONLY_80_COLUMN {
-    max_mode=3
-} else {
-    REM SFTODO: We might at some point want to add optional support for forcing
-    REM max_mode=6 on a BBC, e.g. for games needing accented characters.
-    max_mode=7+electron
-}
+min_mode=${MIN_MODE}
+max_mode=${MAX_MODE}
+IF electron AND max_mode=7 THEN max_mode=6
 
 REM If we have shadow RAM, all modes have the same (0K) screen RAM requirement so we
 REM only need to do the test once for mode 0. Remember the screen RAM isn't the only
@@ -365,8 +358,8 @@ REPEAT
 READ mode
 REM We're a bit inconsistent about passing values to FNmode_ok() and its children vs using globals.
 die_if_not_ok=(shadow OR mode=max_mode)
-IF mode<=max_mode THEN ok=FNmode_ok(mode):IF ok THEN min_mode=mode
-UNTIL mode=0 OR NOT ok
+IF mode>=${MIN_MODE} AND mode<=max_mode THEN ok=FNmode_ok(mode):IF ok THEN min_mode=mode
+UNTIL mode<=${MIN_MODE} OR NOT ok
 
 REM SFTODONOW: WE NEED TO RESPECT THE VALUE OF MIN_MODE AND MAX_MODE WHEN DISPLAYING THE MODE MENU
 TX=POS:TY=VPOS:PRINTTAB(0,0);"SFTODONOW TEMP min_mode=";min_mode;", max_mode=";max_mode;TAB(TX,TY);
@@ -507,10 +500,6 @@ p=PAGE
 }
 
 DEF PROCchoose_non_tube_version
-REM SFTODO: Delete this commented out code once tested only 80 column does work (or fail cleanly, depending on free RAM) on no-shadow no-2P machines now
-REM !ifdef ONLY_80_COLUMN {
-REM    IF NOT shadow THEN PROCunsupported_machine("a machine without shadow RAM or a second processor")
-REM }
 REM SFTODONOW: Get rid of swr_min_screen_hole_size.
 !ifdef OZMOOE_BINARY {
     IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOE_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
@@ -543,7 +532,7 @@ ENDPROC
     DEF PROCmode_menu
     REM SFTODONOW: MAKE SURE TO RESPECT USER-SPECIFIC DEFAULT MODE
 
-TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT IT IS A BIT SLOW SO TRYING TO IMPROVE
+    REM SFTODONOW: IS THIS CODE A BIT SLOW?
     IF min_mode=0 AND max_mode=7 THEN RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
     IF min_mode=3 AND max_mode=7 THEN RESTORE 10500
     IF min_mode=4 AND max_mode=7 THEN RESTORE 11000
@@ -565,7 +554,6 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     cell_x(i)=x:cell_y(i)=y
     READ highlight_left_x(x),highlight_right_x(x)
     NEXT
-    T%=TIME
 
     PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
     menu_top_y=VPOS
@@ -1037,3 +1025,4 @@ DATA 1,0,"7) 40x25",13,27
 DATA 1,1,"   teletext",13,27
 
 REM SFTODONOW DON'T FORGET TO DO THE VARIANTS WITH MAX MODE 6
+REM SFTODONOW AS WRITTEN WE NEED TO DO *ALL* POSSIBLE MIN/MAX MODE COMBINATIONS AS WE ALLOW THE USER TO SPECIFY THEM - DO WE REALLY WANT THIS? OR SHOULD WE NOT BE QUIITE SO FLEXIBLE AND JUST HAVE ONLY 40/ONLY 80/ANYTHING HW CAN SUPPORT/ANYTHING-EXCEPT-MODE-7???
