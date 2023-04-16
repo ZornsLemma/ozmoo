@@ -544,6 +544,7 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     IF min_mode=0 AND max_mode=7 THEN RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
     IF min_mode=3 AND max_mode=7 THEN RESTORE 10500
     IF min_mode=4 AND max_mode=7 THEN RESTORE 11000
+    IF min_mode=6 AND max_mode=7 THEN RESTORE 11500
     mode_list$=""
     READ n:n=n-1
     REM We don't bother with a second dimension to highlight_left_[xy], because
@@ -552,14 +553,14 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     DIM mode_x(8),mode_y(8),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),mode(2,1),min_x(1),max_y(2)
     max_x=0:min_x(1)=9
     FOR i=0 TO n
-    READ x,y
+    READ x,y,text$(x,y)
+    mode$=LEFT$(text$(x,y),1)
+    IF mode$<>" " THEN mode_list$=mode_list$+mode$:mode=VAL(mode$):mode(x,y)=mode:mode_x(mode)=x:mode_y(mode)=y ELSE mode(x,y)=7
     IF x<min_x(y) THEN min_x(y)=x
     IF x>=max_x THEN max_x=x
     IF y>max_y(x) THEN max_y(x)=y
     cell_x(i)=x:cell_y(i)=y
-    READ text$(x,y),highlight_left_x(x),highlight_right_x(x)
-    mode$=LEFT$(text$(x,y),1)
-    IF mode$<>" " THEN mode_list$=mode_list$+mode$:mode=VAL(mode$):mode(x,y)=mode:mode_x(mode)=x:mode_y(mode)=y ELSE mode(x,y)=7
+    READ highlight_left_x(x),highlight_right_x(x)
     NEXT
     T%=TIME
 
@@ -578,7 +579,8 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     REPEAT
     old_x=x:old_y=y
     key=GET
-    IF key=136 AND x>min_x(y) THEN x=x-1
+    REM SFTODO DELETE IF key=136 AND x>min_x(y) THEN x=x-1
+    IF key=136 AND x>0 THEN x=x-1:IF y>max_y(x) THEN y=0
     IF key=137 AND x<max_x THEN x=x+1
     IF key=138 AND y<max_y(x) THEN y=y+1
     IF key=139 AND y>0 THEN y=y-1
@@ -1013,7 +1015,6 @@ DATA 1,1,"6) 40x25",13,24
 DATA 2,0,"7) 40x25",25,39
 DATA 2,1,"   teletext",25,39
 
-REM SFTODONOW I DON'T THINK THIS WILL WORK PROPERLY BECAUSE THERE IS A "HOLE" - PROB NEED TO TWEAK MOVEMENT LOGIC FOR CURSORS
 10500DATA 5
 DATA 0,0,"3) 80x25",1,12
 DATA 1,0,"4) 40x32",13,24
@@ -1026,3 +1027,10 @@ DATA 0,0,"4) 40x32",1,12
 DATA 0,1,"6) 40x25",1,12
 DATA 1,0,"7) 40x25",13,27
 DATA 1,1,"   teletext",13,27
+
+11500DATA 3
+DATA 0,0,"6) 40x25",1,12
+DATA 1,0,"7) 40x25",13,27
+DATA 1,1,"   teletext",13,27
+
+REM SFTODONOW DON'T FORGET TO DO THE VARIANTS WITH MAX MODE 6
