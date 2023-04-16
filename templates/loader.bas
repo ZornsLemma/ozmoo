@@ -537,6 +537,81 @@ ENDPROC
 
 !ifndef AUTO_START {
     DEF PROCmode_menu
+    REM SFTODONOW: MAKE SURE TO RESPECT USER-SPECIFIC DEFAULT MODE
+
+    RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
+    mode_list$=""
+    READ n:n=n-1
+    REM We don't bother with a second dimension to highlight_left_[xy], because
+    REM the cells line up vertically.
+    DIM mode_x(8),mode_y(8),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),special(n),mode(2,1)
+    max_x=0:max_y=0
+    FOR i=0 TO n
+    READ x,y
+    IF x>max_x THEN max_x=x
+    IF y>max_y THEN max_y=y
+    cell_x(i)=x:cell_y(i)=y
+    REM SFTODONOW MAY NOT NEED SPECIAL AT ALL
+    READ text$(x,y),highlight_left_x(x),highlight_right_x(x),special(i)
+    mode$=LEFT$(text$(x,y),1)
+    REM SFTODONOW: WE MAY BE ABLE TO GET RID OF FNis_mode_7 NOW WE HAVE mode(x,y)=7 FOR BOTH MODE 7 CELLS
+    IF mode$<>" " THEN mode_list$=mode_list$+mode$:mode=VAL(mode$):mode(x,y)=mode:mode_x(mode)=x:mode_y(mode)=y ELSE mode(x,y)=7
+    NEXT
+
+    PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
+    menu_top_y=VPOS
+    mode_keys_vpos=menu_top_y+max_y+2
+    FOR i=0 TO n
+    x=cell_x(i):y=cell_y(i)
+    PRINTTAB(highlight_left_x(x)+2,menu_top_y+y);text$(x,y);
+    NEXT
+
+    x=2:y=0:REM SFTODONOW HACKY FOR NOW, WE NEED TO SELECT THIS BASED ON "PREFERRED" MODE HOWEVER THAT WORKS
+    PROChighlight(x,y,TRUE):PROCspace
+
+    REPEAT
+    old_x=x:old_y=y
+    key=GET
+    IF key=136 AND x>0 THEN x=x-1
+    IF key=137 AND x<max_x THEN x=x+1
+    IF key=138 AND y<max_y THEN y=y+1
+    IF key=139 AND y>0 THEN y=y-1
+    REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
+    REM with cursor keys remembers the old y position.
+    key$=CHR$key:IF INSTR(mode_list$,key$)<>0 THEN x=mode_x(VALkey$):IF NOT FNis_mode_7(x) THEN y=mode_y(VALkey$)
+    IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
+    UNTIL FNhandle_common_key(key)
+    ENDPROC
+
+    DEF PROChighlight(x,y,on)
+    IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=mode(x,y)
+    IF on THEN PROCshow_mode_keys
+    IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
+    IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
+    PROChighlight_internal(x,y,on)
+    ENDPROC
+    DEF PROChighlight_internal(x,y,on)
+    REM We put the "normal background" code in at the right hand side first before
+    REM (maybe) putting a "coloured background" code in at the left hand side to try
+    REM to reduce visual glitches.
+    IF highlight_right_x(x)<39 THEN PRINTTAB(highlight_right_x(x)+1,menu_top_y+y);CHR$normal_fg;CHR$156;
+    PRINTTAB(highlight_left_x(x)-1,menu_top_y+y);
+    IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
+    ENDPROC
+    DEF PROChighlight_internal_electron(x,y,on)
+    REM SFTODONOW: THIS NEEDS REWRITING FOR NEW SCHEME, JUST DOING MODE 7 VSN OF MENU FOR MOMENT
+    PRINTTAB(menu_x(x),menu_top_y+y);
+    IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
+    PRINT SPC(2);menu$(x,y);SPC(2);
+    COLOUR 128:COLOUR 7
+    ENDPROC
+
+
+
+
+
+!ifdef SFTODONOWDELETETHIS {
+OLD TEMP REF BELOW HERE
     DIM mode_x(8),mode_y(8)
     REM It's tempting to derive mode_list$ from the contents of menu$, but it's more
     REM trouble than it's worth, because it's shown (with inserted "/" characters)
@@ -571,8 +646,6 @@ ENDPROC
     REM second line of the mode 7 entry over with before it can corrupt the mode 0
     REM entry, which will always be in the first line if it's present.
     FOR y=max_y TO 0 STEP -1:FOR x=0 TO max_x:mode=VALLEFT$(menu$(x,y),1):mode_x(mode)=x:mode_y(mode)=y:NEXT:NEXT
-    PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
-    menu_top_y=VPOS
     IF max_x=2 THEN gutter=0 ELSE gutter=5
     FOR y=0 TO max_y:PRINTTAB(0,menu_top_y+y);CHR$normal_fg;:FOR x=0 TO max_x:menu_x(x)=POS:PRINT SPC2;menu$(x,y);SPC(2+gutter);:NEXT:NEXT
     mode_keys_vpos=menu_top_y+max_y+2
@@ -591,6 +664,7 @@ ENDPROC
     IF x<>old_x OR (y<>old_y AND NOT FNis_mode_7(x)) THEN PROChighlight(old_x,old_y,FALSE):PROChighlight(x,y,TRUE)
     UNTIL FNhandle_common_key(key)
     ENDPROC
+}
 
     DEF FNhandle_common_key(key)
     IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
@@ -598,7 +672,7 @@ ENDPROC
     =key=32 OR key=13
 
     DEF PROChighlight(x,y,on)
-    IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=VAL(menu$(x,y))
+    IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=mode(x,y)
     IF on THEN PROCshow_mode_keys
     IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
     IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
@@ -623,6 +697,7 @@ ENDPROC
 REM This is not a completely general pretty-print routine, e.g. it doesn't make
 REM any attempt to handle words which are longer than the screen width. It's
 REM good enough for our needs.
+REM SFTODO: Might be nice to speed it up a bit
 REM
 REM colour should be 0 or a teletext colour control code.
 REM
@@ -963,7 +1038,8 @@ DEF PROCspace
 PRINTTAB(0,space_y);CHR$normal_fg;"Press SPACE/RETURN to start the game...";
 ENDPROC
 
-DEF FNis_mode_7(x)=LEFT$(menu$(x,0),1)="7"
+REM Since we know the mode 7 cell is double-height, we don't care what y is.
+DEF FNis_mode_7(x)=(mode(x,0)=7)
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
@@ -1003,3 +1079,13 @@ REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
 
 DEF FNhimem_for_mode(mode):A%=&85:X%=mode:=(USR&FFF4 AND &FFFF00) DIV &100
+
+REM SFTODONOW CAN PROBABLY CONDITIONALLY OMIT SOME OF THESE FROM THE BUILD DEPENDING ON SETTINGS
+REM SFTODONOW COMMENT ON DATA FORMAT ONCE SETTLED
+10000DATA 6
+DATA 0,0,"0) 80x32",1,12,0
+DATA 0,1,"3) 80x25",1,12,0
+DATA 1,0,"4) 40x32",13,24,0
+DATA 1,1,"6) 40x25",13,24,0
+DATA 2,0,"7) 40x25",25,39,-1
+DATA 2,1,"   teletext",25,39,-1
