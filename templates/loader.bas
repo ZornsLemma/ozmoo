@@ -325,10 +325,29 @@ PROCchoose_non_tube_version
 REM SFTODO: Review all the following fresh; I think it's right but I got seriously
 REM agitated trying to write it.
 
+min_mode=${MIN_MODE}
+max_mode=${MAX_MODE}
+IF electron AND max_mode=7 THEN max_mode=6
+
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
-REM SFTODONOW: It's maybe a bit excessively over-helpful, but if it's not too hard, we could special case Electron/B with no shadow here and say something about "or PAGE<=&xxxx with shadow RAM".
-IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
+REM This is perhaps a bit verbose and/or vague, but to be helpful we suggest
+REM changes other than somehow lowering PAGE when running on a machine with no
+REM shadow RAM. We don't try to calculate this properly (i.e. repeat the
+REM mode-specific tests with HIMEM=&8000) as it's painful enough doing it once. It's
+REM certainly feasible that a game which can run in mode 7 would fail to run on a
+REM machine with no shadow RAM and succeed on one with shadow RAM, but it's a fairly
+REM unlikely case, and we avoid making the suggestion in that case because adding
+REM shadow RAM is only equivalent to lowering PAGE by &400, which may well not be
+REM enough. In all other modes, shadow RAM more than compensates for any realistic
+REM PAGE>&E00 compared to having PAGE=&E00.
+extra$=""
+!ifdef OZMOO2P_BINARY {
+    IF max_mode<7 AND NOT shadow THEN extra$=" Alternatively, adding shadow RAM or a second processor will probably allow the game to run."
+} else {
+    IF max_mode<7 AND NOT shadow THEN extra$=" Alternatively, adding shadow RAM will probably allow the game to run."
+}
+IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+"."+extra$)
 
 REM At this point we have three different kinds of memory available:
 REM - extra_main_ram bytes free in main RAM; this varies with screen mode on
@@ -336,10 +355,6 @@ REM   non-shadow systems, so is calculated later for each mode we consider
 REM - flexible_swr_ro bytes of sideways RAM which can be used as dynamic memory or vmem cache
 REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
 vmem_only_swr=swr_size-flexible_swr_ro
-
-min_mode=${MIN_MODE}
-max_mode=${MAX_MODE}
-IF electron AND max_mode=7 THEN max_mode=6
 
 REM If we have shadow RAM, all modes have the same (0K) screen RAM requirement so we
 REM only need to do the test once for mode 0. Remember the screen RAM isn't the only
