@@ -81,9 +81,7 @@
 	; SFTODO: This may not be the best way of doing this, but I want to get things working and tested before (much later) maybe trying to make the Acorn port fit a bit more cleanly
 	TARGET_ASSIGNED = 1
 	SUPPORT_REU = 0 ; SFTODO: Can I get rid of need for this definition?
-    !ifdef ONLY_40_COLUMN {
-        SUPPORT_80COL = 0
-    } else {
+    !ifndef ONLY_40_COLUMN {
         SUPPORT_80COL = 1
     }
 }

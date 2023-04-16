@@ -336,6 +336,9 @@ REM - flexible_swr_ro bytes of sideways RAM which can be used as dynamic memory 
 REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
 vmem_only_swr=swr_size-flexible_swr_ro
 
+REM SFTODONOW: I AM NOT SURE THE LOADER WAS SUPPORTING --only-40-columns MODE CORRECTLY. WHETHER IT WAS OR NOT, THINK ABOUT THIS FOR THE NEW STYLE.
+REM SFTODONOW: MAY WANT TO ADD --min-mode AND --max-mode BUILD OPTIONS, AND HAVE --only-{40,80}-columns OPTIONS SET THOSE, AND INFER ONLY_{40,80}_COLUMNS MACROS FOR CONDITIONAL ASSEMBLY FROM THE VALUES OF MIN MODE AND MAX MODE.
+
 !ifdef ONLY_80_COLUMN {
     max_mode=3
 } else {

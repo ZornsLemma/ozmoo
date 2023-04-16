@@ -926,9 +926,11 @@ draw_status_line
 	sta z_operand_value_high_arr
 	jsr z_ins_print_num
 !ifdef SUPPORT_80COL {
+    ; SFTODO: Probably small optimisation potential to omit a little of following
+    ; code if we *only* support 80 columns for this game.
 	ldy sl_moves_pos
 	bne +
-	lda #47
+	lda #'/'
 	jsr s_printchar
 	jmp ++	
 +	ldx #0
@@ -941,7 +943,7 @@ draw_status_line
 	bne - ; Always branch
 ++
 } else {
-	lda #47
+	lda #'/'
 	jsr s_printchar
 }
 	lda #18
