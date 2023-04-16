@@ -341,9 +341,6 @@ REM unlikely case, and we avoid making the suggestion in that case because addin
 REM shadow RAM is only equivalent to lowering PAGE by &400, which may well not be
 REM enough. In all other modes, shadow RAM more than compensates for any realistic
 REM PAGE>&E00 compared to having PAGE=&E00.
-REM SFTODO: Is this ridiculous? Because it also feels like we should give a similar
-REM message if the game omits non-shadow support because it simply can't run on
-REM non-shadow machines, which is handled via a separate code path.
 extra$=""
 !ifdef OZMOO2P_BINARY {
     IF max_mode<7 AND NOT shadow THEN extra$=" Alternatively, adding shadow RAM or a second processor will probably allow the game to run."
