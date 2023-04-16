@@ -225,13 +225,13 @@ PROCchoose_version_and_check_ram
     *FX21
 }
 
+REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7. HAVE TRIED BUT CHECK AGAIN LATER TO SEE IF RIGHT
+?screen_mode=FNmin(FNmax(${default_mode},min_mode),max_mode)
 !ifdef AUTO_START {
-    REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7.
-    IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
     mode_keys_vpos=VPOS:PROCshow_mode_keys
 } else {
     REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7. Have done this quickly, need to review later - poss OK.
-    IF min_mode<>max_mode THEN PROCmode_menu ELSE ?screen_mode=max_mode:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
+    IF min_mode<>max_mode THEN PROCmode_menu ELSE mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
 IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
@@ -541,7 +541,9 @@ ENDPROC
     REM SFTODONOW: MAKE SURE TO RESPECT USER-SPECIFIC DEFAULT MODE
 
 TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT IT IS A BIT SLOW SO TRYING TO IMPROVE
-    RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
+    IF min_mode=0 AND max_mode=7 THEN RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
+    IF min_mode=3 AND max_mode=7 THEN RESTORE 10500
+    IF min_mode=4 AND max_mode=7 THEN RESTORE 11000
     mode_list$=""
     READ n:n=n-1
     REM We don't bother with a second dimension to highlight_left_[xy], because
@@ -568,7 +570,7 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     NEXT
     PRINTTAB(0,20);T%;
 
-    x=2:y=0:REM SFTODONOW HACKY FOR NOW, WE NEED TO SELECT THIS BASED ON "PREFERRED" MODE HOWEVER THAT WORKS
+    x=mode_x(?screen_mode):y=mode_y(?screen_mode)
     PROChighlight(x,y,TRUE):PROCspace
 
     REPEAT
@@ -596,7 +598,7 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     REM We put the "normal background" code in at the right hand side first before
     REM (maybe) putting a "coloured background" code in at the left hand side to try
     REM to reduce visual glitches.
-    IF highlight_right_x(x)<39 THEN PRINTTAB(highlight_right_x(x)+1,menu_top_y+y);CHR$normal_fg;CHR$156;
+    IF highlight_right_x(x)<39 THEN PRINTTAB(highlight_right_x(x),menu_top_y+y);CHR$normal_fg;CHR$156;
     PRINTTAB(highlight_left_x(x)-1,menu_top_y+y);
     IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
     ENDPROC
@@ -996,6 +998,9 @@ DEF FNmax(a,b):IF a<b THEN =b ELSE =a
 
 DEF FNhimem_for_mode(mode):A%=&85:X%=mode:=(USR&FFF4 AND &FFFF00) DIV &100
 
+REM SFTODONOW: BIT RANDOM, BUT MAYBE CHANGE DEFAULT MODE HIGHLIGHT COLOUR IN MODE 7 TO BLUE INSTEAD OF RED?
+
+REM SFTODONOW: Might want to tweak some of these layouts for better visual appeal
 REM SFTODONOW CAN PROBABLY CONDITIONALLY OMIT SOME OF THESE FROM THE BUILD DEPENDING ON SETTINGS
 REM SFTODONOW COMMENT ON DATA FORMAT ONCE SETTLED
 10000DATA 6
@@ -1005,3 +1010,17 @@ DATA 1,0,"4) 40x32",13,24
 DATA 1,1,"6) 40x25",13,24
 DATA 2,0,"7) 40x25",25,39
 DATA 2,1,"   teletext",25,39
+
+REM SFTODONOW I DON'T THINK THIS WILL WORK PROPERLY BECAUSE THERE IS A "HOLE" - PROB NEED TO TWEAK MOVEMENT LOGIC FOR CURSORS
+10500DATA 5
+DATA 0,0,"3) 80x25",1,12
+DATA 1,0,"4) 40x32",13,24
+DATA 1,1,"6) 40x25",13,24
+DATA 2,0,"7) 40x25",25,39
+DATA 2,1,"   teletext",25,39
+
+11000DATA 4
+DATA 0,0,"4) 40x32",1,12
+DATA 0,1,"6) 40x25",1,12
+DATA 1,0,"7) 40x25",13,27
+DATA 1,1,"   teletext",13,27
