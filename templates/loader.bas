@@ -341,6 +341,9 @@ REM unlikely case, and we avoid making the suggestion in that case because addin
 REM shadow RAM is only equivalent to lowering PAGE by &400, which may well not be
 REM enough. In all other modes, shadow RAM more than compensates for any realistic
 REM PAGE>&E00 compared to having PAGE=&E00.
+REM SFTODO: Is this ridiculous? Because it also feels like we should give a similar
+REM message if the game omits non-shadow support because it simply can't run on
+REM non-shadow machines, which is handled via a separate code path.
 extra$=""
 !ifdef OZMOO2P_BINARY {
     IF max_mode<7 AND NOT shadow THEN extra$=" Alternatively, adding shadow RAM or a second processor will probably allow the game to run."
@@ -537,6 +540,7 @@ REM SFTODO: Should I make the loader support some sort of line-continuation char
     binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOB_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
 } else {
     !ifdef OZMOOSH_BINARY {
+        REM SFTODO: Should we also (if OZMOO2P_BINARY is defined) suggest a sedcond processor as an option, as we do in the PAGE-too-high-no-shadow case?
         PROCunsupported_machine("a BBC B without shadow RAM")
     } else {
         PROCunsupported_machine("a BBC B")
