@@ -353,6 +353,7 @@ REM failure.
 REM SFTODO: We could do the tests in the other order; which is faster (hopefully
 REM mostly imperceptibly) will depend on how many modes are acceptable compared to
 REM how many aren't.
+REM SFTODONOW: I THINK (NOT EXPLICITLY TIMED IT) THIS IS A SMIDGE SLOW, MAYBE SEE IF I CAN IMPROVE IT
 IF shadow THEN RESTORE 3010 ELSE RESTORE 3000
 3000DATA 7,6,4,3
 3010DATA 0
