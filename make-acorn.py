@@ -406,6 +406,7 @@ class LoaderScreen(Exception):
                 self.highlight_fg = colour_code(line[0])
             elif b"Highlight background" in line:
                 self.highlight_bg = colour_code(line[0])
+                self.highlight_bg = 132 # SFTODONOW TOTAL HACK, *IF* I WANTED TO KEEP THIS WOULD NEED TO EDIT THE EMBEDDED TITLE PAGE
 
     @staticmethod
     def _get_title_page():
