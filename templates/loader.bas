@@ -548,12 +548,14 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     READ n:n=n-1
     REM We don't bother with a second dimension to highlight_left_[xy], because
     REM the cells line up vertically.
-    DIM mode_x(8),mode_y(8),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),mode(2,1)
-    max_x=0:max_y=0
+    REM SFTODONOW: I COULDN'T CONCENTRATE WHEN DOING THE PER-ROW/COLUMN MIN/MAX STUFF TO HANDLE "GAPS" IN THE CELL GRID, PROBABLY OK BUT PROB WORTH A REVIEW LATER - THERE MAY IF NOTHING ELSE BE UNUSED VARS KICKING AROUND
+    DIM mode_x(8),mode_y(8),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),mode(2,1),min_x(1),max_y(2)
+    max_x=0:min_x(1)=9
     FOR i=0 TO n
     READ x,y
-    IF x>max_x THEN max_x=x
-    IF y>max_y THEN max_y=y
+    IF x<min_x(y) THEN min_x(y)=x
+    IF x>=max_x THEN max_x=x
+    IF y>max_y(x) THEN max_y(x)=y
     cell_x(i)=x:cell_y(i)=y
     READ text$(x,y),highlight_left_x(x),highlight_right_x(x)
     mode$=LEFT$(text$(x,y),1)
@@ -563,7 +565,7 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
 
     PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
     menu_top_y=VPOS
-    mode_keys_vpos=menu_top_y+max_y+2
+    mode_keys_vpos=menu_top_y+max_y(max_x)+2
     FOR i=0 TO n
     x=cell_x(i):y=cell_y(i)
     PRINTTAB(highlight_left_x(x)+2,menu_top_y+y);text$(x,y);
@@ -576,9 +578,9 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     REPEAT
     old_x=x:old_y=y
     key=GET
-    IF key=136 AND x>0 THEN x=x-1
+    IF key=136 AND x>min_x(y) THEN x=x-1
     IF key=137 AND x<max_x THEN x=x+1
-    IF key=138 AND y<max_y THEN y=y+1
+    IF key=138 AND y<max_y(x) THEN y=y+1
     IF key=139 AND y>0 THEN y=y-1
     REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
     REM with cursor keys remembers the old y position.
