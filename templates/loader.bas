@@ -327,6 +327,7 @@ REM agitated trying to write it.
 
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
+REM SFTODONOW: It's maybe a bit excessively over-helpful, but if it's not too hard, we could special case Electron/B with no shadow here and say something about "or PAGE<=&xxxx with shadow RAM".
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+".")
 
 REM At this point we have three different kinds of memory available:
