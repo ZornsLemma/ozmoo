@@ -554,7 +554,6 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     cell_x(i)=x:cell_y(i)=y
     READ text$(x,y),highlight_left_x(x),highlight_right_x(x)
     mode$=LEFT$(text$(x,y),1)
-    REM SFTODONOW: WE MAY BE ABLE TO GET RID OF FNis_mode_7 NOW WE HAVE mode(x,y)=7 FOR BOTH MODE 7 CELLS
     IF mode$<>" " THEN mode_list$=mode_list$+mode$:mode=VAL(mode$):mode(x,y)=mode:mode_x(mode)=x:mode_y(mode)=y ELSE mode(x,y)=7
     NEXT
     T%=TIME
@@ -612,28 +611,6 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     IF electron AND key=2 THEN ?bg_colour=(?bg_colour+1) MOD 8:VDU 19,0,?bg_colour,0;0
     IF electron AND key=6 THEN ?fg_colour=(?fg_colour+1) MOD 8:VDU 19,7,?fg_colour,0;0
     =key=32 OR key=13
-
-    DEF PROChighlight(x,y,on)
-    IF on AND FNis_mode_7(x) THEN ?screen_mode=7 ELSE IF on THEN ?screen_mode=mode(x,y)
-    IF on THEN PROCshow_mode_keys
-    IF electron THEN PROChighlight_internal_electron(x,y,on):ENDPROC
-    IF FNis_mode_7(x) THEN PROChighlight_internal(x,0,on):y=1
-    PROChighlight_internal(x,y,on)
-    ENDPROC
-    DEF PROChighlight_internal(x,y,on)
-    REM We put the "normal background" code in at the right hand side first before
-    REM (maybe) putting a "coloured background" code in at the left hand side to try
-    REM to reduce visual glitches.
-    IF x<2 THEN PRINTTAB(menu_x(x)+3+LENmenu$(x,y),menu_top_y+y);CHR$normal_fg;CHR$156;
-    PRINTTAB(menu_x(x)-1,menu_top_y+y);
-    IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
-    ENDPROC
-    DEF PROChighlight_internal_electron(x,y,on)
-    PRINTTAB(menu_x(x),menu_top_y+y);
-    IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
-    PRINT SPC(2);menu$(x,y);SPC(2);
-    COLOUR 128:COLOUR 7
-    ENDPROC
 }
 
 REM This is not a completely general pretty-print routine, e.g. it doesn't make
@@ -979,9 +956,6 @@ ENDPROC
 DEF PROCspace
 PRINTTAB(0,space_y);CHR$normal_fg;"Press SPACE/RETURN to start the game...";
 ENDPROC
-
-REM Since we know the mode 7 cell is double-height, we don't care what y is.
-DEF FNis_mode_7(x)=(mode(x,0)=7)
 
 DEF PROCoscli($block%):X%=block%:Y%=X%DIV256:CALL&FFF7:ENDPROC
 
