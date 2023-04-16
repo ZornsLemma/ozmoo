@@ -230,8 +230,8 @@ PROCchoose_version_and_check_ram
     IF tube OR shadow THEN ?screen_mode=${default_mode} ELSE ?screen_mode=7+electron
     mode_keys_vpos=VPOS:PROCshow_mode_keys
 } else {
-    REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7.
-    IF tube OR shadow THEN PROCmode_menu ELSE ?screen_mode=7+electron:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
+    REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7. Have done this quickly, need to review later - poss OK.
+    IF min_mode<>max_mode THEN PROCmode_menu ELSE ?screen_mode=max_mode:mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
 IF ?screen_mode=7 THEN ?fg_colour=${DEFAULT_M7_STATUS_COLOUR}
@@ -601,10 +601,9 @@ TIME=0:REM SFTODONOW ALL TIME STUFF IS TEMP - SEARCH FOR "TIME" AND DELETE - BUT
     IF on THEN PRINT CHR$highlight_bg;CHR$157;CHR$highlight_fg ELSE PRINT "  ";CHR$normal_fg
     ENDPROC
     DEF PROChighlight_internal_electron(x,y,on)
-    REM SFTODONOW: THIS NEEDS REWRITING FOR NEW SCHEME, JUST DOING MODE 7 VSN OF MENU FOR MOMENT
-    PRINTTAB(menu_x(x),menu_top_y+y);
+    PRINTTAB(highlight_left_x(x),menu_top_y+y);
     IF on THEN COLOUR 135:COLOUR 0 ELSE COLOUR 128:COLOUR 7
-    PRINT SPC(2);menu$(x,y);SPC(2);
+    PRINT SPC(2);text$(x,y);SPC(2);
     COLOUR 128:COLOUR 7
     ENDPROC
 
