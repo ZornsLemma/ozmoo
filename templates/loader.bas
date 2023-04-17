@@ -171,6 +171,18 @@ IF shadow AND NOT tube THEN PROCassemble_shadow_driver
 PROCdetect_swr
 
 MODE 135:VDU 23,1,0;0;0;0;
+REM SFTODO: Instead of assuming an Electron doesn't have mode 7, we could test
+REM to see if we're in mode 7 (as opposed to 6) here and use the mode 7 code if so.
+REM This *might* allow an Electron with a mode 7 expansion to use the mode 7 menu
+REM and run games in mode 7. We'd need to change some uses of "electron" to a new
+REM "has_mode_7" (or "no_mode_7") variable, of course. Without an emulator or
+REM someone willing to test this on real hardware it may be best not to try this, at
+REM least without reading up on the various Electron mode 7 implementations. In
+REM particular, if they provide mode 7 but HIMEM is lower than &7C00, all sorts of
+REM assumptions in the build system/loader are likely to be violated with odd
+REM results. Of course, we could check that too - if we are in mode 7 but HIMEM<&7C00,
+REM explicitly switch back to mode 6, otherwise set the has_mode_7 flag.
+
 REM We don't want to write to any of the resident variable workspace earlier than this
 REM because we might trample on P%/O% when assembling code.
 fg_colour=${fg_colour}
@@ -225,12 +237,10 @@ PROCchoose_version_and_check_ram
     *FX21
 }
 
-REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7. HAVE TRIED BUT CHECK AGAIN LATER TO SEE IF RIGHT
 ?screen_mode=FNmin(FNmax(${default_mode},min_mode),max_mode)
 !ifdef AUTO_START {
     mode_keys_vpos=VPOS:PROCshow_mode_keys
 } else {
-    REM SFTODONOW: This will need updating now non-shadow machines can *sometimes* use other modes than 6/7. Have done this quickly, need to review later - poss OK.
     IF min_mode<>max_mode THEN PROCmode_menu ELSE mode_keys_vpos=VPOS:PROCshow_mode_keys:PROCspace:REPEAT UNTIL FNhandle_common_key(GET)
 }
 
@@ -366,9 +376,9 @@ REM SFTODO: We could do the tests in the other order; which is faster (hopefully
 REM mostly imperceptibly) will depend on how many modes are acceptable compared to
 REM how many aren't.
 REM SFTODONOW: I THINK (NOT EXPLICITLY TIMED IT) THIS IS A SMIDGE SLOW, MAYBE SEE IF I CAN IMPROVE IT
-IF shadow THEN RESTORE 3010 ELSE RESTORE 3000
-3000DATA 7,6,4,3
-3010DATA 0
+IF shadow THEN die_if_not_ok=TRUE:ok=FNmode_ok(0):ENDPROC
+RESTORE 3000
+3000DATA 7,6,4,3,0
 ok=TRUE
 REPEAT
 READ mode
@@ -376,10 +386,7 @@ REM We're a bit inconsistent about passing values to FNmode_ok() and its childre
 die_if_not_ok=(shadow OR mode=max_mode)
 IF mode>=${MIN_MODE} AND mode<=max_mode THEN ok=FNmode_ok(mode):IF ok THEN min_mode=mode
 UNTIL mode<=${MIN_MODE} OR NOT ok
-
-REM SFTODONOW: WE NEED TO RESPECT THE VALUE OF MIN_MODE AND MAX_MODE WHEN DISPLAYING THE MODE MENU
-TX=POS:TY=VPOS:PRINTTAB(0,0);"SFTODONOW TEMP min_mode=";min_mode;", max_mode=";max_mode;TAB(TX,TY);
-
+REM SFTODONOW: DELETE TX=POS:TY=VPOS:PRINTTAB(0,0);"SFTODONOW TEMP min_mode=";min_mode;", max_mode=";max_mode;TAB(TX,TY);
 ENDPROC
 
 
@@ -547,9 +554,6 @@ ENDPROC
 
 !ifndef AUTO_START {
     DEF PROCmode_menu
-    REM SFTODONOW: MAKE SURE TO RESPECT USER-SPECIFIC DEFAULT MODE
-
-REM SFTODONOW: TEST CASES WHERE MINMODE=MAXMODE FOR 0/3/4/6/7
 
     REM SFTODONOW: IS THIS CODE A BIT SLOW?
     IF min_mode=0 AND max_mode=7 THEN RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
@@ -568,7 +572,7 @@ REM SFTODONOW: TEST CASES WHERE MINMODE=MAXMODE FOR 0/3/4/6/7
     REM the cells line up vertically.
     REM SFTODONOW: I COULDN'T CONCENTRATE WHEN DOING THE PER-ROW/COLUMN MIN/MAX STUFF TO HANDLE "GAPS" IN THE CELL GRID, PROBABLY OK BUT PROB WORTH A REVIEW LATER - THERE MAY IF NOTHING ELSE BE UNUSED VARS KICKING AROUND
     DIM mode_x(8),mode_y(8),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),mode(2,1),min_x(1),max_y(2)
-    max_x=0:min_x(1)=9
+    max_x=0:max_y=0:min_x(1)=9
     FOR i=0 TO n
     READ x,y,text$(x,y)
     mode$=LEFT$(text$(x,y),1)
@@ -576,18 +580,18 @@ REM SFTODONOW: TEST CASES WHERE MINMODE=MAXMODE FOR 0/3/4/6/7
     IF x<min_x(y) THEN min_x(y)=x
     IF x>=max_x THEN max_x=x
     IF y>max_y(x) THEN max_y(x)=y
+    IF y>max_y THEN max_y=y
     cell_x(i)=x:cell_y(i)=y
     READ highlight_left_x(x),highlight_right_x(x)
     NEXT
 
     PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
     menu_top_y=VPOS
-    mode_keys_vpos=menu_top_y+max_y(max_x)+2
+    mode_keys_vpos=menu_top_y+max_y+2
     FOR i=0 TO n
     x=cell_x(i):y=cell_y(i)
     PRINTTAB(highlight_left_x(x)+2,menu_top_y+y);text$(x,y);
     NEXT
-    PRINTTAB(0,20);T%;
 
     x=mode_x(?screen_mode):y=mode_y(?screen_mode)
     PROChighlight(x,y,TRUE):PROCspace
@@ -595,9 +599,8 @@ REM SFTODONOW: TEST CASES WHERE MINMODE=MAXMODE FOR 0/3/4/6/7
     REPEAT
     old_x=x:old_y=y
     key=GET
-    REM SFTODO DELETE IF key=136 AND x>min_x(y) THEN x=x-1
     IF key=136 AND x>0 THEN x=x-1:IF y>max_y(x) THEN y=0
-    IF key=137 AND x<max_x THEN x=x+1
+    IF key=137 AND x<max_x THEN x=x+1:IF y>max_y(x) THEN y=0
     IF key=138 AND y<max_y(x) THEN y=y+1
     IF key=139 AND y>0 THEN y=y-1
     REM We don't set y if mode 7 is selected by pressing "7" so subsequent movement
@@ -1023,7 +1026,9 @@ REM SFTODONOW: BIT RANDOM, BUT MAYBE CHANGE DEFAULT MODE HIGHLIGHT COLOUR IN MOD
 REM SFTODO: We could conditionally omit some of these if we had the ability to
 REM evaluate conditions like "!if MAX_MODE = 4 {". I think we could omit menu
 REM layouts with the highest mode < min(user's max_mode, 6) or with the lowest mode
-REM > user's min_mode.
+REM > user's min_mode. We could fake these kind of expressions by having make-acorn.py
+REM define constants like "WANT_MENU_3_TO_6" after evaluating those expressions in
+REM Python code.
 
 REM SFTODONOW: Might want to tweak some of these layouts for better visual appeal
 
@@ -1069,7 +1074,6 @@ DATA 2,0,"6) 40x25",25,36
 DATA 0,0,"4) 40x32",1,12
 DATA 1,0,"6) 40x25",13,24
 
-REM SFTODONOW: This one has a broken layout, there's no gap below it and the blank cell can be reached via cursor movement
 13500DATA 3
 DATA 0,0,"0) 80x32",1,12
 DATA 0,1,"3) 80x25",1,12
@@ -1080,5 +1084,5 @@ DATA 0,0,"0) 80x32",1,12
 DATA 1,0,"3) 80x25",13,24
 
 14500DATA 2
-DATA 0,0,"3) 40x32",1,12
+DATA 0,0,"3) 80x25",1,12
 DATA 1,0,"4) 40x25",13,24

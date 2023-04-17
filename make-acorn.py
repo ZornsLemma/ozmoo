@@ -907,6 +907,18 @@ class OzmooExecutable(Executable):
             self._patch_vmem()
 
     def _patch_vmem(self):
+        print("AAA", self.leafname, hex(self.start_addr), hex(self.labels["data_start"]))
+        # We use a strict greater than comparison in the next line because the
+        # *Ozmoo code* fits fine with data_start equal to the start of screen
+        # RAM. Whether we can get away with no main RAM free for dynamic memory
+        # is another matter, handled by subsequent tests here and at run time.
+        if "ACORN_SWR" in self.labels and self.labels["data_start"] > (0x8000 - self.min_screen_hole_size()):
+            # The Ozmoo code itself won't fit in memory below the screen RAM.
+            # This is most likely if --max-mode=0 is specified by the user; in
+            # other modes there's usually enough room with PAGE=&E00.
+            print("BBB", hex(self.start_addr), hex(self.labels["data_start"]))
+            raise GameWontFit("not enough free RAM for Ozmoo code")
+
         # Can we fit the nonstored pages into memory?
         nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
         if nonstored_pages_up_to > self.max_pseudo_ramtop():
@@ -974,9 +986,8 @@ class OzmooExecutable(Executable):
     # less than ideal.
     def min_screen_hole_size(self):
         if "ACORN_SCREEN_HOLE" in self.labels:
-            if "ACORN_ELECTRON_SWR" in self.labels:
-                return 0x8000 - himem_by_mode(max(cmd_args.max_mode, 6))
-            return 0x8000 - himem_by_mode(cmd_args.max_mode)
+            adjusted_max_mode = min(cmd_args.max_mode, 6) if "ACORN_ELECTRON_SWR" in self.labels else cmd_args.max_mode
+            return 0x8000 - himem_by_mode(adjusted_max_mode)
         return 0
 
     def max_pseudo_ramtop(self):
@@ -1066,6 +1077,7 @@ def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = No
         e = make_ozmoo_executable._cache.get(cache_key)
         if e is not None:
             return e
+        print("PXX", leafname, hex(start_addr))
         e = OzmooExecutable(leafname, start_addr, args)
         make_ozmoo_executable._cache[cache_key] = e
         return e
@@ -1109,11 +1121,13 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_RELOCATABLE=1" in args
     assert "-DACORN_SWR=1" in args
 
+    print("YCC", report_failure_prefix)
     e_low = make_optimally_aligned_executable(leafname, 0xe00, args, report_failure_prefix)
     # If we can't build successfully with a start of 0xe00 we can't ever manage
     # it.
     if e_low is None:
         return None
+    print("YDD")
     assert e_low.start_addr in (0xe00, 0xf00)
     # There's no point loading really high, and doing a totally naive
     # calculation may cause us to load so high there's no room for the
@@ -1128,24 +1142,39 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
         surplus_nonstored_pages = e_low.max_nonstored_pages() - nonstored_pages
         assert surplus_nonstored_pages >= 0
         assert surplus_nonstored_pages % 2 == 0
-        print("Q4", leafname, hex(surplus_nonstored_pages))
         max_start_addr = min(e_low.start_addr + surplus_nonstored_pages * bytes_per_page, max_start_addr)
     else:
         main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
         main_ram_vmem -= e_low.min_screen_hole_size()
-        if main_ram_vmem < 0:
-            # This case typically occurs for the B-no-shadow executable if you
-            # specify --max-mode=0; even with PAGE=&E00, there isn't enough main
-            # RAM free for the Ozmoo code itself as well as 20K of screen RAM.
-            # SFTODONOW: This is semi-reasonable, but the game *does* then go on to build as a big dynmodel, which makes no sense - that code won't fit *either*. So maybe there's something else at play. Also we get nonsensical error messages about needing 15K more of main or sideways RAM when running that bigdyn build on a PAGE &E00 B-no-shadow, no matter how much SWR we add. Putting nonsensical error message bug to one side, if the game can't fit in bigdyn either, we should refuse to build a B-no-shadow exe altogether - and I also need to check the reason the medium dynmem build is failing is really that it truly won't fit even with PAGE=&E00 in mode 0.
-            return None
+        if False: # SFTODONOW I SUSPECT THIS IS HANDLED BETTER ELSEWHERE NOW, TEST AND DELETE THIS IF SO
+            if main_ram_vmem < 0:
+                # This case typically occurs for the B-no-shadow executable if you
+                # specify --max-mode=0; even with PAGE=&E00, there isn't enough main
+                # RAM free for the Ozmoo code itself as well as 20K of screen RAM.
+                return None
         assert main_ram_vmem >= 0
         assert main_ram_vmem % (2 * bytes_per_page) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
+    print("YEE", hex(max_start_addr))
+
+    # If we build at max_start_addr, we might end up with data_start so high it
+    # overlaps screen RAM in builds which support no-shadow configurations. I
+    # added this code because I thought it was needed; in practice this
+    # situation never occurs now I've fixed the original bug, but I think in
+    # principle this is a risk, so having written the code I'll leave it in with
+    # an assert so I know if it ever gets triggered.
+    data_start_high = e_low.labels["data_start"] + (max_start_addr - e_low.start_addr)
+    min_himem = 0x8000 - e_low.min_screen_hole_size()
+    data_start_excess = max(data_start_high - min_himem, 0)
+    assert data_start_excess == 0 # just to see if this ever occurs, if it does do a sanity check and then delete the assert so following code can fix things up
+    data_start_excess = 512 * divide_round_up(data_start_excess, 512)
+    max_start_addr -= data_start_excess
+    print("YEF", hex(max_start_addr))
+    assert max_start_addr >= e_low.start_addr
+
     assert same_double_page_alignment(max_start_addr, e_low.start_addr)
     e = make_ozmoo_executable(leafname, max_start_addr, args, report_failure_prefix)
-    assert e is not None
-    assert e.max_nonstored_pages() >= nonstored_pages
+    assert e is None or e.max_nonstored_pages() >= nonstored_pages
     return e
 
 
@@ -1189,7 +1218,9 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     medium_e = None
     if cmd_args.force_medium_dynmem or ("-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem):
         if nonstored_pages * bytes_per_page <= 16 * 1024:
+            print("XAA")
             medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
+            print("XAB")
             if medium_e is not None:
                 info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
                 return medium_e
@@ -2322,4 +2353,4 @@ show_deferred_output()
 
 # SFTODONOW: C64 make has a "-re" option to enable full error checking, I should add something like that to Acorn build script.
 
-# SFTODO: For the medium dynmem model at least, could we move the Z-machine stack into the 16K "dynmem" SWR bank (assuming there's room for it with the dynmem, of course)? In medium model I *think* this would be near trivial - the dynmem bank is always paged in - oh no, it probably isn't, but I haven't checked. If this could be done it would free up 1K of main RAM which might be enough to allow e.g. mode 3 on a PAGE=&1900 machine, and since the extra 1K of SWR used would (all else being equal) free up 1K of main RAM and both can be used as vmem cache, there would be no penalty in general for doing this. I suspect this isn't going to fly unless the 16K dynmem bank really is paged in all the time (at least when executing Z-machine code accessing Z-machine stack) or could be paged in in extra cases without adding lots of complexity. Another problem would be that we put discardable init code in the Z-machine stack, and we need somewhere to load that code, whereas if we're (say) in mode 3 and *just* have enough main RAM for the game without room for the Z-machine stack in there, we have nowhere to load the discardable init code. This could possibly be worked around by switching to (say) mode 7 when we do a restart - that would give us extra memory and we could then switch back to mode 3 after discardable init code has been discarded. Perhaps a bit fiddly but perhaps not. Still, worth thinking about.
+# SFTODO: For the medium dynmem model at least, could we move the Z-machine stack into the 16K "dynmem" SWR bank (assuming there's room for it with the dynmem, of course)? In medium model I *think* this would be near trivial - the dynmem bank is always paged in - oh no, it probably isn't, but I haven't checked. If this could be done it would free up 1K of main RAM which might be enough to allow e.g. mode 3 on a PAGE=&1900 machine, and since the extra 1K of SWR used would (all else being equal) free up 1K of main RAM and both can be used as vmem cache, there would be no penalty in general for doing this. I suspect this isn't going to fly unless the 16K dynmem bank really is paged in all the time (at least when executing Z-machine code accessing Z-machine stack) or could be paged in in extra cases without adding lots of complexity. Another problem would be that we put discardable init code in the Z-machine stack, and we need somewhere to load that code, whereas if we're (say) in mode 3 and *just* have enough main RAM for the game without room for the Z-machine stack in there, we have nowhere to load the discardable init code. This could possibly be worked around by switching to (say) mode 7 when we do a restart - that would give us extra memory and we could then switch back to mode 3 after discardable init code has been discarded. Perhaps a bit fiddly but perhaps not. Still, worth thinking about. (Also worth noting that *as of this writing* - I haven't tried to optimise things to squeeze extra free RAM out - HH non benchmark needs PAGE<=&1400 on B-no-shadow, so adding &400 from this stack move to SWR wouldn't quite get us mode 3 on PAGE=&1900.)
