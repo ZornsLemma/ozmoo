@@ -555,17 +555,37 @@ ENDPROC
 !ifndef AUTO_START {
     DEF PROCmode_menu
 
-    REM SFTODONOW: IS THIS CODE A BIT SLOW?
-    IF min_mode=0 AND max_mode=7 THEN RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
-    IF min_mode=3 AND max_mode=7 THEN RESTORE 10500
-    IF min_mode=4 AND max_mode=7 THEN RESTORE 11000
-    IF min_mode=6 AND max_mode=7 THEN RESTORE 11500
-    IF min_mode=0 AND max_mode=6 THEN RESTORE 12000
-    IF min_mode=3 AND max_mode=6 THEN RESTORE 12500
-    IF min_mode=4 AND max_mode=6 THEN RESTORE 13000
-    IF min_mode=0 AND max_mode=4 THEN RESTORE 13500
-    IF min_mode=0 AND max_mode=3 THEN RESTORE 14000
-    IF min_mode=3 AND max_mode=4 THEN RESTORE 14500
+    REM SFTODONOW: IS THIS CODE A BIT SLOW? (ALL OF IT, NOT JUST THIS RESTORE BIT)
+    !ifdef NEED_MODE_MENU_0_TO_7 {
+        IF min_mode=0 AND max_mode=7 THEN RESTORE 10000
+    }
+    !ifdef NEED_MODE_MENU_3_TO_7 {
+        IF min_mode=3 AND max_mode=7 THEN RESTORE 10500
+    }
+    !ifdef NEED_MODE_MENU_4_TO_7 {
+        IF min_mode=4 AND max_mode=7 THEN RESTORE 11000
+    }
+    !ifdef NEED_MODE_MENU_6_TO_7 {
+        IF min_mode=6 AND max_mode=7 THEN RESTORE 11500
+    }
+    !ifdef NEED_MODE_MENU_0_TO_6 {
+        IF min_mode=0 AND max_mode=6 THEN RESTORE 12000
+    }
+    !ifdef NEED_MODE_MENU_3_TO_6 {
+        IF min_mode=3 AND max_mode=6 THEN RESTORE 12500
+    }
+    !ifdef NEED_MODE_MENU_4_TO_6 {
+        IF min_mode=4 AND max_mode=6 THEN RESTORE 13000
+    }
+    !ifdef NEED_MODE_MENU_0_TO_4 {
+        IF min_mode=0 AND max_mode=4 THEN RESTORE 13500
+    }
+    !ifdef NEED_MODE_MENU_0_TO_3 {
+        IF min_mode=0 AND max_mode=3 THEN RESTORE 14000
+    }
+    !ifdef NEED_MODE_MENU_3_TO_4 {
+        IF min_mode=3 AND max_mode=4 THEN RESTORE 14500
+    }
     mode_list$=""
     READ n:n=n-1
     REM We don't bother with a second dimension to highlight_left_[xy], because
@@ -1023,66 +1043,81 @@ DEF FNhimem_for_mode(mode):A%=&85:X%=mode:=(USR&FFF4 AND &FFFF00) DIV &100
 
 REM SFTODONOW: BIT RANDOM, BUT MAYBE CHANGE DEFAULT MODE HIGHLIGHT COLOUR IN MODE 7 TO BLUE INSTEAD OF RED?
 
-REM SFTODO: We could conditionally omit some of these if we had the ability to
-REM evaluate conditions like "!if MAX_MODE = 4 {". I think we could omit menu
-REM layouts with the highest mode < min(user's max_mode, 6) or with the lowest mode
-REM > user's min_mode. We could fake these kind of expressions by having make-acorn.py
-REM define constants like "WANT_MENU_3_TO_6" after evaluating those expressions in
-REM Python code.
-
 REM SFTODONOW: Might want to tweak some of these layouts for better visual appeal
 
-REM SFTODONOW COMMENT ON DATA FORMAT ONCE SETTLED
-10000DATA 6
-DATA 0,0,"0) 80x32",1,12
-DATA 0,1,"3) 80x25",1,12
-DATA 1,0,"4) 40x32",13,24
-DATA 1,1,"6) 40x25",13,24
-DATA 2,0,"7) 40x25",25,39
-DATA 2,1,"   teletext",25,39
+REM SFTODO: Moving this data to the start of the program would speed up RESTORE
+REM by about a centisecond; not huge but maybe worth having.
 
-10500DATA 5
-DATA 0,0,"3) 80x25",1,12
-DATA 1,0,"4) 40x32",13,24
-DATA 1,1,"6) 40x25",13,24
-DATA 2,0,"7) 40x25",25,39
-DATA 2,1,"   teletext",25,39
+!ifdef NEED_MODE_MENU_0_TO_7 {
+    10000DATA 6
+    DATA 0,0,"0) 80x32",1,12
+    DATA 0,1,"3) 80x25",1,12
+    DATA 1,0,"4) 40x32",13,24
+    DATA 1,1,"6) 40x25",13,24
+    DATA 2,0,"7) 40x25",25,39
+    DATA 2,1,"   teletext",25,39
+}
 
-11000DATA 4
-DATA 0,0,"4) 40x32",1,12
-DATA 0,1,"6) 40x25",1,12
-DATA 1,0,"7) 40x25",13,27
-DATA 1,1,"   teletext",13,27
+!ifdef NEED_MODE_MENU_3_TO_7 {
+    10500DATA 5
+    DATA 0,0,"3) 80x25",1,12
+    DATA 1,0,"4) 40x32",13,24
+    DATA 1,1,"6) 40x25",13,24
+    DATA 2,0,"7) 40x25",25,39
+    DATA 2,1,"   teletext",25,39
+}
 
-11500DATA 3
-DATA 0,0,"6) 40x25",1,12
-DATA 1,0,"7) 40x25",13,27
-DATA 1,1,"   teletext",13,27
+!ifdef NEED_MODE_MENU_4_TO_7 {
+    11000DATA 4
+    DATA 0,0,"4) 40x32",1,12
+    DATA 0,1,"6) 40x25",1,12
+    DATA 1,0,"7) 40x25",13,27
+    DATA 1,1,"   teletext",13,27
+}
 
-12000DATA 4
-DATA 0,0,"0) 80x32",1,12
-DATA 0,1,"3) 80x25",1,12
-DATA 1,0,"4) 40x32",13,24
-DATA 1,1,"6) 40x25",13,24
+!ifdef NEED_MODE_MENU_6_TO_7 {
+    11500DATA 3
+    DATA 0,0,"6) 40x25",1,12
+    DATA 1,0,"7) 40x25",13,27
+    DATA 1,1,"   teletext",13,27
+}
 
-12500DATA 3
-DATA 0,0,"3) 80x25",1,12
-DATA 1,0,"4) 40x32",13,24
-DATA 2,0,"6) 40x25",25,36
+!ifdef NEED_MODE_MENU_0_TO_6 {
+    12000DATA 4
+    DATA 0,0,"0) 80x32",1,12
+    DATA 0,1,"3) 80x25",1,12
+    DATA 1,0,"4) 40x32",13,24
+    DATA 1,1,"6) 40x25",13,24
+}
 
-13000DATA 2
-DATA 0,0,"4) 40x32",1,12
-DATA 1,0,"6) 40x25",13,24
+!ifdef NEED_MODE_MENU_3_TO_6 {
+    12500DATA 3
+    DATA 0,0,"3) 80x25",1,12
+    DATA 1,0,"4) 40x32",13,24
+    DATA 2,0,"6) 40x25",25,36
+}
 
-13500DATA 3
-DATA 0,0,"0) 80x32",1,12
-DATA 0,1,"3) 80x25",1,12
-DATA 1,0,"4) 40x32",13,24
+!ifdef NEED_MODE_MENU_4_TO_6 {
+    13000DATA 2
+    DATA 0,0,"4) 40x32",1,12
+    DATA 1,0,"6) 40x25",13,24
+}
 
-14000DATA 2
-DATA 0,0,"0) 80x32",1,12
-DATA 1,0,"3) 80x25",13,24
+!ifdef NEED_MODE_MENU_0_TO_4 {
+    13500DATA 3
+    DATA 0,0,"0) 80x32",1,12
+    DATA 0,1,"3) 80x25",1,12
+    DATA 1,0,"4) 40x32",13,24
+}
 
-14500DATA 2
-DATA 0,0,"3) 80x25",1,12
-DATA 1,0,"4) 40x25",13,24
+!ifdef NEED_MODE_MENU_0_TO_3 {
+    14000DATA 2
+    DATA 0,0,"0) 80x32",1,12
+    DATA 1,0,"3) 80x25",13,24
+}
+
+!ifdef NEED_MODE_MENU_3_TO_4 {
+    14500DATA 2
+    DATA 0,0,"3) 80x25",1,12
+    DATA 1,0,"4) 40x25",13,24
+}

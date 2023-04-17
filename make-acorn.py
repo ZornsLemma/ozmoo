@@ -1030,6 +1030,7 @@ class OzmooExecutable(Executable):
             symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(max(0, 0x8000 - nonstored_pages_up_to))
         else:
             symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(0x8000 - self.labels["vmem_start"])
+
         print("QQQ", self.leafname, symbols[self.leafname + "_SWR_MAIN_RAM_FREE"])
 
     def binary(self):
@@ -2034,9 +2035,11 @@ def make_disc_image():
     # executables together on the disc, although this is only useful for the second
     # processor build at the moment.
     ozmoo_variants = []
+    have_electron = False
     if want_electron:
         e = make_electron_swr_executable()
         if e is not None:
+            have_electron = True
             ozmoo_variants.append([e])
     if want_bbc_swr:
         e = make_bbc_swr_executable()
@@ -2080,6 +2083,16 @@ def make_disc_image():
     if cmd_args.leave_caps_lock_alone:
         loader_symbols["LEAVE_CAPS_LOCK_ALONE"] = basic_int(1)
     loader_screen.add_loader_symbols(loader_symbols)
+
+    for min_menu_mode in (0, 3, 4, 6, 7):
+        for max_menu_mode in (0, 3, 4, 6, 7):
+            if max_menu_mode <= min_menu_mode:
+                pass
+            possible_runtime_max_modes = [cmd_args.max_mode]
+            if cmd_args.max_mode == 7 and have_electron:
+                possible_runtime_max_modes.append(6)
+            if cmd_args.min_mode <= min_menu_mode and max_menu_mode in possible_runtime_max_modes:
+                loader_symbols["NEED_MODE_MENU_%d_TO_%d" % (min_menu_mode, max_menu_mode)] = "1"
 
     disc_contents = [boot_file]
     if turbo_test_executable is not None:
