@@ -1717,7 +1717,6 @@ def parse_args():
         cmd_args.max_mode = 7
     if cmd_args.default_mode is None:
         cmd_args.default_mode = cmd_args.max_mode
-    print("AXZX", cmd_args.min_mode, cmd_args.max_mode)
     if cmd_args.force_65c02 and cmd_args.force_6502:
         die("--force-65c02 and --force-6502 are incompatible")
     if cmd_args.preload_opt and cmd_args.preload_config:
@@ -1747,12 +1746,32 @@ def parse_args():
     cmd_args.default_mode_7_status_colour = validate_colour(cmd_args.default_mode_7_status_colour, 6, True)
     cmd_args.default_mode_7_input_colour = validate_colour(cmd_args.default_mode_7_input_colour, 3, True)
 
-    def validate_mode(mode, argument):
-        if mode not in (0, 3, 4, 6, 7):
-            die("Invalid mode specified for " + argument)
-    validate_mode(cmd_args.default_mode, "--default-mode")
-    validate_mode(cmd_args.min_mode, "--min-mode")
-    validate_mode(cmd_args.max_mode, "--max-mode")
+    # Lower numbered modes need more RAM and all modes have different RAM
+    # requirements. Since available RAM is out of our control, we have to be
+    # able to deal with any possible mode being the min mode just because of
+    # available RAM at runtime, so we can allow the user for force any mode
+    # without creating extra work for ourselves.
+    if cmd_args.min_mode not in (0, 3, 4, 6, 7):
+        die("Invalid mode specified for --min-mode; must be one of 0/3/4/6/7")
+    # SFTODONOW: DELETE THIS COMMENT, NOT TRUE - I DECIDED TO JUST SUPPORT IT
+    # There's an obvious use for specifying a max mode of 3 (it's equivalent to
+    # forcing 80 columns). Similarly, specifying a max mode of 6 forces the use
+    # of modes with proper ASCII character set and no odd characters (useful for
+    # foreign language games, perhaps). And of course it's useful to have a max
+    # mode of 7 as it's a useful mode with low RAM requirements and a nice
+    # appearance. We don't allow a max mode of 4 simply because there's no
+    # compelling reason to specify it and as the mode menu layouts are manually
+    # implemented, not supporting this slightly cuts down on the number of cases
+    # to handle. Given a compelling reason this could be changed, of course.
+    # Specifying a max mode of 0 is not necessarily useful, but since it
+    # effectively says "always run in mode 0", there's no mode menu required in
+    # this case so allowing it doesn't create extra work.
+    if cmd_args.max_mode not in (0, 3, 4, 6, 7):
+        die("Invalid mode specified for --max-mode; must be one of 0/3/6/7")
+    # Validate this last to avoid confusing errors if e.g. user specifies
+    # --max-mode=5 and nothing else.
+    if cmd_args.default_mode not in (0, 3, 4, 6, 7):
+        die("Invalid mode specified for --default-mode; must be one of 0/3/4/6/7")
     if cmd_args.min_mode > cmd_args.max_mode:
         die("--max-mode cannot be smaller than --min-mode")
     if not (cmd_args.min_mode <= cmd_args.default_mode <= cmd_args.max_mode):

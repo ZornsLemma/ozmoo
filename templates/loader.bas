@@ -549,11 +549,19 @@ ENDPROC
     DEF PROCmode_menu
     REM SFTODONOW: MAKE SURE TO RESPECT USER-SPECIFIC DEFAULT MODE
 
+REM SFTODONOW: TEST CASES WHERE MINMODE=MAXMODE FOR 0/3/4/6/7
+
     REM SFTODONOW: IS THIS CODE A BIT SLOW?
     IF min_mode=0 AND max_mode=7 THEN RESTORE 10000:REM SFTODONOW NEED TO SELECT CORRECT MENU BASED ON MIN_MODE/MAX_MODE ETC
     IF min_mode=3 AND max_mode=7 THEN RESTORE 10500
     IF min_mode=4 AND max_mode=7 THEN RESTORE 11000
     IF min_mode=6 AND max_mode=7 THEN RESTORE 11500
+    IF min_mode=0 AND max_mode=6 THEN RESTORE 12000
+    IF min_mode=3 AND max_mode=6 THEN RESTORE 12500
+    IF min_mode=4 AND max_mode=6 THEN RESTORE 13000
+    IF min_mode=0 AND max_mode=4 THEN RESTORE 13500
+    IF min_mode=0 AND max_mode=3 THEN RESTORE 14000
+    IF min_mode=3 AND max_mode=4 THEN RESTORE 14500
     mode_list$=""
     READ n:n=n-1
     REM We don't bother with a second dimension to highlight_left_[xy], because
@@ -1012,8 +1020,13 @@ DEF FNhimem_for_mode(mode):A%=&85:X%=mode:=(USR&FFF4 AND &FFFF00) DIV &100
 
 REM SFTODONOW: BIT RANDOM, BUT MAYBE CHANGE DEFAULT MODE HIGHLIGHT COLOUR IN MODE 7 TO BLUE INSTEAD OF RED?
 
+REM SFTODO: We could conditionally omit some of these if we had the ability to
+REM evaluate conditions like "!if MAX_MODE = 4 {". I think we could omit menu
+REM layouts with the highest mode < min(user's max_mode, 6) or with the lowest mode
+REM > user's min_mode.
+
 REM SFTODONOW: Might want to tweak some of these layouts for better visual appeal
-REM SFTODONOW CAN PROBABLY CONDITIONALLY OMIT SOME OF THESE FROM THE BUILD DEPENDING ON SETTINGS
+
 REM SFTODONOW COMMENT ON DATA FORMAT ONCE SETTLED
 10000DATA 6
 DATA 0,0,"0) 80x32",1,12
@@ -1041,5 +1054,31 @@ DATA 0,0,"6) 40x25",1,12
 DATA 1,0,"7) 40x25",13,27
 DATA 1,1,"   teletext",13,27
 
-REM SFTODONOW DON'T FORGET TO DO THE VARIANTS WITH MAX MODE 6
-REM SFTODONOW AS WRITTEN WE NEED TO DO *ALL* POSSIBLE MIN/MAX MODE COMBINATIONS AS WE ALLOW THE USER TO SPECIFY THEM - DO WE REALLY WANT THIS? OR SHOULD WE NOT BE QUIITE SO FLEXIBLE AND JUST HAVE ONLY 40/ONLY 80/ANYTHING HW CAN SUPPORT/ANYTHING-EXCEPT-MODE-7???
+12000DATA 4
+DATA 0,0,"0) 80x32",1,12
+DATA 0,1,"3) 80x25",1,12
+DATA 1,0,"4) 40x32",13,24
+DATA 1,1,"6) 40x25",13,24
+
+12500DATA 3
+DATA 0,0,"3) 80x25",1,12
+DATA 1,0,"4) 40x32",13,24
+DATA 2,0,"6) 40x25",25,36
+
+13000DATA 2
+DATA 0,0,"4) 40x32",1,12
+DATA 1,0,"6) 40x25",13,24
+
+REM SFTODONOW: This one has a broken layout, there's no gap below it and the blank cell can be reached via cursor movement
+13500DATA 3
+DATA 0,0,"0) 80x32",1,12
+DATA 0,1,"3) 80x25",1,12
+DATA 1,0,"4) 40x32",13,24
+
+14000DATA 2
+DATA 0,0,"0) 80x32",1,12
+DATA 1,0,"3) 80x25",13,24
+
+14500DATA 2
+DATA 0,0,"3) 40x32",1,12
+DATA 1,0,"4) 40x25",13,24
