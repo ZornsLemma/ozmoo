@@ -1128,10 +1128,17 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
         surplus_nonstored_pages = e_low.max_nonstored_pages() - nonstored_pages
         assert surplus_nonstored_pages >= 0
         assert surplus_nonstored_pages % 2 == 0
+        print("Q4", leafname, hex(surplus_nonstored_pages))
         max_start_addr = min(e_low.start_addr + surplus_nonstored_pages * bytes_per_page, max_start_addr)
     else:
         main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
         main_ram_vmem -= e_low.min_screen_hole_size()
+        if main_ram_vmem < 0:
+            # This case typically occurs for the B-no-shadow executable if you
+            # specify --max-mode=0; even with PAGE=&E00, there isn't enough main
+            # RAM free for the Ozmoo code itself as well as 20K of screen RAM.
+            # SFTODONOW: This is semi-reasonable, but the game *does* then go on to build as a big dynmodel, which makes no sense - that code won't fit *either*. So maybe there's something else at play. Also we get nonsensical error messages about needing 15K more of main or sideways RAM when running that bigdyn build on a PAGE &E00 B-no-shadow, no matter how much SWR we add. Putting nonsensical error message bug to one side, if the game can't fit in bigdyn either, we should refuse to build a B-no-shadow exe altogether - and I also need to check the reason the medium dynmem build is failing is really that it truly won't fit even with PAGE=&E00 in mode 0.
+            return None
         assert main_ram_vmem >= 0
         assert main_ram_vmem % (2 * bytes_per_page) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
