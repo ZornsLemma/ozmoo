@@ -375,7 +375,7 @@ REM failure.
 REM SFTODO: We could do the tests in the other order; which is faster (hopefully
 REM mostly imperceptibly) will depend on how many modes are acceptable compared to
 REM how many aren't.
-REM SFTODONOW: I THINK (NOT EXPLICITLY TIMED IT) THIS IS A SMIDGE SLOW, MAYBE SEE IF I CAN IMPROVE IT
+REM SFTODO: I THINK (NOT EXPLICITLY TIMED IT) THIS IS A SMIDGE SLOW, MAYBE SEE IF I CAN IMPROVE IT
 IF shadow THEN die_if_not_ok=TRUE:ok=FNmode_ok(0):ENDPROC
 RESTORE 3000
 3000DATA 7,6,4,3,0
@@ -417,10 +417,6 @@ REM have enough, we take a (tweaked) copy of extra_main_ram before trying to
 REM allocate ${MIN_VMEM_BYTES}.
 main_ram_shortfall=-FNmin(extra_main_ram,0)
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-!ifdef ACORN_SHADOW_VMEM {
-    REM SFTODO: I think this is right, but think about it fresh!
-    free_main_ram=extra_main_ram
-}
 IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
 =FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
@@ -431,11 +427,6 @@ REM game's dynamic memory; main RAM can't be used as dynamic memory.
 REM SFTODOTESTDONE: Although you have to force it (we won't by default use medium dynmem on shadow-capable build), I have verified that this correctly works for games with <=11.5K dynmem on a B+64K and correctly refuses to run with more dynmem, and that those games that refuse do run if you add a 16K SWR bank
 flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-!ifdef ACORN_SHADOW_VMEM {
-    REM SFTODO: I think this is right, but think about it fresh!
-    REM SFTODO: Can I just use extra_main_ram directly and get rid of free_main_ram?
-    free_main_ram=extra_main_ram
-}
 =FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main or sideways RAM")
 
 DEF FNmode_ok_big_dynmem
@@ -445,10 +436,6 @@ REM determine the available main RAM for shadow vmem cache if that's enabled.
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-!ifdef ACORN_SHADOW_VMEM {
-    REM SFTODO: I think this is right, but think about it fresh!
-    free_main_ram=extra_main_ram
-}
 =FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM",0,"")
 
 REM Subtract n bytes in total from vmem_only_swr, flexible_swr_ro and extra_main_ram,
@@ -463,7 +450,6 @@ extra_main_ram=extra_main_ram-n
 ENDPROC
 
 DEF FNcode_start
-REM SFTODONOWTHISPROBNEEDS TWEAKING - NOTE IT USES free_main_ram
 REM 'p' is used to work around a beebasm tokenisation bug.
 REM (https://github.com/stardot/beebasm/issues/45)
 p=PAGE
@@ -498,7 +484,7 @@ p=PAGE
     REM and that makes all the difference, or perhaps the user's precise memory
     REM setup avoids hot read-only memory being loaded into shadow RAM on their
     REM machine.)
-    shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,free_main_ram)
+    shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,extra_main_ram)
     REM The shadow cache must not overlap with shadow RAM.
     REM SFTODO: Strictly speaking this could be allowed on machines where we use
     REM an API call to transfer data instead of paging shadow RAM into the
