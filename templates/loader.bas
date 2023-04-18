@@ -591,7 +591,7 @@ ENDPROC
     REM We don't bother with a second dimension to highlight_left_[xy], because
     REM the cells line up vertically.
     REM SFTODONOW: I COULDN'T CONCENTRATE WHEN DOING THE PER-ROW/COLUMN MIN/MAX STUFF TO HANDLE "GAPS" IN THE CELL GRID, PROBABLY OK BUT PROB WORTH A REVIEW LATER - THERE MAY IF NOTHING ELSE BE UNUSED VARS KICKING AROUND
-    DIM mode_x(8),mode_y(8),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),mode(2,1),min_x(1),max_y(2)
+    DIM mode_x(7),mode_y(7),cell_x(n),cell_y(n),text$(2,1),highlight_left_x(2),highlight_right_x(2),mode(2,1),min_x(1),max_y(2)
     max_x=0:max_y=0:min_x(1)=9
     FOR i=0 TO n
     READ x,y,text$(x,y)
