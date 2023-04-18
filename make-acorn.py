@@ -1016,8 +1016,6 @@ class OzmooExecutable(Executable):
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM_MODEL"] = "0" if "ACORN_SWR_SMALL_DYNMEM" in self.labels else "1" if "ACORN_SWR_MEDIUM_DYNMEM" in self.labels else "2" if "ACORN_SWR_BIG_DYNMEM" in self.labels else "-1"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
-        # SFTODONOW: I don't think we need *_SWR_MIN_SCREEN_HOLE_SIZE any more
-        symbols[self.leafname + "_SWR_MIN_SCREEN_HOLE_SIZE"] = basic_int(self.min_screen_hole_size())
         # We need *_SWR_MAIN_RAM_FREE because we can't infer *_SWR_MAIN_RAM_FREE
         # by comparing MAX_PAGE with actual PAGE, because we cap the value of
         # MAX_PAGE and there may be RAM free after the executable even when

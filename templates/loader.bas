@@ -397,8 +397,6 @@ DEF FNmode_ok(mode)
 REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
-REM For shadow only executables, swr_min_screen_hole_size = screen_ram = 0, so this
-REM adjustment has no effect.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
 extra_main_ram=swr_main_ram_free+(max_page-PAGE)-screen_ram
 REM flexible_swr may be modified during the decision making process, so reset it each time.
@@ -407,7 +405,6 @@ IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem
 IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem
 =FNmode_ok_big_dynmem
 
-REM SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT
 REM SFTODONOW I NEED TO TEST EVERY SINGLE CASE IN THESE MODE OK CHECKS :-/
 
 DEF FNmode_ok_small_dynmem
@@ -523,15 +520,14 @@ p=PAGE
 }
 
 DEF PROCchoose_non_tube_version
-REM SFTODONOW: Get rid of swr_min_screen_hole_size.
 !ifdef OZMOOE_BINARY {
-    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOE_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
+    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
 } else {
     IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Should I make the loader support some sort of line-continuation character, then I could split up some of these very long lines?
 !ifdef OZMOOSH_BINARY {
-    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOSH_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOSH_SWR_MAIN_RAM_FREE}:ENDPROC
+    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_main_ram_free=${OZMOOSH_SWR_MAIN_RAM_FREE}:ENDPROC
 } else {
     REM If - although I don't believe this is currently possible - we don't have
     REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
@@ -541,7 +537,7 @@ REM SFTODO: Should I make the loader support some sort of line-continuation char
     }
 }
 !ifdef OZMOOB_BINARY {
-    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_min_screen_hole_size=${OZMOOB_SWR_MIN_SCREEN_HOLE_SIZE}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
+    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
 } else {
     !ifdef OZMOOSH_BINARY {
         REM SFTODO: Should we also (if OZMOO2P_BINARY is defined) suggest a sedcond processor as an option, as we do in the PAGE-too-high-no-shadow case?
