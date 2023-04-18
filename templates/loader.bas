@@ -960,7 +960,6 @@ ENDPROC
 DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
-REM SFTODONOW DELETE DEF PROCdie_ram(amount,ram_type$):PROCdie("Sorry, you need at least "+STR$(amount/1024)+"K more "+ram_type$+".")
 
 DEF FNmaybe_die_ram(amount1,ram_type1$,amount2,ram_type2$)
 IF amount1<=0 AND amount2<=0 THEN =TRUE
@@ -1036,10 +1035,6 @@ REPEAT:s$=LEFT$(s$,LEN(s$)-1):UNTIL RIGHT$(s$,1)<>" "
 DEF FNmax(a,b):IF a<b THEN =b ELSE =a
 
 DEF FNhimem_for_mode(mode):A%=&85:X%=mode:=(USR&FFF4 AND &FFFF00) DIV &100
-
-REM SFTODONOW: BIT RANDOM, BUT MAYBE CHANGE DEFAULT MODE HIGHLIGHT COLOUR IN MODE 7 TO BLUE INSTEAD OF RED?
-
-REM SFTODONOW: Might want to tweak some of these layouts for better visual appeal
 
 REM SFTODO: Moving this data to the start of the program would speed up RESTORE
 REM by about a centisecond; not huge but maybe worth having.
