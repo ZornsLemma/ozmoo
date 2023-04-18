@@ -403,13 +403,14 @@ screen_ram=&8000-FNhimem_for_mode(128+mode)
 extra_main_ram=swr_main_ram_free+(max_page-PAGE)-screen_ram
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
-IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem(mode)
-IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem(mode)
-=FNmode_ok_big_dynmem(mode)
+IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem
+IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem
+=FNmode_ok_big_dynmem
 
-SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT
+REM SFTODONOW THERE MAY BE COMMONALITY IN THE CODE AND/OR DIE MESSAGES WHICH CAN BE FACTORED OUT
+REM SFTODONOW I NEED TO TEST EVERY SINGLE CASE IN THESE MODE OK CHECKS :-/
 
-DEF FNmode_ok_small_dynmem(mode)
+DEF FNmode_ok_small_dynmem
 REM SFTODO: Is it confusing that main_ram_shortfall and any_ram_shortfall are "positive for not enough" whereas we are generally tracking available RAM and using "negative for not enough"?
 REM We must have main RAM for the dynamic memory. The build system checked that
 REM the binary would have enough main RAM when built at the maximum value of PAGE
@@ -427,11 +428,10 @@ IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
 =FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
 
-SFTODONOW IT IS KIND OF SILLY PASSING MODE INTO THESE FNS WHEN IT IS NOT USED AT LL - THE TOP LEVEL ONE COULD REASONABLY TAKE IT, BUT THE OTHERS PROB BEST NOT
-DEF FNmode_ok_medium_dynmem(mode)
+DEF FNmode_ok_medium_dynmem
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; main RAM can't be used as dynamic memory.
-REM SFTODONOW: TEST A GAME WITH >11.5K (IDEALLY >12K) BUT <=16K DYNMEM ON A MEDIUM BUILD ON A B+64K NO SWR - IT SHOULD FAIL, I SUSPECT IT MAY NOT HAVE DONE BEFORE
+REM SFTODOTESTDONE: Although you have to force it (we won't by default use medium dynmem on shadow-capable build), I have verified that this correctly works for games with <=11.5K dynmem on a B+64K and correctly refuses to run with more dynmem, and that those games that refuse do run if you add a 16K SWR bank
 flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 !ifdef ACORN_SHADOW_VMEM {
@@ -441,7 +441,7 @@ PROCsubtract_ram(${MIN_VMEM_BYTES})
 }
 =FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main or sideways RAM")
 
-DEF FNmode_ok_big_dynmem(mode)
+DEF FNmode_ok_big_dynmem
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
 REM calculation we prefer to take it from flexible_swr so we can use the result to
 REM determine the available main RAM for shadow vmem cache if that's enabled.
