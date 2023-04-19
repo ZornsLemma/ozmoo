@@ -924,11 +924,12 @@ class OzmooExecutable(Executable):
         if nonstored_pages_up_to > self.max_pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
-            # Note that swr_dynmem may be negative; this means there will be
-            # some main RAM free after loading dynamic memory when loaded at the
-            # build addr. For relocatable builds the loader will also take
-            # account of the actual value of PAGE.
-            self.swr_dynmem = nonstored_pages_up_to - 0x8000
+            # If there would be some main RAM free after loading at the build
+            # address, swr_dynmem could be negative. (This is most likely to
+            # happen if a game with fairly small dynmem requirements is forced
+            # to build in the big model.) We set it to 0 in that case, because
+            # the loader models main RAM and sideways RAM separately.
+            self.swr_dynmem = max(nonstored_pages_up_to - 0x8000, 0)
             assert self.swr_dynmem <= 16 * 1024
 
         # On a second processor build, we must also have at least
@@ -1023,14 +1024,25 @@ class OzmooExecutable(Executable):
         # apply an adjustment for the actual screen RAM size; it seems silly to
         # have both this code and the loader apply compensating adjustments for
         # min_screen_hole_size().
-        if "ACORN_SWR_MEDIUM_DYNMEM" not in self.labels:
-            # SFTODONOW: ISN'T THIS WRONG FOR BIG DYNMEM? MAYBE IT ISN'T. WHAT I'M THINK IS THAT IF (SAY) WE HAVE 16K OF SWR AND DYNMEM SIZE IS 18K, WE ACTUALLY ONLY *NEED* 2K OF MAIN RAM, SO SWR_MAIN_RAM_FREE AS CALCUALTED HERE WILL BE SMALLER THAN IT COULD BE AND WE MIGHT MISS OUT ON OFFERING CERTAIN MODES. HOWEVER, A) WE CAN'T BE SURE WE HAVE *ANY* SWR HERE AT BUILD TIME AND B) I THINK THIS IS ACTUALLY PROBABLY CORRECT, BECAUSE FNmode_ok_big_dynmem TRIES TO USE FLEXIBLE SWR FOR DYNMEM FIRST AND ADJUSTS EXTRA_MAIN_RAM. NO, IT IS ONLY *SUBTRACTING* FROM EXTRA MAIN RAM IF THERE ISN'T ENOUGH FLEXIBLE SWR - THAT WOULD BE FINE, BUT NOT IF EXTRA_MAIN_RAM STARTED OFF BY TAKING DYNMEM INTO ACCOUNT AS WE SEEM TO HERE. I'M CONFUSING MYSELF, BUT I AM STARTING TO THINK THAT THIS CODE IS CORRECT FOR SMALLDYN, BUT FOR BIGDYN WE SHOULD MAYBE SET SWM_MAIN_RAM_FREE TO 0x8000-story_start. DEFINITELY NEED A THINK ABOUT THIS LATER. DON'T JUST BLAST EMPIRICALLY AT THIS, BUT *AFTER* THINKING, A GOOD TEST WOULD BE TO FORCE BIGDYN AT BUILD AND SEE IF WE STILL GET THE SAME MODE CHOICES ON NON-SHADOW MACHINES AS WE DID WITH MEDIUM DYNMEM - AFTER ALL, IGNORING CODE COMPLEXITY, MEDIUM DYNMEM IS A KIND OF "SUBSET" OF BIGDYNMEM
+        if "ACORN_SWR_SMALL_DYNMEM" in self.labels:
             nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
-            symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(max(0, 0x8000 - nonstored_pages_up_to))
-        else:
+            swr_main_ram_free = 0x8000 - nonstored_pages_up_to
+            assert swr_main_ram_free >= 0
+            symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(swr_main_ram_free)
+        elif "ACORN_SWR_MEDIUM_DYNMEM" in self.labels:
             symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(0x8000 - self.labels["vmem_start"])
-
-        print("QQQ", self.leafname, symbols[self.leafname + "_SWR_MAIN_RAM_FREE"])
+        elif "ACORN_SWR_BIG_DYNMEM" in self.labels:
+            # Here we assume we have the maximum 16K of sideways RAM available
+            # for dynamic memory. (If we don't, the loader will take that into
+            # account.) We model the sideways RAM being used in preference to
+            # main RAM for dynamic memory, so as to leave as much main RAM free
+            # for screen RAM as possible. (As always, we are just modelling
+            # things so we can predict whether the executable will crash when we
+            # run it and avoid doing that. The executable itself is responsible
+            # for allocating RAM in reality.)
+            min_main_ram_used = max(nonstored_pages * bytes_per_page - 0x4000, 0)
+            swr_main_ram_free = (0x8000 - self.labels["story_start"]) - min_main_ram_used
+            symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(swr_main_ram_free)
 
     def binary(self):
         # It's important to check self._binary isn't None so we don't compress
