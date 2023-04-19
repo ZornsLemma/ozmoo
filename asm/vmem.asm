@@ -240,11 +240,13 @@ vmap_first_ram_page_in_bank_1 !byte 0
 vmem_bank_temp !byte 0
 }
 
+!ifndef ACORN {
 ; SFTODO: vmem_oldest_age and vmem_tick are hot addresses (0.8% of instructions executed reference *each* of them) so moving into zp would probably be a win
 ; SFTODO: vmem_oldest_index is hot but not so hot - 0.2% of instructions executed reference it. Still, this is one of the hottest addresses.
 vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
+}
 
 ; SFTODO: IT LOOKS LIKE THE HIGH/MID BYTES IN THE VMAP ARE NOW STORED SHIFTED RIGHT ONE BIT IN 5.3, WHICH MEANS WE NO LONGER "WASTE" A BIT ON THE ALWAYS-ZERO LOW BIT, ALLOWING AN EXTRA BIT FOR THE TICK. SHOULD UPDATE THE DIAGRAM I DREW AND THE TEXT IN THE TECH MANUAL ACCORDINGLY AND SUBMIT A PULL REQUEST UPSTREAM FOR THIS (CHECK I HAVE THE RIGHT IDEA FIRST).
 !ifdef Z7PLUS {

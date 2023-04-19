@@ -122,6 +122,8 @@ deletable_init_start
 }
     lda #2
     sta readblocks_numblocks
+    lda #$e0
+    sta vmem_tick
 
 !ifdef TRACE_SETJMP {
     lda #$ff

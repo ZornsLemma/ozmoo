@@ -842,6 +842,36 @@ top_line_buffer_reverse
 }
 ; }}}
 
+!ifdef Z5PLUS {
+dict_is_default +allocate 1
+}
+    +pre_allocate 2
+dict_entries
+    +allocate 2
+dict_len_entries +allocate 1
+    +pre_allocate 2
+dict_num_entries
+    +allocate 2
+num_terminators +allocate 1 ; SFTODO: Moderately hot (0.09% of instructions executed reference it), maybe move it to zp - although it's not that hot, *and* I believe it's really only relevant to parsing user input where the performance isn't likely to be perceptible in real life
+
+    +pre_allocate 2
+.find_prop_result
+    +allocate 2 ; x,a SFTODO: MODERATELY HOT (0.1% of instructions executed reference it) so maybe move into zp
+
+.buffer_char +allocate 1 ; SFTODO: This is a hot location, 1.1% of instructions executed reference it, so good idea to move it into zp
+
+s_screen_width +allocate 1; SFTODO: THIS IS A HOT MEMORY LOCATION, 1.8% OF EXECUTED INSTRUCTIONS TOUCH THIS, SO MOVING IT INTO ZERO PAGE WOULD BE A GOOD IDEA
+s_screen_height +allocate 1
+s_screen_width_plus_one +allocate 1 ; SFTODO: HOT MEM LOCATION (0.5% of instructions) SO MOVE TO ZP
+s_screen_width_minus_one +allocate 1
+s_screen_height_minus_one +allocate 1
+
+; SFTODO: vmem_oldest_age and vmem_tick are hot addresses (0.8% of instructions executed reference *each* of them) so moving into zp would probably be a win
+; SFTODO: vmem_oldest_index is hot but not so hot - 0.2% of instructions executed reference it. Still, this is one of the hottest addresses.
+vmem_tick +allocate 1 ; needs initialising to $e0; we do this in deletable_init_start
+vmem_oldest_age +allocate 1
+vmem_oldest_index +allocate 1
+
 ; {{{ Final allocations and checks depending on earlier allocations
 
 !ifdef USE_HISTORY {
