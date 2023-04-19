@@ -444,7 +444,6 @@ zp_pc_h +allocate 1
 zp_pc_l	+allocate 1
 ;z_opcode_opcount	+allocate 1; 0 = 0OP, 1=1OP, 2=2OP, 3=VAR
 z_operand_count	+allocate 1
-zword	+allocate 6
 
 zp_mempos	+allocate 2
 
@@ -529,8 +528,8 @@ zp_temp	+allocate 5
 ; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
 ; the active cursor position is zp_screen{row,column} and that's all that
 ; matters most of the time.
+    +pre_allocate 2
 cursor_row	+allocate 2
-cursor_column	+allocate 2
 mempointer_ram_bank	+allocate 1 ; SFTODO: have experimentally moved this into zp since I had this space free, it's not necessarily that worthwhile
 
 vmem_temp	+allocate 2
@@ -548,10 +547,10 @@ s_os_reverse	+allocate 1
 
 s_cursors_inconsistent	+allocate 1
 
-max_chars_on_line	+allocate 1
 buffer_index	+allocate 1
 last_break_char_buffer_pos	+allocate 1
 
+; SFTODO: Possibly these aren't that valuable to have in zp on Acorn?
 zp_screencolumn	+allocate 1 ; current cursor column
 zp_screenrow	+allocate 1 ; current cursor row
 
@@ -638,14 +637,64 @@ mode_7_input_tmp = transient_zp ; 1 byte
 ; SFTODONOW: TEMP HACK TO FORCE ALL NON-MANDATORY-ZP OUT OF ZP SO I CAN ANALYSE ZP USE
 ; +set_alloc_star low_alloc_ptr
 
+; Start of flexible allocations which offer good savings on code size from being
+; in zero page.
+
+property_length +allocate 1
+
+	+pre_allocate 2
+multiplier
+divisor
+	+allocate 2
+	+pre_allocate 2
+multiplicand
+dividend
+division_result
+	+allocate 2
+	+pre_allocate 2
+product
+remainder
+	+allocate 2 ; SFTODO: upstream allocates 4 bytes for this, but I don't think that's needed any more - mention this to upstream
+
 s_stored_x +allocate 1
 s_stored_y +allocate 1
 
+; End of code size saving flexible allocations
+
+; SFTODO: I haven't profiled to see if these are valuable for space and/or size,
+; but when I accidentally moved them out of zero page performance dropped. Some
+; of them may be less critical than others - reprofiling would be helpful.
 !ifdef VMEM {
 nonstored_pages	+allocate 1
 vmap_index +allocate 1 ; current vmap index matching the z pointer
 vmem_offset_in_block +allocate 1 ; 256 byte offset in 512 byte block (0-1)
 }
+
+; Hot addresses which are referenced by instructions executing frequently with zero page variants.
+
+s_screen_width +allocate 1 ; referenced by 1.8% of instruction executions
+.buffer_char +allocate 1 ; referenced by 1.1% of instruction executions
+vmem_tick +allocate 1 ; needs initialising to $e0; we do this in deletable_init_start, referenced by 0.8% of instruction executions
+s_screen_width_plus_one +allocate 1 ; referenced by 0.5% of instruction executions
+    +pre_allocate 2
+.find_prop_result
+    +allocate 2 ; x,a, referenced by 0.1% of instruction executions
+num_terminators +allocate 1 ; referenced by 0.09% of instruction executions
+vmem_oldest_age +allocate 1 ; referenced by 0.8% of instruction executions
+vmem_oldest_index +allocate 1 ; referenced by 0.2% of instruction executions
+
+; We expect most of the above to have been put into zero page; this isn't
+; critical, but for now make it obvious if that isn't true.
++assert vmem_tick <= $100
+
+; End of hot addresses
+
+; SF: cursor_{row,column} are used to hold the cursor positions for the two
+; on-screen windows. They mainly come into play via save_cursor/restore_cursor;
+; the active cursor position is zp_screen{row,column} and that's all that
+; matters most of the time.
+    +pre_allocate 2
+cursor_column	+allocate 2
 
 readblocks_numblocks +allocate 1 ; SFTODO: TEMP NOTE, AT THE MOMENT THIS GETS ASSIGNED TO $8F ON A B-NO-SHADOW BUILD, IE THIS IS THE LAST THING ASSIGNED IN ZP
 					+pre_allocate 2
@@ -675,25 +724,6 @@ bitmask_index +allocate 1
 attribute_index +allocate 1
 
 property_number +allocate 1
-; SFTODO: Moving property_length into zp would save 9 bytes
-property_length +allocate 1
-
-	+pre_allocate 2
-multiplier
-divisor
-	+allocate 2
-	+pre_allocate 2
-multiplicand
-; SFTODO: dividend/division_result being in zero page would save 12+10 bytes by allowing use of zp instructions - however, check these uses aren't in discardable code
-dividend
-division_result
-	+allocate 2
-	+pre_allocate 4
-; SFTODO: product/remainder being in zero page would save 13+12 bytes by allowing use of zp instructions - however, check these uses aren't in discardable code
-; SFTODONOW: We allocate 4 bytes here, but I don't think we need more than 2 - maybe check this with debugger breakpoints and also mention it to upstream
-product
-remainder
-	+allocate 4
 
 last_char_index	+allocate 1
 parse_array_index +allocate 1
@@ -703,6 +733,10 @@ cursor_status	+allocate 1
 !ifdef TRACE {
 z_trace_index	+allocate 1
 }
+
+; SFTODO: This used to be in zero page, but my suspicion is it won't get a huge benefit from it and it's quite a big allocation so it's probably a win to free up zero page for something else. It would be good to do another profiling pass to check this though.
+    +pre_allocate 6
+zword	+allocate 6
 
 !ifdef ACORN_PRIVATE_RAM_SUPPORTED {
 sideways_ram_hole_start	+allocate 1
@@ -732,7 +766,7 @@ jmp_buf_ram_bank 	+allocate 1
 }
 
 !ifdef MODE_7_INPUT {
-; SFTODO: Moving this into zp would save 11 bytes, although I think one of them is in discardable init code
+; SFTODONOW: Moving this into zp would save 11 bytes, although I think one of them is in discardable init code
 input_colour_code_or_0	+allocate 1
 }
 
@@ -852,25 +886,12 @@ dict_len_entries +allocate 1
     +pre_allocate 2
 dict_num_entries
     +allocate 2
-num_terminators +allocate 1 ; SFTODO: Moderately hot (0.09% of instructions executed reference it), maybe move it to zp - although it's not that hot, *and* I believe it's really only relevant to parsing user input where the performance isn't likely to be perceptible in real life
 
-    +pre_allocate 2
-.find_prop_result
-    +allocate 2 ; x,a SFTODO: MODERATELY HOT (0.1% of instructions executed reference it) so maybe move into zp
-
-.buffer_char +allocate 1 ; SFTODO: This is a hot location, 1.1% of instructions executed reference it, so good idea to move it into zp
-
-s_screen_width +allocate 1; SFTODO: THIS IS A HOT MEMORY LOCATION, 1.8% OF EXECUTED INSTRUCTIONS TOUCH THIS, SO MOVING IT INTO ZERO PAGE WOULD BE A GOOD IDEA
 s_screen_height +allocate 1
-s_screen_width_plus_one +allocate 1 ; SFTODO: HOT MEM LOCATION (0.5% of instructions) SO MOVE TO ZP
 s_screen_width_minus_one +allocate 1
 s_screen_height_minus_one +allocate 1
 
-; SFTODO: vmem_oldest_age and vmem_tick are hot addresses (0.8% of instructions executed reference *each* of them) so moving into zp would probably be a win
-; SFTODO: vmem_oldest_index is hot but not so hot - 0.2% of instructions executed reference it. Still, this is one of the hottest addresses.
-vmem_tick +allocate 1 ; needs initialising to $e0; we do this in deletable_init_start
-vmem_oldest_age +allocate 1
-vmem_oldest_index +allocate 1
+max_chars_on_line	+allocate 1
 
 ; {{{ Final allocations and checks depending on earlier allocations
 

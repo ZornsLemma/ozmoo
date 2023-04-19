@@ -1,6 +1,10 @@
 Ad-hoc benchmark BBC B, MRM E00 DFS, 32K SWR, no shadow, disc drive noises off, b-em, mode 7 - auto chooses meddyn f00
 Before tweaking memory allocations to use zp better $008194 $00818b $00818b (-$e5) with build at $f00, program_end=$46b3, stack_start=$4800
-
+After tweaking program_end=$46b9 $0081ce $0081cc (-$e4) so it looks like I've made it bigger and slower, yay!
+More tweaking [moving s_stored_[xy] back into zp] program_end=$4658 WWCD :-) $0081c4 $0081c5 (-$e4) but still slower :-(
+More tweaking [nonstored_page, vmap_index, vmem_offset_in_block back into zp] program_end=$4654 big win! $0081a4 $0081a6 (-$e4) so it's *still* a bit slower, but definitely getting closer - it's auto-choosing meddyn *e00* now FWIW, maybe it always was and I got utterly confused doing the profiling!?!?!? - those addresses are from the f00 build report - OK, maybe I *did* correctly use the e00 build report before - program_end now seems to be one byte lower (can't remember number and have a billion terminals open) than before I started. I haven't got a clue any more.
+ooooook - doing a clean rebuild and test with each version, the "after" version with zp rearranged has program_start one byte lower (45b3->45b2), which is disappointing.
+- new version completes in $81a5, old version in $818f - super disappointing - to be fair, that is 0.07% slower so it's *possible* this is down to noise or something, although it also seems odd that the new version is consistently (-ish - remember there's so much confusion above) slower
 
 Bit of benchmarking 10.x against 11.x - the change from UNSAFE->CHECK_ERRORS and the fact these have opposite senses and both default to off, plus the changes in 11.x make this a little confusing/unfair, so don't read too much into this. Also remember 11.x has the change to how instructions are dispatched to in principle should be faster there.
 B 144K
