@@ -1,3 +1,7 @@
+Ad-hoc benchmark BBC B, MRM E00 DFS, 32K SWR, no shadow, disc drive noises off, b-em, mode 7 - auto chooses meddyn f00
+Before tweaking memory allocations to use zp better $008194 $00818b $00818b (-$e5) with build at $f00, program_end=$46b3, stack_start=$4800
+
+
 Bit of benchmarking 10.x against 11.x - the change from UNSAFE->CHECK_ERRORS and the fact these have opposite senses and both default to off, plus the changes in 11.x make this a little confusing/unfair, so don't read too much into this. Also remember 11.x has the change to how instructions are dispatched to in principle should be faster there.
 B 144K
 10.x $123 to $87c7 = 344.68
