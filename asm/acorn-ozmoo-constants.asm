@@ -647,7 +647,7 @@ vmap_index +allocate 1 ; current vmap index matching the z pointer
 vmem_offset_in_block +allocate 1 ; 256 byte offset in 512 byte block (0-1)
 }
 
-readblocks_numblocks +allocate 1
+readblocks_numblocks +allocate 1 ; SFTODO: TEMP NOTE, AT THE MOMENT THIS GETS ASSIGNED TO $8F ON A B-NO-SHADOW BUILD, IE THIS IS THE LAST THING ASSIGNED IN ZP
 					+pre_allocate 2
 readblocks_currentblock	+allocate 2
 !ifndef ACORN_ADFS {
