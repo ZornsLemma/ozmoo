@@ -5,7 +5,7 @@ dict_entries !byte 0, 0
 dict_len_entries !byte 0
 dict_num_entries !byte 0,0
 dict_ordered	!byte $ff ; Holds 0 for false or $ff for true
-num_terminators !byte 0
+num_terminators !byte 0 ; SFTODO: Moderately hot (0.09% of instructions executed reference it), maybe move it to zp - although it's not that hot, *and* I believe it's really only relevant to parsing user input where the performance isn't likely to be perceptible in real life
 terminators !byte 0,0,0,0,0,0,0,0,0,0
 
 !ifdef Z5PLUS {

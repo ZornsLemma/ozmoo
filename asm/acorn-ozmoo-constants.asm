@@ -635,6 +635,9 @@ mode_7_input_tmp = transient_zp ; 1 byte
 ; have changed) and I don't see any easy way to decide between the marginal
 ; candidates.
 
+; SFTODONOW: TEMP HACK TO FORCE ALL NON-MANDATORY-ZP OUT OF ZP SO I CAN ANALYSE ZP USE
+; +set_alloc_star low_alloc_ptr
+
 s_stored_x +allocate 1
 s_stored_y +allocate 1
 
@@ -672,6 +675,7 @@ bitmask_index +allocate 1
 attribute_index +allocate 1
 
 property_number +allocate 1
+; SFTODO: Moving property_length into zp would save 9 bytes
 property_length +allocate 1
 
 	+pre_allocate 2
@@ -680,10 +684,13 @@ divisor
 	+allocate 2
 	+pre_allocate 2
 multiplicand
+; SFTODO: dividend/division_result being in zero page would save 12+10 bytes by allowing use of zp instructions - however, check these uses aren't in discardable code
 dividend
 division_result
 	+allocate 2
 	+pre_allocate 4
+; SFTODO: product/remainder being in zero page would save 13+12 bytes by allowing use of zp instructions - however, check these uses aren't in discardable code
+; SFTODONOW: We allocate 4 bytes here, but I don't think we need more than 2 - maybe check this with debugger breakpoints and also mention it to upstream
 product
 remainder
 	+allocate 4
@@ -725,6 +732,7 @@ jmp_buf_ram_bank 	+allocate 1
 }
 
 !ifdef MODE_7_INPUT {
+; SFTODO: Moving this into zp would save 11 bytes, although I think one of them is in discardable init code
 input_colour_code_or_0	+allocate 1
 }
 

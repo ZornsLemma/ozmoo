@@ -240,6 +240,8 @@ vmap_first_ram_page_in_bank_1 !byte 0
 vmem_bank_temp !byte 0
 }
 
+; SFTODO: vmem_oldest_age and vmem_tick are hot addresses (0.8% of instructions executed reference *each* of them) so moving into zp would probably be a win
+; SFTODO: vmem_oldest_index is hot but not so hot - 0.2% of instructions executed reference it. Still, this is one of the hottest addresses.
 vmem_tick 			!byte $e0
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0

@@ -770,7 +770,7 @@ printchar_buffered
 	pla
 	tax
 	rts
-.buffer_char       !byte 0
+.buffer_char       !byte 0 ; SFTODO: This is a hot location, 1.1% of instructions executed reference it, so good idea to move it into zp
 ; print_buffer            !fill 41, 0
 .save_x			   !byte 0
 .save_y			   !byte 0

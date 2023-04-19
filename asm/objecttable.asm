@@ -918,7 +918,7 @@ find_prop
 	stx .find_prop_result
 	sta .find_prop_result + 1
 	rts
-.find_prop_result !byte 0,0 ; x,a
+.find_prop_result !byte 0,0 ; x,a SFTODO: MODERATELY HOT (0.1% of instructions executed reference it) so maybe move into zp
 
 z_ins_get_prop
 	; get_prop object property -> (result)
