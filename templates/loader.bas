@@ -324,6 +324,10 @@ IF returned_x<>1 THEN PROCdie("Sorry, something (probably an older Watford DFS) 
 ENDPROC
 
 DEF PROCchoose_version_and_check_ram
+min_mode=${MIN_MODE}
+max_mode=${MAX_MODE}
+IF electron AND max_mode=7 THEN max_mode=6
+
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
     IF tube THEN binary$="${OZMOO2P_BINARY}":ENDPROC
@@ -334,10 +338,6 @@ PROCchoose_non_tube_version
 
 REM SFTODO: Review all the following fresh; I think it's right but I got seriously
 REM agitated trying to write it.
-
-min_mode=${MIN_MODE}
-max_mode=${MAX_MODE}
-IF electron AND max_mode=7 THEN max_mode=6
 
 REM For builds which can use sideways RAM, we need to check if we have enough
 REM main RAM and/or sideways RAM to run successfully.
