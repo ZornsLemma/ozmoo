@@ -242,8 +242,8 @@ vmem_bank_temp !byte 0
 
 !ifndef ACORN {
 vmem_tick 			!byte $e0
-}
 vmem_oldest_age		!byte 0
+}
 vmem_oldest_index	!byte 0
 
 ; SFTODO: IT LOOKS LIKE THE HIGH/MID BYTES IN THE VMAP ARE NOW STORED SHIFTED RIGHT ONE BIT IN 5.3, WHICH MEANS WE NO LONGER "WASTE" A BIT ON THE ALWAYS-ZERO LOW BIT, ALLOWING AN EXTRA BIT FOR THE TICK. SHOULD UPDATE THE DIAGRAM I DREW AND THE TEXT IN THE TECH MANUAL ACCORDINGLY AND SUBMIT A PULL REQUEST UPSTREAM FOR THIS (CHECK I HAVE THE RIGHT IDEA FIRST).
@@ -1136,7 +1136,12 @@ hej
 	dex
 -
  	lda vmap_z_h,x
+!ifndef ACORN {
 	cmp vmem_oldest_age
+} else {
+vmem_oldest_age = *+1
+    cmp #$ff ; patched at runtime
+}
     beq .timestamp_equal
 	bcs .try_next_index
 .found_older
