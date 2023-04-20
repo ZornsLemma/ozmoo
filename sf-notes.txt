@@ -1,3 +1,8 @@
+New benchmark phase with 2P - B 144K swr, no shadow, 6502 external, mode 7
+Baseline $4eaf $4eb6 $4ebe (-$123)
+
+
+
 Quick benchmark re zp tweaking - using b-em, mode 7, E00 DFS, 32K SWR, no shadow, uses meddyn with start $e00
 With product/remainder at 4 bytes: $e5 to $81a5 and $81a7
 With product/remainder shrunk to 2 bytes: $e5 to $819f/$81a1 program_end=$45b4
