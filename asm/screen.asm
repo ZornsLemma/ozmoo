@@ -668,7 +668,12 @@ printchar_buffered
 	sta print_buffer2,y
 	iny
 	sty buffer_index
+!ifndef ACORN {
 	cpy s_screen_width_plus_one ; #SCREEN_WIDTH+1
+} else {
+s_screen_width_plus_one = *+1
+    cpy #$ff ; patched at runtime
+}
 	beq +
 	jmp .printchar_done
 +
