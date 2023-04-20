@@ -386,12 +386,7 @@ REM We're a bit inconsistent about passing values to FNmode_ok() and its childre
 die_if_not_ok=(shadow OR mode=max_mode)
 IF mode>=${MIN_MODE} AND mode<=max_mode THEN ok=FNmode_ok(mode):IF ok THEN min_mode=mode
 UNTIL mode<=${MIN_MODE} OR NOT ok
-REM SFTODONOW: DELETE TX=POS:TY=VPOS:PRINTTAB(0,0);"SFTODONOW TEMP min_mode=";min_mode;", max_mode=";max_mode;TAB(TX,TY);
 ENDPROC
-
-
-
-
 
 DEF FNmode_ok(mode)
 REM We may have shadow RAM even if we don't require it (the Electron executable
@@ -537,7 +532,12 @@ ENDPROC
 !ifndef AUTO_START {
     DEF PROCmode_menu
 
-    REM SFTODONOW: IS THIS CODE A BIT SLOW? (ALL OF IT, NOT JUST THIS RESTORE BIT)
+    REM SFTODO: Is this code a bit slow? All of it, not the RESTORE logic. I
+    would really quite like to write the menu handling in machine code, but
+    unless I assemble the code at runtime (which might be slower than this?) it
+    means either *LOADing another file off the disc or appending the code to the
+    end of this BASIC program, which is brittle and likely to stop users being
+    able to help me debug stuff by tweaking the loader.
     !ifdef NEED_MODE_MENU_0_TO_7 {
         IF min_mode=0 AND max_mode=7 THEN RESTORE 10000
     }
