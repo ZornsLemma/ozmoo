@@ -1542,6 +1542,10 @@ def make_tokenised_basic(name, text_basic):
     return File(name.upper(), host | 0x1900, host | 0x8023, tokenised_basic)
 
 
+def make_tokenised_cache_test():
+    return make_tokenised_basic("cachtst", "\n".join(open("templates/cache-test.bas", "r").readlines()))
+
+
 def make_tokenised_loader(symbols):
     # TODO: Maybe some/all of the population of symbols should be moved into this function?
     if cmd_args.splash_image is not None:
@@ -1742,6 +1746,7 @@ def parse_args():
     # of --check-errors, because it would suggest that things like --debug-assert are implied by it, and
     # they aren't.
     group.add_argument("--check-errors", action="store_true", help="enable runtime error checking")
+    group.add_argument("--cache-test", action="store_true", help="include host cache test program")
 
     cmd_args = parser.parse_args()
 
@@ -2106,6 +2111,8 @@ def make_disc_image():
                 loader_symbols["NEED_MODE_MENU_%d_TO_%d" % (min_menu_mode, max_menu_mode)] = "1"
 
     disc_contents = [boot_file]
+    if cmd_args.cache_test:
+        disc_contents.append(make_tokenised_cache_test())
     if turbo_test_executable is not None:
         disc_contents.append(turbo_test_executable)
     loader = make_tokenised_loader(loader_symbols)
