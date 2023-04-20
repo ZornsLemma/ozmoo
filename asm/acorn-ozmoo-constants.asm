@@ -683,10 +683,12 @@ multiplicand
 dividend
 division_result
 	+allocate 2
-	+pre_allocate 4
+; SFTODO: Upstream allocates four bytes for product/remainder but I think we
+; only need two. Mention this to them if it works OK for me.
+	+pre_allocate 2
 product
 remainder
-	+allocate 4
+	+allocate 2
 
 last_char_index	+allocate 1
 parse_array_index +allocate 1
@@ -861,3 +863,5 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 * = high_alloc_ptr
 
 ; SFTODO: Indentation in this file is a bit inconsistent, especially the pre_allocate lines
+
+; SFTODO: I should do an analysis of zp candidates on second processor and tweak the code - my experiments trying to improve this on non-2P builds didn't work, but the 2P has more zp so perhaps more scope (and also on 2P we're far less concerned about code size so we can optimise for speed without also trying to shrink code size).

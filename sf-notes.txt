@@ -1,3 +1,8 @@
+Quick benchmark re zp tweaking - using b-em, mode 7, E00 DFS, 32K SWR, no shadow
+With product/remainder at 4 bytes: $e5 to $81a5 and $81a7
+With product/remainder shrunk to 2 bytes: $e5 to $819f/$81a1
+So as you'd hope, moving two other (currently somewhat arbitrary) things into otherwise waste zp offers a small improvement
+
 Bit of benchmarking 10.x against 11.x - the change from UNSAFE->CHECK_ERRORS and the fact these have opposite senses and both default to off, plus the changes in 11.x make this a little confusing/unfair, so don't read too much into this. Also remember 11.x has the change to how instructions are dispatched to in principle should be faster there.
 B 144K
 10.x $123 to $87c7 = 344.68
