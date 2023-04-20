@@ -62,10 +62,12 @@ A%=&E0:X%=osword_block%:Y%=osword_block% DIV 256:CALL &FFF1
 call_count%=call_count%+1
 hit%=((osword_block%?11)=0)
 local_addr%=local_cache%+local_cache_block_to_evict%*block_size%
-IF hit% THEN PROCcheck_block(wanted_block%,local_addr%):hit_count%=hit_count%+1 ELSE PROCcreate_block(wanted_block%,local_addr%)
+REM To detect the cache corrupting arbitrary memory, we check all the local blocks.
+IF hit% THEN hit_count%=hit_count%+1 ELSE PROCcreate_block(wanted_block%,local_addr%)
 local_cache_id%(local_cache_block_to_evict%)=wanted_block%
+FOR I%=0 TO local_cache_blocks%-1:PROCcheck_block(local_cache_id%(I%),local_cache%+I%*block_size%):NEXT
 
-IF call_count% MOD 100=0 THEN @%=&20200:PRINT "Expected hit ratio ";host_cache_size_vmem_blocks%/game_blocks%;", current hit ratio ";hit_count%/call_count%:@%=old_at%
+IF call_count% MOD 100=0 THEN @%=&20300:PRINT "Expected hit ratio ";host_cache_size_vmem_blocks%/game_blocks%;", current hit ratio ";hit_count%/call_count%:@%=old_at%
 
 UNTIL FALSE
 END
