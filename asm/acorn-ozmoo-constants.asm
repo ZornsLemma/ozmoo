@@ -819,16 +819,6 @@ game_disc_crc	+allocate 2
 				+pre_allocate 5
 initial_clock	+allocate 5
 
-jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
-	  	+pre_allocate jmp_buf_size
-jmp_buf	+allocate jmp_buf_size
-
-	+pre_allocate 4
-streams_current_entry
-	+allocate 4
-	+pre_allocate 60
-streams_stack
-	+allocate 60
 	+pre_allocate 1
 streams_stack_items
 	+allocate 1
@@ -838,6 +828,25 @@ streams_buffering
 	+pre_allocate 4
 streams_output_selected
 	+allocate 4
+	+pre_allocate 4
+streams_current_entry
+	+allocate 4
+
+; SFTODO: On second processor build, we have zero page free which goes to waste
+; because jmp_buf won't fit in it. So we might as well move some inline
+; allocations from other files into here. (This is neutral/mildly positive on
+; other builds - the variables will still be outside zero page, so there will be
+; no performance cost, but it will maybe shrink the size of high memory needed
+; and perhaps therefore help tip the executable over the next lowest 512 byte
+; boundary.)
+
+jmp_buf_size = 32 ; SFTODO: this could possibly be squeezed a bit lower if necessary
+	  	+pre_allocate jmp_buf_size
+jmp_buf	+allocate jmp_buf_size
+
+	+pre_allocate 60
+streams_stack
+	+allocate 60
 
 !ifdef ACORN_HW_SCROLL {
 	+pre_allocate max_screen_width
