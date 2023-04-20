@@ -644,6 +644,8 @@ vmap_index +allocate 1 ; current vmap index matching the z pointer
 vmem_offset_in_block +allocate 1 ; 256 byte offset in 512 byte block (0-1)
 }
 
+s_screen_width +allocate 1 ; ~1.8% of instructions executed reference this
+
 readblocks_numblocks +allocate 1
 					+pre_allocate 2
 readblocks_currentblock	+allocate 2
@@ -689,6 +691,8 @@ division_result
 product
 remainder
 	+allocate 2
+
+.buffer_char +allocate 1 ; ~1.1% of instructions executed reference this SFTODO so might be nice to get it into zp, but it isn't yet
 
 last_char_index	+allocate 1
 parse_array_index +allocate 1
