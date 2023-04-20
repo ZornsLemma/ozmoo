@@ -106,7 +106,7 @@ max_lines = s_screen_height
         cpy s_screen_width
     }
 }
-!macro cpy_screen_width_plus_one {
+!macro cpy_screen_width_plus_one { ; SFTODONOW: Is this macro actually used?
     !ifdef FIXED_SCREEN_SIZE {
         cpy #41
     } else {

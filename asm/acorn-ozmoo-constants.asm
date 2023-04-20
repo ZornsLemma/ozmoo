@@ -545,8 +545,9 @@ is_buffered_window	+allocate 1
 !if 0 { ; SFTODONOW WIP - THIS MIGHT BE WASTEFUL OF ZP, EXPERIMENTING
 s_ignore_next_linebreak	+allocate 3
 } else {
-.buffer_char +allocate 1 ; ~1.1% of instructions executed reference this SFTODO so might be nice to get it into zp, but it isn't yet
-SFTODONOWTEMPWASTE +allocate 2 ; so we can measure performance with just this one tweak rather than letting arbitrary stuff sneak into the remaining two bytes for now
+.buffer_char +allocate 1 ; ~1.1% of instructions executed reference this
+vmem_tick +allocate 1 ; ~0.9% of instructions executed reference this
+SFTODONOWTEMPWASTE +allocate 1 ; so we can measure performance with just this rather than letting arbitrary stuff sneak into the remaining byte for now
 }
 
 s_reverse	+allocate 1
@@ -877,3 +878,5 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 ; SFTODO: Indentation in this file is a bit inconsistent, especially the pre_allocate lines
 
 ; SFTODO: I should do an analysis of zp candidates on second processor and tweak the code - my experiments trying to improve this on non-2P builds didn't work, but the 2P has more zp so perhaps more scope (and also on 2P we're far less concerned about code size so we can optimise for speed without also trying to shrink code size).
+
+; SFTODO: If we could get saved_y and saved_a into zero page we could save about 20 bytes of code for each of them, because of how much they are referenced. (saved_x isn't quite so well used) This would have negligible performance benefit, it's just about code size.

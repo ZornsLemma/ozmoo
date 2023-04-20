@@ -240,7 +240,9 @@ vmap_first_ram_page_in_bank_1 !byte 0
 vmem_bank_temp !byte 0
 }
 
+!ifndef ACORN {
 vmem_tick 			!byte $e0
+}
 vmem_oldest_age		!byte 0
 vmem_oldest_index	!byte 0
 
