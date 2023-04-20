@@ -539,20 +539,8 @@ window_start_row	+allocate 4
 
 current_window	+allocate 1
 
-!if 0 { ; SFTODONOW WIP
-is_buffered_window	+allocate 1
-} else {
-SFTODONOWHACK +allocate 1 ; SFTODO JUST TO KEEP THINGS CONSISTENT WHILE TIMING
-}
-
-; Screen kernal stuff. No need to keep together on Acorn.
-!if 0 { ; SFTODONOW WIP - THIS MIGHT BE WASTEFUL OF ZP, EXPERIMENTING
-s_ignore_next_linebreak	+allocate 3
-} else {
 .buffer_char +allocate 1 ; ~1.1% of instructions executed reference this
 vmem_tick +allocate 1 ; ~0.9% of instructions executed reference this
-SFTODONOWTEMPWASTE +allocate 1 ; so we can measure performance with just this rather than letting arbitrary stuff sneak into the remaining byte for now
-}
 
 s_reverse	+allocate 1
 s_os_reverse	+allocate 1
@@ -657,6 +645,17 @@ vmem_offset_in_block +allocate 1 ; 256 byte offset in 512 byte block (0-1)
 
 s_screen_width +allocate 1 ; ~1.8% of instructions executed reference this
 
+; SFTODO: Upstream allocates four bytes for product/remainder but I think we
+; only need two. Mention this to them if it works OK for me.
+	+pre_allocate 2
+product
+remainder
+	+allocate 2
+
+; We don't *need* these variables in zp but since I've been trying to optimise
+; things to make sure they are, make it obvious if this changes.
+    +assert remainder < $100
+
 readblocks_numblocks +allocate 1
 					+pre_allocate 2
 readblocks_currentblock	+allocate 2
@@ -669,7 +668,6 @@ readblocks_base         +allocate 1
 }
 }
 
-; SFTOODNOW WIP
     +pre_allocate 3
 s_ignore_next_linebreak	+allocate 3
 
@@ -699,12 +697,6 @@ divisor
 multiplicand
 dividend
 division_result
-	+allocate 2
-; SFTODO: Upstream allocates four bytes for product/remainder but I think we
-; only need two. Mention this to them if it works OK for me.
-	+pre_allocate 2
-product
-remainder
 	+allocate 2
 
 last_char_index	+allocate 1
@@ -882,5 +874,3 @@ z_pc_mempointer_turbo_bank = turbo_bank_base + z_pc_mempointer
 ; SFTODO: Indentation in this file is a bit inconsistent, especially the pre_allocate lines
 
 ; SFTODO: I should do an analysis of zp candidates on second processor and tweak the code - my experiments trying to improve this on non-2P builds didn't work, but the 2P has more zp so perhaps more scope (and also on 2P we're far less concerned about code size so we can optimise for speed without also trying to shrink code size).
-
-; SFTODO: If we could get saved_y and saved_a into zero page we could save about 20 bytes of code for each of them, because of how much they are referenced. (saved_x isn't quite so well used) This would have negligible performance benefit, it's just about code size.
