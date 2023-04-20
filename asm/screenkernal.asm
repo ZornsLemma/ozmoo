@@ -553,11 +553,14 @@ s_init
     stx zp_screencolumn
     sty zp_screenrow
 	; Set to 0: s_ignore_next_linebreak, s_reverse, s_os_reverse
+    ; SFTODONOW: I suspect we don't need any of this zero initialisation on Acorn, but let's play it safe while I'm in the middle of zp tweaking.
     lda #0
-    ldx #4
+    ldx #2
 -	sta s_ignore_next_linebreak,x
 	dex
 	bpl -
+    sta s_reverse
+    sta s_os_reverse
 
     ; If we didn't change mode after a restart, we may have been left with the
     ; OS colours set to reverse video. Force the OS settings to normal video so

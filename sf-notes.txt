@@ -3,6 +3,7 @@ With product/remainder at 4 bytes: $e5 to $81a5 and $81a7
 With product/remainder shrunk to 2 bytes: $e5 to $819f/$81a1 program_end=$45b4
 So as you'd expected, this makes things no worse. I am not quite sure why it's faster given we're not (contrary to my earlier misconceptions) getting any extra zp use out of this, but still.
 Moving s_screen_width into zp to edge out readblocks_numblocks: $817e $8178 (-$e6) program_end=$45ae so this is slightly faster and six bytes smaller
+Moving s_ignore_next_line_break out of zp and re-using just one of its zp bytes for .buffer_char $8177 $8175 (-$e5) - so this looks to have been mildly positive already, and I haven't used the other two zp bytes yet (which is why I'm not checking program_end yet)
 
 Bit of benchmarking 10.x against 11.x - the change from UNSAFE->CHECK_ERRORS and the fact these have opposite senses and both default to off, plus the changes in 11.x make this a little confusing/unfair, so don't read too much into this. Also remember 11.x has the change to how instructions are dispatched to in principle should be faster there.
 B 144K

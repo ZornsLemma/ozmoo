@@ -541,8 +541,14 @@ current_window	+allocate 1
 
 is_buffered_window	+allocate 1
 
-; Screen kernal stuff. Must be kept together or update s_init in screenkernal.
+; Screen kernal stuff. No need to keep together on Acorn.
+!if 0 { ; SFTODONOW WIP - THIS MIGHT BE WASTEFUL OF ZP, EXPERIMENTING
 s_ignore_next_linebreak	+allocate 3
+} else {
+.buffer_char +allocate 1 ; ~1.1% of instructions executed reference this SFTODO so might be nice to get it into zp, but it isn't yet
+SFTODONOWTEMPWASTE +allocate 2 ; so we can measure performance with just this one tweak rather than letting arbitrary stuff sneak into the remaining two bytes for now
+}
+
 s_reverse	+allocate 1
 s_os_reverse	+allocate 1
 
@@ -658,6 +664,10 @@ readblocks_base         +allocate 1
 }
 }
 
+; SFTOODNOW WIP
+    +pre_allocate 3
+s_ignore_next_linebreak	+allocate 3
+
 num_default_properties +allocate 1
 	+pre_allocate 2
 objects_start_ptr      +allocate 2
@@ -691,8 +701,6 @@ division_result
 product
 remainder
 	+allocate 2
-
-.buffer_char +allocate 1 ; ~1.1% of instructions executed reference this SFTODO so might be nice to get it into zp, but it isn't yet
 
 last_char_index	+allocate 1
 parse_array_index +allocate 1
