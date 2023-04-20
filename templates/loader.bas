@@ -533,11 +533,11 @@ ENDPROC
     DEF PROCmode_menu
 
     REM SFTODO: Is this code a bit slow? All of it, not the RESTORE logic. I
-    would really quite like to write the menu handling in machine code, but
-    unless I assemble the code at runtime (which might be slower than this?) it
-    means either *LOADing another file off the disc or appending the code to the
-    end of this BASIC program, which is brittle and likely to stop users being
-    able to help me debug stuff by tweaking the loader.
+    REM would really quite like to write the menu handling in machine code, but
+    REM unless I assemble the code at runtime (which might be slower than this?) it
+    REM means either *LOADing another file off the disc or appending the code to the
+    REM end of this BASIC program, which is brittle and likely to stop users being
+    REM able to help me debug stuff by tweaking the loader.
     !ifdef NEED_MODE_MENU_0_TO_7 {
         IF min_mode=0 AND max_mode=7 THEN RESTORE 10000
     }
