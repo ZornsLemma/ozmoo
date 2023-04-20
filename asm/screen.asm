@@ -631,7 +631,12 @@ printchar_buffered
 	; is this a buffered window?
 	lda current_window
 	bne .is_not_buffered
+!ifndef ACORN {
 	lda is_buffered_window
+} else {
+is_buffered_window = *+1
+    lda #$ff ; patched at runtime
+}
 	bne .buffered_window
 .is_not_buffered
 	lda .buffer_char

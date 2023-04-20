@@ -539,7 +539,11 @@ window_start_row	+allocate 4
 
 current_window	+allocate 1
 
+!if 0 { ; SFTODONOW WIP
 is_buffered_window	+allocate 1
+} else {
+SFTODONOWHACK +allocate 1 ; SFTODO JUST TO KEEP THINGS CONSISTENT WHILE TIMING
+}
 
 ; Screen kernal stuff. No need to keep together on Acorn.
 !if 0 { ; SFTODONOW WIP - THIS MIGHT BE WASTEFUL OF ZP, EXPERIMENTING
