@@ -656,6 +656,10 @@ remainder
 ; things to make sure they are, make it obvious if this changes.
     +assert remainder < $100
 
+!ifndef ACORN_SWR {
+vmap_c64_offset +allocate 1 ; ~2.4% of instructions executed reference this
+}
+
 readblocks_numblocks +allocate 1
 					+pre_allocate 2
 readblocks_currentblock	+allocate 2

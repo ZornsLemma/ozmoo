@@ -1,5 +1,6 @@
 New benchmark phase with 2P - B 144K swr, no shadow, 6502 external, mode 7
 Baseline $4eaf $4eb6 $4ebe (-$123)
+Moving vmap_c64_offset into zp: $4ebe $4ebf
 
 
 

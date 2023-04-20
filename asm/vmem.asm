@@ -229,7 +229,7 @@ vmap_first_ram_page		!byte 0
 
 vmap_temp			!byte 0,0,0
 
-!ifndef ACORN_SWR {
+!ifndef ACORN {
 vmap_c64_offset !byte 0
 }
 
