@@ -16,19 +16,26 @@ REM machine with/without shadow RAM. But for now let's keep it as close to real
 REM use as possible.
 MODE mode% OR 128
 
+block_size%=512:REM bytes
+
+DIM osword_block% 64
+local_cache_blocks%=10
+DIM local_cache% local_cache_blocks%*block_size%
+DIM local_cache_id%(local_cache_blocks%-1)
+
 REM In order to help catch bugs that only occurs when the cache is not fully
 REM populated, we periodically restart.
 pass%=0
 REPEAT
 CLS
 
+game_blocks%=489
+
 A%=&88:X%=mode% OR 128:host_cache_size_vmem_blocks%=(USR(&FFF4) AND &FF00) DIV &100
 PRINT "Host cache size (blocks): ";host_cache_size_vmem_blocks%;" / Pass: ";pass%
-max_call_count%=1000+RND(50)*100
+max_call_count%=1000+RND(20)*100
 
 expected_hit_ratio=host_cache_size_vmem_blocks%/game_blocks%
-
-DIM osword_block% 64
 
 REM For now we don't try to model exactly what the cache will be doing. Instead,
 REM we request game data blocks at random and track the cache hit ratio - since we
@@ -40,13 +47,6 @@ REM SFTODO: It might not be a bad idea to record the last n blocks we offered fo
 REM smallish n and check that we *do* get a cache hit if the block we request at random
 REM is one of those last n blocks.
 
-block_size%=512:REM bytes
-
-game_blocks%=489
-
-local_cache_blocks%=10
-DIM local_cache% local_cache_blocks%*block_size%
-DIM local_cache_id%(local_cache_blocks%-1)
 FOR I%=0 TO local_cache_blocks%-1
 REM SFTODO: It would be better to pick a random set of initial blocks, but we'd
 REM need to avoid duplicates. (Duplicates might work, but wouldn't be realistic and
@@ -100,7 +100,7 @@ IF call_count% MOD 100=0 THEN @%=&20300:PRINT "Expected hit ratio ";expected_hit
 UNTIL call_count%>=max_call_count%
 
 REM We need to pause if this happens so the users gets a chance to see it.
-IF expected_hit_ratio<(current_hit_ratio*0.8) OR expected_hit_ratio>(current*hit_ratio*1.2) THEN PRINT "Poor current hit ratio; press any key to continue":OSCLI "FX21":IF GET
+IF expected_hit_ratio<(current_hit_ratio*0.8) OR expected_hit_ratio>(current_hit_ratio*1.2) THEN PRINT "Poor current hit ratio; press any key to continue":OSCLI "FX21":IF GET
 
 pass%=pass%+1
 UNTIL FALSE
