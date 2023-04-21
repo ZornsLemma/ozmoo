@@ -1158,12 +1158,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     else:
         main_ram_vmem = 0x8000 - e_low.labels["vmem_start"]
         main_ram_vmem -= e_low.min_screen_hole_size()
-        if False: # SFTODONOW I SUSPECT THIS IS HANDLED BETTER ELSEWHERE NOW, TEST AND DELETE THIS IF SO
-            if main_ram_vmem < 0:
-                # This case typically occurs for the B-no-shadow executable if you
-                # specify --max-mode=0; even with PAGE=&E00, there isn't enough main
-                # RAM free for the Ozmoo code itself as well as 20K of screen RAM.
-                return None
         assert main_ram_vmem >= 0
         assert main_ram_vmem % (2 * bytes_per_page) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
@@ -1808,19 +1802,6 @@ def parse_args():
     # without creating extra work for ourselves.
     if cmd_args.min_mode not in (0, 3, 4, 6, 7):
         die("Invalid mode specified for --min-mode; must be one of 0/3/4/6/7")
-    # SFTODONOW: DELETE THIS COMMENT, NOT TRUE - I DECIDED TO JUST SUPPORT IT
-    # There's an obvious use for specifying a max mode of 3 (it's equivalent to
-    # forcing 80 columns). Similarly, specifying a max mode of 6 forces the use
-    # of modes with proper ASCII character set and no odd characters (useful for
-    # foreign language games, perhaps). And of course it's useful to have a max
-    # mode of 7 as it's a useful mode with low RAM requirements and a nice
-    # appearance. We don't allow a max mode of 4 simply because there's no
-    # compelling reason to specify it and as the mode menu layouts are manually
-    # implemented, not supporting this slightly cuts down on the number of cases
-    # to handle. Given a compelling reason this could be changed, of course.
-    # Specifying a max mode of 0 is not necessarily useful, but since it
-    # effectively says "always run in mode 0", there's no mode menu required in
-    # this case so allowing it doesn't create extra work.
     if cmd_args.max_mode not in (0, 3, 4, 6, 7):
         die("Invalid mode specified for --max-mode; must be one of 0/3/6/7")
     # Validate this last to avoid confusing errors if e.g. user specifies
@@ -1936,7 +1917,6 @@ def make_disc_image():
         "-DACORN=1",
         "-DACORN_CURSOR_PASS_THROUGH=1",
         "-DSTACK_PAGES=4",
-        "-DSMALLBLOCK=1", # SFTODONOW: Get rid of this, it's dead (upstream)
         "-DSPLASHWAIT=0",
         "-DACORN_HW_SCROLL=1",
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
