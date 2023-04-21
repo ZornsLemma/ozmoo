@@ -25,6 +25,9 @@ REM are requesting at random, if the cache is working properly the hit ratio wil
 REM approximate the ratio of cache size to game data size. The cache starts empty
 REM which will drag the hit ratio down at first but that effect should wear off over
 REM time.
+REM SFTODO: It might not be a bad idea to record the last n blocks we offered for
+REM smallish n and check that we *do* get a cache hit if the block we request at random
+REM is one of those last n blocks.
 
 block_size%=512:REM bytes
 
@@ -33,7 +36,13 @@ game_blocks%=489
 local_cache_blocks%=10
 DIM local_cache% local_cache_blocks%*block_size%
 DIM local_cache_id%(local_cache_blocks%-1)
-FOR I%=0 TO local_cache_blocks%-1:local_cache_id%(I%)=RND(game_blocks%)-1:PROCcreate_block(local_cache_id%(I%),local_cache%+I%*block_size%):NEXT
+FOR I%=0 TO local_cache_blocks%-1
+REM SFTODO: It would be better to pick a random set of initial blocks, but we'd
+REM need to avoid duplicates. (Duplicates might work, but wouldn't be realistic and
+REM might cause confusion while debugging.)
+local_cache_id%(I%)=I%+10
+PROCcreate_block(local_cache_id%(I%),local_cache%+I%*block_size%)
+NEXT
 REM Just sanity check the newly created blocks...
 FOR I%=0 TO local_cache_blocks%-1:PROCcheck_block(local_cache_id%(I%),local_cache%+I%*block_size%):NEXT
 
