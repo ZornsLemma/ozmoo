@@ -907,7 +907,6 @@ class OzmooExecutable(Executable):
             self._patch_vmem()
 
     def _patch_vmem(self):
-        print("AAA", self.leafname, hex(self.start_addr), hex(self.labels["data_start"]))
         # We use a strict greater than comparison in the next line because the
         # *Ozmoo code* fits fine with data_start equal to the start of screen
         # RAM. Whether we can get away with no main RAM free for dynamic memory
@@ -1089,7 +1088,6 @@ def make_ozmoo_executable(leafname, start_addr, args, report_failure_prefix = No
         e = make_ozmoo_executable._cache.get(cache_key)
         if e is not None:
             return e
-        print("PXX", leafname, hex(start_addr))
         e = OzmooExecutable(leafname, start_addr, args)
         make_ozmoo_executable._cache[cache_key] = e
         return e
@@ -1133,13 +1131,11 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert "-DACORN_RELOCATABLE=1" in args
     assert "-DACORN_SWR=1" in args
 
-    print("YCC", report_failure_prefix)
     e_low = make_optimally_aligned_executable(leafname, 0xe00, args, report_failure_prefix)
     # If we can't build successfully with a start of 0xe00 we can't ever manage
     # it.
     if e_low is None:
         return None
-    print("YDD")
     assert e_low.start_addr in (0xe00, 0xf00)
     # There's no point loading really high, and doing a totally naive
     # calculation may cause us to load so high there's no room for the
@@ -1161,7 +1157,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
         assert main_ram_vmem >= 0
         assert main_ram_vmem % (2 * bytes_per_page) == 0
         max_start_addr = min(e_low.start_addr + main_ram_vmem, max_start_addr)
-    print("YEE", hex(max_start_addr))
 
     # If we build at max_start_addr, we might end up with data_start so high it
     # overlaps screen RAM in builds which support no-shadow configurations. I
@@ -1175,7 +1170,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     assert data_start_excess == 0 # just to see if this ever occurs, if it does do a sanity check and then delete the assert so following code can fix things up
     data_start_excess = 512 * divide_round_up(data_start_excess, 512)
     max_start_addr -= data_start_excess
-    print("YEF", hex(max_start_addr))
     assert max_start_addr >= e_low.start_addr
 
     assert same_double_page_alignment(max_start_addr, e_low.start_addr)
@@ -1224,9 +1218,7 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     medium_e = None
     if cmd_args.force_medium_dynmem or ("-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem):
         if nonstored_pages * bytes_per_page <= 16 * 1024:
-            print("XAA")
             medium_e = make_highest_possible_executable(leafname, args + medium_dynmem_args, None)
-            print("XAB")
             if medium_e is not None:
                 info(init_cap(report_failure_prefix) + " executable uses medium dynamic memory model and requires " + page_le(medium_e.start_addr))
                 return medium_e
@@ -2073,7 +2065,6 @@ def make_disc_image():
     for executable_group in ozmoo_variants:
         for e in executable_group:
             e.add_loader_symbols(loader_symbols)
-    print("CCS", cmd_args.min_mode, cmd_args.max_mode)
     loader_symbols["MIN_MODE"] = basic_int(cmd_args.min_mode)
     loader_symbols["MAX_MODE"] = basic_int(cmd_args.max_mode)
     if cmd_args.auto_start:
