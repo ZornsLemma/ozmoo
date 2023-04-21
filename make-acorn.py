@@ -2017,6 +2017,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_DEBUG_ASSERT=1"]
     if cmd_args.check_errors:
         ozmoo_base_args += ["-DCHECK_ERRORS=1"]
+    if cmd_args.min_mode <= 3:
+        ozmoo_base_args += ["-DSUPPORT_80COL=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
