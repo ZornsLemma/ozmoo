@@ -915,7 +915,6 @@ class OzmooExecutable(Executable):
             # The Ozmoo code itself won't fit in memory below the screen RAM.
             # This is most likely if --max-mode=0 is specified by the user; in
             # other modes there's usually enough room with PAGE=&E00.
-            print("BBB", hex(self.start_addr), hex(self.labels["data_start"]))
             raise GameWontFit("not enough free RAM for Ozmoo code")
 
         # Can we fit the nonstored pages into memory?
