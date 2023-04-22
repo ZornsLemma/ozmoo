@@ -16,6 +16,9 @@ REM machine with/without shadow RAM. But for now let's keep it as close to real
 REM use as possible.
 MODE mode% OR 128
 
+track_offers%=10:REM SFTODO: SHOULD BE ABLE TO SET THIS TO 0 TO DISABLE THIS
+IF track_offers%>0 THEN DIM recent_offers%(track_offers%-1)
+
 block_size%=512:REM bytes
 
 DIM osword_block% 64
@@ -31,21 +34,25 @@ CLS
 
 game_blocks%=489
 
+IF track_offers%>0 THEN FOR I%=0 TO track_offers%-1:recent_offers%(I%)=-1:NEXT
+recent_offers_ptr%=0
+
 A%=&88:X%=mode% OR 128:host_cache_size_vmem_blocks%=(USR(&FFF4) AND &FF00) DIV &100
 PRINT "Host cache size (blocks): ";host_cache_size_vmem_blocks%;" / Pass: ";pass%
 max_call_count%=1000+RND(20)*100
 
+IF track_offers%>host_cache_size_vmem_blocks% THEN PRINT "track_offers% can't be larger than the host cache size":END
+
 expected_hit_ratio=host_cache_size_vmem_blocks%/game_blocks%
 
-REM For now we don't try to model exactly what the cache will be doing. Instead,
+REM We don't try to model exactly what the cache will be doing. Instead,
 REM we request game data blocks at random and track the cache hit ratio - since we
 REM are requesting at random, if the cache is working properly the hit ratio will
 REM approximate the ratio of cache size to game data size. The cache starts empty
 REM which will drag the hit ratio down at first but that effect should wear off over
-REM time.
-REM SFTODO: It might not be a bad idea to record the last n blocks we offered for
-REM smallish n and check that we *do* get a cache hit if the block we request at random
-REM is one of those last n blocks.
+REM time. If track_offers%>0, we do track that many of our most recent offers (i.e.
+REM we track a subset of what the cache ought to hold) and make sure that if we don't
+REM get a cache hit, it wasn't for one of those blocks we know should have been there.
 
 FOR I%=0 TO local_cache_blocks%-1
 REM SFTODO: It would be better to pick a random set of initial blocks, but we'd
@@ -88,6 +95,8 @@ osword_block%!9=wanted_block%
 A%=&E0:X%=osword_block%:Y%=osword_block% DIV 256:CALL &FFF1
 call_count%=call_count%+1
 hit%=((osword_block%?11)=0)
+IF NOT hit% AND track_offers%>0 THEN PROCcheck_not_recent_offer(wanted_block%)
+IF track_offers%>0 THEN recent_offers%(recent_offers_ptr%)=local_cache_id%(local_cache_block_to_evict%):recent_offers_ptr%=(recent_offers_ptr%+1) MOD track_offers%
 REM PRINT "Offer block ID ";local_cache_id%(local_cache_block_to_evict%);" (local entry ";local_cache_block_to_evict%;"), want block ID ";wanted_block%;": ";:IF hit% THEN PRINT "hit" ELSE PRINT "miss"
 REM To detect the cache corrupting arbitrary memory, we check all the local blocks.
 IF hit% THEN hit_count%=hit_count%+1 ELSE PROCcreate_block(wanted_block%,local_addr%)
@@ -120,6 +129,13 @@ DEF PROCcheck_block(block_num%,addr%)
 LOCAL I%
 FOR I%=0 TO 511 STEP 4
 IF addr%!I%<>block_num% THEN PRINT "PROCcheck_block(";block_num%;",&";STR$~addr%;") failed!":END
+NEXT
+ENDPROC
+
+DEF PROCcheck_not_recent_offer(wanted_block%)
+LOCAL I%
+FOR I%=0 TO track_offers%-1
+IF recent_offers%(I%)=wanted_block% THEN PRINT "PROCcheck_not_recent_offer(";wanted_block%;") failed!":END
 NEXT
 ENDPROC
 
