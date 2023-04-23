@@ -222,6 +222,8 @@ zp_start = $00
 		+assert zp_end = is_turbo
 	}
 } else {
+    ; SFTODO: Can we get away with setting zp_end = $97 in practice? e.g.
+    ; allmem.txt says $90-$96 appears to be unused.
 	zp_end = $90
 }
 ;}}}
