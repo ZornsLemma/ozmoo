@@ -1097,3 +1097,64 @@ REM by about a centisecond; not huge but maybe worth having.
     DATA 0,0,"3) 80x25",1,12
     DATA 1,0,"4) 40x25",13,24
 }
+
+REM SFTODONOW: Sketch of changes needed for using spare shadow RAM in host cache:
+REM - We need to convert the shadow RAM type detection and driver installation to
+REM   a pre-assembled machine code routine which we can *RUN from the loader,
+REM   probably just before we run FINDSWR. We can avoid running it if we don't
+REM   have tube and HIMEM<&8000. (Can we detect shadow presence on host from code
+REM   running on 2P?)
+REM
+REM - The SHADDRV executable needs to run in the host so it can detect shadow RAM
+REM   and install itself in the usual place on the host. It needs to load just
+REM   below mode 6 HIMEM, because it has to be able to run on machines with no 2P
+REM   including a game where the loader is in mode 6 with no shadow RAM (Electron,
+REM   maybe a B forced to run mode 6 loader in future). We probably therefore need
+REM   to set HIMEM=&5400 or so early in the loader so it can run without trampling
+REM   over BASIC variables if we don't have a 2P. This should be fine because the
+REM   loader isn't *that* memory hungry, although if it stops --no-loader-crunch
+REM   versions running that is annoying and might need thinking about.
+REM
+REM - If the SHADDRV executable, which remember has to contain a copy of all the
+REM   possible driver code for the different types, fits in 512 bytes, we might
+REM   as well run it in pages &9/&A in the host - if we run it before FINDSWR
+REM   there shouldn't be a big problem with clashing.
+REM
+REM - The SHADDRV executable will need to set a flag in the host which we can FNpeek
+REM   in the loader to know if we do have shadow RAM (mainly for reporting this to
+REM   the user) - this will actually be a multi-value flag so we can indicate the
+REM   type of SWR to the user for support/diagnostic purposes. It will of course
+REM   copy the appropriate driver for the detected shadow RAM type to the right
+REM   fixed address in low RAM for the Ozmoo executable (no tube) or host cache
+REM   (tube, later) to call into it.
+REM
+REM - Even without the host cache using the shadow driver, this is still probably
+REM   a nice change. It will probably be quicker to load and run the pre-assembled
+REM   SHADDRV than to detect and assemble the right one in the BASIC loader itself,
+REM   bearing in mind that removing the assembler from the BASIC loader will shrink
+REM   that so we'll probably be loading less data from disc net as well. It's also
+REM   kind of cleaner, I think - the real reason I did it this way to start with was
+REM   for ease of tweaking during the initial stages (especially user testing) of
+REM   the different shadow drivers.
+REM
+REM - Once we have that, we can tweak the host cache code to check the shadow presence
+REM   flag and start recognising the presence of spare shadow RAM which it can use
+REM   for data cachine. It would be good to discard code we don't need if we can,
+REM   eg discard shadow support code in the host cache if we have no shadow RAM or none
+REM   spare, so as to free up memory for caching.
+REM
+REM - To start with, probably just assume that the shadow RAM has to be accessed via
+REM   copying data between main and shadow RAM, as some types require this. But later
+REM   it would be good if we could just page in shadow RAM while we transfer data in/out
+REM   over tube, as on hardware which supports it this would make shadow RAM a clear
+REM   win, whereas with the extra data copying it can be slightly slower in some cases
+REM   (always much faster than going to a real disc, but with emulators/solid-state
+REM   filing systems, not absolutely guaranteed). The B+ can probably support this
+REM   if we install tube copy code in the special bit of private 12K, although for a
+REM   first cut we might not want to get that fancy.
+REM
+REM - It might be nice if the shadow driver code was common to tube and no tube cases,
+REM   but if it helps we could have different driver conventions. Maybe have two
+REM   shadow driver executables and run the right one depending on whether we have
+REM   tube or not in loader, or maybe a single shadow driver executable which adapts
+REM   accordingly. Whatever works best.
