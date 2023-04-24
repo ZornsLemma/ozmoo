@@ -1118,7 +1118,8 @@ REM
 REM - If the SHADDRV executable, which remember has to contain a copy of all the
 REM   possible driver code for the different types, fits in 512 bytes, we might
 REM   as well run it in pages &9/&A in the host - if we run it before FINDSWR
-REM   there shouldn't be a big problem with clashing.
+REM   there shouldn't be a big problem with clashing. If it fits there, we can
+REM   probably run it from PRELOAD when that exists.
 REM
 REM - The SHADDRV executable will need to set a flag in the host which we can FNpeek
 REM   in the loader to know if we do have shadow RAM (mainly for reporting this to
