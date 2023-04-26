@@ -4,6 +4,7 @@
 osargs = $ffda
 osbyte = $fff4
 osbyte_read_host = 0
+osbyte_read_screen_address_for_mode = $85
 osbyte_issue_service_request = $8f
 
 romsel_copy = $f4

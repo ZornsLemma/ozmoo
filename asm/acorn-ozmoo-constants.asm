@@ -84,7 +84,6 @@ osbyte_reflect_keyboard_status = $76
 osbyte_acknowledge_escape = $7e
 osbyte_read_key = $81
 osbyte_read_oshwm = $83
-osbyte_read_screen_address_for_mode = $85
 osbyte_read_cursor_position = $86
 osbyte_read_screen_mode = $87 ; SFTODO: RENAME TO INDICATE CHAR RETURNING FEATURE?
 !ifdef ACORN_TUBE_CACHE {

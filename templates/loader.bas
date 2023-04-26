@@ -73,7 +73,7 @@ REM configuration on a Master to make this assumption valid.
 VDU 23,16,0,254,0;0;0;
 
 DIM block% 256
-A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100
+A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:REM SFTODO: Use FNusr_osbyte_x?
 REM If we're on an Integra-B in OSMODE 0, it's as if we're on a standard model B.
 REM We need to avoid detecting the private RAM, because the non-shadow-RAM model B
 REM executable we'll choose to run doesn't know how to handle it.
