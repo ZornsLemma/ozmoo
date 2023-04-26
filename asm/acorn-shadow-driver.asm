@@ -192,8 +192,8 @@ fx111_probably_ok
     jmp set_shadow_state_from_a_and_install_driver
 fx111_failed
     ; *FX111 generated an error, so neither *FX34 nor *FX111 works and we
-    ; *therefore don't know how to access the spare shadow RAM. Leave
-    ; *shadow_state at the default shadow_state_screen_only.
+    ; therefore don't know how to access the spare shadow RAM. Leave
+    ; shadow_state at the default shadow_state_screen_only.
     jmp restore_brkv
 
 set_shadow_state_from_a_and_install_driver
