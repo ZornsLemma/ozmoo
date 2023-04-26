@@ -19,6 +19,12 @@
 
 !source "acorn-shared-constants.asm"
 
+max_shadow_driver_size = shadow_ram_copy_max - shadow_ram_copy
+
+!macro assert_shadow_driver_fits start {
+    +assert * - start <= max_shadow_driver_size
+}
+
 shadow_state_none        = 0 ; no shadow RAM
 shadow_state_screen_only = 1 ; shadow RAM with no driver for spare shadow RAM access
 shadow_state_first_driver = 2
@@ -179,8 +185,8 @@ set_shadow_state_from_a_and_install_driver
     sta src
     lda shadow_driver_table_high-shadow_state_first_driver,x
     sta src+1
-    +assert ((shadow_ram_copy_max_end-shadow_ram_copy)-1) < 128
-    ldy #(shadow_ram_copy_max_end-shadow_ram_copy)-1
+    +assert (max_shadow_driver_size-1) < 128
+    ldy #max_shadow_driver_size-1
 copy_loop
     lda (src),y
     sta shadow_ram_copy,y
@@ -191,10 +197,76 @@ copy_loop
 ; SFTODO: Need to keep this in sync with shadow_state_* enum
 shadow_driver_table_low
     !byte <shadow_driver_integra_b
+    !byte <shadow_driver_electron_mrb
     ; SFTODO: MORE
 shadow_driver_table_high
     !byte >shadow_driver_integra_b
+    !byte >shadow_driver_electron_mrb
     ; SFTODO: MORE
+
+; SFTODO: Document shadow driver API
+; SFTODO: Looks like non-2P shadow driver only copies a 256 byte page. *May* want to define a completely separate shadow driver API for 2P host cache case. Let's get this working first anyway. (Probably best to make code changes to host cache to support shadow RAM first and see what I "want" to be able to do, then decide on driver API based on that, rather than guessing and implementing the API *first*.)
+
+shadow_driver_integra_b
+!pseudopc shadow_ram_copy {
+    ; SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
+    ; registers, we might as well do so here to page shadow RAM in and out; it
+    ; would be faster. But I'll stick with this for now.
+    ; SFTODO: This is *similar* to the Watford/Aries driver (though OSBYTE is
+    ; 108, and the 1/0 codes are swapped) so there might be potential for
+    ; sharing code. But this is moot if I switch to driving the hardware direct.
+    sta lda_abs_y+2
+    sty sta_abs_y+2
+    ; Page in shadow RAM
+    lda #$6c ; SFTODO: named constant?
+    ldx #1
+    jsr osbyte
+    ldy #0
+.copy_loop
+.lda_abs_y
+    lda $ff00,y ; patched
+.sta_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne copy_loop
+    ; Page out shadow RAM
+    lda #$6c ; SFTODO: name constant
+    ldx #0
+    jmp osbyte
+}
++assert shadow_driver_fits shadow_driver_integra_b
+
+shadow_driver_electron_mrb
+!pseudopc shadow_ram_copy {
+    cmp #$30
+    bcs copy_from_shadow
+    ; We're copying to shadow RAM.
+    sta lda_abs_x+2
+    ldx #0
+.copy_to_shadow_loop
+.lda_abs_x
+    lda $ff00,x ; patched
+    bit our_rts
+    jsr $fbfd ; write to shadow RAM SFTODO: use named constant?
+    inx
+    bne copy_to_shadow_loop
+.our_rts
+    rts
+.copy_from_shadow
+    ; We're copying from shadow RAM.
+    sty sta_abs_x+2
+    tay
+    ldx #0
+.copy_from_shadow_loop
+    clv
+    jsr $fbfd ; read from shadow RAM SFTODO: use named constant?
+.sta_abs_x
+    sta $ff00,x ; patched
+    inx
+    bne copy_from_shadow_loop
+    rts
+}
++assert shadow_driver_fits shadow_driver_electron_mrb
 
 ; SFTODO: Do a code review at end to ensure this is called on every relevant code path. Just possibly we should always call it before we return (make the "main()" do jsr actual_code:fall_through_to restore_brkv) and make sure every function we install on brkv starts by executing this.
 restore_brkv
