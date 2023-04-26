@@ -243,10 +243,11 @@ shadow_driver_electron_mrb
     ; We're copying to shadow RAM.
     sta lda_abs_x+2
     ldx #0
+    ; SFTODO: Can we assume V is preserved by $FBFD and move the set/clear outside the loop?
 .copy_to_shadow_loop
 .lda_abs_x
     lda $ff00,x ; patched
-    bit our_rts
+    bit our_rts ; set V
     jsr $fbfd ; write to shadow RAM SFTODO: use named constant?
     inx
     bne copy_to_shadow_loop
@@ -267,6 +268,42 @@ shadow_driver_electron_mrb
     rts
 }
 +assert shadow_driver_fits shadow_driver_electron_mrb
+
+; SFTODONOW: Must also port the faster B+ shadow driver which uses code at &A000, but let's keep it simple for the moment.
+shadow_driver_b_plus_os
+!pseudopc shadow_ram_copy {
+oswrsc = $ffb3
+osrdsc = $ffb9
+    cmp #$30
+    bcs copy_from_shadow
+    ; We're copying to shadow RAM.
+    sta lda_abs_y+2
+    sty $d7 ; SFTODO: named constant for d6/d7?
+    ldy #0
+    sty $d6
+.copy_to_shadow_loop
+.lda_abs_y
+    lda $ff00,y ; patched
+    jsr osrdsc ; preserves Y - equivalent to STA (&D6),Y - note Y is used!
+    iny
+    bne copy_to_shadow_loop
+    rts
+.copy_from_shadow
+    ; We're copying from shadow RAM.
+    sta $f7 ; SFTODO: named constant for f6/f7?
+    sty sta_abs+2
+    ldy #0
+    sty $F6
+.copy_from_shadow_loop
+    jsr osrdsc ; ignores and corrupts Y
+.sta_abs
+    sta $ff00 ; patched
+    inc $f6
+    inc sta_abs+1
+    bne copy_from_shadow_loop
+    rts
+}
++assert shadow_driver_fits shadow_driver_b_plus_os
 
 ; SFTODO: Do a code review at end to ensure this is called on every relevant code path. Just possibly we should always call it before we return (make the "main()" do jsr actual_code:fall_through_to restore_brkv) and make sure every function we install on brkv starts by executing this.
 restore_brkv
