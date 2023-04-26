@@ -27,12 +27,13 @@ max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
     +assert * - .start <= max_shadow_driver_size
 }
 
+; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
 shadow_state_none        = 0 ; no shadow RAM
 shadow_state_screen_only = 1 ; shadow RAM with no driver for spare shadow RAM access
 shadow_state_first_driver = 2
 shadow_state_integra_b   = 2 ; Integra-B shadow RAM
 shadow_state_mrb         = 3 ; Electron Master RAM Board shadow RAM
-shadow_state_bbc_b_plus_os = 4 ; BBC B+ shadow RAM accessed via OS
+shadow_state_b_plus_os = 4 ; BBC B+ shadow RAM accessed via OS
 shadow_state_master = 5 ; BBC Master shadow RAM
 shadow_state_watford = 6 ; BBC B Watford shadow RAM
 shadow_state_aries = 7 ; BBC B Aries shadow RAM
@@ -95,7 +96,7 @@ not_integra_b
     lda #shadow_state_mrb
     jmp set_shadow_state_from_a_and_install_driver
 bbc_b_plus
-    lda #shadow_state_bbc_b_plus_os
+    lda #shadow_state_b_plus_os
     jmp set_shadow_state_from_a_and_install_driver
 master
     lda #shadow_state_master
@@ -211,10 +212,18 @@ set_shadow_state_from_a_and_install_driver
 shadow_driver_table_low
     !byte <shadow_driver_integra_b
     !byte <shadow_driver_electron_mrb
+    !byte <shadow_driver_b_plus_os
+    !byte <shadow_driver_master
+    !byte <shadow_driver_watford
+    !byte <shadow_driver_aries
     ; SFTODO: MORE
 shadow_driver_table_high
     !byte >shadow_driver_integra_b
     !byte >shadow_driver_electron_mrb
+    !byte >shadow_driver_b_plus_os
+    !byte >shadow_driver_master
+    !byte >shadow_driver_watford
+    !byte >shadow_driver_aries
     ; SFTODO: MORE
 
 ; The shadow driver API is very simple - the core Ozmoo executable calls the
@@ -353,6 +362,37 @@ shadow_driver_master
 }
 +assert_shadow_driver_fits shadow_driver_master
 
+!macro shadow_driver_watford_aries shadow_osbyte {
+!pseudopc shadow_ram_copy {
+!zone {
+    sta .lda_abs_y+2
+    sty .sta_abs_y+2
+    lda #shadow_osbyte
+    ldx #0
+    jsr osbyte ; page in shadow RAM
+    ldy #0
+.copy_loop
+.lda_abs_y
+    lda $ff00,y ; patched
+.sta_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne .copy_loop
+    lda #shadow_osbyte
+    ldx #1
+    jmp osbyte ; page out shadow RAM
+}
+}
+}
+
+shadow_driver_watford
+    +shadow_driver_watford_aries 34
+    +assert_shadow_driver_fits shadow_driver_watford
+
+shadow_driver_aries
+    +shadow_driver_watford_aries 111
+    +assert_shadow_driver_fits shadow_driver_aries
+
 save_brkv
     lda brkv
     sta old_brkv
@@ -368,8 +408,9 @@ restore_brkv
     sta brkv+1
     rts
 
-
 end
+
+; SFTODONOW: assert the executable hasn't overflowed page $9/$a, if that's where it's going to live
 
 
 
