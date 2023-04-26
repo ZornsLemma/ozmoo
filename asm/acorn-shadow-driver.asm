@@ -142,7 +142,7 @@ bbc_b
     lda #34
     ldx #64
     jsr osbyte
-    jsr restore_brkv ; sftodo: Fold this into set_shadow_state...
+    jsr restore_brkv ; SFTODO: Fold this into set_shadow_state...
     lda #shadow_state_watford
     jmp set_shadow_state_from_a_and_install_driver
 not_watford
@@ -204,7 +204,12 @@ shadow_driver_table_high
     !byte >shadow_driver_electron_mrb
     ; SFTODO: MORE
 
-; SFTODO: Document shadow driver API
+; The shadow driver API is very simple - the core Ozmoo executable calls the
+; subroutine at shadow_ram_copy with A=source page and Y=destination page, and
+; that subroutine copies 256 bytes from page A to page Y. One of A or Y will be
+; in the &30-&7F inclusive range, indicating it's spare shadow RAM, and the
+; other will be <&30, indicating it's main RAM.
+
 ; SFTODO: Looks like non-2P shadow driver only copies a 256 byte page. *May* want to define a completely separate shadow driver API for 2P host cache case. Let's get this working first anyway. (Probably best to make code changes to host cache to support shadow RAM first and see what I "want" to be able to do, then decide on driver API based on that, rather than guessing and implementing the API *first*.)
 
 shadow_driver_integra_b
@@ -234,7 +239,7 @@ shadow_driver_integra_b
     ldx #0
     jmp osbyte
 }
-+assert shadow_driver_fits shadow_driver_integra_b
++assert_shadow_driver_fits shadow_driver_integra_b
 
 shadow_driver_electron_mrb
 !pseudopc shadow_ram_copy {
@@ -267,7 +272,7 @@ shadow_driver_electron_mrb
     bne copy_from_shadow_loop
     rts
 }
-+assert shadow_driver_fits shadow_driver_electron_mrb
++assert_shadow_driver_fits shadow_driver_electron_mrb
 
 ; SFTODONOW: Must also port the faster B+ shadow driver which uses code at &A000, but let's keep it simple for the moment.
 shadow_driver_b_plus_os
@@ -303,7 +308,27 @@ osrdsc = $ffb9
     bne copy_from_shadow_loop
     rts
 }
-+assert shadow_driver_fits shadow_driver_b_plus_os
++assert_shadow_driver_fits shadow_driver_b_plus_os
+
+shadow_driver_master
+!pseudopc shadow_ram_copy {
+    sta lda_abs_y+2
+    sty sta_abs_y+2
+    lda #4
+    tsb $fe34 ; page in shadow RAM SFTODO: named constant?
+    ldy #0
+.copy_loop
+.lda_abs_y
+    lda $ff00,y ; patched
+.sta_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne copy_loop
+    lda #4
+    trb $fe34 ; page out shadow RAM
+    rts
+}
++assert_shadow_driver_fits shadow_driver_master
 
 ; SFTODO: Do a code review at end to ensure this is called on every relevant code path. Just possibly we should always call it before we return (make the "main()" do jsr actual_code:fall_through_to restore_brkv) and make sure every function we install on brkv starts by executing this.
 restore_brkv
