@@ -26,7 +26,6 @@ scratch_double_page = scratch_page
 ; by anything except the main Ozmoo executable.
 
 stack = $100
-brkv = $202
 wrchv = $20e
 keyv = $228
 !ifdef ACORN_SWR {
@@ -100,7 +99,6 @@ vdu_variable_text_window_top = $0b
 vdu_status_cursor_editing = 1<<6
 cr = 13 ; SFTODO: Duplicate with vdu_cr
 del = 127 ; SFTODO: Rename vdu_del and move up near other vdu_* constants???
-shadow_mode_bit = 128
 mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
 err_not_found = $d6

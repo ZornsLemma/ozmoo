@@ -19,10 +19,12 @@
 
 !source "acorn-shared-constants.asm"
 
-max_shadow_driver_size = shadow_ram_copy_max - shadow_ram_copy
+* = $900 ; SFTODO TEMP
 
-!macro assert_shadow_driver_fits start {
-    +assert * - start <= max_shadow_driver_size
+max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
+
+!macro assert_shadow_driver_fits .start {
+    +assert * - .start <= max_shadow_driver_size
 }
 
 shadow_state_none        = 0 ; no shadow RAM
@@ -30,10 +32,17 @@ shadow_state_screen_only = 1 ; shadow RAM with no driver for spare shadow RAM ac
 shadow_state_first_driver = 2
 shadow_state_integra_b   = 2 ; Integra-B shadow RAM
 shadow_state_mrb         = 3 ; Electron Master RAM Board shadow RAM
+shadow_state_bbc_b_plus_os = 4 ; BBC B+ shadow RAM accessed via OS
+shadow_state_master = 5 ; BBC Master shadow RAM
+shadow_state_watford = 6 ; BBC B Watford shadow RAM
+shadow_state_aries = 7 ; BBC B Aries shadow RAM
 
-; SFTODO: Putting shadow_state "inline" here assumes this code lives at $900-ish and the fact can be set on load and will persist here - if this code ends up loading high, we need to set shadow_state=$900 or similar so it's at a fixed location for the loader to access. (Note that we *don't* need access to this value in the Ozmoo executable, so actually we probably don't want to waste a persistent byte on it - we can maybe stick it in the resident integer space somewhere it will be safe until the loader finishes, but let Ozmoo executable scribble all over it.)
-shadow_state
-    !byte shadow_state_none
+; We don't need zero page for all of these, but we have it free so with might as
+; well use it.
+shadow_state = $70
+old_brkv = $71 ; 2 bytes
+src = $73 ; 2 bytes
+
 start
     ; Do we have shadow RAM?
     lda #osbyte_read_screen_address_for_mode
@@ -47,10 +56,7 @@ start
     sta shadow_state
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
-    lda brkv
-    sta old_brkv
-    lda brkv+1
-    sta old_brkv+1
+    jsr save_brkv
     lda #<not_integra_b
     sta brkv
     lda #>not_integra_b
@@ -87,6 +93,12 @@ not_integra_b
     bne electron_not_mrb
     ; We're on an Electron with Master RAM Board shadow RAM.
     lda #shadow_state_mrb
+    jmp set_shadow_state_from_a_and_install_driver
+bbc_b_plus
+    lda #shadow_state_bbc_b_plus_os
+    jmp set_shadow_state_from_a_and_install_driver
+master
+    lda #shadow_state_master
     jmp set_shadow_state_from_a_and_install_driver
 electron_not_mrb
     ; We're on an Electron with shadow RAM but it's not a Master RAM board. We
@@ -165,7 +177,7 @@ not_watford
     jsr osbyte
     cpx #1
     beq fx111_probably_ok
-    +assert FALSE ; SFTODO: What should we do? Set a flag so the loader can generate the error it previously generated, or just revert to using shadow RAM for screen memory only? THe latter at least means the user can get some benefit. We could also maybe make the hardware detected line something like "shadow RAM (screen only; *FX111 failure)" which might prompt the user to investigate but not force them to.
+    brk ; SFTODONOW: What should we do? Set a flag so the loader can generate the error it previously generated, or just revert to using shadow RAM for screen memory only? THe latter at least means the user can get some benefit. We could also maybe make the hardware detected line something like "shadow RAM (screen only; *FX111 failure)" which might prompt the user to investigate but not force them to.
 fx111_probably_ok
     jsr restore_brkv
     ; *FX111 seems to work; we have no absolute guarantee it isn't being intercepted by an older Watford DFS, but we have to assume it's fine.
@@ -178,21 +190,22 @@ fx111_failed
     jmp restore_brkv
 
 set_shadow_state_from_a_and_install_driver
+!zone {
     sta shadow_state
-    +assert FALSE ; SFTODO INSTALL DRIVER
     tax ; SFTODO: pass value in X in first place?
     lda shadow_driver_table_low-shadow_state_first_driver,x
     sta src
     lda shadow_driver_table_high-shadow_state_first_driver,x
     sta src+1
-    +assert (max_shadow_driver_size-1) < 128
+    +assert (max_shadow_driver_size - 1) < 128
     ldy #max_shadow_driver_size-1
-copy_loop
+.copy_loop
     lda (src),y
     sta shadow_ram_copy,y
     dey
-    bpl copy_loop
+    bpl .copy_loop
     rts
+}
 
 ; SFTODO: Need to keep this in sync with shadow_state_* enum
 shadow_driver_table_low
@@ -214,14 +227,15 @@ shadow_driver_table_high
 
 shadow_driver_integra_b
 !pseudopc shadow_ram_copy {
+!zone {
     ; SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
     ; registers, we might as well do so here to page shadow RAM in and out; it
     ; would be faster. But I'll stick with this for now.
     ; SFTODO: This is *similar* to the Watford/Aries driver (though OSBYTE is
     ; 108, and the 1/0 codes are swapped) so there might be potential for
     ; sharing code. But this is moot if I switch to driving the hardware direct.
-    sta lda_abs_y+2
-    sty sta_abs_y+2
+    sta .lda_abs_y+2
+    sty .sta_abs_y+2
     ; Page in shadow RAM
     lda #$6c ; SFTODO: named constant?
     ldx #1
@@ -233,34 +247,36 @@ shadow_driver_integra_b
 .sta_abs_y
     sta $ff00,y ; patched
     dey
-    bne copy_loop
+    bne .copy_loop
     ; Page out shadow RAM
     lda #$6c ; SFTODO: name constant
     ldx #0
     jmp osbyte
 }
+}
 +assert_shadow_driver_fits shadow_driver_integra_b
 
 shadow_driver_electron_mrb
 !pseudopc shadow_ram_copy {
+!zone {
     cmp #$30
-    bcs copy_from_shadow
+    bcs .copy_from_shadow
     ; We're copying to shadow RAM.
-    sta lda_abs_x+2
+    sta .lda_abs_x+2
     ldx #0
     ; SFTODO: Can we assume V is preserved by $FBFD and move the set/clear outside the loop?
 .copy_to_shadow_loop
 .lda_abs_x
     lda $ff00,x ; patched
-    bit our_rts ; set V
+    bit .our_rts ; set V
     jsr $fbfd ; write to shadow RAM SFTODO: use named constant?
     inx
-    bne copy_to_shadow_loop
+    bne .copy_to_shadow_loop
 .our_rts
     rts
 .copy_from_shadow
     ; We're copying from shadow RAM.
-    sty sta_abs_x+2
+    sty .sta_abs_x+2
     tay
     ldx #0
 .copy_from_shadow_loop
@@ -269,20 +285,22 @@ shadow_driver_electron_mrb
 .sta_abs_x
     sta $ff00,x ; patched
     inx
-    bne copy_from_shadow_loop
+    bne .copy_from_shadow_loop
     rts
+}
 }
 +assert_shadow_driver_fits shadow_driver_electron_mrb
 
 ; SFTODONOW: Must also port the faster B+ shadow driver which uses code at &A000, but let's keep it simple for the moment.
 shadow_driver_b_plus_os
 !pseudopc shadow_ram_copy {
+!zone {
 oswrsc = $ffb3
 osrdsc = $ffb9
     cmp #$30
-    bcs copy_from_shadow
+    bcs .copy_from_shadow
     ; We're copying to shadow RAM.
-    sta lda_abs_y+2
+    sta .lda_abs_y+2
     sty $d7 ; SFTODO: named constant for d6/d7?
     ldy #0
     sty $d6
@@ -291,12 +309,12 @@ osrdsc = $ffb9
     lda $ff00,y ; patched
     jsr osrdsc ; preserves Y - equivalent to STA (&D6),Y - note Y is used!
     iny
-    bne copy_to_shadow_loop
+    bne .copy_to_shadow_loop
     rts
 .copy_from_shadow
     ; We're copying from shadow RAM.
     sta $f7 ; SFTODO: named constant for f6/f7?
-    sty sta_abs+2
+    sty .sta_abs+2
     ldy #0
     sty $F6
 .copy_from_shadow_loop
@@ -304,16 +322,19 @@ osrdsc = $ffb9
 .sta_abs
     sta $ff00 ; patched
     inc $f6
-    inc sta_abs+1
-    bne copy_from_shadow_loop
+    inc .sta_abs+1
+    bne .copy_from_shadow_loop
     rts
+}
 }
 +assert_shadow_driver_fits shadow_driver_b_plus_os
 
 shadow_driver_master
 !pseudopc shadow_ram_copy {
-    sta lda_abs_y+2
-    sty sta_abs_y+2
+!zone {
+    !cpu 65c02
+    sta .lda_abs_y+2
+    sty .sta_abs_y+2
     lda #4
     tsb $fe34 ; page in shadow RAM SFTODO: named constant?
     ldy #0
@@ -323,12 +344,21 @@ shadow_driver_master
 .sta_abs_y
     sta $ff00,y ; patched
     dey
-    bne copy_loop
+    bne .copy_loop
     lda #4
     trb $fe34 ; page out shadow RAM
     rts
+    !cpu 6502
+}
 }
 +assert_shadow_driver_fits shadow_driver_master
+
+save_brkv
+    lda brkv
+    sta old_brkv
+    lda brkv+1
+    sta old_brkv+1
+    rts
 
 ; SFTODO: Do a code review at end to ensure this is called on every relevant code path. Just possibly we should always call it before we return (make the "main()" do jsr actual_code:fall_through_to restore_brkv) and make sure every function we install on brkv starts by executing this.
 restore_brkv

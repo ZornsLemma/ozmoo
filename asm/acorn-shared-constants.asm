@@ -1,6 +1,10 @@
 ; Acorn constants shared by multiple Acorn executables; constants only relevant
 ; to the main Ozmoo executable are in constants.asm
 
+brkv = $202
+
+shadow_mode_bit = 128
+
 osargs = $ffda
 osbyte = $fff4
 osbyte_read_host = 0
