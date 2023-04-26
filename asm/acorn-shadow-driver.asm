@@ -46,6 +46,8 @@ src = $73 ; 2 bytes
 
 start
     ; Do we have shadow RAM?
+    lda #shadow_state_none
+    sta shadow_state
     lda #osbyte_read_screen_address_for_mode
     ldx #shadow_mode_bit + 0
     jsr osbyte
