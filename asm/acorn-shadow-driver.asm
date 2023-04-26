@@ -170,6 +170,10 @@ not_watford
     ; elsewhere it's being run from drive 0, it's possible Watford DFS is present but
     ; not the current filing system, in which case the "current drive" might not be
     ; 0.)
+    ; SFTODO: *If* we eventually allow running the shadow driver executable from a preloader
+    ; (counting the time taken to run it against any default delay the user requested),
+    ; note that we may well *not* be in a shadow mode then, which will interfere with this
+    ; test.
     ; SFTODO: Can we make more/cleverer OSBYTE 111 calls to establish with confidence that it is controlling shadow RAM? Since only b0 of the returned X is used we always get 0 or 1 back to reflect current displayed RAM, and thus without video glitching I am not sure we can. Could we issue a *DRIVE 0 command after checking DFS is the current filing system? This feels error prone/annoying for the user though - someone is bound to get bitten by it.
     lda #<fx111_failed
     sta brkv
