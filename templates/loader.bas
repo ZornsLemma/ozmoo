@@ -375,14 +375,14 @@ IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 =FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM",0,"")
 
-REM Subtract n bytes in total from vmem_only_swr, flexible_swr_ro and extra_main_ram,
+REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
 REM preferring to take from them in that order. Only extra_main_ram will be allowed
 REM to go negative as a result of this subtraction. We prefer this order because
 REM vmem_only_swr is the least valuable memory type and we want to maximise
 REM extra_main_ram in case it can be used as shadow vmem cache.
 DEF PROCsubtract_ram(n)
 IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n=n-d
-IF flexible_swr_ro>0 THEN d=FNmin(n,flexible_swr_ro):flexible_swr_ro=flexible_swr_ro-d:n=n-d
+IF flexible_swr>0 THEN d=FNmin(n,flexible_swr):flexible_swr=flexible_swr-d:n=n-d
 extra_main_ram=extra_main_ram-n
 ENDPROC
 
