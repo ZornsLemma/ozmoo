@@ -84,8 +84,8 @@ main
     bpl no_shadow_ram
     ; We have shadow RAM, which we can use for screen memory via the OS without
     ; any special knowledge on our part.
-    lda #shadow_state_screen_only
-    sta shadow_state
+    +assert shadow_state_screen_only == shadow_state_none + 1
+    inc shadow_state
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
     +set_brkv not_integra_b
