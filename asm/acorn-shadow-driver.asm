@@ -320,7 +320,7 @@ osrdsc = $ffb9
 .copy_to_shadow_loop
 .lda_abs_y
     lda $ff00,y ; patched
-    jsr osrdsc ; preserves Y - equivalent to STA (&D6),Y - note Y is used!
+    jsr oswrsc ; preserves Y - equivalent to STA (&D6),Y - note Y is used!
     iny
     bne .copy_to_shadow_loop
     rts
@@ -419,3 +419,5 @@ end
 
 
 ; SFTODONOW: Make sure we set and clear any necessary flags about private RAM in use - this may be a mostly internal detail to this code but not sure (we may want shadow status values to differ based on this so we can report to user)
+
+; SFTODONOW: Must test that this works for all the different shadow options
