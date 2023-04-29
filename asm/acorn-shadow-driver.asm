@@ -15,7 +15,7 @@
 ; This always runs in the host; if a second processor is present we want to
 ; install the driver in the host for use with the host cache. (This also avoids
 ; the problem with the Watford DFS use of *FX111 not being tube-compatible; see
-; the code at SFTODOREFTHELABEL.)
+; the code at bbc_b_not_integra_b.)
 
 !source "acorn-shared-constants.asm"
 
@@ -93,7 +93,7 @@ not_integra_b
     bcs master
     ; We're on an Electron or BBC B, and not an Integra-B.
     txa
-    bne bbc_b
+    bne bbc_b_not_integra_b
     ; We're on an Electron. Check for Master RAM Board shadow RAM. As we know
     ; we're running on the host, we can just check &27F directly as mentioned in
     ; the MRB manual. We check for it being exactly &80 because that's what the
@@ -129,7 +129,7 @@ osbyte_111_failed
 no_shadow_ram
     ; Leave shadow_state alone; it's already shadow_state_none.
     rts
-bbc_b
+bbc_b_not_integra_b
     ; We're on a BBC B with non-Integra B shadow RAM. There are two competing
     ; standards for controlling shadow RAM paging on a BBC B, one using *FX34
     ; ("Watford") and the other using *FX111 ("Aries").
@@ -150,8 +150,11 @@ bbc_b
     ; luck avoid any false positives and if *FX34 works, we can use it to
     ; control shadow RAM paging.
     ;
-    ; If *FX34 doesn't work, we assume we can use *FX111, which I believe is
-    ; reasonable. SFTODONOW: WOULD IT BE PRUDENT TO TRY *FX111 AND IF IT GENERATES AN ERROR, REVERT TO "SHADOW BUT WITH NO SCREEN DRIVER"?
+    ; If *FX34 doesn't work, we try using *FX111 to query the shadow state and
+    ; see if it returns the result we expect. If it does, we use it.
+    ;
+    ; If neither *FX34 nor *FX111 works we don't try to use spare shadow RAM and
+    ; just content ourselves with using shadow RAM for the screen.
     ;
     ; If the user has an older version of Watford (D)DFS, Ozmoo's preference for
     ; using *FX34 will reduce the chances of a clash over the two different uses
@@ -159,12 +162,14 @@ bbc_b
     ; non-Watford shadow RAM card will experience problems, and probably only if
     ; they have the DFS in a higher priority bank than the shadow RAM support
     ; ROM as well. Anyone with that kind of setup is likely to run into problems
-    ; with other software trying to use *FX111 as well. We try to detect this
-    ; (in a way that's probably fairly reliable in practice, but not guaranteed)
-    ; and generate an error rather than crashing when *FX111 doesn't do what we
-    ; expect during the game. To solve this, the user either needs to upgrade
-    ; the DFS, disable their shadow RAM or, probably, reorder their ROMs so the
-    ; shadow RAM driver ROM gets dibs on *FX111. SFTODONOW: DON'T FORGET TO DO THIS BEST EFFORT FX111 STOLE BY DFS TEST
+    ; with other software trying to use *FX111 as well. Our test for the return
+    ; value of *FX111 will probably detect a clash here, but there's no
+    ; guarantee. If a clash is detected, we will run with shadow RAM for screen
+    ; memory only; if we fail to detect a clash we'll try to use spare shadow
+    ; RAM via *FX111 and the game is likely to crash at runtime. To solve this,
+    ; the user either needs to upgrade the DFS, disable their shadow RAM or,
+    ; probably, reorder their ROMs so the shadow RAM driver ROM gets dibs on
+    ; *FX111.
 
     ; Whether shadow mode is currently in operation is a little fuzzy, so use
     ; *FX34,64 to read the current state and do nothing with it rather than
@@ -177,20 +182,32 @@ bbc_b
     lda #shadow_state_watford
     jmp set_shadow_state_from_a_and_install_driver
 not_watford
-    ; *FX34 doesn't work. Try *FX111. We do this for two reasons. Firstly, if it generates
-    ; an error, we obviously have some kind of unknown shadow RAM and we must content ourselves with using shadow RAM only for screen memory. Secondly, this gives us a chance to see if *FX111 is being picked up by an older Watford DFS.
-    ; If OSBYTE 111 is controlling shadow RAM state, X after *FX111,&40 will be the shadow
-    ; state (i.e. 1, as we're in a shadow mode at this point). If OSBYTE 111 is being
-    ; picked up by an older Watford DFS and used to return the current drive,
-    ; returned_x will *probably* be 0. (There's no guarantee; although Ozmoo assumes
-    ; elsewhere it's being run from drive 0, it's possible Watford DFS is present but
-    ; not the current filing system, in which case the "current drive" might not be
-    ; 0.)
-    ; SFTODO: *If* we eventually allow running the shadow driver executable from a preloader
-    ; (counting the time taken to run it against any default delay the user requested),
-    ; note that we may well *not* be in a shadow mode then, which will interfere with this
-    ; test.
-    ; SFTODO: Can we make more/cleverer OSBYTE 111 calls to establish with confidence that it is controlling shadow RAM? Since only b0 of the returned X is used we always get 0 or 1 back to reflect current displayed RAM, and thus without video glitching I am not sure we can. Could we issue a *DRIVE 0 command after checking DFS is the current filing system? This feels error prone/annoying for the user though - someone is bound to get bitten by it.
+    ; *FX34 doesn't work. Try *FX111. We do this for two reasons. Firstly, if it
+    ; fails, we obviously have some kind of unknown shadow RAM and we must
+    ; content ourselves with using shadow RAM only for screen memory. Secondly,
+    ; this gives us a chance to see if *FX111 is being picked up by an older
+    ; Watford DFS.
+    ;
+    ; If OSBYTE 111 is controlling shadow RAM state, X after *FX111,&40 will be
+    ; the shadow state (i.e. 1, as we're in a shadow mode at this point). If
+    ; OSBYTE 111 is being picked up by an older Watford DFS and used to return
+    ; the current drive, returned_x will *probably* be 0. (There's no guarantee;
+    ; although Ozmoo assumes elsewhere it's being run from drive 0, it's
+    ; possible Watford DFS is present but not the current filing system, in
+    ; which case the "current drive" might not be 0.)
+    ;
+    ; SFTODO: *If* we eventually allow running the shadow driver executable from
+    ; a preloader (counting the time taken to run it against any default delay
+    ; the user requested), note that we may well *not* be in a shadow mode then,
+    ; which will interfere with this test.
+    ;
+    ; SFTODO: Can we make more/cleverer OSBYTE 111 calls to establish with
+    ; confidence that it is controlling shadow RAM? Since only b0 of the
+    ; returned X is used we always get 0 or 1 back to reflect current displayed
+    ; RAM, and thus without video glitching I am not sure we can. Could we issue
+    ; a *DRIVE 0 command after checking DFS is the current filing system? This
+    ; feels error prone/annoying for the user though - someone is bound to get
+    ; bitten by it.
     lda #111
     ldx #$40
     jsr osbyte
