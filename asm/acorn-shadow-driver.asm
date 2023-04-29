@@ -38,7 +38,7 @@ shadow_state_watford = 7 ; BBC B Watford shadow RAM
 shadow_state_aries = 8 ; BBC B Aries shadow RAM
 
 ; We don't need zero page for all of these, but we have it free so with might as
-; well use it.
+; well use it to keep the code size down.
 shadow_state = $70
 private_ram_in_use = $71
 old_brkv = $71 ; 2 bytes
@@ -517,9 +517,5 @@ test_private_ram_in_use
 }
 
 ; SFTODONOW: assert the executable hasn't overflowed page $9/$a, if that's where it's going to live
-
-
-
-; SFTODONOW: Make sure we set and clear any necessary flags about private RAM in use - this may be a mostly internal detail to this code but not sure (we may want shadow status values to differ based on this so we can report to user)
 
 ; SFTODONOW: Must test that this works for all the different shadow options
