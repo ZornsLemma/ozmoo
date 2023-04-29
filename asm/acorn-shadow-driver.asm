@@ -25,13 +25,6 @@ max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
     +assert * - .start <= max_shadow_driver_size
 }
 
-!macro set_brkv .target {
-    lda #<.target
-    sta brkv
-    lda #>.target
-    sta brkv+1
-}
-
 ; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
 shadow_state_none        = 0 ; no shadow RAM
 shadow_state_screen_only = 1 ; shadow RAM with no driver for spare shadow RAM access
@@ -48,8 +41,7 @@ shadow_state_aries = 8 ; BBC B Aries shadow RAM
 ; well use it to keep the code size down.
 shadow_state = $70
 private_ram_in_use = $71
-old_brkv = $72 ; 2 bytes
-src = $74 ; 2 bytes
+src = $72 ; 2 bytes
 
 extended_vector_table = $d9f
 
@@ -58,20 +50,12 @@ extended_vector_table = $d9f
 ; of the shadow driver - it's faster than going via the OSRDSC/OSWRSC routines.
 shadow_copy_private_ram = $af00
 
-start
-    lda brkv
-    sta old_brkv
-    lda brkv+1
-    sta old_brkv+1
-    jsr main
-restore_brkv ; SFTODO: If this is never jsr-ed to, we can just save old brkv on stack using pha/pla to save code size
-    lda old_brkv
-    sta brkv
-    lda old_brkv+1
-    sta brkv+1
-    rts
+; NB: If an OSBYTE call fails, it returns normally with X=$FF. It does *not*
+; generate an OS error via BRK; that is a function of the *FX command, not
+; OSBYTE itself. I have used *FX a lot in comments, but remember we're really
+; dealing with raw OSBYTE.
 
-main
+start
     ; Do we have shadow RAM?
     lda #shadow_state_none
     sta shadow_state
@@ -88,7 +72,6 @@ main
     inc shadow_state
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
-    +set_brkv not_integra_b
     lda #$49 ; SFTODO: USE NAMED CONSTANT
     ldx #$ff
     ldy #0
@@ -136,10 +119,13 @@ electron_not_mrb
     ; We're on an Electron with shadow RAM but it's not a Master RAM board. We
     ; don't know how to access spare shadow RAM on this hardware, so leave
     ; shadow_state set alone; it's already shadow_state_screen_only. SFTODO: Arguably we could/should fall through to the following BBC B tests, which *might* work. However, my suspicion is there are no BITD shadow RAM solutions for the Electron other than the MRB, and any new one is likely to use Master-style control which we don't currently have any test code for (since we only use it on Integra-B and Master where we can explicitly detect the system type).
-fx111_failed
-    ; *FX111 generated an error, so neither *FX34 nor *FX111 works and we
+osbyte_111_failed
+    ; *FX111 didn't return the expected result, so neither *FX34 nor *FX111 works and we
     ; therefore don't know how to access the spare shadow RAM. Leave
     ; shadow_state alone; it's already shadow_state_screen_only.
+    ; SFTODO: This is different from earlier versions of Ozmoo, where if *FX111
+    ; returned an unexpected value we failed with an informative error. Is this
+    ; change OK?
 no_shadow_ram
     ; Leave shadow_state alone; it's already shadow_state_none.
     rts
@@ -180,13 +166,14 @@ bbc_b
     ; the DFS, disable their shadow RAM or, probably, reorder their ROMs so the
     ; shadow RAM driver ROM gets dibs on *FX111. SFTODONOW: DON'T FORGET TO DO THIS BEST EFFORT FX111 STOLE BY DFS TEST
 
-    +set_brkv not_watford
     ; Whether shadow mode is currently in operation is a little fuzzy, so use
     ; *FX34,64 to read the current state and do nothing with it rather than
     ; *setting a state. All we care about is whether an error occurs.
     lda #34
     ldx #64
     jsr osbyte
+    inx
+    beq not_watford
     lda #shadow_state_watford
     jmp set_shadow_state_from_a_and_install_driver
 not_watford
@@ -204,14 +191,11 @@ not_watford
     ; note that we may well *not* be in a shadow mode then, which will interfere with this
     ; test.
     ; SFTODO: Can we make more/cleverer OSBYTE 111 calls to establish with confidence that it is controlling shadow RAM? Since only b0 of the returned X is used we always get 0 or 1 back to reflect current displayed RAM, and thus without video glitching I am not sure we can. Could we issue a *DRIVE 0 command after checking DFS is the current filing system? This feels error prone/annoying for the user though - someone is bound to get bitten by it.
-    +set_brkv fx111_failed
     lda #111
     ldx #$40
     jsr osbyte
     cpx #1
-    beq fx111_probably_ok
-    brk ; SFTODONOW: What should we do? Set a flag so the loader can generate the error it previously generated, or just revert to using shadow RAM for screen memory only? THe latter at least means the user can get some benefit. We could also maybe make the hardware detected line something like "shadow RAM (screen only; *FX111 failure)" which might prompt the user to investigate but not force them to.
-fx111_probably_ok
+    bne osbyte_111_failed
     ; *FX111 seems to work; we have no absolute guarantee it isn't being intercepted by an older Watford DFS, but we have to assume it's fine.
     lda #shadow_state_aries
     jmp set_shadow_state_from_a_and_install_driver
