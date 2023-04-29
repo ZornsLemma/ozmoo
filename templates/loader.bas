@@ -105,7 +105,8 @@ REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
 *INFO XYZZY1
 500ON ERROR PROCerror
 
-shadow=?${shadow_state}<>${shadow_state_none}
+shadow_state=FNpeek(${shadow_state})
+shadow=shadow_state<>${shadow_state_none}
 REM SFTODO: Make sure we keep all the detect extednded vector private RAM stuff necessary for the Integra-B and B+
 
 tube=PAGE<&E00
@@ -251,12 +252,12 @@ PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
 ENDPROC
 
 DEF FNshadow_extra
-IF ?${shadow_state}=${shadow_state_screen_only} THEN ="(screen only)
-IF ?${shadow_state}=${shadow_state_integra_b} THEN ="(Integra-B)"
-IF ?${shadow_state}=${shadow_state_mrb} THEN ="(Master RAM board)"
-IF ?${shadow_state}=${shadow_state_b_plus_os} THEN ="(via OS)"
-IF ?${shadow_state}=${shadow_state_watford} THEN ="(Watford)"
-IF ?${shadow_state}=${shadow_state_aries} THEN ="(Aries)"
+IF shadow_state=${shadow_state_screen_only} THEN ="(screen only)
+IF shadow_state=${shadow_state_integra_b} THEN ="(Integra-B)"
+IF shadow_state=${shadow_state_mrb} THEN ="(Master RAM board)"
+IF shadow_state=${shadow_state_b_plus_os} THEN ="(via OS)"
+IF shadow_state=${shadow_state_watford} THEN ="(Watford)"
+IF shadow_state=${shadow_state_aries} THEN ="(Aries)"
 REM Not all shadow states have an "extra" message; for example, on a Master,
 REM shadow RAM is shadow RAM and there's no need for any qualification.
 =""
@@ -398,7 +399,7 @@ p=PAGE
     REM the executable then notices this space and uses it.
     REM SFTODO: This logic may not be ideal, see how things work out.
     REM If we don't have shadow RAM or a shadow driver, we don't need any cache.
-    IF ?${shadow_state}<${shadow_state_first_driver} THEN =p
+    IF shadow_state<${shadow_state_first_driver} THEN =p
     REM In mode 0, all shadow RAM is used for the screen.
     IF ?screen_mode=0 THEN =p
     REM If we're in (say) shadow mode 3, we only have 4K of spare shadow RAM and
