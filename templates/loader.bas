@@ -665,7 +665,7 @@ REM defined.
     IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
 }
 !ifdef b_plus_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):?${ram_bank_count}=swr_banks:swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
+    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
 }
 ENDPROC
 
