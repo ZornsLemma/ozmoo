@@ -309,14 +309,16 @@ shadow_driver_b_plus_os
 !pseudopc shadow_ram_copy {
 !zone {
 oswrsc = $ffb3
+oswrsc_ptr = $d6
 osrdsc = $ffb9
+osrdsc_ptr = $f6
     cmp #$30
     bcs .copy_from_shadow
     ; We're copying to shadow RAM.
     sta .lda_abs_y+2
-    sty $d7 ; SFTODO: named constant for d6/d7?
+    sty oswrsc_ptr+1
     ldy #0
-    sty $d6
+    sty oswrsc_ptr
 .copy_to_shadow_loop
 .lda_abs_y
     lda $ff00,y ; patched
@@ -326,15 +328,15 @@ osrdsc = $ffb9
     rts
 .copy_from_shadow
     ; We're copying from shadow RAM.
-    sta $f7 ; SFTODO: named constant for f6/f7?
+    sta osrdsc_ptr+1
     sty .sta_abs+2
     ldy #0
-    sty $F6
+    sty osrdsc_ptr
 .copy_from_shadow_loop
     jsr osrdsc ; ignores and corrupts Y
 .sta_abs
     sta $ff00 ; patched
-    inc $f6
+    inc osrdsc_ptr
     inc .sta_abs+1
     bne .copy_from_shadow_loop
     rts
