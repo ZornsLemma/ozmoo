@@ -55,6 +55,9 @@ CLOSE #0
     REM our !BOOT isn't in use any more) we re-execute ourself after switching to
     REM shadow mode if we're not already in a shadow mode. This line of the program
     REM will almost certainly be below &3000 so won't be corrupted by the switch.
+    REM (I am not sure, but I think this is also useful on tube; the host cache
+    REM might have its memory corrupted by the change from non-shadow to shadow
+    REM mode after the initial cache population.)
     IF FNhimem_for_mode(135)=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 } else {
     REM If we have a splash screen, the preloader has taken care of these issues.
