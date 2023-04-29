@@ -41,8 +41,8 @@ shadow_state_aries = 8 ; BBC B Aries shadow RAM
 ; well use it to keep the code size down.
 shadow_state = $70
 private_ram_in_use = $71
-old_brkv = $71 ; 2 bytes
-src = $73 ; 2 bytes
+old_brkv = $72 ; 2 bytes
+src = $74 ; 2 bytes
 
 extended_vector_table = $d9f
 
