@@ -111,13 +111,12 @@ not_integra_b
     ; We're on an Electron or BBC B, and not an Integra-B.
     txa
     bne bbc_b
-    ; We're on an Electron. Check for Master RAM Board shadow RAM.
-    lda #$ef ; SFTODO: USE NAMED CONSTANT
-    ldx #0
-    ldy #$ff
-    jsr osbyte ; SFTODO: Could this BRK if we have shadow RAM of non-MRB type???
-    ; SFTODO: Loader checks for &80 exactly, beebwiki talks about b7 being set - I suspect I do it this way in the loader because the MRB's own docs say that, but check and comment/fix this.
-    cpx #$80
+    ; We're on an Electron. Check for Master RAM Board shadow RAM. As we know
+    ; we're running on the host, we can just check &27F directly as mentioned in
+    ; the MRB manual. We check for it being exactly &80 because that's what the
+    ; MRB manual says.
+    lda $27f
+    cmp #$80
     bne electron_not_mrb
     ; We're on an Electron with Master RAM Board shadow RAM.
     lda #shadow_state_mrb
