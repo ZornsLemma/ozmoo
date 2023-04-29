@@ -47,7 +47,6 @@ REM details.
 *EXEC
 CLOSE #0
 
-potential_himem=FNhimem_for_mode(135)
 !ifndef SPLASH {
     REM With third-party shadow RAM on an Electron or BBC B, we *may* experience
     REM corruption of memory from &3000 upwards when changing between shadow and
@@ -56,7 +55,7 @@ potential_himem=FNhimem_for_mode(135)
     REM our !BOOT isn't in use any more) we re-execute ourself after switching to
     REM shadow mode if we're not already in a shadow mode. This line of the program
     REM will almost certainly be below &3000 so won't be corrupted by the switch.
-    IF potential_himem=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
+    IF FNhimem_for_mode(135)=&8000 AND HIMEM<&8000 THEN MODE 135:CHAIN "LOADER"
 } else {
     REM If we have a splash screen, the preloader has taken care of these issues.
     REM We might be very tight for memory though; if we are, change to mode 135
@@ -73,7 +72,7 @@ REM configuration on a Master to make this assumption valid.
 VDU 23,16,0,254,0;0;0;
 
 DIM block% 256
-A%=0:X%=1:host_os=(USR&FFF4 AND &FF00) DIV &100:REM SFTODO: Use FNusr_osbyte_x?
+host_os=FNusr_osbyte_x(0,1,0)
 REM If we're on an Integra-B in OSMODE 0, it's as if we're on a standard model B.
 REM We need to avoid detecting the private RAM, because the non-shadow-RAM model B
 REM executable we'll choose to run doesn't know how to handle it.
