@@ -1299,6 +1299,10 @@ def make_tube_executables():
     return [make_cache_executable(), tube_vmem]
 
 
+def make_shaddrv_executable():
+    return Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x900, ["-DACORN_SHADOW_VMEM=1"])
+
+
 def make_findswr_executable():
     return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
 
@@ -2091,7 +2095,12 @@ def make_disc_image():
     if cmd_args.splash_image:
         splash_executable = make_splash_executable()
         disc_contents += [make_tokenised_preloader(loader, splash_executable.load_addr & 0xffff), splash_executable]
-    disc_contents += [loader, findswr_executable]
+    # SFTODO: It's borderline possible (maybe not right now, maybe never) that none of the executables
+    # support shadow RAM (perhaps it's a tube-only game with host cache disabled) and we don't need
+    # to build and include the shadow driver. Putting this note in just in case it's worth being
+    # smarter about including it, but really the cases where it's not useful aren't all that likely
+    # or interesting.
+    disc_contents += [loader, shaddrv_executable, findswr_executable]
     if not cmd_args.no_history:
         disc_contents.append(make_insv_executable())
     assert all(f is not None for f in disc_contents)
@@ -2313,6 +2322,7 @@ if cmd_args.preload_config:
 check_if_special_game()
 
 boot_file = make_boot()
+shaddrv_executable = make_shaddrv_executable()
 findswr_executable = make_findswr_executable()
 
 single_to_double_sided = False

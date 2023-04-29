@@ -19,8 +19,6 @@
 
 !source "acorn-shared-constants.asm"
 
-* = $900 ; SFTODO TEMP
-
 max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
 
 !macro assert_shadow_driver_fits .start {
