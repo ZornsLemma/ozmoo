@@ -32,20 +32,31 @@ shadow_state_first_driver = 2
 shadow_state_integra_b   = 2 ; Integra-B shadow RAM
 shadow_state_mrb         = 3 ; Electron Master RAM Board shadow RAM
 shadow_state_b_plus_os = 4 ; BBC B+ shadow RAM accessed via OS
-shadow_state_master = 5 ; BBC Master shadow RAM
-shadow_state_watford = 6 ; BBC B Watford shadow RAM
-shadow_state_aries = 7 ; BBC B Aries shadow RAM
+shadow_state_b_plus_private = 5 ; BBC B+ shadow RAM via code in 12K private RAM
+shadow_state_master = 6 ; BBC Master shadow RAM
+shadow_state_watford = 7 ; BBC B Watford shadow RAM
+shadow_state_aries = 8 ; BBC B Aries shadow RAM
 
 ; We don't need zero page for all of these, but we have it free so with might as
 ; well use it.
 shadow_state = $70
+private_ram_in_use = $71
 old_brkv = $71 ; 2 bytes
 src = $73 ; 2 bytes
+
+extended_vector_table = $d9f
+
+; On a B+, code running at $axxx in the 12K private RAM can access shadow RAM
+; directly. If the private RAM is free, we copy some code there for use as part
+; of the shadow driver - it's faster than going via the OSRDSC/OSWRSC routines.
+shadow_copy_private_ram = $af00
 
 start
     ; Do we have shadow RAM?
     lda #shadow_state_none
     sta shadow_state
+    +assert shadow_state_none == 0
+    sta private_ram_in_use
     lda #osbyte_read_screen_address_for_mode
     ldx #shadow_mode_bit + 0
     jsr osbyte
@@ -70,6 +81,8 @@ start
     cpx #$49
     bne not_integra_b
     ; We're running on an Integra-B.
+    lda #64
+    jsr test_private_ram_in_use
     lda #shadow_state_integra_b
     jmp set_shadow_state_from_a_and_install_driver
 not_integra_b
@@ -96,8 +109,13 @@ not_integra_b
     lda #shadow_state_mrb
     jmp set_shadow_state_from_a_and_install_driver
 bbc_b_plus
+    lda #128
+    jsr test_private_ram_in_use
     lda #shadow_state_b_plus_os
-    jmp set_shadow_state_from_a_and_install_driver
+    ldy private_ram_in_use
+    bne +
+    lda #shadow_state_b_plus_private
++   jmp set_shadow_state_from_a_and_install_driver
 master
     lda #shadow_state_master
     jmp set_shadow_state_from_a_and_install_driver
@@ -198,6 +216,23 @@ set_shadow_state_from_a_and_install_driver
 !zone {
     sta shadow_state
     tax ; SFTODO: pass value in X in first place?
+    cmp #shadow_state_b_plus_private
+    bne .no_private_ram_driver
+    lda romsel_copy
+    pha
+    lda #128
+    sta romsel_copy
+    sta bbc_romsel
+    ldy #b_plus_high_driver_size-1
+.copy_high_loop
+    lda shadow_driver_b_plus_private_high,y
+    sta shadow_copy_private_ram,y
+    dey
+    bpl .copy_high_loop
+    pla
+    sta romsel_copy
+    sta bbc_romsel
+.no_private_ram_driver
     lda shadow_driver_table_low-shadow_state_first_driver,x
     sta src
     lda shadow_driver_table_high-shadow_state_first_driver,x
@@ -217,6 +252,7 @@ shadow_driver_table_low
     !byte <shadow_driver_integra_b
     !byte <shadow_driver_electron_mrb
     !byte <shadow_driver_b_plus_os
+    !byte <shadow_driver_b_plus_private_low
     !byte <shadow_driver_master
     !byte <shadow_driver_watford
     !byte <shadow_driver_aries
@@ -225,6 +261,7 @@ shadow_driver_table_high
     !byte >shadow_driver_integra_b
     !byte >shadow_driver_electron_mrb
     !byte >shadow_driver_b_plus_os
+    !byte >shadow_driver_b_plus_private_low
     !byte >shadow_driver_master
     !byte >shadow_driver_watford
     !byte >shadow_driver_aries
@@ -344,6 +381,46 @@ osrdsc_ptr = $f6
 }
 +assert_shadow_driver_fits shadow_driver_b_plus_os
 
+!zone {
+shadow_driver_b_plus_private_low
+!pseudopc shadow_ram_copy {
+    ldx romsel_copy
+    stx .lda_imm_bank+1
+    ldx #128
+    stx romsel_copy
+    stx bbc_romsel
+    jmp shadow_copy_private_ram
+.stub_finish
+.lda_imm_bank
+    lda #0 ; patched
+    sta romsel_copy
+    sta bbc_romsel
+    rts
+}
++assert_shadow_driver_fits shadow_driver_b_plus_private_low
+
+shadow_driver_b_plus_private_high
+!pseudopc shadow_copy_private_ram {
+    sta .lda_abs_y+2
+    sty .sta_abs_y+2
+    ldy #0
+.copy_loop
+.lda_abs_y
+    lda $ff00,Y ; patched
+.sta_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne .copy_loop
+    jmp .stub_finish
+}
+shadow_driver_b_plus_private_high_end
+
+b_plus_high_driver_size = shadow_driver_b_plus_private_high_end - shadow_driver_b_plus_private_high
+    ; We use a dey...bpl loop to copy this driver. This also acts as an over-tight check that the
+    ; driver fits in the last page of private RAM.
+    +assert b_plus_high_driver_size < 128
+}
+
 shadow_driver_master
 !pseudopc shadow_ram_copy {
 !zone {
@@ -415,6 +492,29 @@ restore_brkv
     rts
 
 end
+
+; Determine if the private 12K is free on an Integra-B or B+ by checking for any
+; extended vectors pointing into it. On entry A is the bit which is set in the
+; extended vector ROM byte to select the private RAM. private_ram_in_use is
+; non-0 on exit iff the private RAM is in use.
+; SFTODO: Make sure to test this (e.g. with SWMMFS+)
+test_private_ram_in_use
+!zone {
+    sta .and_immediate+1
+    ldx #26*3
+.test_loop
+    lda extended_vector_table+2,x
+.and_immediate
+    and #$ff ; patched
+    bne .in_use
+    dex
+    dex
+    dex
+    bpl .test_loop
+.in_use
+    sta private_ram_in_use
+    rts
+}
 
 ; SFTODONOW: assert the executable hasn't overflowed page $9/$a, if that's where it's going to live
 

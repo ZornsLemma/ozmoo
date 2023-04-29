@@ -117,7 +117,6 @@ tube=PAGE<&E00
 } else {
     tube_ram$=""
 }
-private_ram_in_use=FALSE:REM SFTODO: We really should be detecting this independently of assemble_shadow_driver in a tube-safe way but this will do for now
 PROCdetect_swr
 
 MODE 135:VDU 23,1,0;0;0;0;
@@ -624,77 +623,6 @@ ENDPROC
 
 !ifdef ACORN_SHADOW_VMEM {
 REM SFTODO: Should we set shadow_extra$ to "(screen only)" or some other distinctive string if the game fits in memory but we have too little main RAM free to have a shadow cache? It might be prudent to offer some clue this is happening, because (e.g.) having ADFS+DFS vs DFS might be enough to tip us from one state to the other and performance would drop dramatically because we've suddenly lost access to the spare shadow RAM
-
-REM Determine if the private 12K is free on Integra-B or B+ by checking for any
-REM extended vectors pointing into it.
-REM SFTODO: Delete if not needed in loader now
-DEF FNprivate_ram_in_use(test_bit)
-extended_vector_table=&D9F
-FOR vector=0 TO 26
-IF ((extended_vector_table?(vector*3+2)) AND test_bit)<>0 THEN =TRUE
-NEXT
-=FALSE
-
-REM SFTODO: TEMP FRAGMENT JUST FOR REF
-DEF PROCassemble_shadow_driver_integra_b
-private_ram_in_use=FNprivate_ram_in_use(64)
-
-REM SFTODO: TEMP FRAGMENT JUST FOR REF
-DEF PROCassemble_shadow_driver_bbc_b_plus
-REM SFTODO: This may or may not be acceptable in practice, but I'd really rather
-REM not have to ask the user about using the private 12K. If SWMMFS+ is in use
-REM but is *not* the current filing system, this won't detect it and there might
-REM be "Sum?" errors or worse on BREAK. CTRL-BREAK should fix this. Have a play
-REM around with this on an emulator at some point.
-private_ram_in_use=FNprivate_ram_in_use(128)
-IF private_ram_in_use THEN PROCassemble_shadow_driver_bbc_b_plus_os:ENDPROC
-REM The private 12K is free, so we can use this much faster implementation which
-REM takes advantage of the ability of code running at &Axxx in the 12K private
-REM RAM to access shadow RAM directly.
-shadow_copy_private_ram=&AF00
-FOR opt%=0 TO 2 STEP 2
-P%=${shadow_ram_copy}
-[OPT opt%
-LDX &F4:STX lda_imm_bank+1
-LDX #128:STX &F4:STX &FE30
-JMP shadow_copy_private_ram
-.stub_finish
-.lda_imm_bank
-LDA #0 \ patched
-STA &F4:STA &FE30
-RTS
-]
-O%=block%:P%=shadow_copy_private_ram
-shadow_copy_low_ram=O%
-[OPT opt%+4
-STA lda_abs_y+2:STY sta_abs_y+2
-LDY #0
-.copy_loop
-.lda_abs_y
-LDA &FF00,Y \ patched
-.sta_abs_y
-STA &FF00,Y \ patched
-DEY
-BNE copy_loop
-JMP stub_finish
-]
-shadow_copy_low_ram_end=O%
-P%=O%
-[OPT opt%
-.copy_to_private_ram
-LDA &F4:STA &70
-LDA #128:STA &F4:STA &FE30
-LDY #shadow_copy_low_ram_end-shadow_copy_low_ram-1
-.copy_to_private_ram_loop
-LDA shadow_copy_low_ram,Y:STA shadow_copy_private_ram,Y
-DEY:CPY #&FF:BNE copy_to_private_ram_loop
-LDA &70:STA &F4:STA &FE30
-RTS
-]
-NEXT
-CALL copy_to_private_ram
-ENDPROC
-
 }
 
 DEF PROCdetect_swr
@@ -711,7 +639,11 @@ REM flexible_swr_ro is the amount of sideways RAM in the first bank which can be
 REM used as dynamic memory (perhaps in combination with main RAM, depending on the
 REM memory model) or vmem cache. Other sideways RAM can only be used as vmem cache.
 IF swr_banks>0 THEN flexible_swr_ro=&4000 ELSE flexible_swr_ro=0
-IF NOT tube AND NOT private_ram_in_use THEN PROCadd_private_ram_as_swr
+REM SFTODO: If we taught the host cache how to handle a short bank (near trivial)
+REM and (ideally) skip the first 1K of a bank (we could perhaps just set up the
+REM cache index so those blocks are never considered somehow), we could add
+REM private RAM when we have tube too.
+IF NOT tube AND FNpeek(${private_ram_in_use})=0 THEN PROCadd_private_ram_as_swr
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)":PROCupdate_swr_banks(0)
 swr_size=&4000*swr_banks-swr_adjust
 IF swr_banks=0 THEN ENDPROC

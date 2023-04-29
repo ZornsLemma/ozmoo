@@ -10,14 +10,13 @@ max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 opcode_cmp_immediate = $c9
 user_via_ddrb = $fe62
 user_via_orb_irb = $fe60
-; We don't use $70 because it's used to communicate shadow_state between the
-; shadow driver and the BASIC loader.
-original_user_via_ddrb = $71
-original_user_via_orb_irb = $72
-swr_byte_value1 = $73
-swr_byte_value2 = $74
-tmp = $75
-bbc = $76
+; $70 and $71 are used to pass information from the shadow driver to the loader.
+original_user_via_ddrb = $72
+original_user_via_orb_irb = $73
+swr_byte_value1 = $74
+swr_byte_value2 = $75
+tmp = $76
+bbc = $77
 
 ; We arrange for the output to be near the start of this binary so the loader
 ; can access it at fixed addresses.
