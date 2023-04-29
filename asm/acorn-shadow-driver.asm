@@ -25,6 +25,13 @@ max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
     +assert * - .start <= max_shadow_driver_size
 }
 
+!macro set_brkv .target {
+    lda #<.target
+    sta brkv
+    lda #>.target
+    sta brkv+1
+}
+
 ; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
 shadow_state_none        = 0 ; no shadow RAM
 shadow_state_screen_only = 1 ; shadow RAM with no driver for spare shadow RAM access
@@ -52,6 +59,19 @@ extended_vector_table = $d9f
 shadow_copy_private_ram = $af00
 
 start
+    lda brkv
+    sta old_brkv
+    lda brkv+1
+    sta old_brkv+1
+    jsr main
+restore_brkv ; SFTODO: If this is never jsr-ed to, we can just save old brkv on stack using pha/pla to save code size
+    lda old_brkv
+    sta brkv
+    lda old_brkv+1
+    sta brkv+1
+    rts
+
+main
     ; Do we have shadow RAM?
     lda #shadow_state_none
     sta shadow_state
@@ -68,16 +88,11 @@ start
     sta shadow_state
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
-    jsr save_brkv
-    lda #<not_integra_b
-    sta brkv
-    lda #>not_integra_b
-    sta brkv+1
+    +set_brkv not_integra_b
     lda #$49 ; SFTODO: USE NAMED CONSTANT
     ldx #$ff
     ldy #0
     jsr osbyte
-    jsr restore_brkv
     cpx #$49
     bne not_integra_b
     ; We're running on an Integra-B.
@@ -86,7 +101,6 @@ start
     lda #shadow_state_integra_b
     jmp set_shadow_state_from_a_and_install_driver
 not_integra_b
-    jsr restore_brkv
     ; Determine the host type.
     lda #osbyte_read_host
     ldx #1
@@ -122,8 +136,13 @@ master
 electron_not_mrb
     ; We're on an Electron with shadow RAM but it's not a Master RAM board. We
     ; don't know how to access spare shadow RAM on this hardware, so leave
-    ; shadow_state set to shadow_state_screen_only. SFTODO: Arguably we could/should fall through to the following BBC B tests, which *might* work. However, my suspicion is there are no BITD shadow RAM solutions for the Electron other than the MRB, and any new one is likely to use Master-style control which we don't currently have any test code for (since we only use it on Integra-B and Master where we can explicitly detect the system type).
+    ; shadow_state set alone; it's already shadow_state_screen_only. SFTODO: Arguably we could/should fall through to the following BBC B tests, which *might* work. However, my suspicion is there are no BITD shadow RAM solutions for the Electron other than the MRB, and any new one is likely to use Master-style control which we don't currently have any test code for (since we only use it on Integra-B and Master where we can explicitly detect the system type).
+fx111_failed
+    ; *FX111 generated an error, so neither *FX34 nor *FX111 works and we
+    ; therefore don't know how to access the spare shadow RAM. Leave
+    ; shadow_state alone; it's already shadow_state_screen_only.
 no_shadow_ram
+    ; Leave shadow_state alone; it's already shadow_state_none.
     rts
 bbc_b
     ; We're on a BBC B with non-Integra B shadow RAM. There are two competing
@@ -162,18 +181,13 @@ bbc_b
     ; the DFS, disable their shadow RAM or, probably, reorder their ROMs so the
     ; shadow RAM driver ROM gets dibs on *FX111. SFTODONOW: DON'T FORGET TO DO THIS BEST EFFORT FX111 STOLE BY DFS TEST
 
-    jsr save_brkv
-    lda #<not_watford
-    sta brkv
-    lda #>not_watford
-    sta brkv+1
+    +set_brkv not_watford
     ; Whether shadow mode is currently in operation is a little fuzzy, so use
     ; *FX34,64 to read the current state and do nothing with it rather than
     ; *setting a state. All we care about is whether an error occurs.
     lda #34
     ldx #64
     jsr osbyte
-    jsr restore_brkv ; SFTODO: Fold this into set_shadow_state...
     lda #shadow_state_watford
     jmp set_shadow_state_from_a_and_install_driver
 not_watford
@@ -191,10 +205,7 @@ not_watford
     ; note that we may well *not* be in a shadow mode then, which will interfere with this
     ; test.
     ; SFTODO: Can we make more/cleverer OSBYTE 111 calls to establish with confidence that it is controlling shadow RAM? Since only b0 of the returned X is used we always get 0 or 1 back to reflect current displayed RAM, and thus without video glitching I am not sure we can. Could we issue a *DRIVE 0 command after checking DFS is the current filing system? This feels error prone/annoying for the user though - someone is bound to get bitten by it.
-    lda #<fx111_failed
-    sta brkv
-    lda #>fx111_failed
-    sta brkv+1
+    +set_brkv fx111_failed
     lda #111
     ldx #$40
     jsr osbyte
@@ -202,15 +213,9 @@ not_watford
     beq fx111_probably_ok
     brk ; SFTODONOW: What should we do? Set a flag so the loader can generate the error it previously generated, or just revert to using shadow RAM for screen memory only? THe latter at least means the user can get some benefit. We could also maybe make the hardware detected line something like "shadow RAM (screen only; *FX111 failure)" which might prompt the user to investigate but not force them to.
 fx111_probably_ok
-    jsr restore_brkv
     ; *FX111 seems to work; we have no absolute guarantee it isn't being intercepted by an older Watford DFS, but we have to assume it's fine.
     lda #shadow_state_aries
     jmp set_shadow_state_from_a_and_install_driver
-fx111_failed
-    ; *FX111 generated an error, so neither *FX34 nor *FX111 works and we
-    ; therefore don't know how to access the spare shadow RAM. Leave
-    ; shadow_state at the default shadow_state_screen_only.
-    jmp restore_brkv
 
 set_shadow_state_from_a_and_install_driver
 !zone {
@@ -476,20 +481,6 @@ shadow_driver_aries
     +shadow_driver_watford_aries 111
     +assert_shadow_driver_fits shadow_driver_aries
 
-save_brkv
-    lda brkv
-    sta old_brkv
-    lda brkv+1
-    sta old_brkv+1
-    rts
-
-; SFTODO: Do a code review at end to ensure this is called on every relevant code path. Just possibly we should always call it before we return (make the "main()" do jsr actual_code:fall_through_to restore_brkv) and make sure every function we install on brkv starts by executing this.
-restore_brkv
-    lda old_brkv
-    sta brkv
-    lda old_brkv+1
-    sta brkv+1
-    rts
 
 end
 
