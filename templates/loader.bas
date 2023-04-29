@@ -109,7 +109,6 @@ REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
 
 shadow_state=FNpeek(${shadow_state})
 shadow=shadow_state<>${shadow_state_none}
-REM SFTODO: Make sure we keep all the detect extednded vector private RAM stuff necessary for the Integra-B and B+
 
 tube=PAGE<&E00
 !ifdef OZMOO2P_BINARY {
