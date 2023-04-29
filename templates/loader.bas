@@ -87,6 +87,10 @@ electron=host_os=0
 REM Do the hardware detection (which is slightly slow, especially the sideways RAM
 REM detection as that requires running a separate executable) before we change
 REM screen mode; this way if there's a splash screen it's visible during this delay.
+REM SFTODO: Since we might have to change to mode 7 to load the loader, actually
+REM *RUNning these hardware detection executables from the preloader might be nicer.
+
+*/SHADDRV
 
 REM FINDSWR will play around with the user VIA as it probes for Solidisk-style
 REM sideways RAM. It does its best to reset things afterwards, but it's not enough
@@ -101,62 +105,8 @@ REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
 *INFO XYZZY1
 500ON ERROR PROCerror
 
-shadow=potential_himem=&8000
-shadow_extra$=""
-shadow_osbyte=111
-IF integra_b AND shadow THEN shadow_extra$="(Integra-B)"
-REM For a BBC B with shadow RAM, we need to work out how to control it. So far
-REM Ozmoo has been tested with Integra-B, Watford and Aries shadow RAM cards.
-REM We can explicitly detect the Integra-B, so that's easy.
-IF NOT (shadow AND host_os=1 AND NOT integra_b) THEN GOTO 600
-REM We're on a BBC B with non-Integra-B shadow RAM.
-REM
-REM There are two competing standards for controlling shadow RAM paging on a
-REM BBC B, one using *FX34 ("Watford") and the other using *FX111 ("Aries").
-REM
-REM With the Watford 32K RAM card, *FX34 is supported by Watford ROMs 2.00 and
-REM 2.40. *FX111 is only supported by 2.40.
-REM
-REM With the Aries B20, *FX34 is not supported, *FX111 is supported.
-REM
-REM As an extra complication, Watford DFS versions prior to 1.43/Watford DDFS
-REM versions prior to 1.53 use *FX111 to read the drive number of the last
-REM *LOAD or *RUN read.
-REM
-REM In order to try to cope with all this:
-REM
-REM We try *FX34 first, because probably the only thing that implements this is
-REM the Watford RAM card driver ROM (either version). So we should with luck
-REM avoid any false positives and if *FX34 works, we can use it to control
-REM shadow RAM paging.
-REM
-REM If *FX34 doesn't work, we assume we can use *FX111, which I believe is
-REM reasonable. 
-REM
-REM If the user has an older version of Watford (D)DFS, Ozmoo's preference for
-REM using *FX34 will reduce the chances of a clash over the two different uses
-REM of *FX111. Only a user with an older version of Watford (D)DFS and a
-REM non-Watford shadow RAM card will experience problems, and probably only if
-REM they have the DFS in a higher priority bank than the shadow RAM support ROM
-REM as well. Anyone with that kind of setup is likely to run into problems with
-REM other software trying to use *FX111 as well. We try to detect this (in a
-REM way that's probably fairly reliable in practice, but not guaranteed) and
-REM generate an error rather than crashing when *FX111 doesn't do what we
-REM expect during the game. To solve this, the user either needs to upgrade the
-REM DFS, disable their shadow RAM or, probably, reorder their ROMs so the
-REM shadow RAM driver ROM gets dibs on *FX111.
-REM
-REM SFTODO: "Aries" might be technically incorrect (Solidisk shadow RAM?
-REM others?) but let's go with it for now.
-shadow_extra$="(Aries)"
-ON ERROR GOTO 600
-REM Whether shadow mode is currently in operation is a little fuzzy, so use *FX34,64
-REM to read the current state and do nothing with it rather than setting a state. All
-REM we care about is whether an error occurs.
-*FX34,64
-shadow_osbyte=34
-shadow_extra$="(Watford)"
-600ON ERROR PROCerror
+shadow=?${shadow_state}<>${shadow_state_none}
+REM SFTODO: Make sure we keep all the detect extednded vector private RAM stuff necessary for the Integra-B and B+
 
 tube=PAGE<&E00
 !ifdef OZMOO2P_BINARY {
@@ -165,9 +115,6 @@ tube=PAGE<&E00
     tube_ram$=""
 }
 private_ram_in_use=FALSE:REM SFTODO: We really should be detecting this independently of assemble_shadow_driver in a tube-safe way but this will do for now
-!ifdef ACORN_SHADOW_VMEM {
-IF shadow AND NOT tube THEN PROCassemble_shadow_driver
-}
 PROCdetect_swr
 
 MODE 135:VDU 23,1,0;0;0;0;
@@ -205,19 +152,11 @@ REM fail to detect sideways RAM.
 PRINT CHR$header_fg;"Hardware detected:"
 vpos=VPOS
 IF tube THEN PRINT CHR$normal_fg;"  Second processor";tube_ram$
-IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM ";shadow_extra$
+IF shadow THEN PRINT CHR$normal_fg;"  Shadow RAM ";FNshadow_extra
 IF swr$<>"" THEN PRINT CHR$normal_fg;"  ";swr$
 IF vpos=VPOS THEN PRINT CHR$normal_fg;"  None"
 PRINT
 die_top_y=VPOS
-
-REM This check can't be done over the tube as the problematic Watford
-REM DFS OSBYTE 111 call returns a value in X, which isn't tube compatible; luckily
-REM at the moment we don't try to use spare shadow RAM when running on tube systems
-REM so this is irrelevant anyway. (SFTODO: If/when the cache uses spare shadow RAM,
-REM we need to execute this test on the host, probably as part of a "shadow RAM
-REM driver installer" executable instead of here in the loader.)
-IF host_os=1 AND shadow AND shadow_osbyte=111 AND NOT tube THEN PROCcheck_osbyte_111_clash
 
 REM A DFS build won't work on another filing system because (among other things)
 REM it uses OSWORD &7F to read game data. All sorts of oddness can occur if you
@@ -311,17 +250,19 @@ ${HEADER}
 PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
 ENDPROC
 
-DEF PROCcheck_osbyte_111_clash
-REM If OSBYTE 111 is controlling shadow RAM state, returned_x will be the shadow
-REM state (i.e. 1, as we're in a shadow mode at this point). If OSBYTE 111 is being
-REM picked up by an older Watford DFS and used to return the current drive,
-REM returned_x will *probably* be 0. (There's no guarantee; although Ozmoo assumes
-REM elsewhere it's being run from drive 0, it's possible Watford DFS is present but
-REM not the current filing system, in which case the "current drive" might not be
-REM 0.)
-A%=111:X%=&40:returned_x=(USR&FFF4 AND &FF00) DIV &100
+DEF FNshadow_extra
+IF ?${shadow_state}=${shadow_state_screen_only} THEN ="(screen only)
+IF ?${shadow_state}=${shadow_state_integra_b} THEN ="(Integra-B)"
+IF ?${shadow_state}=${shadow_state_mrb} THEN ="(Master RAM board)"
+IF ?${shadow_state}=${shadow_state_b_plus_os} THEN ="(via OS)"
+IF ?${shadow_state}=${shadow_state_watford} THEN ="(Watford)"
+IF ?${shadow_state}=${shadow_state_aries} THEN ="(Aries)"
+REM Not all shadow states have an "extra" message; for example, on a Master,
+REM shadow RAM is shadow RAM and there's no need for any qualification.
+=""
+
+REM SFTODO: Delete next line, kept around just for ref as I work on shadow driver executable
 IF returned_x<>1 THEN PROCdie("Sorry, something (probably an older Watford DFS) is clashing with the *FX111 call needed to control the shadow RAM.")
-ENDPROC
 
 DEF PROCchoose_version_and_check_ram
 min_mode=${MIN_MODE}
@@ -456,8 +397,8 @@ p=PAGE
     REM to do this, which we create by relocating to an address higher than PAGE;
     REM the executable then notices this space and uses it.
     REM SFTODO: This logic may not be ideal, see how things work out.
-    IF NOT shadow THEN =p
-    IF NOT shadow_driver THEN =p
+    REM If we don't have shadow RAM or a shadow driver, we don't need any cache.
+    IF ?${shadow_state}<${shadow_state_first_driver} THEN =p
     REM In mode 0, all shadow RAM is used for the screen.
     IF ?screen_mode=0 THEN =p
     REM If we're in (say) shadow mode 3, we only have 4K of spare shadow RAM and
@@ -679,62 +620,11 @@ IF turbo THEN tube_ram$=" (256K)" ELSE tube_ram$=" (64K)"
 ENDPROC
 
 !ifdef ACORN_SHADOW_VMEM {
-DEF PROCassemble_shadow_driver
-REM SFTODO: This might be handled differently eventually, perhaps a binary like
-REM FINDSWR runs at &900, checks the hardware and installs the right driver,
-REM but this will do for now. (Doing it via a separate binary would allow us to
-REM install this code in the host even if we're on a second processor, so CACHE2P
-REM can use it to access shadow RAM.)
-REM SFTODO: All this code will bloat the LOADER program, which makes it more
-REM likely PRELOAD (if present) will have to change to mode 7 before doing
-REM CHAIN "LOADER", which is mildly ugly. For now this is OK, but this is another
-REM reason to consider an alternate way of installing the correct shadow RAM
-REM driver.
-shadow_driver=TRUE
-IF integra_b THEN PROCassemble_shadow_driver_integra_b:ENDPROC
-IF electron AND FNusr_osbyte_x(&EF,0,&FF)=&80 THEN PROCassemble_shadow_driver_electron_mrb:ENDPROC
-IF host_os=2 THEN PROCassemble_shadow_driver_bbc_b_plus:ENDPROC
-IF host_os>=3 THEN PROCassemble_shadow_driver_master:ENDPROC
-REM SFTODO: For now, we'll assume this machine has Aries/Watford shadow RAM.
-REM SFTODO: If this continues to be reasonable, shadow_extra$ is redundant.
-REM shadow_driver might be as well.
-PROCassemble_shadow_driver_aries_watford
-ENDPROC
 REM SFTODO: Should we set shadow_extra$ to "(screen only)" or some other distinctive string if the game fits in memory but we have too little main RAM free to have a shadow cache? It might be prudent to offer some clue this is happening, because (e.g.) having ADFS+DFS vs DFS might be enough to tip us from one state to the other and performance would drop dramatically because we've suddenly lost access to the spare shadow RAM
-
-DEF PROCassemble_shadow_driver_electron_mrb
-FOR opt%=0 TO 2 STEP 2
-P%=${shadow_ram_copy}
-[OPT opt%
-CMP #&30:BCS copy_from_shadow
-\ We're copying to shadow RAM.
-STA lda_abs_x+2
-LDX #0
-.copy_to_shadow_loop
-.lda_abs_x
-LDA &FF00,X \ patched
-BIT our_rts:JSR &FBFD \ write to shadow RAM
-INX
-BNE copy_to_shadow_loop
-.our_rts
-RTS
-.copy_from_shadow
-\ We're copying from shadow RAM.
-STY sta_abs_x+2:TAY
-LDX #0
-.copy_from_shadow_loop
-CLV:JSR &FBFD \ read from shadow RAM
-.sta_abs_x
-STA &FF00,X \ patched
-INX
-BNE copy_from_shadow_loop
-RTS
-]
-NEXT
-ENDPROC
 
 REM Determine if the private 12K is free on Integra-B or B+ by checking for any
 REM extended vectors pointing into it.
+REM SFTODO: Delete if not needed in loader now
 DEF FNprivate_ram_in_use(test_bit)
 extended_vector_table=&D9F
 FOR vector=0 TO 26
@@ -742,33 +632,11 @@ IF ((extended_vector_table?(vector*3+2)) AND test_bit)<>0 THEN =TRUE
 NEXT
 =FALSE
 
+REM SFTODO: TEMP FRAGMENT JUST FOR REF
 DEF PROCassemble_shadow_driver_integra_b
 private_ram_in_use=FNprivate_ram_in_use(64)
-REM SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
-REM registers, we might as well do so here to page shadow RAM in and out; it
-REM would be faster. But I'll stick with this for now.
-REM SFTODO: This is *similar* to the Watford/Aries driver (though OSBYTE is 108,
-REM and the 1/0 codes are swapped) so there might be potential for sharing
-REM code. But this is moot if I switch to driving the hardware direct.
-FOR opt%=0 TO 2 STEP 2
-P%=${shadow_ram_copy}
-[OPT opt%
-STA lda_abs_y+2:STY sta_abs_y+2
-LDA #&6C:LDX #1:JSR &FFF4 \ page in shadow RAM
-LDY #0
-.copy_loop
-.lda_abs_y
-LDA &FF00,Y \ patched
-.sta_abs_y
-STA &FF00,Y \ patched
-DEY
-BNE copy_loop
-LDA #&6C:LDX #0:JSR &FFF4 \ page out shadow RAM
-RTS
-]
-NEXT
-ENDPROC
 
+REM SFTODO: TEMP FRAGMENT JUST FOR REF
 DEF PROCassemble_shadow_driver_bbc_b_plus
 REM SFTODO: This may or may not be acceptable in practice, but I'd really rather
 REM not have to ask the user about using the private 12K. If SWMMFS+ is in use
@@ -824,81 +692,6 @@ NEXT
 CALL copy_to_private_ram
 ENDPROC
 
-DEF PROCassemble_shadow_driver_bbc_b_plus_os
-REM SFTODO: Not sure I like this string, but I think it's better to leave the
-REM default case not saying anything (as opposed to "fast") and therefore I
-REM don't really like to call this case "slow". It's also probably bad
-REM marketing. :-) So I'm aiming for a more factual description here.
-shadow_extra$="(via OS)"
-FOR opt%=0 TO 2 STEP 2
-P%=${shadow_ram_copy}
-[OPT opt%
-CMP #&30:BCS copy_from_shadow
-\ We're copying to shadow RAM.
-STA lda_abs_y+2:STY &D7
-LDY #0:STY &D6
-.copy_to_shadow_loop
-.lda_abs_y
-LDA &FF00,Y \ patched
-JSR &FFB3 \ OSWRSC, preserves Y - equivalent to STA (&D6),Y - note Y is used!
-INY
-BNE copy_to_shadow_loop
-RTS
-.copy_from_shadow
-\ We're copying from shadow RAM.
-STA &F7:STY sta_abs+2
-LDY #0:STY &F6
-.copy_from_shadow_loop
-JSR &FFB9 \ OSRDSC, ignores and corrupts Y
-.sta_abs
-STA &FF00 \ patched
-INC &F6
-INC sta_abs+1
-BNE copy_from_shadow_loop
-RTS
-]
-NEXT
-ENDPROC
-
-DEF PROCassemble_shadow_driver_master
-FOR opt%=0 TO 2 STEP 2
-P%=${shadow_ram_copy}
-[OPT opt%
-STA lda_abs_y+2:STY sta_abs_y+2
-LDA #4:TSB &FE34 \ page in shadow RAM
-LDY #0
-.copy_loop
-.lda_abs_y
-LDA &FF00,Y \ patched
-.sta_abs_y
-STA &FF00,Y \ patched
-DEY
-BNE copy_loop
-LDA #4:TRB &FE34 \ page out shadow RAM
-RTS
-]
-NEXT
-ENDPROC
-
-DEF PROCassemble_shadow_driver_aries_watford
-FOR opt%=0 TO 2 STEP 2
-P%=${shadow_ram_copy}
-[OPT opt%
-STA lda_abs_y+2:STY sta_abs_y+2
-LDA #shadow_osbyte:LDX #0:JSR &FFF4 \ page in shadow RAM
-LDY #0
-.copy_loop
-.lda_abs_y
-LDA &FF00,Y \ patched
-.sta_abs_y
-STA &FF00,Y \ patched
-DEY
-BNE copy_loop
-LDA #shadow_osbyte:LDX #1:JSR &FFF4 \ page out shadow RAM
-RTS
-]
-NEXT
-ENDPROC
 }
 
 DEF PROCdetect_swr
