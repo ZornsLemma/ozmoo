@@ -26,22 +26,25 @@ max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
 }
 
 ; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
-shadow_state_none        = 0 ; no shadow RAM
-shadow_state_screen_only = 1 ; shadow RAM with no driver for spare shadow RAM access
-shadow_state_first_driver = 2
-shadow_state_integra_b   = 2 ; Integra-B shadow RAM
-shadow_state_mrb         = 3 ; Electron Master RAM Board shadow RAM
-shadow_state_b_plus_os = 4 ; BBC B+ shadow RAM accessed via OS
-shadow_state_b_plus_private = 5 ; BBC B+ shadow RAM via code in 12K private RAM
-shadow_state_master = 6 ; BBC Master shadow RAM
-shadow_state_watford = 7 ; BBC B Watford shadow RAM
-shadow_state_aries = 8 ; BBC B Aries shadow RAM
+shadow_state_none           = 0 ; no shadow RAM
+shadow_state_screen_only    = 1 ; shadow RAM with no driver for spare shadow RAM access
+shadow_state_first_driver   = 2 ; shadow_state >= this means we have a driver
+shadow_state_b_plus_os      = 2 ; BBC B+ shadow RAM accessed via OS
+shadow_state_b_plus_private = 3 ; BBC B+ shadow RAM via code in 12K private RAM
+shadow_state_master         = 4 ; BBC Master shadow RAM
+shadow_state_mrb            = 5 ; Electron Master RAM Board shadow RAM
+shadow_state_integra_b      = 6 ; Integra-B shadow RAM
+shadow_state_watford        = 7 ; BBC B Watford shadow RAM
+shadow_state_aries          = 8 ; BBC B Aries shadow RAM
 
 ; We don't need zero page for all of these, but we have it free so with might as
-; well use it to keep the code size down.
+; well use it to keep the code size down. The first two addresses are used to
+; pass information to the BASIC loader.
 shadow_state = $70
 private_ram_in_use = $71
+; The following addresses are only used internally by this code.
 src = $72 ; 2 bytes
+tmp = $74
 
 extended_vector_table = $d9f
 
@@ -72,7 +75,7 @@ start
     inc shadow_state
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
-    lda #$49 ; SFTODO: USE NAMED CONSTANT
+    lda #$49
     ldx #$ff
     ldy #0
     jsr osbyte
@@ -95,8 +98,8 @@ not_integra_b
     txa
     bne bbc_b_not_integra_b
     ; We're on an Electron. Check for Master RAM Board shadow RAM. As we know
-    ; we're running on the host, we can just check &27F directly as mentioned in
-    ; the MRB manual. We check for it being exactly &80 because that's what the
+    ; we're running on the host, we can just check $27F directly as mentioned in
+    ; the MRB manual. We check for it being exactly $80 because that's what the
     ; MRB manual says.
     lda $27f
     cmp #$80
@@ -118,26 +121,36 @@ master
 electron_not_mrb
     ; We're on an Electron with shadow RAM but it's not a Master RAM board. We
     ; don't know how to access spare shadow RAM on this hardware, so leave
-    ; shadow_state set alone; it's already shadow_state_screen_only. SFTODO: Arguably we could/should fall through to the following BBC B tests, which *might* work. However, my suspicion is there are no BITD shadow RAM solutions for the Electron other than the MRB, and any new one is likely to use Master-style control which we don't currently have any test code for (since we only use it on Integra-B and Master where we can explicitly detect the system type).
+    ; shadow_state set alone; it's already shadow_state_screen_only.
+    ; SFTODO: Arguably we could/should fall through to the following BBC B
+    ; tests, which *might* work. However, my suspicion is there are no BITD
+    ; shadow RAM solutions for the Electron other than the MRB, and any new one
+    ; is likely to use Master-style control which we don't currently have any
+    ; test code for (since we only use it on Integra-B and Master where we can
+    ; explicitly detect the system type).
 osbyte_111_failed
-    ; *FX111 didn't return the expected result, so neither *FX34 nor *FX111 works and we
-    ; therefore don't know how to access the spare shadow RAM. Leave
-    ; shadow_state alone; it's already shadow_state_screen_only.
+    ; *FX111 didn't return the expected result, so neither *FX34 nor *FX111
+    ; works and we therefore don't know how to access the spare shadow RAM.
+    ; Leave shadow_state alone; it's already shadow_state_screen_only.
     ; SFTODO: This is different from earlier versions of Ozmoo, where if *FX111
     ; returned an unexpected value we failed with an informative error. Is this
-    ; change OK?
+    ; change OK? It is friendlier to owners of non-Aries/Watford shadow RAM, who
+    ; at least get to use it for screen memory instead of an error, but it might
+    ; allow users vulnerable to the *FX111 use by an older Watford DFS to live in
+    ; ignorance until they eventually get bitten by it. Gut feeling is doing it
+    ; the new way is best, but think about it fresh.
 no_shadow_ram
     ; Leave shadow_state alone; it's already shadow_state_none.
     rts
 bbc_b_not_integra_b
-    ; We're on a BBC B with non-Integra B shadow RAM. There are two competing
-    ; standards for controlling shadow RAM paging on a BBC B, one using *FX34
-    ; ("Watford") and the other using *FX111 ("Aries").
+    ; We're on a BBC B with non-Integra B shadow RAM. We currently support two
+    ; competing standards for controlling shadow RAM paging on such a machine:
+    ; one using *FX34 ("Watford") and the other using *FX111 ("Aries").
     ;
     ; With the Watford 32K RAM card, *FX34 is supported by Watford ROMs 2.00 and
     ; 2.40. *FX111 is only supported by 2.40.
     ;
-    ; With the Aries B20, *FX34 is not supported, *FX111 is supported.
+    ; With the Aries B20, *FX34 is not supported; *FX111 is supported.
     ;
     ; As an extra complication, Watford DFS versions prior to 1.43/Watford DDFS
     ; versions prior to 1.53 use *FX111 to read the drive number of the last
@@ -171,9 +184,9 @@ bbc_b_not_integra_b
     ; probably, reorder their ROMs so the shadow RAM driver ROM gets dibs on
     ; *FX111.
 
-    ; Whether shadow mode is currently in operation is a little fuzzy, so use
-    ; *FX34,64 to read the current state and do nothing with it rather than
-    ; *setting a state. All we care about is whether an error occurs.
+    ; We use *FX34,64 to read the current shadow state but we don't check the
+    ; return value precisely; all we care about is whether the call is
+    ; recognised or not.
     lda #34
     ldx #64
     jsr osbyte
@@ -185,16 +198,17 @@ not_watford
     ; *FX34 doesn't work. Try *FX111. We do this for two reasons. Firstly, if it
     ; fails, we obviously have some kind of unknown shadow RAM and we must
     ; content ourselves with using shadow RAM only for screen memory. Secondly,
-    ; this gives us a chance to see if *FX111 is being picked up by an older
-    ; Watford DFS.
+    ; this gives us a chance to test (imperfectly) if *FX111 is being picked up
+    ; by an older Watford DFS.
     ;
     ; If OSBYTE 111 is controlling shadow RAM state, X after *FX111,&40 will be
     ; the shadow state (i.e. 1, as we're in a shadow mode at this point). If
     ; OSBYTE 111 is being picked up by an older Watford DFS and used to return
-    ; the current drive, returned_x will *probably* be 0. (There's no guarantee;
-    ; although Ozmoo assumes elsewhere it's being run from drive 0, it's
-    ; possible Watford DFS is present but not the current filing system, in
-    ; which case the "current drive" might not be 0.)
+    ; the current drive, X will *probably* be afterwards 0. (There's no
+    ; guarantee; although Ozmoo assumes elsewhere it's being run from drive 0,
+    ; it's possible Watford DFS is present but not the current filing system, in
+    ; which case Watford DFS's current drive might not be 0 even if Ozmoo is
+    ; running from drive 0.)
     ;
     ; SFTODO: *If* we eventually allow running the shadow driver executable from
     ; a preloader (counting the time taken to run it against any default delay
@@ -213,7 +227,8 @@ not_watford
     jsr osbyte
     cpx #1
     bne osbyte_111_failed
-    ; *FX111 seems to work; we have no absolute guarantee it isn't being intercepted by an older Watford DFS, but we have to assume it's fine.
+    ; *FX111 seems to work; we have no absolute guarantee it isn't being
+    ; intercepted by an older Watford DFS, but we have to assume it's fine.
     lda #shadow_state_aries
     jmp set_shadow_state_from_a_and_install_driver
 
@@ -223,6 +238,8 @@ set_shadow_state_from_a_and_install_driver
     tax ; SFTODO: pass value in X in first place?
     cmp #shadow_state_b_plus_private
     bne .no_private_ram_driver
+    ; For shadow_state_b_plus_private, we need to copy driver code into the 12K
+    ; private RAM as well as installing a driver in main RAM.
     lda romsel_copy
     pha
     lda #128
@@ -254,31 +271,34 @@ set_shadow_state_from_a_and_install_driver
 
 ; SFTODO: Need to keep this in sync with shadow_state_* enum
 shadow_driver_table_low
-    !byte <shadow_driver_integra_b
-    !byte <shadow_driver_electron_mrb
     !byte <shadow_driver_b_plus_os
     !byte <shadow_driver_b_plus_private_low
     !byte <shadow_driver_master
+    !byte <shadow_driver_electron_mrb
+    !byte <shadow_driver_integra_b
     !byte <shadow_driver_watford
     !byte <shadow_driver_aries
-    ; SFTODO: MORE
 shadow_driver_table_high
-    !byte >shadow_driver_integra_b
-    !byte >shadow_driver_electron_mrb
     !byte >shadow_driver_b_plus_os
     !byte >shadow_driver_b_plus_private_low
     !byte >shadow_driver_master
+    !byte >shadow_driver_electron_mrb
+    !byte >shadow_driver_integra_b
     !byte >shadow_driver_watford
     !byte >shadow_driver_aries
-    ; SFTODO: MORE
 
 ; The shadow driver API is very simple - the core Ozmoo executable calls the
 ; subroutine at shadow_ram_copy with A=source page and Y=destination page, and
 ; that subroutine copies 256 bytes from page A to page Y. One of A or Y will be
-; in the &30-&7F inclusive range, indicating it's spare shadow RAM, and the
-; other will be <&30, indicating it's main RAM.
+; in the $30-$7F inclusive range, indicating it's spare shadow RAM, and the
+; other will be <$30, indicating it's main RAM.
 
-; SFTODO: Looks like non-2P shadow driver only copies a 256 byte page. *May* want to define a completely separate shadow driver API for 2P host cache case. Let's get this working first anyway. (Probably best to make code changes to host cache to support shadow RAM first and see what I "want" to be able to do, then decide on driver API based on that, rather than guessing and implementing the API *first*.)
+; SFTODO: Looks like non-2P shadow driver only copies a 256 byte page. *May*
+; want to define a completely separate shadow driver API for 2P host cache case.
+; Let's get this working first anyway. (Probably best to make code changes to
+; host cache to support shadow RAM first and see what I "want" to be able to do,
+; then decide on driver API based on that, rather than guessing and implementing
+; the API *first*.)
 
 shadow_driver_integra_b
 !pseudopc shadow_ram_copy {
@@ -288,7 +308,8 @@ shadow_driver_integra_b
     ; would be faster. But I'll stick with this for now.
     ; SFTODO: This is *similar* to the Watford/Aries driver (though OSBYTE is
     ; 108, and the 1/0 codes are swapped) so there might be potential for
-    ; sharing code. But this is moot if I switch to driving the hardware direct.
+    ; sharing code, if only via a macro. But this is moot if I switch to driving
+    ; the hardware direct.
     sta .lda_abs_y+2
     sty .sta_abs_y+2
     ; Page in shadow RAM
@@ -346,7 +367,6 @@ shadow_driver_electron_mrb
 }
 +assert_shadow_driver_fits shadow_driver_electron_mrb
 
-; SFTODONOW: Must also port the faster B+ shadow driver which uses code at &A000, but let's keep it simple for the moment.
 shadow_driver_b_plus_os
 !pseudopc shadow_ram_copy {
 !zone {
@@ -354,6 +374,7 @@ oswrsc = $ffb3
 oswrsc_ptr = $d6
 osrdsc = $ffb9
 osrdsc_ptr = $f6
+
     cmp #$30
     bcs .copy_from_shadow
     ; We're copying to shadow RAM.
@@ -364,7 +385,7 @@ osrdsc_ptr = $f6
 .copy_to_shadow_loop
 .lda_abs_y
     lda $ff00,y ; patched
-    jsr oswrsc ; preserves Y - equivalent to STA (&D6),Y - note Y is used!
+    jsr oswrsc ; preserves Y - equivalent to sta (oswrsc_ptr),y - note Y is used!
     iny
     bne .copy_to_shadow_loop
     rts
@@ -375,7 +396,7 @@ osrdsc_ptr = $f6
     ldy #0
     sty osrdsc_ptr
 .copy_from_shadow_loop
-    jsr osrdsc ; ignores and corrupts Y
+    jsr osrdsc ; ignores and corrupts Y - equivalent to lda (osrdsc_ptr)
 .sta_abs
     sta $ff00 ; patched
     inc osrdsc_ptr
@@ -481,9 +502,6 @@ shadow_driver_aries
     +shadow_driver_watford_aries 111
     +assert_shadow_driver_fits shadow_driver_aries
 
-
-end
-
 ; Determine if the private 12K is free on an Integra-B or B+ by checking for any
 ; extended vectors pointing into it. On entry A is the bit which is set in the
 ; extended vector ROM byte to select the private RAM. private_ram_in_use is
@@ -491,12 +509,11 @@ end
 ; SFTODO: Make sure to test this (e.g. with SWMMFS+)
 test_private_ram_in_use
 !zone {
-    sta .and_immediate+1
+    sta tmp
     ldx #26*3
 .test_loop
     lda extended_vector_table+2,x
-.and_immediate
-    and #$ff ; patched
+    and tmp
     bne .in_use
     dex
     dex
@@ -507,6 +524,9 @@ test_private_ram_in_use
     rts
 }
 
-; SFTODONOW: assert the executable hasn't overflowed page $9/$a, if that's where it's going to live
+end
+
+; For now this code executes in pages $9/$a, so make sure it doesn't overflow.
++assert * <= $b00
 
 ; SFTODONOW: Must test that this works for all the different shadow options
