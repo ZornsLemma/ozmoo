@@ -1,3 +1,10 @@
+B+ 64K, ext tube, mode 7
+b-em, drive noises on, 100% speed
+11.39 alpha 45 host_cache_size_vmem_blocks=$2d $005777 $005776 (-$58f)
+Experimental host cache with private RAM support host_cache_size_vmem_blocks=$43 $005785 $005780 $005779 (-$65c)
+So that's about a 1% reduction in runtime, which is a bit disappointing. But this is just with the benchmark, which is not that big a game and the .ram_pages (uncapped) value has gone from $0112 without private RAM support to $013e with, so it's "only" a 16% increase. The game is $1ad pages total so before we had RAM for 64% of the game and after we have 74% RAM for the game, so it's not too surprising (maybe retroactively justifying this to myself) that we're not seeing big gains. For a bigger (or just different) game, the extra RAM might give a more dramatic increase, of course.
+
+
 New benchmark phase with 2P - B 144K swr, no shadow, 6502 external, mode 7
 Baseline $4eaf $4eb6 $4ebe (-$123)
 Moving vmap_c64_offset into zp: $4ebe $4ebf
