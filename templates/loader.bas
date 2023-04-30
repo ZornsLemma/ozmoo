@@ -635,11 +635,7 @@ REM flexible_swr_ro is the amount of sideways RAM in the first bank which can be
 REM used as dynamic memory (perhaps in combination with main RAM, depending on the
 REM memory model) or vmem cache. Other sideways RAM can only be used as vmem cache.
 IF swr_banks>0 THEN flexible_swr_ro=&4000 ELSE flexible_swr_ro=0
-REM SFTODO: If we taught the host cache how to handle a short bank (near trivial)
-REM and (ideally) skip the first 1K of a bank (we could perhaps just set up the
-REM cache index so those blocks are never considered somehow), we could add
-REM private RAM when we have tube too.
-IF NOT tube AND FNpeek(${private_ram_in_use})=0 THEN PROCadd_private_ram_as_swr
+IF FNpeek(${private_ram_in_use})=0 THEN PROCadd_private_ram_as_swr
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)":PROCupdate_swr_banks(0)
 swr_size=&4000*swr_banks-swr_adjust
 IF swr_banks=0 THEN ENDPROC
@@ -657,12 +653,12 @@ ENDPROC
 
 DEF PROCadd_private_ram_as_swr
 REM If this is a tube-only build, these *_private_ram_size constants might not be
-REM defined.
+REM defined. SFTODONOW: Still true? Might be if it's a tube only build with no host cache support.
 !ifdef integra_b_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND integra_b THEN swr_banks?${ram_bank_list}=64:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
+    IF swr_banks<${max_ram_bank_count} AND integra_b THEN PROCpoke(swr_banks+${ram_bank_list},64):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
 }
 !ifdef b_plus_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN swr_banks?${ram_bank_list}=128:PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
+    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN PROCpoke(swr_banks+${ram_bank_list},128):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
 }
 ENDPROC
 

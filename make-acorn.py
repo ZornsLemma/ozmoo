@@ -1339,7 +1339,7 @@ def make_cache_executable():
     # loader) and will then relocate itself down to the host PAGE, but we'll
     # position it to load just below the mode 0 screen RAM anyway; there's no
     # real downside.
-    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args)
+    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2c00, relocatable_args + ["-DACORN_SWR=1"])
 
 
 def make_boot():
@@ -1535,7 +1535,10 @@ def make_tokenised_basic(name, text_basic):
 
 
 def make_tokenised_cache_test():
-    return make_tokenised_basic("cachtst", "\n".join(open("templates/cache-test.bas", "r").readlines()))
+    symbols = {}
+    symbols.update({k: basic_string(v) for k, v in common_labels.items()})
+    cache_text_basic = make_text_basic("templates/cache-test.bas", symbols)
+    return make_tokenised_basic("cachtst", cache_text_basic)
 
 
 def make_tokenised_loader(symbols):

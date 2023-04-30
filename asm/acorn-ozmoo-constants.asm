@@ -731,8 +731,6 @@ use_hw_scroll 	+allocate 1
 }
 
 !ifdef ACORN_SWR {
-b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
-integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 vmem_blocks_in_main_ram	+allocate 1
 vmem_blocks_stolen_in_first_bank	+allocate 1
 jmp_buf_ram_bank 	+allocate 1

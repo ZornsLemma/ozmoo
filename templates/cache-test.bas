@@ -1,4 +1,4 @@
-IF PAGE<&800 THEN PRINT "Sorry, tube only!":END
+IF PAGE>&800 THEN PRINT "Sorry, tube only!":END
 
 old_at%=@%
 ON ERROR PROCerror
@@ -6,6 +6,13 @@ ON ERROR PROCerror
 */FINDSWR
 */CACHE2P
 mode%=0
+
+DIM osword_block% 64
+
+REM SFTODO: For now this is a manual adjustment...
+REM SFTODO: Final checked in version should have private_ram_bank%=0 - but while I'm working actively on this aspect it won't be
+private_ram_bank%=128:REM 0 for none, 64 for Integra-B, 128 for B+
+IF private_ram_bank%<>0 THEN ram_banks%=FNpeek(${ram_bank_count}):PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):PROCpoke(${ram_bank_count},ram_banks%+1)
 
 REM The Ozmoo executable always forces the shadow mode bit on when initialising
 REM the cache, so we do the same. We don't want to chase phantom bugs or quirks
@@ -16,12 +23,11 @@ REM machine with/without shadow RAM. But for now let's keep it as close to real
 REM use as possible.
 MODE mode% OR 128
 
-track_offers%=10:REM SFTODO: SHOULD BE ABLE TO SET THIS TO 0 TO DISABLE THIS
+track_offers%=10:REM 0 disables offer tracking
 IF track_offers%>0 THEN DIM recent_offers%(track_offers%-1)
 
 block_size%=512:REM bytes
 
-DIM osword_block% 64
 local_cache_blocks%=10
 DIM local_cache% local_cache_blocks%*block_size%
 DIM local_cache_id%(local_cache_blocks%-1)
@@ -143,3 +149,7 @@ DEF PROCerror
 @%=old_at%
 REPORT:PRINT " at line ";ERL
 END
+
+DEF FNpeek(addr):!osword_block%=&FFFF0000 OR addr:A%=5:X%=osword_block%:Y%=osword_block% DIV 256:CALL &FFF1:=osword_block%?4
+
+DEF PROCpoke(addr,val):!osword_block%=&FFFF0000 OR addr:osword_block%?4=val:A%=6:X%=osword_block%:Y%=osword_block% DIV 256:CALL &FFF1:ENDPROC

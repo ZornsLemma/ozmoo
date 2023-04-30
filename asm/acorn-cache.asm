@@ -18,6 +18,7 @@ tube_reason_256_byte_from_io = 7
 osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 
+; SFTODO: Why don't we just use $70-8f for zp_temp? In practice tube host code leaves this free.
 zp_temp = $f5 ; 3 bytes
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
@@ -40,13 +41,6 @@ page_in_swr_bank_a_electron_size = 13
 
 program_start
     jmp relocate_setup
-
-our_userv
-    cmp #$E0
-    beq our_osword
-    cmp #0
-    beq our_osbyte ; *CODE/OSBYTE $88
-    jmp (old_userv)
 
     ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED WITH "SAME" X OR ON A SUBSEQUENT CALL OR SOMETHING? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART.
 ; OSBYTE $88 - host cache initialisation
@@ -83,6 +77,46 @@ cache_entries_high = zp_temp ; 1 byte
     bcc +
     inc cache_entries_high
 +
+
+    ; Adjust to allow for the last sideways RAM bank possibly being short if
+    ; it's Integra-B or B+ private RAM.
+    +assert b_plus_private_ram_size == integra_b_private_ram_size + 512
+    ldy ram_bank_count
+    beq no_private_ram
+    ldx #(b_plus_private_ram_size - 16*1024)/512
+    lda ram_bank_list-1,y
+    bmi b_plus_private_ram
+    asl
+    bpl no_private_ram
+    ; This is the Integra-B private 12K.
+    dex ; we have one 512 byte block less of private RAM on the Integra-B.
+    ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of
+    ; ROMSEL, much as we can access it by setting b7 on the B+.
+    ; SFTODO: Copy and paste from core Ozmoo code - probably OK, but think.
+    ; SFTODO: Extra bulk of this code and other code added recently is annoying,
+    ; probably can't do much - we need to be able to re-init the cache after
+    ; a RESTART, which won't re-run CACHE2P, so we can't discard all this code
+    ; - but we could maybe discard *some* code, including this one-off config,
+    ; eg by jsring to discardable init code and nopping out the jsr afterwards
+    ; from the discardable init code
+    lda $37f
+    ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
+    sta $37f
+    sta $fe34
+b_plus_private_ram
+    ; X contains the negative number of cache entries we need to subtract
+    ; because of the short bank.
+    clc
+    txa
+    adc cache_entries
+    sta cache_entries
+    ; SFTODO: It's annoying to have to deal with the 16-bit value here. I can't
+    ; help feeling there might be a way to avoid this by doing this adjustment
+    ; differently, but this will do for now - think about this fresh later.
+    lda cache_entries_high
+    adc #$ff
+    sta cache_entries_high
+no_private_ram
 
     ; We don't support more than 255 cache entries.
     ldy cache_entries
@@ -128,6 +162,13 @@ cache_entries_high = zp_temp ; 1 byte
     ldx cache_entries
     dex
     rts
+
+our_userv
+    cmp #$E0
+    beq our_osword
+    cmp #0
+    beq our_osbyte ; *CODE/OSBYTE $88
+    jmp (old_userv)
 
     ; Waste some space so we avoid unwanted page crossing in time-critical loops.
     !fill 4 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features
@@ -467,7 +508,10 @@ set_our_cache_ptr_to_index_y
     sta our_cache_ptr + 1
     rts
 index_in_high_cache
-    ; A now contains the 512-byte block offset from the start of our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so we need to divide by 32=2^5 to get the bank index.
+    ; A now contains the 512-byte block offset from the start of our first
+    ; sideways RAM bank. Each 16K bank has 32 512-byte blocks, so we need to
+    ; divide by 32=2^5 to get the bank index.
+swr_base = our_cache_ptr + 1
     pha
     lsr
     lsr
@@ -475,15 +519,27 @@ index_in_high_cache
     lsr
     lsr
     tay
+    lda #$80
+    sta swr_base
     lda ram_bank_list,y
     jsr page_in_swr_bank_a
+    ; If b6 of A is set, we've paged in the Integra-B private RAM and we need to
+    ; skip over the 1K of IBOS workspace at $8000 by changing swr_base. Making
+    ; swr_base variable like this will slow down other machines but it's a
+    ; handful of cycles and our execution time is dominated by the tube copy
+    ; loops and the cache searching anyway. SFTODONOW TEST THIS ON IBOS!
+    asl
+    bpl not_integra_b_private_ram
+    lda #$84
+    sta swr_base
+not_integra_b_private_ram
     ; Now get the low 5 bits of the block offset, multiply by two to convert to
     ; 256 byte pages and that gives us the page offset within the bank.
     pla
     and #31
     asl
     ; Carry is already clear
-    adc #$80
+    adc swr_base
     sta our_cache_ptr + 1
     rts
 
@@ -505,28 +561,33 @@ code_end
 max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
-cache_entries = * ; 1 byte
+low_cache_entries
+    !byte 0
+; SFTODO: If we need further variables, they can go here before we do !align.
 
-; We use cache_id_low - 1,y addressing in the hot find_cache_entry_by_id_loop,
-; so it's good to have that page-aligned to avoid incurring an extra cycle
-; penalty. The other tables are less critical, although cache_timestamp has a
-; similar if not so hot use. Since max_cache_entries is 255 we can easily get
-; the desired alignment by slotting some single-byte variables into the spare
-; bytes at the start of each page without wasting any memory.
-; SFTODONOW: I am finding it really hard to understand this... I have no reason
-; to think it's wrong but it would be good to review it and check, and maybe try
-; to make the logic clearer.
-!if ((cache_entries + 1) & $100) <> 0 {
-    low_cache_entries = ((cache_entries + 1) & !$ff) + $100 ; 1 byte
-} else {
-    low_cache_entries = cache_entries + 1 ; 1 byte
-}
-cache_id_low = low_cache_entries + 1 ; max_cache_entries bytes
-free_block_index = cache_id_low + max_cache_entries ; 1 byte
-cache_id_high = free_block_index + 1 ; max_cache_entries bytes
-current_tick = cache_id_high + max_cache_entries ; 1 byte
-cache_timestamp = current_tick + 1 ; max_cache_entries bytes
-low_cache_start = cache_timestamp + max_cache_entries
+; The following allocations try to avoid page crossing and assume
+; max_cache_entries == 255.
++assert max_cache_entries == 255
+; To avoid page crossing we want to allocate each of the 255-byte arrays here
+; inside its own page; we really want them to start one byte into the page so
+; foo-1,y addressing doesn't cross a page boundary (particularly important for
+; cache_id_low as it's used in the hot find_cache_entry_by_id loop). We pair
+; three single-byte variables with the 255-byte blocks so as to get the desired
+; alignment.
+    !align 255, 0, 0 ; SFTODO: If this is *just* over a page boundary try hard to optimise to pull it back
+cache_entries
+    !byte 0
+cache_id_low
+    !fill max_cache_entries
+free_block_index
+    !byte 0
+cache_id_high
+    !fill max_cache_entries
+current_tick
+    !byte 0
+cache_timestamp
+    !fill max_cache_entries
+low_cache_start = *
 !if low_cache_start & $ff <> 0 {
     !error "low_cache_start must be page-aligned"
 }
