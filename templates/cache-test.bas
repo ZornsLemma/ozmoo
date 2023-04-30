@@ -78,10 +78,6 @@ REM SFTODO: We might get away with picking a game block and not caring if it's i
 REM our local cache, but it seems like it might cause confusion when we see
 REM "invalid" state (the same block in host and local cache) during debugging.
 REPEAT
-REM SFTODONOW: I think there's a bug - here on in the actual cache code - where
-REM wanted_block%=0 early on, probably before the cache gets fully populated. (I
-REM don't believe this can ever occur in Ozmoo, because block 0 is always dynamic
-REM memory - but if there is a bug in cache code, be good to fix it anyway.)
 wanted_block%=RND(game_blocks%)-1
 already_have%=FALSE
 FOR I%=0 TO local_cache_blocks%-1
