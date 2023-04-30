@@ -130,7 +130,7 @@ cache_entries_high = zp_temp ; 1 byte
     rts
 
     ; Waste some space so we avoid unwanted page crossing in time-critical loops.
-    !fill 4
+    !fill 4 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features
 
 ; OSWORD &E0 - host cache access
 ;
@@ -493,6 +493,8 @@ index_in_high_cache
     ; put this just before the binary because the relocation likes to work on
     ; page boundaries, and since we have discardable init code at the end of the
     ; binary we can't put it there either.
+    ; SFTODO: Maybe worth thinking about this, it may be we could save code and
+    ; complexity by not doing some stuff that won't work anyway.
 old_userv
     !word 0
 
@@ -511,6 +513,9 @@ cache_entries = * ; 1 byte
 ; similar if not so hot use. Since max_cache_entries is 255 we can easily get
 ; the desired alignment by slotting some single-byte variables into the spare
 ; bytes at the start of each page without wasting any memory.
+; SFTODONOW: I am finding it really hard to understand this... I have no reason
+; to think it's wrong but it would be good to review it and check, and maybe try
+; to make the logic clearer.
 !if ((cache_entries + 1) & $100) <> 0 {
     low_cache_entries = ((cache_entries + 1) & !$ff) + $100 ; 1 byte
 } else {
