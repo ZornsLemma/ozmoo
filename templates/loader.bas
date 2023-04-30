@@ -262,9 +262,6 @@ REM Not all shadow states have an "extra" message; for example, on a Master,
 REM shadow RAM is shadow RAM and there's no need for any qualification.
 =""
 
-REM SFTODO: Delete next line, kept around just for ref as I work on shadow driver executable
-IF returned_x<>1 THEN PROCdie("Sorry, something (probably an older Watford DFS) is clashing with the *FX111 call needed to control the shadow RAM.")
-
 DEF PROCchoose_version_and_check_ram
 min_mode=${MIN_MODE}
 max_mode=${MAX_MODE}
