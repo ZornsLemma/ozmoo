@@ -1366,6 +1366,7 @@ deletable_init_start
     beq +
 
     ; Print "continue" message after runtime info and wait for SPACE/RETURN.
+    ; SFTODONOW: This is not appearing for me (on b-em B+64K with ext tube in mode 7 FWIW)... - it is pausing for space, but that's all - we don't get this prompt and we don't get Loading: message
     jsr newline
     jsr newline
     jsr .space_if_indent
