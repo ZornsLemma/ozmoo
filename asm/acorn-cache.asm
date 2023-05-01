@@ -272,6 +272,8 @@ timestamp_updated
     sta free_block_index
 
     ; Set our_cache_ptr to the block's data so we can update it.
+    lda #0
+    sta SFTODOSHADOWCOPYBEFORE
     txa
     tay
     jsr set_our_cache_ptr_to_index_y
@@ -352,6 +354,9 @@ match
     sta cache_id_high,y
     sty free_block_index
 
+    lda #1
+    sta SFTODOSHADOWCOPYBEFORE
+
     ; Set our_cache_ptr to point to the block's data.
     jsr set_our_cache_ptr_to_index_y
 
@@ -426,9 +431,32 @@ do_loop_tail_common
     inc our_cache_ptr + 1
     lda #1
     jsr adjust_osword_block_data_offset
+
+    lda shadow_ptr_high
+    beq SFTODONOTSHADOW
+    dec our_cache_ptr + 1 ; revert the change made above
+    lda SFTODOSHADOWCOPYBEFORE
+    beq SFTODOCOPYINGAFTER
+    ; SFTODO COPYING BEFORE, SO WE NEED TO DO THIS IF COUNT IS CURRENTLY 2
+    ldx count
+    dex
+    beq SFTODONOTSHADOW
+    lda shadow_ptr_high
+    ldy shadow_bounce_buffer
+    jmp SFTODO641
+SFTODOCOPYINGAFTER
+    ; SFTODO COPYING AFTER, SO WE NEED TO DO THIS IF COUNT IS CURRENTLY 2 OR 1 (ONLY POSSIBLE VALUES IT CAN HAVE, IE ALWAYS)
+    lda shadow_bounce_buffer
+    ldy shadow_ptr_high
+SFTODO641
+    jsr shadow_ram_copy
+    inc shadow_ptr_high
+SFTODONOTSHADOW
    
     dec count ; must be last
     rts
+SFTODOSHADOWCOPYBEFORE !byte 0
+shadow_ptr_high !byte 0 ; SFTODO MOVE ETC
 
 ; Undo the changes made to the high byte of the data address during a copy loop.
 reset_osword_block_data_offset
@@ -447,6 +475,7 @@ adjust_osword_block_data_offset
 set_our_cache_ptr_to_index_y
     lda #0
     sta our_cache_ptr
+    sta shadow_ptr_high ; SFTODO TEMP HACK SO WE CAN USE IT TO DECIDE IF WE'RE DOING SHADOW OR NOT
     tya
     sec
     sbc low_cache_entries
@@ -457,7 +486,10 @@ set_our_cache_ptr_to_index_y
     adc #>low_cache_start
     sta our_cache_ptr + 1
     rts
-index_in_high_cache
+index_in_high_cache ; SFTODO: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
+; SFTODO: COMMENT?
+    cmp swr_cache_entries
+    bcs index_in_shadow_cache
     ; A now contains the 512-byte block offset from the start of our first
     ; sideways RAM bank. Each 16K bank has 32 512-byte blocks, so we need to
     ; divide by 32=2^5 to get the bank index.
@@ -492,6 +524,28 @@ not_integra_b_private_ram
     adc swr_base
     sta our_cache_ptr + 1
     rts
+index_in_shadow_cache
+    ; Carry is already set
+    sbc swr_cache_entries
+    asl
+    ; Carry is already clear
+    adc #>shadow_start
+    sta shadow_ptr_high
+    lda shadow_bounce_buffer
+SFTODOHANG
+    beq SFTODOHANG ; SFTODO TEMP HACK - IT SHOULDN'T BE POSSIBLE TO GET HERE IF WE HAVE NO SHADOW BOUNCE BUFFER
+    sta our_cache_ptr + 1
+    lda SFTODOSHADOWCOPYBEFORE
+    beq +
+    ; SFTODO: We're sending from the I/O processor to the parasite, so we need to copy the first page from shadow RAM into the bounce buffer now
+    lda shadow_ptr_high
+    ldy shadow_bounce_buffer
+    jsr shadow_ram_copy
+    inc shadow_ptr_high
++
+    rts
+
+    ; SFTODO: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
 
     ; If this executable is re-loaded, old_userv will be overwritten by 0 as
     ; part of the re-load and things will break. In reality this isn't going to
@@ -512,6 +566,8 @@ max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
 low_cache_entries
+    !byte 0
+swr_cache_entries
     !byte 0
 shadow_cache_entries
     !byte 0
@@ -660,7 +716,12 @@ b_plus_private_ram
     sta cache_entries_high
 no_private_ram
 
-!if 0 { ; SFTODONOW: ENABLE THIS, BUT TEMPORARILY NOT DOING SO SO I CAN TEST OTHER CHANGES WITHOUT HAVING TO EXTEND CODE TO CORRECTLY DEAL WITH CACHE ENTRIES THAT LIVE IN SHADOW RAM
+    ; SFTODONOW COMMENT - THIS IS WRONG BECAUSE IT WILL PROBABLY FAIL WHERE WE'RE CAPPING AT 255 CACHE ENTRIES BELOW, BUT LET'S JUST HACK IT FOR NOW AND IT WILL BE FINE ON MACHINES WITH LITTLE SWR FOR INITIAL TESTING
+    lda cache_entries
+    sec
+    sbc low_cache_entries ; SFTODO: rename this main_ram_cache_entries??
+    sta swr_cache_entries
+
     ; Add in shadow_cache_entries.
     clc
     lda cache_entries
@@ -669,7 +730,6 @@ no_private_ram
     bcc +
     inc cache_entries_high
 +
-}
 
     ; We don't support more than 255 cache entries.
     ldy cache_entries
@@ -727,8 +787,8 @@ relocate_setup
     bcc spare_shadow_init_done ; branch if no shadow driver
     ldx cache_screen_mode
     sec
-    lda #$80 ; SFTODO: MAGIC?
-    sbc screen_start_page_by_mode,x
+    lda screen_start_page_by_mode,x
+    sbc #>shadow_start
     lsr ; convert pages to 512-byte blocks
     sta shadow_cache_entries
     beq spare_shadow_init_done ; branch if no spare shadow RAM (mode 0)
