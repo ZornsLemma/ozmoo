@@ -70,6 +70,7 @@ program_start
 ;
 ; On exit:
 ;   X contains the number of 512-byte blocks the cache holds
+; SFTODO: Test (perhaps just force X=0 on return) to see nothing crashes if the cache happens to have no space - I don't think this is likely (especially if we start checking OSHWM in host is something like <=&2500 and refusing to run if noot) but worth a go.
 our_osbyte
 cache_entries_high = zp_temp ; 1 byte
     ; The cache size doesn't change at runtime, it's always full with
