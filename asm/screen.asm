@@ -635,7 +635,7 @@ printchar_buffered
 	lda is_buffered_window
 } else {
 is_buffered_window = *+1
-    lda #$ff ; patched at runtime
+    lda #0 ; patched at runtime - must start off 0
 }
 	bne .buffered_window
 .is_not_buffered
