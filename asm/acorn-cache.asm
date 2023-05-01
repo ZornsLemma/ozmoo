@@ -674,7 +674,7 @@ relocate_setup
     lda shadow_state
     cmp #shadow_state_first_driver
     bcc relocate_target_in_y
-    ; SFTODONOW: WE MUST ALSO NOT BOTHER WITH A BOUNCE BUFFER IF WE'RE IN MODE 0 AND THERE *IS* NO SPARE SHADOW RAM
+    ; SFTODONOW: WE MUST ALSO NOT BOTHER WITH A BOUNCE BUFFER IF WE'RE IN MODE 0 AND THERE *IS* NO SPARE SHADOW RAM - ACTUALLY THIS IS A BIT CRAPPY, AS WE AREN'T CURRENTLY INFORMED OF THE MODE TO USE UNTIL THE INIT OSBYTE CALL, BUT THAT'S AFTER THE RELOCATION. MAYBE WE SHOULD PASS THE MODE TO USE VIA A VALUE POKED INTO HOST RAM BY THE LOADER, THEN WE CAN GET HOLD OF IT HERE AND AVOID WASTING A PAGE FOR NOTHING. THIS WOULD ALSO PERHAPS HELP SHRINK NON-DISCARDABLE CODE SIZE, AS WE COULD CALCULATE THINGS LIKE CACHE SIZE ONCE WHEN WE'RE LOADED AND NOT EVERY TIME OSBYTE INIT IS CALLED
     ; We need a page of low memory as a bounce buffer for copying data into and
     ; out of shadow RAM. If we don't have room for this below $3000 (unlikely,
     ; but technically possible), we act as if we have no shadow driver; this is
@@ -686,7 +686,6 @@ relocate_setup
     iny
 relocate_target_in_y
     sty relocate_target
-no_shadow_driver
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 
