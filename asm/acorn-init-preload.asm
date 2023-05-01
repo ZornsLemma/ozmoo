@@ -566,9 +566,6 @@ deletable_init_start
     ; we're on a normal second processor. We count cache pages for now so we
     ; process more of the initial vmap and fix up the inflated value of
     ; vmap_max_entries later.
-    lda screen_mode
-    ora #shadow_mode_bit
-    tax
     lda #osbyte_initialise_cache
     jsr osbyte
     stx host_cache_size_vmem_blocks

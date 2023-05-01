@@ -21,6 +21,13 @@ osbyte_read_screen_address_for_mode = $85
 ; SFTODO: Why don't we just use $70-8f for zp_temp? In practice tube host code leaves this free.
 zp_temp = $f5 ; 3 bytes
 
+; $70-74 inclusive are used by the shadow driver so we keep them free; we could
+; potentially reuse some of these addresses with care, but while we're not short
+; of zero page it seems best just to steer clear.
+
+; We use this address for the loader to communicate the intended screen mode to the cache.
+cache_screen_mode = $75 ; 1 byte
+
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
 our_tube_reason_claim_id = $25 ; a six bit value
@@ -59,91 +66,18 @@ program_start
     ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED WITH "SAME" X OR ON A SUBSEQUENT CALL OR SOMETHING? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART.
 ; OSBYTE $88 - host cache initialisation
 ;
-; On entry:
-;   X is the screen mode the cache needs to leave space for
+; On entry: N/A
 ;
 ; On exit:
 ;   X contains the number of 512-byte blocks the cache holds
 our_osbyte
 cache_entries_high = zp_temp ; 1 byte
-    ; We have RAM available between low_cache_start and the screen in mode X.
-    lda #osbyte_read_screen_address_for_mode
-    jsr osbyte
-    ; The following calculation will correctly discard any odd pages, so we
-    ; don't need to be double-page aligned in order to make things work nicely.
-    tya
-    sec
-    sbc #>low_cache_start
-    lsr
-    sta low_cache_entries
-
-    ; Each 16K sideways RAM bank holds 32*512-byte blocks.
-    lda #0
-    sta cache_entries_high
-    lda ram_bank_count
-    ldx #5 ; 32 == 2^5
--   asl
-    rol cache_entries_high
-    dex
-    bne -
-    adc low_cache_entries
-    sta cache_entries
-    bcc +
-    inc cache_entries_high
-+
-
-    ; Adjust to allow for the last sideways RAM bank possibly being short if
-    ; it's Integra-B or B+ private RAM.
-    +assert b_plus_private_ram_size == integra_b_private_ram_size + 512
-    ldy ram_bank_count
-    beq no_private_ram
-    ldx #(b_plus_private_ram_size - 16*1024)/512
-    lda ram_bank_list-1,y
-    bmi b_plus_private_ram
-    asl
-    bpl no_private_ram
-    ; This is the Integra-B private 12K.
-    dex ; we have one 512 byte block less of private RAM on the Integra-B.
-    ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of
-    ; ROMSEL, much as we can access it by setting b7 on the B+.
-    ; SFTODO: Copy and paste from core Ozmoo code - probably OK, but think.
-    ; SFTODO: Extra bulk of this code and other code added recently is annoying,
-    ; probably can't do much - we need to be able to re-init the cache after
-    ; a RESTART, which won't re-run CACHE2P, so we can't discard all this code
-    ; - but we could maybe discard *some* code, including this one-off config,
-    ; eg by jsring to discardable init code and nopping out the jsr afterwards
-    ; from the discardable init code
-    lda $37f
-    ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
-    sta $37f
-    sta $fe34
-b_plus_private_ram
-    ; X contains the negative number of cache entries we need to subtract
-    ; because of the short bank.
-    clc
-    txa
-    adc cache_entries
-    sta cache_entries
-    ; SFTODO: It's annoying to have to deal with the 16-bit value here. I can't
-    ; help feeling there might be a way to avoid this by doing this adjustment
-    ; differently, but this will do for now - think about this fresh later.
-    lda cache_entries_high
-    adc #$ff
-    sta cache_entries_high
-no_private_ram
-
-    ; We don't support more than 255 cache entries.
-    ldy cache_entries
-    lda cache_entries_high
-    beq +
-    ldy #255
-+   sty cache_entries
-
     ; The cache size doesn't change at runtime, it's always full with
     ; cache_entries entries, but it starts full of very old entries with the
     ; invalid block ID. This means those entries will be evicted in preference
     ; to any real entries and will never be returned in response to a cache
     ; lookup.
+    ldy cache_entries
 -   lda #0
     sta cache_timestamp - 1,y
     lda #$ff
@@ -577,7 +511,9 @@ free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries
 
 low_cache_entries
     !byte 0
-shadow_bounce_buffer
+shadow_cache_entries
+    !byte 0
+shadow_bounce_buffer ; SFTODO: rename to indicate this is the start page not the actual buffer address?
     !byte 0
 ; SFTODO: If we need further variables, they can go here before we do !align.
 
@@ -651,7 +587,96 @@ initialize_needed
     dex
     bpl -
 not_electron
-initialize_done
+
+    ; Calculate low_cache_entries. We have RAM available between low_cache_start
+    ; and the screen.
+    lda cache_screen_mode
+    ora #shadow_mode_bit
+    tax
+    lda #osbyte_read_screen_address_for_mode
+    jsr osbyte
+    ; The following calculation will correctly discard any odd pages, so we
+    ; don't need to be double-page aligned in order to make things work nicely.
+    tya
+    sec
+    sbc #>low_cache_start
+    lsr
+    sta low_cache_entries
+
+    ; Each 16K sideways RAM bank holds 32*512-byte blocks.
+    lda #0
+    sta cache_entries_high
+    lda ram_bank_count
+    ldx #5 ; 32 == 2^5
+-   asl
+    rol cache_entries_high
+    dex
+    bne -
+    adc low_cache_entries
+    sta cache_entries
+    bcc +
+    inc cache_entries_high
++
+
+    ; Adjust to allow for the last sideways RAM bank possibly being short if
+    ; it's Integra-B or B+ private RAM.
+    +assert b_plus_private_ram_size == integra_b_private_ram_size + 512
+    ldy ram_bank_count
+    beq no_private_ram
+    ldx #(b_plus_private_ram_size - 16*1024)/512
+    lda ram_bank_list-1,y
+    bmi b_plus_private_ram
+    asl
+    bpl no_private_ram
+    ; This is the Integra-B private 12K.
+    dex ; we have one 512 byte block less of private RAM on the Integra-B.
+    ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of
+    ; ROMSEL, much as we can access it by setting b7 on the B+.
+    ; SFTODO: Copy and paste from core Ozmoo code - probably OK, but think.
+    ; SFTODO: Extra bulk of this code and other code added recently is annoying,
+    ; probably can't do much - we need to be able to re-init the cache after
+    ; a RESTART, which won't re-run CACHE2P, so we can't discard all this code
+    ; - but we could maybe discard *some* code, including this one-off config,
+    ; eg by jsring to discardable init code and nopping out the jsr afterwards
+    ; from the discardable init code
+    lda $37f
+    ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
+    sta $37f
+    sta $fe34
+b_plus_private_ram
+    ; X contains the negative number of cache entries we need to subtract
+    ; because of the short bank.
+    clc
+    txa
+    adc cache_entries
+    sta cache_entries
+    ; SFTODO: It's annoying to have to deal with the 16-bit value here. I can't
+    ; help feeling there might be a way to avoid this by doing this adjustment
+    ; differently, but this will do for now - think about this fresh later.
+    lda cache_entries_high
+    adc #$ff
+    sta cache_entries_high
+no_private_ram
+
+!if 0 { ; SFTODONOW: ENABLE THIS, BUT TEMPORARILY NOT DOING SO SO I CAN TEST OTHER CHANGES WITHOUT HAVING TO EXTEND CODE TO CORRECTLY DEAL WITH CACHE ENTRIES THAT LIVE IN SHADOW RAM
+    ; Add in shadow_cache_entries.
+    clc
+    lda cache_entries
+    adc shadow_cache_entries
+    sta cache_entries
+    bcc +
+    inc cache_entries_high
++
+}
+
+    ; We don't support more than 255 cache entries.
+    ldy cache_entries
+    lda cache_entries_high
+    beq +
+    ldy #255
++   sty cache_entries
+
+; SFTODO: DELETE THIS LINE initialize_done
     rts
 
     ; This is copied over page_in_swr_bank_a, so must not contain absolute
@@ -666,26 +691,51 @@ page_in_swr_bank_a_electron
 page_in_swr_bank_a_electron_end
 +assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
 
+; SFTODO: Copy and paste from acorn-init-preload.asm - possibly better just to duplicate it than faff sharing it, but have a think
+screen_start_page_by_mode
+    !byte $30 ; mode 0
+    !byte $30 ; mode 1
+    !byte $30 ; mode 2
+    !byte $40 ; mode 3
+    !byte $58 ; mode 4
+    !byte $58 ; mode 5
+    !byte $60 ; mode 6
+    !byte $7c ; mode 7
+
 relocate_target
     !byte 0
+    ; SFTODONOW: NOW WE KNOW THE SCREEN MODE HERE RATHER THAN DURING INIT OSBYTE, WE CAN DO MORE INITIALISATION IN DISCARDABLE INIT CODE
 relocate_setup
+    ; Set Y (relocate_target) to OSHWM to start with.
     lda #osbyte_read_oshwm
     jsr osbyte
-    lda shadow_state
-    cmp #shadow_state_first_driver
-    bcc relocate_target_in_y
-    ; SFTODONOW: WE MUST ALSO NOT BOTHER WITH A BOUNCE BUFFER IF WE'RE IN MODE 0 AND THERE *IS* NO SPARE SHADOW RAM - ACTUALLY THIS IS A BIT CRAPPY, AS WE AREN'T CURRENTLY INFORMED OF THE MODE TO USE UNTIL THE INIT OSBYTE CALL, BUT THAT'S AFTER THE RELOCATION. MAYBE WE SHOULD PASS THE MODE TO USE VIA A VALUE POKED INTO HOST RAM BY THE LOADER, THEN WE CAN GET HOLD OF IT HERE AND AVOID WASTING A PAGE FOR NOTHING. THIS WOULD ALSO PERHAPS HELP SHRINK NON-DISCARDABLE CODE SIZE, AS WE COULD CALCULATE THINGS LIKE CACHE SIZE ONCE WHEN WE'RE LOADED AND NOT EVERY TIME OSBYTE INIT IS CALLED
-    ; We need a page of low memory as a bounce buffer for copying data into and
-    ; out of shadow RAM. If we don't have room for this below $3000 (unlikely,
-    ; but technically possible), we act as if we have no shadow driver; this is
-    ; indicated by shadow_bounce_buffer being left at 0.
+
+    ; Calculate shadow_cache_entries, the number of 512-byte blocks we can hold
+    ; in spare shadow RAM. If we have no shadow driver or are running in mode 0
+    ; this will be 0. If we need a bounce buffer to copy data between main RAM
+    ; and shadow RAM, bump Y (relocate_target) by one to allocate a page of
+    ; bounce buffer at OSHWM. If OSHWM is so high the bounce buffer would be at
+    ; or above $3000, we set shadow_cache_entries to 0 to disable use of spare
+    ; shadow RAM.
     ; SFTODO: ONCE SHADOW DRIVER ALLOWS PAGE IN/OUT ON SUITABLE HW, WE WON'T NEED BOUNCE BUFFER FOR THAT CASE
     cpy #>(shadow_start - $100)
-    bcs relocate_target_in_y
+    bcs spare_shadow_init_done ; branch if no room for bounce buffer
+    lda shadow_state
+    cmp #shadow_state_first_driver
+    bcc spare_shadow_init_done ; branch if no shadow driver
+    ldx cache_screen_mode
+    sec
+    lda #$80 ; SFTODO: MAGIC?
+    sbc screen_start_page_by_mode,x
+    lsr ; convert pages to 512-byte blocks
+    sta shadow_cache_entries
+    beq spare_shadow_init_done ; branch if no spare shadow RAM (mode 0)
     sty shadow_bounce_buffer
     iny
-relocate_target_in_y
+spare_shadow_init_done
+
     sty relocate_target
+
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 

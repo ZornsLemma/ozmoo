@@ -191,11 +191,13 @@ PRINTTAB(pos,space_y);CHR$normal_graphics_fg;
 REM half-block and block UDGs for progress indicator in modes 0-6
 VDU 23,181,240,240,240,240,240,240,240,240
 VDU 23,255,-1;-1;-1;-1;
-!ifdef CACHE2P_BINARY {
-    IF tube THEN */${CACHE2P_BINARY}
-}
+REM INSV will be placed on the disc before CACHE2P, so by running them in this
+REM order we reduce the chances of the drive head moving backwards.
 !ifdef USE_HISTORY {
     */INSV
+}
+!ifdef CACHE2P_BINARY {
+    IF tube THEN PROCpoke(${cache_screen_mode},?${screen_mode}):*/${CACHE2P_BINARY}
 }
 REM If there are no non-tube builds, ozmoo_relocate_target won't be defined.
 !ifdef ozmoo_relocate_target {

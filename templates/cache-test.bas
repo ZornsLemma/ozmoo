@@ -3,17 +3,7 @@ IF PAGE>&800 THEN PRINT "Sorry, tube only!":END
 old_at%=@%
 ON ERROR PROCerror
 
-*/FINDSWR
-*/CACHE2P
 mode%=0
-
-DIM osword_block% 64
-
-REM SFTODO: For now this is a manual adjustment...
-REM SFTODO: Final checked in version should have private_ram_bank%=0 - but while I'm working actively on this aspect it won't be
-private_ram_bank%=128:REM 0 for none, 64 for Integra-B, 128 for B+
-IF private_ram_bank%<>0 THEN ram_banks%=FNpeek(${ram_bank_count}):PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):PROCpoke(${ram_bank_count},ram_banks%+1)
-
 REM The Ozmoo executable always forces the shadow mode bit on when initialising
 REM the cache, so we do the same. We don't want to chase phantom bugs or quirks
 REM caused by running on a machine with shadow RAM but not using a shadow mode.
@@ -22,6 +12,17 @@ REM able to test non-shadow and shadow cases without actually switching to a
 REM machine with/without shadow RAM. But for now let's keep it as close to real
 REM use as possible.
 MODE mode% OR 128
+
+DIM osword_block% 64
+
+*/FINDSWR
+PROCpoke(${cache_screen_mode},mode% AND &7F)
+*/CACHE2P
+
+REM SFTODO: For now this is a manual adjustment...
+REM SFTODO: Final checked in version should have private_ram_bank%=0 - but while I'm working actively on this aspect it won't be
+private_ram_bank%=128:REM 0 for none, 64 for Integra-B, 128 for B+
+IF private_ram_bank%<>0 THEN ram_banks%=FNpeek(${ram_bank_count}):PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):PROCpoke(${ram_bank_count},ram_banks%+1)
 
 track_offers%=10:REM 0 disables offer tracking
 IF track_offers%>0 THEN DIM recent_offers%(track_offers%-1)
@@ -43,7 +44,9 @@ game_blocks%=489
 IF track_offers%>0 THEN FOR I%=0 TO track_offers%-1:recent_offers%(I%)=-1:NEXT
 recent_offers_ptr%=0
 
-A%=&88:X%=mode% OR 128:host_cache_size_vmem_blocks%=(USR(&FFF4) AND &FF00) DIV &100
+REM X is no longer used by this OSBYTE; we set it to a defined but wrong value
+REM to make it more obvious if it's used by mistake.
+A%=&88:X%=(mode%+2) AND 7:host_cache_size_vmem_blocks%=(USR(&FFF4) AND &FF00) DIV &100
 PRINT "Host cache size (blocks): ";host_cache_size_vmem_blocks%;" / Pass: ";pass%
 max_call_count%=1000+RND(20)*100
 
