@@ -109,7 +109,7 @@ cache_entries_high = zp_temp ; 1 byte
     ; block smaller to make room for that buffer, so the swap would have to be
     ; written to work in smaller chunks as well.
     ldx cache_entries
-    dex
+    dex ; SFTODO: Any risk in corner cases this goes negative?
     rts
 
 our_userv
