@@ -1366,7 +1366,6 @@ deletable_init_start
     beq +
 
     ; Print "continue" message after runtime info and wait for SPACE/RETURN.
-    ; SFTODONOW: This is not appearing for me (on b-em B+64K with ext tube in mode 7 FWIW)... - it is pausing for space, but that's all - we don't get this prompt and we don't get Loading: message. I *suspect* this has something to do with the extra line of output under hardware detected now we can have shadow RAM+tube+12K private RAM (ie three lines), but not sure. Hmm, maybe not, we used to be able to get three lines anyway when there was SWR.
     jsr newline
     jsr newline
     jsr .space_if_indent
