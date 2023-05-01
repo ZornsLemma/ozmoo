@@ -15,6 +15,7 @@ MODE mode% OR 128
 
 DIM osword_block% 64
 
+*/SHADDRV
 */FINDSWR
 PROCpoke(${cache_screen_mode},mode% AND &7F)
 */CACHE2P
