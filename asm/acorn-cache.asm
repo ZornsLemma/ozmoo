@@ -39,6 +39,20 @@ page_in_swr_bank_a_electron_size = 13
     }
 }
 
+; SFTODONOW: For the moment I'm hardcoding these, but we should really make them available by moving them from acorn-shadow-driver.asm to acorn-shared-constants to avoid keeping things in sync being a problem.
+shadow_state_none           = 0 ; no shadow RAM
+shadow_state_screen_only    = 1 ; shadow RAM with no driver for spare shadow RAM access
+shadow_state_first_driver   = 2 ; shadow_state >= this means we have a driver
+shadow_state_b_plus_os      = 2 ; BBC B+ shadow RAM accessed via OS
+shadow_state_b_plus_private = 3 ; BBC B+ shadow RAM via code in 12K private RAM
+shadow_state_master         = 4 ; BBC Master shadow RAM
+shadow_state_mrb            = 5 ; Electron Master RAM Board shadow RAM
+shadow_state_integra_b      = 6 ; Integra-B shadow RAM
+shadow_state_watford        = 7 ; BBC B Watford shadow RAM
+shadow_state_aries          = 8 ; BBC B Aries shadow RAM
+shadow_state = $70
+private_ram_in_use = $71
+
 program_start
     jmp relocate_setup
 
@@ -563,6 +577,8 @@ free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries
 
 low_cache_entries
     !byte 0
+shadow_bounce_buffer
+    !byte 0
 ; SFTODO: If we need further variables, they can go here before we do !align.
 
 ; The following allocations try to avoid page crossing and assume
@@ -655,10 +671,30 @@ relocate_target
 relocate_setup
     lda #osbyte_read_oshwm
     jsr osbyte
+    lda shadow_state
+    cmp #shadow_state_first_driver
+    bcc relocate_target_in_y
+    ; SFTODONOW: WE MUST ALSO NOT BOTHER WITH A BOUNCE BUFFER IF WE'RE IN MODE 0 AND THERE *IS* NO SPARE SHADOW RAM
+    ; We need a page of low memory as a bounce buffer for copying data into and
+    ; out of shadow RAM. If we don't have room for this below $3000 (unlikely,
+    ; but technically possible), we act as if we have no shadow driver; this is
+    ; indicated by shadow_bounce_buffer being left at 0.
+    ; SFTODO: ONCE SHADOW DRIVER ALLOWS PAGE IN/OUT ON SUITABLE HW, WE WON'T NEED BOUNCE BUFFER FOR THAT CASE
+    cpy #>(shadow_start - $100)
+    bcs relocate_target_in_y
+    sty shadow_bounce_buffer
+    iny
+relocate_target_in_y
     sty relocate_target
+no_shadow_driver
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 
 ; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A.
 
 ; SFTODONOW: If possible, it would be good if we had same host cache size on a non-shadow machine after adding all this private RAM/shadow support as we did beforehand, i.e. that non-shadow machine is not losing out (slightly)
+
+; SFTODO: Just thinking out loud...
+; Although it's way nicer if we can page in shadow RAM and access it directly - it's simpler *and* faster, and I definitely want to support this - in order to handle shadow RAM in general we need to copy data between shadow RAM and a bounce buffer in low main RAM. We could in theory do this one byte at a time, but that would be slow. The real choice is whether to do 256 bytes or 512 bytes at a time. 256 bytes frees up a page (and depending on how PAGE is aligned and the size of this code, that might mean we have an extra 512 bytes of cache, i.e. one more block) compared to 512, but it means we have to switch to doing a copy in the middle of our 512 byte tube transfer. 256 bytes is also a natural fit for the existing shadow driver, although that's not a huge deal as I will probably have separate "Ozmoo itself" vs "host cache" shadow drivers, given I want to expose page in/out for the host cache (which isn't really useful in Ozmoo itself). I suppose since we *are* doing 2x256 byte tube transfers just because of how the protocol works, it may not be excessively complex to do two 256 byte copies in/out of shadow RAM. Doing 2x256 shadow RAM copies instead of 1x512 bytes does slightly increase the overhead, because we're doing the OSBYTE to page in/out twice, but I suppose once I only copy if the page in/out isn't possible (MRB, B+) that goes away, and for those non-pageable systems there *is* no real setup/finish overhead, the overhead is all in the per byte calls to copy the data.
+;
+; So I guess I'm thinking it's worth trying to use a 256 byte bounce buffer to start with. Of course ultimately if the shadow driver allows page in/out, we don't want to allocate a bounce buffer at all.

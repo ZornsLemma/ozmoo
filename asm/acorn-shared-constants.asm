@@ -29,6 +29,8 @@ electron_romsel = $fe05
 }
 
 !ifdef ACORN_SHADOW_VMEM {
+    shadow_start = $3000
+
     ; We steal the envelope buffers in page 8 for the shadow RAM driver. (It's
     ; tempting to steal the printer buffer at $880 as well, but the Integra-B
     ; seems to use that for its own purposes so we'll keep out of its way.)
@@ -65,4 +67,24 @@ buffer_keyboard = 0
     !if .b = 0 {
         !error "assertion failed"
     }
+}
+
+; SFTODO: MOVE THIS? I PUT IT HERE INTENDING TO USE IT IN CACHE2P BUT DIDN'T, SO IT COULD TECHNICALLY MOVE BACK TO ACORN.ASM WHERE IT USED TO BE.
+; Macro used to generate an OS error.
+; SFTODO: On one of my machines where acme is:
+;     This is ACME, release 0.95.8 ("Fenchurch"), 8 Oct 2016
+;       Platform independent version.
+; macros cannot take string arguments and all the uses of this fail. Should I
+; get rid of this (and any other, if there are any) macros which take string
+; arguments, or just require a newer acme? (Right now I am not sure exactly
+; which versions work, and acme seems to have a few forks floating around.) I
+; noticed this myself, no one else has run into problems with this yet.
+; (I tried updating to release 0.96.4 ("Fenchurch"), 1 Feb 2019, platform
+; independent version but I still get the same error.)
+; - OK, the machine which *does* build this OK has 0.97 ("Zem"), 31 Jan 2021,
+; platform independent version.
+!macro os_error error_number, error_message {
+    brk
+    !byte error_number
+    !text error_message, 0
 }

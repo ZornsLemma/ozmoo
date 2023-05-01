@@ -110,9 +110,6 @@ swr_ramtop = $c000
 } else {
 flat_ramtop = $f800
 }
-!ifdef ACORN_SHADOW_VMEM {
-shadow_start = $3000
-}
 !ifdef ACORN_SHOW_RUNTIME_INFO {
 inkey_ctrl = -2
 inkey_tab = -97

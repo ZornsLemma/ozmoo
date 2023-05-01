@@ -104,25 +104,6 @@ DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; SFTODONOW: Need to think carefully about what debug flags should be on by default in a "proper" release
 ; SFTODONOW: Should I have some kind of single --debug switch in make-acorn.py which turns on multiple things?
 
-; Macro used to generate an OS error.
-; SFTODO: On one of my machines where acme is:
-;     This is ACME, release 0.95.8 ("Fenchurch"), 8 Oct 2016
-;       Platform independent version.
-; macros cannot take string arguments and all the uses of this fail. Should I
-; get rid of this (and any other, if there are any) macros which take string
-; arguments, or just require a newer acme? (Right now I am not sure exactly
-; which versions work, and acme seems to have a few forks floating around.) I
-; noticed this myself, no one else has run into problems with this yet.
-; (I tried updating to release 0.96.4 ("Fenchurch"), 1 Feb 2019, platform
-; independent version but I still get the same error.)
-; - OK, the machine which *does* build this OK has 0.97 ("Zem"), 31 Jan 2021,
-; platform independent version.
-!macro os_error error_number, error_message {
-    brk
-    !byte error_number
-    !text error_message, 0
-}
-
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too
 ; space-conscious and so the check can be left in permanently. SFTODO: In some

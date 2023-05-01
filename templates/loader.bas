@@ -879,3 +879,11 @@ REM   but if it helps we could have different driver conventions. Maybe have two
 REM   shadow driver executables and run the right one depending on whether we have
 REM   tube or not in loader, or maybe a single shadow driver executable which adapts
 REM   accordingly. Whatever works best.
+
+REM SFTODO: Not a likely case, but it might be nice if we cope nicely (even if
+REM just an error, or perhaps reducing the mode menu selection) when we're on tube
+REM with no shadow RAM and OSHWM>=&3000 on host so we can't use mode 0 etc. As an
+REM extra complication, if OSHWM is high in host, we may not have room for the host
+REM cache. Not saying I should massively complicate the loader for this, but giving
+REM some kind of error if OSHWM is super high in host might be better than just
+REM crashing.
