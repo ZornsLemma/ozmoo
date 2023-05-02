@@ -127,14 +127,14 @@ REM now.
 DEF PROCcreate_block(block_num%, addr%)
 LOCAL I%
 FOR I%=0 TO 511 STEP 4
-addr%!I%=block_num%
+addr%!I%=block_num%*I%
 NEXT
 ENDPROC
 
 DEF PROCcheck_block(block_num%,addr%)
 LOCAL I%
 FOR I%=0 TO 511 STEP 4
-IF addr%!I%<>block_num% THEN PRINT "PROCcheck_block(";block_num%;",&";STR$~addr%;") failed!":END
+IF addr%!I%<>(block_num%*I%) THEN PRINT "PROCcheck_block(";block_num%;",&";STR$~addr%;") failed!":END
 NEXT
 ENDPROC
 
