@@ -271,9 +271,15 @@ timestamp_updated
     lda #free_block_index_none
     sta free_block_index
 
-    ; Set our_cache_ptr to the block's data so we can update it.
+    ; If we're using a shadow bounce buffer for this block, we need to copy 256
+    ; bytes from the bounce buffer into shadow RAM after the tube read loop.
+    ; This flag tells set_our_cache_ptr_to_index_y to do nothing special and
+    ; do_loop_tail_common to do both copies.
+    ; SFTODO: IT'S A BIT SILLY HAVING THIS FLAG TO TELL "COMMON" CODE TO BEHAVE DIFFERENTLY - WE SHOULD JUST PULL THE CODE OUT OF DO_LOOP_TAIL_COMMON FOR THE RELEVANT CASES. I THINK WE STILL NEED THIS FLAG FOR ONE OTHER USE, BUT IT'S STILL A WIN AND IT MAY BE WE COULD HANDLE THE FLAG DIFFERENTLY IN THAT ONE REMAINING CASE.
     lda #0
     sta SFTODOSHADOWCOPYBEFORE
+
+    ; Set our_cache_ptr to the block's data so we can update it.
     txa
     tay
     jsr set_our_cache_ptr_to_index_y
@@ -354,6 +360,11 @@ match
     sta cache_id_high,y
     sty free_block_index
 
+    ; If we're using a shadow bounce buffer for this block, we need to copy 256
+    ; bytes from shadow RAM into the bounce buffer before the tube write loop.
+    ; This flag tells set_our_cache_ptr_to_index_y to do the first 256 byte copy
+    ; and do_loop_tail_common to do the second 256 byte copy at the end of the
+    ; first pass round the loop.
     lda #1
     sta SFTODOSHADOWCOPYBEFORE
 
@@ -432,6 +443,7 @@ do_loop_tail_common
     lda #1
     jsr adjust_osword_block_data_offset
 
+    ; If this block lives in shadow RAM, our_cache_ptr shouldn't change (it's always the bounce buffer) and we may need to do a copy between the bounce buffer and shadow RAM, depending on whether this is a read or write and which pass round the loop we're on.
     lda shadow_ptr_high
     beq SFTODONOTSHADOW
     dec our_cache_ptr + 1 ; revert the change made above
@@ -440,21 +452,18 @@ do_loop_tail_common
     ; SFTODO COPYING BEFORE, SO WE NEED TO DO THIS IF COUNT IS CURRENTLY 2
     ldx count
     dex
-    beq SFTODONOTSHADOW
-    lda shadow_ptr_high
-    ldy shadow_bounce_buffer
-    jmp SFTODO641
+    beq SFTODO99
+    jsr shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
+    jmp SFTODO99
 SFTODOCOPYINGAFTER
-    ; SFTODO COPYING AFTER, SO WE NEED TO DO THIS IF COUNT IS CURRENTLY 2 OR 1 (ONLY POSSIBLE VALUES IT CAN HAVE, IE ALWAYS)
-    lda shadow_bounce_buffer
-    ldy shadow_ptr_high
-SFTODO641
-    jsr shadow_ram_copy
-    inc shadow_ptr_high
+    jsr shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr
+SFTODO99
 SFTODONOTSHADOW
-   
+
+    ; SFTODO: With the newer more complex code flow, would it be a net win to just move dec count (a 2 byte zp instruction) out of this function so we can do jsr:rts->jmp optimisations and maybe other good stuff once the code order is not so constrained in this subroutine?
     dec count ; must be last
     rts
+
 SFTODOSHADOWCOPYBEFORE !byte 0
 shadow_ptr_high !byte 0 ; SFTODO MOVE ETC
 
@@ -485,6 +494,7 @@ set_our_cache_ptr_to_index_y
     clc
     adc #>low_cache_start
     sta our_cache_ptr + 1
+anrts
     rts
 index_in_high_cache ; SFTODO: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
 ; SFTODO: COMMENT?
@@ -529,6 +539,7 @@ index_in_shadow_cache
     sbc swr_cache_entries
     asl
     ; Carry is already clear
+    ; SFTODO: If we added one less, we could probably move the inc shadow_ptr_high to before the jsr shadow_ram_copy and then we could do jsr:rts->jmp
     adc #>shadow_start
     sta shadow_ptr_high
     lda shadow_bounce_buffer
@@ -536,14 +547,20 @@ SFTODOHANG
     beq SFTODOHANG ; SFTODO TEMP HACK - IT SHOULDN'T BE POSSIBLE TO GET HERE IF WE HAVE NO SHADOW BOUNCE BUFFER
     sta our_cache_ptr + 1
     lda SFTODOSHADOWCOPYBEFORE
-    beq +
-    ; SFTODO: We're sending from the I/O processor to the parasite, so we need to copy the first page from shadow RAM into the bounce buffer now
+    beq anrts
+    ; fall through to shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
+shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
     lda shadow_ptr_high
     ldy shadow_bounce_buffer
+    bne SFTODO641 ; always branch
+shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr
+    lda shadow_bounce_buffer
+    ldy shadow_ptr_high
+SFTODO641
     jsr shadow_ram_copy
     inc shadow_ptr_high
-+
     rts
+
 
     ; SFTODO: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
 
