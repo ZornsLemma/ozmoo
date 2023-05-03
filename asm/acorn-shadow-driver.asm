@@ -43,7 +43,8 @@ shadow_state_aries          = 8 ; BBC B Aries shadow RAM
 ; pass information to the BASIC loader.
 shadow_state = $70
 private_ram_in_use = $71
-; The following addresses are only used internally by this code.
+; The following addresses are only used internally by this code as we install the
+; shadow driver; the shadow driver itself doesn't use them.
 src = $72 ; 2 bytes
 tmp = $74
 

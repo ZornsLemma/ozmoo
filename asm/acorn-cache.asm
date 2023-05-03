@@ -21,6 +21,7 @@ osbyte_read_screen_address_for_mode = $85
 ; SFTODO: Why don't we just use $70-8f for zp_temp? In practice tube host code leaves this free.
 zp_temp = $f5 ; 3 bytes
 
+; SFTODO: I don't think these *are* used by the shadow driver in any sense we care about. They're used to communicate between shadow driver and loader ($70, 71) but that's over by the time we execute, and the others are used only by the shadow driver installation itself, not the shadow driver code which executes during gameplay.
 ; $70-74 inclusive are used by the shadow driver so we keep them free; we could
 ; potentially reuse some of these addresses with care, but while we're not short
 ; of zero page it seems best just to steer clear.
