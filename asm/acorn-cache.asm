@@ -81,6 +81,7 @@ cache_entries_high = zp_temp ; 1 byte
     ; invalid block ID. This means those entries will be evicted in preference
     ; to any real entries and will never be returned in response to a cache
     ; lookup.
+    ; SFTODO: Corner case, do we need to disable ourselves if cache_entries is 0? Probably unlikely but we'd probably misbehave badly. Maybe we should (see other TODOs) check OSHWM in host is not too high and if it is just error and refuse to run. If our "high" relocation address allows for at least one cache entry we would kind of get this for free...
     ldy cache_entries
 -   lda #0
     sta cache_timestamp - 1,y
