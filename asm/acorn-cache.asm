@@ -81,7 +81,6 @@ cache_entries_high = zp_temp ; 1 byte
     ; invalid block ID. This means those entries will be evicted in preference
     ; to any real entries and will never be returned in response to a cache
     ; lookup.
-    ; SFTODO: Corner case, do we need to disable ourselves if cache_entries is 0? Probably unlikely but we'd probably misbehave badly. Maybe we should (see other TODOs) check OSHWM in host is not too high and if it is just error and refuse to run. If our "high" relocation address allows for at least one cache entry we would kind of get this for free...
     ldy cache_entries
 -   lda #0
     sta cache_timestamp - 1,y
@@ -113,7 +112,7 @@ cache_entries_high = zp_temp ; 1 byte
     ; block smaller to make room for that buffer, so the swap would have to be
     ; written to work in smaller chunks as well.
     ldx cache_entries
-    dex ; SFTODO: Any risk in corner cases this goes negative?
+    dex
     rts
 
 our_userv
@@ -586,6 +585,14 @@ low_cache_start = *
 !if low_cache_start & $ff <> 0 {
     !error "low_cache_start must be page-aligned"
 }
+; The relocation process can't relocate us upwards in memory, so by asserting
+; that all builds (including the one at the high relocation address) have enough
+; free memory for at least two cache entries, we avoid the corner cases where we
+; have zero or one pages of cache and this code misbehaves. The maximum host
+; OSHWM we support is high enough that we don't seriously expect this to happen,
+; so this doesn't significantly penalise machines which have non-main RAM for
+; cache and could therefore run with OSHWM that bit higher.
++assert ($3000 - low_cache_start) >= 2*512
 
 initialize
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
