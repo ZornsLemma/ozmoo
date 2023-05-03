@@ -121,7 +121,7 @@ our_userv
     jmp (old_userv)
 
     ; Waste some space so we avoid unwanted page crossing in time-critical loops.
-    !fill 4 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features
+    !fill 4 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features - ALSO REMEMBER WE CAN MOVE SOME VARIABLES INTO THIS SPACE IF THAT HELPS
 
 ; OSWORD &E0 - host cache access
 ;
