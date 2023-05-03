@@ -25,6 +25,7 @@ zp_temp = $f5 ; 3 bytes
 ; potentially reuse some of these addresses with care, but while we're not short
 ; of zero page it seems best just to steer clear.
 ; SFTODO: Should I move all "shared" low memory allocations into acorn-shared-constants and comment them all there, to make it more obvious what is being used simultaneously?
+; SFTODO: If it helps squashing this code, may want to move some vars into zp of course.
 
 ; We use this address for the loader to communicate the intended screen mode to the cache.
 cache_screen_mode = $75 ; 1 byte
