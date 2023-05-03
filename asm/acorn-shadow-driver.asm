@@ -334,7 +334,7 @@ shadow_driver_table_high
 shadow_driver_integra_b
 !pseudopc shadow_driver_start {
 !zone {
-    !word .shadow_paging_control
+    !word 0 ; SFTODONOW TEMP COM OUT FOR DEBUGGING !word .shadow_paging_control
 
     ; SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
     ; registers, we might as well do so here to page shadow RAM in and out; it
