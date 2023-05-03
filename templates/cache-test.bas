@@ -17,13 +17,15 @@ DIM osword_block% 64
 
 */SHADDRV
 */FINDSWR
-PROCpoke(${cache_screen_mode},mode% AND &7F)
-*/CACHE2P
 
 REM SFTODO: For now this is a manual adjustment...
 REM SFTODO: Final checked in version should have private_ram_bank%=0 - but while I'm working actively on this aspect it won't be
 private_ram_bank%=128:REM 0 for none, 64 for Integra-B, 128 for B+
-IF private_ram_bank%<>0 THEN ram_banks%=FNpeek(${ram_bank_count}):PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):PROCpoke(${ram_bank_count},ram_banks%+1)
+ram_banks%=FNpeek(${ram_bank_count}):
+IF private_ram_bank%<>0 AND ram_banks%<${max_ram_bank_count} THEN PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):ram_banks%=ram_banks%+1:PROCpoke(${ram_bank_count},ram_banks%)
+
+PROCpoke(${cache_screen_mode},mode% AND &7F)
+*/CACHE2P
 
 track_offers%=10:REM 0 disables offer tracking
 IF track_offers%>0 THEN DIM recent_offers%(track_offers%-1)
