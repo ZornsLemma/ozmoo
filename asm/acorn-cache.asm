@@ -314,7 +314,11 @@ lda_abs_tube_data
     lda shadow_ptr_high
     beq not_shadow_in_tube_read_loop
     dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
-    jsr shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr
+    lda shadow_bounce_buffer
+    ldy shadow_ptr_high
+    ; SFTODO: IF SQUASHING CODE, SHARING THE FOLLOWING TWO INSNS MAY SAVE A BYTE
+    jsr shadow_ram_copy
+    inc shadow_ptr_high
 not_shadow_in_tube_read_loop
     jsr do_loop_tail_common
     bne copy_offered_block_loop
@@ -547,11 +551,6 @@ SFTODOHANG
 shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
     lda shadow_ptr_high
     ldy shadow_bounce_buffer
-    bne SFTODO641 ; always branch
-shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr ; SFTODO: THIS HAS ONLY ONE CALLER - IT MIGHT SAVE SPACE TO GET RID OF IT AS A SUBROUTINE, THOUGH IT MIGHT BE BORDERLINE GIVEN WWE SHARE THE TAIL AT SFTODO641
-    lda shadow_bounce_buffer
-    ldy shadow_ptr_high
-SFTODO641
     jsr shadow_ram_copy
     inc shadow_ptr_high
     rts
