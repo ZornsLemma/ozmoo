@@ -23,6 +23,7 @@ max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
 
 !macro assert_shadow_driver_fits .start {
     +assert * - .start <= max_shadow_driver_size
+    ;!warn "QQQA FREE ",max_shadow_driver_size - (* - .start) ; SFTODO TEMP, DELETE
 }
 
 ; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader

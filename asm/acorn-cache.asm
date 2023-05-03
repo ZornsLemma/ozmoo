@@ -786,6 +786,8 @@ spare_shadow_init_done
 
 ; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A.
 
+; SFTODONOW: I think I have a comment elsewhere suggesting I may need separate tube/non-tube shadow drivers. I don't think I will, the largest shadow drivers (which tend to be for machines with no shadow paging capability anyway) still have 14 bytes free in the shadow driver region, so I can probably squeeze a two byte flag (address to jmp indirect through or something) to indicate "yes I can page" or "no I can't" (0) and a routine for that to point to in. And of course it may be the shadow copy code can be shortened by calling into that paging routine where it exists, a few extra cycles for a jsr is irrelevant given the number of cycles spent doing the shadow copy
+
 ; SFTODONOW: If possible, it would be good if we had same host cache size on a non-shadow machine after adding all this private RAM/shadow support as we did beforehand, i.e. that non-shadow machine is not losing out (slightly)
 
 ; SFTODO: Just thinking out loud...

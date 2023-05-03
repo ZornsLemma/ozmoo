@@ -40,9 +40,6 @@ electron_romsel = $fe05
     ; page_in_shadow_ram_indirect = $8c0
     ; page_out_shadow_ram_indirect = $8c2
     shadow_ram_copy = $8c4
-    ; SFTODO: We should check the code doesn't spill past
-    ; shadow_ram_copy_max_end; this isn't really convenient when we're
-    ; assembling it in the BASIC loader, but this may well change later.
     shadow_ram_copy_max_end = $900
 }
 
