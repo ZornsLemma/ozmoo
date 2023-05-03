@@ -15,12 +15,15 @@ MODE mode% OR 128
 
 DIM osword_block% 64
 
+integra_b%=FNusr_osbyte_x(&49,&FF,0)=&49
+IF integra_b% THEN host_os%=1 ELSE host_os%=FNusr_osbyte_x(0,1,0)
+
 */SHADDRV
 */FINDSWR
 
-REM SFTODO: For now this is a manual adjustment...
-REM SFTODO: Final checked in version should have private_ram_bank%=0 - but while I'm working actively on this aspect it won't be
-private_ram_bank%=128:REM 0 for none, 64 for Integra-B, 128 for B+
+private_ram_bank%=0
+IF integra_b% THEN private_ram_bank%=64
+IF host_os%=2 THEN private_ram_bank%=128
 ram_banks%=FNpeek(${ram_bank_count}):
 IF private_ram_bank%<>0 AND ram_banks%<${max_ram_bank_count} THEN PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):ram_banks%=ram_banks%+1:PROCpoke(${ram_bank_count},ram_banks%)
 
@@ -155,3 +158,5 @@ END
 DEF FNpeek(addr):!osword_block%=&FFFF0000 OR addr:A%=5:X%=osword_block%:Y%=osword_block% DIV 256:CALL &FFF1:=osword_block%?4
 
 DEF PROCpoke(addr,val):!osword_block%=&FFFF0000 OR addr:osword_block%?4=val:A%=6:X%=osword_block%:Y%=osword_block% DIV 256:CALL &FFF1:ENDPROC
+
+DEF FNusr_osbyte_x(A%,X%,Y%)=(USR&FFF4 AND &FF00) DIV &100
