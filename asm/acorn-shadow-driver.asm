@@ -54,10 +54,10 @@ extended_vector_table = $d9f
 ; of the shadow driver - it's faster than going via the OSRDSC/OSWRSC routines.
 shadow_copy_private_ram = $af00
 
-; NB: If an OSBYTE call fails, it returns normally with X=$FF. It does *not*
-; generate an OS error via BRK; that is a function of the *FX command, not
-; OSBYTE itself. I have used *FX a lot in comments, but remember we're really
-; dealing with raw OSBYTE.
+; NB: If an OSBYTE call fails because it's not supported, it returns normally
+; with X=$FF. It does *not* generate an OS error via BRK; that is a function of
+; the *FX command, not OSBYTE itself. I have used *FX a lot in comments, but
+; remember we're really dealing with raw OSBYTE.
 
 start
     ; Do we have shadow RAM?
