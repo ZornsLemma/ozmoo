@@ -370,6 +370,8 @@ shadow_driver_integra_b
 }
 +assert_shadow_driver_fits shadow_driver_integra_b
 
+; SFTODO: https://beebwiki.mdfs.net/Paging_in_video_memory has some untested
+; code for paging in shadow RAM on the Electron. Could this work on the MRB?
 shadow_driver_electron_mrb
 !pseudopc shadow_driver_start {
 !zone {
