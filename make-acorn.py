@@ -2388,3 +2388,5 @@ show_deferred_output()
 # SFTODO: Any prospect of optimising SWR paging on systems with only 1 bank? If we can easily detect this (either at runtime or by checking during discardable init and patching a handful of manageable places) we can possibly avoid all SWR paging because we know our bank is always paged in.
 
 # SFTODO: It would probably be a win to free up page 9/a for an extra vmem cache block, especially on smaller machines. We could potentially move INSV to 3a7-ish and the swr bytes to 3d3ish/380ish. Those are quick guesses, have a look at allmem, we need to work round nula use of part of this memory but there is potential here I think. Also shadow driver area might have spare space for swr info or one of the sound buffers for channels we don't use could be appropriated.
+
+# SFTODONOW: Booting benchmark (with --no-loader-crunch, but prob not important) on an Integra-B with no sideways RAM dies during loading with an "Unreachable" error. This seems to have been present in alpha 45 as well.
