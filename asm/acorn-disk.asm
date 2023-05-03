@@ -546,6 +546,13 @@ ACORN_SAVE_RESTORE_OSFILE = 1
 .no_oscli_error
     ; We re-enable Escape generating errors while we're executing the command,
     ; this way the user can terminate a long-running command.
+    ; SFTODNOW: I think there's a long-standing glitch here where if you're
+    ; on an Integra-B and the private RAM bank is in use (i.e. the machine doesn't
+    ; have so much SWR we don't bother with it), you can hang the machine by
+    ; pressing Escape during the execution of the * command because PRVS4/8 are
+    ; set (all the time Ozmoo is executing) and when the acknowledge escape
+    ; OSBYTE causes the OS to flush buffers, IBOS sets b6 of ROMSEL *without*
+    ; clearing PRVS4/8 itself.
     ldx #0
     jsr do_osbyte_rw_escape_key
     ldx #<.filename_buffer
