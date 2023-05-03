@@ -306,13 +306,13 @@ lda_abs_tube_data
     bne tube_read_loop    ; 3 cycles if we branch
     +assert_no_page_crossing tube_read_loop
     ldy shadow_ptr_high
-    beq not_shadow_in_tube_read_loop
+    beq not_shadow_bounce_in_tube_read_loop
     lda shadow_bounce_buffer
     ; SFTODO: IF SQUASHING CODE, SHARING THE FOLLOWING TWO INSNS MAY SAVE A BYTE
     jsr shadow_ram_copy
     inc shadow_ptr_high
     dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
-not_shadow_in_tube_read_loop
+not_shadow_bounce_in_tube_read_loop
     jsr do_loop_tail_common
     bne copy_offered_block_loop
     jsr release_tube
@@ -377,12 +377,12 @@ match
     sta count
 copy_requested_block_loop
     lda shadow_ptr_high
-    beq not_shadow_in_tube_write_loop
+    beq not_shadow_bounce_in_tube_write_loop
     ldy shadow_bounce_buffer
     sty our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
     jsr shadow_ram_copy
     inc shadow_ptr_high
-not_shadow_in_tube_write_loop
+not_shadow_bounce_in_tube_write_loop
     jsr set_yx_to_tube_transfer_block
     lda #tube_reason_256_byte_from_io
     jsr tube_entry
@@ -404,8 +404,16 @@ sta_abs_tube_data
     jsr reset_osword_block_data_offset
 
 our_osword_done
-    ; We don't need to preserve A, X or Y. We just need to leave the same sideways
-    ; ROM paged in as when we were entered.
+    ; We don't need to preserve A, X or Y.
+    ; If we paged in shadow RAM, we need to page main RAM back in.
+zero_if_need_to_undo_shadow_paging = *+1
+    lda #1 ; patched, although important it starts at 1
+    bne no_shadow_paging_to_undo
+    inc zero_if_need_to_undo_shadow_paging ; set back to 1
+jsr_shadow_paging_control
+    jsr $ffff ; patched
+no_shadow_paging_to_undo
+    ; We need to leave the same sideways ROM paged in as when we were entered.
     pla
     ; fall through to page_in_swr_bank_a
 page_in_swr_bank_a
@@ -454,6 +462,7 @@ reset_osword_block_data_offset
     ; fall through to adjust_osword_block_data_offset
 
 ; Add A to the high byte of the data address in the OSWORD block.
+; SFTODO: Would it save code and hassle to just allocate four bytes for the address (perhaps even in zp to keep code size down), copy the data block in there at start and use that for the transfers? We would then not need to add 1 during the loop or add -2 to get it back to the starting value afterwards.
 adjust_osword_block_data_offset
     ldy #our_osword_data_offset + 1
     clc
@@ -521,12 +530,17 @@ index_in_shadow_cache
     asl
     ; Carry is already clear
     adc #>shadow_start
+    ldy shadow_bounce_buffer
+    beq use_shadow_paging
     sta shadow_ptr_high
-    lda shadow_bounce_buffer
-SFTODOHANG
-    beq SFTODOHANG ; SFTODO TEMP HACK - IT SHOULDN'T BE POSSIBLE TO GET HERE IF WE HAVE NO SHADOW BOUNCE BUFFER
-    sta our_cache_ptr + 1
+    sty our_cache_ptr + 1
     rts
+use_shadow_paging
+    sty zero_if_need_to_undo_shadow_paging
+    sta our_cache_ptr + 1
+    lda #1
+jmp_shadow_paging_control
+    jmp $ffff ; patched
 
 
     ; SFTODO: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
@@ -592,7 +606,7 @@ low_cache_start = *
 ; OSHWM we support is high enough that we don't seriously expect this to happen,
 ; so this doesn't significantly penalise machines which have non-main RAM for
 ; cache and could therefore run with OSHWM that bit higher.
-+assert ($3000 - low_cache_start) >= 2*512
+; SFTODONOW TEMP COMMENTED OUT WHILE CODE IS A BIT TOO BIG DURING DEV +assert ($3000 - low_cache_start) >= 2*512
 
 initialize
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
@@ -784,8 +798,17 @@ relocate_setup
     lsr ; convert pages to 512-byte blocks
     sta shadow_cache_entries
     beq spare_shadow_init_done ; branch if no spare shadow RAM (mode 0)
+    lda shadow_paging_control_ptr+1
+    bne init_shadow_paging ; branch if we can page shadow RAM in directly
     sty shadow_bounce_buffer
     iny
+    jmp spare_shadow_init_done
+init_shadow_paging
+    sta jsr_shadow_paging_control+2
+    sta jmp_shadow_paging_control+2
+    lda shadow_paging_control_ptr
+    sta jsr_shadow_paging_control+1
+    sta jmp_shadow_paging_control+1
 spare_shadow_init_done
 
     sty relocate_target
