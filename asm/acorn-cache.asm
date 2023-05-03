@@ -468,7 +468,7 @@ adjust_osword_block_data_offset
 ; Set our_cache_ptr to point to the block with index Y.
 set_our_cache_ptr_to_index_y
     lda #0
-    sta our_cache_ptr
+    sta our_cache_ptr ; SFTODO: Saving isn't huge, but this is *always* 0 so we could just do this init once in discardable init code (it saves two bytes, cycle saving not a big deal, but two bytes might help us fit code+vars into 512 bytes)
     sta shadow_ptr_high ; SFTODO TEMP HACK SO WE CAN USE IT TO DECIDE IF WE'RE DOING SHADOW OR NOT
     tya
     sec
