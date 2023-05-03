@@ -531,3 +531,6 @@ end
 +assert * <= $b00
 
 ; SFTODONOW: Must test that this works for all the different shadow options
+
+; SFTODONOW: Gut feeling based on quick look at code is that for shadow paging driver, entering with A=0 for main and A=1 for shadow is a good API. This mirrors X in OSBYTE &6C - just for "mnemonic" value really. Entering with it in A makes it easier to do swizzling on it (e.g. EOR #1 or ASL A:ASL A) to tweak it to the value actually required within any given driver.
+; - probably change !pseudopc to a new shadow_driver_start (=$8c4) and make shadow_ram_copy 2 higher than currently (i.e. $8c6), then $8c4 (which we'd call shadow_driver_page_in_out=$8c4 again) is a two byte value which is zero if the driver doesn't support paging and can be lda #n:jmp (shadow_driver_page_in_out) if it's been checked to be non-zero) - callers obviously have option to e.g. self-modify to make a directly jsr-able version or whatever if they prefer
