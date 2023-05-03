@@ -313,13 +313,14 @@ shadow_driver_table_high
 ;    A pointer to this routine is held at shadow_paging_control_ptr; it may be 0
 ;    if the current hardware can't support shadow RAM paging. (Check this rather
 ;    than trying to infer the capabilities from the precise value of
-;    shadow_state; it is provided mainly for display purposes.)
+;    shadow_state, which is provided mainly for display purposes.)
 ;
 ;    Enter with:
 ;        A=0 to page in main RAM at $3000-$7fff inclusive
 ;        A=1 to page in shadow RAM at $3000-$7fff inclusive
 ;        (any other value of A will result in undefined behaviour)
 ;    SFTODONOW: Once all shadow drivers written, consider using X instead of A - it might simplify code overall, it might not
+;    SFTODONOW: It's not a huge deal but swapping 0 and 1 here might also simplify the cache code - not sure, just a thought
 ;
 ;    All registers are corrupt on exit.
 
@@ -517,11 +518,11 @@ shadow_driver_master
     tax
     beq .page_in_main_ram
     lda #4
-    trb $fe34
+    tsb $fe34
     rts
 .page_in_main_ram
     lda #4
-    tsb $fe34
+    trb $fe34
     rts
 
     !cpu 6502
