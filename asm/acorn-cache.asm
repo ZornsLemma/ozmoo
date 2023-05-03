@@ -422,7 +422,7 @@ page_in_swr_bank_a
     rts
     ; Leave room for the larger Electron version of page_in_swr_bank_a to be copied
     ; over the BBC version.
-!fill page_in_swr_bank_a_electron_size - (* - page_in_swr_bank_a)
+    !fill page_in_swr_bank_a_electron_size - (* - page_in_swr_bank_a)
 
 claim_tube
     lda #tube_reason_claim + our_tube_reason_claim_id
@@ -462,7 +462,7 @@ reset_osword_block_data_offset
     ; fall through to adjust_osword_block_data_offset
 
 ; Add A to the high byte of the data address in the OSWORD block.
-; SFTODO: Would it save code and hassle to just allocate four bytes for the address (perhaps even in zp to keep code size down), copy the data block in there at start and use that for the transfers? We would then not need to add 1 during the loop or add -2 to get it back to the starting value afterwards.
+; SFTODO: Would it save code and hassle to just allocate four bytes for the address (perhaps even in zp to keep code size down), copy the addr from data block in there at start and use that for the transfers? It would then be easier to add 1 during the loop and we wouldn't need to add -2 to get it back to the starting value afterwards.
 adjust_osword_block_data_offset
     ldy #our_osword_data_offset + 1
     clc
@@ -558,7 +558,8 @@ old_userv
 
     ; Permanent code ends here; the following memory contains some one-off
     ; initialization code and some overlapping data allocations.
-code_end
+    ; SFTODO: The data allocations don't actually overlap any more - this isn't a huge deal as the init code is all discardable anyway, but it *slightly* bloats the executable on disc. If this is fine on second thoughts, update the above comment to be correct. Note that we do rely on zero-init of some of these values, which we'd lose if we overlapped with discardable init code.
+code_end ; SFTODO: FWIW THIS LABEL IS NEVER USED - IT MIGHT STILL BE USEFUL FOR REF, BUT MAYBE NOT - THINK ABOUT IT
 
 max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
@@ -570,8 +571,10 @@ swr_cache_entries
 shadow_cache_entries
     !byte 0
 shadow_bounce_buffer ; SFTODO: rename to indicate this is the start page not the actual buffer address?
-    !byte 0
+    !byte 0 ; SFTODO: NOTE (PERHAPS PERM COMMENT) WE RELY ON THIS BEING ZERO INITED ON START
 ; SFTODO: If we need further variables, they can go here before we do !align.
+
+; SFTODONOW: I switched from calculating these labels from * to using !byte/!fill etc, and this actually bloats the on disc executable with loads of 0s. Need to fix this, although for now while I'm still debugging the code I won't worry about it.
 
 ; The following allocations try to avoid page crossing and assume
 ; max_cache_entries == 255.
