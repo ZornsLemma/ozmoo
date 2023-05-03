@@ -315,6 +315,7 @@ lda_abs_tube_data
 not_shadow_bounce_in_tube_read_loop
     jsr do_loop_tail_common
     bne copy_offered_block_loop
+    jsr undo_shadow_paging_if_necessary
     jsr release_tube
     jsr reset_osword_block_data_offset
 no_block_offered
@@ -400,19 +401,13 @@ sta_abs_tube_data
     +assert_no_page_crossing tube_write_loop
     jsr do_loop_tail_common
     bne copy_requested_block_loop
+    ; SFTODO: If we're desperate to squash this code, the following three jsrs are probably duplicated in two places
+    jsr undo_shadow_paging_if_necessary
     jsr release_tube
     jsr reset_osword_block_data_offset
 
 our_osword_done
     ; We don't need to preserve A, X or Y.
-    ; If we paged in shadow RAM, we need to page main RAM back in.
-zero_if_need_to_undo_shadow_paging = *+1
-    lda #1 ; patched, although important it starts at 1
-    bne no_shadow_paging_to_undo
-    inc zero_if_need_to_undo_shadow_paging ; set back to 1
-jsr_shadow_paging_control
-    jsr $ffff ; patched
-no_shadow_paging_to_undo
     ; We need to leave the same sideways ROM paged in as when we were entered.
     pla
     ; fall through to page_in_swr_bank_a
@@ -484,7 +479,6 @@ set_our_cache_ptr_to_index_y
     clc
     adc #>low_cache_start
     sta our_cache_ptr + 1
-anrts
     rts
 index_in_high_cache ; SFTODO: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
 ; SFTODO: COMMENT?
@@ -523,6 +517,7 @@ not_integra_b_private_ram
     ; Carry is already clear
     adc swr_base
     sta our_cache_ptr + 1
+anrts
     rts
 index_in_shadow_cache
     ; Carry is already set
@@ -542,6 +537,14 @@ use_shadow_paging
 jmp_shadow_paging_control
     jmp $ffff ; patched
 
+undo_shadow_paging_if_necessary
+    ; If we paged in shadow RAM, we need to page main RAM back in.
+zero_if_need_to_undo_shadow_paging = *+1 ; SFTODO CODE MIGHT BE SMALLER IF THIS WERE JUST A ZP ADDRESS - WE'D SAVE CODE SIZE ON STORES AND DON'T REALLY CARE ABOUT ONE CYCLE PENALTY ON LOAD HERE
+    lda #1 ; patched, although important it starts at 1
+    bne anrts
+    inc zero_if_need_to_undo_shadow_paging ; set back to 1
+jsr_shadow_paging_control ; SFTODO: RENAME LABEL NOW THIS IS A JMP
+    jmp $ffff ; patched
 
     ; SFTODO: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
 
