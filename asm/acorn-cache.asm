@@ -275,7 +275,7 @@ timestamp_updated
     ; bytes from the bounce buffer into shadow RAM after the tube read loop.
     ; This flag tells set_our_cache_ptr_to_index_y to do nothing special and
     ; do_loop_tail_common to do both copies.
-    ; SFTODO: IT'S A BIT SILLY HAVING THIS FLAG TO TELL "COMMON" CODE TO BEHAVE DIFFERENTLY - WE SHOULD JUST PULL THE CODE OUT OF DO_LOOP_TAIL_COMMON FOR THE RELEVANT CASES. I THINK WE STILL NEED THIS FLAG FOR ONE OTHER USE, BUT IT'S STILL A WIN AND IT MAY BE WE COULD HANDLE THE FLAG DIFFERENTLY IN THAT ONE REMAINING CASE.
+    ; SFTODO: IT'S A BIT SILLY HAVING THIS FLAG TO TELL "COMMON" CODE TO BEHAVE DIFFERENTLY - WE SHOULD JUST PULL THE CODE OUT OF DO_LOOP_TAIL_COMMON FOR THE RELEVANT CASES. I THINK WE STILL NEED THIS FLAG FOR ONE OTHER USE, BUT IT'S STILL A WIN AND IT MAY BE WE COULD HANDLE THE FLAG DIFFERENTLY IN THAT ONE REMAINING CASE. - NOT A TERRIBLE IDEA, BUT THERE IS A MODERATE AMOUNT OF "COMMON" LOGIC EVEN SO, EG CHECKING IF WE ARE ACTUALLY DOING A SHADOW BLOCK, SO IT MAY NOT BE A GOOD CHANGE - THINK ABOUT IT
     lda #0
     sta SFTODOSHADOWCOPYBEFORE
 
@@ -311,6 +311,11 @@ lda_abs_tube_data
     iny                   ; 2 cycles
     bne tube_read_loop    ; 3 cycles if we branch
     +assert_no_page_crossing tube_read_loop
+    lda shadow_ptr_high
+    beq not_shadow_in_tube_read_loop
+    dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
+    jsr shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr
+not_shadow_in_tube_read_loop
     jsr do_loop_tail_common
     bne copy_offered_block_loop
     jsr release_tube
@@ -397,6 +402,15 @@ sta_abs_tube_data
     iny                      ; 2 cycles
     bne tube_write_loop      ; 3 cycles if we branch
     +assert_no_page_crossing tube_write_loop
+    lda shadow_ptr_high
+    beq not_shadow_in_tube_write_loop
+    dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
+    ldx count
+    dex
+    beq no_shadow_copy_in_tube_write_loop
+    jsr shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
+not_shadow_in_tube_write_loop
+no_shadow_copy_in_tube_write_loop
     jsr do_loop_tail_common
     bne copy_requested_block_loop
     jsr release_tube
@@ -442,25 +456,6 @@ do_loop_tail_common
     inc our_cache_ptr + 1
     lda #1
     jsr adjust_osword_block_data_offset
-
-    ; If this block lives in shadow RAM, our_cache_ptr shouldn't change (it's always the bounce buffer) and we may need to do a copy between the bounce buffer and shadow RAM, depending on whether this is a read or write and which pass round the loop we're on.
-    lda shadow_ptr_high
-    beq SFTODONOTSHADOW
-    dec our_cache_ptr + 1 ; revert the change made above
-    lda SFTODOSHADOWCOPYBEFORE
-    beq SFTODOCOPYINGAFTER
-    ; SFTODO COPYING BEFORE, SO WE NEED TO DO THIS IF COUNT IS CURRENTLY 2
-    ldx count
-    dex
-    beq SFTODO99
-    jsr shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
-    jmp SFTODO99
-SFTODOCOPYINGAFTER
-    jsr shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr
-SFTODO99
-SFTODONOTSHADOW
-
-    ; SFTODO: With the newer more complex code flow, would it be a net win to just move dec count (a 2 byte zp instruction) out of this function so we can do jsr:rts->jmp optimisations and maybe other good stuff once the code order is not so constrained in this subroutine?
     dec count ; must be last
     rts
 
@@ -553,7 +548,7 @@ shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
     lda shadow_ptr_high
     ldy shadow_bounce_buffer
     bne SFTODO641 ; always branch
-shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr
+shadow_copy_from_bounce_to_shadow_ptr_and_bump_shadow_ptr ; SFTODO: THIS HAS ONLY ONE CALLER - IT MIGHT SAVE SPACE TO GET RID OF IT AS A SUBROUTINE, THOUGH IT MIGHT BE BORDERLINE GIVEN WWE SHARE THE TAIL AT SFTODO641
     lda shadow_bounce_buffer
     ldy shadow_ptr_high
 SFTODO641
