@@ -2384,3 +2384,7 @@ show_deferred_output()
 # SFTODO: It might be nice to *optionally* allow splash images to be supplied in PNG format and use something like PIL to convert them. I think the position here would be that make-acorn.py should do "non-lossy" conversions - the input image should be in a suitable resolution with suitable colours (we might do trivial quantising to the standard palette or something, just to avoid being excessively picky given things like gimp make it a bit hard to get "perfect" n-colour indexed PNGs) but no dithering, downscaling, upscaling, etc.
 
 # SFTODO: Would it be worth having a "secret" key which if held down when booting causes the preloader to not bother showing the splash screen?
+
+# SFTODO: Any prospect of optimising SWR paging on systems with only 1 bank? If we can easily detect this (either at runtime or by checking during discardable init and patching a handful of manageable places) we can possibly avoid all SWR paging because we know our bank is always paged in.
+
+# SFTODO: It would probably be a win to free up page 9/a for an extra vmem cache block, especially on smaller machines. We could potentially move INSV to 3a7-ish and the swr bytes to 3s3ish/380ish. Those are quick guesses, have a look at allmem, we need to work round nula use of part of this memory but there is potential here I think.
