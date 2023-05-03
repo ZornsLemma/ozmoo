@@ -19,7 +19,7 @@
 
 !source "acorn-shared-constants.asm"
 
-max_shadow_driver_size = shadow_ram_copy_max_end - shadow_ram_copy
+max_shadow_driver_size = shadow_driver_end - shadow_driver_start
 
 !macro assert_shadow_driver_fits .start {
     +assert * - .start <= max_shadow_driver_size
@@ -265,7 +265,7 @@ set_shadow_state_from_a_and_install_driver
     ldy #max_shadow_driver_size-1
 .copy_loop
     lda (src),y
-    sta shadow_ram_copy,y
+    sta shadow_driver_start,y
     dey
     bpl .copy_loop
     rts
@@ -303,8 +303,10 @@ shadow_driver_table_high
 ; the API *first*.)
 
 shadow_driver_integra_b
-!pseudopc shadow_ram_copy {
+!pseudopc shadow_driver_start {
 !zone {
+    !word 0 ; SFTODONOW: IMPLEMENT PAGE CONTROL
+
     ; SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
     ; registers, we might as well do so here to page shadow RAM in and out; it
     ; would be faster. But I'll stick with this for now.
@@ -335,8 +337,10 @@ shadow_driver_integra_b
 +assert_shadow_driver_fits shadow_driver_integra_b
 
 shadow_driver_electron_mrb
-!pseudopc shadow_ram_copy {
+!pseudopc shadow_driver_start {
 !zone {
+    !word 0 ; shadow paging is not supported
+
     cmp #$30
     bcs .copy_from_shadow
     ; We're copying to shadow RAM.
@@ -370,12 +374,14 @@ shadow_driver_electron_mrb
 +assert_shadow_driver_fits shadow_driver_electron_mrb
 
 shadow_driver_b_plus_os
-!pseudopc shadow_ram_copy {
+!pseudopc shadow_driver_start {
 !zone {
 oswrsc = $ffb3
 oswrsc_ptr = $d6
 osrdsc = $ffb9
 osrdsc_ptr = $f6
+
+    !word 0 ; shadow paging is not supported
 
     cmp #$30
     bcs .copy_from_shadow
@@ -411,7 +417,9 @@ osrdsc_ptr = $f6
 
 !zone {
 shadow_driver_b_plus_private_low
-!pseudopc shadow_ram_copy {
+!pseudopc shadow_driver_start {
+    !word 0 ; shadow paging is not supported
+
     ldx romsel_copy
     stx .lda_imm_bank+1
     ldx #128
@@ -450,8 +458,10 @@ b_plus_high_driver_size = shadow_driver_b_plus_private_high_end - shadow_driver_
 }
 
 shadow_driver_master
-!pseudopc shadow_ram_copy {
+!pseudopc shadow_driver_start {
 !zone {
+    !word 0 ; SFTODO IMPLEMENT PAGING
+
     !cpu 65c02
     sta .lda_abs_y+2
     sty .sta_abs_y+2
@@ -474,8 +484,10 @@ shadow_driver_master
 +assert_shadow_driver_fits shadow_driver_master
 
 !macro shadow_driver_watford_aries shadow_osbyte {
-!pseudopc shadow_ram_copy {
+!pseudopc shadow_driver_start {
 !zone {
+    !word 0 ; SFTODO IMPLEMENT PAGING
+
     sta .lda_abs_y+2
     sty .sta_abs_y+2
     lda #shadow_osbyte
