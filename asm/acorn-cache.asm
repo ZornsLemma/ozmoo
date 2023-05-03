@@ -311,14 +311,13 @@ lda_abs_tube_data
     iny                   ; 2 cycles
     bne tube_read_loop    ; 3 cycles if we branch
     +assert_no_page_crossing tube_read_loop
-    lda shadow_ptr_high
-    beq not_shadow_in_tube_read_loop
-    dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
-    lda shadow_bounce_buffer
     ldy shadow_ptr_high
+    beq not_shadow_in_tube_read_loop
+    lda shadow_bounce_buffer
     ; SFTODO: IF SQUASHING CODE, SHARING THE FOLLOWING TWO INSNS MAY SAVE A BYTE
     jsr shadow_ram_copy
     inc shadow_ptr_high
+    dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
 not_shadow_in_tube_read_loop
     jsr do_loop_tail_common
     bne copy_offered_block_loop
@@ -373,7 +372,7 @@ match
     ; bytes from shadow RAM into the bounce buffer before the tube write loop.
     ; This flag tells set_our_cache_ptr_to_index_y to do the first 256 byte copy
     ; and do_loop_tail_common to do the second 256 byte copy at the end of the
-    ; first pass round the loop.
+    ; first pass round the loop. SFTODO: THIS ISN'T TRUE WITH CURRENT REWORK, set_our_cache_ptr... NO LONGER FIDDLES WITH THIS - TWEAK OTHER COMMENT ON OTHER TUBE COPY LOOP TOO
     lda #1
     sta SFTODOSHADOWCOPYBEFORE
 
@@ -391,6 +390,13 @@ match
     lda #2
     sta count
 copy_requested_block_loop
+    lda shadow_ptr_high
+    beq not_shadow_in_tube_write_loop
+    ldy shadow_bounce_buffer
+    sty our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
+    jsr shadow_ram_copy
+    inc shadow_ptr_high
+not_shadow_in_tube_write_loop
     jsr set_yx_to_tube_transfer_block
     lda #tube_reason_256_byte_from_io
     jsr tube_entry
@@ -406,15 +412,6 @@ sta_abs_tube_data
     iny                      ; 2 cycles
     bne tube_write_loop      ; 3 cycles if we branch
     +assert_no_page_crossing tube_write_loop
-    lda shadow_ptr_high
-    beq not_shadow_in_tube_write_loop
-    dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
-    ldx count
-    dex
-    beq no_shadow_copy_in_tube_write_loop
-    jsr shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
-not_shadow_in_tube_write_loop
-no_shadow_copy_in_tube_write_loop
     jsr do_loop_tail_common
     bne copy_requested_block_loop
     jsr release_tube
@@ -538,21 +535,12 @@ index_in_shadow_cache
     sbc swr_cache_entries
     asl
     ; Carry is already clear
-    ; SFTODO: If we added one less, we could probably move the inc shadow_ptr_high to before the jsr shadow_ram_copy and then we could do jsr:rts->jmp
     adc #>shadow_start
     sta shadow_ptr_high
     lda shadow_bounce_buffer
 SFTODOHANG
     beq SFTODOHANG ; SFTODO TEMP HACK - IT SHOULDN'T BE POSSIBLE TO GET HERE IF WE HAVE NO SHADOW BOUNCE BUFFER
     sta our_cache_ptr + 1
-    lda SFTODOSHADOWCOPYBEFORE
-    beq anrts
-    ; fall through to shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
-shadow_copy_from_shadow_ptr_to_bounce_and_bump_shadow_ptr
-    lda shadow_ptr_high
-    ldy shadow_bounce_buffer
-    jsr shadow_ram_copy
-    inc shadow_ptr_high
     rts
 
 
