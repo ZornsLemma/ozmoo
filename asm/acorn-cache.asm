@@ -271,14 +271,6 @@ timestamp_updated
     lda #free_block_index_none
     sta free_block_index
 
-    ; If we're using a shadow bounce buffer for this block, we need to copy 256
-    ; bytes from the bounce buffer into shadow RAM after the tube read loop.
-    ; This flag tells set_our_cache_ptr_to_index_y to do nothing special and
-    ; do_loop_tail_common to do both copies.
-    ; SFTODO: IT'S A BIT SILLY HAVING THIS FLAG TO TELL "COMMON" CODE TO BEHAVE DIFFERENTLY - WE SHOULD JUST PULL THE CODE OUT OF DO_LOOP_TAIL_COMMON FOR THE RELEVANT CASES. I THINK WE STILL NEED THIS FLAG FOR ONE OTHER USE, BUT IT'S STILL A WIN AND IT MAY BE WE COULD HANDLE THE FLAG DIFFERENTLY IN THAT ONE REMAINING CASE. - NOT A TERRIBLE IDEA, BUT THERE IS A MODERATE AMOUNT OF "COMMON" LOGIC EVEN SO, EG CHECKING IF WE ARE ACTUALLY DOING A SHADOW BLOCK, SO IT MAY NOT BE A GOOD CHANGE - THINK ABOUT IT
-    lda #0
-    sta SFTODOSHADOWCOPYBEFORE
-
     ; Set our_cache_ptr to the block's data so we can update it.
     txa
     tay
@@ -368,14 +360,6 @@ match
     sta cache_id_high,y
     sty free_block_index
 
-    ; If we're using a shadow bounce buffer for this block, we need to copy 256
-    ; bytes from shadow RAM into the bounce buffer before the tube write loop.
-    ; This flag tells set_our_cache_ptr_to_index_y to do the first 256 byte copy
-    ; and do_loop_tail_common to do the second 256 byte copy at the end of the
-    ; first pass round the loop. SFTODO: THIS ISN'T TRUE WITH CURRENT REWORK, set_our_cache_ptr... NO LONGER FIDDLES WITH THIS - TWEAK OTHER COMMENT ON OTHER TUBE COPY LOOP TOO
-    lda #1
-    sta SFTODOSHADOWCOPYBEFORE
-
     ; Set our_cache_ptr to point to the block's data.
     jsr set_our_cache_ptr_to_index_y
 
@@ -460,7 +444,6 @@ do_loop_tail_common
     dec count ; must be last
     rts
 
-SFTODOSHADOWCOPYBEFORE !byte 0
 shadow_ptr_high !byte 0 ; SFTODO MOVE ETC
 
 ; Undo the changes made to the high byte of the data address during a copy loop.
