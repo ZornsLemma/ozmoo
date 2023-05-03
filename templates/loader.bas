@@ -32,6 +32,7 @@ REM *not* the top half of some double-height text.)
 }
 
 integra_b=FALSE
+REM SFTODO: We don't actually need this ON ERROR, because OSBYTE *doesn't* throw for unrecognised OSBYTE.
 ON ERROR GOTO 100
 integra_b=FNusr_osbyte_x(&49,&FF,0)=&49
 100ON ERROR PROCerror
