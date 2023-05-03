@@ -289,11 +289,39 @@ shadow_driver_table_high
     !byte >shadow_driver_watford
     !byte >shadow_driver_aries
 
-; The shadow driver API is very simple - the core Ozmoo executable calls the
-; subroutine at shadow_ram_copy with A=source page and Y=destination page, and
-; that subroutine copies 256 bytes from page A to page Y. One of A or Y will be
-; in the $30-$7F inclusive range, indicating it's spare shadow RAM, and the
-; other will be <$30, indicating it's main RAM.
+; The shadow driver API consists of two calls. Before trying to use either, the
+; driver executable must have been run to examine the current hardware, install
+; the appropriate driver (if any) and the driver executable must have set
+; shadow_state >= shadow_state_first_driver.
+;
+; shadow_ram_copy:
+;    Enter with:
+;        A=page to copy from
+;        Y=page to copy to
+;
+;    One of A or Y will be in the range $30-$7f inclusive, indicating the
+;    relevant page of shadow RAM.
+;
+;    The other of A or Y will be in the range $00-$2f inclusive, indicating the
+;    relevant page of main RAM.
+;
+;    The entire page of data at A is copied to page Y.
+;
+;    All registers are corrupt on exit.
+;
+; shadow_paging_control:
+;    A pointer to this routine is held at shadow_paging_control_ptr; it may be 0
+;    if the current hardware can't support shadow RAM paging. (Check this rather
+;    than trying to infer the capabilities from the precise value of
+;    shadow_state; it is provided mainly for display purposes.)
+;
+;    Enter with:
+;        A=0 to page in main RAM at $3000-$7fff inclusive
+;        A=1 to page in shadow RAM at $3000-$7fff inclusive
+;        (any other value of A will result in undefined behaviour)
+;    SFTODONOW: Once all shadow drivers written, consider using X instead of A - it might simplify code overall, it might not
+;
+;    All registers are corrupt on exit.
 
 ; SFTODO: Looks like non-2P shadow driver only copies a 256 byte page. *May*
 ; want to define a completely separate shadow driver API for 2P host cache case.
@@ -305,7 +333,7 @@ shadow_driver_table_high
 shadow_driver_integra_b
 !pseudopc shadow_driver_start {
 !zone {
-    !word 0 ; SFTODONOW: IMPLEMENT PAGE CONTROL
+    !word .shadow_paging_control
 
     ; SFTODO: Since the Ozmoo executable pokes directly at Integra-B hardware
     ; registers, we might as well do so here to page shadow RAM in and out; it
@@ -331,6 +359,11 @@ shadow_driver_integra_b
     ; Page out shadow RAM
     lda #$6c ; SFTODO: name constant
     ldx #0
+    jmp osbyte
+
+.shadow_paging_control
+    tax
+    lda #$6c
     jmp osbyte
 }
 }
@@ -460,9 +493,10 @@ b_plus_high_driver_size = shadow_driver_b_plus_private_high_end - shadow_driver_
 shadow_driver_master
 !pseudopc shadow_driver_start {
 !zone {
-    !word 0 ; SFTODO IMPLEMENT PAGING
+    !word .shadow_paging_control
 
     !cpu 65c02
+
     sta .lda_abs_y+2
     sty .sta_abs_y+2
     lda #4
@@ -478,6 +512,18 @@ shadow_driver_master
     lda #4
     trb $fe34 ; page out shadow RAM
     rts
+
+.shadow_paging_control
+    tax
+    beq .page_in_main_ram
+    lda #4
+    trb $fe34
+    rts
+.page_in_main_ram
+    lda #4
+    tsb $fe34
+    rts
+
     !cpu 6502
 }
 }
@@ -486,7 +532,7 @@ shadow_driver_master
 !macro shadow_driver_watford_aries shadow_osbyte {
 !pseudopc shadow_driver_start {
 !zone {
-    !word 0 ; SFTODO IMPLEMENT PAGING
+    !word .shadow_paging_control
 
     sta .lda_abs_y+2
     sty .sta_abs_y+2
@@ -504,6 +550,12 @@ shadow_driver_master
     lda #shadow_osbyte
     ldx #1
     jmp osbyte ; page out shadow RAM
+
+.shadow_paging_control
+    eor #1
+    tax
+    lda #shadow_osbyte
+    jmp osbyte
 }
 }
 }
@@ -548,3 +600,5 @@ end
 ; SFTODONOW: Gut feeling based on quick look at code is that for shadow paging driver, entering with A=0 for main and A=1 for shadow is a good API. This mirrors X in OSBYTE &6C - just for "mnemonic" value really. Entering with it in A makes it easier to do swizzling on it (e.g. EOR #1 or ASL A:ASL A) to tweak it to the value actually required within any given driver.
 ; - probably change !pseudopc to a new shadow_driver_start (=$8c4) and make shadow_ram_copy 2 higher than currently (i.e. $8c6), then $8c4 (which we'd call shadow_driver_page_in_out=$8c4 again) is a two byte value which is zero if the driver doesn't support paging and can be lda #n:jmp (shadow_driver_page_in_out) if it's been checked to be non-zero) - callers obviously have option to e.g. self-modify to make a directly jsr-able version or whatever if they prefer
 ; - looking at shared-constants I already set aside 8c0-8c3 for this kind of thing, I'm not using quite that API, but I actually therefore have four bytes I was "wasting" and can move shadow_driver down to 8c0 and shadow_ram_copy down to 8c2
+
+; SFTODO: If it's desirable to shrink the shadow drivers to free up more low memory for other purposes, don't forget the drivers with shadow paging support could jsr into that support from their shadow copy code instead of duplicating the code inline.
