@@ -297,8 +297,9 @@ timestamp_updated
     lda #2
     sta count
 copy_offered_block_loop
-    jsr set_yx_to_tube_transfer_block
     lda #tube_reason_256_byte_to_io
+    ldx #<tube_transfer_block
+    ldy #>tube_transfer_block
     jsr tube_entry
     ; We now need a 19 microsecond/38 cycle delay.
     ldx #7     ; 2 cycles
@@ -398,8 +399,9 @@ copy_requested_block_loop
     jsr shadow_ram_copy
     inc shadow_ptr_high
 not_shadow_bounce_in_tube_write_loop
-    jsr set_yx_to_tube_transfer_block
     lda #tube_reason_256_byte_from_io
+    ldx #<tube_transfer_block
+    ldy #>tube_transfer_block
     jsr tube_entry
     ; We don't need an initial delay with this reason code.
     ldy #0
@@ -441,12 +443,6 @@ claim_tube
 release_tube
     lda #tube_reason_release + our_tube_reason_claim_id
     jmp tube_entry
-
-; Set YX to point to the data block address within our OSWORD block.
-set_yx_to_tube_transfer_block
-    ldx #<tube_transfer_block
-    ldy #>tube_transfer_block
-    rts
 
 set_tube_transfer_block_to_osword_data_address
     ldy #our_osword_data_offset+3
