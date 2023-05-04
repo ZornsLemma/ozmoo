@@ -90,7 +90,6 @@ program_start
 ; On exit:
 ;   X contains the number of 512-byte blocks the cache holds
 our_osbyte
-cache_entries_high = zp_temp ; 1 byte
     ; The cache size doesn't change at runtime, it's always full with
     ; cache_entries entries, but it starts full of very old entries with the
     ; invalid block ID. This means those entries will be evicted in preference
@@ -489,15 +488,17 @@ set_our_cache_ptr_to_index_y
     tya
     sec
     sbc main_ram_cache_entries
-    bcs index_in_high_cache
+    bcs index_not_in_main_ram_cache
     tya
     asl
     clc
     adc #>main_ram_cache_start
     sta our_cache_ptr + 1
     rts
-index_in_high_cache ; SFTODONOW: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
-; SFTODO: COMMENT?
+index_not_in_main_ram_cache
+    ; A is a 0-based index with 0 indicating the first block of sideways RAM
+    ; cache (if any, of course); A>=swr_cache_entries indicates the block is in
+    ; shadow RAM.
     cmp swr_cache_entries
     bcs index_in_shadow_cache
     ; A now contains the 512-byte block offset from the start of our first
@@ -598,9 +599,9 @@ shadow_cache_entries
 ;
 ; This data overlaps the following code, which is initialisation code and can be
 ; safely overwritten after it has been executed.
-
+;
 ; To avoid page crossing we want to allocate each of the 255-byte arrays here
-; inside its own page; we really want them to start one byte into the page so
+; inside its own page. We really want them to start one byte into the page so
 ; foo-1,y addressing doesn't cross a page boundary (particularly important for
 ; cache_id_low as it's used in the hot find_cache_entry_by_id loop).
 ;
@@ -690,33 +691,26 @@ not_electron
     lsr
     sta main_ram_cache_entries
 
-    ; Each 16K sideways RAM bank holds 32*512-byte blocks.
+    ; Calculate swr_cache_entries. Each 16K sideways RAM bank holds 32*512-byte
+    ; blocks; the B+ and Integra-B private RAM are smaller and need special
+    ; handling. It's easier to loop over the banks adding them up than to
+    ; multiply the number of banks by 32 then adjust for private RAM, because it
+    ; avoids needing 16-bit arithmetic; we can simply saturate at 255 if we
+    ; overflow.
     lda #0
-    sta cache_entries_high
-    lda ram_bank_count
-    ldx #5 ; 32 == 2^5
--   asl
-    rol cache_entries_high
-    dex
-    bne -
-    adc main_ram_cache_entries
-    sta cache_entries
-    bcc +
-    inc cache_entries_high
-+
-
-    ; Adjust to allow for the last sideways RAM bank possibly being short if
-    ; it's Integra-B or B+ private RAM.
-    +assert b_plus_private_ram_size == integra_b_private_ram_size + 512
+    sta swr_cache_entries
     ldy ram_bank_count
-    beq no_private_ram
-    ldx #(b_plus_private_ram_size - 16*1024)/512
+    beq no_swr
+swr_loop
+    ldx #32 ; size of normal 16K bank
     lda ram_bank_list-1,y
-    bmi b_plus_private_ram
-    asl
-    bpl no_private_ram
+    cmp #64
+    bcc bank_size_in_x ; this is a normal 16K bank
+    ldx #(b_plus_private_ram_size / 512)
+    cmp #128
+    bcs bank_size_in_x ; branch if B+ private RAM
     ; This is the Integra-B private 12K.
-    dex ; we have one 512 byte block less of private RAM on the Integra-B.
+    ldx #(integra_b_private_ram_size / 512)
     ; Set up RAMSEL so we can access the private 12K by setting b6 (PRVEN) of
     ; ROMSEL, much as we can access it by setting b7 on the B+.
     ; SFTODO: Copy and paste from core Ozmoo code - probably OK, but think.
@@ -724,44 +718,37 @@ not_electron
     ora #%00110000 ; set PRVS4 and PRVS8 to make all 12K visible
     sta $37f
     sta $fe34
-b_plus_private_ram
-    ; X contains the negative number of cache entries we need to subtract
-    ; because of the short bank.
-    clc
+bank_size_in_x
     txa
-    adc cache_entries
-    sta cache_entries
-    ; SFTODO: It's annoying to have to deal with the 16-bit value here. I can't
-    ; help feeling there might be a way to avoid this by doing this adjustment
-    ; differently, but this will do for now - think about this fresh later.
-    lda cache_entries_high
-    adc #$ff
-    sta cache_entries_high
-no_private_ram
-
-    ; SFTODONOW COMMENT - THIS IS WRONG BECAUSE IT WILL PROBABLY FAIL WHERE WE'RE CAPPING AT 255 CACHE ENTRIES BELOW, BUT LET'S JUST HACK IT FOR NOW AND IT WILL BE FINE ON MACHINES WITH LITTLE SWR FOR INITIAL TESTING
-    lda cache_entries
-    sec
-    sbc main_ram_cache_entries
-    sta swr_cache_entries
-
-    ; Add in shadow_cache_entries.
     clc
-    lda cache_entries
+    adc swr_cache_entries
+    bcc no_carry
+    lda #255
+no_carry
+    sta swr_cache_entries
+    dey
+    bne swr_loop
+no_swr
+
+    ; Set cache_entries to the total number of cache entries, saturating at 255.
+    clc
+    lda main_ram_cache_entries
+    adc swr_cache_entries
+    bcs carry
     adc shadow_cache_entries
+    bcc no_carry2
+carry
+    lda #255
+no_carry2
     sta cache_entries
-    bcc +
-    inc cache_entries_high
-+
 
-    ; We don't support more than 255 cache entries.
-    ldy cache_entries
-    lda cache_entries_high
-    beq +
-    ldy #255
-+   sty cache_entries
+    ; We don't need to adjust swr_cache_entries or shadow_cache_entries to make
+    ; the values actually sum to 255 if the previous addition saturated. Note
+    ; that we do have at least as much of each type of cache as those values
+    ; indicate, and set_our_cache_ptr_to_index_y will just not try to use more
+    ; than 255 cache entries. SFTODONOW: Pretty sure this is true, but think about
+    ; it fresh and do some testing.
 
-; SFTODO: DELETE THIS LINE initialize_done
     rts
 
     ; This is copied over page_in_swr_bank_a, so must not contain absolute
@@ -833,6 +820,7 @@ relocate_setup
     ; SFTODO: It might be nice if the loader checked host OSHWM<=max OSHWM for
     ; this executable
     lda #0
+    sta shadow_cache_entries
     sta shadow_bounce_buffer_page
     cpy #>(shadow_start - $100)
     bcs spare_shadow_init_done ; branch if no room for bounce buffer
