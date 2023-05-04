@@ -37,27 +37,28 @@ osbyte_read_screen_address_for_mode = $85
 zp_temp = $70 ; 3 bytes
 ; SFTODO: If it helps squashing this code, may want to move some vars into zp of course.
 
-; We use this address for the loader to communicate the intended screen mode to the cache.
-; SFTODO: We only use it during discardable initialisation, so we could re-use this address
-; for something else if we're short of zero page.
-cache_screen_mode = $73 ; 1 byte
-
 ; osword_[axy] will be corrupted by the OS when we make OSBYTE or OSWORD calls, so we have
 ; to copy the pointer to our OSWORD block in here.
-osword_block_ptr = $74 ; 2 bytes
+osword_block_ptr = $73 ; 2 bytes
 
 ; The following don't need to be in zero page but we're not short of it and using zero page
-; for these variables helps to shorten the code (by using shorter instructions, and not
-; using space above OSHWM for these variables) so we can fit in 512 bytes to maximise
-; available main RAM for caching.
-tube_transfer_block = $76 ; 4 bytes
-shadow_ptr_high = $7a ; 1 byte
-free_block_index = $7b ; 1 byte
-current_tick = $7c ; 1 byte
-cache_entries = $7d ; 1 byte
-; shadow_bounce_buffer_page is set before we relocate down, so it must not clash with the
-; relocation code's use of zero page.
-shadow_bounce_buffer_page = $7e ; 1 byte
+; for these variables helps to shorten the code, maximising main RAM for caching.
+!zone {
+    tube_transfer_block = $75 ; 4 bytes
+    shadow_ptr_high = $79 ; 1 byte
+    free_block_index = $7a ; 1 byte
+    current_tick = $7b ; 1 byte
+    cache_entries = $7c ; 1 byte
+
+    ; The relocation code uses $70-$7a inclusive so we must avoid using those
+    ; addresses for the following variables, which are set before we execute by
+    ; the loader and are used after we've relocated down.
+    shadow_bounce_buffer_page = $7d ; 1 byte
+    ; SFTODO: cache_screen_mode is not used after the discardable init code has
+    ; executed, so if we're short of space this address could be re-used after
+    ; that.
+    cache_screen_mode = $7e ; 1 byte
+}
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
@@ -563,6 +564,8 @@ zero_if_need_to_undo_shadow_paging = *+1 ; SFTODO: could move into zero page
 jmp_shadow_paging_control2
     jmp $ffff ; patched
 
+code_end
+
     ; SFTODONOW: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
 
     ; If this executable is re-loaded, old_userv will be overwritten by 0 as
@@ -576,15 +579,12 @@ jmp_shadow_paging_control2
 old_userv
     !word 0
 
-    ; Permanent code ends here; the following memory contains some one-off
-    ; initialization code and some overlapping data allocations.
-    ; SFTODO: The data allocations don't actually overlap any more - this isn't a huge deal as the init code is all discardable anyway, but it *slightly* bloats the executable on disc. If this is fine on second thoughts, update the above comment to be correct. Note that we do rely on zero-init of some of these values, which we'd lose if we overlapped with discardable init code.
-code_end ; SFTODO: FWIW THIS LABEL IS NEVER USED - IT MIGHT STILL BE USEFUL FOR REF, BUT MAYBE NOT - THINK ABOUT IT
-
 max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
-; SFTODO: If we need to squash the code further, these could move into zero page.
+; SFTODO: If we need to squash the code further, these could move into zero page
+; or into the spare bytes in the aligned arrays below; at the moment we don't
+; need to worry about this as we fit comfortably in 512 bytes.
 main_ram_cache_entries
     !byte 0
 swr_cache_entries
@@ -592,34 +592,34 @@ swr_cache_entries
 shadow_cache_entries
     !byte 0
 
-; SFTODONOW: I switched from calculating these labels from * to using !byte/!fill etc, and this actually bloats the on disc executable with loads of 0s. Need to fix this, although for now while I'm still debugging the code I won't worry about it.
+; We're now going to allocate some page-aligned arrays. We don't want to bloat
+; the executable itself with the empty data, so instead of using
+; !align/!byte/!fill, we calculate the values as offsets from *.
+;
+; This data overlaps the following code, which is initialisation code and can be
+; safely overwritten after it has been executed.
 
-; The following allocations try to avoid page crossing and assume
-; max_cache_entries == 255.
-+assert max_cache_entries == 255
 ; To avoid page crossing we want to allocate each of the 255-byte arrays here
 ; inside its own page; we really want them to start one byte into the page so
 ; foo-1,y addressing doesn't cross a page boundary (particularly important for
-; cache_id_low as it's used in the hot find_cache_entry_by_id loop). We pair
-; three single-byte variables with the 255-byte blocks so as to get the desired
-; alignment.
-    !align 255, 0, 0 ; SFTODO: If this is *just* over a page boundary try hard to optimise to pull it back
-SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL3
-    !byte 0
-cache_id_low
-    !fill max_cache_entries
-SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL
-    !byte 0
-cache_id_high
-    !fill max_cache_entries
-SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL2
-    !byte 0
-cache_timestamp
-    !fill max_cache_entries
-main_ram_cache_start = *
-!if main_ram_cache_start & $ff <> 0 {
-    !error "main_ram_cache_start must be page-aligned"
+; cache_id_low as it's used in the hot find_cache_entry_by_id loop).
+;
+; At the moment, the first byte of each page is just wasted, but we could
+; potentially store single byte variables there.
+
++assert max_cache_entries == 255
+
+!if (* & $ff) == 0 {
+    aligned_data_start = *
+} else {
+    aligned_data_start = (* & $ff00) + $100
 }
++assert (aligned_data_start & $ff) == 0
+cache_id_low         = aligned_data_start + $001
+cache_id_high        = aligned_data_start + $101
+cache_timestamp      = aligned_data_start + $201
+main_ram_cache_start = aligned_data_start + $300
+
 ; The relocation process can't relocate us upwards in memory, so by asserting
 ; that all builds (including the one at the high relocation address) have enough
 ; free memory for at least two cache entries and a bounce buffer, we avoid the
@@ -628,8 +628,9 @@ main_ram_cache_start = *
 ; support is high enough that we don't seriously expect this to happen, so this
 ; doesn't significantly penalise machines which have non-main RAM for cache and
 ; could therefore run with OSHWM that bit higher.
-+assert ($3000 - main_ram_cache_start) >= 2*512 + 256
++assert ($3000 - main_ram_cache_start) >= (2*512 + 256)
 
+; Discardable initialisation code.
 initialize
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
     ; we're executed twice, although this isn't expected to happen.
