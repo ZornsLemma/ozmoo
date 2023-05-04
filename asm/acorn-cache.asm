@@ -32,6 +32,9 @@ cache_screen_mode = $73 ; 1 byte
 ; to copy the pointer to our OSWORD block in here.
 osword_block_ptr = $74 ; 2 bytes
 
+; The following don't need to be in zero page but we're not short of it...
+tube_transfer_block = $76 ; 4 bytes
+
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
 our_tube_reason_claim_id = $25 ; a six bit value
@@ -180,6 +183,8 @@ our_osword
 our_cache_ptr = zp_temp ; 2 bytes
 count = zp_temp + 2 ; 1 byte
 
+    ; Set osword_block_ptr to point to our block; osword_[xy] will be corrupted
+    ; by any OSBYTE/OSWORD calls we make.
     lda osword_x
     sta osword_block_ptr
     lda osword_y
@@ -284,6 +289,8 @@ timestamp_updated
     tay
     jsr set_our_cache_ptr_to_index_y
 
+    jsr set_tube_transfer_block_to_osword_data_address
+
     ; Copy the 512-byte block offered to the cache into the block pointed to by
     ; our_cache_ptr.
     jsr claim_tube
@@ -323,7 +330,6 @@ not_shadow_bounce_in_tube_read_loop
     bne copy_offered_block_loop
     jsr undo_shadow_paging_if_necessary
     jsr release_tube
-    jsr reset_osword_block_data_offset
 no_block_offered
 
     ; Do we have the requested block in cache?
@@ -372,6 +378,8 @@ match
     ; Set our_cache_ptr to point to the block's data.
     jsr set_our_cache_ptr_to_index_y
 
+    jsr set_tube_transfer_block_to_osword_data_address
+
     ; Set the result to say we were able to provide the requested block.
     ldy #our_osword_result_offset
     lda #0
@@ -410,7 +418,6 @@ sta_abs_tube_data
     ; SFTODO: If we're desperate to squash this code, the following three jsrs are probably duplicated in two places
     jsr undo_shadow_paging_if_necessary
     jsr release_tube
-    jsr reset_osword_block_data_offset
 
 our_osword_done
     ; We don't need to preserve A, X or Y.
@@ -437,39 +444,29 @@ release_tube
 
 ; Set YX to point to the data block address within our OSWORD block.
 set_yx_to_tube_transfer_block
-    clc
-    lda osword_block_ptr
-    adc #our_osword_data_offset
-    tax
-    ldy osword_block_ptr + 1
-    bcc no_carry
-    iny
-no_carry
+    ldx #<tube_transfer_block
+    ldy #>tube_transfer_block
+    rts
+
+set_tube_transfer_block_to_osword_data_address
+    ldy #our_osword_data_offset+3
+copy_osword_data_loop
+    lda (osword_block_ptr),y
+    sta tube_transfer_block-our_osword_data_offset,y
+    dey
+    +assert our_osword_data_offset > 0
+    cpy #our_osword_data_offset
+    bcs copy_osword_data_loop
     rts
 
 do_loop_tail_common
     ; Bump the source and destination addresses by one page.
     inc our_cache_ptr + 1
-    lda #1
-    jsr adjust_osword_block_data_offset
+    inc tube_transfer_block + 1
     dec count ; must be last
     rts
 
 shadow_ptr_high !byte 0 ; SFTODO MOVE ETC
-
-; Undo the changes made to the high byte of the data address during a copy loop.
-reset_osword_block_data_offset
-    lda #(-2 and $ff)
-    ; fall through to adjust_osword_block_data_offset
-
-; Add A to the high byte of the data address in the OSWORD block.
-; SFTODO: Would it save code and hassle to just allocate four bytes for the address (perhaps even in zp to keep code size down), copy the addr from data block in there at start and use that for the transfers? It would then be easier to add 1 during the loop and we wouldn't need to add -2 to get it back to the starting value afterwards.
-adjust_osword_block_data_offset
-    ldy #our_osword_data_offset + 1
-    clc
-    adc (osword_block_ptr),y
-    sta (osword_block_ptr),y
-    rts
 
 ; Set our_cache_ptr to point to the block with index Y.
 set_our_cache_ptr_to_index_y
