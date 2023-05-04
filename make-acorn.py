@@ -1339,7 +1339,7 @@ def make_cache_executable():
     # loader) and will then relocate itself down to the host PAGE, but we'll
     # position it to load just below the mode 0 screen RAM anyway; there's no
     # real downside.
-    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2700, relocatable_args + ["-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
+    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2700, relocatable_args + ["-DACORN_TUBE_CACHE=1", "-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
 
 
 def make_boot():

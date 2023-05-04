@@ -63,6 +63,11 @@ b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy 
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 }
 
+!ifdef ACORN_TUBE_CACHE {
+osword_cache_op = $e0 ; USERV OSWORD
+osword_cache_no_timestamp_hint = $ff
+}
+
 ; SFTODO: Might want to move these to free up $9 and $a for vmem cache or something.
 ram_bank_count = $904
 ram_bank_list = $905

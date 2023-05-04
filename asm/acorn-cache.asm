@@ -1,5 +1,19 @@
 ; Cache to use memory on the host in Acorn second processor builds.
-; SFTODO: Eventually this should be capable of using spare shadow RAM too
+;
+; When Ozmoo is running on a second processor, we may still have a lot of main
+; RAM, spare shadow RAM and sideways RAM unused in the host. This code
+; implements a block cache using that RAM which Ozmoo's virtual memory subsystem
+; can offer blocks to and retrieve blocks from before it resorts to reading
+; blocks from disc.
+;
+; When optimising this code, note that the two loops to copy 512-byte blocks
+; across the tube occupy the bulk of the CPU time. Iterating over up to 255
+; cache entries to find old blocks/the requested block obviously doesn't take
+; negligible time, but it's still fairly insignificant by comparison. It's good
+; to be generally efficient but there's no need to push for every single cycle
+; at the cost of legibility. Note also that it's important this code is compact
+; because every page it's occupy is a page that isn't available for caching data
+; in.
 
 !source "acorn-shared-constants.asm"
 
@@ -135,7 +149,8 @@ our_userv
 ;   YX!2:     address of 512-byte data block
 ;   YX?6..7:  ID of 512-byte block currently held at YX!2 (offered to cache)
 ;             (ID $FFFF means no block is being offered to the cache.)
-;             SFTODO: We could use 0 for this special case, Ozmoo will never pass 0 as it will be in dynamic memory - FF does have the small (?) advantage that as it's odd, it can never match the low byte of anything Ozmoo will pass, which may slightly help to optimise searching
+;             SFTODO: We could use 0 for this special case, Ozmoo will never
+;             pass 0 as it will be in dynamic memory.
 ;   YX?8:     Timestamp hint for offered block, or $FF for no hint.
 ;   YX?9..10: ID of 512-byte block wanted at YX!2 (requested from cache)
 ;
@@ -145,7 +160,7 @@ our_userv
 ;             modified
 ;
 ; In practice a block ID of $ABCD will correspond to the 512-byte block of
-; Z-machine address space starting at $ABCD00 >> 1, but this code doesn't
+; Z-machine address space starting at $ABCD00 << 1, but this code doesn't
 ; actually care.
 ;
 ; The implementation removes blocks from the cache when they are provided to the
@@ -240,7 +255,7 @@ have_free_block_index_in_x
     iny
     +assert our_osword_block_offered_offset + 2 = our_osword_block_offered_timestamp_hint_offset
     lda (osword_block_ptr),y
-    cmp #$ff ; SFTODO: share osword_cache_no_timestamp_hint constant?
+    cmp #osword_cache_no_timestamp_hint
     beq no_timestamp_hint
     ; We have a timestamp hint. current_tick isn't incremented automatically in
     ; this case (otherwise the initial cache population may end up squashing
@@ -251,7 +266,7 @@ have_free_block_index_in_x
     cmp current_tick
     bcc timestamp_hint_less_than_current_tick
     sta current_tick
-    inc current_tick ; can't wrap as hint != $ff
+    inc current_tick ; can't wrap as (A == hint) != (osword_cache_no_timestamp_hint == $ff)
 timestamp_hint_less_than_current_tick
     sta cache_timestamp,x
     jmp timestamp_updated
@@ -261,7 +276,8 @@ no_timestamp_hint
     ; Increment current_tick.
     inc current_tick
     bne tick_not_wrapped
-    ; SFTODO: FWIW in the benchmark this tick adjust case only occurs once (rather dated comment, may no longer be true)
+    ; SFTODO: FWIW in the benchmark this tick adjust case only occurs once
+    ; (rather dated comment, may no longer be true)
     ldy cache_entries
 tick_adjust_loop
     lda cache_timestamp - 1,y
@@ -287,10 +303,9 @@ timestamp_updated
     tay
     jsr set_our_cache_ptr_to_index_y
 
-    jsr set_tube_transfer_block_to_osword_data_address
-
     ; Copy the 512-byte block offered to the cache into the block pointed to by
     ; our_cache_ptr.
+    jsr set_tube_transfer_block_to_osword_data_address
     jsr claim_tube
     lda #2
     sta count
@@ -306,7 +321,6 @@ wait_x
     bne wait_x ; 3*6+2=20 cycles
     +assert_no_page_crossing wait_x
     ldy #0     ; 2 cycles
-    ; SFTODO: Kind of stating the obvious, but the tube loops obviously burn loads of CPU time, so even if it feels inefficient to be iterating over 255 cache entries once or twice per call to check timestamps or whatever, remember we have to do 512 iterations of this loop and/or the other similar tube loop, so that other code isn't negligible but is diluted. Plus of course we are saving a trip to disc.
 tube_read_loop
 lda_abs_tube_data
     ; We must not read from bbc_tube_data more often than once every 10
@@ -320,7 +334,8 @@ lda_abs_tube_data
     ldy shadow_ptr_high
     beq not_shadow_bounce_in_tube_read_loop
     lda shadow_bounce_buffer_page
-    ; SFTODO: IF SQUASHING CODE, SHARING THE FOLLOWING TWO INSNS MAY SAVE A BYTE
+    ; SFTODO: Moving the following two instructions into a subroutine may save a
+    ; byte.
     jsr shadow_ram_copy
     inc shadow_ptr_high
     dec our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
@@ -377,8 +392,6 @@ match
     ; Set our_cache_ptr to point to the block's data.
     jsr set_our_cache_ptr_to_index_y
 
-    jsr set_tube_transfer_block_to_osword_data_address
-
     ; Set the result to say we were able to provide the requested block.
     ldy #our_osword_result_offset
     lda #0
@@ -386,6 +399,7 @@ match
 
     ; Copy the 512-byte block in our cache pointed to by our_cache_ptr back to
     ; the caller.
+    jsr set_tube_transfer_block_to_osword_data_address
     jsr claim_tube
     lda #2
     sta count
@@ -465,11 +479,12 @@ do_loop_tail_common
     dec count ; must be last
     rts
 
-; Set our_cache_ptr to point to the block with index Y.
+; Set our_cache_ptr to point to the block with index Y, paging in sideways or
+; shadow RAM if appropriate.
 set_our_cache_ptr_to_index_y
     lda #0
-    sta our_cache_ptr ; SFTODO: Saving isn't huge, but this is *always* 0 so we could just do this init once in discardable init code (it saves two bytes, cycle saving not a big deal, but two bytes might help us fit code+vars into 512 bytes)
-    sta shadow_ptr_high ; SFTODO TEMP HACK SO WE CAN USE IT TO DECIDE IF WE'RE DOING SHADOW OR NOT
+    sta our_cache_ptr ; SFTODO: always zero, so we could move this sta into discardable init
+    sta shadow_ptr_high ; SFTODONOW TEMP HACK SO WE CAN USE IT TO DECIDE IF WE'RE DOING SHADOW OR NOT - POSS NOT A TEMP HACK ANY MORE, COME BACK
     tya
     sec
     sbc low_cache_entries

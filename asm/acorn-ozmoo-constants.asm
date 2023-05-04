@@ -71,10 +71,6 @@ osword_read_clock = 1
 osword_write_host = 6
 osword_sound = 7
 osword_floppy_op = $7f
-!ifdef ACORN_TUBE_CACHE {
-osword_cache_op = $e0 ; USERV OSWORD
-osword_cache_no_timestamp_hint = $ff
-}
 osbyte_set_cursor_editing = $04
 osbyte_wait_for_vsync = $13
 osbyte_flush_buffer = $15
