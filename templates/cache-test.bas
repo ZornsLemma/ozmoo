@@ -3,6 +3,8 @@ IF PAGE>&800 THEN PRINT "Sorry, tube only!":END
 old_at%=@%
 ON ERROR PROCerror
 
+REM SFTODO: Should maybe default to mode 3, so there's *some* spare shadow RAM
+REM on machines with shadow RAM?
 mode%=0
 REM The Ozmoo executable always forces the shadow mode bit on when initialising
 REM the cache, so we do the same. We don't want to chase phantom bugs or quirks
@@ -108,7 +110,7 @@ call_count%=call_count%+1
 hit%=((osword_block%?11)=0)
 IF NOT hit% AND track_offers%>0 THEN PROCcheck_not_recent_offer(wanted_block%)
 IF track_offers%>0 THEN recent_offers%(recent_offers_ptr%)=local_cache_id%(local_cache_block_to_evict%):recent_offers_ptr%=(recent_offers_ptr%+1) MOD track_offers%
-REM PRINT "Offer block ID ";local_cache_id%(local_cache_block_to_evict%);" (local entry ";local_cache_block_to_evict%;"), want block ID ";wanted_block%;": ";:IF hit% THEN PRINT "hit" ELSE PRINT "miss"
+PRINT "Offer block ID ";local_cache_id%(local_cache_block_to_evict%);" (local entry ";local_cache_block_to_evict%;"), want block ID ";wanted_block%;": ";:IF hit% THEN PRINT "hit" ELSE PRINT "miss"
 REM To detect the cache corrupting arbitrary memory, we check all the local blocks.
 IF hit% THEN hit_count%=hit_count%+1 ELSE PROCcreate_block(wanted_block%,local_addr%)
 local_cache_id%(local_cache_block_to_evict%)=wanted_block%
@@ -119,7 +121,7 @@ IF call_count% MOD 100=0 THEN @%=&20300:PRINT "Expected hit ratio ";expected_hit
 
 UNTIL call_count%>=max_call_count%
 
-REM We need to pause if this happens so the users gets a chance to see it.
+REM We need to pause if this happens so the user gets a chance to see it.
 IF expected_hit_ratio<(current_hit_ratio*0.8) OR expected_hit_ratio>(current_hit_ratio*1.2) THEN PRINT "Poor current hit ratio; press any key to continue":OSCLI "FX21":IF GET
 
 pass%=pass%+1
@@ -132,14 +134,14 @@ REM now.
 DEF PROCcreate_block(block_num%, addr%)
 LOCAL I%
 FOR I%=0 TO 511 STEP 4
-addr%!I%=block_num%*I%
+addr%!I%=block_num%*(I%+1)
 NEXT
 ENDPROC
 
 DEF PROCcheck_block(block_num%,addr%)
 LOCAL I%
 FOR I%=0 TO 511 STEP 4
-IF addr%!I%<>(block_num%*I%) THEN PRINT "PROCcheck_block(";block_num%;",&";STR$~addr%;") failed!":END
+IF addr%!I%<>(block_num%*(I%+1)) THEN PRINT "PROCcheck_block(";block_num%;",&";STR$~addr%;") failed!":END
 NEXT
 ENDPROC
 

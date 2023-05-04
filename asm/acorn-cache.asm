@@ -4,6 +4,7 @@
 !source "acorn-shared-constants.asm"
 
 userv = $200
+!error "SFTODONOW: Cracked it! osword_[axy] are also osbyte_[axy] and when we make an OSBYTE call to page in/out Integra-B (or other third party swr), the OS corrupts the values we relied on to remain in these zp locations"
 osword_a = $ef
 osword_x = $f0
 osword_y = $f1
@@ -19,9 +20,10 @@ osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 
 ; SFTODO: Why don't we just use $70-8f for zp_temp? In practice tube host code leaves this free.
-zp_temp = $f5 ; 3 bytes
+zp_temp = $76 ; SFTODO TEMP HACK BUT I MAY WANT TO DO THIS PRPERLY, WAS zp_temp = $f5 ; 3 bytes
+; SFTODONOW: I think we're asking for trouble with this zp_temp. For a start, I think it *will* go wrong with B+ OS shadow driver, as that uses $f6/f7 as osrdsc pointer and will corrupt our_cache_ptr/count - I suspect I haven't tested this yet, though it half feels like I had. I can't see any specific reason this would be causing Integra-B problems, but it still makes me edgy.
 
-; SFTODO: I don't think these *are* used by the shadow driver in any sense we care about. They're used to communicate between shadow driver and loader ($70, 71) but that's over by the time we execute, and the others are used only by the shadow driver installation itself, not the shadow driver code which executes during gameplay.
+; SFTODO: I don't think these *are* used by the shadow driver in any sense we care about. They're used to communicate between shadow driver and loader ($70, 71) but that's over by the time we execute, and the others are used only by the shadow driver installation itself, not the shadow driver code which executes during gameplay. - well, we do use shadow_state right on initialisation, but that only requires minimal care to avoid corrupting it before we've finished with it.
 ; $70-74 inclusive are used by the shadow driver so we keep them free; we could
 ; potentially reuse some of these addresses with care, but while we're not short
 ; of zero page it seems best just to steer clear.
@@ -836,3 +838,5 @@ spare_shadow_init_done
 ; SFTODONOW: RIGHT NOW THE CACHE TEST FAILS ON INTEGRA-B (RUNNING IN MODE 7 FWIW, WITH ABOUT 32K SWR PLUS PRIVATE RAM) - IT DOES SEEM TO WORK ON A B+64K MODE 7 FWIW (AGAIN, USING PRIVATE RAM) - I DID THIS TESTING ON B-EM, IT'S *PROBABLY* FINE BUT IT MAY BE A GLITCH WITH B-EM EMULATION OF INTEGRA-B SO IF IT PROVES INTRACTABLE AFTER A BIT OF INITIAL INVESTIGATION TRY TESTING WITH BEEBEM - ADDING 32K SWR TO B+64K THE TEST IS STILL FINE
 ; - IF I FORCE THE PRIVATE RAM OFF ON A NO SWR INTEGRA B (private_ram%=0 IN CACHE TEST), IT STILL FAILS - OK, IF I MAKE THE DRIVER SAY IT CAN'T DO SHADOW RAM PAGING IT STILL FAILS
 ; - AND A QUICK PLAY WITH BEEBEM SUGGESTS THE SAME FAILURES OCCUR THERE, AND THE BENCHMARK COMPLETES ON NON-TUBE INTEGRA B WITH 16K SWR IN MODE 7, WHICH SHOULD BE USING THE SHADOW RAM VIA THE PAGE COPYING
+; - OK, NOT SURE IF RELEVANT TO THIS, BUT (USIN B-EM) INTEGRA B NO SHADOW RUNNING CACHE TEST IN MODE 0 (SO NO SPARE SHADOW RAM) SEEMS TO WORK RELIABLY, BUT IF I PRESS ESCAPE IT SEEMS TO LOCK UP RATHER THAN THE ESCAPE ERROR OCCURRING AND TERMINATING THE PROGRAM - BUT ON A B+64K ESCAPE DOES WORK
+; - OK, A STRAIGHT B WITH 144K SWR AND 254 CACHE ENTRIES ALSO SEEMS TO GET STUCK AND UN-ESCAPABLE, THOUGH MAYBE IT LOCKED UP BEFORE I PRESSED ESCAPE - THIS JUST MAY BE DOWN TO MY HACKY "NOT DEALING WITH 16 BIT RIGHT NOW" STUFF IN DISCARDABLE INIT RE CAPPING THO
