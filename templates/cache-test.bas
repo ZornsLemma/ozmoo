@@ -3,9 +3,9 @@ IF PAGE>&800 THEN PRINT "Sorry, tube only!":END
 old_at%=@%
 ON ERROR PROCerror
 
-REM SFTODO: Should maybe default to mode 3, so there's *some* spare shadow RAM
-REM on machines with shadow RAM?
-mode%=0
+REM Default to mode 3, so there's potentially some spare shadow RAM and that
+REM functionality wil get tested.
+mode%=3
 REM The Ozmoo executable always forces the shadow mode bit on when initialising
 REM the cache, so we do the same. We don't want to chase phantom bugs or quirks
 REM caused by running on a machine with shadow RAM but not using a shadow mode.
@@ -110,7 +110,7 @@ call_count%=call_count%+1
 hit%=((osword_block%?11)=0)
 IF NOT hit% AND track_offers%>0 THEN PROCcheck_not_recent_offer(wanted_block%)
 IF track_offers%>0 THEN recent_offers%(recent_offers_ptr%)=local_cache_id%(local_cache_block_to_evict%):recent_offers_ptr%=(recent_offers_ptr%+1) MOD track_offers%
-PRINT "Offer block ID ";local_cache_id%(local_cache_block_to_evict%);" (local entry ";local_cache_block_to_evict%;"), want block ID ";wanted_block%;": ";:IF hit% THEN PRINT "hit" ELSE PRINT "miss"
+REM PRINT "Offer block ID ";local_cache_id%(local_cache_block_to_evict%);" (local entry ";local_cache_block_to_evict%;"), want block ID ";wanted_block%;": ";:IF hit% THEN PRINT "hit" ELSE PRINT "miss"
 REM To detect the cache corrupting arbitrary memory, we check all the local blocks.
 IF hit% THEN hit_count%=hit_count%+1 ELSE PROCcreate_block(wanted_block%,local_addr%)
 local_cache_id%(local_cache_block_to_evict%)=wanted_block%
