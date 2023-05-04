@@ -495,7 +495,7 @@ set_our_cache_ptr_to_index_y
     adc #>low_cache_start
     sta our_cache_ptr + 1
     rts
-index_in_high_cache ; SFTODO: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
+index_in_high_cache ; SFTODONOW: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
 ; SFTODO: COMMENT?
     cmp swr_cache_entries
     bcs index_in_shadow_cache
@@ -515,10 +515,9 @@ swr_base = our_cache_ptr + 1
     lda ram_bank_list,y
     jsr page_in_swr_bank_a
     ; If b6 of A is set, we've paged in the Integra-B private RAM and we need to
-    ; skip over the 1K of IBOS workspace at $8000 by changing swr_base. Making
-    ; swr_base variable like this will slow down other machines but it's a
-    ; handful of cycles and our execution time is dominated by the tube copy
-    ; loops and the cache searching anyway. SFTODONOW TEST THIS ON IBOS!
+    ; skip over the 1K of IBOS workspace at $8000 by changing swr_base. (Other
+    ; machines pay a tiny price for this, as swr_base would be constant
+    ; otherwise.)
     asl
     bpl not_integra_b_private_ram
     lda #$84
@@ -549,19 +548,22 @@ use_shadow_paging
     sty zero_if_need_to_undo_shadow_paging
     sta our_cache_ptr + 1
     lda #1
-jmp_shadow_paging_control
+jmp_shadow_paging_control1
     jmp $ffff ; patched
 
 undo_shadow_paging_if_necessary
-    ; If we paged in shadow RAM, we need to page main RAM back in.
-zero_if_need_to_undo_shadow_paging = *+1 ; SFTODO CODE MIGHT BE SMALLER IF THIS WERE JUST A ZP ADDRESS - WE'D SAVE CODE SIZE ON STORES AND DON'T REALLY CARE ABOUT ONE CYCLE PENALTY ON LOAD HERE
+    ; If we paged in shadow RAM, we need to page main RAM back in. Unlike
+    ; sideways RAM, where we page in on demand and always page the original bank
+    ; back in before we return to the caller whether we actually changed it or
+    ; not, shadow RAM paging is more expensive so we try to be smarter about it.
+zero_if_need_to_undo_shadow_paging = *+1 ; SFTODONOW CODE MIGHT BE SMALLER IF THIS WERE JUST A ZP ADDRESS - WE'D SAVE CODE SIZE ON STORES AND DON'T REALLY CARE ABOUT ONE CYCLE PENALTY ON LOAD HERE
     lda #1 ; patched, although important it starts at 1
     bne anrts
     inc zero_if_need_to_undo_shadow_paging ; set back to 1
-jsr_shadow_paging_control ; SFTODO: RENAME LABEL NOW THIS IS A JMP
+jmp_shadow_paging_control2
     jmp $ffff ; patched
 
-    ; SFTODO: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
+    ; SFTODONOW: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
 
     ; If this executable is re-loaded, old_userv will be overwritten by 0 as
     ; part of the re-load and things will break. In reality this isn't going to
@@ -819,11 +821,11 @@ relocate_setup
     iny
     jmp spare_shadow_init_done
 init_shadow_paging
-    sta jsr_shadow_paging_control+2
-    sta jmp_shadow_paging_control+2
+    sta jmp_shadow_paging_control1+2
+    sta jmp_shadow_paging_control2+2
     lda shadow_paging_control_ptr
-    sta jsr_shadow_paging_control+1
-    sta jmp_shadow_paging_control+1
+    sta jmp_shadow_paging_control1+1
+    sta jmp_shadow_paging_control2+1
 spare_shadow_init_done
 
     sty relocate_target
