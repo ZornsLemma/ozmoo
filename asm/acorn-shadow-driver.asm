@@ -26,23 +26,6 @@ max_shadow_driver_size = shadow_driver_end - shadow_driver_start
     ;!warn "QQQA FREE ",max_shadow_driver_size - (* - .start) ; SFTODO TEMP, DELETE
 }
 
-; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
-shadow_state_none           = 0 ; no shadow RAM
-shadow_state_screen_only    = 1 ; shadow RAM with no driver for spare shadow RAM access
-shadow_state_first_driver   = 2 ; shadow_state >= this means we have a driver
-shadow_state_b_plus_os      = 2 ; BBC B+ shadow RAM accessed via OS
-shadow_state_b_plus_private = 3 ; BBC B+ shadow RAM via code in 12K private RAM
-shadow_state_master         = 4 ; BBC Master shadow RAM
-shadow_state_mrb            = 5 ; Electron Master RAM Board shadow RAM
-shadow_state_integra_b      = 6 ; Integra-B shadow RAM
-shadow_state_watford        = 7 ; BBC B Watford shadow RAM
-shadow_state_aries          = 8 ; BBC B Aries shadow RAM
-
-; We don't need zero page for all of these, but we have it free so with might as
-; well use it to keep the code size down. The first two addresses are used to
-; pass information to the BASIC loader.
-shadow_state = $70
-private_ram_in_use = $71
 ; The following addresses are only used internally by this code as we install the
 ; shadow driver; the shadow driver itself doesn't use them.
 src = $72 ; 2 bytes

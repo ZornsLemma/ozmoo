@@ -45,7 +45,6 @@ cache_entries = $7d ; 1 byte
 ; relocation code's use of zero page.
 shadow_bounce_buffer_page = $7e ; 1 byte
 
-
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
 our_tube_reason_claim_id = $25 ; a six bit value
@@ -64,31 +63,17 @@ page_in_swr_bank_a_electron_size = 13
     }
 }
 
-; SFTODONOW: For the moment I'm hardcoding these, but we should really make them available by moving them from acorn-shadow-driver.asm to acorn-shared-constants to avoid keeping things in sync being a problem.
-shadow_state_none           = 0 ; no shadow RAM
-shadow_state_screen_only    = 1 ; shadow RAM with no driver for spare shadow RAM access
-shadow_state_first_driver   = 2 ; shadow_state >= this means we have a driver
-shadow_state_b_plus_os      = 2 ; BBC B+ shadow RAM accessed via OS
-shadow_state_b_plus_private = 3 ; BBC B+ shadow RAM via code in 12K private RAM
-shadow_state_master         = 4 ; BBC Master shadow RAM
-shadow_state_mrb            = 5 ; Electron Master RAM Board shadow RAM
-shadow_state_integra_b      = 6 ; Integra-B shadow RAM
-shadow_state_watford        = 7 ; BBC B Watford shadow RAM
-shadow_state_aries          = 8 ; BBC B Aries shadow RAM
-shadow_state = $70
-private_ram_in_use = $71
-
 program_start
     jmp relocate_setup
 
     ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED WITH "SAME" X OR ON A SUBSEQUENT CALL OR SOMETHING? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART.
 ; OSBYTE $88 - host cache initialisation
 ;
-; On entry: N/A
+; On entry:
+;   N/A
 ;
 ; On exit:
 ;   X contains the number of 512-byte blocks the cache holds
-; SFTODO: Test (perhaps just force X=0 on return) to see nothing crashes if the cache happens to have no space - I don't think this is likely (especially if we start checking OSHWM in host is something like <=&2500 and refusing to run if noot) but worth a go.
 our_osbyte
 cache_entries_high = zp_temp ; 1 byte
     ; The cache size doesn't change at runtime, it's always full with
@@ -137,8 +122,10 @@ our_userv
     beq our_osbyte ; *CODE/OSBYTE $88
     jmp (old_userv)
 
-    ; Waste some space so we avoid unwanted page crossing in time-critical loops.
-    !fill 0 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features - ALSO REMEMBER WE CAN MOVE SOME VARIABLES INTO THIS SPACE IF THAT HELPS
+; As the code evolves, we may want/need to waste some space here to change the
+; alignment of the following code so the time-critical loops don't have unwanted
+; page crossings.
+    !fill 0
 
 ; OSWORD &E0 - host cache access
 ;
