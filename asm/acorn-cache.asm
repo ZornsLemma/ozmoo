@@ -622,12 +622,13 @@ low_cache_start = *
 }
 ; The relocation process can't relocate us upwards in memory, so by asserting
 ; that all builds (including the one at the high relocation address) have enough
-; free memory for at least two cache entries, we avoid the corner cases where we
-; have zero or one pages of cache and this code misbehaves. The maximum host
-; OSHWM we support is high enough that we don't seriously expect this to happen,
-; so this doesn't significantly penalise machines which have non-main RAM for
-; cache and could therefore run with OSHWM that bit higher.
-+assert ($3000 - low_cache_start) >= 2*512
+; free memory for at least two cache entries and a bounce buffer, we avoid the
+; corner cases where we have zero or one pages of cache and/or no space for a
+; bounce buffer and this code misbehaves. The resulting maximum host OSHWM we
+; support is high enough that we don't seriously expect this to happen, so this
+; doesn't significantly penalise machines which have non-main RAM for cache and
+; could therefore run with OSHWM that bit higher.
++assert ($3000 - low_cache_start) >= 2*512 + 256
 
 initialize
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
@@ -788,19 +789,43 @@ screen_start_page_by_mode
 relocate_target
     !byte 0
 
+; Get ready to relocate down from the high address we load at to ~OSHWM.
 relocate_setup
     ; Set Y (relocate_target) to OSHWM to start with.
     lda #osbyte_read_oshwm
     jsr osbyte
 
-    ; Calculate shadow_cache_entries, the number of 512-byte blocks we can hold
-    ; in spare shadow RAM. If we have no shadow driver or are running in mode 0
-    ; this will be 0. If we need a bounce buffer to copy data between main RAM
-    ; and shadow RAM, bump Y (relocate_target) by one to allocate a page of
-    ; bounce buffer at OSHWM. If OSHWM is so high the bounce buffer would be at
-    ; or above $3000, we set shadow_cache_entries to 0 to disable use of spare
-    ; shadow RAM.
-    ; SFTODO: ONCE SHADOW DRIVER ALLOWS PAGE IN/OUT ON SUITABLE HW, WE WON'T NEED BOUNCE BUFFER FOR THAT CASE
+    ; Calculate shadow_cache_entries, the number of blocks we can store in spare
+    ; shadow RAM (if any).
+    ;
+    ; We might need a bounce buffer to use spare shadow RAM - that is, a page of
+    ; memory below the start of screen RAM at $3000 which we can use to copy
+    ; data to/from spare shadow RAM so we can work with it. If we do, we
+    ; allocate it at OSHWM and relocate ourselves a page higher than usual -
+    ; this is convenient because it ensures the bounce buffer is as low as
+    ; possible (without using memory below OSHWM).
+    ;
+    ; Y contains the relocation target, currently OSHWM, so if we want a bounce
+    ; buffer we use page Y for it and bump Y to reserve the page.
+    ;
+    ; We need a bounce buffer if all of the following are true:
+    ; - we have some spare shadow RAM (shadow mode 0 uses all shadow RAM itself)
+    ; - we have a shadow driver to allow us to use spare shadow RAM
+    ; - the shadow driver isn't capable of paging shadow RAM in and out (if it
+    ;   is, we can just copy to/from shadow RAM directly)
+    ;
+    ; There's an additional condition which is always true in practice: we need
+    ; OSHWM<=$2F00 so any bounce buffer we allocate is below screen RAM. Since
+    ; this is discardable init code we do check for this and if it's not true we
+    ; disable using spare shadow RAM, which obviously means we don't need a
+    ; buffer. This is irrelevant in practice because OSHWM will seldom be that
+    ; high, and in particular we choose our high loading address such that there
+    ; will always be room for two pages of cache plus a bounce buffer, so if
+    ; OSHWM is that high we'll generate an error when the cache executable is
+    ; run.
+    ;
+    ; SFTODO: It might be nice if the loader checked host OSHWM<=max OSHWM for
+    ; this executable
     lda #0
     sta shadow_bounce_buffer_page
     cpy #>(shadow_start - $100)
@@ -821,6 +846,8 @@ relocate_setup
     iny
     jmp spare_shadow_init_done
 init_shadow_paging
+    ; We can page shadow RAM in/out directly, so patch up the places where we
+    ; want to do that with the address of the relevant routine.
     sta jmp_shadow_paging_control1+2
     sta jmp_shadow_paging_control2+2
     lda shadow_paging_control_ptr
@@ -833,8 +860,6 @@ spare_shadow_init_done
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 
-; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here)
+; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here). Alternately we could pay a very small price in code to just count 1 extra block of cache and redirect block 0 to &9 instead of low_cache_start, and leave this code at OSHWM where it currently is.
 
 ; SFTODONOW: If possible, it would be good if we had same host cache size on a non-shadow machine after adding all this private RAM/shadow support as we did beforehand, i.e. that non-shadow machine is not losing out (slightly)
-
-; SFTODONOW: Be good to review this code and tidy it up properly - e.g. some new code might not be well commented or some comments might be out of date.
