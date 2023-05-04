@@ -32,8 +32,19 @@ cache_screen_mode = $73 ; 1 byte
 ; to copy the pointer to our OSWORD block in here.
 osword_block_ptr = $74 ; 2 bytes
 
-; The following don't need to be in zero page but we're not short of it...
+; The following don't need to be in zero page but we're not short of it and using zero page
+; for these variables helps to shorten the code (by using shorter instructions, and not
+; using space above OSHWM for these variables) so we can fit in 512 bytes to maximise
+; available main RAM for caching.
 tube_transfer_block = $76 ; 4 bytes
+shadow_ptr_high = $7a ; 1 byte
+free_block_index = $7b ; 1 byte
+current_tick = $7c ; 1 byte
+cache_entries = $7d ; 1 byte
+; shadow_bounce_buffer_page is set before we relocate down, so it must not clash with the
+; relocation code's use of zero page.
+shadow_bounce_buffer_page = $7e ; 1 byte
+
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
@@ -127,7 +138,7 @@ our_userv
     jmp (old_userv)
 
     ; Waste some space so we avoid unwanted page crossing in time-critical loops.
-    !fill 4 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features - ALSO REMEMBER WE CAN MOVE SOME VARIABLES INTO THIS SPACE IF THAT HELPS
+    !fill 0 ; SFTODONOW: Don't forget to tweak this as necessary once code has been updated for new features - ALSO REMEMBER WE CAN MOVE SOME VARIABLES INTO THIS SPACE IF THAT HELPS
 
 ; OSWORD &E0 - host cache access
 ;
@@ -321,7 +332,7 @@ lda_abs_tube_data
     +assert_no_page_crossing tube_read_loop
     ldy shadow_ptr_high
     beq not_shadow_bounce_in_tube_read_loop
-    lda shadow_bounce_buffer
+    lda shadow_bounce_buffer_page
     ; SFTODO: IF SQUASHING CODE, SHARING THE FOLLOWING TWO INSNS MAY SAVE A BYTE
     jsr shadow_ram_copy
     inc shadow_ptr_high
@@ -394,7 +405,7 @@ match
 copy_requested_block_loop
     lda shadow_ptr_high
     beq not_shadow_bounce_in_tube_write_loop
-    ldy shadow_bounce_buffer
+    ldy shadow_bounce_buffer_page
     sty our_cache_ptr + 1 ; counteract do_loop_tail_common incrementing this
     jsr shadow_ram_copy
     inc shadow_ptr_high
@@ -462,8 +473,6 @@ do_loop_tail_common
     dec count ; must be last
     rts
 
-shadow_ptr_high !byte 0 ; SFTODO MOVE ETC
-
 ; Set our_cache_ptr to point to the block with index Y.
 set_our_cache_ptr_to_index_y
     lda #0
@@ -524,7 +533,7 @@ index_in_shadow_cache
     asl
     ; Carry is already clear
     adc #>shadow_start
-    ldy shadow_bounce_buffer
+    ldy shadow_bounce_buffer_page
     beq use_shadow_paging
     sta shadow_ptr_high
     sty our_cache_ptr + 1
@@ -572,8 +581,6 @@ swr_cache_entries
     !byte 0
 shadow_cache_entries
     !byte 0
-shadow_bounce_buffer ; SFTODO: rename to indicate this is the start page not the actual buffer address?
-    !byte 0 ; SFTODO: NOTE (PERHAPS PERM COMMENT) WE RELY ON THIS BEING ZERO INITED ON START
 ; SFTODO: If we need further variables, they can go here before we do !align.
 
 ; SFTODONOW: I switched from calculating these labels from * to using !byte/!fill etc, and this actually bloats the on disc executable with loads of 0s. Need to fix this, although for now while I'm still debugging the code I won't worry about it.
@@ -588,15 +595,15 @@ shadow_bounce_buffer ; SFTODO: rename to indicate this is the start page not the
 ; three single-byte variables with the 255-byte blocks so as to get the desired
 ; alignment.
     !align 255, 0, 0 ; SFTODO: If this is *just* over a page boundary try hard to optimise to pull it back
-cache_entries
+SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL3
     !byte 0
 cache_id_low
     !fill max_cache_entries
-free_block_index
+SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL
     !byte 0
 cache_id_high
     !fill max_cache_entries
-current_tick
+SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL2
     !byte 0
 cache_timestamp
     !fill max_cache_entries
@@ -785,6 +792,8 @@ relocate_setup
     ; or above $3000, we set shadow_cache_entries to 0 to disable use of spare
     ; shadow RAM.
     ; SFTODO: ONCE SHADOW DRIVER ALLOWS PAGE IN/OUT ON SUITABLE HW, WE WON'T NEED BOUNCE BUFFER FOR THAT CASE
+    lda #0
+    sta shadow_bounce_buffer_page
     cpy #>(shadow_start - $100)
     bcs spare_shadow_init_done ; branch if no room for bounce buffer
     lda shadow_state
@@ -799,7 +808,7 @@ relocate_setup
     beq spare_shadow_init_done ; branch if no spare shadow RAM (mode 0)
     lda shadow_paging_control_ptr+1
     bne init_shadow_paging ; branch if we can page shadow RAM in directly
-    sty shadow_bounce_buffer
+    sty shadow_bounce_buffer_page
     iny
     jmp spare_shadow_init_done
 init_shadow_paging
