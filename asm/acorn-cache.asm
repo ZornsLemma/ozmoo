@@ -484,7 +484,7 @@ do_loop_tail_common
 set_our_cache_ptr_to_index_y
     lda #0
     sta our_cache_ptr ; SFTODO: always zero, so we could move this sta into discardable init
-    sta shadow_ptr_high ; SFTODONOW TEMP HACK SO WE CAN USE IT TO DECIDE IF WE'RE DOING SHADOW OR NOT - POSS NOT A TEMP HACK ANY MORE, COME BACK
+    sta shadow_ptr_high
     tya
     sec
     sbc main_ram_cache_entries
@@ -566,8 +566,6 @@ jmp_shadow_paging_control2
     jmp $ffff ; patched
 
 code_end
-
-    ; SFTODONOW: ALL SHADOW SUPPORT CODE FOR CACHE OFFER/RESPONSE NEEDS COMMENTING PROPERLY AND TIDYING
 
     ; If this executable is re-loaded, old_userv will be overwritten by 0 as
     ; part of the re-load and things will break. In reality this isn't going to
