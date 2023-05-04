@@ -1335,10 +1335,9 @@ def make_turbo_test_executable():
 
 
 def make_cache_executable():
-    # In practice the cache executable will only be run in mode 7 (by the
-    # loader) and will then relocate itself down to the host PAGE, but we'll
-    # position it to load just below the mode 0 screen RAM anyway; there's no
-    # real downside.
+    # The load address here is chosen to be as high as possible while still
+    # satisfying the assertion in acorn-cache.asm that there's a minimum amount
+    # of free main RAM available for cache.
     return Executable("acorn-cache.asm", "CACHE2P", None, 0x2600, relocatable_args + ["-DACORN_TUBE_CACHE=1", "-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
 
 

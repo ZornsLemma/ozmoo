@@ -487,12 +487,12 @@ set_our_cache_ptr_to_index_y
     sta shadow_ptr_high ; SFTODONOW TEMP HACK SO WE CAN USE IT TO DECIDE IF WE'RE DOING SHADOW OR NOT - POSS NOT A TEMP HACK ANY MORE, COME BACK
     tya
     sec
-    sbc low_cache_entries
+    sbc main_ram_cache_entries
     bcs index_in_high_cache
     tya
     asl
     clc
-    adc #>low_cache_start
+    adc #>main_ram_cache_start
     sta our_cache_ptr + 1
     rts
 index_in_high_cache ; SFTODONOW: rename in_swr_cache? Altho that's really just below after cmp swr_cache_entries
@@ -584,13 +584,13 @@ code_end ; SFTODO: FWIW THIS LABEL IS NEVER USED - IT MIGHT STILL BE USEFUL FOR 
 max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
-low_cache_entries
+; SFTODO: If we need to squash the code further, these could move into zero page.
+main_ram_cache_entries
     !byte 0
 swr_cache_entries
     !byte 0
 shadow_cache_entries
     !byte 0
-; SFTODO: If we need further variables, they can go here before we do !align.
 
 ; SFTODONOW: I switched from calculating these labels from * to using !byte/!fill etc, and this actually bloats the on disc executable with loads of 0s. Need to fix this, although for now while I'm still debugging the code I won't worry about it.
 
@@ -616,9 +616,9 @@ SFTODOJUSTPADDINGFORMOMENTMOVESOMETHINGINIFHELPFUL2
     !byte 0
 cache_timestamp
     !fill max_cache_entries
-low_cache_start = *
-!if low_cache_start & $ff <> 0 {
-    !error "low_cache_start must be page-aligned"
+main_ram_cache_start = *
+!if main_ram_cache_start & $ff <> 0 {
+    !error "main_ram_cache_start must be page-aligned"
 }
 ; The relocation process can't relocate us upwards in memory, so by asserting
 ; that all builds (including the one at the high relocation address) have enough
@@ -628,7 +628,7 @@ low_cache_start = *
 ; support is high enough that we don't seriously expect this to happen, so this
 ; doesn't significantly penalise machines which have non-main RAM for cache and
 ; could therefore run with OSHWM that bit higher.
-+assert ($3000 - low_cache_start) >= 2*512 + 256
++assert ($3000 - main_ram_cache_start) >= 2*512 + 256
 
 initialize
     ; We claim iff we haven't already claimed USERV; this avoids crashes if
@@ -674,7 +674,7 @@ initialize_needed
     bpl -
 not_electron
 
-    ; Calculate low_cache_entries. We have RAM available between low_cache_start
+    ; Calculate main_ram_cache_entries. We have RAM available between main_ram_cache_start
     ; and the screen.
     lda cache_screen_mode
     ora #shadow_mode_bit
@@ -685,9 +685,9 @@ not_electron
     ; don't need to be double-page aligned in order to make things work nicely.
     tya
     sec
-    sbc #>low_cache_start
+    sbc #>main_ram_cache_start
     lsr
-    sta low_cache_entries
+    sta main_ram_cache_entries
 
     ; Each 16K sideways RAM bank holds 32*512-byte blocks.
     lda #0
@@ -698,7 +698,7 @@ not_electron
     rol cache_entries_high
     dex
     bne -
-    adc low_cache_entries
+    adc main_ram_cache_entries
     sta cache_entries
     bcc +
     inc cache_entries_high
@@ -741,7 +741,7 @@ no_private_ram
     ; SFTODONOW COMMENT - THIS IS WRONG BECAUSE IT WILL PROBABLY FAIL WHERE WE'RE CAPPING AT 255 CACHE ENTRIES BELOW, BUT LET'S JUST HACK IT FOR NOW AND IT WILL BE FINE ON MACHINES WITH LITTLE SWR FOR INITIAL TESTING
     lda cache_entries
     sec
-    sbc low_cache_entries ; SFTODO: rename this main_ram_cache_entries??
+    sbc main_ram_cache_entries
     sta swr_cache_entries
 
     ; Add in shadow_cache_entries.
@@ -775,7 +775,12 @@ page_in_swr_bank_a_electron
 page_in_swr_bank_a_electron_end
 +assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
 
-; SFTODO: Copy and paste from acorn-init-preload.asm - possibly better just to duplicate it than faff sharing it, but have a think
+; On an Electron with a Master RAM Board in shadow mode, the shadow RAM can't be
+; turned off under software control and osbyte_read_screen_address_for_mode will
+; always return $8000 even for modes without shadow_mode_bit set. This makes
+; sense, but it's not much use to us when we're trying to determine how much
+; shadow RAM is actually used in a mode. We use our own table of start addresses
+; instead; we might as well do this on all platforms for consistency.
 screen_start_page_by_mode
     !byte $30 ; mode 0
     !byte $30 ; mode 1
@@ -860,6 +865,6 @@ spare_shadow_init_done
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 
-; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here). Alternately we could pay a very small price in code to just count 1 extra block of cache and redirect block 0 to &9 instead of low_cache_start, and leave this code at OSHWM where it currently is.
+; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here). Alternately we could pay a very small price in code to just count 1 extra block of cache and redirect block 0 to &9 instead of main_ram_cache_start, and leave this code at OSHWM where it currently is.
 
 ; SFTODONOW: If possible, it would be good if we had same host cache size on a non-shadow machine after adding all this private RAM/shadow support as we did beforehand, i.e. that non-shadow machine is not losing out (slightly)
