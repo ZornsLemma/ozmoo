@@ -145,7 +145,7 @@ our_userv
 ; On entry:
 ;   YX?0:     12 (send block length)
 ;   YX?1:     12 (receive block length)
-;   YX!2:     address of 512-byte data block (high word must be 0) SFTODO: GET RID OF () BIT, IT'S TRUE-ISH BUT NOT REALLY THAT HELPFUL AND POSS NOT QUITE TRUE ONCE WE HAVE TURBO SUPPORT
+;   YX!2:     address of 512-byte data block
 ;   YX?6..7:  ID of 512-byte block currently held at YX!2 (offered to cache)
 ;             (ID $FFFF means no block is being offered to the cache.)
 ;             SFTODO: We could use 0 for this special case, Ozmoo will never pass 0 as it will be in dynamic memory - FF does have the small (?) advantage that as it's odd, it can never match the low byte of anything Ozmoo will pass, which may slightly help to optimise searching
@@ -428,7 +428,9 @@ sta_abs_tube_data
     +assert_no_page_crossing tube_write_loop
     jsr do_loop_tail_common
     bne copy_requested_block_loop
-    ; SFTODO: If we're desperate to squash this code, the following three jsrs are probably duplicated in two places
+    ; SFTODO: If this code needs squashing in the future, the following two jsrs
+    ; are duplicated in two places - we could have an
+    ; undo_shadow_paging_if_necessary_and_release_tube subroutine instead.
     jsr undo_shadow_paging_if_necessary
     jsr release_tube
 
@@ -455,6 +457,9 @@ release_tube
     lda #tube_reason_release + our_tube_reason_claim_id
     jmp tube_entry
 
+; Copy the four byte address of the offered/requested block in our OSWORD block to
+; tube_transfer_block. This allows us to modify it without corrupting the OSWORD
+; block which is returned to our caller.
 set_tube_transfer_block_to_osword_data_address
     ldy #our_osword_data_offset+3
 copy_osword_data_loop
@@ -625,7 +630,7 @@ initialize
     ; we're executed twice, although this isn't expected to happen.
     lda #<our_userv
     ldx #>our_userv
-!if 0 { ; This is pointless, as old_userv will be lost on a second execution.
+!if 0 { ; This is pointless, as old_userv will be lost on a second execution. SFTODO: Also note if we do reinstate this, we still need to do the following patching for Electron and calculation of cache size etc - all we should skip is saving current userv at old_userv again... - I think we could reinstate this code if we put userv in zero page where it wouldn't be lost on a second execution, but even though we're not that short of it it somehow grates burning zp on something this "frivolous" - but if we have it free, why not, I guess? Perhaps safer than finding two spare bytes in low RAM and appropriating those only to find a random clash with some ROM or other.
     cmp userv
     bne initialize_needed
     cpx userv + 1
@@ -827,3 +832,5 @@ spare_shadow_init_done
 ; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here)
 
 ; SFTODONOW: If possible, it would be good if we had same host cache size on a non-shadow machine after adding all this private RAM/shadow support as we did beforehand, i.e. that non-shadow machine is not losing out (slightly)
+
+; SFTODONOW: Be good to review this code and tidy it up properly - e.g. some new code might not be well commented or some comments might be out of date.
