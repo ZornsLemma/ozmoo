@@ -58,6 +58,10 @@ osword_block_ptr = $73 ; 2 bytes
     ; executed, so if we're short of space this address could be re-used after
     ; that.
     cache_screen_mode = $7e ; 1 byte
+    ; It feels a bit extravagant allocating two bytes of zero page for
+    ; old_userv, but we need this to live somewhere it won't be overwritten if
+    ; we're re-executed and we're not short of zero page really.
+    old_userv = $7f ; 2 bytes
 }
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
@@ -567,17 +571,6 @@ jmp_shadow_paging_control2
 
 code_end
 
-    ; If this executable is re-loaded, old_userv will be overwritten by 0 as
-    ; part of the re-load and things will break. In reality this isn't going to
-    ; happen and I don't think there's any great solution to it. We can't easily
-    ; put this just before the binary because the relocation likes to work on
-    ; page boundaries, and since we have discardable init code at the end of the
-    ; binary we can't put it there either.
-    ; SFTODO: Maybe worth thinking about this, it may be we could save code and
-    ; complexity by not doing some stuff that won't work anyway.
-old_userv
-    !word 0
-
 max_cache_entries = 255
 free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
 
@@ -631,17 +624,19 @@ main_ram_cache_start = aligned_data_start + $300
 
 ; Discardable initialisation code.
 initialize
-    ; We claim iff we haven't already claimed USERV; this avoids crashes if
-    ; we're executed twice, although this isn't expected to happen.
+; SFTODONOW: RE-REVIEW THIS COMMENT AND LOGIC
+    ; Install ourselves on USERV and save the old value at old_userv iff USERV
+    ; doesn't already point to us; this avoids ending up with old_userv pointing
+    ; to our own handler in a circle if we're re-executed. In practice nothing
+    ; except our own OSBYTE/OSWORD are likely to go via USERV so we'd never get
+    ; stuck in a circle anyway, but we might as well do it properly.
     lda #<our_userv
     ldx #>our_userv
-!if 0 { ; This is pointless, as old_userv will be lost on a second execution. SFTODO: Also note if we do reinstate this, we still need to do the following patching for Electron and calculation of cache size etc - all we should skip is saving current userv at old_userv again... - I think we could reinstate this code if we put userv in zero page where it wouldn't be lost on a second execution, but even though we're not that short of it it somehow grates burning zp on something this "frivolous" - but if we have it free, why not, I guess? Perhaps safer than finding two spare bytes in low RAM and appropriating those only to find a random clash with some ROM or other.
     cmp userv
-    bne initialize_needed
+    bne userv_not_already_claimed
     cpx userv + 1
-    beq initialize_done
-initialize_needed
-}
+    beq userv_already_claimed
+userv_not_already_claimed
     ; Install ourselves on USERV, saving any previous claimant so we can forward
     ; calls we're not handling.
     ldy userv
@@ -650,6 +645,7 @@ initialize_needed
     sty old_userv + 1
     sta userv
     stx userv + 1
+userv_already_claimed
 
     ; If we're running on an Electron, patch the code accordingly.
     lda #osbyte_read_host
