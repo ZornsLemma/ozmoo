@@ -556,7 +556,7 @@ undo_shadow_paging_if_necessary
     ; sideways RAM, where we page in on demand and always page the original bank
     ; back in before we return to the caller whether we actually changed it or
     ; not, shadow RAM paging is more expensive so we try to be smarter about it.
-zero_if_need_to_undo_shadow_paging = *+1 ; SFTODONOW CODE MIGHT BE SMALLER IF THIS WERE JUST A ZP ADDRESS - WE'D SAVE CODE SIZE ON STORES AND DON'T REALLY CARE ABOUT ONE CYCLE PENALTY ON LOAD HERE
+zero_if_need_to_undo_shadow_paging = *+1 ; SFTODO: could move into zero page
     lda #1 ; patched, although important it starts at 1
     bne anrts
     inc zero_if_need_to_undo_shadow_paging ; set back to 1
