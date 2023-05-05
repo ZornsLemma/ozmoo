@@ -429,7 +429,7 @@ not_shadow_bounce_in_tube_write_loop
 tube_write_loop
     ; We must not write to bbc_tube_data more often than once every 10
     ; microseconds/20 cycles.
-    lda (our_cache_ptr),y    ; 5 cycles
+    lda (our_cache_ptr),y    ; 5 cycles (cache is page-aligned so not 6)
 !ifdef SIMPLE_DUMMY {
     sta (our_cache_ptr),y    ; 6 cycles (dummy)
 } else {
