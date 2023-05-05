@@ -102,6 +102,7 @@ REM ignore an error afterwards, which has the side effect of forcing a reset (an
 REM harmless if this wasn't necessary). See
 REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on this.
 */FINDSWR
+PROCpoke(${ram_bank_count},0):REM SFTODONOW TEMP HACK
 ON ERROR GOTO 500
 REM If we're on a real floppy, the disc will still be spinning after running
 REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
@@ -356,7 +357,7 @@ main_ram_shortfall=-FNmin(extra_main_ram,0)
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 IF extra_main_ram>=0 THEN =TRUE
 any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
-=FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main or sideways RAM")
+=FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main+sideways RAM")
 
 DEF FNmode_ok_medium_dynmem
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
@@ -364,7 +365,7 @@ REM game's dynamic memory; main RAM can't be used as dynamic memory.
 REM SFTODOTESTDONE: Although you have to force it (we won't by default use medium dynmem on shadow-capable build), I have verified that this correctly works for games with <=11.5K dynmem on a B+64K and correctly refuses to run with more dynmem, and that those games that refuse do run if you add a 16K SWR bank
 flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-=FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main or sideways RAM")
+=FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main+sideways RAM")
 
 DEF FNmode_ok_big_dynmem
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
@@ -373,7 +374,7 @@ REM determine the available main RAM for shadow vmem cache if that's enabled.
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-=FNmaybe_die_ram(-extra_main_ram,"main or sideways RAM",0,"")
+=FNmaybe_die_ram(-extra_main_ram,"main+sideways RAM",0,"")
 
 REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
 REM preferring to take from them in that order. Only extra_main_ram will be allowed

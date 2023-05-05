@@ -922,13 +922,15 @@ class OzmooExecutable(Executable):
         if nonstored_pages_up_to > self.max_pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
-            # If there would be some main RAM free after loading at the build
-            # address, swr_dynmem could be negative. (This is most likely to
-            # happen if a game with fairly small dynmem requirements is forced
-            # to build in the big model.) We set it to 0 in that case, because
-            # the loader models main RAM and sideways RAM separately.
-            self.swr_dynmem = max(nonstored_pages_up_to - 0x8000, 0)
-            assert self.swr_dynmem <= 16 * 1024
+            # SFTODONOW: This (and its symbol passed through to loader.bas and its use in loader.bas) is now a bit inconsistent - it is not "dynmem in SWR" in all cases. We only actually use it for medium and big models, and different ways for each of them. Maybe rename it something generic and just comment in the loader what it means in the model we're looking at.
+            if "ACORN_SWR_SMALL_DYNMEM" in self.labels:
+                self.swr_dynmem = 0 # not used
+            elif "ACORN_SWR_MEDIUM_DYNMEM" in self.labels:
+                self.swr_dynmem = nonstored_pages_up_to - 0x8000
+                assert 0 <= self.swr_dynmem <= 16 * 1024
+            else:
+                assert "ACORN_SWR_BIG_DYNMEM" in self.labels
+                self.swr_dynmem = nonstored_pages * bytes_per_page
 
         # On a second processor build, we must also have at least
         # min_vmem_blocks for swappable memory. For sideways RAM builds we need
@@ -1040,6 +1042,7 @@ class OzmooExecutable(Executable):
             # for allocating RAM in reality.)
             min_main_ram_used = max(nonstored_pages * bytes_per_page - 0x4000, 0)
             swr_main_ram_free = (0x8000 - self.labels["story_start"]) - min_main_ram_used
+            assert swr_main_ram_free >= 0
             symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(swr_main_ram_free)
 
     def binary(self):
@@ -2387,5 +2390,3 @@ show_deferred_output()
 # SFTODO: Any prospect of optimising SWR paging on systems with only 1 bank? If we can easily detect this (either at runtime or by checking during discardable init and patching a handful of manageable places) we can possibly avoid all SWR paging because we know our bank is always paged in.
 
 # SFTODO: It would probably be a win to free up page 9/a for an extra vmem cache block, especially on smaller machines. We could potentially move INSV to 3a7-ish and the swr bytes to 3d3ish/380ish. Those are quick guesses, have a look at allmem, we need to work round nula use of part of this memory but there is potential here I think. Also shadow driver area might have spare space for swr info or one of the sound buffers for channels we don't use could be appropriated. (Not saying it *is* a problem, but note IBOS does use some workspace in the 3xx region at times, so check that before pushing ahead with this.)
-
-# SFTODONOW: Booting benchmark (with --no-loader-crunch, but prob not important) on an Integra-B with no sideways RAM dies during loading with an "Unreachable" error. This seems to have been present in alpha 45 as well.
