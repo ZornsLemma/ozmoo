@@ -86,7 +86,7 @@ page_in_swr_bank_a_electron_size = 13
 program_start
     jmp relocate_setup
 
-    ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED WITH "SAME" X OR ON A SUBSEQUENT CALL OR SOMETHING? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART.
+    ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED SECOND, THIRD, ETC TIME? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART. - Thinking about this now, it still makes me fear obscure bugs, but *maybe* if on a second+ call, we set all the timestamps to be in ascending order of block ID (possibly not trivial, and we don't want to bloat this code - but we could right shift the block number - taking game size into account to decide how much to scale to not waste range - to squash it into the timestamp), that *might* allow the restart to benefit from any existing blocks in cache without blocks we could have used getting evicted unnecessarily - but I am far from confident about this. I am also not sure it's a big enough win to be worth it. We'd still have to load the "really popular" blocks from disc to populate the Ozmoo cache in the copro, because all the index data etc would be lost when it re-executes - that requires no extra work, but it means there is still going to be some disc access on restart of course. Testing this would be hard as you'd kind of need a "realistic, 'scrambled'" cache rather than the immediately post-restart cache. I suppose *maybe* doing a restart at the end of the benchmark would not be a terrible test.
 ; OSBYTE $88 - host cache initialisation
 ;
 ; On entry:
@@ -758,7 +758,6 @@ no_carry2
     ; indicate, and set_our_cache_ptr_to_index_y will just not try to use more
     ; than 255 cache entries. SFTODONOW: Pretty sure this is true, but think about
     ; it fresh and do some testing.
-
     rts
 
     ; This is copied over page_in_swr_bank_a, so must not contain absolute
