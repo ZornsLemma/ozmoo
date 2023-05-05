@@ -886,3 +886,11 @@ spare_shadow_init_done
 ; real read/write from/to. This means that you can see red for write and green
 ; for read in b-em's memory view as the cache is accessed. This isn't really a
 ; big deal, but it is kind of cool. :-)
+
+; SFTODO: It's a bit niche, but in theory on a B+ where we have the last 512
+; bytes of private RAM available for the shadow driver, we *could* potentially
+; put a copy of the tube read/write loops in there and use those copies when we
+; want to read/write shadow RAM without having to copy a byte at a time between
+; shadow RAM and the bounce buffer. (We'd need the current low memory copies of
+; the tube read/write loops as well, because we'd have to select the appropriate
+; one depending on whether the cache block is in main RAM or shadow RAM.)
