@@ -67,6 +67,7 @@ osword_block_ptr = $73 ; 2 bytes
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
 our_tube_reason_claim_id = $25 ; a six bit value
++assert (our_tube_reason_claim_id & %11000000) == 0
 
 ; When current_tick would wrap round to 0, we subtract timestamp_adjustment from
 ; all the existing timestamps (setting any which would become negative to 0). A
@@ -849,3 +850,5 @@ spare_shadow_init_done
     !source "acorn-relocate.asm"
 
 ; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here). Alternately we could pay a very small price in code to just count 1 extra block of cache and redirect block 0 to &9 instead of main_ram_cache_start, and leave this code at OSHWM where it currently is.
+
+; SFTODONOW: Spot check the host cache size is correct, e.g. I ran on a B+128K in shadow mode 3 and my BOE calculations suggested the cache wasn't quite as big as it ought to be - I didn't investigate at the time, but go back to it, and try some other platforms too.
