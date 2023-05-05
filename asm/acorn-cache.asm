@@ -332,7 +332,11 @@ lda_abs_tube_data
     ; microseconds/20 cycles.
     lda bbc_tube_data     ; 4 cycles
     sta (our_cache_ptr),y ; 6 cycles
+!ifdef SIMPLE_DUMMY {
     lda (our_cache_ptr),y ; 5 cycles (dummy, cache is page-aligned so not 6)
+} else {
+    lsr our_cache_ptr     ; 5 cycles (dummy, our_cache_ptr is always 0 so harmless)
+}
     iny                   ; 2 cycles
     bne tube_read_loop    ; 3 cycles if we branch
     +assert_no_page_crossing tube_read_loop
@@ -426,7 +430,18 @@ tube_write_loop
     ; We must not write to bbc_tube_data more often than once every 10
     ; microseconds/20 cycles.
     lda (our_cache_ptr),y    ; 5 cycles
+!ifdef SIMPLE_DUMMY {
     sta (our_cache_ptr),y    ; 6 cycles (dummy)
+} else {
+    ; SFTODO: Annoyingly this is one byte longer than the simple dummy. I can't
+    ; find a two byte six cycle instruction other than "sta (our_cache_ptr),y"
+    ; which we can use safely. If we knew X was 0 (which we don't, and it would
+    ; take two bytes to load it) we could do things like "lda (old_userv,x)"
+    ; (albeit before the real lda, of course, not right here) and we'd just
+    ; harmlessly read the first byte of the old USERV handler, but with
+    ; arbitrary X we could end up doing random reads from an I/O location.
+    lsr+2 our_cache_ptr      ; 6 cycles (dummy, our_cache_ptr is always 0 so harmless)
+}
 sta_abs_tube_data
     sta bbc_tube_data        ; 4 cycles
     iny                      ; 2 cycles
@@ -849,6 +864,25 @@ spare_shadow_init_done
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 
-; SFTODO: Is this code small enough that it could run in what's left of pages &9/A after the list of sideways RAM banks? That would make better use of memory as we'd have an extra two pages above OSHWM for cached data. Don't forget though that the INSV handler currently lives in page &A. This would lose the advantage of having various absolute references to variables patched up "for free" by the relocation, but the reality is this probably wouldn't be too big a deal/cost too many cycles to change (especially if we used some zp space for these variables instead of allocating them just after the program code here). Alternately we could pay a very small price in code to just count 1 extra block of cache and redirect block 0 to &9 instead of main_ram_cache_start, and leave this code at OSHWM where it currently is.
+; SFTODO: Is this code small enough that it could run in what's left of pages
+; &9/A after the list of sideways RAM banks? That would make better use of
+; memory as we'd have an extra two pages above OSHWM for cached data. Don't
+; forget though that the INSV handler currently lives in page &A. This would
+; lose the advantage of having various absolute references to variables patched
+; up "for free" by the relocation, but the reality is this probably wouldn't be
+; too big a deal/cost too many cycles to change (especially if we used some zp
+; space for these variables instead of allocating them just after the program
+; code here). Alternately we could pay a very small price in code to just count
+; 1 extra block of cache and redirect block 0 to &9 instead of
+; main_ram_cache_start, and leave this code at OSHWM where it currently is.
 
-; SFTODO: It's quite cool to watch the b-em debugger memory view when the cache is in use. However, the fact that we do both reads and writes in each tube copy loop (one of them a dummy in each case) stops us seeing the reads and writes as different colours in the debugger. If it could be done without bloating the code, it might be nice to avoid these dummy reads/writes and replace them with something else. Failing that, maybe a "damn the extra bytes, make the memory view pretty" option to build with bigger but less intrusive dummy instructions.
+; A note on the SIMPLE_DUMMY !ifdefs: SIMPLE_DUMMY is not normally defined, but
+; I wanted to leave this code around for future reference. It works perfectly
+; and is reasonably obviously correct. However, by forcing both reads and writes
+; of the same location in each tube copy loop, it means b-em's memory view just
+; shows a yellow bar for the memory accessed by each loop. When SIMPLE_DUMMY is
+; not defined we use less obvious/"riskier" code which is also (sadly) one byte
+; longer to burn the extra cycles without touching the location we just did a
+; real read/write from/to. This means that you can see red for write and green
+; for read in b-em's memory view as the cache is accessed. This isn't really a
+; big deal, but it is kind of cool. :-)
