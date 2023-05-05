@@ -1,3 +1,15 @@
+Experimentally hacking to make Electron code call a (nonexistent) subroutine for ram paging after doing lda/ldx/ldy as apporpriate...
+Before this change, PAGE<=&1900, stack_start was at $4200 and we were at $417e when we put the alignment padding in
+After this change, PAGE<=&1A00, stack_start was at $4200 and we were at $4179 when we put the alignment padding in
+I could be overlooking something - the build is frankly complex - but this kind of suggests we are saving &105 bytes of code with this
+Some hacky grepping of the binary suggests there are 31 calls to the hypothetical $a00 subroutine and each of the subroutines is now 9 bytes shorter, so we are probably saving 31*9=&117 bytes. Not quite the same but borderline similar (and we might be allocating extra history buffer or something, I honestly don't remember all the weird build quirks right now.)
+We would actually need different A/X/Y subroutines of course but in the worst case I think we'd need ~64 bytes of memory somewhere to hold those subroutines. There would be efficiency losses - the obvious jsr/rts overhead, plus as we can no longer do the variable ld[axy] operand* instruction in the middle we'd probably need to pha-pla. So that would be basically 6+6+3+4=19 cycles overhead per paging operation, to save ~&117 bytes (assuming we get the ~64 bytes 'free' because we can squirrel the code away somewhere in low RAM).
+Some of these paging calls are of course in discardable init code - I suspect this is probably the true explanation for why I saw &105 before not &117. So let's call it &105.
+Where I'm kind of going with this - the Electron is obviously the "best" candidate in some ways, given the length of its RAM paging code, but not necessarily just for the Electron - is that accepting a bit of a slow down for this might be worth it if it frees up more RAM for caching. Having a subroutine for paging would also make it possible to support "non-Acorn" BBC sideways RAM like Solidisk and Watford with a single executable, and might allow us to get rid of the "Electron" executable and have it run the shadow/non-shadow executable shared with the BBC.
+However, without having done any timings right now, my gut feeling is that since we're gaining about 1 page total in the best case (Electron, and assuming we have a totally free ~64 bytes of low RAM to slot the subroutines in), that isn't going to offer a huge benefit in terms of improved caching and we are going to pay quite a heavy price in cycles for the use of the subroutine. I may be overstating this, but I seem to think in the past I've realised there is quite a lot of time spent paging.
+
+
+
 B+ 64K, ext tube, mode 7
 b-em, drive noises on, 100% speed
 11.39 alpha 45 host_cache_size_vmem_blocks=$2d $005777 $005776 (-$58f)
@@ -10,7 +22,7 @@ Baseline $4eaf $4eb6 $4ebe (-$123)
 Moving vmap_c64_offset into zp: $4ebe $4ebf
 Reordering allocations so a few more things make it into otherwise wasted zp: $4eec $4eea - worse, but there's no logical reason for this!?
 
-
+h
 
 Quick benchmark re zp tweaking - using b-em, mode 7, E00 DFS, 32K SWR, no shadow, uses meddyn with start $e00
 With product/remainder at 4 bytes: $e5 to $81a5 and $81a7
