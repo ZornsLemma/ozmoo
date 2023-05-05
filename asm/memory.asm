@@ -535,7 +535,7 @@ write_word_far_dynmem_zp_2 = .write_word_2 + 1
 
 
 
-; SF: On Acorn SWR builds, the following subroutines for small and big dynmamic memory models assume the memory hole doesn't start until story_start+256. SFTODO: The build system and/or loader maybe need to enforce this once we start allowing non-default modes on screen hole builds - in mode 6/7 this just isn't going to happen.
+; SF: On Acorn SWR builds, the following subroutines for small and big dynmamic memory models assume the memory hole doesn't start until story_start+256. SFTODO: The build system and/or loader maybe need to enforce this once we start allowing non-default modes on screen hole builds - in mode 6/7 this just isn't going to happen. SFTODONOW: IS THIS SOMETHING I NEED TO BE WORRYING ABOUT NOW I DO ALLOW NON-SHADOW MACHINES TO RUN IN OTHER MODES?
 read_header_word
 ; y contains the address in the header
 ; Returns: Value in a,x
