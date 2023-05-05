@@ -102,7 +102,7 @@ REM ignore an error afterwards, which has the side effect of forcing a reset (an
 REM harmless if this wasn't necessary). See
 REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on this.
 */FINDSWR
-PROCpoke(${ram_bank_count},0):REM SFTODONOW TEMP HACK
+REM PROCpoke(${ram_bank_count},0):REM SFTODONOW TEMP HACK
 ON ERROR GOTO 500
 REM If we're on a real floppy, the disc will still be spinning after running
 REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
