@@ -67,6 +67,10 @@ lf
     ; We copy and bump in chunks of 128 because the line length in bytes is
     ; always a multiple of 128, which means we can wrap at the top of screen
     ; memory between each chunk without any problems.
+    ; SFTODO: The "tearing" seen on the screen might be more visually pleasing
+    ; if this loop copied with Y advancing rather than decrementing, and the
+    ; performance impact wouldn't be huge. (We could maybe even offset src/dst
+    ; and run Y from 128 to 0 to avoid an extra cpy# at the end of the loop.)
     ldx #(bytes_per_line / 128)
 copy_and_zero_outer_loop
     ldy #127
