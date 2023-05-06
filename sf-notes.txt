@@ -1,3 +1,8 @@
+B-no-shadow 16K SWR PAGE &1900 mode 7 - defaults to meddyn - benchmark takes $01414c $01414a (-$302)
+Hacking to remove the page in of mempointer_ram_bank just after .not_main_ram and just before .read_and_return_value - $0140dc (-$300)
+
+
+
 Experimentally hacking to make Electron code call a (nonexistent) subroutine for ram paging after doing lda/ldx/ldy as apporpriate...
 Before this change, PAGE<=&1900, stack_start was at $4200 and we were at $417e when we put the alignment padding in
 After this change, PAGE<=&1A00, stack_start was at $4200 and we were at $4179 when we put the alignment padding in

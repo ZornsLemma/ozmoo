@@ -789,6 +789,18 @@ SFTODOBOOM
     rts
 .not_main_ram
 }
+    ; SFTODO: Running the benchmark built with the medium mode (the default at
+    ; the moment) on BBC B with 16K sideways RAM in mode 7 in b-em - where
+    ; there's no actual need to page RAM banks in and out because we only have
+    ; one - the following is warm, if not actually hot. Removing it completely
+    ; reduces the benchmark run time by about 0.14%. Obviously the benchmark
+    ; time is heavily dominated by disc access with so little RAM and this
+    ; percentage might more impressive with a solid-state filing system. This is
+    ; not a huge gain, but it might be worth the effort of adding some
+    ; discardable init code to check for the case of a single sideways RAM bank
+    ; and patch the code at runtime to avoid this operation. (The next hottest
+    ; two paging operations in this run are one and two orders of magnitude less
+    ; frequent, i.e. they're really not hot at all.)
     +acorn_page_in_bank_using_a mempointer_ram_bank
 }
 .read_and_return_value
