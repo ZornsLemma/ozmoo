@@ -682,6 +682,9 @@ s_cursor_to_screenrowcolumn
 }
 
 s_screenrowcolumn_from_cursor
+    ; SFTODO: *If* (not sure if true/could be made true) we didn't normally have
+    ; a text window in effect, I think we could avoid the read_vdu_variable call
+    ; here.
     lda #osbyte_read_vdu_variable
     sta s_cursors_inconsistent
     ldx #vdu_variable_text_window_top
@@ -1003,6 +1006,11 @@ s_printchar
     ; define a text window to tell the OS what to scroll. SFTODO: That comment
     ; is out of date and has been for ages, *if* we're using hardware scrolling
     ; we do things differently.
+    ; SFTODO: It feels completely wrong that when we scroll here because we're
+    ; wrapping at the right margin we use a different code path than scrolling
+    ; because we've done an explicit newline. Am I missing something? Surely the
+    ; bulk of this operation should share the same code? There could be code size
+    ; and/or performance improvements to be had.
 
     pha
     jsr s_cursor_to_screenrowcolumn
@@ -1041,7 +1049,8 @@ s_printchar
     ; Reverse video is on and the character we just output has caused the text
     ; window to scroll, so the OS will have added a blank line in reverse video.
     ; The Z-machine spec requires the blank line to be in normal video, so we
-    ; need to fix this up.
+    ; need to fix this up. SFTODO: Wouldn't it be better to turn reverse video
+    ; off before the scroll? Maybe this is shorter but worth investigating.
     jsr s_erase_line_from_cursor
 .not_reverse
 !ifdef ACORN_HW_SCROLL {
@@ -1078,6 +1087,11 @@ s_printchar
     ; invisible at this point, but TerpEtude's "Timed full-line input" test can
     ; leave the OS text cursor visible at the top left if you type a character
     ; in the rightmost column and then wait for the timed message to appear.
+    ; SFTODO: Is there any way we can optimise this? It seems a shame to have
+    ; to do this after every character output when it's almost always unnecessary.
+    ; I am wondering if a) we should be doing this *when we scroll*, not always
+    ; b) if we are not turning the cursor off when timed events occur during
+    ; input and we should be.
     jsr s_cursor_to_screenrowcolumn
 }
 .printchar_end
@@ -1673,6 +1687,9 @@ s_pre_scroll
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
     ; Move the cursor to the bottom right of the text window
+    ; SFTODO: I suspect it seldom occurs, but this seems silly if we are in the
+    ; case where the above code has jsr-ed in here and we really want to leave
+    ; the cursor at the old position.
     +ldx_screen_width_minus_one
     +lda_screen_height_minus_one
     sec
