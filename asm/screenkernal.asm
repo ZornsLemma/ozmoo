@@ -574,6 +574,8 @@ s_reset_scrolled_lines
 s_scrolled_lines !byte 0
 }
 
+; SFTODO: This has only one caller, the code just above. It's not a huge deal,
+; but would (it may not) it be clearer and/or faster if we inlined this?
 .s_scroll
 	lda zp_screenrow
 	cmp s_screen_height
