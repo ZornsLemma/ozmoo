@@ -725,7 +725,8 @@ s_pre_scroll_leave_cursor_in_place
 }
 }
     ldx #0
-    ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO.
+    ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO. - OK, we are smart(ish) as set_os_*_video use an internal flag to do just this.
+    ; SFTODO: It's fraught with complexities (but hey, we have our swanky shadow driver to help), but I can't help wondering if (semi-optionally) using some machine code (running in the host, always) to save/restore the top up-to-640 bytes of RAM when we scroll in hardware scrolling mode might be quicker and more attractive than going via the OS text routines to redraw this - and it would also mean we wouldn't have to maintain the internal buffer of what's been written to the top row so we can reconstruct it, as we'd just save the binary data immediately before scrolling and restore it after.
 -   lda top_line_buffer_reverse,x
     beq +
     jsr set_os_reverse_video
