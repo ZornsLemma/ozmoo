@@ -1,3 +1,5 @@
+M128 no shadow mode 7 benchmark $8e9e $8e9e (-$7bc)
+
 B-no-shadow 16K SWR PAGE &1900 mode 7 - defaults to meddyn - benchmark takes $01414c $01414a (-$302)
 Hacking to remove the page in of mempointer_ram_bank just after .not_main_ram and just before .read_and_return_value - $0140dc $0140d8
 (-$300)
