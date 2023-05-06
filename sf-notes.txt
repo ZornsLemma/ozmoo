@@ -1,3 +1,5 @@
+B 144K SWR no shadow + ext tube, hacked hardware scrolling code, mode 3 - $005496 (-$88c) - didn't notice any corruption as benchmark scrolled past at normal speed
+
 M128 no shadow mode 7 benchmark $8e9e $8e9e (-$7bc)
 Tweaked down to $8e86 $8e88 (-$7bc)
 FWIW a rough profile I have to hand suggests we call OSWRCH for plain text about 88000 times during the benchmark. Use that to help judge whether any particular micro-optimisation in character printing is worth it. *Very* roughly, if we shave 11 cycles off s_printchar for the common case, we will speed up the benchmark run time by 0.5 seconds.

@@ -22,6 +22,8 @@ zp = $db ; 5 bytes - VDU temporary storage, 6 bytes starting at $da SFTODO: can 
 src = zp ; 2 bytes
 dst = zp+2 ; 2 bytes
 
+; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
+
     * = $b10
 start
     ; SFTODO: Don't try to protect against being reinstalled for now
@@ -55,6 +57,7 @@ lf
     sta src
     lda vdu_screen_top_left_address_high
     sta src+1
+    ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
     jsr move_text_cursor_to_next_line
     jsr hardware_scroll_up
     lda vdu_screen_top_left_address_low
@@ -70,7 +73,7 @@ copy_and_zero_outer_loop
 copy_and_zero_loop
     lda (src),y
     sta (dst),y
-    lda #%10101010
+    lda # 0 ; SFTODO HACK lda #%10101010
     sta (src),y
     dey
     bpl copy_and_zero_loop

@@ -403,6 +403,7 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
+!if 0 { ; SFTODOTEMPHACK
     ldy zp_screenrow
     bne +
     sta top_line_buffer,x
@@ -410,6 +411,7 @@ s_printchar
     sta top_line_buffer_reverse,x
     lda top_line_buffer,x
 +
+}
 }
 	; Reset ignore next linebreak setting
 	ldx current_window
@@ -447,6 +449,7 @@ s_printchar
 	+cmp_screen_height
 	bcc .printchar_nowrap
 !ifdef ACORN_HW_SCROLL {
+!if 0 { ; SFTODO TEMP HACK
     lda use_hw_scroll
     beq .no_hw_scroll0
     +lda_screen_height_minus_one
@@ -455,6 +458,15 @@ s_printchar
     dex
     beq .no_pre_scroll
 .no_hw_scroll0
+} else {
+    lda #10
+    jsr oswrch ; should trigger new scrolling hack
+    lda #11
+    jsr oswrch ; move back up again
+    +lda_screen_height_minus_one
+    sta zp_screenrow
+    jmp .printchar_nowrap
+}
 }
     jsr .s_pre_scroll_leave_cursor_bottom_right
 .no_pre_scroll
@@ -474,6 +486,7 @@ s_printchar
     jsr s_erase_line_from_cursor
 .not_reverse
 !ifdef ACORN_HW_SCROLL {
+!if 0 { ; SFTODO TEMP HACK
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     bne .no_hw_scroll1
@@ -493,6 +506,7 @@ s_printchar
     jsr .redraw_top_line
     jmp .printchar_oswrch_done
 .no_hw_scroll1
+}
 }
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
@@ -554,10 +568,24 @@ s_printchar
 	jsr copy_line_to_scrollback
 +
 }
+; SFTODO TEMP HACK HAS DESTROYED ORIGINAL CODE HERE...
+!if 1 { ; SFTODO TEMP HACK
+    inc zp_screenrow
+	lda zp_screenrow
+    cmp s_screen_height
+    bcc SFTODOHACK9
+    jsr s_cursor_to_screenrowcolumn
+    lda #10
+    jsr oswrch
+    lda s_screen_height_minus_one
+    sta zp_screenrow
+}
+SFTODOHACK9
 	lda #0
 	sta zp_screencolumn
-	inc zp_screenrow
+!if 0 { ; SFTODO TEMP HACK
 	jsr .s_scroll
+}
     lda #1
     sta s_cursors_inconsistent
 	jmp .printchar_end
@@ -583,6 +611,7 @@ s_scrolled_lines !byte 0
 	rts
 +
 !ifdef ACORN_HW_SCROLL {
+!if 0 { ; SFTODO TEMP HACK
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     bne .no_hw_scroll2
@@ -597,6 +626,7 @@ s_scrolled_lines !byte 0
     jsr oswrch
     jmp .redraw_top_line
 .no_hw_scroll2
+}
 }
     jsr .s_pre_scroll_leave_cursor_bottom_right
     ; Move the cursor down one line to force a scroll
@@ -614,6 +644,7 @@ s_erase_line
 	sta zp_screencolumn
 s_erase_line_from_cursor
 !ifdef ACORN_HW_SCROLL {
+!if 0 { ; SFTODO TEMP HACK
     ldx zp_screenrow
     bne +
     ldx zp_screencolumn
@@ -625,6 +656,7 @@ s_erase_line_from_cursor
     +cpx_screen_width
     bne -
 +
+}
 }
     ; Define a text window covering the region to clear
     lda #vdu_define_text_window
@@ -709,6 +741,7 @@ s_pre_scroll_leave_cursor_in_place
     jmp do_oswrch_vdu_goto_xy
 
 !ifdef ACORN_HW_SCROLL {
+!if 0 { ; SFTODO TEMP HACK
 .redraw_top_line
     jsr turn_off_cursor
     lda #vdu_home
@@ -739,6 +772,7 @@ s_pre_scroll_leave_cursor_in_place
     bne -
     stx s_cursors_inconsistent
     jmp turn_on_cursor
+}
 }
 
 
