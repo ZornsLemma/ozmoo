@@ -455,14 +455,13 @@ s_printchar
     lda use_hw_scroll
     beq .no_hw_scroll0
     +lda_screen_height_minus_one
-    sta zp_screenrow ; s_pre_scroll normally does this but we may not call it
+    sta zp_screenrow ; s_pre_scroll_leave_cursor_bottom_right normally does this but we may not call it
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     beq .no_pre_scroll
 .no_hw_scroll0
 }
-    ; C is already set
-    jsr s_pre_scroll
+    jsr .s_pre_scroll_leave_cursor_bottom_right
 .no_pre_scroll
     pla
     jsr oswrch
@@ -600,8 +599,7 @@ s_scrolled_lines !byte 0
     jmp .redraw_top_line
 .no_hw_scroll2
 }
-    sec
-    jsr s_pre_scroll
+    jsr .s_pre_scroll_leave_cursor_bottom_right
     ; Move the cursor down one line to force a scroll
     jsr set_os_normal_video ; new line must not be reverse video
     lda #vdu_down
@@ -657,7 +655,7 @@ s_erase_line_from_cursor
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
 
-s_pre_scroll
+s_pre_scroll_leave_cursor_in_place
     ; Define a text window covering the region to scroll.
     ; If C is set on entry, leave the OS text cursor at the bottom right of the
     ; text window.
@@ -671,14 +669,16 @@ s_pre_scroll
     ; suspect there's nearly always a status bar or similar on the screen and
     ; this case won't occur. If a game where this would be useful turns up I
     ; can consider it.
-    bcs .s_pre_scroll_leave_bottom_right
     lda #osbyte_read_cursor_position
     jsr osbyte
     tya
     pha
     txa
     pha
-    jsr .s_pre_scroll_leave_bottom_right
+    ; This will move the cursor to the bottom right even though we don't want
+    ; that. Since this case only exists to support save/restore, the performance
+    ; isn't at all critical so it's easier not to try to avoid this.
+    jsr .s_pre_scroll_leave_cursor_bottom_right
     pla
     tax
     pla
@@ -686,7 +686,7 @@ s_pre_scroll
     sbc window_start_row + 1
     tay
     jmp do_oswrch_vdu_goto_xy
-.s_pre_scroll_leave_bottom_right
+.s_pre_scroll_leave_cursor_bottom_right
     ; SFTODO: hoglet points out that we define and clear this text window a lot - we may get better performance if we can leave it in place most of the time. However, do note that unless I've done something silly, we only have this text window when we're soft-scrolling (which is the default only in mode 7) - certainly an important case, but mode 7 is already nice and fast anyway. Definitely worth not doing things sub-optimally, but this may not be a massive win with respect to speed. If we can tweak/rewrite things to shorten the code that's always a win. (hoglet's observation was made in the context of an ongoing port to Atom+tube, when settings etc may have been a bit weird by our standards.)
     lda #vdu_define_text_window
     jsr oswrch
@@ -702,9 +702,6 @@ s_pre_scroll
     lda window_start_row + 1 ; how many top lines to protect
     jsr oswrch
     ; Move the cursor to the bottom right of the text window
-    ; SFTODO: I suspect it seldom occurs, but this seems silly if we are in the
-    ; case where the above code has jsr-ed in here and we really want to leave
-    ; the cursor at the old position.
     +ldx_screen_width_minus_one
     +lda_screen_height_minus_one
     sec

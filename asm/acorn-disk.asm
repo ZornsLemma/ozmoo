@@ -461,8 +461,7 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     ; Start off with the OS text cursor where it should be.
     jsr s_cursor_to_screenrowcolumn
     ; Set up a text window so the raw OS text output only scrolls what it should.
-    clc
-    jsr s_pre_scroll
+    jsr s_pre_scroll_leave_cursor_in_place
     ; Print the initial descriptive prompt
     jsr set_os_normal_video
     lda #>.filename_msg
