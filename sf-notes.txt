@@ -1,4 +1,4 @@
-B 144K SWR no shadow + ext tube, hacked hardware scrolling code, mode 3 - $005496 (-$88c) - didn't notice any corruption as benchmark scrolled past at normal speed
+B 144K SWR no shadow + ext tube, hacked hardware scrolling code, mode 3 - $005496 (-$88c) - didn't notice any corruption as benchmark scrolled past at normal speed - just repeated this and got $00549e, so that's reassuring
 Before this hack (commit 20e4b7f25adcb10b6b7a493e036f939851620372) $006fbc (-$8b6)
 That's a 26% reduction in benchmark runtime, and while still a bit flickery I think (hard to be sure under emulation, and I may be able to make it a smidge "nicer" anyway) it actually looks slightly nicer
 
