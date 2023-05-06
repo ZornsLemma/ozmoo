@@ -429,11 +429,6 @@ s_printchar
     ; define a text window to tell the OS what to scroll. SFTODO: That comment
     ; is out of date and has been for ages, *if* we're using hardware scrolling
     ; we do things differently.
-    ; SFTODO: It feels completely wrong that when we scroll here because we're
-    ; wrapping at the right margin we use a different code path than scrolling
-    ; because we've done an explicit newline. Am I missing something? Surely the
-    ; bulk of this operation should share the same code? There could be code size
-    ; and/or performance improvements to be had.
     pha
     jsr s_cursor_to_screenrowcolumn
     jsr s_reverse_to_os_reverse
@@ -463,6 +458,8 @@ s_printchar
 }
     jsr .s_pre_scroll_leave_cursor_bottom_right
 .no_pre_scroll
+    ; Print the character at the bottom right corner of the screen, which will
+    ; implicitly cause the OS to scroll.
     pla
     jsr oswrch
     lda s_reverse
@@ -470,10 +467,10 @@ s_printchar
     ; Reverse video is on and the character we just output has caused the text
     ; window to scroll, so the OS will have added a blank line in reverse video.
     ; The Z-machine spec requires the blank line to be in normal video, so we
-    ; need to fix this up. SFTODO: Wouldn't it be better to turn reverse video
-    ; off before the scroll? Maybe this is shorter but worth investigating. I
-    ; suspect making "end of line forced scrolling" and "explicit newline" share
-    ; code might also be helpful in simplifying/optimising this.
+    ; need to fix this up. Because the scroll was caused by printing the last
+    ; character at the bottom right of the screen, which had to be in reverse
+    ; video, we have no way of reverting to normal video after printing that
+    ; character but before the scroll.
     jsr s_erase_line_from_cursor
 .not_reverse
 !ifdef ACORN_HW_SCROLL {
