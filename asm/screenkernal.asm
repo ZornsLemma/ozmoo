@@ -434,7 +434,6 @@ s_printchar
     ; because we've done an explicit newline. Am I missing something? Surely the
     ; bulk of this operation should share the same code? There could be code size
     ; and/or performance improvements to be had.
-
     pha
     jsr s_cursor_to_screenrowcolumn
     jsr s_reverse_to_os_reverse
@@ -473,7 +472,9 @@ s_printchar
     ; window to scroll, so the OS will have added a blank line in reverse video.
     ; The Z-machine spec requires the blank line to be in normal video, so we
     ; need to fix this up. SFTODO: Wouldn't it be better to turn reverse video
-    ; off before the scroll? Maybe this is shorter but worth investigating.
+    ; off before the scroll? Maybe this is shorter but worth investigating. I
+    ; suspect making "end of line forced scrolling" and "explicit newline" share
+    ; code might also be helpful in simplifying/optimising this.
     jsr s_erase_line_from_cursor
 .not_reverse
 !ifdef ACORN_HW_SCROLL {
@@ -499,6 +500,7 @@ s_printchar
 }
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
+    ; SFTODO: Micro-optimisation: "bne just-after-following-pla ; always branch" would save four cycles here and only add one byte of code. Or "!byte $24 ; bit zp opcode" would also save four cycles and not add any bytes of code, while being a little less transparent.
     pha
 .printchar_nowrap
     pla
@@ -633,7 +635,7 @@ s_erase_line_from_cursor
     lda zp_screencolumn
     jsr oswrch
     lda zp_screenrow
-    pha
+    pha ; SFTODO: wouldn't it be same length, 4 cycles faster *and* clearer to drop pha and replace pla with "lda zp_screenrow"?
     jsr oswrch
     +lda_screen_width_minus_one
     jsr oswrch
@@ -685,7 +687,7 @@ s_pre_scroll
     tay
     jmp do_oswrch_vdu_goto_xy
 .s_pre_scroll_leave_bottom_right
-    ; SFTODO: hoglet points out that we define and clear this text window a lot - we may get better performance if we can leave it in place most of the time.
+    ; SFTODO: hoglet points out that we define and clear this text window a lot - we may get better performance if we can leave it in place most of the time. However, do note that unless I've done something silly, we only have this text window when we're soft-scrolling (which is the default only in mode 7) - certainly an important case, but mode 7 is already nice and fast anyway. Definitely worth not doing things sub-optimally, but this may not be a massive win with respect to speed. If we can tweak/rewrite things to shorten the code that's always a win. (hoglet's observation was made in the context of an ongoing port to Atom+tube, when settings etc may have been a bit weird by our standards.)
     lda #vdu_define_text_window
     jsr oswrch
     lda #0
@@ -727,6 +729,7 @@ s_pre_scroll
 }
 }
     ldx #0
+    ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO.
 -   lda top_line_buffer_reverse,x
     beq +
     jsr set_os_reverse_video
