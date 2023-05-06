@@ -53,142 +53,63 @@
 
 !zone screenkernal {
 
-; SFTODO: We no longer use FIXED_SCREEN_SIZE = 1 at all, so we can probably remove
-; the associated code. I will leave it for now as it might be useful for checking
-; the performance impact on the B-no-shadow-in-mode-7 case.
-
-!ifdef FIXED_SCREEN_SIZE {
-!ifndef Z4PLUS {
-max_lines = 24
-} else {
-max_lines = 25
-}
-} else {
 !ifdef Z3 {
 max_lines = s_screen_height_minus_one
 } else {
 max_lines = s_screen_height
 }
-}
 
+; SFTODO: Could get rid of these macros now they're so simple?
 !macro cmp_screen_height {
-    !ifdef FIXED_SCREEN_SIZE {
-        cmp #25
-    } else {
-        cmp s_screen_height
-    }
+    cmp s_screen_height
 }
 !macro cmp_screen_width {
-    !ifdef FIXED_SCREEN_SIZE {
-        cmp #40
-    } else {
-        cmp s_screen_width
-    }
+    cmp s_screen_width
 }
 !macro cpx_screen_height {
-    !ifdef FIXED_SCREEN_SIZE {
-        cpx #25
-    } else {
-        cpx s_screen_height
-    }
+    cpx s_screen_height
 }
 !macro cpx_screen_width {
-    !ifdef FIXED_SCREEN_SIZE {
-        cpx #40
-    } else {
-        cpx s_screen_width
-    }
+    cpx s_screen_width
 }
 !macro cpx_max_lines {
-    !ifdef FIXED_SCREEN_SIZE {
-        cpx #max_lines
-    } else {
-        cpx max_lines
-    }
+    cpx max_lines
 }
 !macro cpy_screen_width {
-    !ifdef FIXED_SCREEN_SIZE {
-        cpy #40
-    } else {
-        cpy s_screen_width
-    }
+    cpy s_screen_width
 }
 !macro lda_screen_height_minus_one {
-    !ifdef FIXED_SCREEN_SIZE {
-        lda #24
-    } else {
-        lda s_screen_height_minus_one
-    }
+    lda s_screen_height_minus_one
 }
 !macro lda_screen_height {
-    !ifdef FIXED_SCREEN_SIZE {
-        lda #25
-    } else {
-        lda s_screen_height
-    }
+    lda s_screen_height
 }
 !macro lda_screen_width_minus_one {
-    !ifdef FIXED_SCREEN_SIZE {
-        lda #39
-    } else {
-        lda s_screen_width_minus_one
-    }
+    lda s_screen_width_minus_one
 }
 !macro ldx_screen_width_minus_one {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldx #39
-    } else {
-        ldx s_screen_width_minus_one
-    }
+    ldx s_screen_width_minus_one
 }
 !macro lda_screen_width {
-    !ifdef FIXED_SCREEN_SIZE {
-        lda #40
-    } else {
-        lda s_screen_width
-    }
+    lda s_screen_width
 }
 !macro ldx_max_lines {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldx #max_lines
-    } else {
-        ldx max_lines
-    }
+    ldx max_lines
 }
 !macro ldx_screen_height_minus_one {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldx #24
-    } else {
-        ldx s_screen_height_minus_one
-    }
+    ldx s_screen_height_minus_one
 }
 !macro ldx_screen_width {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldx #40
-    } else {
-        ldx s_screen_width
-    }
+    ldx s_screen_width
 }
 !macro ldy_screen_height_minus_one {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldy #24
-    } else {
-        ldy s_screen_height_minus_one
-    }
+    ldy s_screen_height_minus_one
 }
 !macro ldy_screen_height {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldy #25
-    } else {
-        ldy s_screen_height
-    }
+    ldy s_screen_height
 }
 !macro ldy_screen_width {
-    !ifdef FIXED_SCREEN_SIZE {
-        ldy #40
-    } else {
-        ldy s_screen_width
-    }
+    ldy s_screen_width
 }
 
 
