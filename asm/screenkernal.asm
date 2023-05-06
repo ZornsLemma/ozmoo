@@ -119,7 +119,6 @@ s_screen_width_minus_one !byte 0
 s_screen_height_minus_one !byte 0
 
 !macro screenkernal_init_inline {
-; SFTODO: PROB ALL ACORN BUILDS WANT THIS NOW !ifndef ACORN_NO_SHADOW {
     ; We don't want to be querying the OS for the screen resolution all the
     ; time, so initialise the relevant variables here. (The Commodore versions
     ; do the same; note that story_start + header_screen_{width,height}* aren't
@@ -135,7 +134,6 @@ s_screen_height_minus_one !byte 0
     sty s_screen_width
     iny
     sty s_screen_width_plus_one
-; SFTODO: SEE ABOVE }
 
     ; Pick up the current OS cursor position; this will improve readability if
     ; any errors occuring during initialization, and it doesn't affect the game
