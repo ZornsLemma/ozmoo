@@ -168,19 +168,15 @@ s_plot
 	ldy zp_screencolumn
 	rts
 .set_cursor_pos
-+	cpx s_screen_height
+ 	cpx s_screen_height
 	bcc +
 	ldx s_screen_height_minus_one
 +	stx zp_screenrow
 	sty zp_screencolumn
-!ifndef ACORN {
-	jmp .update_screenpos
-} else {
     lda #1
     sta s_cursors_inconsistent
 .return
     rts
-}
 
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
