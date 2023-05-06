@@ -346,23 +346,17 @@ s_printchar
 	cmp #$20
 	bcc +
     cmp #$7f ; SF: was $80 on Commodore
-	bcc ++ ; .normal_char
+	bcc .normal_char
 	cmp #$a0
-	bcc + ; bcs .normal_char
-++	jmp .normal_char
-+	
-	cmp #$0d
+	bcs .normal_char
++   cmp #$0d
 	bne +
 	; newline
 	jmp .perform_newline ; SFTODO: Any chance of using beq always on Acorn?
 +
     ; SF: Note that .readkey will call s_printchar with the native delete
     ; character.
-!ifndef ACORN {
-	cmp #20
-} else {
-    cmp #127
-}
+    cmp #127 ; 20 on Commodore
 	bne +
 	; delete
     jsr s_cursor_to_screenrowcolumn
@@ -380,15 +374,11 @@ s_printchar
 	+lda_screen_width_minus_one
 	sta zp_screencolumn
 ++
-    ; We don't have any reverse video handling here on Acorn as noted below, so
-    ; we move the + label forward so anything which hasn't matched yet is
-    ; ignored.
+    ; SF: Reverse video isn't handled by sending control codes through
+    ; s_printchar on the Acorn. It could be, but it seems simplest just to
+    ; update s_reverse directly.
 +
 	jmp .printchar_end
-    ; SF: Reverse video isn't handled by sending control codes through
-    ; s_printchar on the Acorn. (It could be, but it seems simplest just to
-    ; update s_reverse directly. This is a bit gratuitously incompatible with
-    ; the Commodore though.)
 
 .normal_char
 	; TODO: perhaps we can remove all testing here and just
@@ -400,6 +390,8 @@ s_printchar
 -	jmp .printchar_end
 +	; Skip if column > SCREEN_WIDTH - 1
 !ifdef MODE_7_STATUS {
+    ; SFTODO: I'm sure it's not huge, but this feels like a bit of a performance
+    ; drag on Z4+ games with MODE_7_STATUS. Can we optimise it?
 !ifdef Z4PLUS {
     jsr .check_if_mode_7_status
     bne +
