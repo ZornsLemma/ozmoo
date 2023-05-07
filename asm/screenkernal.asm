@@ -424,11 +424,6 @@ s_printchar
 	pla ; Doesn't affect C
 	bcs .outside_current_window
 .resume_printing_normal_char	
-    ; OSWRCH may cause the screen to scroll if we're at the bottom right
-    ; character. We therefore don't use .s_scroll to do the scroll, we just
-    ; define a text window to tell the OS what to scroll. SFTODO: That comment
-    ; is out of date and has been for ages, *if* we're using hardware scrolling
-    ; we do things differently.
     pha
     jsr s_cursor_to_screenrowcolumn
     jsr s_reverse_to_os_reverse
