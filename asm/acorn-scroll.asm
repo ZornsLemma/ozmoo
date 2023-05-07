@@ -47,6 +47,7 @@ lf
     lda #10
     bcc jmp_parent_wrchv
     ; It's a line feed on the bottom line of the text window.
+    ; SFTODO: It's not a huge deal, but FWIW - I think this LF character will be omitted from any *SPOOL file being produced, unless we take extra steps to include it.
     txa
     pha
     tya
@@ -56,7 +57,7 @@ lf
     lda vdu_screen_top_left_address_high
     sta src+1
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
-    jsr .moveTextCursorToNextLine
+    sec:jsr .moveTextCursorToNextLine
     jsr .hardwareScrollUp
     lda vdu_screen_top_left_address_low
     sta dst
