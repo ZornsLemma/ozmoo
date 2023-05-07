@@ -206,66 +206,10 @@ no_dst_wrap
     BNE .setHardwareScreenOrCursorAddress               ; ALWAYS branch to set screen address
 
 
-; SFTODO: This sets:
-; - vduWriteCursorScreenAddress{Low,High}
-; - vduTextCursorCRTCAddress{Low,High}
-; These are calculated based on:
-; - vduTextCursorXPosition
-; - vduTextCursorYPosition
-; - vduCurrentScreenMODE
-; - vduScreenSizeHighByte (for wrapping)
-; The Master doesn't have a simple x640 table so if we want to share this code
-; we need to avoid the multiplication. Since here we are always moving down by a
-; single line, I think we may be able to get away with just adding a fixed (per
-; mode) offset to the existing values.
+; This is not generic code (unlike the OS routine of the same name); it's
+; special-cased because we know we are moving down one row from the current
+; position.
 .setTextCursorScreenAddresses
-!if 0 { ; SFTODO!
-    LDA .vduTextCursorYPosition                         ; current text line
-    ASL                                                 ; multiply by two to get table offset
-    TAY                                                 ; Y=A
-    LDA (.vduMultiplicationTableLow),Y                  ; get CRTC multiplication table pointer
-    STA .vduWriteCursorScreenAddressHigh                ; .vduWriteCursorScreenAddressHigh=A
-    INY                                                 ; Y=Y+1
-    LDA (.vduMultiplicationTableLow),Y
-    LDY .vduCurrentScreenMODE
-    CPY #4
-    BCC +
-    LSR .vduWriteCursorScreenAddressHigh                ; MODE 4,5,6: Halve value from multiplication table (high and low bytes)
-    ROR                                                 ; A = A / 2 + (128*carry)
-+
-    ADC .vduScreenTopLeftAddressLow                     ; add start of screen (low)
-    STA .vduWriteCursorScreenAddressLow                 ; store
-    LDA .vduWriteCursorScreenAddressHigh                ; get offset from start of screen (high)
-    ADC .vduScreenTopLeftAddressHigh                    ; add start of screen (high)
-    TAY                                                 ; store in Y
-    LDA .vduTextCursorXPosition                         ; text column
-.mode0346Cursor
-    ASL                                                 ; A=A*4 if entered here
-    ASL                                                 ;
-    BCC .skipIncs                                       ; if (carry clear) then branch
-    INY                                                 ; Y=Y+2
-    INY                                                 ; Y is the high byte of the address
-.skipIncs
-    ASL                                                 ; A=A*2
-    BCC .skipInc                                        ; if (carry clear) branch (to add to .vduWriteCursorScreenAddressLow)
-    INY                                                 ; Y=Y+1
-    CLC                                                 ; clear carry
-.skipInc
-    ADC .vduWriteCursorScreenAddressLow                 ; add to .vduWriteCursorScreenAddressLow
-    STA .vduWriteCursorScreenAddressLow                 ; and store it
-    STA .vduTextCursorCRTCAddressLow                    ; text cursor CRTC address
-    TAX                                                 ; X=A
-    TYA                                                 ; A=Y
-    ADC #0                                              ; add carry if set
-    STA .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
-    BPL +                                               ; if (not negative) then branch
-    SEC                                                 ; wrap around...
-    SBC .vduScreenSizeHighByte                          ; ...subtract the screen size (high byte)
-+
-    STA .vduWriteCursorScreenAddressHigh                ; store in high byte
-    CLC                                                 ; clear carry
-    RTS                                                 ;
-} else {
     clc
     lda .vduWriteCursorScreenAddressLow
     adc .vduBytesPerCharacterRowLow
@@ -279,7 +223,6 @@ no_dst_wrap
 +
     sta .vduWriteCursorScreenAddressHigh
     rts
-}
 
 .addNumberOfBytesInACharacterRowToAX
     PHA                                                 ; store A
