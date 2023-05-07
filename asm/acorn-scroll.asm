@@ -206,6 +206,18 @@ no_dst_wrap
     BNE .setHardwareScreenOrCursorAddress               ; ALWAYS branch to set screen address
 
 
+; SFTODO: This sets:
+; - vduWriteCursorScreenAddress{Low,High}
+; - vduTextCursorCRTCAddress{Low,High}
+; These are calculated based on:
+; - vduTextCursorXPosition
+; - vduTextCursorYPosition
+; - vduCurrentScreenMODE
+; - vduScreenSizeHighByte (for wrapping)
+; The Master doesn't have a simple x640 table so if we want to share this code
+; we need to avoid the multiplication. Since here we are always moving down by a
+; single line, I think we may be able to get away with just adding a fixed (per
+; mode) offset to the existing values.
 .setTextCursorScreenAddresses
     LDA .vduTextCursorYPosition                         ; current text line
     ASL                                                 ; multiply by two to get table offset
