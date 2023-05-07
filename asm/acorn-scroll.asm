@@ -155,16 +155,6 @@ no_dst_wrap
     LDA .vduTextCursorCRTCAddressHigh                   ; text cursor CRTC address
     LDY #.crtcCursorPositionHighRegister                ; Y=14
     ; fall through...
-
-; ***************************************************************************************
-;
-; Set hardware screen or cursor address
-;
-; On Entry:
-;       The screen address or cursor position address is in AX
-;       Y holds either .crtcCursorPositionHighRegister to change the cursor position
-;                   or .crtcStartScreenAddressHighRegister to change the screen address
-; ***************************************************************************************
 .setHardwareScreenOrCursorAddress
     STX .vduTempStoreDA                                 ; store X
     LSR                                                 ; divide X/A by 8
@@ -174,7 +164,20 @@ no_dst_wrap
     LSR                                                 ;
     ROR .vduTempStoreDA                                 ;
     LDX .vduTempStoreDA                                 ;
+!if 0 {
     JMP .setTwoCRTCRegisters                            ; set cursor position AX
+}
+.setTwoCRTCRegisters
+    STY .crtcAddressRegister                            ; set which CRTC register to write into
+    STA .crtcAddressWrite                               ; write A into CRTC register
+    INY                                                 ; increment Y to the next CRTC register
+    STY .crtcAddressRegister                            ; set which CRTC register to write into
+    STX .crtcAddressWrite                               ; write X into CRTC register
+.exit8
+    RTS                                                 ;
+
+
+
 
 .hardwareScrollUp
     LDX .vduScreenTopLeftAddressLow                     ; screen top left address low
@@ -198,23 +201,10 @@ no_dst_wrap
     LDA (.vduMultiplicationTableLow),Y                  ; get CRTC multiplication table pointer
     STA .vduWriteCursorScreenAddressHigh                ; .vduWriteCursorScreenAddressHigh=A
     INY                                                 ; Y=Y+1
-!if 0 {
-    LDA #2                                              ; A=2
-    AND .vduCurrentScreenMODEGroup                      ; AND with MODE group:
-                                                        ;   0 = 20k (MODE 0,1,2)
-                                                        ;   1 = 16k (MODE 3)
-                                                        ;   2 = 10k (MODE 4,5)
-                                                        ;   3 = 8k (MODE 6)
-                                                        ;   4 = 1k (MODE 7)
-    PHP                                                 ; save flags
-    LDA (.vduMultiplicationTableLow),Y                  ; get CRTC multiplication table pointer
-    PLP                                                 ; pull flags
-    BEQ +                                               ; branch if MODE 0,1,2,3 or 7
-} else {
-    LDA .vduCurrentScreenMODE
-    CMP #4
+    LDA (.vduMultiplicationTableLow),Y
+    LDY .vduCurrentScreenMODE
+    CPY #4
     BCC +
-}
     LSR .vduWriteCursorScreenAddressHigh                ; MODE 4,5,6: Halve value from multiplication table (high and low bytes)
     ROR                                                 ; A = A / 2 + (128*carry)
 +
@@ -224,17 +214,6 @@ no_dst_wrap
     ADC .vduScreenTopLeftAddressHigh                    ; add start of screen (high)
     TAY                                                 ; store in Y
     LDA .vduTextCursorXPosition                         ; text column
-!if 0 {
-    LDX .vduBytesPerCharacter                           ; bytes per character
-    DEX                                                 ; X=X-1
-    BEQ .mode7Cursor                                    ; if (in MODE 7) then branch
-    CPX #15                                             ; is it mode 1 or mode 5? (four colour modes = 16 bytes per character)
-    BEQ .mode1or5Cursor                                 ; if (mode 1 or 5) then branch (with carry set)
-    BCC .mode0346Cursor                                 ; if (mode 0,3,4, or 6) then branch (with carry clear)
-    ASL                                                 ; A=A*16 if entered here (MODE 2)
-.mode1or5Cursor
-    ASL                                                 ; A=A*8 if entered here
-}
 .mode0346Cursor
     ASL                                                 ; A=A*4 if entered here
     ASL                                                 ;
@@ -245,9 +224,6 @@ no_dst_wrap
     ASL                                                 ; A=A*2
     BCC .skipInc                                        ; if (carry clear) branch (to add to .vduWriteCursorScreenAddressLow)
     INY                                                 ; Y=Y+1
-!if 0 {
-.mode7Cursor
-}
     CLC                                                 ; clear carry
 .skipInc
     ADC .vduWriteCursorScreenAddressLow                 ; add to .vduWriteCursorScreenAddressLow
@@ -264,16 +240,6 @@ no_dst_wrap
     STA .vduWriteCursorScreenAddressHigh                ; store in high byte
     CLC                                                 ; clear carry
     RTS                                                 ;
-
-.setTwoCRTCRegisters
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STA .crtcAddressWrite                               ; write A into CRTC register
-    INY                                                 ; increment Y to the next CRTC register
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STX .crtcAddressWrite                               ; write X into CRTC register
-.exit8
-    RTS                                                 ;
-
 
 .addNumberOfBytesInACharacterRowToAX
     PHA                                                 ; store A
