@@ -57,7 +57,7 @@ lf
     lda vdu_screen_top_left_address_high
     sta src+1
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
-    sec:jsr .moveTextCursorToNextLine
+    ; SFTODO: COMMENTED OUT, I THINK THIS IS A NO OP *UNLESS* CURSOR EDITING IS IN PROGRESS - WILL COME BACK TO THAT CASE LATER sec:jsr .moveTextCursorToNextLine
     jsr .hardwareScrollUp
     lda vdu_screen_top_left_address_low
     sta dst
@@ -144,6 +144,9 @@ no_dst_wrap
 .crtcCursorPositionHighRegister             = 14        ;
 
 
+.setCursorSoftwareAndHardwarePosition
+    JSR .setTextCursorScreenAddresses                   ; set cursor screen addresses
+    ; SFTODO: fall through BCC .setHardwareCursorAddressLocal                  ; ALWAYS branch
 .setHardwareCursorAddressLocal
 .setHardwareCursorAddress
     STX .vduWriteCursorScreenAddressLow                 ; set screen address of cursor from AX
@@ -194,10 +197,6 @@ no_dst_wrap
     LDY #.crtcStartScreenAddressHighRegister            ; Y = value to change screen address
     BNE .setHardwareScreenOrCursorAddress               ; ALWAYS branch to set screen address
 
-
-.setCursorSoftwareAndHardwarePosition
-    JSR .setTextCursorScreenAddresses                   ; set cursor screen addresses
-    BCC .setHardwareCursorAddressLocal                  ; ALWAYS branch
 
 .setTextCursorScreenAddresses
     LDA .vduTextCursorYPosition                         ; current text line
@@ -272,23 +271,23 @@ no_dst_wrap
 .exit8
     RTS                                                 ;
 
+!if 0 { ; SFTODO: DELETE
 .moveTextCursorToNextLine ; SFTODO: this may do more than we need
     LDA #2                                              ; A=2 to check if scrolling disabled
     BIT .vduStatusByte                                  ; test VDU status byte
     BNE +                                               ; if (scrolling is disabled) then branch
     BVC .exit8                                          ; if (cursor editing mode is disabled) then return
 +
-    LDA .vduTextWindowBottom                            ; bottom edge of text window
-    BCC +                                               ; if (carry clear on entry) then branch
     LDA .vduTextWindowTop                               ; get top of text window
-+
-!if 0 {
+!if 0 { ; SFTODO: NEED TO REINTRODUCE THIS???
     BVS .moveTextCursorToNextLineCursorEditing          ; if (cursor editing mode enabled) then branch
 }
     STA .vduTextCursorYPosition                         ; set current text line
     PLA                                                 ; pull return link from stack
     PLA                                                 ;
-    JMP .setCursorSoftwareAndHardwarePosition           ; set cursor position
+    jmp .setCursorSoftwareAndHardwarePosition
+}
+
 
 .addNumberOfBytesInACharacterRowToAX
     PHA                                                 ; store A
