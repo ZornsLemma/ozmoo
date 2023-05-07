@@ -73,6 +73,7 @@ lf
     sta dst
     lda vdu_screen_top_left_address_high
     sta dst+1
+    jsr .setCursorSoftwareAndHardwarePosition
     ; We copy and bump in chunks of 128 because the line length in bytes is
     ; always a multiple of 128, which means we can wrap at the top of screen
     ; memory between each chunk without any problems.
@@ -116,7 +117,6 @@ no_src_wrap
 no_dst_wrap
     dex
     bne copy_and_zero_outer_loop
-    jsr .setCursorSoftwareAndHardwarePosition
     pla
     tay
     pla
@@ -219,6 +219,7 @@ no_dst_wrap
 ; single line, I think we may be able to get away with just adding a fixed (per
 ; mode) offset to the existing values.
 .setTextCursorScreenAddresses
+!if 0 { ; SFTODO!
     LDA .vduTextCursorYPosition                         ; current text line
     ASL                                                 ; multiply by two to get table offset
     TAY                                                 ; Y=A
@@ -264,6 +265,21 @@ no_dst_wrap
     STA .vduWriteCursorScreenAddressHigh                ; store in high byte
     CLC                                                 ; clear carry
     RTS                                                 ;
+} else {
+    clc
+    lda .vduWriteCursorScreenAddressLow
+    adc .vduBytesPerCharacterRowLow
+    sta .vduWriteCursorScreenAddressLow
+    lda .vduWriteCursorScreenAddressHigh
+    adc .vduBytesPerCharacterRowHigh
+    sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
+    bpl +
+    sec
+    sbc .vduScreenSizeHighByte
++
+    sta .vduWriteCursorScreenAddressHigh
+    rts
+}
 
 .addNumberOfBytesInACharacterRowToAX
     PHA                                                 ; store A
