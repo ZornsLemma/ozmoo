@@ -403,6 +403,7 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
+; SFTODONOW: If we have our custom OSWRCH code, we need to avoid - ideally patch to remove completely, if only by "jmp foo" being patched over first instruction - executing this code and similar code which maintaing top_line_buffer etc. It will "work" but it's wasting time maintaining something we don't need.
     ldy zp_screenrow
     bne +
     sta top_line_buffer,x

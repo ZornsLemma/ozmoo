@@ -201,7 +201,7 @@ REM order we reduce the chances of the drive head moving backwards.
 !ifdef CACHE2P_BINARY {
     IF tube THEN PROCpoke(${cache_screen_mode},?${screen_mode}):*/${CACHE2P_BINARY}
 }
-REM SFTODO OSCLI "/:1.$.SCROLL":REM SFTODOTEMPHACK
+OSCLI "/:1.$.SCROLL":REM SFTODOTEMPHACK
 REM If there are no non-tube builds, ozmoo_relocate_target won't be defined.
 !ifdef ozmoo_relocate_target {
     IF NOT tube THEN ?${ozmoo_relocate_target}=FNcode_start DIV 256
