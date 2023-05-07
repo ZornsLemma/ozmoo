@@ -166,13 +166,6 @@ no_dst_wrap
 ;                   or .crtcStartScreenAddressHighRegister to change the screen address
 ; ***************************************************************************************
 .setHardwareScreenOrCursorAddress
-!if 0 {
-    PHA                                                 ; store A
-    LDA .vduCurrentScreenMODE                           ; screen MODE
-    CMP #7                                              ; is it MODE 7?
-    PLA                                                 ; restore A
-    BCS .setCursorPositionMODE7                         ; if (MODE 7 selected) then branch
-}
     STX .vduTempStoreDA                                 ; store X
     LSR                                                 ; divide X/A by 8
     ROR .vduTempStoreDA                                 ;
@@ -270,23 +263,6 @@ no_dst_wrap
     STX .crtcAddressWrite                               ; write X into CRTC register
 .exit8
     RTS                                                 ;
-
-!if 0 { ; SFTODO: DELETE
-.moveTextCursorToNextLine ; SFTODO: this may do more than we need
-    LDA #2                                              ; A=2 to check if scrolling disabled
-    BIT .vduStatusByte                                  ; test VDU status byte
-    BNE +                                               ; if (scrolling is disabled) then branch
-    BVC .exit8                                          ; if (cursor editing mode is disabled) then return
-+
-    LDA .vduTextWindowTop                               ; get top of text window
-!if 0 { ; SFTODO: NEED TO REINTRODUCE THIS???
-    BVS .moveTextCursorToNextLineCursorEditing          ; if (cursor editing mode enabled) then branch
-}
-    STA .vduTextCursorYPosition                         ; set current text line
-    PLA                                                 ; pull return link from stack
-    PLA                                                 ;
-    jmp .setCursorSoftwareAndHardwarePosition
-}
 
 
 .addNumberOfBytesInACharacterRowToAX
