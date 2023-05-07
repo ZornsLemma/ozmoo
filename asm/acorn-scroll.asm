@@ -146,11 +146,11 @@ no_dst_wrap
 .crtcCursorPositionHighRegister             = 14        ;
 
 
+; SFTODO: Only one caller, could and probably should inline
 .setCursorSoftwareAndHardwarePosition
 ; This is not generic code (unlike the OS routine of the same name); it's
 ; special-cased because we know we are moving down one row from the current
 ; position.
-.setTextCursorScreenAddresses
     clc
     ; We start with vduTextCursorCRTCAddress{Low,High} as the base, since it doesn't wrap so we don't "accumulate" wrapping.
     lda .vduTextCursorCRTCAddressLow
@@ -178,20 +178,12 @@ no_dst_wrap
     LSR                                                 ;
     ROR .vduTempStoreDA                                 ;
     LDX .vduTempStoreDA                                 ;
-!if 0 {
-    JMP .setTwoCRTCRegisters                            ; set cursor position AX
-}
-.setTwoCRTCRegisters
     STY .crtcAddressRegister                            ; set which CRTC register to write into
     STA .crtcAddressWrite                               ; write A into CRTC register
     INY                                                 ; increment Y to the next CRTC register
     STY .crtcAddressRegister                            ; set which CRTC register to write into
     STX .crtcAddressWrite                               ; write X into CRTC register
-.exit8
     RTS                                                 ;
-
-
-
 
 .hardwareScrollUp
     LDA .vduScreenTopLeftAddressLow                     ; screen top left address low
@@ -200,9 +192,7 @@ no_dst_wrap
     TAX                                                 ; put low byte back into X
     LDA .vduScreenTopLeftAddressHigh                    ; screen top left address high
     ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
-
     BPL +                                               ;
-
     SEC                                                 ; wrap around
     SBC .vduScreenSizeHighByte                          ; screen RAM size high byte
 +
@@ -210,9 +200,6 @@ no_dst_wrap
     STX .vduScreenTopLeftAddressLow                     ; screen top left address low
     LDY #.crtcStartScreenAddressHighRegister            ; Y = value to change screen address
     BNE .setHardwareScreenOrCursorAddress               ; ALWAYS branch to set screen address
-
-
-    rts
 
 ; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
 
