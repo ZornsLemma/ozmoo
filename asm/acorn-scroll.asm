@@ -280,8 +280,6 @@ SFTODORTS
 
 ; SFTODO: If we have a "number of lines to protect" variable which Ozmoo can poke to control this, it being 0 would naturally mean "disable this code". I am not sure off top of my head if we want/need that, but I guess we might.
 
-; SFTODO: Right now using history to go up to a longer-than-screen-width line and then off it seems to break the output and it gets "stuck" on the bottom line. I am not sure - haven't gone back to older version to check - this hasn't been bust even before I started playing with screen driver and no one noticed until now.
-
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
 end

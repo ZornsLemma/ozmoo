@@ -563,11 +563,11 @@ s_printchar
     cmp s_screen_height_minus_one
     bcc SFTODOHACK43
     jsr s_cursor_to_screenrowcolumn
-    inc zp_screenrow
     jsr .perform_line_feed_on_bottom_row1
     jsr .perform_line_feed_on_bottom_row2
     jmp .printchar_end
 SFTODOHACK43
+    inc zp_screenrow
     lda #1
     sta s_cursors_inconsistent
     jmp .printchar_end
