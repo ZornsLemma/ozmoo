@@ -113,6 +113,7 @@ no_dst_wrap
     tax
     rts
 
+; SFTODO: A LOT OF THESE AREN'T NEEDED ANY MORE (AND ANY I KEEP SHOULD BE RENAMED TO MY foo_bar_baz STYLE)
 ; Code copied from OS 1.2 (TobyLobster disassembly).
 .vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
 .vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
@@ -153,6 +154,7 @@ no_dst_wrap
 ; position.
     clc
     ; We start with vduTextCursorCRTCAddress{Low,High} as the base, since it doesn't wrap so we don't "accumulate" wrapping.
+    ; SFTODO: I am not sure this is strictly right. Remember *really* we want to set vduTextCursorCRTCAddress = screen base (&3000 or whatever) + 320 (or 640) * text cursor Y. If this code was the *only* think updating ...CursorCRTCAddress..., it would soar off infinitely high as we did newline after newline after newline. In reality the OS driver will get involved as we output other text to the screen and that will pull it back into range, but it's technically *possible* a game would emit a long stream of nothing but newlines and this would probably go wrong. Test it and see about fixing it if necessary.
     lda .vduTextCursorCRTCAddressLow
     adc .vduBytesPerCharacterRowLow
     sta .vduWriteCursorScreenAddressLow
