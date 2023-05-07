@@ -157,13 +157,25 @@ no_dst_wrap
 
 
 .setCursorSoftwareAndHardwarePosition
-    JSR .setTextCursorScreenAddresses                   ; set cursor screen addresses
-    ; SFTODO: fall through BCC .setHardwareCursorAddressLocal                  ; ALWAYS branch
-.setHardwareCursorAddressLocal
-.setHardwareCursorAddress
-    STX .vduWriteCursorScreenAddressLow                 ; set screen address of cursor from AX
-    STA .vduWriteCursorScreenAddressHigh                ;
-    LDX .vduTextCursorCRTCAddressLow                    ; text cursor CRTC address
+; This is not generic code (unlike the OS routine of the same name); it's
+; special-cased because we know we are moving down one row from the current
+; position.
+.setTextCursorScreenAddresses
+    clc
+    ; SFTODO: Should we start with vduTextCursorCRTCAddress{Low,High} here as they never wrap? The original code multiplied Y by 320/640, remember.
+    lda .vduWriteCursorScreenAddressLow
+    adc .vduBytesPerCharacterRowLow
+    sta .vduWriteCursorScreenAddressLow
+    sta .vduTextCursorCRTCAddressLow
+    tax
+    lda .vduWriteCursorScreenAddressHigh
+    adc .vduBytesPerCharacterRowHigh
+    sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
+    bpl +
+    sec
+    sbc .vduScreenSizeHighByte
++
+    sta .vduWriteCursorScreenAddressHigh
     LDA .vduTextCursorCRTCAddressHigh                   ; text cursor CRTC address
     LDY #.crtcCursorPositionHighRegister                ; Y=14
     ; fall through...
@@ -210,22 +222,6 @@ no_dst_wrap
     BNE .setHardwareScreenOrCursorAddress               ; ALWAYS branch to set screen address
 
 
-; This is not generic code (unlike the OS routine of the same name); it's
-; special-cased because we know we are moving down one row from the current
-; position.
-.setTextCursorScreenAddresses
-    clc
-    lda .vduWriteCursorScreenAddressLow
-    adc .vduBytesPerCharacterRowLow
-    sta .vduWriteCursorScreenAddressLow
-    lda .vduWriteCursorScreenAddressHigh
-    adc .vduBytesPerCharacterRowHigh
-    sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
-    bpl +
-    sec
-    sbc .vduScreenSizeHighByte
-+
-    sta .vduWriteCursorScreenAddressHigh
     rts
 
 .moveTextCursorToNextLine
