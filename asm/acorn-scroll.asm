@@ -20,7 +20,7 @@ src = zp ; 2 bytes
 dst = zp+2 ; 2 bytes
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
-; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line...
+; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
 
     * = $b10
 start
@@ -116,6 +116,7 @@ no_dst_wrap
 ; Code copied from OS 1.2 (TobyLobster disassembly).
 .vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
 .vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
+; SFTODO: Row multiplication table probably doesn't exist on Master so need to find alternative
 .vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
 .vduMultiplicationTableHigh                 = $E1       ; to use
 .vduTextWindowBottom = $309
