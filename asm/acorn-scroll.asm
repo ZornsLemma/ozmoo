@@ -162,13 +162,13 @@ no_dst_wrap
 ; position.
 .setTextCursorScreenAddresses
     clc
-    ; SFTODO: Should we start with vduTextCursorCRTCAddress{Low,High} here as they never wrap? The original code multiplied Y by 320/640, remember.
-    lda .vduWriteCursorScreenAddressLow
+    ; We start with vduTextCursorCRTCAddress{Low,High} as the base, since it doesn't wrap so we don't "accumulate" wrapping.
+    lda .vduTextCursorCRTCAddressLow
     adc .vduBytesPerCharacterRowLow
     sta .vduWriteCursorScreenAddressLow
     sta .vduTextCursorCRTCAddressLow
     tax
-    lda .vduWriteCursorScreenAddressHigh
+    lda .vduTextCursorCRTCAddressHigh
     adc .vduBytesPerCharacterRowHigh
     sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
     bpl +
