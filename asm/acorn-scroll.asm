@@ -43,15 +43,7 @@ jmp_parent_wrchv
 parent_wrchv = *+1
     jmp $ffff ; patched
 lf
-!if 1 { ; SFTODO: This is what OS 1.2 does, I am getting confused about split cursor editing but I thought the 'else' branch below might be needed, but something isn't right so let's go back to copying OS 1.2 and see if it helps
     lda vdu_text_cursor_y_position
-} else {
-    lda vdu_text_cursor_y_position
-    bit vdu_status_byte
-    bvc +
-    lda .vduTextInputCursorYCoordinate
-+
-}
     cmp vdu_text_window_bottom
     lda #10
     bcc jmp_parent_wrchv
