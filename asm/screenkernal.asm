@@ -403,7 +403,6 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
-!if 0 { ; SFTODOTEMPHACK
     ldy zp_screenrow
     bne +
     sta top_line_buffer,x
@@ -411,7 +410,6 @@ s_printchar
     sta top_line_buffer_reverse,x
     lda top_line_buffer,x
 +
-}
 }
 	; Reset ignore next linebreak setting
 	ldx current_window
@@ -448,70 +446,14 @@ s_printchar
 	lda zp_screenrow
 	+cmp_screen_height
 	bcc .printchar_nowrap
-!ifdef ACORN_HW_SCROLL {
-!if 0 { ; SFTODO TEMP HACK
-    lda use_hw_scroll
-    beq .no_hw_scroll0
-    +lda_screen_height_minus_one
-    sta zp_screenrow ; s_pre_scroll_leave_cursor_bottom_right normally does this but we may not call it
-    ldx window_start_row + 1 ; how many top lines to protect
-    dex
-    beq .no_pre_scroll
-.no_hw_scroll0
-} else {
-    lda #10
-    jsr oswrch ; should trigger new scrolling hack
-    lda #11
-    jsr oswrch ; move back up again
-    +lda_screen_height_minus_one
-    sta zp_screenrow
-    jmp .printchar_nowrap
-}
-}
-    jsr .s_pre_scroll_leave_cursor_bottom_right
-.no_pre_scroll
-    ; Print the character at the bottom right corner of the screen, which will
-    ; implicitly cause the OS to scroll.
+    jsr .perform_line_feed_on_bottom_row1
+    lda #vdu_up
+    jsr oswrch
+    ; Print the character at the end of the now second-to-bottom line.
     pla
     jsr oswrch
-    lda s_reverse
-    beq .not_reverse
-    ; Reverse video is on and the character we just output has caused the text
-    ; window to scroll, so the OS will have added a blank line in reverse video.
-    ; The Z-machine spec requires the blank line to be in normal video, so we
-    ; need to fix this up. Because the scroll was caused by printing the last
-    ; character at the bottom right of the screen, which had to be in reverse
-    ; video, we have no way of reverting to normal video after printing that
-    ; character but before the scroll.
-    jsr s_erase_line_from_cursor
-.not_reverse
-!ifdef ACORN_HW_SCROLL {
-!if 0 { ; SFTODO TEMP HACK
-    ldx window_start_row + 1 ; how many top lines to protect
-    dex
-    bne .no_hw_scroll1
-    lda use_hw_scroll
-    beq .no_hw_scroll1
-    ; SFTODO: Is there any value in trying to only redraw the top line after
-    ; all "short term" updates are done? Suppose the game scrolls a
-    ; five line room description onto the screen. At the moment we'll
-    ; redraw the top line after every single line. It would be faster
-    ; to just redraw once output has finished and we're waiting for user
-    ; input. I don't know if this is feasible - what if the game decides to
-    ; (making this up as a simple example) pause for 10 seconds, expecting
-    ; the status line to be there but we haven't shown it because there's
-    ; no user input happening? It might also look ugly even if there were
-    ; no implementation concerns, but I'm just speculating - it might look
-    ; nicer overall due to the faster scroll and reduced flicker.
-    jsr .redraw_top_line
+    jsr .perform_line_feed_on_bottom_row2
     jmp .printchar_oswrch_done
-.no_hw_scroll1
-}
-}
-    lda #vdu_reset_text_window
-    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
-    ; SFTODO: Micro-optimisation: "bne just-after-following-pla ; always branch" would save four cycles here and only add one byte of code. Or "!byte $24 ; bit zp opcode" would also save four cycles and not add any bytes of code, while being a little less transparent.
-    pha
 .printchar_nowrap
     pla
     ; This OSWRCH call is the one which actually prints most of the text on the
@@ -526,7 +468,8 @@ s_printchar
     ; to do this after every character output when it's almost always unnecessary.
     ; I am wondering if a) we should be doing this *when we scroll*, not always
     ; b) if we are not turning the cursor off when timed events occur during
-    ; input and we should be.
+    ; input and we should be, which would make this unnecessary if the explanation
+    ; given is correct.
     jsr s_cursor_to_screenrowcolumn
 .printchar_end
 	ldx s_stored_x
@@ -551,6 +494,56 @@ s_printchar
 	sty cursor_row
 +	jmp .resume_printing_normal_char ; Always branch
 }
+; SFTODONOW: Stating the obvious, test software, hardware-old-style and hardware-new-style scrolling once finished. Also be good to *SPOOL the output and have a look for apparently gratutious VDU codes, e.g. cursor movement when not necessary, stray text windows, etc.
+
+.perform_line_feed_on_bottom_row1
+    ; We are going to force a scroll; unless we're using the custom OSWRCH
+    ; routine this will use the current background colour for the new line. We
+    ; always want the new line to be in normal video so make sure we're in normal video mode; this is harmless even if
+    ; we are using the custom OSWRCH routine.
+    jsr set_os_normal_video
+!ifdef ACORN_HW_SCROLL {
+    ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
+    lda use_hw_scroll
+    beq .sw_scroll
+    ldx window_start_row + 1 ; how many top lines to protect
+    dex
+    beq .hw_scrollSFTODO8
+}
+.sw_scroll
+    jsr .s_pre_scroll_leave_cursor_bottom_right
+.hw_scrollSFTODO8
+    +lda_screen_height_minus_one
+    sta zp_screenrow
+    lda #vdu_down
+    jmp oswrch
+
+.perform_line_feed_on_bottom_row2
+!ifdef ACORN_HW_SCROLL {
+    ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
+    lda use_hw_scroll
+    beq +
+    ldx window_start_row + 1 ; how many top lines to protect
+    dex
+    bne +
+    ; SFTODO: Is there any value in trying to only redraw the top line after
+    ; all "short term" updates are done? Suppose the game scrolls a
+    ; five line room description onto the screen. At the moment we'll
+    ; redraw the top line after every single line. It would be faster
+    ; to just redraw once output has finished and we're waiting for user
+    ; input. I don't know if this is feasible - what if the game decides to
+    ; (making this up as a simple example) pause for 10 seconds, expecting
+    ; the status line to be there but we haven't shown it because there's
+    ; no user input happening? It might also look ugly even if there were
+    ; no implementation concerns, but I'm just speculating - it might look
+    ; nicer overall due to the faster scroll and reduced flicker.
+    jsr .redraw_top_line
+    jmp .printchar_oswrch_done
++
+}
+    lda #vdu_reset_text_window
+    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
+    jmp oswrch
 
 .perform_newline
 	; newline/enter/return
@@ -568,27 +561,20 @@ s_printchar
 	jsr copy_line_to_scrollback
 +
 }
-; SFTODO TEMP HACK HAS DESTROYED ORIGINAL CODE HERE...
-!if 1 { ; SFTODO TEMP HACK
-    inc zp_screenrow
-	lda zp_screenrow
-    cmp s_screen_height
-    bcc SFTODOHACK9
-    jsr s_cursor_to_screenrowcolumn
-    lda #10
-    jsr oswrch
-    lda s_screen_height_minus_one
-    sta zp_screenrow
-}
-SFTODOHACK9
 	lda #0
 	sta zp_screencolumn
-!if 0 { ; SFTODO TEMP HACK
-	jsr .s_scroll
-}
+    lda zp_screenrow
+    cmp s_screen_height_minus_one
+    bcc SFTODOHACK43
+    jsr s_cursor_to_screenrowcolumn
+    inc zp_screenrow
+    jsr .perform_line_feed_on_bottom_row1
+    jsr .perform_line_feed_on_bottom_row2
+    jmp .printchar_end
+SFTODOHACK43
     lda #1
     sta s_cursors_inconsistent
-	jmp .printchar_end
+    jmp .printchar_end
 
 
 !ifdef SCROLLBACK {
@@ -602,49 +588,12 @@ s_reset_scrolled_lines
 s_scrolled_lines !byte 0
 }
 
-; SFTODO: This has only one caller, the code just above. It's not a huge deal,
-; but would (it may not) it be clearer and/or faster if we inlined this?
-.s_scroll
-	lda zp_screenrow
-	cmp s_screen_height
-	bpl +
-	rts
-+
-!ifdef ACORN_HW_SCROLL {
-!if 0 { ; SFTODO TEMP HACK
-    ldx window_start_row + 1 ; how many top lines to protect
-    dex
-    bne .no_hw_scroll2
-    lda use_hw_scroll
-    beq .no_hw_scroll2
-    ldx #0
-    +ldy_screen_height_minus_one
-    sty zp_screenrow
-    jsr do_oswrch_vdu_goto_xy
-    jsr set_os_normal_video ; new line must not be reverse video
-    lda #vdu_down
-    jsr oswrch
-    jmp .redraw_top_line
-.no_hw_scroll2
-}
-}
-    jsr .s_pre_scroll_leave_cursor_bottom_right
-    ; Move the cursor down one line to force a scroll
-    jsr set_os_normal_video ; new line must not be reverse video
-    lda #vdu_down
-    jsr oswrch
-    ; Remove the text window
-    lda #vdu_reset_text_window
-    sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
-    jmp oswrch
-
 s_erase_line
 	; registers: a,x,y
 	lda #0
 	sta zp_screencolumn
 s_erase_line_from_cursor
 !ifdef ACORN_HW_SCROLL {
-!if 0 { ; SFTODO TEMP HACK
     ldx zp_screenrow
     bne +
     ldx zp_screencolumn
@@ -657,18 +606,16 @@ s_erase_line_from_cursor
     bne -
 +
 }
-}
     ; Define a text window covering the region to clear
     lda #vdu_define_text_window
     jsr oswrch
     lda zp_screencolumn
     jsr oswrch
     lda zp_screenrow
-    pha ; SFTODO: wouldn't it be same length, 4 cycles faster *and* clearer to drop pha and replace pla with "lda zp_screenrow"?
     jsr oswrch
     +lda_screen_width_minus_one
     jsr oswrch
-    pla
+    lda zp_screenrow
     jsr oswrch
     ; Clear it and reset the text window.
     jsr set_os_normal_video ; clear must not be to reverse video
@@ -741,7 +688,6 @@ s_pre_scroll_leave_cursor_in_place
     jmp do_oswrch_vdu_goto_xy
 
 !ifdef ACORN_HW_SCROLL {
-!if 0 { ; SFTODO TEMP HACK
 .redraw_top_line
     jsr turn_off_cursor
     lda #vdu_home
@@ -772,7 +718,6 @@ s_pre_scroll_leave_cursor_in_place
     bne -
     stx s_cursors_inconsistent
     jmp turn_on_cursor
-}
 }
 
 
