@@ -8,6 +8,7 @@ vdu_text_cursor_y_position = $319
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
 vdu_screen_size_high_byte = $354
+vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 
 wrchv = $20e
 
@@ -42,7 +43,15 @@ jmp_parent_wrchv
 parent_wrchv = *+1
     jmp $ffff ; patched
 lf
+!if 1 { ; SFTODO: This is what OS 1.2 does, I am getting confused about split cursor editing but I thought the 'else' branch below might be needed, but something isn't right so let's go back to copying OS 1.2 and see if it helps
     lda vdu_text_cursor_y_position
+} else {
+    lda vdu_text_cursor_y_position
+    bit vdu_status_byte
+    bvc +
+    lda .vduTextInputCursorYCoordinate
++
+}
     cmp vdu_text_window_bottom
     lda #10
     bcc jmp_parent_wrchv
@@ -56,6 +65,7 @@ lf
     sta src
     lda vdu_screen_top_left_address_high
     sta src+1
+    jsr .moveTextCursorToNextLine
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
     ; SFTODO: COMMENTED OUT, I THINK THIS IS A NO OP *UNLESS* CURSOR EDITING IS IN PROGRESS - WILL COME BACK TO THAT CASE LATER sec:jsr .moveTextCursorToNextLine
     jsr .hardwareScrollUp
@@ -119,7 +129,7 @@ no_dst_wrap
 ; SFTODO: Row multiplication table probably doesn't exist on Master so need to find alternative
 .vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
 .vduMultiplicationTableHigh                 = $E1       ; to use
-.vduTextWindowBottom = $309
+;.vduTextWindowBottom = $309
 .vduTextCursorXPosition                     = $0318     ; } text cursor position
 .vduTextCursorYPosition = $319
 .vduTextCursorCRTCAddressLow                = $034A     ; CRTC address of the cursor
@@ -130,6 +140,7 @@ no_dst_wrap
 .vduScreenSizeHighByte = $354
 .vduCurrentScreenMODE                       = $0355     ;
 .vduCurrentScreenMODEGroup                  = $0356     ; MODE group = screen memory size:
+.vduTextInputCursorYCoordinate              = $0365     ;
 .vduTempStoreDA                             = $DA       ; }
 .crtcAddressRegister                        = $FE00     ;
 .crtcAddressWrite                           = $FE01     ;
@@ -252,7 +263,26 @@ no_dst_wrap
     ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
     RTS                                                 ;
 
+.moveTextCursorToNextLine
+    ; SFTODO: Heavily tweaked, we only need cursor editing support (I think)
+    ; SFTODO: This makes no sense. If vduTextInputCursorYCoordinate (not sure which cursor that is right now) is on row 0 (vduTextWindowTop), we *decrement* it, so it wraps round to 255?!?!?!! Did I mangle the OS code? Does the OS code do this but it makes sense there? Does it even make sense here?
+    BIT .vduStatusByte                                  ; test VDU status byte
+    BVC SFTODORTS
+    ; SFTODO: We might want to use the "effective" text window top (i.e. number of lines we are preserving) here rather than the OS vduTextWindowTop so that we perform this logic (which I think leaves the "input" cursor in place on the top row of the text window when scrolling occurs) on the lower window,e ven though vduTextWindowTop will always be 0
+    LDA .vduTextWindowTop                               ; get top of text window
+    CMP .vduTextInputCursorYCoordinate                  ; Y coordinate of text input cursor
+    BEQ SFTODORTS                                       ; if (A = line count) then branch (exit)
+    DEC .vduTextInputCursorYCoordinate                  ; Y coordinate of text input cursor
+SFTODORTS
+    rts
 
+; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
+
+; SFTODO: If we have a "number of lines to protect" variable which Ozmoo can poke to control this, it being 0 would naturally mean "disable this code". I am not sure off top of my head if we want/need that, but I guess we might.
+
+; SFTODO: Right now using history to go up to a longer-than-screen-width line and then off it seems to break the output and it gets "stuck" on the bottom line. I am not sure - haven't gone back to older version to check - this hasn't been bust even before I started playing with screen driver and no one noticed until now.
+
+; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
 end
 
@@ -290,4 +320,4 @@ end
 ;
 ; Since I am going to have to keep the current text window based scrolling around for soft scroll mode, I should make sure to tidy that up as much as possible while doing the tidy up of the existing hw scroll approach. I suspect unfortunately I *will* need/want to allow the OS to scroll after printing a text character at bottom right in soft scroll mode, as the slower software scrolling might make it more obvious that the last letter doesn't appear until after the scroll. I should maybe test it, it might not be obvious. Hmm, a quick test with a BASIC program doing it in mode 3 suggests it might look OK. Perhaps go with it, and if I need to reintroduce the old approach later it may well be done better starting from a cleaner simpler code base anyway.
 
-; SFTODO: Although that code was probably written without much care about code size, STEM has a highly-optimised line-oriented memmove which would potentially be ideal for copying the line data when we scroll (especially if we start to do it for >1 line of data). Definitely worth taking a look.
+; SFTODO: Although that code was probably written without much care about code size, STEM has a highly-optimised line-oriented memmove which would potentially be ideal for copying the line data when we scroll (especially if we start to do it for >1 line of data). Definitely worth taking a look. (It does also have to run from ROM, so there may be more scope for better or simpler optimisation using self-modifying code.)
