@@ -192,9 +192,13 @@ no_dst_wrap
 
 
 .hardwareScrollUp
-    LDX .vduScreenTopLeftAddressLow                     ; screen top left address low
+    LDA .vduScreenTopLeftAddressLow                     ; screen top left address low
+    CLC                                                 ;
+    ADC .vduBytesPerCharacterRowLow                     ; add bytes per character row
+    TAX                                                 ; put low byte back into X
     LDA .vduScreenTopLeftAddressHigh                    ; screen top left address high
-    JSR .addNumberOfBytesInACharacterRowToAX            ; add bytes per character row
+    ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
+
     BPL +                                               ;
 
     SEC                                                 ; wrap around
@@ -223,16 +227,6 @@ no_dst_wrap
 +
     sta .vduWriteCursorScreenAddressHigh
     rts
-
-.addNumberOfBytesInACharacterRowToAX
-    PHA                                                 ; store A
-    TXA                                                 ; A=X
-    CLC                                                 ;
-    ADC .vduBytesPerCharacterRowLow                     ; add bytes per character row
-    TAX                                                 ; put low byte back into X
-    PLA                                                 ; recall A
-    ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
-    RTS                                                 ;
 
 .moveTextCursorToNextLine
     ; SFTODO: Heavily tweaked, we only need cursor editing support (I think)
