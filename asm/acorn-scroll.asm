@@ -198,6 +198,7 @@ no_dst_wrap
     LDA (.vduMultiplicationTableLow),Y                  ; get CRTC multiplication table pointer
     STA .vduWriteCursorScreenAddressHigh                ; .vduWriteCursorScreenAddressHigh=A
     INY                                                 ; Y=Y+1
+!if 0 {
     LDA #2                                              ; A=2
     AND .vduCurrentScreenMODEGroup                      ; AND with MODE group:
                                                         ;   0 = 20k (MODE 0,1,2)
@@ -209,6 +210,11 @@ no_dst_wrap
     LDA (.vduMultiplicationTableLow),Y                  ; get CRTC multiplication table pointer
     PLP                                                 ; pull flags
     BEQ +                                               ; branch if MODE 0,1,2,3 or 7
+} else {
+    LDA .vduCurrentScreenMODE
+    CMP #4
+    BCC +
+}
     LSR .vduWriteCursorScreenAddressHigh                ; MODE 4,5,6: Halve value from multiplication table (high and low bytes)
     ROR                                                 ; A = A / 2 + (128*carry)
 +
@@ -218,6 +224,7 @@ no_dst_wrap
     ADC .vduScreenTopLeftAddressHigh                    ; add start of screen (high)
     TAY                                                 ; store in Y
     LDA .vduTextCursorXPosition                         ; text column
+!if 0 {
     LDX .vduBytesPerCharacter                           ; bytes per character
     DEX                                                 ; X=X-1
     BEQ .mode7Cursor                                    ; if (in MODE 7) then branch
@@ -227,6 +234,7 @@ no_dst_wrap
     ASL                                                 ; A=A*16 if entered here (MODE 2)
 .mode1or5Cursor
     ASL                                                 ; A=A*8 if entered here
+}
 .mode0346Cursor
     ASL                                                 ; A=A*4 if entered here
     ASL                                                 ;
@@ -237,7 +245,9 @@ no_dst_wrap
     ASL                                                 ; A=A*2
     BCC .skipInc                                        ; if (carry clear) branch (to add to .vduWriteCursorScreenAddressLow)
     INY                                                 ; Y=Y+1
+!if 0 {
 .mode7Cursor
+}
     CLC                                                 ; clear carry
 .skipInc
     ADC .vduWriteCursorScreenAddressLow                 ; add to .vduWriteCursorScreenAddressLow
