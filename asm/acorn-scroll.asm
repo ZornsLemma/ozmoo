@@ -20,6 +20,7 @@ src = zp ; 2 bytes
 dst = zp+2 ; 2 bytes
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
+; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line...
 
     * = $b10
 start
@@ -270,7 +271,7 @@ no_dst_wrap
 .exit8
     RTS                                                 ;
 
-.moveTextCursorToNextLine
+.moveTextCursorToNextLine ; SFTODO: this may do more than we need
     LDA #2                                              ; A=2 to check if scrolling disabled
     BIT .vduStatusByte                                  ; test VDU status byte
     BNE +                                               ; if (scrolling is disabled) then branch
