@@ -265,9 +265,10 @@ no_dst_wrap
 
 .moveTextCursorToNextLine
     ; SFTODO: Heavily tweaked, we only need cursor editing support (I think)
-    ; SFTODO: This makes no sense. If vduTextInputCursorYCoordinate (not sure which cursor that is right now) is on row 0 (vduTextWindowTop), we *decrement* it, so it wraps round to 255?!?!?!! Did I mangle the OS code? Does the OS code do this but it makes sense there? Does it even make sense here?
     BIT .vduStatusByte                                  ; test VDU status byte
     BVC SFTODORTS
+    ; We are in split cursor mode. .vduTextInputCursorYCoordinate is the Y co-ordinate of the line OSWRCH is printing on, not vduTextCursorYPosition as it is when we're not in split cursor mode. So this code adjusts that line to account for the scroll *unless* it's the top line of the text window, in which case we can't decrement it (we can't go off the top of the text window, be that the text window or the whole screen) so we just leave it alone.
+    ; SFTODO: I don't believe this case can happen in Ozmoo. We could probably be outputting on the top line of the window (the game could reposition the cursor), but we are *not* going to be scrolling the screen down when that happens, whether we're in split cursor mode or not. So this subroutine probably isn't necessary and can be removed (play around with cursor editing afterwards and check I didn't break anything).
     ; SFTODO: We might want to use the "effective" text window top (i.e. number of lines we are preserving) here rather than the OS vduTextWindowTop so that we perform this logic (which I think leaves the "input" cursor in place on the top row of the text window when scrolling occurs) on the lower window,e ven though vduTextWindowTop will always be 0
     LDA .vduTextWindowTop                               ; get top of text window
     CMP .vduTextInputCursorYCoordinate                  ; Y coordinate of text input cursor
