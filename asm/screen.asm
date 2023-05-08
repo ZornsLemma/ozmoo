@@ -916,6 +916,7 @@ draw_status_line
 	beq +
 	jmp .timegame
 +
+}
 	; score game
 	lda z_operand_value_low_arr
 	pha
@@ -1067,7 +1068,6 @@ draw_status_line
 	pla
 	sta current_window
 	jmp restore_cursor
-}
 
 !ifndef ACORN {
 .score_str !pet "Score: ",0
