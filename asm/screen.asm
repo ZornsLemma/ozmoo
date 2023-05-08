@@ -855,6 +855,16 @@ sl_moves_pos !byte 0 ; A signal that "Turns:" should not be printed
 sl_time_pos !byte 25
 }
 
+print_spaces_to_column_y
+    ; SFTODO: Can Y be >=s_screen_width and we need to handle that, or can we ignore it?
+-   cpy zp_screencolumn
+	bcc +
+    beq +
+	lda #' '
+	jsr s_printchar
+	jmp -
++   rts
+
 z_ins_show_status
 	; show_status (hardcoded size)
 ;    jmp draw_status_line
@@ -896,17 +906,9 @@ draw_status_line
 	jsr z_get_low_global_variable_value
 	jsr print_obj
 	;
-	; fill the rest of the line with spaces
-    ; SFTODONOW: This fill-with-spaces-and-overprint approach causes (minor) flicker on the status line; now I have the potential for flicker-free hardware scrolling, it might be nice if we could just print each character once as we work our way across the status line to avoid it.
-	;
--   lda zp_screencolumn
-	cmp s_screen_width
-	bcs +
-	lda #$20
-	jsr s_printchar
-	jmp -
 	;
 	; score or time game?
+    ; SFTODONOW: TEST ALL THE CASES HERE GIVEN I REWORKED THE SPACE HANDLING
 	;
 +   
 !ifdef Z3 {
@@ -926,9 +928,8 @@ draw_status_line
 	pha
 	lda z_operand_value_high_arr + 1
 	pha
-	ldx #0
 	ldy sl_score_pos
-	jsr set_cursor
+	jsr print_spaces_to_column_y
 	ldy #0
 -   lda .score_str,y
 	beq +
@@ -948,8 +949,7 @@ draw_status_line
 	lda #'/'
 	jsr s_printchar
 	jmp ++	
-+	ldx #0
-	jsr set_cursor
++   jsr print_spaces_to_column_y
 	ldy #0
 -   lda .turns_str,y
 	beq ++
@@ -1008,9 +1008,8 @@ draw_status_line
 
 .timegame
 	; time game
-	ldx #0
 	ldy sl_time_pos
-	jsr set_cursor
+	jsr print_spaces_to_column_y
 	lda #>.time_str
 	ldx #<.time_str
 	jsr printstring_raw
@@ -1055,6 +1054,8 @@ draw_status_line
 	ldx #<.ampm_str
 	jsr printstring_raw
 .statusline_done
+    ldy s_screen_width
+    jsr print_spaces_to_column_y
 !ifndef ACORN {
 	ldx darkmode
 	ldy fgcol,x 
