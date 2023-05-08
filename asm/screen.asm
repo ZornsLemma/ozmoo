@@ -976,6 +976,7 @@ draw_status_line
 	sta z_operand_value_low_arr
 	jmp .statusline_done
 
+!ifdef Z3 {
 !ifndef ACORN {
 .time_str !pet "Time: ",0
 .ampm_str !pet " AM",0
@@ -1078,6 +1079,7 @@ draw_status_line
 .score_str !text "Score: ",0
 !ifdef SUPPORT_80COL {
 .turns_str !text "Moves: ",0
+}
 }
 }
 }
