@@ -25,8 +25,9 @@ us_per_scanline = 64
 us_per_row = 8*us_per_scanline
 vsync_position = 35
 total_rows = 39
-scanline_to_start_at = 0 ; SFTODO: we could maybe allow this to go slightly negative
-scanline_to_end_at = 312-(24*8) ; SFTODO: 13, 14, 15, 16 flickers a bit towards right of top line
+; SFTODO: I am tuning these settings in mode 3, I think they will apply to mode 0 *but* for the 320 byte modes we can probably expand the window, because we only have half as many bytes to process each frame so we will get the job done quicker.
+scanline_to_start_at = 8 ; SFTODO: We are copying from line 0 into line 1 as soon as we start copying, so we mustn't start until the raster is on the top of line 1; we're slow enough that it will race ahead of us and we don't need to wait until line 2.
+scanline_to_end_at = 312-(20*8) ; SFTODO: 8 flickers, 10 flickers, 14 flickers, 20 mostly doesn't flicker but there is a bit of transient "corruption" on line 1 at times
 ; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
 ; timer_value = us_per_row*4 - 2 * us_per_scanline
 ; timer_value = us_per_row - 2
