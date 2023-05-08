@@ -188,6 +188,9 @@ dst2 = *+1
     ; if this loop copied with Y advancing rather than decrementing, and the
     ; performance impact wouldn't be huge. (We could maybe even offset src/dst
     ; and run Y from 128 to 0 to avoid an extra cpy# at the end of the loop.)
+    ; Gut feeling is this is too complex - really don't want to pay for a cpy #x
+    ; in the loop, and adjusting src/dst and working with non-0 offsets
+    ; complicates the wrap detection.
     ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
     ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
     ldx #(bytes_per_line / 128)
