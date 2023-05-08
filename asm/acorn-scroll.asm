@@ -34,7 +34,7 @@ scanline_to_end_at = 312-(18*8) ; SFTODO: 8 flickers, 10 flickers, 14 flickers, 
 timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_start_at * us_per_scanline
 timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 
-DEBUG_COLOUR_BARS = 1
+;DEBUG_COLOUR_BARS = 1
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
