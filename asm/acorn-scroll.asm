@@ -190,7 +190,10 @@ dst2 = *+1
     ; and run Y from 128 to 0 to avoid an extra cpy# at the end of the loop.)
     ; Gut feeling is this is too complex - really don't want to pay for a cpy #x
     ; in the loop, and adjusting src/dst and working with non-0 offsets
-    ; complicates the wrap detection.
+    ; complicates the wrap detection. To be fair, in the 640-bytes-per-line
+    ; case, we could do a 0-upwards loop and the bpl condition would work fine.
+    ; But this is no good for 320 byte per line modes where we need 64 byte
+    ; chunks.
     ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
     ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
     ldx #(bytes_per_line / 128)
