@@ -190,6 +190,7 @@ copy_and_zero_loop
     iny
 }
     bpl copy_and_zero_loop
+    ; SFTODO: ASSERT NO PAGE CROSSING IN THIS HOT LOOP
     clc
     lda src
     adc #128
