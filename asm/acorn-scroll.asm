@@ -71,9 +71,12 @@ start
     ; SFTODO: *SOMETIMES* (DOING REP:PRINT:UN.FA. IN BASIC DOESN'T SEEM TO TRIGGER IT, DOING *HELP IN A LOOP DOES) WE GET STUCK WHERE THE VSYNC HANDLER IS TRIGGERING TOO FREQUENTLY AND SO TIMER2 NEVER GETS A CHANCE TO FIRE AND WE THEREFORE FREEZE BECAUSE THE OSWRCH DRIVER (CORRECTLY, IN ITSELF) IS CONSTANTLY WAITING FOR A SAFE POINT TO CONTINUE
 irq_handler
     lda $fc:pha
-    lda $fe4d
+    lda $fe4d ; SFTODO: IFR - $4E IS IER, $40 IS IRB/ORB
     and #$02
     beq try_timer2
+!if 1 { ; SFTODO: KIERAN'S CODE DOESN'T SEEM TO DO THIS, EXPERIMENT ON MY PART
+    ; lda #2:sta $fe4d ; SFTODO trying to clear the interrupt - FWIW OS 1.2 *does* do this, I think the reason we don't need it is that when we pass the interrupt through to the OS, it will clear the interrupt itself
+}
     lda #<timer_value1:sta $fe68
     lda #>timer_value1:sta $fe69
     lda #1:sta current_crtc_row
