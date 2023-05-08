@@ -271,6 +271,7 @@ no_dst_wrap
 
 .crtcCursorPositionHighRegister             = 14        ;
 
+; SFTODO: Could we save a lot of code size and sacrifice only a small amount of speed if we do the HW scroll ourselves but then do a VDU 31,currentx,currenty to force the OS to recalculate other OS variables for us?
 
 ; SFTODO: Only one caller, could and probably should inline
 .setCursorSoftwareAndHardwarePosition
