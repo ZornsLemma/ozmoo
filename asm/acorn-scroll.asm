@@ -71,116 +71,6 @@ lf
     lda vdu_screen_top_left_address_high
     sta dst+1
     jsr .setCursorSoftwareAndHardwarePosition
-!if 0 { ; SFTODO TEMP SKETCHING OUT POSS OPTIMISED COPY CODE
-    lda $ffff,y ; 4+ - without y is still 4
-    sta $ffff,y ; ;5 - without y is 4
-
-
-    ldy dst
-loop2
-    lda dst+1:sta sta_patched+1
-    y = max(y, 0x8000 - 16bitdst)
-    y = max(y, 0x8000 - 16bitsrc)
-loop
-    ; SFTODO: If we can keep src and $ffff-patched page-aligned, we can save one cycle on each of these instructions in some cases
-    ; SFTODO: What I'm sketching here is wrong, because we can't page-align both src and dst - we should probably prioritise page-aligning src, given we access it twice per loop - no, that's not actually true, because sta has no page-crossing penalty in any form - but I am right for the wrong reason, as that means we need to page-align src as we use it with lda
-    lda (src),y
-.sta_patched
-    sta $ff00,y ; we save one cycle over sta (dst),y here - can't do it for the other two because we need two instructions referencing same address
-    lda #0
-    sta (src),y
-    iny
-    bne loop
-    count -= y before start of loop
-    y = max(255, count)
-    bne loop2
-
-
-
-    ldy src:lda #0:sta src ; SFTODO: correct-ish, but following anti-wrap-in-inner-loop checks will possibly *reduce* y, and that's wrong for first pass
-loop2
-    y = max(y, 0x8000-16bitsrcwith0lowbyte)
-    y = max(y, 0x8000-(16bitdst+y)) ; ???
-    count -= y
-loop
-    lda (src),y
-dst = * + 1
-    sta $ffff,y ; patched
-    lda #0
-    sta (src),y
-    iny
-    bne loop
-    inc-with-wrap src
-    inc-with-wrap dst
-    y = max(256, count) ; 256 means Y=0, of course
-    branch-if-count-ne loop2
-
-
-
-    ; SFTODO: note to self - we care about speed, but we also care about code size. we want this to be as fast as is reasonable without it getting ultra-mega-complex.
-    ; SFTODO: *maybe* if dst>=$7f00, we do a slow-but-simple copy a byte at a time? it won't be a super common case so no massive performance impact and it may save a lot of complexity elsewhere
-    ; We keep src page-aligned because lda (src),y has a page-crossing penalty; the sta instructions do not.
-    ldy src:lda #0:sta src
-loop2
-    ; SFTODO: *if* dst+y>=$8000, the following loop will go too far and we need to do something to stop it wrapping
-    ; SFTODO: Note that because src is page aligned, (src),y cannot need wrapping inside the inner loop - dst,y can though
-    count -= y
-loop
-    lda (src),y
-dst = *+1
-    sta $ffff,y ; patched
-    lda #0
-    sta (src),y
-    iny
-    bne loop
-    inc-with-wrap src
-    inc-with-wrap dst - but this is too simplistic, because dst can wrap part-way through loop
-    ldy #max(256, count) ; 256 means Y=0, of course
-    branch-if-count-ne loop2
-
-
-
-    ; SFTODO: note to self - we care about speed, but we also care about code size. we want this to be as fast as is reasonable without it getting ultra-mega-complex.
-    ; SFTODO: *maybe* if dst>=$7f00, we do a slow-but-simple copy a byte at a time? it won't be a super common case so no massive performance impact and it may save a lot of complexity elsewhere
-    ; We keep src page-aligned because lda (src),y has a page-crossing penalty; the sta instructions do not.
-    min_y=src(low byte):lda #0:sta src
-loop2
-    ; SFTODO: *if* dst+y>=$8000, the following loop will go too far and we need to do something to stop it wrapping
-    ; SFTODO: Note that because src is page aligned, (src),y cannot need wrapping inside the inner loop - dst,y can though
-    lda dst:cmp #$7f:bcs slow_loop_prep
-    y = min(min_y, 0)
-    min_y = 0 ; only relevant on first pass
-    count -= y ; SFTODO NO THIS IS BROKEN AS WRITTEN, WHAT IF WE DON'T WANT TO COPY A FULL 256 BYTES IN THE INNER LOOP? WE ONLY BREAK OUT IF Y WRAPS TO 0
-loop
-    lda (src),y
-dst = *+1
-    sta $ffff,y ; patched
-    lda #0
-    sta (src),y
-    iny
-    bne loop
-    inc-with-wrap src
-    inc-with-wrap dst - but this is too simplistic, because dst can wrap part-way through loop
-    ldy #max(256, count) ; 256 means Y=0, of course
-    branch-if-count-ne loop2
-
-slow_loop_prep
-    clc:tya:adc dst:sta dst2:lda dst+1:adc #0:sta dst2
-    ldy #0
-    ; SFTODO: I'm temporarily ignoring the fact we set src low byte to 0 earlier
-slow_loop
-    lda (src),y
-dst2 = *+1
-    sta $ffff ; patched
-    lda #0
-    sta (src),y
-    inc src-with-wrap ; because we can avoid src-related wrapping the in fast loop, we don't take any special action (beyond applying any wrap) when incing src
-    inc dst-with-wrap *and* if it wraps, dec16bitcount and escape back to fast loop
-    dec 16bitcount
-    bne slow_loop
-    ; we've done the whole copy
-
-}
     ; We copy and bump in chunks of 128 because the line length in bytes is
     ; always a multiple of 128, which means we can wrap at the top of screen
     ; memory between each chunk without any problems.
@@ -193,18 +83,28 @@ dst2 = *+1
     ; complicates the wrap detection. To be fair, in the 640-bytes-per-line
     ; case, we could do a 0-upwards loop and the bpl condition would work fine.
     ; But this is no good for 320 byte per line modes where we need 64 byte
-    ; chunks.
+    ; chunks. I did experimentally try doing iny in a 640-bytes-per-line case
+    ; and it does perhaps look slightly nicer, but I'm not sure the difference
+    ; is huge.
     ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
     ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
     ldx #(bytes_per_line / 128)
 copy_and_zero_outer_loop
+!if 1 { ; SFTODO
     ldy #127
+} else {
+    ldy #0
+}
 copy_and_zero_loop
     lda (src),y
     sta (dst),y ; SFTODO: we can save a cycle by doing dst=*+1:sta $ffff,y - this comes at no extra complexity cost really
     lda #0 ; SFTODO HACK lda #%10101010
     sta (src),y
+!if 1 { ; SFTODO
     dey
+} else {
+    iny
+}
     bpl copy_and_zero_loop
     clc
     lda src
