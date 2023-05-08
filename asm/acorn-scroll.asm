@@ -27,12 +27,14 @@ vsync_position = 35
 total_rows = 39
 ; SFTODO: I am tuning these settings in mode 3, I think they will apply to mode 0 *but* for the 320 byte modes we can probably expand the window, because we only have half as many bytes to process each frame so we will get the job done quicker.
 scanline_to_start_at = 8 ; SFTODO: We are copying from line 0 into line 1 as soon as we start copying, so we mustn't start until the raster is on the top of line 1; we're slow enough that it will race ahead of us and we don't need to wait until line 2.
-scanline_to_end_at = 312-(19*8) ; SFTODO: 8 flickers, 10 flickers, 14 flickers, 20 mostly doesn't flicker but there is a bit of transient "corruption" on line 1 at times - bumping start from 8 to 9 seems to have fixed that, 16 flickers noticeably on line 0, 18 just has a tiny bit of transient corruption on line 1 but no flicker on line 0, 18 still has transient corruption on line 1, 19 seems to be OK (with start_at still 9), dropping start to 8 still seems OK
+scanline_to_end_at = 312-(18*8) ; SFTODO: 8 flickers, 10 flickers, 14 flickers, 20 mostly doesn't flicker but there is a bit of transient "corruption" on line 1 at times - bumping start from 8 to 9 seems to have fixed that, 16 flickers noticeably on line 0, 18 just has a tiny bit of transient corruption on line 1 but no flicker on line 0, 18 still has transient corruption on line 1, 19 seems to be OK (with start_at still 9), dropping start to 8 still seems OK
 ; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
 ; timer_value = us_per_row*4 - 2 * us_per_scanline
 ; timer_value = us_per_row - 2
 timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_start_at * us_per_scanline
 timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
+
+DEBUG_COLOUR_BARS = 1
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
@@ -81,7 +83,9 @@ irq_handler
     lda #<timer_value1:sta $fe68
     lda #>timer_value1:sta $fe69
     lda #1:sta current_crtc_row
+!ifdef DEBUG_COLOUR_BARS {
     eor #7:jsr debug_set_bg
+}
     jmp return_to_os
 try_timer2
     lda $fe6d
@@ -93,7 +97,14 @@ try_timer2
     lda #<timer_value2:sta $fe68
     lda #>timer_value2:sta $fe69
 SFTODO8
-    lda current_crtc_row:and #7:eor #7:jsr debug_set_bg
+!ifdef DEBUG_COLOUR_BARS {
+    lda current_crtc_row
+    bpl +
+    lda #4
++
+    and #7:eor #7
+    jsr debug_set_bg
+}
 
 return_to_os
     pla:sta $fc
@@ -101,6 +112,8 @@ old_irq = *+1
     jmp $ffff ; patched
 current_crtc_row
     !byte 0 ; SFTODO: inline data would break relocatability but will do for now
+
+!ifdef DEBUG_COLOUR_BARS {
 debug_set_bg
     sta SFTODO9
     txa
@@ -117,6 +130,7 @@ loopSFTODO
     pla
     tax
     rts
+}
 
 
 our_wrchv
