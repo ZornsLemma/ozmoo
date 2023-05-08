@@ -88,6 +88,7 @@ lf
     ; is huge.
     ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
     ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
+    ; SFTODO: Just possibly we could realise we have only a few cases, check the initial alignment and tweak the code accordingly. For example - not thought this through properly - in 320 byte modes, see if we're at a 64 byte offset, do a 64 byte chunk first if we are then revert to 128 byte chunks for the rest of the copy. And/or always check if we're at a 128 byte offset, do a 128 byte chunk first if we are, then revert to 256 byte chunks for the rest of the copy.
     ldx #(bytes_per_line / 128)
 copy_and_zero_outer_loop
 !if 1 { ; SFTODO
