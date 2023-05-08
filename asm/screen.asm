@@ -283,6 +283,7 @@ z_ins_split_window
 	ldx z_operand_value_low_arr
 ;    jmp split_window ; Not needed since split_window follows
 
+; SFTODONOW: I think this might be a good place (*if* we have the custom OSWRCH routine present, of course) to update something on the host (we need to poke it across tube, of course) to say "preserve top N lines when scrolling", where N might be 0 (because we can unsplit)
 split_window
 	; split if <x> > 0, unsplit if <x> = 0
 	cpx #0
