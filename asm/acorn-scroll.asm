@@ -25,13 +25,13 @@ us_per_scanline = 64
 us_per_row = 8*us_per_scanline
 vsync_position = 35
 total_rows = 39
-scanline_to_interrupt_at = 40 ; SFTODO: rename "start_at"
-scanline_to_end_at = 128
+scanline_to_start_at = 0 ; SFTODO: we could maybe allow this to go slightly negative
+scanline_to_end_at = 312-(24*8) ; SFTODO: 13, 14, 15, 16 flickers a bit towards right of top line
 ; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
 ; timer_value = us_per_row*4 - 2 * us_per_scanline
 ; timer_value = us_per_row - 2
-timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_interrupt_at * us_per_scanline
-timer_value2 = (scanline_to_end_at - scanline_to_interrupt_at) * us_per_scanline
+timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_start_at * us_per_scanline
+timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
@@ -167,6 +167,10 @@ wait_for_safe_raster_position
     ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
     ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
     ; SFTODO: Just possibly we could realise we have only a few cases, check the initial alignment and tweak the code accordingly. For example - not thought this through properly - in 320 byte modes, see if we're at a 64 byte offset, do a 64 byte chunk first if we are then revert to 128 byte chunks for the rest of the copy. And/or always check if we're at a 128 byte offset, do a 128 byte chunk first if we are, then revert to 256 byte chunks for the rest of the copy.
+    ; SFTODO: Thinking out loud, check this again later:
+    ; - the inner loop here takes about 21 cycles per loop. So in 640 byte modes, it takes us over 640*21=13400 cycles to do a character row. At 64 us or 128 cycles per scanline, the raster covers a character row in 128*8=1024 cycles. So we are way, way slower than the raster.
+    ; - this means that we can allow this code to execute without tearing from the moment the raster starts to trace the top visible scan line (probably a little earlier, of course)
+    ; - we need to disallow this code from executing when we get down towards the last 13400/1024=13-ish character rows (visible or invisible) before the top visible scan line, so it has time to do the job before the memory starts to be displayed. (We can disallow *slightly* later, because we're still moving during the raster, just not as fast as it is)
     ldx #(bytes_per_line / 128)
 copy_and_zero_outer_loop
 !if 1 { ; SFTODO
