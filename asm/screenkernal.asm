@@ -533,8 +533,7 @@ s_printchar
     ; no user input happening? It might also look ugly even if there were
     ; no implementation concerns, but I'm just speculating - it might look
     ; nicer overall due to the faster scroll and reduced flicker.
-    jsr .redraw_top_line
-    jmp .printchar_oswrch_done
+    jmp .redraw_top_line
 +
 }
     lda #vdu_reset_text_window
