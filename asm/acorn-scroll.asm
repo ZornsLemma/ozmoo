@@ -240,6 +240,7 @@ no_dst_wrap
     tay
     pla
     tax
+    lda #10
     rts
 
 ; SFTODO: A LOT OF THESE AREN'T NEEDED ANY MORE (AND ANY I KEEP SHOULD BE RENAMED TO MY foo_bar_baz STYLE)

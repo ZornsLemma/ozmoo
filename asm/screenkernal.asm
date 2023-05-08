@@ -51,6 +51,9 @@
     }
 }
 
+; SFTODO: TEMP HACK - BUILD SYSTEM NEEDS TO SET THIS IF APPROPRIATE
+ACORN_HW_SCROLL_CUSTOM = 1
+
 !zone screenkernal {
 
 !ifdef Z3 {
@@ -403,7 +406,10 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
-; SFTODONOW: If we have our custom OSWRCH code, we need to avoid - ideally patch to remove completely, if only by "jmp foo" being patched over first instruction - executing this code and similar code which maintaing top_line_buffer etc. It will "work" but it's wasting time maintaining something we don't need.
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    ldy use_custom_hw_scroll
+    bne +
+}
     ldy zp_screenrow
     bne +
     sta top_line_buffer,x
@@ -470,6 +476,7 @@ s_printchar
 .printchar_end
 	ldx s_stored_x
 	ldy s_stored_y
+.SFTODORTS
 	rts
 
 .outside_current_window
@@ -502,6 +509,11 @@ s_printchar
     ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
     lda use_hw_scroll
     beq .sw_scroll
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    ; SFTODO: Although it currently only protect 1 row, the custom hw scroll can protect any number of rows, so we don't want to disable hardware scrolling regardless of the window size.
+    lda use_custom_hw_scroll
+    bne .hw_scrollSFTODO8
+}
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     beq .hw_scrollSFTODO8
@@ -514,8 +526,16 @@ s_printchar
     lda #vdu_down
     jmp oswrch
 
+.perform_line_feed_on_bottom_row2b ; SFTODO: rename
+    lda #1
+    sta s_cursors_inconsistent
 .perform_line_feed_on_bottom_row2
 !ifdef ACORN_HW_SCROLL {
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    ; SFTODO: Although it currently only protect 1 row, the custom hw scroll can protect any number of rows, so we don't want to disable hardware scrolling regardless of the window size.
+    lda use_custom_hw_scroll
+    bne .SFTODORTS
+}
     ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
     lda use_hw_scroll
     beq +
@@ -563,7 +583,7 @@ s_printchar
     bcc SFTODOHACK43
     jsr s_cursor_to_screenrowcolumn
     jsr .perform_line_feed_on_bottom_row1
-    jsr .perform_line_feed_on_bottom_row2
+    jsr .perform_line_feed_on_bottom_row2b
     jmp .printchar_end
 SFTODOHACK43
     inc zp_screenrow
@@ -589,6 +609,10 @@ s_erase_line
 	sta zp_screencolumn
 s_erase_line_from_cursor
 !ifdef ACORN_HW_SCROLL {
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    lda use_custom_hw_scroll
+    bne +
+}
     ldx zp_screenrow
     bne +
     ldx zp_screencolumn
@@ -853,6 +877,12 @@ check_user_interface_controls
 z_ins_set_colour
     ; SFTODO: THIS IS PROBABLY RIGHT, BUT CHECK - CAN/SHOULD WE JUST DO RTS???
     jmp printchar_flush
+}
+
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+; SFTODO: This needs to be allocated properly in page 4 (though it's fine here really) and it needs to be set by loader to reflect whether we have a custom driver or not. We are also checking it *instead* of checking the user-togglable hw scroll flag, which is wrong - we need to respect *both*, so to speak. But let's just get something in for now.
+use_custom_hw_scroll
+    !byte 1
 }
 
 }
