@@ -897,6 +897,7 @@ draw_status_line
 	jsr print_obj
 	;
 	; fill the rest of the line with spaces
+    ; SFTODONOW: This fill-with-spaces-and-overprint approach causes (minor) flicker on the status line; now I have the potential for flicker-free hardware scrolling, it might be nice if we could just print each character once as we work our way across the status line to avoid it.
 	;
 -   lda zp_screencolumn
 	cmp s_screen_width
