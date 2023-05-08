@@ -163,6 +163,20 @@ no_dst_wrap
     lda .vduTextCursorCRTCAddressHigh
     adc .vduBytesPerCharacterRowHigh
     sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
+!if 1 { ; SFTODO EXPERIMENTAL
+    ; vduTextCursorCRTCAddress works in a logical address space running from the screen start address to the screen start address plus vduScreenSizeHighByte pages. It therefore doesn't wrap at $8000, but does need to wrap at $8000+screen size. The actual OS routines never encounter this case, because they calculate it from scratch here based on the text cursor Y, which can never generate a value high enough to need to wrap in that logical address space. Since we are just adding vduBytesPerCharacterRow every time, if the proper OS version of this code doesn't happen to get called to do the multiplication-based version, vduTextCursorCRTCAddress will advance past the point where it needs wrapping. This is unlikely put possible; you can see it with a test program that does PRINT "Hello";:REPEAT:VDU 10:UNTIL FALSE (perhaps with a small delay after VDU 10 to help see what's going on). We don't want to rely on the OS routine happening to be called before this goes wrong, so we apply some wrapping of our own. SFTODO: I believe this is correct, but review it fresh.
+    bpl +
+    ; SFTODO: Can probably replace this sec:sbc #$80 with and #$7f
+    sec
+    sbc #$80
+    cmp .vduScreenSizeHighByte
+    bcc +
+    sec
+    lda .vduTextCursorCRTCAddressHigh
+    sbc .vduScreenSizeHighByte
+    sta .vduTextCursorCRTCAddressHigh
++
+}
     bpl +
     sec
     sbc .vduScreenSizeHighByte
