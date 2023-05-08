@@ -25,11 +25,13 @@ us_per_scanline = 64
 us_per_row = 8*us_per_scanline
 vsync_position = 35
 total_rows = 39
-scanline_to_interrupt_at = 128 + 32
+scanline_to_interrupt_at = 40 ; SFTODO: rename "start_at"
+scanline_to_end_at = 128
 ; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
 ; timer_value = us_per_row*4 - 2 * us_per_scanline
 ; timer_value = us_per_row - 2
-timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_interrupt_at * us_per_scanline
+timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_interrupt_at * us_per_scanline
+timer_value2 = (scanline_to_end_at - scanline_to_interrupt_at) * us_per_scanline
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
@@ -69,8 +71,8 @@ irq_handler
     lda $fe4d
     and #$02
     beq try_timer2
-    lda #<timer_value:sta $fe68
-    lda #>timer_value:sta $fe69
+    lda #<timer_value1:sta $fe68
+    lda #>timer_value1:sta $fe69
     lda #0 xor 7:jsr debug_set_bg
     lda #0:sta current_crtc_row
     jmp return_to_os
@@ -79,8 +81,12 @@ try_timer2
     and #$20
     beq return_to_os
     lda $fe68
+    lda current_crtc_row:bne SFTODO8
+    lda #<timer_value2:sta $fe68
+    lda #>timer_value2:sta $fe69
+SFTODO8
     inc current_crtc_row ; SFTODO: just a 0/1 flag now, not a row - rename
-    lda #4 xor 7:jsr debug_set_bg
+    lda current_crtc_row:eor #7:jsr debug_set_bg
 
 return_to_os
     pla:sta $fc
@@ -133,7 +139,7 @@ lf
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
 wait_for_safe_raster_position
     lda current_crtc_row
-    beq wait_for_safe_raster_position
+    bne wait_for_safe_raster_position
 }
     jsr .hardwareScrollUp
     lda vdu_screen_top_left_address_low
