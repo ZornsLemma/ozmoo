@@ -75,20 +75,20 @@ irq_handler
     beq try_timer2
     lda #<timer_value1:sta $fe68
     lda #>timer_value1:sta $fe69
-    lda #0 xor 7:jsr debug_set_bg
-    lda #0:sta current_crtc_row
+    lda #1:sta current_crtc_row
+    eor #7:jsr debug_set_bg
     jmp return_to_os
 try_timer2
     lda $fe6d
     and #$20
     beq return_to_os
     lda $fe68
-    lda current_crtc_row:bne SFTODO8
+    dec current_crtc_row ; SFTODO: misnamed now
+    bne SFTODO8
     lda #<timer_value2:sta $fe68
     lda #>timer_value2:sta $fe69
 SFTODO8
-    inc current_crtc_row ; SFTODO: just a 0/1 flag now, not a row - rename
-    lda current_crtc_row:eor #7:jsr debug_set_bg
+    lda current_crtc_row:and #7:eor #7:jsr debug_set_bg
 
 return_to_os
     pla:sta $fc
