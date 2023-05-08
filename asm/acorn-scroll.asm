@@ -20,6 +20,15 @@ zp = $db ; 5 bytes - VDU temporary storage, 6 bytes starting at $da SFTODO: can 
 src = zp ; 2 bytes
 dst = zp+2 ; 2 bytes
 
+irq1v = $204
+us_per_scanline = 64
+us_per_row = 8*us_per_scanline
+vsync_position = 35
+total_rows = 39
+; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
+; timer_value = us_per_row*4 - 2 * us_per_scanline
+timer_value = us_per_row - 2
+
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
 
@@ -39,7 +48,58 @@ start
     sta wrchv
     lda #>our_wrchv
     sta wrchv+1
+    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm
+    sei
+    lda #$82
+    sta $fe4e
+    lda #$a0
+    sta $fe6e
+    lda irq1v:sta old_irq
+    lda irq1v+1:sta old_irq+1
+    lda #<irq_handler:sta irq1v
+    lda #>irq_handler:sta irq1v+1
+    cli
+
     rts
+
+irq_handler
+    lda $fc:pha
+    lda $fe4d
+    and #$02
+    beq try_timer2
+    lda #<timer_value:sta $fe68
+    lda #>timer_value:sta $fe69
+    lda #0:sta current_crtc_row
+    jmp return_to_os
+try_timer2
+    lda $fe6d
+    and #$20
+    beq return_to_os
+    lda #<timer_value:sta $fe68
+    lda #>timer_value:sta $fe69
+    inc current_crtc_row
+
+    txa
+    pha
+    ldx #7
+    lda current_crtc_row
+    and #7
+    eor #7
+loopSFTODO
+    sta $fe21
+    clc
+    adc #16
+    dex
+    bpl loopSFTODO
+    pla
+    tax
+
+return_to_os
+    pla:sta $fc
+old_irq = *+1
+    jmp $ffff ; patched
+current_crtc_row
+    !byte 0 ; SFTODO: inline data would break relocatability but will do for now
 
 our_wrchv
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not interested in passed through ASAP.
