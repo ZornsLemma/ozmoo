@@ -58,6 +58,8 @@ start
     sta $fe4e
     lda #$a0
     sta $fe6e
+    lda #0
+    sta $fe6b
     lda irq1v:sta old_irq
     lda irq1v+1:sta old_irq+1
     lda #<irq_handler:sta irq1v
