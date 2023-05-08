@@ -82,7 +82,7 @@ try_timer2
     lda $fe6d
     and #$20
     beq return_to_os
-    lda $fe68
+    lda $fe68 ; SFTODO: poss redundant if we are going to set the timer again by writing to fe68/69 below
     dec current_crtc_row ; SFTODO: misnamed now
     bne SFTODO8
     lda #<timer_value2:sta $fe68
@@ -143,6 +143,7 @@ wait_for_safe_raster_position
     lda current_crtc_row
     bne wait_for_safe_raster_position
 }
+    ; SFTODO: I think this is a good spot to do the hardware scroll. We shouldn't start this until after vsync, and if we start a little too close to the next vsync, the chances are we'll finish our update before the raster reaches the last bit of data we're moving around. If we did the hw scroll at the end of the copy, we might end up getting a frame where the top window has been moved in  screen RAM but the hw scroll hasn't happened yet and we'd see it in the wrong place.
     jsr .hardwareScrollUp
     lda vdu_screen_top_left_address_low
     sta dst
