@@ -25,7 +25,7 @@ us_per_scanline = 64
 us_per_row = 8*us_per_scanline
 vsync_position = 35
 total_rows = 39
-scanline_to_interrupt_at = 128
+scanline_to_interrupt_at = 128 + 32
 ; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
 ; timer_value = us_per_row*4 - 2 * us_per_scanline
 ; timer_value = us_per_row - 2
@@ -129,7 +129,12 @@ lf
     sta src
     lda vdu_screen_top_left_address_high
     sta src+1
+!if 1 { ; SFTODO: EXPERIMENT
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
+wait_for_safe_raster_position
+    lda current_crtc_row
+    beq wait_for_safe_raster_position
+}
     jsr .hardwareScrollUp
     lda vdu_screen_top_left_address_low
     sta dst
