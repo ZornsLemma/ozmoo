@@ -189,7 +189,7 @@ dst2 = *+1
     ; performance impact wouldn't be huge. (We could maybe even offset src/dst
     ; and run Y from 128 to 0 to avoid an extra cpy# at the end of the loop.)
     ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
-    ; the same guarantee.
+    ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
     ldx #(bytes_per_line / 128)
 copy_and_zero_outer_loop
     ldy #127
