@@ -30,6 +30,7 @@ dst = zp+2 ; 2 bytes
     * = $b10 ; SFTODO: SUPER TEMP LOCATION, NOT ACCEPTABLE FOR FINAL VSN ON ANY PLATFORM
 start
     ; SFTODO: Don't try to protect against being reinstalled for now
+    ; SFTODO: A final version would discard this code afterwards rather than having it stick around.
     lda wrchv
     sta parent_wrchv
     lda wrchv+1
@@ -171,7 +172,7 @@ no_dst_wrap
     sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
 !if 1 { ; SFTODO EXPERIMENTAL
     ; vduTextCursorCRTCAddress works in a logical address space running from the screen start address to the screen start address plus vduScreenSizeHighByte pages. It therefore doesn't wrap at $8000, but does need to wrap at $8000+screen size. The actual OS routines never encounter this case, because they calculate it from scratch here based on the text cursor Y, which can never generate a value high enough to need to wrap in that logical address space. Since we are just adding vduBytesPerCharacterRow every time, if the proper OS version of this code doesn't happen to get called to do the multiplication-based version, vduTextCursorCRTCAddress will advance past the point where it needs wrapping. This is unlikely put possible; you can see it with a test program that does PRINT "Hello";:REPEAT:VDU 10:UNTIL FALSE (perhaps with a small delay after VDU 10 to help see what's going on). We don't want to rely on the OS routine happening to be called before this goes wrong, so we apply some wrapping of our own. SFTODO: I believe this is correct, but review it fresh.
-    ; SFTODO: If we calculated $80+.vduScreenSizeHighByte earlier and saved it somewhere (even patching cmp # instruction here, maybe), we wouldn't need to do the and #$7f here and therefore we wouldn't corrupt A and we could avoid the lda to restore it before we subtract just below.
+    ; SFTODO: If we calculated $80+.vduScreenSizeHighByte earlier and saved it somewhere (even patching cmp # instruction here, maybe), we wouldn't need to do the and #$7f here and therefore we wouldn't corrupt A and we could avoid the lda to restore it before we subtract just below. We could also probably get rid of the bpl + - that might (only *might*) slow things down, but just a tiny fraction - it might also be a negligible win, depending on statistics of how often the bpl + avoids the following check. Plus of course if just do a straight cmp we could avoid the sta immediately preceding us, and just store after any wrapping.
     bpl +
     and #$7f ; subtract $80
     cmp .vduScreenSizeHighByte
@@ -187,7 +188,7 @@ no_dst_wrap
     sbc .vduScreenSizeHighByte
 +
     sta .vduWriteCursorScreenAddressHigh
-    LDA .vduTextCursorCRTCAddressHigh                   ; text cursor CRTC address
+    LDA .vduTextCursorCRTCAddressHigh                   ; text cursor CRTC address SFTODO: we could save a byte by tay-ing above (as well as sta-ing) and doing tya here
     LDY #.crtcCursorPositionHighRegister                ; Y=14
     ; fall through...
 .setHardwareScreenOrCursorAddress
@@ -227,6 +228,8 @@ no_dst_wrap
 ; SFTODO: If we have a "number of lines to protect" variable which Ozmoo can poke to control this, it being 0 would naturally mean "disable this code". I am not sure off top of my head if we want/need that, but I guess we might.
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
+
+; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
 
 end
 
