@@ -53,14 +53,13 @@ timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 evntv_handler
     ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
     cmp #4:bne jmp_parent_evntv
-    pha
     lda #<timer_value1:sta $fe68
     lda #>timer_value1:sta $fe69
     lda #1:sta current_crtc_row
 !ifdef DEBUG_COLOUR_BARS {
     eor #7:jsr debug_set_bg
 }
-    pla
+    lda #4
 jmp_parent_evntv
 old_evntv = *+1
     jmp $ffff ; patched
