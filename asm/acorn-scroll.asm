@@ -135,6 +135,7 @@ lf
     sta src:sta src2
     lda vdu_screen_top_left_address_high
     sta src+1:sta src2+1
+    ; Page in shadow RAM; this is a no-op if we have no shadow RAM.
     lda #1
 jsr_shadow_paging_control1
     jsr $ffff ; patched
@@ -227,6 +228,7 @@ no_dsth_inc
 !ifdef DEBUG_COLOUR_BARS {
     lda #5 xor 7:jsr debug_set_bg
 }
+    ; Page in main RAM; this is a no-op if we have no shadow RAM.
     lda #0
 jsr_shadow_paging_control2
     jsr $ffff ; patched
