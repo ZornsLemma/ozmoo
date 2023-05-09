@@ -1,3 +1,6 @@
+M128 with current hacky fast hw scrolling in mode 3 $009836
+M128 with commit 20e4b7f25adcb10b6b7a493e036f939851620372 $00a714 (didn't note the subtracted bit, but should be consistent really) - so this is approx 9% faster *and* looks nicer (and if you're willing to give up some niceness and increase the raster range where we're willing to do our custom scroll the performance might improve quite a bit)
+
 B 144K SWR no shadow + ext tube, hacked hardware scrolling code, mode 3 - $005496 (-$88c) - didn't notice any corruption as benchmark scrolled past at normal speed - just repeated this and got $00549e, so that's reassuring
 Before this hack (commit 20e4b7f25adcb10b6b7a493e036f939851620372) $006fbc (-$8b6)
 That's a 26% reduction in benchmark runtime, and while still a bit flickery I think (hard to be sure under emulation, and I may be able to make it a smidge "nicer" anyway) it actually looks slightly nicer
