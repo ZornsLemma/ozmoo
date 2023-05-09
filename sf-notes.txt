@@ -1,5 +1,6 @@
 M128 with current hacky fast hw scrolling in mode 3 $009836
 M128 with commit 20e4b7f25adcb10b6b7a493e036f939851620372 $00a714 (didn't note the subtracted bit, but should be consistent really) - so this is approx 9% faster *and* looks nicer (and if you're willing to give up some niceness and increase the raster range where we're willing to do our custom scroll the performance might improve quite a bit)
+Somewhat arbitrarily setting 20 instead of 35 in scanline_to_end_at calculation (which didn't flicker much, I didn't actually see it at all but wasn't watching consistently) we get $93c7, which is approx 11% faster than commit 20e.... So without the tube FIFO and the parallel processing to help us out, we are paying quite a heavy price for seeking absolutely no flicker.
 
 B 144K SWR no shadow + ext tube, hacked hardware scrolling code, mode 3 - $005496 (-$88c) - didn't notice any corruption as benchmark scrolled past at normal speed - just repeated this and got $00549e, so that's reassuring
 Before this hack (commit 20e4b7f25adcb10b6b7a493e036f939851620372) $006fbc (-$8b6)
