@@ -174,7 +174,35 @@ wait_for_safe_raster_position
     ; - the inner loop here takes about 21 cycles per loop. So in 640 byte modes, it takes us over 640*21=13400 cycles to do a character row. At 64 us or 128 cycles per scanline, the raster covers a character row in 128*8=1024 cycles. So we are way, way slower than the raster.
     ; - this means that we can allow this code to execute without tearing from the moment the raster starts to trace the top visible scan line (probably a little earlier, of course)
     ; - we need to disallow this code from executing when we get down towards the last 13400/1024=13-ish character rows (visible or invisible) before the top visible scan line, so it has time to do the job before the memory starts to be displayed. (We can disallow *slightly* later, because we're still moving during the raster, just not as fast as it is)
-    ; SFTODO: *Only* for one line (which a fixed address) in each of mode 3 and mode 6 can we get a wrap *within* a 320/640 byte line. It feels to me like this must make it fairly easy for us to do a much tighter copy loop which works a line at a time and special case that somehow.
+    ; SFTODO: *Only* for one line (which a fixed address - $7f40 in mode 6, $7f80 in mode 3) in each of mode 3 and mode 6 can we get a wrap *within* a 320/640 byte line. It feels to me like this must make it fairly easy for us to do a much tighter copy loop which works a line at a time and special case that somehow.
+!if 0 { ; SFTODO SKETCHING/THINKING OUT LOUD
+    ldx #bytes_per_line / 256
+    ; On the first pass we are copying 64 or 128 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
+    initial_y = 256 - (bytes_per_line % 256)
+    ldy #initial_y
+    sec:lda src:sbc #initial_y:sta src:deccc src+1
+    sec:lda dst:sbc #initial_y:sta dst:deccc dst+1
+
+    lda src:sta src2:lda src+1:sta src2+1 ; SFTODO: optimise away if easy
+copy_and_zero_outer_loop
+copy_and_zero_inner_loop
+src = *+1
+    lda $ffff,y ; patched
+dst = *+1
+    sta $ffff,y ; patched
+    lda #0
+src2 = *+1
+    sta $ffff,y ; patched
+    iny
+    bne copy_and_zero_inner_loop
+    ; SFTODO: IGNORING OUR AWKWARD CASE, THESE CANNOT WRAP BECAUSE THEY ARE WITHIN A LINE
+    inc src+1:inc src2+1
+    inc dst+1
+    dex
+    bne copy_and_zero_outer_loop
+}
+
+
     ldx #(bytes_per_line / 128)
 copy_and_zero_outer_loop
 !if 1 { ; SFTODO
