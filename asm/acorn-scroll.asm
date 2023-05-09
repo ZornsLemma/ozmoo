@@ -18,8 +18,6 @@ evntv = $220
 bytes_per_line = 640
 
 zp = $db ; 5 bytes - VDU temporary storage, 6 bytes starting at $da SFTODO: can I get away with this? simply by experiment I think $da is used by the code I'm going to call in the OS, but the others are OK
-src = zp ; 2 bytes
-dst = zp+2 ; 2 bytes
 
 irq1v = $204
 us_per_scanline = 64
@@ -164,9 +162,9 @@ lf
     tya
     pha
     lda vdu_screen_top_left_address_low
-    sta src
+    sta src:sta src2
     lda vdu_screen_top_left_address_high
-    sta src+1
+    sta src+1:sta src2+1
 !if 1 { ; SFTODO: EXPERIMENT
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
 wait_for_safe_raster_position
@@ -210,10 +208,13 @@ copy_and_zero_outer_loop
     ldy #0
 }
 copy_and_zero_loop
-    lda (src),y
-    sta (dst),y ; SFTODO: we can save a cycle by doing dst=*+1:sta $ffff,y - this comes at no extra complexity cost really
+src = *+1
+    lda $ffff,y ; patched
+dst = *+1
+    sta $ffff,y ; patched
     lda #0 ; SFTODO HACK lda #%10101010
-    sta (src),y
+src2 = *+1
+    sta $ffff,y ; patched
 !if 1 { ; SFTODO
     dey
 } else {
@@ -224,20 +225,22 @@ copy_and_zero_loop
     clc
     lda src
     adc #128
-    sta src
-    bcc no_src_wrap
-    inc src+1
+    sta src:sta src2
+    bcc no_srch_inc
+    lda src+1
+    adc #0 ; carry is set, so adds 1
     bpl no_src_wrap
     sec
-    lda src+1
     sbc vdu_screen_size_high_byte
-    sta src+1
 no_src_wrap
+    sta src+1:sta src2+1
     clc
+no_srch_inc
+    ; clc - redundant
     lda dst
     adc #128
     sta dst
-    bcc no_dst_wrap
+    bcc no_dsth_inc
     inc dst+1
     bpl no_dst_wrap
     sec
@@ -245,6 +248,7 @@ no_src_wrap
     sbc vdu_screen_size_high_byte
     sta dst+1
 no_dst_wrap
+no_dsth_inc
     dex
     bne copy_and_zero_outer_loop
 !ifdef DEBUG_COLOUR_BARS {
