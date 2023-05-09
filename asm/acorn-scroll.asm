@@ -134,6 +134,9 @@ lf
     sta src:sta src2
     lda vdu_screen_top_left_address_high
     sta src+1:sta src2+1
+    lda #1
+jsr_shadow_paging_control1
+    jsr $ffff ; patched
 !if 1 { ; SFTODO: EXPERIMENT
     ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
 wait_for_safe_raster_position
@@ -223,11 +226,15 @@ no_dsth_inc
 !ifdef DEBUG_COLOUR_BARS {
     lda #5 xor 7:jsr debug_set_bg
 }
+    lda #0
+jsr_shadow_paging_control2
+    jsr $ffff ; patched
     pla
     tay
     pla
     tax
     lda #10
+null_shadow_driver
     rts
 
 ; SFTODO: A LOT OF THESE AREN'T NEEDED ANY MORE (AND ANY I KEEP SHOULD BE RENAMED TO MY foo_bar_baz STYLE)
@@ -375,8 +382,27 @@ host_type_in_x
 just_rts
     rts
 not_electron
+    ; We can't support fast hardware scrolling unless we can page in any shadow RAM. If we have no shadow RAM, that's fine but for consistency we provide a null shadow paging driver. SFTODO: This slightly penalises a machine with no shadow RAM, but probably not so much that we really need to care.
+    ; SFTODO: We need to special case the B+ and *if* we have private RAM available  (we can check shadow_state_b_plus_private) we need to copy the scroll code in there with a low memory stub. For the moment this will "work" and nicely disable fast hw scrolling on B+.
+    ; SFTODO: Rather than explicitly test for Electron MRB shadow mode, the fact we have no shadow RAM paging control is probably what we should check - this hides some of the logic in a single place (in the shadow driver) instead of duplicating tests here.
+    ldx #<null_shadow_driver
+    ldy #>null_shadow_driver
+    lda shadow_state
+    cmp #shadow_state_none
+    beq supported_bbc_with_shadow_driver_yx
+    cmp #shadow_state_first_driver
+    bcc just_rts ; we have shadow RAM but no driver
+    ldy shadow_paging_control_ptr + 1
+    beq just_rts ; we have no shadow paging control
+    ldx shadow_paging_control_ptr
+supported_bbc_with_shadow_driver_yx
+    ; We have shadow paging control, so patch up this code to call it.
+    stx jsr_shadow_paging_control1 + 1
+    stx jsr_shadow_paging_control2 + 1
+    sty jsr_shadow_paging_control1 + 2
+    sty jsr_shadow_paging_control2 + 2
     lda #1
-    sta fast_scroll_status
+    sta fast_scroll_status ; SFTODO: maybe this variable should have _host appended, to avoid confusion if I accidentally use it in the core Ozmoo code (which runs on tube if we have one, of course)
 
     ; SFTODONOW: At some point this code will load in one place (probably page &9/&A) and copy the relevant driver to the final place (wherever that is), as the shadow driver executable does, but for now it just loads into the final place.
 
