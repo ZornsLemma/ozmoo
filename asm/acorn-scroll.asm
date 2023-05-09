@@ -13,6 +13,8 @@ vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 wrchv = $20e
 evntv = $220
 
+fast_scroll_screen_mode = $70 ; SFTODO: QUICK HACKY CHOICE, I THINK THIS IS OK (IT'S FOR INIT ONLY)
+fast_scroll_status = $71 ; SFTODO DITTO
 
 ; SFTODO: for now just assume 80 column mode - though these values are available at $352/$353 as that's where OS keeps them
 bytes_per_line = 640
@@ -41,39 +43,6 @@ timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 ; SFTODO: A quick test on a B+ in non-shadow mode suggests this works. It kinda-sorta works on a M128 in non-shadow mode, but some bits of text end up being invisible, so I must still be doing something wrong. This might be a good thing to investigate next. DFS 2.24 does *HELP (which is what I was testing with) oddly, and even on a M128 with this code *not* running, *SPOOL output doesn't contain DFS *HELP. I suspect this is something to do with its logic to avoid infinite recursion when *SPOOLing. It may or may not be related to this code's problems, but it may be this code works fine on a M128 in "normal" use, and it only has to deal with Ozmoo's output. Yes, superficial testing (can't test Ozmoo itself as it forces shadow RAM and this doesn't support that yet) suggests ordinary output works. Would be curious to find out how DFS 2.24 is feeding these characters to the screen in a way that bypasses WRCHV, but ultimately it's probably not an issue.
 
 ; SFTODO: If we inline the single-use subroutines, I think this code is completely relocatable, which is handy, as we ideally don't want multiple copies of it inside the installation executable, and we need to be able to copy part of it into private RAM on the B+ and to insert shadow page in/out tsb/trb instructions before/after the main body of the "our new logic" part of the WRCHV handler.
-
-    * = $b10 ; SFTODO: SUPER TEMP LOCATION, NOT ACCEPTABLE FOR FINAL VSN ON ANY PLATFORM
-start
-    ; SFTODO: Don't try to protect against being reinstalled for now
-    ; SFTODO: A final version would discard this code afterwards rather than having it stick around.
-    lda wrchv
-    sta parent_wrchv
-    lda wrchv+1
-    sta parent_wrchv+1
-    lda #<our_wrchv
-    sta wrchv
-    lda #>our_wrchv
-    sta wrchv+1
-    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm
-    sei
-    lda #$82
-    sta $fe4e
-    lda #$a0
-    sta $fe6e
-    lda #0
-    sta $fe6b
-    lda irq1v:sta old_irq
-    lda irq1v+1:sta old_irq+1
-    lda #<irq_handler:sta irq1v
-    lda #>irq_handler:sta irq1v+1
-    lda evntv:sta old_evntv
-    lda evntv+1:sta old_evntv+1
-    lda #<evntv_handler:sta evntv
-    lda #>evntv_handler:sta evntv+1
-    cli
-    lda #14:ldx #4:jsr osbyte ; SFTODO: MAGIC NUM
-
-    rts
 
 ; We hook evntv to detect vsync rather than checking for this on irq1v. This
 ; avoids missing vsync events where they occur after we check but before the OS
@@ -373,9 +342,81 @@ no_dsth_inc
 
 ; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
 
-end
 
-    +assert * < $d00
+init
+    ; Examine the current hardware and decide if we can support fast hardware
+    ; scrolling on it; if not the Ozmoo executable will fall back to slow
+    ; hardware scrolling or software scrolling as appropriate.
+    lda #0
+    sta fast_scroll_status
+    ; Are we running on an Integra-B? We check for this explicitly as the
+    ; Integra-B spoofs the result of osbyte_read_host.
+    lda #$49
+    ldx #$ff
+    ldy #0
+    jsr osbyte
+    cpx #$49
+    bne not_integra_b
+    ; We don't need to handle the Integra-B specially here, except for
+    ; recognising that we are on a model B despite its spoofing.
+    ldx #1
+    bne host_type_in_x ; always_branch
+not_integra_b
+    ; Determine the host type.
+    lda #osbyte_read_host
+    ldx #1
+    jsr osbyte
+host_type_in_x
+    cpx #1
+    bcs not_electron
+    ; We're on an Electron.
+    ; SFTODONOW: For the moment this doesn't support fast hardware scrolling. I intend to implement this, so later we will need to check for MRB in shadow mode here and use Electron fast hw scrolling code provided we are't in MRB shadow mode.
+    ; Return with fast_scroll_status 0.
+just_rts
+    rts
+not_electron
+    lda #1
+    sta fast_scroll_status
+
+    ; SFTODONOW: At some point this code will load in one place (probably page &9/&A) and copy the relevant driver to the final place (wherever that is), as the shadow driver executable does, but for now it just loads into the final place.
+
+    ; Check if we've already claimed vectors and do nothing if so. We don't
+    ; expect this to happen, but since this is discardable init code we might as
+    ; well check.
+    lda wrchv
+    ldx wrchv+1
+    cmp #<our_wrchv
+    bne not_already_claimed
+    cpx #>our_wrchv
+    beq just_rts ; branch if we've already claimed wrchv
+not_already_claimed
+    ; We haven't already claimed vectors, so set up ready for action and claim the vectors.
+    sei
+    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm Need proper cvomments
+    sta parent_wrchv
+    stx parent_wrchv+1
+    lda #<our_wrchv
+    sta wrchv
+    lda #>our_wrchv
+    sta wrchv+1
+    lda irq1v:sta old_irq ; SFTODO: inconsistent - old_irq and old_evntv but parent_wrchv
+    lda irq1v+1:sta old_irq+1
+    lda #<irq_handler:sta irq1v
+    lda #>irq_handler:sta irq1v+1
+    lda evntv:sta old_evntv
+    lda evntv+1:sta old_evntv+1
+    lda #<evntv_handler:sta evntv
+    lda #>evntv_handler:sta evntv+1
+    lda #$82
+    sta $fe4e
+    lda #$a0
+    sta $fe6e
+    lda #0
+    sta $fe6b
+    cli
+    lda #14:ldx #4:jsr osbyte ; SFTODO: MAGIC NUM
+
+    rts
 
 ; SFTODO: Some thoughts on making this work properly without hacks:
 ;
@@ -410,3 +451,5 @@ end
 ; Since I am going to have to keep the current text window based scrolling around for soft scroll mode, I should make sure to tidy that up as much as possible while doing the tidy up of the existing hw scroll approach. I suspect unfortunately I *will* need/want to allow the OS to scroll after printing a text character at bottom right in soft scroll mode, as the slower software scrolling might make it more obvious that the last letter doesn't appear until after the scroll. I should maybe test it, it might not be obvious. Hmm, a quick test with a BASIC program doing it in mode 3 suggests it might look OK. Perhaps go with it, and if I need to reintroduce the old approach later it may well be done better starting from a cleaner simpler code base anyway.
 
 ; SFTODO: Although that code was probably written without much care about code size, STEM has a highly-optimised line-oriented memmove which would potentially be ideal for copying the line data when we scroll (especially if we start to do it for >1 line of data). Definitely worth taking a look. (It does also have to run from ROM, so there may be more scope for better or simpler optimisation using self-modifying code.)
+
+; SFTODO: Thinking out loud - this code needs to know what mode it is in, because it needs to tweak its timings accordingly. We don't really want to waste bytes or cycles (especially bytes, I suspect) adapting on the fly, unless it's very cheap, because this code is probably fairly large already and it's best if the installation executable can set this up and be done with it to keep the runtime memory requirement down. The trouble is that we aren't in the final screen mode when the installation executable will be loaded, so we may need to pass it through as we do with the host cache. I guess this is fine-ish, because we can poke it into memory from the loader and it only has to remain valud there until this code initisalises itself.

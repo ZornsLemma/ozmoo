@@ -51,9 +51,6 @@
     }
 }
 
-; SFTODO: TEMP HACK - BUILD SYSTEM NEEDS TO SET THIS IF APPROPRIATE
-ACORN_HW_SCROLL_CUSTOM = 1
-
 !zone screenkernal {
 
 !ifdef Z3 {
@@ -407,7 +404,7 @@ s_printchar
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
 !ifdef ACORN_HW_SCROLL_CUSTOM {
-    ldy use_custom_hw_scroll
+    ldy use_custom_hw_scroll ; SFTODO: THIS NAME IS INCONSISTENT IN ORDER WITH ACORN_HW_SCROLL_CUSTOM MACRO NAME
     bne +
 }
     ldy zp_screenrow
@@ -877,12 +874,6 @@ check_user_interface_controls
 z_ins_set_colour
     ; SFTODO: THIS IS PROBABLY RIGHT, BUT CHECK - CAN/SHOULD WE JUST DO RTS???
     jmp printchar_flush
-}
-
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-; SFTODO: This needs to be allocated properly in page 4 (though it's fine here really) and it needs to be set by loader to reflect whether we have a custom driver or not. We are also checking it *instead* of checking the user-togglable hw scroll flag, which is wrong - we need to respect *both*, so to speak. But let's just get something in for now.
-use_custom_hw_scroll
-    !byte 1
 }
 
 }

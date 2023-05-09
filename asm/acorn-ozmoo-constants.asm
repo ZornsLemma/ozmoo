@@ -311,6 +311,13 @@ wordoffset
 }
 	* = * + 1
 
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+use_custom_hw_scroll
+} else {
+textend
+}
+	* = * + 1
+
 low_fixed_gap_end = *
 !if * >= resident_integer_x {
 	!error "Fixed allocations have overflowed resident integer space"
@@ -798,7 +805,9 @@ numwords   +allocate 1
 !ifdef ACORN_RELOCATABLE {
 wordoffset +allocate 1
 }
+!ifdef ACORN_HW_SCROLL_CUSTOM {
 textend    +allocate 1
+}
 wordstart  +allocate 1
 wordend    +allocate 1
 ignore_unknown_words +allocate 1

@@ -1333,6 +1333,17 @@ def make_insv_executable():
     return e
 
 
+def make_fast_hw_scroll_executable():
+    # SFTODO: Location of this is an utter hack right now
+    workspace_start = 0xb10
+    workspace_end = 0xd00
+    e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, [])
+    init = e.labels['init']
+    assert e.start_addr + len(e.binary()) <= workspace_end
+    e.exec_addr = host | init
+    return e
+
+
 def make_turbo_test_executable():
     return Executable("acorn-turbo-test.asm", "TURBO", None, 0xd0, turbo_supported_args)
 
@@ -1736,6 +1747,7 @@ def parse_args():
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
+    group.add_argument("--slow-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
     group.add_argument("--no-runtime-info", action="store_true", help="disable debug info at runtime")
     group.add_argument("--debug-assert", action="store_true", help="include debug assertion code")
@@ -2002,6 +2014,10 @@ def make_disc_image():
         ozmoo_base_args += ["-DCHECK_ERRORS=1"]
     if cmd_args.min_mode <= 3:
         ozmoo_base_args += ["-DSUPPORT_80COL=1"]
+    if not cmd_args.slow_hw_scroll:
+        # SFTODO: If some of our executables can *never* use HW scrolling, we shouldn't set this option (it will bloat their code slightly). Right now that is true of the Electron, but since I intend to add fast HW scrolling for Electron without MRB, I won't faff excluding this from the Electron build.
+        # SFTODO: Rename this macro ACORN_HW_SCROLL_FAST?
+        ozmoo_base_args += ["-DACORN_HW_SCROLL_CUSTOM=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -2111,6 +2127,8 @@ def make_disc_image():
     disc_contents += [loader, shaddrv_executable, findswr_executable]
     if not cmd_args.no_history:
         disc_contents.append(make_insv_executable())
+    if not cmd_args.slow_hw_scroll:
+        disc_contents.append(fast_hw_scroll_executable)
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
         disc2_contents = []
@@ -2332,6 +2350,8 @@ check_if_special_game()
 boot_file = make_boot()
 shaddrv_executable = make_shaddrv_executable()
 findswr_executable = make_findswr_executable()
+if not cmd_args.slow_hw_scroll:
+    fast_hw_scroll_executable = make_fast_hw_scroll_executable()
 
 single_to_double_sided = False
 if not cmd_args.never_defer_output:
@@ -2394,3 +2414,5 @@ show_deferred_output()
 # SFTODO: Is there any prospect of shrinking the interpreter a bit by not include upper window support in Z3 if bit 5 of flags 1 in the header is not set? I don't know off top of my head if this can change at runtime (probably not, but maybe it is technically allowed) or if it would be easy/worthwhile to omit the necessary code. (Or most of it, I imagine we'd still have some e.g. data allocated for it, but we might be able to omit some stuff.)
 
 # SFTODONOW: Have I lost ability to run HH in mode 3 on a B with PAGE=&1900, or did that not work before either?
+
+# SFTODO: I should probably rationalise the naming between the acorn-foo.asm files for the little executable programs, the make-acorn variables which correspond to them and so forth - e.g. if the on-disc file is called "foo" the file should probably be called "acorn-foo.asm" not "acorn-fooble.asm", and associated macros etc should probably be consistent too.
