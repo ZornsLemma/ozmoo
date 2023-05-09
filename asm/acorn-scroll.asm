@@ -11,6 +11,7 @@ vdu_screen_size_high_byte = $354
 vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 
 wrchv = $20e
+evntv = $220
 
 
 ; SFTODO: for now just assume 80 column mode - though these values are available at $352/$353 as that's where OS keeps them
@@ -67,27 +68,38 @@ start
     lda irq1v+1:sta old_irq+1
     lda #<irq_handler:sta irq1v
     lda #>irq_handler:sta irq1v+1
+    lda evntv:sta old_evntv
+    lda evntv+1:sta old_evntv+1
+    lda #<evntv_handler:sta evntv
+    lda #>evntv_handler:sta evntv+1
     cli
+    lda #14:ldx #4:jsr osbyte ; SFTODO: MAGIC NUM
 
     rts
 
-    ; SFTODO: *SOMETIMES* (DOING REP:PRINT:UN.FA. IN BASIC DOESN'T SEEM TO TRIGGER IT, DOING *HELP IN A LOOP DOES) WE GET STUCK WHERE THE VSYNC HANDLER IS TRIGGERING TOO FREQUENTLY AND SO TIMER2 NEVER GETS A CHANCE TO FIRE AND WE THEREFORE FREEZE BECAUSE THE OSWRCH DRIVER (CORRECTLY, IN ITSELF) IS CONSTANTLY WAITING FOR A SAFE POINT TO CONTINUE
-irq_handler
-    lda $fc:pha
-    lda $fe4d ; SFTODO: IFR - $4E IS IER, $40 IS IRB/ORB
-    and #$02
-    beq try_timer2
-!if 1 { ; SFTODO: KIERAN'S CODE DOESN'T SEEM TO DO THIS, EXPERIMENT ON MY PART
-    ; lda #2:sta $fe4d ; SFTODO trying to clear the interrupt - FWIW OS 1.2 *does* do this, I think the reason we don't need it is that when we pass the interrupt through to the OS, it will clear the interrupt itself
-}
+; We hook evntv to detect vsync rather than checking for this on irq1v. This
+; avoids missing vsync events where they occur after we check but before the OS
+; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
+; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
+evntv_handler
+    ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
+    cmp #4:bne jmp_parent_evntv
+    pha
     lda #<timer_value1:sta $fe68
     lda #>timer_value1:sta $fe69
     lda #1:sta current_crtc_row
 !ifdef DEBUG_COLOUR_BARS {
     eor #7:jsr debug_set_bg
 }
-    jmp return_to_os
-try_timer2
+    pla
+jmp_parent_evntv
+old_evntv = *+1
+    jmp $ffff ; patched
+
+     ; SFTODO: *SOMETIMES* (DOING REP:PRINT:UN.FA. IN BASIC DOESN'T SEEM TO TRIGGER IT, DOING *HELP IN A LOOP ON B-EM'S B 1770 CONFIG DOES) WE GET STUCK  - I REALLY DON'T KNOW WHY
+
+irq_handler
+    lda $fc:pha
     lda $fe6d
     and #$20
     beq return_to_os
@@ -105,7 +117,6 @@ SFTODO8
     and #7:eor #7
     jsr debug_set_bg
 }
-
 return_to_os
     pla:sta $fc
 old_irq = *+1
