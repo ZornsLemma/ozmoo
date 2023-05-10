@@ -2126,10 +2126,10 @@ def make_disc_image():
     # smarter about including it, but really the cases where it's not useful aren't all that likely
     # or interesting.
     disc_contents += [loader, shaddrv_executable, findswr_executable]
-    if not cmd_args.no_history:
-        disc_contents.append(make_insv_executable())
     if not cmd_args.slow_hw_scroll:
         disc_contents.append(fast_hw_scroll_executable)
+    if not cmd_args.no_history:
+        disc_contents.append(make_insv_executable())
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
         disc2_contents = []
