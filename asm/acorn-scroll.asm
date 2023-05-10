@@ -29,7 +29,10 @@ us_per_scanline = 64
 us_per_row = 8*us_per_scanline
 vsync_position = 35
 total_rows = 39
-frame_time_us = total_rows * us_per_row - 2 * us_per_scanline
+SFTODO99 = total_rows * us_per_row ; SFTODO: idea is that as we're comparing against timer most of the time (not loading it) we don't want the 2*us_per_scanline adjustment
+frame_time_us = SFTODO99 - 2 * us_per_scanline
+first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row
+last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20
 
 DEBUG_COLOUR_BARS = 1
 ;DEBUG_COLOUR_BARS2 = 1
@@ -134,8 +137,16 @@ wait_for_safe_raster_position
     lda current_crtc_row
     bne wait_for_safe_raster_position
 } else { ; SFTODO
+SFTODOLOOP
     lda $fe69 ; timer 2 high-order counter
-    sta $ffff ; SFTODO HACK
+    cmp #>first_safe_start_row_time_us
+    bcs SFTODOLOOP
+    cmp #>last_safe_start_row_time_us
+    bcc SFTODO44
+    ;sta $ffff ; SFTODO HACK
+    and #7:eor #7:sta $fe21
+SFTODO44
+    jmp SFTODOLOOP
 }
 !ifdef DEBUG_COLOUR_BARS {
 !ifdef DEBUG_COLOUR_BARS2 {
