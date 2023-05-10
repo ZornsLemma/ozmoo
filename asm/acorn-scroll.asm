@@ -122,7 +122,7 @@ loopSFTODO
 
 ; SFTODO: move this to a better location
 lines_to_move
-    !byte 1 ; SFTODO TEMP HACK
+    !byte 2 ; SFTODO TEMP HACK
 lines_to_move_working_copy
     !byte 0
 
@@ -432,8 +432,6 @@ not_already_claimed
     lda evntv+1:sta old_evntv+1
     lda #<evntv_handler:sta evntv
     lda #>evntv_handler:sta evntv+1
-    lda #$82
-    sta $fe4e
     lda #$a0
     sta $fe6e
     lda #0
