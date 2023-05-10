@@ -29,16 +29,7 @@ us_per_scanline = 64
 us_per_row = 8*us_per_scanline
 vsync_position = 35
 total_rows = 39
-; SFTODO: I am tuning these settings in mode 3, I think they will apply to mode 0 *but* for the 320 byte modes we can probably expand the window, because we only have half as many bytes to process each frame so we will get the job done quicker.
-; SFTODO: Quick experiments with no-tube M128 suggest that setting these timings to be virtually certain we never get flicker does hurt (although we're still better than the old OS-based HW scrolling) quite badly. TBH I am a little bit unhappy at just how much we need to restrict the start time of the screen copy loop in order to "guarantee" no flicker - I guess it's *maybe* normally distributed or something with a thin tail, but it just feels like surely the interrupts should not be *that* variable, and maybe there's something wrong with my code that makes it necessary to tighten up that much. Anyway, need to think about this. We *could* have different timings for tube present and absent if we really wanted, but perhaps ideally we wouldn't.
-; SFTODO: It might not be utterly ridiculous to make this self-tuning. We could check (sketching very roughly) the raster position after we finish doing our copy loop and if it's somewhere "unsafe", we could decrement the timer value by say one scanline's worth, setting a floor so it can't get ridiculously low. Probably not worth it, and I'd kind of rather just "get it right" to start with, but wanted to make a note.
-scanline_to_start_at = 11 ; SFTODO: We are copying from line 0 into line 1 as soon as we start copying, so we mustn't start until the raster is on the top of line 1; we're slow enough that it will race ahead of us and we don't need to wait until line 2.
-scanline_to_end_at = 312-(35*8) ; SFTODO: 2 flickers, 4 flickers, 8 flickers, 10 flickers, 14 flickers, 16 mostly doesn't flicker but does e.g. pressing keys, 17 just flickers, 18 just flickers, 19 flickers
-; timer_value = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline
-; timer_value = us_per_row*4 - 2 * us_per_scanline
-; timer_value = us_per_row - 2
-timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_start_at * us_per_scanline
-timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
+frame_time_us = total_rows * us_per_row - 2 * us_per_scanline
 
 DEBUG_COLOUR_BARS = 1
 ;DEBUG_COLOUR_BARS2 = 1
@@ -64,42 +55,14 @@ DEBUG_COLOUR_BARS = 1
 evntv_handler
     ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
     cmp #4:bne jmp_parent_evntv
-    lda #<timer_value1:sta $fe68
-    lda #>timer_value1:sta $fe69
-    lda #1:sta current_crtc_row
-!ifdef DEBUG_COLOUR_BARS2 {
-    eor #7:sta $fe21 ; jsr debug_set_bg
-}
+    lda #<frame_time_us:sta $fe68
+    lda #>frame_time_us:sta $fe69
     lda #4
 jmp_parent_evntv
 old_evntv = *+1
     jmp $ffff ; patched
 
      ; SFTODO: *SOMETIMES* (DOING REP:PRINT:UN.FA. IN BASIC DOESN'T SEEM TO TRIGGER IT, DOING *HELP IN A LOOP ON B-EM'S B 1770 CONFIG DOES) WE GET STUCK  - I REALLY DON'T KNOW WHY
-
-irq_handler
-    lda $fc:pha
-    lda $fe6d
-    and #$20
-    beq return_to_os
-    lda $fe68 ; SFTODO: poss redundant if we are going to set the timer again by writing to fe68/69 below
-    dec current_crtc_row ; SFTODO: misnamed now
-    bne SFTODO8
-    lda #<timer_value2:sta $fe68
-    lda #>timer_value2:sta $fe69
-SFTODO8
-!ifdef DEBUG_COLOUR_BARS2 {
-    lda current_crtc_row
-SFTODOHACK=*+2
-    clc:adc #3:eor #7
-    sta $fe21;jsr debug_set_bg
-}
-return_to_os
-    pla:sta $fc
-old_irq = *+1
-    jmp $ffff ; patched
-current_crtc_row
-    !byte 0 ; SFTODO: inline data would break relocatability but will do for now
 
 !ifdef DEBUG_COLOUR_BARS_SFTODO {
 debug_set_bg
@@ -165,8 +128,7 @@ lf
     lda #1
 jsr_shadow_paging_control1
     jsr $ffff ; patched
-!if 1 { ; SFTODO: EXPERIMENT
-    ; lda #19:jsr osbyte ; SFTODO TEMP HACK TO SEE WHAT IT LOOKS LIKE - IT DOESN'T HELP MUCH...
+!if 0 { ; SFTODO: EXPERIMENT - NEED TO REWORK FOR NEW APPROACH
     ; SFTODO: WE SHOULD PROBABLY *NOT* DO THIS WAIT IF WE ARE PROTECTING >=2 LINES - THAT'S SLOW ENOUGH WE CAN'T RELIABLY STOP FLICKER, SO WE SHOULD JUST GO AHEAD AT MAX SPEED - JUST POSSIBLY FOR TWO LINES IT IS MOSTLY GOING TO NOT FLICKER, MAY BE PAINFUL TO DO RASTER WAIT OR MAY NOT
 wait_for_safe_raster_position
     lda current_crtc_row
@@ -379,6 +341,7 @@ host_type_in_x
 just_rts
     rts
 not_electron
+    ; SFTODO: We should probably just rts if we're in mode 7 - there's no point slowing things down with vsync events we don't care about.
     ; We can't support fast hardware scrolling unless we can page in any shadow RAM. If we have no shadow RAM, that's fine but for consistency we provide a null shadow paging driver. SFTODO: This slightly penalises a machine with no shadow RAM, but probably not so much that we really need to care.
     ; SFTODO: We need to special case the B+ and *if* we have private RAM available  (we can check shadow_state_b_plus_private) we need to copy the scroll code in there with a low memory stub. For the moment this will "work" and nicely disable fast hw scrolling on B+.
     ; SFTODO: Rather than explicitly test for Electron MRB shadow mode, the fact we have no shadow RAM paging control is probably what we should check - this hides some of the logic in a single place (in the shadow driver) instead of duplicating tests here.
@@ -424,18 +387,13 @@ not_already_claimed
     sta wrchv
     lda #>our_wrchv
     sta wrchv+1
-    lda irq1v:sta old_irq ; SFTODO: inconsistent - old_irq and old_evntv but parent_wrchv
-    lda irq1v+1:sta old_irq+1
-    lda #<irq_handler:sta irq1v
-    lda #>irq_handler:sta irq1v+1
+    ; SFTODO: inconsistent - old__evntv but parent_wrchv
     lda evntv:sta old_evntv
     lda evntv+1:sta old_evntv+1
     lda #<evntv_handler:sta evntv
     lda #>evntv_handler:sta evntv+1
-    lda #$a0
-    sta $fe6e
     lda #0
-    sta $fe6b
+    sta $fe6b ; user via ACR
     cli
     lda #14:ldx #4:jmp osbyte ; SFTODO: MAGIC NUM
 
