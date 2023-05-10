@@ -20,6 +20,8 @@ fast_scroll_status = $71 ; SFTODO DITTO
 bytes_per_line = 640
 
 zp = $db ; 5 bytes - VDU temporary storage, 6 bytes starting at $da SFTODO: can I get away with this? simply by experiment I think $da is used by the code I'm going to call in the OS, but the others are OK
+src = zp ; 2 bytes
+dst = zp + 2 ; 2 bytes
 
 irq1v = $204
 us_per_scanline = 64
@@ -140,9 +142,9 @@ lf
     tya
     pha
     lda vdu_screen_top_left_address_low
-    sta src:sta src2
+    sta src
     lda vdu_screen_top_left_address_high
-    sta src+1:sta src2+1
+    sta src+1
     ; Page in shadow RAM; this is a no-op if we have no shadow RAM.
     lda #1
 jsr_shadow_paging_control1
@@ -170,12 +172,6 @@ chunks_per_page = 256 / chunk_size
 
 chunk_loop
     ldy #chunk_size - 1
-    cpx #chunks_per_page:bcc dontfutz
-    lda src+1:cmp #$7f:bcs dontfutz
-    lda dst+1:cmp #$7f:bcs dontfutz
-    txa:sec:sbc #chunks_per_page-1:tax ; -1 because we will do a dex at the end of the loop
-    ldy #0
-dontfutz
     ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something.
 byte_loop
     lda (src),y
@@ -185,102 +181,20 @@ byte_loop
     dey
     bpl byte_loop
     ; SFTODO: experimental - this will be a bit slower, but will save code size
-    THESE ARE WRONG WE NEED TO ADD CHUNK SIZE!
-    inc src+1:bmi wrap_src
-src_wrapped
-    inc dst+1:bmi wrap_dst
-dst_wrapped
-    dex
-    bpl chunk_loop
-
-SFTODO
-
-
-wrap_src
-    lda src+1:sec:sbc vdu_screen_size_high_byte:sta src+1
-    jmp src_wrapped
-wrap_dst
-    lda dst+1:sec:sbc vdu_screen_size_high_byte:sta dst+1
-    jmp dst_wrapped
-
-    ; SFTODO: Patch in or out the lda #0:sta so we only do it for the last 5 chunks (i.e. last line)
-
-    ; We copy and bump in chunks of 128 because the line length in bytes is
-    ; always a multiple of 128, which means we can wrap at the top of screen
-    ; memory between each chunk without any problems.
-    ; SFTODO: The "tearing" seen on the screen might be more visually pleasing
-    ; if this loop copied with Y advancing rather than decrementing, and the
-    ; performance impact wouldn't be huge. (We could maybe even offset src/dst
-    ; and run Y from 128 to 0 to avoid an extra cpy# at the end of the loop.)
-    ; Gut feeling is this is too complex - really don't want to pay for a cpy #x
-    ; in the loop, and adjusting src/dst and working with non-0 offsets
-    ; complicates the wrap detection. To be fair, in the 640-bytes-per-line
-    ; case, we could do a 0-upwards loop and the bpl condition would work fine.
-    ; But this is no good for 320 byte per line modes where we need 64 byte
-    ; chunks. I did experimentally try doing iny in a 640-bytes-per-line case
-    ; and it does perhaps look slightly nicer, but I'm not sure the difference
-    ; is huge.
-    ; SFTODO: In 320-bytes-per-line mode, we need to use 64 byte chunks to have
-    ; the same guarantee. But note that the following ldx is "constant" because 640/128==320/64, so we kind of have "ldx #number_of_lines_to_preserve*5"
-    ; SFTODO: Just possibly we could realise we have only a few cases, check the initial alignment and tweak the code accordingly. For example - not thought this through properly - in 320 byte modes, see if we're at a 64 byte offset, do a 64 byte chunk first if we are then revert to 128 byte chunks for the rest of the copy. And/or always check if we're at a 128 byte offset, do a 128 byte chunk first if we are, then revert to 256 byte chunks for the rest of the copy.
-    ; SFTODO: Thinking out loud, check this again later:
-    ; - the inner loop here takes about 21 cycles per loop. So in 640 byte modes, it takes us over 640*21=13400 cycles to do a character row. At 64 us or 128 cycles per scanline, the raster covers a character row in 128*8=1024 cycles. So we are way, way slower than the raster.
-    ; - this means that we can allow this code to execute without tearing from the moment the raster starts to trace the top visible scan line (probably a little earlier, of course)
-    ; - we need to disallow this code from executing when we get down towards the last 13400/1024=13-ish character rows (visible or invisible) before the top visible scan line, so it has time to do the job before the memory starts to be displayed. (We can disallow *slightly* later, because we're still moving during the raster, just not as fast as it is)
-    ; SFTODO: *Only* for one line (which a fixed address - $7f40 in mode 6, $7f80 in mode 3) in each of mode 3 and mode 6 can we get a wrap *within* a 320/640 byte line. It feels to me like this must make it fairly easy for us to do a much tighter copy loop which works a line at a time and special case that somehow.
-
-
-    ldx #(bytes_per_line / 128)
-copy_and_zero_outer_loop
-!if 1 { ; SFTODO
-    ldy #127
-} else {
-    ldy #0
+!macro bump .ptr {
+    clc:lda .ptr:adc #chunk_size:sta .ptr
+    bcc .no_carry
+    inc .ptr+1
+    bpl .no_wrap
+    sec:lda .ptr+1:sbc vdu_screen_size_high_byte:sta .ptr+1
+.no_carry
+.no_wrap
 }
-copy_and_zero_loop
-src = *+1
-    lda $ffff,y ; patched
-dst = *+1
-    sta $ffff,y ; patched
-    lda #0 ; SFTODO HACK lda #%10101010
-src2 = *+1
-    sta $ffff,y ; patched
-!if 1 { ; SFTODO
-    dey
-} else {
-    iny
-}
-    bpl copy_and_zero_loop
-    ; SFTODO: ASSERT NO PAGE CROSSING IN THIS HOT LOOP
-    clc
-    lda src
-    adc #128
-    sta src:sta src2
-    bcc no_srch_inc
-    lda src+1
-    adc #0 ; carry is set, so adds 1
-    bpl no_src_wrap
-    sec
-    sbc vdu_screen_size_high_byte
-no_src_wrap
-    sta src+1:sta src2+1
-    clc
-no_srch_inc
-    ; clc - redundant
-    lda dst
-    adc #128
-    sta dst
-    bcc no_dsth_inc
-    inc dst+1
-    bpl no_dst_wrap
-    sec
-    lda dst+1
-    sbc vdu_screen_size_high_byte
-    sta dst+1
-no_dst_wrap
-no_dsth_inc
+    +bump src
+    +bump dst
     dex
-    bne copy_and_zero_outer_loop
+    bne chunk_loop
+
 !ifdef DEBUG_COLOUR_BARS {
     lda #5 xor 7:jsr debug_set_bg
 }
