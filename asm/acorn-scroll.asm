@@ -115,7 +115,7 @@ loopSFTODO
 
 ; SFTODO: move this to a better location
 lines_to_move
-    !byte 2 ; SFTODO TEMP HACK
+    !byte 1 ; SFTODO TEMP HACK - NEED TO GET THIS WORKIGN WITH >1
 lines_to_move_working_copy
     !byte 0
 
@@ -268,60 +268,15 @@ null_shadow_driver
 
 .crtcCursorPositionHighRegister             = 14        ;
 
-; SFTODO: Could we save a lot of code size and sacrifice only a small amount of speed if we do the HW scroll ourselves but then do a VDU 31,currentx,currenty to force the OS to recalculate other OS variables for us?
-
 ; SFTODO: Only one caller, could and probably should inline
 .setCursorSoftwareAndHardwarePosition
-; This is not generic code (unlike the OS routine of the same name); it's
-; special-cased because we know we are moving down one row from the current
-; position.
-    clc
-    ; We start with vduTextCursorCRTCAddress{Low,High} as the base, since it doesn't wrap so we don't "accumulate" wrapping.
-    ; SFTODO: I am not sure this is strictly right. Remember *really* we want to set vduTextCursorCRTCAddress = screen base (&3000 or whatever) + 320 (or 640) * text cursor Y. If this code was the *only* think updating ...CursorCRTCAddress..., it would soar off infinitely high as we did newline after newline after newline. In reality the OS driver will get involved as we output other text to the screen and that will pull it back into range, but it's technically *possible* a game would emit a long stream of nothing but newlines and this would probably go wrong. Test it and see about fixing it if necessary.
-    lda .vduTextCursorCRTCAddressLow
-    adc .vduBytesPerCharacterRowLow
-    sta .vduWriteCursorScreenAddressLow
-    sta .vduTextCursorCRTCAddressLow
-    tax
-    lda .vduTextCursorCRTCAddressHigh
-    adc .vduBytesPerCharacterRowHigh
-    sta .vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
-!if 1 { ; SFTODO EXPERIMENTAL
-    ; vduTextCursorCRTCAddress works in a logical address space running from the screen start address to the screen start address plus vduScreenSizeHighByte pages. It therefore doesn't wrap at $8000, but does need to wrap at $8000+screen size. The actual OS routines never encounter this case, because they calculate it from scratch here based on the text cursor Y, which can never generate a value high enough to need to wrap in that logical address space. Since we are just adding vduBytesPerCharacterRow every time, if the proper OS version of this code doesn't happen to get called to do the multiplication-based version, vduTextCursorCRTCAddress will advance past the point where it needs wrapping. This is unlikely put possible; you can see it with a test program that does PRINT "Hello";:REPEAT:VDU 10:UNTIL FALSE (perhaps with a small delay after VDU 10 to help see what's going on). We don't want to rely on the OS routine happening to be called before this goes wrong, so we apply some wrapping of our own. SFTODO: I believe this is correct, but review it fresh.
-    ; SFTODO: If we calculated $80+.vduScreenSizeHighByte earlier and saved it somewhere (even patching cmp # instruction here, maybe), we wouldn't need to do the and #$7f here and therefore we wouldn't corrupt A and we could avoid the lda to restore it before we subtract just below. We could also probably get rid of the bpl + - that might (only *might*) slow things down, but just a tiny fraction - it might also be a negligible win, depending on statistics of how often the bpl + avoids the following check. Plus of course if just do a straight cmp we could avoid the sta immediately preceding us, and just store after any wrapping.
-    bpl +
-    and #$7f ; subtract $80
-    cmp .vduScreenSizeHighByte
-    bcc +
-    ; sec - redundant
-    lda .vduTextCursorCRTCAddressHigh
-    sbc .vduScreenSizeHighByte
-    sta .vduTextCursorCRTCAddressHigh
-+
-}
-    bpl +
-    sec
-    sbc .vduScreenSizeHighByte
-+
-    sta .vduWriteCursorScreenAddressHigh
-    LDA .vduTextCursorCRTCAddressHigh                   ; text cursor CRTC address SFTODO: we could save a byte by tay-ing above (as well as sta-ing) and doing tya here
-    LDY #.crtcCursorPositionHighRegister                ; Y=14
-    ; fall through...
-.setHardwareScreenOrCursorAddress
-    STX .vduTempStoreDA                                 ; store X
-    LSR                                                 ; divide X/A by 8
-    ROR .vduTempStoreDA                                 ;
-    LSR                                                 ;
-    ROR .vduTempStoreDA                                 ;
-    LSR                                                 ;
-    ROR .vduTempStoreDA                                 ;
-    LDX .vduTempStoreDA                                 ;
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STA .crtcAddressWrite                               ; write A into CRTC register
-    INY                                                 ; increment Y to the next CRTC register
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STX .crtcAddressWrite                               ; write X into CRTC register
-    RTS                                                 ;
+    ; SFTODO: We could (and used to) do this ourselves, but the code is relatively bulky even if we take advantage of the fact we know we are moving down exactly one line from the current position and can use the current values as a starting point instead of working things out from first principles as the OS does. As we're short of space, let's be a bit slower but force the OS to do the calculation for us by telling it to move the cursor to the desired location.
+    lda #31 ; SFTODO: vdu_goto_xy
+    jsr jmp_parent_wrchv
+    lda .vduTextCursorXPosition
+    jsr jmp_parent_wrchv
+    lda .vduTextCursorYPosition
+    jmp jmp_parent_wrchv
 
 .hardwareScrollUp
     LDA .vduScreenTopLeftAddressLow                     ; screen top left address low
@@ -337,7 +292,21 @@ null_shadow_driver
     STA .vduScreenTopLeftAddressHigh                    ; screen top left address high
     STX .vduScreenTopLeftAddressLow                     ; screen top left address low
     LDY #.crtcStartScreenAddressHighRegister            ; Y = value to change screen address
-    BNE .setHardwareScreenOrCursorAddress               ; ALWAYS branch to set screen address
+.setHardwareScreenOrCursorAddress
+    STX .vduTempStoreDA                                 ; store X
+    LSR                                                 ; divide X/A by 8
+    ROR .vduTempStoreDA                                 ;
+    LSR                                                 ;
+    ROR .vduTempStoreDA                                 ;
+    LSR                                                 ;
+    ROR .vduTempStoreDA                                 ;
+    LDX .vduTempStoreDA                                 ;
+    STY .crtcAddressRegister                            ; set which CRTC register to write into
+    STA .crtcAddressWrite                               ; write A into CRTC register
+    INY                                                 ; increment Y to the next CRTC register
+    STY .crtcAddressRegister                            ; set which CRTC register to write into
+    STX .crtcAddressWrite                               ; write X into CRTC register
+    RTS                                                 ;
 
 ; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
 
