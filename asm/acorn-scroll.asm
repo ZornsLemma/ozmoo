@@ -133,6 +133,9 @@ jsr_shadow_paging_control1
 wait_for_safe_raster_position
     lda current_crtc_row
     bne wait_for_safe_raster_position
+} else { ; SFTODO
+    lda $fe69 ; timer 2 high-order counter
+    sta $ffff ; SFTODO HACK
 }
 !ifdef DEBUG_COLOUR_BARS {
 !ifdef DEBUG_COLOUR_BARS2 {
