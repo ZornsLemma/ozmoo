@@ -403,6 +403,7 @@ s_printchar
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
 !ifdef ACORN_HW_SCROLL {
+    ; SFTODONOW: Should we skip this code if we're in mode 7? We will never use hardware scroll, so we shouldn't waste time updating this.
 !ifdef ACORN_HW_SCROLL_CUSTOM {
     ldy use_custom_hw_scroll ; SFTODO: THIS NAME IS INCONSISTENT IN ORDER WITH ACORN_HW_SCROLL_CUSTOM MACRO NAME
     bne +
@@ -532,14 +533,14 @@ s_printchar
     sta s_cursors_inconsistent
 .perform_line_feed_on_bottom_row2
 !ifdef ACORN_HW_SCROLL {
+    ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
+    lda use_hw_scroll
+    beq +
 !ifdef ACORN_HW_SCROLL_CUSTOM {
     ; SFTODO: Although it currently only protect 1 row, the custom hw scroll can protect any number of rows, so we don't want to disable hardware scrolling regardless of the window size.
     lda use_custom_hw_scroll
     bne .SFTODORTS
 }
-    ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
-    lda use_hw_scroll
-    beq +
     ldx window_start_row + 1 ; how many top lines to protect
     dex
     bne +
@@ -614,6 +615,7 @@ s_erase_line_from_cursor
     lda use_custom_hw_scroll
     bne +
 }
+    ; SFTODONOW: Should we skip this code if we're in mode 7? We will never use hardware scroll, so we shouldn't waste time updating this.
     ldx zp_screenrow
     bne +
     ldx zp_screencolumn
@@ -713,6 +715,7 @@ s_pre_scroll_leave_cursor_in_place
     lda #vdu_home
     jsr oswrch
     +ldy_screen_width
+    ; SFTODONOW: Is the following code redundant? We will never do hardware scrolling in mode 7 so isn't this wasted code?
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
     lda screen_mode
