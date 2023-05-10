@@ -176,30 +176,61 @@ wait_for_safe_raster_position
     ; - we need to disallow this code from executing when we get down towards the last 13400/1024=13-ish character rows (visible or invisible) before the top visible scan line, so it has time to do the job before the memory starts to be displayed. (We can disallow *slightly* later, because we're still moving during the raster, just not as fast as it is)
     ; SFTODO: *Only* for one line (which a fixed address - $7f40 in mode 6, $7f80 in mode 3) in each of mode 3 and mode 6 can we get a wrap *within* a 320/640 byte line. It feels to me like this must make it fairly easy for us to do a much tighter copy loop which works a line at a time and special case that somehow.
 !if 0 { ; SFTODO SKETCHING/THINKING OUT LOUD
-    ldx #bytes_per_line / 256
-    ; On the first pass we are copying 64 or 128 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
-    initial_y = 256 - (bytes_per_line % 256)
+    bytes_to_copy = lines_to_copy * bytes_per_line ; lines_to_copy=1 to start, but want to allow larger values very soon
+    ldx #bytes_to_copy / 256
+    ; If the high byte of (pre-modification) src or dst is $7f, we will wrap in the middle of a line.
+    lda #0:ldy src+1:cmp #$7f:rol:ldy dst+1:cmp #$7f:rol:php
+    ; On the first pass we are potentially copying less than 256 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
+    initial_y = (256 - (bytes_to_copy % 256)) & $ff
     ldy #initial_y
     sec:lda src:sbc #initial_y:sta src:deccc src+1
     sec:lda dst:sbc #initial_y:sta dst:deccc dst+1
-
-    lda src:sta src2:lda src+1:sta src2+1 ; SFTODO: optimise away if easy
+    plp:bne awkward
 copy_and_zero_outer_loop
+    ; Patch the lda/sta abs instructions in the inner loop to use the values in src/dst; this allows us to use (zp),y addressing in the awkward case loop and saves us a handful of bytes/cycles elsewhere by using zp instructions to modify src/dst, while still giving us the performance benefits of abs,y in the inner loop.
+    lda src+0:sta src1abs+0:sta src2abs+0 ; 3+4+4
+    lda src+1:sta src1abs+1:sta src2abs+1 ; 3+4+4
+    lda dst+0:sta dstabs+0 ; 3+4
+    lda dst+1:sta dstabs+1 ; 3+4
+    ; so 36 cycles to do that copy, and we then save 3 cycles on each pass round the loop, so we break even after 12 bytes, so this is a win for speed.
 copy_and_zero_inner_loop
-src = *+1
+src1abs = *+1
     lda $ffff,y ; patched
-dst = *+1
+dstabs = *+1
     sta $ffff,y ; patched
     lda #0
-src2 = *+1
+src2abs = *+1
     sta $ffff,y ; patched
     iny
     bne copy_and_zero_inner_loop
-    ; SFTODO: IGNORING OUR AWKWARD CASE, THESE CANNOT WRAP BECAUSE THEY ARE WITHIN A LINE
-    inc src+1:inc src2+1
+    ; These cannot wrap because they are within a line and we already handed the awkward case off to a different piece of code.
+    inc src+1
     inc dst+1
     dex
     bne copy_and_zero_outer_loop
+done
+
+
+
+awkward
+    ldy #initial_y:sty working_y ; SFTODO: ldy # probably redundant, Y probably already set
+awkward_outer_loop
+awkward_inner_loop
+    ldy #0
+    lda (src),y
+    sta (dst),y
+    lda #0 ; SFTODO: tya
+    sta (src),y
+    inc src:bne no_wrap_src:inceq src+1:bpl no_wrap_src:wrap:.no_wrap_src
+    inc dst:bne no_wrap_dst:inceq dst+1:bpl no_wrap_dst:wrap:.no_wrap_dst:inceq dst+1
+    inc working_y
+    bne awkward_inner_loop
+    dex
+    bne awkward_outer_loop
+    beq done ; always branch
+
+
+
 }
 
 
