@@ -31,7 +31,8 @@ vsync_position = 35
 total_rows = 39
 SFTODO99 = total_rows * us_per_row ; SFTODO: idea is that as we're comparing against timer most of the time (not loading it) we don't want the 2*us_per_scanline adjustment
 frame_time_us = SFTODO99 - 2 * us_per_scanline
-first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row
+; SFTODO: I think it would be possible to auto-tune these parameters (although first_safe_start_row_time_us is probably more sensible kept fixed) - we could examine timer 2 (and an optional frame counter, to detect really bad overruns) after we finish our scroll copy and if we overran we could nudge last_safe_start_row_time_us towards the top of the screen (with some kind of min value so we don't push it up ridiculously far). I am not actually sure this is a good idea - do we *really* want outliers to slow everything down afterwards? Are we really hell-bent on getting no flicker if humanly possible, or are we trying to compromise and get virtually no flicker without killing performance? We *might* want to behave differently if we have tube - if we are on tube the fifo smoothes things out and stops us doing a lot of busy waiting delaying things too badly.
+first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row ; SFTODO: SHOULD PROBABLY BE 1 AND MIGHT NEED FURTHER TWEAKING, SINCE WE ONLY REALLY CARE ABOUT AVOIDING FLICKER FOR SINGLE PROTECTED ROW
 last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20
 
 DEBUG_COLOUR_BARS = 1
@@ -88,7 +89,7 @@ loopSFTODO
 
 ; SFTODO: move this to a better location
 lines_to_move
-    !byte 2 ; SFTODO TEMP HACK
+    !byte 1 ; SFTODO TEMP HACK
 lines_to_move_working_copy
     !byte 0
 
@@ -142,11 +143,11 @@ SFTODOLOOP
     cmp #>first_safe_start_row_time_us
     bcs SFTODOLOOP
     cmp #>last_safe_start_row_time_us
-    bcc SFTODO44
+    bcc SFTODOLOOP
     ;sta $ffff ; SFTODO HACK
-    and #7:eor #7:sta $fe21
+    ;and #7:eor #7:sta $fe21
 SFTODO44
-    jmp SFTODOLOOP
+    ;jmp SFTODOLOOP
 }
 !ifdef DEBUG_COLOUR_BARS {
 !ifdef DEBUG_COLOUR_BARS2 {
