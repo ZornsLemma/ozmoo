@@ -241,6 +241,13 @@ awkward_inner_loop
 
 
 
+    ; SFTODO: IS THIS TOO CLEVER? THE SIMPLE INNER LOOP AS IT STANDS LOOPS WITH INY:BNE INNER - 5 cycles
+    ; IF WE KEEP Y 0, DO INCS AND TEST FOR WRAPPING WE HAVE (looking at common case only):
+    ;     inc src:beq not_simple
+    ;     inc dst:bne inner
+    ; that is 5+2+5+3=15 cycles, so 10 cycles worse per byte copied (ignoring the 1-in-256 non-simple cases).
+    ; OK, it's slightly worse, because that assumes src/dst are in zp, so we're paying an extra cycle on each lda/sta in the inner loop as we can't use the abs,y mode.
+    ; An advantage of just blatting round the inner loop using inc-and-test-for-wrap is that in the multi-line case, we don't need to treat things any differently - we just keep going. Oh, but I forgot we need to handle counting how many bytes we copy. Gah.
 }
 
 
