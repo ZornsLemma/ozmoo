@@ -13,8 +13,9 @@ vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 wrchv = $20e
 evntv = $220
 
-fast_scroll_screen_mode = $70 ; SFTODO: QUICK HACKY CHOICE, I THINK THIS IS OK (IT'S FOR INIT ONLY)
-fast_scroll_status = $71 ; SFTODO DITTO
+; SFTODO: These are hacks; I need to sort out the locations used for this kind of early stage initialisation, because at the moment things trample on each other.
+fast_scroll_screen_mode = $90
+fast_scroll_status = $91
 
 ; SFTODO: for now just assume 80 column mode - though these values are available at $352/$353 as that's where OS keeps them
 bytes_per_line = 640
