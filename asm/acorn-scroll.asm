@@ -40,6 +40,7 @@ timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline 
 timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 
 DEBUG_COLOUR_BARS = 1
+;DEBUG_COLOUR_BARS2 = 1
 ; 1=red=post-vsync
 ; 3=yellow=first timer 2
 ; 2=green=second timer 2
@@ -65,7 +66,7 @@ evntv_handler
     lda #<timer_value1:sta $fe68
     lda #>timer_value1:sta $fe69
     lda #1:sta current_crtc_row
-!ifdef DEBUG_COLOUR_BARS {
+!ifdef DEBUG_COLOUR_BARS2 {
     eor #7:sta $fe21 ; jsr debug_set_bg
 }
     lda #4
@@ -86,7 +87,7 @@ irq_handler
     lda #<timer_value2:sta $fe68
     lda #>timer_value2:sta $fe69
 SFTODO8
-!ifdef DEBUG_COLOUR_BARS {
+!ifdef DEBUG_COLOUR_BARS2 {
     lda current_crtc_row
 SFTODOHACK=*+2
     clc:adc #3:eor #7
@@ -170,7 +171,9 @@ wait_for_safe_raster_position
     bne wait_for_safe_raster_position
 }
 !ifdef DEBUG_COLOUR_BARS {
+!ifdef DEBUG_COLOUR_BARS2 {
     lda #6:sta SFTODOHACK
+}
     lda #4 xor 7:sta $fe21 ;jsr debug_set_bg
 }
     ; SFTODO: I think this is a good spot to do the hardware scroll. We shouldn't start this until after vsync, and if we start a little too close to the next vsync, the chances are we'll finish our update before the raster reaches the last bit of data we're moving around. If we did the hw scroll at the end of the copy, we might end up getting a frame where the top window has been moved in  screen RAM but the hw scroll hasn't happened yet and we'd see it in the wrong place.
@@ -241,7 +244,9 @@ byte_loop
 done
 
 !ifdef DEBUG_COLOUR_BARS {
+!ifdef DEBUG_COLOUR_BARS2 {
     lda #3:sta SFTODOHACK
+}
     lda #0 xor 7:sta $fe21 ;jsr debug_set_bg
 }
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
