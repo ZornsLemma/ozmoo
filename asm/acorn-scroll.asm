@@ -40,6 +40,13 @@ timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline 
 timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 
 DEBUG_COLOUR_BARS = 1
+; 1=red=post-vsync
+; 3=yellow=first timer 2
+; 2=green=second timer 2
+; 4=blue=safe raster, starting copy
+; 6=cyan=first timer 2 if occurs during copy
+; 5=magenta=second timer 2 if occurs during copy
+; 0=black=copy finished
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
@@ -81,6 +88,7 @@ irq_handler
 SFTODO8
 !ifdef DEBUG_COLOUR_BARS {
     lda current_crtc_row
+SFTODOHACK=*+2
     clc:adc #3:eor #7
     sta $fe21;jsr debug_set_bg
 }
@@ -112,7 +120,7 @@ loopSFTODO
 
 ; SFTODO: move this to a better location
 lines_to_move
-    !byte 2 ; SFTODO TEMP HACK - NEED TO GET THIS WORKIGN WITH >1
+    !byte 1 ; SFTODO TEMP HACK
 lines_to_move_working_copy
     !byte 0
 
@@ -160,6 +168,10 @@ jsr_shadow_paging_control1
 wait_for_safe_raster_position
     lda current_crtc_row
     bne wait_for_safe_raster_position
+}
+!ifdef DEBUG_COLOUR_BARS {
+    lda #6:sta SFTODOHACK
+    lda #4 xor 7:sta $fe21 ;jsr debug_set_bg
 }
     ; SFTODO: I think this is a good spot to do the hardware scroll. We shouldn't start this until after vsync, and if we start a little too close to the next vsync, the chances are we'll finish our update before the raster reaches the last bit of data we're moving around. If we did the hw scroll at the end of the copy, we might end up getting a frame where the top window has been moved in  screen RAM but the hw scroll hasn't happened yet and we'd see it in the wrong place.
     jsr .hardwareScrollUp
@@ -229,7 +241,8 @@ byte_loop
 done
 
 !ifdef DEBUG_COLOUR_BARS {
-    lda #5 xor 7:sta $fe21 ;jsr debug_set_bg
+    lda #3:sta SFTODOHACK
+    lda #0 xor 7:sta $fe21 ;jsr debug_set_bg
 }
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
     lda #0
