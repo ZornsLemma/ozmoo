@@ -115,7 +115,7 @@ loopSFTODO
 
 ; SFTODO: move this to a better location
 lines_to_move
-    !byte 1 ; SFTODO TEMP HACK - NEED TO GET THIS WORKIGN WITH >1
+    !byte 2 ; SFTODO TEMP HACK - NEED TO GET THIS WORKIGN WITH >1
 lines_to_move_working_copy
     !byte 0
 
@@ -187,7 +187,9 @@ chunks_per_line = 5
     ; amount of data we have to copy grows proportionally so the extra overhead
     ; of doing this adding is always a small fraction of the total work.
 add_loop
+    lda src:pha:lda src+1:pha
     ldx #src:jsr add_line_x
+    lda dst:pha:lda dst+1:pha
     ldx #dst:jsr add_line_x
     dey:bne add_loop
 
@@ -218,7 +220,11 @@ byte_loop
     dex
     bne chunk_loop
     dec lines_to_move_working_copy
-    bne line_loop
+    beq done
+    pla:sta dst+1:pla:sta dst
+    pla:sta src+1:pla:sta src
+    jmp line_loop
+done
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #5 xor 7:jsr debug_set_bg
