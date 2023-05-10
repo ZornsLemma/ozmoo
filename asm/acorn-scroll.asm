@@ -114,13 +114,22 @@ loopSFTODO
 }
 
 ; SFTODO: move this to a better location
-; How many chunks to move in screen RAM (so they *don't* move in visual screen
-; space) when scrolling the screen; each chunk is 1/5th of a line, so this is
-; 5*number_of_lines_in_top_window.
-; SFTODO: We could multiply this by 5 ourselves but it feels better right now to make the Ozmoo executable do this fairly simply bit of work as it has more code space than we do, probably.
-chunks_to_move
-    !byte 2*5 ; SFTODO TEMP HACK
+lines_to_move
+    !byte 2 ; SFTODO TEMP HACK
+lines_to_move_working_copy
+    !byte 0
 
+add_line_x
+!zone {
+    clc
+    lda $00,x:adc #<bytes_per_line:sta $00,x
+    lda $01,x:adc #>bytes_per_line
+    bpl .no_wrap
+    sec:sbc vdu_screen_size_high_byte
+.no_wrap
+    sta $01,x
+    rts
+}
 
 our_wrchv
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not interested in passed through ASAP.
@@ -165,11 +174,25 @@ wait_for_safe_raster_position
 
     ; We need this code to be reasonably fast and also reasonably small. SFTODO: I am sure it's possible to do better, particularly once I have a better idea of exactly how much code size I can tolerate.
     ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
-    ldx chunks_to_move
 
 chunk_size = 128 ; SFTODO: hard-coded for 640 byte per line modes for now
 chunks_per_page = 256 / chunk_size
+chunks_per_line = 5
 
+    ldy lines_to_move:sty lines_to_move_working_copy
+    dey:beq line_loop
+    ; SFTODO: It's not exactly efficient to add bytes_per_line n times instead
+    ; of adding n*bytes_per_line, but we don't want to be doing a generic
+    ; multiply, n is small (and not generally a power of two) and as n grows the
+    ; amount of data we have to copy grows proportionally so the extra overhead
+    ; of doing this adding is always a small fraction of the total work.
+add_loop
+    ldx #src:jsr add_line_x
+    ldx #dst:jsr add_line_x
+    dey:bne add_loop
+
+line_loop
+    ldx #chunks_per_line
 chunk_loop
     ldy #chunk_size - 1
     ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something.
@@ -194,6 +217,8 @@ byte_loop
     +bump dst
     dex
     bne chunk_loop
+    dec lines_to_move_working_copy
+    bne line_loop
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #5 xor 7:jsr debug_set_bg
@@ -384,10 +409,12 @@ supported_bbc_with_shadow_driver_yx
     ; well check.
     lda wrchv
     ldx wrchv+1
+!if 0 { ; SFTODO TEMP REMOVED AS WE STRUGGLE FOR SPACE
     cmp #<our_wrchv
     bne not_already_claimed
     cpx #>our_wrchv
     beq just_rts ; branch if we've already claimed wrchv
+}
 not_already_claimed
     ; We haven't already claimed vectors, so set up ready for action and claim the vectors.
     sei
