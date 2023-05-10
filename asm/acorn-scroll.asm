@@ -58,6 +58,7 @@ DEBUG_COLOUR_BARS = 1
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
 evntv_handler
     ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
+    ; SFTODO: Ideally we'd turn this event off when lines_to_move != 1 and back on when it is 1. Maybe core Ozmoo should be responsible for turning event on and off rather than this code doing it.
     cmp #4:bne jmp_parent_evntv
     lda #<frame_time_us:sta $fe68
     lda #>frame_time_us:sta $fe69
