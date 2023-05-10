@@ -1304,6 +1304,7 @@ def make_tube_executables():
 
 def make_shaddrv_executable():
     e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x900, ["-DACORN_SHADOW_VMEM=1"])
+    assert e.start_addr + len(e.binary()) <= 0xb00
     # SFTODO: Is putting these not-strictly-common things into common_labels a hack?
     common_labels.update({k:v for (k,v) in e.labels.items() if k.startswith("shadow_state") or k == "private_ram_in_use"})
     return e

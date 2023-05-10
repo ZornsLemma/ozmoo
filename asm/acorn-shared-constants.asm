@@ -1,6 +1,63 @@
 ; Acorn constants shared by multiple Acorn executables; constants only relevant
 ; to the main Ozmoo executable are in constants.asm
 
+; This file also documents the interaction between the different "utilities"
+; that can be present (always in the host) and how they fit round each other in
+; memory.
+;
+; The loader runs the utilities in the order they're listed here. (The build system
+; puts them on the generated disc image in this order as well, to try to keep
+; the drive head moving forwards to minimise seeking.) SFTODO: CHECK IT DOES PUT THEM ON IN THIS ORDER, ESP IF I TWEAK THE ORDER
+;
+; The following comments draw a distinction between "execution" - what memory is
+; used/corrupted when we *RUN the code - and "runtime" - what memory is
+; used/corrupted after the *RUN returns as the code installed (if any) is used
+; during gameplay.
+;
+; SFTODO: MAY WANT TO TWEAK THESE COMMENTS TO IDENTIFY "EXECUTION ONE-OFF USE (CORRUPTS)" VS "RUNTIME MEM USE"
+; - SHADDRV (acorn-shadow-driver.asm)
+;   This checks for shadow RAM and installs an appropriate shadow driver if we
+;   have one.
+;   Execution corrupts: &900-&AFF, &70-&8F
+;   Execution sets: shadow_state, shadow_paging_control_ptr
+;   Runtime memory: shadow_driver_start-shadow_driver_end
+;
+; - FINDSWR (acorn-findswr.asm)
+;   This checks for sideways RAM.
+;   Execution corrupts: &900-&AFF, &70-&8F
+;   Sets: swr_type, ram_bank_count, ram_bank_list
+;   Runtime memory: N/A
+;   SFTODO: RAM BANK COUNT AND RAM BANK LIST ARE USED DURING GAMEPLAY, SWR TYPE IS ONLY FOR LOADER
+;
+; - FASTSCR (acorn-scroll.asm)
+;   This allows hardware scrolling of the bottom part of the screen while
+;   leaving a runtime-controllable number of lines untouched at the top.
+;   Execution corrupts: &900-&AFF SFTODO NOT CURRENTLY, BUT FINAL PLAN, PROBABLY
+;   Execution inputs: fast_scroll_screen_mode, shadow_state, shadow_paging_control_ptr
+;   Execution outputs: fast_scroll_status
+;   Runtime memory: SFTODO, PROBABLY A SUBSET OF &900-AFF WHICH LEAVES ROOM FOR INSV
+;   Runtime inputs: fast_scroll_lines_to_move
+;
+; - INSV (acorn-insv.asm)
+;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
+;   history-enabled builds.
+;   Execution corrupts: &A00-&B00 SFTODO MAY WANT TO TIGHTEN THIS UP - IT PROB WANTS TO OVERLAP THE DISCARDABLE INIT CODE AT END OF PAGE A AFTER FASTSCR HAS LOADED, IF FASTSCR ISN'T TOO BIG
+;   Runtime memory: SFTODO
+;   Runtime inputs: nominal_cursor_key_status
+;
+; - CACHE2P (acorn-cache.asm)
+;   This is a cache to allow use of spare main, sideways and shadow RAM on the
+;   host when running Ozmoo on a second processor. This always runs as user code
+;   within the tube host environment, so unlike all of the above executables it
+;   has zero page at &70-&8F available and main RAM from OSHWM to HIMEM
+;   available. (The above executables have to be able to co-exist with the main
+;   Ozmoo executable on single processor systems.)
+;   Execution corrupts: OSHWM-HIMEM, &70-8F
+;   Execution inputs: cache_screen_mode
+;   Runtime memory: OSHWM-HIMEM, &70-&8F
+;
+;
+
 brkv = $202
 
 shadow_mode_bit = 128
@@ -109,3 +166,5 @@ buffer_keyboard = 0
     !byte error_number
     !text error_message, 0
 }
+
+; SFTODONOW: WE SHOULD SHOW SHADOW STATE AND THE "IS CUSTOM HW SCROLL DRIVER ENABLED" IN THE TECH INFO THING YOU CAN GET UP WITH CTRL DURING LOADING
