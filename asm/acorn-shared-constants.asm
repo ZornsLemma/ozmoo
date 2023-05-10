@@ -191,5 +191,3 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
     !byte error_number
     !text error_message, 0
 }
-
-; SFTODONOW: WE SHOULD SHOW SHADOW STATE AND THE "IS CUSTOM HW SCROLL DRIVER ENABLED" IN THE TECH INFO THING YOU CAN GET UP WITH CTRL DURING LOADING
