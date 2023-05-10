@@ -578,9 +578,6 @@ test_private_ram_in_use
 
 end
 
-; For now this code executes in pages $9/$a, so make sure it doesn't overflow.
-+assert * <= $b00
-
 ; SFTODONOW: Must test that this works for all the different shadow options
 
 ; SFTODONOW: Gut feeling based on quick look at code is that for shadow paging driver, entering with A=0 for main and A=1 for shadow is a good API. This mirrors X in OSBYTE &6C - just for "mnemonic" value really. Entering with it in A makes it easier to do swizzling on it (e.g. EOR #1 or ASL A:ASL A) to tweak it to the value actually required within any given driver.

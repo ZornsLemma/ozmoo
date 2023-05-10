@@ -6,7 +6,6 @@
 
 copyright_offset = $8007
 test_location    = $8008 ; binary version number of ROM
-max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 opcode_cmp_immediate = $c9
 user_via_ddrb = $fe62
 user_via_orb_irb = $fe60
@@ -26,14 +25,6 @@ bbc = $77
 ; they're actually interchangeable at the moment).
 
     jmp start
-
-; Output for Ozmoo
-swr_type        !byte 255
-ram_bank_count2 !byte 0
-ram_bank_list2  !fill max_ram_bank_count
-
-+assert ram_bank_count = ram_bank_count2
-+assert ram_bank_list = ram_bank_list2
 
 ; Storage used by this routine which the loader doesn't care about
 swr_test   = $100 ; !fill $10

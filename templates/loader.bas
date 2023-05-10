@@ -193,14 +193,14 @@ PRINTTAB(pos,space_y);CHR$normal_graphics_fg;
 REM half-block and block UDGs for progress indicator in modes 0-6
 VDU 23,181,240,240,240,240,240,240,240,240
 VDU 23,255,-1;-1;-1;-1;
-REM SFTODO: We could and probably should make cache_screen_mode and fast_scroll_screen_mode share a zp address, have their init code not corrupt it and then we wouldn't end up PROCpoke() ing it twice in here. But let's keep things simple for now.
+!ifdef screen_mode_host {
+    PROCpoke(${screen_mode_host},?${screen_mode})
+}
 !ifdef ACORN_HW_SCROLL_CUSTOM {
-    REM SFTODO: If no executables on this disc can use this, we shouldn't bother including this code in the loader. Not that it takes a huge amount of space, of course. And I expect all executables to have potential for using fast scrolling anyway, even if sometimes they won't due to particular hardware configs.
-    PROCpoke(${fast_scroll_screen_mode},?${screen_mode})
     REM SFTODO: Change this line when this executable supports Electron
     REM The FASTSCR executable will examine the current hardware and set SFTODOWHAT to indicate whether we can actually support fast hardware scrolling on this machine. We need to copy that to SFTODOWHERE so the Ozmoo executable itself can see this and act accordingly.
     */FASTSCR
-    ?${use_custom_hw_scroll}=FNpeek(${fast_scroll_status})
+    ?${use_custom_hw_scroll}=FNpeek(${fast_scroll_status_host})
 }
 REM INSV will be placed on the disc before CACHE2P, so by running them in this
 REM order we reduce the chances of the drive head moving backwards.
@@ -208,7 +208,7 @@ REM order we reduce the chances of the drive head moving backwards.
     */INSV
 }
 !ifdef CACHE2P_BINARY {
-    IF tube THEN PROCpoke(${cache_screen_mode},?${screen_mode}):*/${CACHE2P_BINARY}
+    IF tube THEN */${CACHE2P_BINARY}
 }
 REM If there are no non-tube builds, ozmoo_relocate_target won't be defined.
 !ifdef ozmoo_relocate_target {

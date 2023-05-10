@@ -31,9 +31,6 @@ tube_reason_256_byte_from_io = 7
 osbyte_read_oshwm = $83
 osbyte_read_screen_address_for_mode = $85
 
-; shadow_state lives at $70, but we read that almost as soon as we start and
-; then don't need it again. So we can use all the zero page left free at $70-$8f
-; by the tube host code freely.
 zp_temp = $70 ; 3 bytes
 ; SFTODO: If it helps squashing this code, may want to move some vars into zp of course.
 
@@ -54,14 +51,10 @@ osword_block_ptr = $73 ; 2 bytes
     ; addresses for the following variables, which are set before we execute by
     ; the loader and are used after we've relocated down.
     shadow_bounce_buffer_page = $7d ; 1 byte
-    ; SFTODO: cache_screen_mode is not used after the discardable init code has
-    ; executed, so if we're short of space this address could be re-used after
-    ; that.
-    cache_screen_mode = $7e ; 1 byte
     ; It feels a bit extravagant allocating two bytes of zero page for
     ; old_userv, but we need this to live somewhere it won't be overwritten if
     ; we're re-executed and we're not short of zero page really.
-    old_userv = $7f ; 2 bytes
+    old_userv = $7e ; 2 bytes
 }
 
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
@@ -689,7 +682,7 @@ not_electron
 
     ; Calculate main_ram_cache_entries. We have RAM available between main_ram_cache_start
     ; and the screen.
-    lda cache_screen_mode
+    lda screen_mode_host
     ora #shadow_mode_bit
     tax
     lda #osbyte_read_screen_address_for_mode
@@ -837,7 +830,7 @@ relocate_setup
     lda shadow_state
     cmp #shadow_state_first_driver
     bcc spare_shadow_init_done ; branch if no shadow driver
-    ldx cache_screen_mode
+    ldx screen_mode_host
     sec
     lda screen_start_page_by_mode,x
     sbc #>shadow_start

@@ -1311,7 +1311,7 @@ def make_shaddrv_executable():
 
 
 def make_findswr_executable():
-    return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, [])
+    return Executable("acorn-findswr.asm", "FINDSWR", None, 0x900, ["-DACORN_SWR=1"])
 
 
 def make_insv_executable():

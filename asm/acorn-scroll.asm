@@ -13,10 +13,6 @@ vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 wrchv = $20e
 evntv = $220
 
-; SFTODO: These are hacks; I need to sort out the locations used for this kind of early stage initialisation, because at the moment things trample on each other.
-fast_scroll_screen_mode = $90
-fast_scroll_status = $91
-
 ; SFTODO: for now just assume 80 column mode - though these values are available at $352/$353 as that's where OS keeps them
 bytes_per_line = 640
 
@@ -118,9 +114,14 @@ lf
     bcc jmp_parent_wrchv
     lda fast_scroll_lines_to_move
     bne SFTODO882
+SFTODO44X
     lda #10
     jmp jmp_parent_wrchv
 SFTODO882
+    ; If there's a text window in effect, just pass through to the parent.
+    lda #%00001000
+    bit vdu_status_byte
+    bne SFTODO44X
 
     ; It's a line feed on the bottom line of the text window.
     ; SFTODO: This code probably needs to disable itself if there is an OS text window defined. We *might* get away without it - we'd just perhaps be optimising some scrolls, and any which go through to the OS as a result of printing at bottom right would have desired effect, just slower. However, the DFS 2.24 *HELP weirdness on M128 would manifest (I think) if you did this during save/restore - remember we do and probably will continue to have an OS text window in effect then, because we can't control printing at bottom right - and there might be other weirdness.
@@ -342,8 +343,14 @@ init
     ; scrolling on it; if not the Ozmoo executable will fall back to slow
     ; hardware scrolling or software scrolling as appropriate.
     lda #0
-    sta fast_scroll_status
+    sta fast_scroll_status_host
     sta fast_scroll_lines_to_move ; SFTODO: I THINK THIS IS RIGHT, MEANS WE START OFF DISABLED
+!if 0 { ; SFTODO?
+    ; If we're going to run the game in mode 7, we will use software scrolling. SFTODO: Technically we shouldn't *need* to do this, as the game shouldn't try to use it. Don't bother checking?
+    lda screen_mode_host
+    cmp #7
+    beq just_rts
+}
 !if 0 { ; SFTODO TEMP REMOVED WHILE WE'RE SHORT OF SPACE
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
@@ -368,7 +375,7 @@ host_type_in_x
     bcs not_electron
     ; We're on an Electron.
     ; SFTODONOW: For the moment this doesn't support fast hardware scrolling. I intend to implement this, so later we will need to check for MRB in shadow mode here and use Electron fast hw scrolling code provided we are't in MRB shadow mode.
-    ; Return with fast_scroll_status 0.
+    ; Return with fast_scroll_status_host 0.
 just_rts
     rts
 not_electron
@@ -393,7 +400,7 @@ supported_bbc_with_shadow_driver_yx
     sty jsr_shadow_paging_control1 + 2
     sty jsr_shadow_paging_control2 + 2
     lda #1
-    sta fast_scroll_status ; SFTODO: maybe this variable should have _host appended, to avoid confusion if I accidentally use it in the core Ozmoo code (which runs on tube if we have one, of course)
+    sta fast_scroll_status_host ; SFTODO: maybe this variable should have _host appended, to avoid confusion if I accidentally use it in the core Ozmoo code (which runs on tube if we have one, of course)
 
     ; SFTODONOW: At some point this code will load in one place (probably page &9/&A) and copy the relevant driver to the final place (wherever that is), as the shadow driver executable does, but for now it just loads into the final place.
 

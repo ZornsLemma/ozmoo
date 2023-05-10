@@ -29,7 +29,7 @@ IF host_os%=2 THEN private_ram_bank%=128
 ram_banks%=FNpeek(${ram_bank_count}):
 IF private_ram_bank%<>0 AND ram_banks%<${max_ram_bank_count} THEN PROCpoke(${ram_bank_list}+ram_banks%,private_ram_bank%):ram_banks%=ram_banks%+1:PROCpoke(${ram_bank_count},ram_banks%)
 
-PROCpoke(${cache_screen_mode},mode% AND &7F)
+PROCpoke(${screen_mode_host},mode% AND &7F)
 */CACHE2P
 
 track_offers%=10:REM 0 disables offer tracking

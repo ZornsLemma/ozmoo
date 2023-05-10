@@ -23,19 +23,6 @@ copy_key = 139
 cursor_up_key = 143
 cursor_down_key = 142
 
-; SFTODO: If this code needs to be shortened in the future,
-; nominal_cursor_key_status could be moved into page 4/5 to save a byte. It
-; could also be moved into zero page to save another byte, although that's
-; probably not ideal as zero page is a valuable resource. Alternatively "ldy
-; nominal_cursor_key_status" could be changed to "ldy #x" and the address of
-; that x constant used as nominal_cursor_key_status; that's a little tricksy but
-; still saves two bytes and avoids wasting a zero page location, so if this does
-; need to be shortened that's probably the best of these options.
-!if * != nominal_cursor_key_status {
-    !error "nominal_cursor_key_status incorrect"
-}
-    !byte 0 ;  nominal_cursor_key_status
-
 ; On entry:
 ;     A=140-143 for unshifted cursors
 ;     A=156-159 for shifted cursors

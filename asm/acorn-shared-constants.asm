@@ -19,8 +19,8 @@
 ;   This checks for shadow RAM and installs an appropriate shadow driver if we
 ;   have one.
 ;   Execution corrupts: &900-&AFF, &70-&8F
-;   Execution sets: shadow_state, shadow_paging_control_ptr
-;   Runtime memory: shadow_driver_start-shadow_driver_end
+;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end (including shadow_ram_copy, shadow_paging_control_ptr)
+;   Runtime memory: as "Execution sets"
 ;
 ; - FINDSWR (acorn-findswr.asm)
 ;   This checks for sideways RAM.
@@ -33,10 +33,13 @@
 ;   This allows hardware scrolling of the bottom part of the screen while
 ;   leaving a runtime-controllable number of lines untouched at the top.
 ;   Execution corrupts: &900-&AFF SFTODO NOT CURRENTLY, BUT FINAL PLAN, PROBABLY
-;   Execution inputs: fast_scroll_screen_mode, shadow_state, shadow_paging_control_ptr
-;   Execution outputs: fast_scroll_status
+;   Execution inputs: screen_mode_host, shadow_state, shadow_paging_control_ptr
+;   Execution outputs: fast_scroll_status_host
 ;   Runtime memory: SFTODO, PROBABLY A SUBSET OF &900-AFF WHICH LEAVES ROOM FOR INSV
 ;   Runtime inputs: fast_scroll_lines_to_move
+;   Note: The loader copies fast_scroll_status_host into fast_scroll_status in SFTODO: IT ACTUALLY COPIES TO use_custom_hw_scroll BUT I SHOULD RENAME THAT
+;   the language processor, so it's available to the Ozmoo executable wherever
+;   it's running.
 ;
 ; - INSV (acorn-insv.asm)
 ;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
@@ -53,12 +56,53 @@
 ;   available. (The above executables have to be able to co-exist with the main
 ;   Ozmoo executable on single processor systems.)
 ;   Execution corrupts: OSHWM-HIMEM, &70-8F
-;   Execution inputs: cache_screen_mode
+;   Execution inputs: screen_mode_host, shadow_state
 ;   Runtime memory: OSHWM-HIMEM, &70-&8F
+;
+; The Ozmoo executable itself uses some addresses associated with the above utilities: SFTODO SEMI DUPLICATING THE ABOVE
+; - SHADDRV: shadow_ram_copy
+; - FINDSWR: ram_bank_count, ram_bank_list
+; - FASTSCR: fast_scroll_lines_to_move
+; - INSV: nominal_cursor_key_status
+; -
 ;
 ;
 
+; For communicating values between the utilities themselves and the loader, we
+; allocate some bytes at the end of user zero page. All of these are available
+; for re-use while the game is running.
+!ifdef ACORN_SHADOW_VMEM {
+    shadow_state = $8b
+    private_ram_in_use = $8c
+}
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    WANT_HOST_SCREEN_MODE = 1
+    fast_scroll_status_host = $8d
+}
+!ifdef ACORN_TUBE_CACHE {
+    WANT_HOST_SCREEN_MODE = 1
+}
+!ifdef WANT_HOST_SCREEN_MODE {
+    screen_mode_host = $8e
+}
+!ifdef ACORN_SWR {
+    swr_type = $8f
+}
+
+; SFTODO: MOVE THIS?
+; SFTODO: Use this in more places?
+!macro assert .b {
+    !if .b = 0 {
+        !error "assertion failed"
+    }
+}
+
+; We conditionally assemble a lot of these constants to try to avoid them being
+; used by accident.
+
 brkv = $202
+
+buffer_keyboard = 0
 
 shadow_mode_bit = 128
 
@@ -85,6 +129,10 @@ electron_romsel = $fe05
     is_turbo = $ed
 }
 
+; We pack some miscellaneous data into the space after the shadow driver.
+xxx_shadow_driver_end = $900 - 16
+xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
+
 !ifdef ACORN_SHADOW_VMEM {
     shadow_start = $3000
 
@@ -94,7 +142,7 @@ electron_romsel = $fe05
     shadow_driver_start = $8c0
     shadow_paging_control_ptr = shadow_driver_start
     shadow_ram_copy = shadow_driver_start + 2
-    shadow_driver_end = $900 ; exclusive
+    shadow_driver_end = xxx_shadow_driver_end ; exclusive
 
     ; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
     shadow_state_none           = 0 ; no shadow RAM
@@ -107,60 +155,37 @@ electron_romsel = $fe05
     shadow_state_integra_b      = 6 ; Integra-B shadow RAM
     shadow_state_watford        = 7 ; BBC B Watford shadow RAM
     shadow_state_aries          = 8 ; BBC B Aries shadow RAM
-
-    ; We don't need zero page for all of these, but we have it free so with
-    ; might as well use it to keep the code size down. The first two addresses
-    ; are used to pass information to the BASIC loader.
-    shadow_state = $70
-    private_ram_in_use = $71
-}
-
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-    fast_scroll_lines_to_move = $92 ; SFTODO MASSIVE HACK
 }
 
 !ifdef ACORN_SWR {
-b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
-integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
-}
+    b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
+    integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 
-!ifdef ACORN_TUBE_CACHE {
-osword_cache_op = $e0 ; USERV OSWORD
-osword_cache_no_timestamp_hint = $ff
+    ; SFTODO: Might want to move these to free up $9 and $a for vmem cache or something.
+    max_ram_bank_count = xxx_max_ram_bank_count
+    ram_bank_count = xxx_shadow_driver_end ; 1 byte
+    ram_bank_list = xxx_shadow_driver_end + 1 ; max_ram_bank_count bytes
 }
-
-; SFTODO: Might want to move these to free up $9 and $a for vmem cache or something.
-ram_bank_count = $904
-ram_bank_list = $905
 
 !ifdef USE_HISTORY {
-    nominal_cursor_key_status = $a00
+    nominal_cursor_key_status = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count ; 1 byte
 }
 
-buffer_keyboard = 0
-
-; SFTODO: MOVE THIS?
-; SFTODO: Use this in more places?
-!macro assert .b {
-    !if .b = 0 {
-        !error "assertion failed"
-    }
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    fast_scroll_lines_to_move = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
 }
+
++assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900
+
+!ifdef ACORN_TUBE_CACHE {
+    osword_cache_op = $e0 ; USERV OSWORD
+    osword_cache_no_timestamp_hint = $ff
+}
+
+
 
 ; SFTODO: MOVE THIS? I PUT IT HERE INTENDING TO USE IT IN CACHE2P BUT DIDN'T, SO IT COULD TECHNICALLY MOVE BACK TO ACORN.ASM WHERE IT USED TO BE.
-; Macro used to generate an OS error.
-; SFTODO: On one of my machines where acme is:
-;     This is ACME, release 0.95.8 ("Fenchurch"), 8 Oct 2016
-;       Platform independent version.
-; macros cannot take string arguments and all the uses of this fail. Should I
-; get rid of this (and any other, if there are any) macros which take string
-; arguments, or just require a newer acme? (Right now I am not sure exactly
-; which versions work, and acme seems to have a few forks floating around.) I
-; noticed this myself, no one else has run into problems with this yet.
-; (I tried updating to release 0.96.4 ("Fenchurch"), 1 Feb 2019, platform
-; independent version but I still get the same error.)
-; - OK, the machine which *does* build this OK has 0.97 ("Zem"), 31 Jan 2021,
-; platform independent version.
+; Macro used to generate an OS error. (This needs acme >= 0.97.)
 !macro os_error error_number, error_message {
     brk
     !byte error_number
