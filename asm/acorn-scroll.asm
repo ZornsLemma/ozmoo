@@ -39,7 +39,7 @@ scanline_to_end_at = 312-(35*8) ; SFTODO: 2 flickers, 4 flickers, 8 flickers, 10
 timer_value1 = (total_rows - vsync_position) * us_per_row - 2 * us_per_scanline + scanline_to_start_at * us_per_scanline
 timer_value2 = (scanline_to_end_at - scanline_to_start_at) * us_per_scanline
 
-;DEBUG_COLOUR_BARS = 1
+DEBUG_COLOUR_BARS = 1
 
 ; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
 ; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
@@ -59,7 +59,7 @@ evntv_handler
     lda #>timer_value1:sta $fe69
     lda #1:sta current_crtc_row
 !ifdef DEBUG_COLOUR_BARS {
-    eor #7:jsr debug_set_bg
+    eor #7:sta $fe21 ; jsr debug_set_bg
 }
     lda #4
 jmp_parent_evntv
@@ -81,11 +81,8 @@ irq_handler
 SFTODO8
 !ifdef DEBUG_COLOUR_BARS {
     lda current_crtc_row
-    bpl +
-    lda #4
-+
-    and #7:eor #7
-    jsr debug_set_bg
+    clc:adc #3:eor #7
+    sta $fe21;jsr debug_set_bg
 }
 return_to_os
     pla:sta $fc
@@ -94,7 +91,7 @@ old_irq = *+1
 current_crtc_row
     !byte 0 ; SFTODO: inline data would break relocatability but will do for now
 
-!ifdef DEBUG_COLOUR_BARS {
+!ifdef DEBUG_COLOUR_BARS_SFTODO {
 debug_set_bg
     sta SFTODO9
     txa
@@ -186,6 +183,11 @@ chunks_per_line = 5
     ; multiply, n is small (and not generally a power of two) and as n grows the
     ; amount of data we have to copy grows proportionally so the extra overhead
     ; of doing this adding is always a small fraction of the total work.
+    ;
+    ; Because the wrapping makes everything so painful, we push the addresses on
+    ; the stack as we calculate them so we can pop them off again to work
+    ; through them backwards, rather than decrementing-with-wrapping. SFTODO:
+    ; This does mean that the multiply-by-adding is kind of necessary.
 add_loop
     lda src:pha:lda src+1:pha
     ldx #src:jsr add_line_x
@@ -227,7 +229,7 @@ byte_loop
 done
 
 !ifdef DEBUG_COLOUR_BARS {
-    lda #5 xor 7:jsr debug_set_bg
+    lda #5 xor 7:sta $fe21 ;jsr debug_set_bg
 }
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
     lda #0
@@ -329,6 +331,7 @@ init
     ; hardware scrolling or software scrolling as appropriate.
     lda #0
     sta fast_scroll_status
+!if 0 { ; SFTODO TEMP REMOVED WHILE WE'RE SHORT OF SPACE
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
     lda #$49
@@ -341,6 +344,7 @@ init
     ; recognising that we are on a model B despite its spoofing.
     ldx #1
     bne host_type_in_x ; always_branch
+}
 not_integra_b
     ; Determine the host type.
     lda #osbyte_read_host
@@ -415,9 +419,7 @@ not_already_claimed
     lda #0
     sta $fe6b
     cli
-    lda #14:ldx #4:jsr osbyte ; SFTODO: MAGIC NUM
-
-    rts
+    lda #14:ldx #4:jmp osbyte ; SFTODO: MAGIC NUM
 
 ; SFTODO: Some thoughts on making this work properly without hacks:
 ;
