@@ -1369,6 +1369,9 @@ deletable_screen_init_1
 	sty window_start_row + 1
 	ldy s_screen_height
 	sty window_start_row
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    jsr forward_window_start_row_plus_1_corrupt_xy
+}
 !ifndef ACORN {
 	ldy #0
 	sty is_buffered_window

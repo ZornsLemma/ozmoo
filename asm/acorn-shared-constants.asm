@@ -58,6 +58,10 @@ electron_romsel = $fe05
     private_ram_in_use = $71
 }
 
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    fast_scroll_lines_to_move = $92 ; SFTODO MASSIVE HACK
+}
+
 !ifdef ACORN_SWR {
 b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
 integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace

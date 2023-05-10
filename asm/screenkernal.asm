@@ -492,7 +492,11 @@ s_printchar
 	cpy cursor_row
 	bcc +
 	sty cursor_row
-+	jmp .resume_printing_normal_char ; Always branch
++
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    jsr forward_window_start_row_plus_1_corrupt_xy
+}
+    jmp .resume_printing_normal_char ; Always branch
 }
 ; SFTODONOW: Stating the obvious, test software, hardware-old-style and hardware-new-style scrolling once finished. Also be good to *SPOOL the output and have a look for apparently gratutious VDU codes, e.g. cursor movement when not necessary, stray text windows, etc.
 
@@ -874,6 +878,35 @@ check_user_interface_controls
 z_ins_set_colour
     ; SFTODO: THIS IS PROBABLY RIGHT, BUT CHECK - CAN/SHOULD WE JUST DO RTS???
     jmp printchar_flush
+}
+
+; SFTODONOW: IT OCCURS TO ME THAT BOTH HERE AND FOR THE OTHER CASE WHERE WE WRITE DATA ACROSS TUBE VIA OSWORD, WE HAVE A SEPARATE TUBE EXECUTABLE SO THERE'S NO REASON TO WASTE SPACE ON THIS CODE TO USE OSWORD IN THE NON-TUBE EXECUTABLES
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+; SFTODONOW: I am currently glossing over the problem of whether this should be sent - what if HW scrolling is disabled? And then what if the user turns it on afterwards? We probably need to only forward it here if HW scrolling is in use (it's harmless to forward if we don't have custom scroll support tho) and also forward (via a "do it, I say so" sub-part of this routine) when hardware scrolling is toggled on by the user - and maybe send a 0 to turn it off if user toggles sw scrolling on, although maybe having a text window defined is good enough in practice
+forward_window_start_row_plus_1_corrupt_xy ; SFTODO: rename? it also controls events
+    pha
+    ; Enable or disable vsync events; we want them to be enabled iff window_start_row + 1 == 1.
+    lda #13 ; SFTODO: MAGIC
+    ldy window_start_row + 1
+    dey
+    bne +
+    lda #14
++   ldx #4 ; SFTODO: MAGIC
+    jsr osbyte
+    ; Update fast_scroll_lines_to_move to tell our fast scroll driver how many lines to protect.
+    lda window_start_row + 1
+    sta .osword_write_host_block_data2 ; SFTODO: rename, but we already have a ...data - can we share!? perhaps more code needed to share than do sep
+    lda #osword_write_host
+    ldx #<.osword_write_host_block2
+    ldy #>.osword_write_host_block2
+    jsr osword
+    pla
+    rts
+.osword_write_host_block2
+    !word fast_scroll_lines_to_move ; low order word of address
+    !word $ffff                     ; high order word of address
+.osword_write_host_block_data2
+    !byte 0                         ; data to write, patched at runtime
 }
 
 }

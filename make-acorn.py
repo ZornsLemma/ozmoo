@@ -1337,7 +1337,7 @@ def make_fast_hw_scroll_executable():
     # SFTODO: Location of this is an utter hack right now
     workspace_start = 0xa80
     workspace_end = 0xd00
-    e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, ["-DACORN_SHADOW_VMEM=1"])
+    e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, ["-DACORN_HW_SCROLL_CUSTOM=1", "-DACORN_SHADOW_VMEM=1"])
     init = e.labels['init']
     assert e.start_addr + len(e.binary()) <= workspace_end
     e.exec_addr = host | init

@@ -291,6 +291,9 @@ split_window
 	; unsplit
 	ldx window_start_row + 2
 	stx window_start_row + 1
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    jsr forward_window_start_row_plus_1_corrupt_xy
+}
 !ifdef MODE_7_STATUS {
 !ifdef Z4PLUS {
     jsr check_and_add_mode_7_colour_code
@@ -305,6 +308,9 @@ split_window
 	clc
 	adc window_start_row + 2
 	sta window_start_row + 1
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    jsr forward_window_start_row_plus_1_corrupt_xy
+}
 !ifndef Z4PLUS {
 	ldx #1
 	jsr erase_window

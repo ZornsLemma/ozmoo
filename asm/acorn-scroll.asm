@@ -89,8 +89,6 @@ loopSFTODO
 }
 
 ; SFTODO: move this to a better location
-lines_to_move
-    !byte 1 ; SFTODO TEMP HACK
 lines_to_move_working_copy
     !byte 0
 
@@ -118,6 +116,12 @@ lf
     cmp vdu_text_window_bottom
     lda #10
     bcc jmp_parent_wrchv
+    lda fast_scroll_lines_to_move
+    bne SFTODO882
+    lda #10
+    jmp jmp_parent_wrchv
+SFTODO882
+
     ; It's a line feed on the bottom line of the text window.
     ; SFTODO: This code probably needs to disable itself if there is an OS text window defined. We *might* get away without it - we'd just perhaps be optimising some scrolls, and any which go through to the OS as a result of printing at bottom right would have desired effect, just slower. However, the DFS 2.24 *HELP weirdness on M128 would manifest (I think) if you did this during save/restore - remember we do and probably will continue to have an OS text window in effect then, because we can't control printing at bottom right - and there might be other weirdness.
     ; SFTODO: It's not a huge deal, but FWIW - I think this LF character will be omitted from any *SPOOL file being produced, unless we take extra steps to include it.
@@ -139,6 +143,16 @@ wait_for_safe_raster_position
     lda current_crtc_row
     bne wait_for_safe_raster_position
 } else { ; SFTODO
+    ; We don't try to avoid flicker if we're protecting two or more lines at the
+    ; top of the screen; our copy code isn't fast enough to get the job done in
+    ; the time available in a single frame.
+    lda fast_scroll_lines_to_move
+    cmp #2
+    bcs SFTODO44
+    ; We're protecting a single row (our wrchv handler only executes if we are
+    ; protecting a non-0 number of rows), so busy wait until the raster is in a
+    ; position at which we can start our update and get it done before the
+    ; raster starts to retrace the protected part of the screen.
 SFTODOLOOP
     lda $fe69 ; timer 2 high-order counter
     cmp #>first_safe_start_row_time_us
@@ -171,7 +185,7 @@ chunk_size = 128 ; SFTODO: hard-coded for 640 byte per line modes for now
 chunks_per_page = 256 / chunk_size
 chunks_per_line = 5
 
-    ldy lines_to_move:sty lines_to_move_working_copy
+    ldy fast_scroll_lines_to_move:sty lines_to_move_working_copy
     dey:beq line_loop
     ; SFTODO: It's not exactly efficient to add bytes_per_line n times instead
     ; of adding n*bytes_per_line, but we don't want to be doing a generic
@@ -329,6 +343,7 @@ init
     ; hardware scrolling or software scrolling as appropriate.
     lda #0
     sta fast_scroll_status
+    sta fast_scroll_lines_to_move ; SFTODO: I THINK THIS IS RIGHT, MEANS WE START OFF DISABLED
 !if 0 { ; SFTODO TEMP REMOVED WHILE WE'RE SHORT OF SPACE
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
@@ -411,7 +426,10 @@ not_already_claimed
     lda #0
     sta $fe6b ; user via ACR
     cli
-    lda #14:ldx #4:jmp osbyte ; SFTODO: MAGIC NUM
+    ; We don't enable vsync events; we don't need them while
+    ; fast_scroll_lines_to_move is zero, and the Ozmoo executable takes care of
+    ; turning them on and off as that changes.
+    rts
 
 ; SFTODO: Some thoughts on making this work properly without hacks:
 ;
@@ -525,3 +543,5 @@ awkward_inner_loop
 
 
 }
+
+; SFTODO: Quick fiddle with Border Zone suggests the multi-line hardware scrolling works but it looks quite nasty. It may still be better than software scrolling. This is just a note to go back and experiment with this later. Just maybe we should never use the new scrolling for anything except a single line (as we do with the redraw-via-OS based hw scrolling).
