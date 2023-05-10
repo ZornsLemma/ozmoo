@@ -1250,6 +1250,15 @@ deletable_init_start
     !text 13, "vmem_blocks_in_sideways_ram=$", 0
     lda vmem_blocks_in_sideways_ram
     jsr print_byte_as_hex
+!if 0 {
+    ; SFTODO: This doesn't work, because shadow_state isn't actually needed by
+    ; the Ozmoo executable and it's been overwritten by now. This is probably
+    ; fine really.
+    jsr .print_indented_following_string
+    !text 13, "shadow_state=$", 0
+    lda shadow_state
+    jsr print_byte_as_hex
+}
 +
 }
     ; }}}
@@ -1357,6 +1366,22 @@ deletable_init_start
 +
 }
 } ; VMEM
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+; SFTODO: The technical details list is getting quite long and probably won't
+; fit on screen neatly soon. This is probably not all that interesting in the
+; long run, although it's useful for now while this code is new, so it could be
+; removed or commented out later.
+!ifdef ACORN_HW_SCROLL_CUSTOM {
+    lda .show_runtime_info
+    beq +
+    jsr .print_indented_following_string
+    !text 13, "use_custom_hw_scroll=$", 0
+    lda use_custom_hw_scroll
+    jsr print_byte_as_hex
++
+}
+}
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
