@@ -176,12 +176,15 @@ wait_for_safe_raster_position
     ; - we need to disallow this code from executing when we get down towards the last 13400/1024=13-ish character rows (visible or invisible) before the top visible scan line, so it has time to do the job before the memory starts to be displayed. (We can disallow *slightly* later, because we're still moving during the raster, just not as fast as it is)
     ; SFTODO: *Only* for one line (which a fixed address - $7f40 in mode 6, $7f80 in mode 3) in each of mode 3 and mode 6 can we get a wrap *within* a 320/640 byte line. It feels to me like this must make it fairly easy for us to do a much tighter copy loop which works a line at a time and special case that somehow.
 !if 0 { ; SFTODO SKETCHING/THINKING OUT LOUD
-    bytes_to_copy = lines_to_copy * bytes_per_line ; lines_to_copy=1 to start, but want to allow larger values very soon
-    ldx #bytes_to_copy / 256
+    ; Because we need to account for wrapping at the top of screen RAM, we *don't* handle multiple lines just by copying bytes_per_line*number of line bytes in a single operation. By copying only a line's worth of data at a time, most of the time our inner loop doesn't have to worry about line wrapping.
+    lda #n:sta working_lines_to_copy
+
+multi_line_loop
+    ldx #bytes_per_line / 256
     ; If the high byte of (pre-modification) src or dst is $7f, we will wrap in the middle of a line.
     lda #0:ldy src+1:cmp #$7f:rol:ldy dst+1:cmp #$7f:rol:php
     ; On the first pass we are potentially copying less than 256 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
-    initial_y = (256 - (bytes_to_copy % 256)) & $ff
+    initial_y = (256 - (bytes_per_line % 256)) & $ff
     ldy #initial_y
     sec:lda src:sbc #initial_y:sta src:deccc src+1
     sec:lda dst:sbc #initial_y:sta dst:deccc dst+1
@@ -198,6 +201,7 @@ src1abs = *+1
     lda $ffff,y ; patched
 dstabs = *+1
     sta $ffff,y ; patched
+    ; SFTODO: If working_lines_to_copy>1, the lda #0:sta are redundant - we would just be zeroing out memory we are going to deal with on the next line pair
     lda #0
 src2abs = *+1
     sta $ffff,y ; patched
@@ -208,7 +212,13 @@ src2abs = *+1
     inc dst+1
     dex
     bne copy_and_zero_outer_loop
-done
+done ; SFTODO: done_line?
+
+    dec working_lines_to_copy:beq done_all
+    dst = src
+    src += bytes_per_line:wrap src if nec
+    jmp multi_line_loop
+done_all
 
 
 
