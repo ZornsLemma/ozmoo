@@ -111,6 +111,14 @@ loopSFTODO
     rts
 }
 
+; SFTODO: move this to a better location
+; How many chunks to move in screen RAM (so they *don't* move in visual screen
+; space) when scrolling the screen; each chunk is 1/5th of a line, so this is
+; 5*number_of_lines_in_top_window.
+; SFTODO: We could multiply this by 5 ourselves but it feels better right now to make the Ozmoo executable do this fairly simply bit of work as it has more code space than we do, probably.
+chunks_to_move
+    !byte 2*5 ; SFTODO TEMP HACK
+
 
 our_wrchv
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not interested in passed through ASAP.
@@ -152,6 +160,51 @@ wait_for_safe_raster_position
     lda vdu_screen_top_left_address_high
     sta dst+1
     jsr .setCursorSoftwareAndHardwarePosition
+
+    ; We need this code to be reasonably fast and also reasonably small. SFTODO: I am sure it's possible to do better, particularly once I have a better idea of exactly how much code size I can tolerate.
+    ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
+    ldx chunks_to_move
+
+chunk_size = 128 ; SFTODO: hard-coded for 640 byte per line modes for now
+chunks_per_page = 256 / chunk_size
+
+chunk_loop
+    ldy #chunk_size - 1
+    cpx #chunks_per_page:bcc dontfutz
+    lda src+1:cmp #$7f:bcs dontfutz
+    lda dst+1:cmp #$7f:bcs dontfutz
+    txa:sec:sbc #chunks_per_page-1:tax ; -1 because we will do a dex at the end of the loop
+    ldy #0
+dontfutz
+    ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something.
+byte_loop
+    lda (src),y
+    sta (dst),y
+    lda #0
+    sta (src),y
+    dey
+    bpl byte_loop
+    ; SFTODO: experimental - this will be a bit slower, but will save code size
+    THESE ARE WRONG WE NEED TO ADD CHUNK SIZE!
+    inc src+1:bmi wrap_src
+src_wrapped
+    inc dst+1:bmi wrap_dst
+dst_wrapped
+    dex
+    bpl chunk_loop
+
+SFTODO
+
+
+wrap_src
+    lda src+1:sec:sbc vdu_screen_size_high_byte:sta src+1
+    jmp src_wrapped
+wrap_dst
+    lda dst+1:sec:sbc vdu_screen_size_high_byte:sta dst+1
+    jmp dst_wrapped
+
+    ; SFTODO: Patch in or out the lda #0:sta so we only do it for the last 5 chunks (i.e. last line)
+
     ; We copy and bump in chunks of 128 because the line length in bytes is
     ; always a multiple of 128, which means we can wrap at the top of screen
     ; memory between each chunk without any problems.
@@ -175,80 +228,6 @@ wait_for_safe_raster_position
     ; - this means that we can allow this code to execute without tearing from the moment the raster starts to trace the top visible scan line (probably a little earlier, of course)
     ; - we need to disallow this code from executing when we get down towards the last 13400/1024=13-ish character rows (visible or invisible) before the top visible scan line, so it has time to do the job before the memory starts to be displayed. (We can disallow *slightly* later, because we're still moving during the raster, just not as fast as it is)
     ; SFTODO: *Only* for one line (which a fixed address - $7f40 in mode 6, $7f80 in mode 3) in each of mode 3 and mode 6 can we get a wrap *within* a 320/640 byte line. It feels to me like this must make it fairly easy for us to do a much tighter copy loop which works a line at a time and special case that somehow.
-!if 0 { ; SFTODO SKETCHING/THINKING OUT LOUD
-    ; Because we need to account for wrapping at the top of screen RAM, we *don't* handle multiple lines just by copying bytes_per_line*number of line bytes in a single operation. By copying only a line's worth of data at a time, most of the time our inner loop doesn't have to worry about line wrapping.
-    lda #n:sta working_lines_to_copy
-
-multi_line_loop
-    ldx #bytes_per_line / 256
-    ; If the high byte of (pre-modification) src or dst is $7f, we will wrap in the middle of a line.
-    lda #0:ldy src+1:cmp #$7f:rol:ldy dst+1:cmp #$7f:rol:php
-    ; On the first pass we are potentially copying less than 256 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
-    initial_y = (256 - (bytes_per_line % 256)) & $ff
-    ldy #initial_y
-    sec:lda src:sbc #initial_y:sta src:deccc src+1
-    sec:lda dst:sbc #initial_y:sta dst:deccc dst+1
-    plp:bne awkward
-copy_and_zero_outer_loop
-    ; Patch the lda/sta abs instructions in the inner loop to use the values in src/dst; this allows us to use (zp),y addressing in the awkward case loop and saves us a handful of bytes/cycles elsewhere by using zp instructions to modify src/dst, while still giving us the performance benefits of abs,y in the inner loop.
-    lda src+0:sta src1abs+0:sta src2abs+0 ; 3+4+4
-    lda src+1:sta src1abs+1:sta src2abs+1 ; 3+4+4
-    lda dst+0:sta dstabs+0 ; 3+4
-    lda dst+1:sta dstabs+1 ; 3+4
-    ; so 36 cycles to do that copy, and we then save 3 cycles on each pass round the loop, so we break even after 12 bytes, so this is a win for speed.
-copy_and_zero_inner_loop
-src1abs = *+1
-    lda $ffff,y ; patched
-dstabs = *+1
-    sta $ffff,y ; patched
-    ; SFTODO: If working_lines_to_copy>1, the lda #0:sta are redundant - we would just be zeroing out memory we are going to deal with on the next line pair
-    lda #0
-src2abs = *+1
-    sta $ffff,y ; patched
-    iny
-    bne copy_and_zero_inner_loop
-    ; These cannot wrap because they are within a line and we already handed the awkward case off to a different piece of code.
-    inc src+1
-    inc dst+1
-    dex
-    bne copy_and_zero_outer_loop
-done ; SFTODO: done_line?
-
-    dec working_lines_to_copy:beq done_all
-    dst = src
-    src += bytes_per_line:wrap src if nec
-    jmp multi_line_loop
-done_all
-
-
-
-awkward
-    ldy #initial_y:sty working_y ; SFTODO: ldy # probably redundant, Y probably already set
-awkward_outer_loop
-awkward_inner_loop
-    ldy #0
-    lda (src),y
-    sta (dst),y
-    lda #0 ; SFTODO: tya
-    sta (src),y
-    inc src:bne no_wrap_src:inceq src+1:bpl no_wrap_src:wrap:.no_wrap_src
-    inc dst:bne no_wrap_dst:inceq dst+1:bpl no_wrap_dst:wrap:.no_wrap_dst:inceq dst+1
-    inc working_y
-    bne awkward_inner_loop
-    dex
-    bne awkward_outer_loop
-    beq done ; always branch
-
-
-
-    ; SFTODO: IS THIS TOO CLEVER? THE SIMPLE INNER LOOP AS IT STANDS LOOPS WITH INY:BNE INNER - 5 cycles
-    ; IF WE KEEP Y 0, DO INCS AND TEST FOR WRAPPING WE HAVE (looking at common case only):
-    ;     inc src:beq not_simple
-    ;     inc dst:bne inner
-    ; that is 5+2+5+3=15 cycles, so 10 cycles worse per byte copied (ignoring the 1-in-256 non-simple cases).
-    ; OK, it's slightly worse, because that assumes src/dst are in zp, so we're paying an extra cycle on each lda/sta in the inner loop as we can't use the abs,y mode.
-    ; An advantage of just blatting round the inner loop using inc-and-test-for-wrap is that in the multi-line case, we don't need to treat things any differently - we just keep going. Oh, but I forgot we need to handle counting how many bytes we copy. Gah.
-}
 
 
     ldx #(bytes_per_line / 128)
@@ -559,3 +538,80 @@ not_already_claimed
 ; SFTODO: Although that code was probably written without much care about code size, STEM has a highly-optimised line-oriented memmove which would potentially be ideal for copying the line data when we scroll (especially if we start to do it for >1 line of data). Definitely worth taking a look. (It does also have to run from ROM, so there may be more scope for better or simpler optimisation using self-modifying code.)
 
 ; SFTODO: Thinking out loud - this code needs to know what mode it is in, because it needs to tweak its timings accordingly. We don't really want to waste bytes or cycles (especially bytes, I suspect) adapting on the fly, unless it's very cheap, because this code is probably fairly large already and it's best if the installation executable can set this up and be done with it to keep the runtime memory requirement down. The trouble is that we aren't in the final screen mode when the installation executable will be loaded, so we may need to pass it through as we do with the host cache. I guess this is fine-ish, because we can poke it into memory from the loader and it only has to remain valud there until this code initisalises itself.
+
+!if 0 { ; SFTODO SKETCHING/THINKING OUT LOUD
+    ; Because we need to account for wrapping at the top of screen RAM, we *don't* handle multiple lines just by copying bytes_per_line*number of line bytes in a single operation. By copying only a line's worth of data at a time, most of the time our inner loop doesn't have to worry about line wrapping.
+    lda #n:sta working_lines_to_copy
+
+multi_line_loop
+    ldx #bytes_per_line / 256
+    ; If the high byte of (pre-modification) src or dst is $7f, we will wrap in the middle of a line.
+    lda #0:ldy src+1:cmp #$7f:rol:ldy dst+1:cmp #$7f:rol:php
+    ; On the first pass we are potentially copying less than 256 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
+    initial_y = (256 - (bytes_per_line % 256)) & $ff
+    ldy #initial_y
+    sec:lda src:sbc #initial_y:sta src:deccc src+1
+    sec:lda dst:sbc #initial_y:sta dst:deccc dst+1
+    plp:bne awkward
+copy_and_zero_outer_loop
+    ; Patch the lda/sta abs instructions in the inner loop to use the values in src/dst; this allows us to use (zp),y addressing in the awkward case loop and saves us a handful of bytes/cycles elsewhere by using zp instructions to modify src/dst, while still giving us the performance benefits of abs,y in the inner loop.
+    lda src+0:sta src1abs+0:sta src2abs+0 ; 3+4+4
+    lda src+1:sta src1abs+1:sta src2abs+1 ; 3+4+4
+    lda dst+0:sta dstabs+0 ; 3+4
+    lda dst+1:sta dstabs+1 ; 3+4
+    ; so 36 cycles to do that copy, and we then save 3 cycles on each pass round the loop, so we break even after 12 bytes, so this is a win for speed.
+copy_and_zero_inner_loop
+src1abs = *+1
+    lda $ffff,y ; patched
+dstabs = *+1
+    sta $ffff,y ; patched
+    ; SFTODO: If working_lines_to_copy>1, the lda #0:sta are redundant - we would just be zeroing out memory we are going to deal with on the next line pair
+    lda #0
+src2abs = *+1
+    sta $ffff,y ; patched
+    iny
+    bne copy_and_zero_inner_loop
+    ; These cannot wrap because they are within a line and we already handed the awkward case off to a different piece of code.
+    inc src+1
+    inc dst+1
+    dex
+    bne copy_and_zero_outer_loop
+done ; SFTODO: done_line?
+
+    dec working_lines_to_copy:beq done_all
+    dst = src
+    src += bytes_per_line:wrap src if nec
+    jmp multi_line_loop
+done_all
+
+
+
+awkward
+    ldy #initial_y:sty working_y ; SFTODO: ldy # probably redundant, Y probably already set
+awkward_outer_loop
+awkward_inner_loop
+    ldy #0
+    lda (src),y
+    sta (dst),y
+    lda #0 ; SFTODO: tya
+    sta (src),y
+    inc src:bne no_wrap_src:inceq src+1:bpl no_wrap_src:wrap:.no_wrap_src
+    inc dst:bne no_wrap_dst:inceq dst+1:bpl no_wrap_dst:wrap:.no_wrap_dst:inceq dst+1
+    inc working_y
+    bne awkward_inner_loop
+    dex
+    bne awkward_outer_loop
+    beq done ; always branch
+
+
+
+    ; SFTODO: IS THIS TOO CLEVER? THE SIMPLE INNER LOOP AS IT STANDS LOOPS WITH INY:BNE INNER - 5 cycles
+    ; IF WE KEEP Y 0, DO INCS AND TEST FOR WRAPPING WE HAVE (looking at common case only):
+    ;     inc src:beq not_simple
+    ;     inc dst:bne inner
+    ; that is 5+2+5+3=15 cycles, so 10 cycles worse per byte copied (ignoring the 1-in-256 non-simple cases).
+    ; OK, it's slightly worse, because that assumes src/dst are in zp, so we're paying an extra cycle on each lda/sta in the inner loop as we can't use the abs,y mode.
+    ; An advantage of just blatting round the inner loop using inc-and-test-for-wrap is that in the multi-line case, we don't need to treat things any differently - we just keep going. Oh, but I forgot we need to handle counting how many bytes we copy. Gah.
+
+
+}
