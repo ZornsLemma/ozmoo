@@ -510,6 +510,9 @@ class LoaderScreen(Exception):
         if cmd_args.subtitle is not None:
             loader_symbols["SUBTITLE"] = cmd_args.subtitle[:40]
         loader_symbols["OZMOO"] = ("Powered by " + best_effort_version)[:40]
+        # Other symbols
+        if cmd_args.no_sd_card_reset:
+            loader_symbols["NO_SD_CARD_RESET"] = basic_int(1)
 
 
 class GameWontFit(Exception):
@@ -1757,6 +1760,7 @@ def parse_args():
     # they aren't.
     group.add_argument("--check-errors", action="store_true", help="enable runtime error checking")
     group.add_argument("--cache-test", action="store_true", help="include host cache test program")
+    group.add_argument("--no-sd-card-reset", action="store_true", help="don't force an error to reset SD cards")
 
     cmd_args = parser.parse_args()
 
