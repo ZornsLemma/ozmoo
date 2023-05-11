@@ -107,7 +107,6 @@ REM PROCpoke(${ram_bank_count},0):REM SFTODONOW TEMP HACK
     ON ERROR GOTO 500
     REM If we're on a real floppy, the disc will still be spinning after running
     REM FINDSWR so there's shouldn't be any performance penalty to doing this *INFO.
-    REM SFTODONOW: Add a build-time option to omit this - it will save annoyance when debugging in b-em
     *INFO XYZZY1
     500ON ERROR PROCerror
 }
