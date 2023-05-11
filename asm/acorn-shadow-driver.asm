@@ -36,7 +36,8 @@ extended_vector_table = $d9f
 ; On a B+, code running at $axxx in the 12K private RAM can access shadow RAM
 ; directly. If the private RAM is free, we copy some code there for use as part
 ; of the shadow driver - it's faster than going via the OSRDSC/OSWRSC routines.
-shadow_copy_private_ram = $af00
+; SFTODO: MOVE THIS INTO SHARED CONSTANTS TO "COORDINATE" PRIVATE RAM ALLOCATION WITH FAST SCROLL USE OF IT?
+shadow_copy_private_ram = $ae00
 
 ; NB: If an OSBYTE call fails because it's not supported, it returns normally
 ; with X=$FF. It does *not* generate an OS error via BRK; that is a function of

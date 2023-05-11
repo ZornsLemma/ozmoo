@@ -10,6 +10,11 @@ vdu_screen_top_left_address_high = $351
 vdu_screen_size_high_byte = $354
 vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 
+; SFTODO RENAME THIS - "driver" IS UNHELPFUL
+b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
+
+opcode_rts = $60
+
 wrchv = $20e
 evntv = $220
 
@@ -186,6 +191,11 @@ chunk_size = 128 ; SFTODO: hard-coded for 640 byte per line modes for now
 chunks_per_page = 256 / chunk_size
 chunks_per_line = 5
 
+    ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
+    ; on the B+ and this code in main RAM is patched to execute it from private
+    ; RAM. This allows it to access screen memory directly. Because of this, we
+    ; must not use any absolute addresses within this code. SFTODO: DO THAT!
+b_plus_copy_start
     ldy fast_scroll_lines_to_move:sty lines_to_move_working_copy
     dey:beq line_loop
     ; SFTODO: It's not exactly efficient to add bytes_per_line n times instead
@@ -199,9 +209,9 @@ chunks_per_line = 5
     ; through them backwards, rather than decrementing-with-wrapping. SFTODO:
     ; This does mean that the multiply-by-adding is kind of necessary.
 add_loop
-    lda src:pha:lda src+1:pha
+    lda src+1:pha:lda src:pha
     ldx #src:jsr add_line_x
-    lda dst:pha:lda dst+1:pha
+    lda dst+1:pha:lda dst:pha
     ldx #dst:jsr add_line_x
     dey:bne add_loop
 
@@ -209,7 +219,7 @@ line_loop
     ldx #chunks_per_line
 chunk_loop
     ldy #chunk_size - 1
-    ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something.
+    ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something. - BE CAREFUL, THIS MIGHT BREAK B+
 byte_loop
     lda (src),y
     sta (dst),y
@@ -233,9 +243,9 @@ byte_loop
     bne chunk_loop
     dec lines_to_move_working_copy
     beq done
-    pla:sta dst+1:pla:sta dst
-    pla:sta src+1:pla:sta src
-    jmp line_loop
+    pla:sta dst:pla:sta dst+1
+    pla:sta src:pla:sta src+1
+    bpl line_loop ; always branch
 done
 
 !ifdef DEBUG_COLOUR_BARS {
@@ -244,10 +254,12 @@ done
 }
     lda #0 xor 7:sta $fe21 ;jsr debug_set_bg
 }
+b_plus_copy_end
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
     lda #0
 jsr_shadow_paging_control2
     jsr $ffff ; patched
+finish_oswrch
     pla
     tay
     pla
@@ -379,7 +391,38 @@ host_type_in_x
 just_rts
     rts
 not_electron
-    ; SFTODO: We should probably just rts if we're in mode 7 - there's no point slowing things down with vsync events we don't care about.
+    ; SFTODO: We should probably just rts if we're in mode 7 - there's no point slowing things down with vsync events we don't care about. - this shouldn't actually be necessary now, as we just won't enable vsync in mode 7 - OTOH we would save a few cycles per OSWRCH call by not bother to hook OSWRCH in mode 7
+    ; We special-case the B+. The shadow driver can't page in the shadow RAM, but we can copy our code into private RAM to execute it, as long as we have use of the private RAM.
+    cpx #2 ; SFTODO: magic number - generally do this, maybe it's OK
+    bne not_b_plus
+    ;rts ; SFTODO TEMP HACK
+    lda shadow_state
+    cmp #shadow_state_b_plus_private
+    bne just_rts
+    lda romsel_copy
+    pha
+    lda #128
+    sta romsel_copy
+    sta bbc_romsel
+    ; SFTODO: SHOULD WE FACTOR OUT THE COPY LOOP IF IT'S DUPLICATED?
+    ; SFTODO: ASSERT THIS COPY COPIES OK
+    ldy #b_plus_copy_end-b_plus_copy_start
+-   lda b_plus_copy_start-1,y
+    sta b_plus_private_ram_driver-1,y
+    dey
+    bne -
+    lda #opcode_rts
+    sta b_plus_private_ram_driver + (b_plus_copy_end - b_plus_copy_start)
+    ldy #b_plus_copy_start_patch_end-b_plus_copy_start_patch_start ; SFTODO: THESE LABELS ARE INSANE
+-   lda b_plus_copy_start_patch_start-1,y
+    sta b_plus_copy_start-1,y
+    dey
+    bne -
+    pla
+    sta romsel_copy
+    sta bbc_romsel
+    jmp supported_bbc_with_null_shadow_driver
+not_b_plus
     ; We can't support fast hardware scrolling unless we can page in any shadow RAM. If we have no shadow RAM, that's fine but for consistency we provide a null shadow paging driver. SFTODO: This slightly penalises a machine with no shadow RAM, but probably not so much that we really need to care.
     ; SFTODO: We need to special case the B+ and *if* we have private RAM available  (we can check shadow_state_b_plus_private) we need to copy the scroll code in there with a low memory stub. For the moment this will "work" and nicely disable fast hw scrolling on B+.
     ; SFTODO: Rather than explicitly test for Electron MRB shadow mode, the fact we have no shadow RAM paging control is probably what we should check - this hides some of the logic in a single place (in the shadow driver) instead of duplicating tests here.
@@ -387,12 +430,16 @@ not_electron
     ldy #>null_shadow_driver
     lda shadow_state
     cmp #shadow_state_none
-    beq supported_bbc_with_shadow_driver_yx
+    beq supported_bbc_with_null_shadow_driver
     cmp #shadow_state_first_driver
     bcc just_rts ; we have shadow RAM but no driver
+    ldx shadow_paging_control_ptr
     ldy shadow_paging_control_ptr + 1
     beq just_rts ; we have no shadow paging control
-    ldx shadow_paging_control_ptr
+    bne supported_bbc_with_shadow_driver_yx ; always branch
+supported_bbc_with_null_shadow_driver
+    ldx #<null_shadow_driver
+    ldy #>null_shadow_driver
 supported_bbc_with_shadow_driver_yx
     ; We have shadow paging control, so patch up this code to call it.
     stx jsr_shadow_paging_control1 + 1
@@ -437,6 +484,20 @@ not_already_claimed
     ; fast_scroll_lines_to_move is zero, and the Ozmoo executable takes care of
     ; turning them on and off as that changes.
     rts
+
+; This code is copied over b_plus_copy_start in main RAM after we've copied that code into the private RAM.
+b_plus_copy_start_patch_start
+    lda romsel_copy
+    pha
+    lda #128
+    sta romsel_copy
+    sta bbc_romsel
+    jsr b_plus_private_ram_driver
+    pla
+    sta romsel_copy
+    sta bbc_romsel
+    jmp finish_oswrch
+b_plus_copy_start_patch_end
 
 ; SFTODO: Some thoughts on making this work properly without hacks:
 ;
