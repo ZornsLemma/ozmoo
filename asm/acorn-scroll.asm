@@ -592,7 +592,7 @@ src1abs = *+1
     lda $ffff,y ; patched
 dstabs = *+1
     sta $ffff,y ; patched
-    ; SFTODO: If working_lines_to_copy>1, the lda #0:sta are redundant - we would just be zeroing out memory we are going to deal with on the next line pair
+    ; SFTODO: If working_lines_to_copy>1, the lda #0:sta are redundant - we would just be zeroing out memory we are going to deal with on the next line pair - apart from being slower I also suspect this looks really bad (e.g. might be responsible for ugliness of Border Zone?)
     lda #0
 src2abs = *+1
     sta $ffff,y ; patched
