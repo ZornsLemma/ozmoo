@@ -701,3 +701,5 @@ awkward_inner_loop
 ; SFTODONOW: It *might* actually be possible for us to do a two line protected area in 40 column modes, or maybe even in 80 column modes if the code is optimised further (at the very least, not doing the redundant zero stores - which is probably cosmetically desirable - might make this work). Core Ozmoo code would need to change to enable vsync events in this case as well as this code deciding to check raster position in this case.
 
 ; SFTODONOW: Suspect I already have a TODO about this, but note that we need to be careful when copying the copy loops into B+ private RAM that we don't accidentally end up making the copy loops cross pages. I suspect the best way to handle this is (space permitting) just to always copy code into the B+ private RAM at the same sub-page offset as it lives at in low RAM.
+
+; SFTODO: Move vdu_down constant to shared constants header and use it in this code instead of literal 10 all over the place?
