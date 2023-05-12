@@ -52,6 +52,9 @@ crtc_address_write = $fe01
 crtc_start_screen_address_high_register = 12
 crtc_cursor_position_high_register = 14
 
+user_via_t2_low_order_latch_counter = $fe68
+user_via_t2_high_order_counter = $fe69
+
 ; SFTODO RENAME THIS - "driver" IS UNHELPFUL
 b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
 
@@ -71,6 +74,7 @@ bytes_per_line = 640
 zp = $db ; 5 bytes
 src = zp ; 2 bytes
 dst = zp + 2 ; 2 bytes
+lines_to_move_working_copy = zp + 4 ; 1 byte
 
 irq1v = $204
 us_per_scanline = 64
@@ -109,10 +113,9 @@ runtime_start
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
 evntv_handler
     ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
-    ; SFTODO: Ideally we'd turn this event off when lines_to_move != 1 and back on when it is 1. Maybe core Ozmoo should be responsible for turning event on and off rather than this code doing it.
     cmp #4:bne jmp_parent_evntv
-    lda #<frame_time_us:sta $fe68
-    lda #>frame_time_us:sta $fe69
+    lda #<frame_time_us:sta user_via_t2_low_order_latch_counter
+    lda #>frame_time_us:sta user_via_t2_high_order_counter
     lda #4
 jmp_parent_evntv
 old_evntv = *+1
@@ -139,9 +142,6 @@ loopSFTODO
     rts
 }
 
-; SFTODO: move this to a better location
-lines_to_move_working_copy
-    !byte 0
 
 add_line_x
 !zone {
@@ -156,31 +156,38 @@ add_line_x
 }
 
 our_wrchv
-    ; We want to minimise overhead on WRCHV, so we try to get cases we're not interested in passed through ASAP.
+    ; We want to minimise overhead on WRCHV, so we try to get cases we're not
+    ; interested in passed through ASAP. We only care about LF characters.
     cmp #10
-    beq lf
+    beq is_lf
 jmp_parent_wrchv
 parent_wrchv = *+1
     jmp $ffff ; patched
-lf
+is_lf
+    ; If we're not on the bottom line of the screen (the "text window" is the
+    ; whole screen by default) we're not interested.
     lda vdu_text_cursor_y_position
     cmp vdu_text_window_bottom
-    lda #10
-    bcc jmp_parent_wrchv
+    bcc jmp_parent_wrchv_with_lf
+    ; If we're not protecting any lines at the top of the screen we're not interested.
     lda fast_scroll_lines_to_move
-    bne SFTODO882
-SFTODO44X
+    bne protecting_some_lines
+jmp_parent_wrchv_with_lf
     lda #10
     jmp jmp_parent_wrchv
-SFTODO882
+protecting_some_lines
     ; If there's a text window in effect, just pass through to the parent.
     lda #%00001000
     bit vdu_status_byte
-    bne SFTODO44X
+    bne jmp_parent_wrchv_with_lf
 
     ; It's a line feed on the bottom line of the screen with no text window in
     ; effect. That's what we're here for!
-    ; SFTODO: It's not a huge deal, but FWIW - I think this LF character will be omitted from any *SPOOL file being produced, unless we take extra steps to include it.
+    ; SFTODO: It's not a huge deal, but FWIW - I think this LF character will be
+    ; omitted from any *SPOOL file being produced, unless we take extra steps to
+    ; include it.
+
+    ; We must preserve X and Y (as well as A, although we know that's 10).
     txa
     pha
     tya
@@ -211,7 +218,7 @@ raster_wait_loop
     ; We only examine the high-order counter; this is good enough and avoids
     ; complications trying to read a two byte counter which is counting down as
     ; we read it a byte at a time.
-    lda $fe69 ; timer 2 high-order counter SFTODO: USE LABEL
+    lda user_via_t2_high_order_counter
     cmp #>first_safe_start_row_time_us
     bcs raster_wait_loop
     cmp #>last_safe_start_row_time_us
@@ -229,7 +236,6 @@ dont_wait_for_raster
     ; frame where the protected line temporarily appears at the bottom of the
     ; screen; it's probably less annoying for it to flicker (because we can't
     ; keep up with the raster) than have it jump around that much.
-    ; SFTODO: STRIP OFF SOMEWHAT OUT OF PLACE COMMENTS FROM TOBY'S DISASSEMBLY
     lda vdu_screen_top_left_address_low
     clc
     adc vdu_bytes_per_character_row_low
@@ -320,11 +326,13 @@ line_loop2
 chunk_loop2
     ldy #chunk_size - 1
     ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something. - BE CAREFUL, THIS MIGHT BREAK B+
+    ; SFTODO: This loop may benefit from being unrolled somewhat - there are sufficiently few cycles per iteration that the bpl overhead is non-negligible. (The other loop with the extra lda #0:sta doesn't show the same kind of gains, at least when I do calculations about the possible benefits - I haven't experimented with it.) Worth noting that just "double-unrolling" reduces per loop cost from 16 cycles to 14.5 cycles and only costs five bytes of extra code. If we play games to use lda/sta abs,y addressing we save two cycles and that adds two bytes to the loop and (finger in air) 20-ish bytes of setup code; we'd probably (given our relatively tight space budget) come out ahead unrolling the loop a couple of extra times.
 byte_loop2
     lda (src),y
     sta (dst),y
     dey
     bpl byte_loop2
+    ; SFTODO: The overhead of moving this double-bump into a subroutine so it can be shared with the loop below might well be acceptable and could give a worthwhile saving on code size, allowing us to actually fit and/or have more space for other optimisations. The "dex" could be shared as well, saving one more byte.
     +bump src
     +bump dst
     dex
