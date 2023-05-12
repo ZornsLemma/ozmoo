@@ -199,8 +199,10 @@ VDU 23,255,-1;-1;-1;-1;
     PROCpoke(${screen_mode_host},?${screen_mode})
 }
 !ifdef ACORN_HW_SCROLL_CUSTOM {
-    REM SFTODO: Change this line when this executable supports Electron
-    REM The FASTSCR executable will examine the current hardware and set SFTODOWHAT to indicate whether we can actually support fast hardware scrolling on this machine. We need to copy that to SFTODOWHERE so the Ozmoo executable itself can see this and act accordingly.
+    REM We really don't expect this check to fail, but it seems prudent to check and avoid random corruption.
+    DIM vartop -1
+    IF vartop+256>=${fast_scroll_load_addr} THEN PROCdie("No room for FASTSCR")
+    HIMEM=${fast_scroll_load_addr}
     */FASTSCR
     ?${use_custom_hw_scroll}=FNpeek(${fast_scroll_status_host})
 }

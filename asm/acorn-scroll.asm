@@ -86,6 +86,9 @@ DEBUG_COLOUR_BARS = 1
 
 ; SFTODO: If we inline the single-use subroutines, I think this code is completely relocatable, which is handy, as we ideally don't want multiple copies of it inside the installation executable, and we need to be able to copy part of it into private RAM on the B+ and to insert shadow page in/out tsb/trb instructions before/after the main body of the "our new logic" part of the WRCHV handler.
 
+runtime_start
+!pseudopc fast_scroll_start {
+
 ; We hook evntv to detect vsync rather than checking for this on irq1v. This
 ; avoids missing vsync events where they occur after we check but before the OS
 ; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
@@ -339,6 +342,12 @@ finish_oswrch
     lda #10
 null_shadow_driver
     rts
+}
+runtime_end
+; The code between runtime_start and runtime_end is copied down to runtime_start
+; by our discardable initialisation code. Make sure it fits!
+runtime_size = runtime_end - runtime_start
++assert runtime_size <= fast_scroll_end - fast_scroll_start
 
 ; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
 
@@ -350,6 +359,26 @@ null_shadow_driver
 
 
 init
+    ; Before we do anything else, we copy our code from inside this executable
+    ; to its final location - we can then patch it in-place in the following
+    ; code (the way acme's !pseudpc directive works means that it's fiddly to
+    ; patch the copy embedded in this executable, as all the labels refer to its
+    ; final address). If we decide not to support fast hardware scrolling this
+    ; is still OK; we "own" this block of memory so there's no problem with us
+    ; corrupting it.
+    ldx #>runtime_size
+    ldy #<runtime_size
+SFTODOCOPYLOOP
+lda_runtime_start_abs
+    lda runtime_start
+sta_fast_scroll_start_abs
+    sta fast_scroll_start
+    inc lda_runtime_start_abs+1:+inceq lda_runtime_start_abs+2
+    inc sta_fast_scroll_start_abs+1:+inceq sta_fast_scroll_start_abs+2
+    dey
+    bne SFTODOCOPYLOOP
+    dex
+    bpl SFTODOCOPYLOOP
     ; Examine the current hardware and decide if we can support fast hardware
     ; scrolling on it; if not the Ozmoo executable will fall back to slow
     ; hardware scrolling or software scrolling as appropriate.
@@ -362,7 +391,6 @@ init
     cmp #7
     beq just_rts
 }
-!if 0 { ; SFTODO TEMP REMOVED WHILE WE'RE SHORT OF SPACE
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.
     lda #$49
@@ -375,7 +403,6 @@ init
     ; recognising that we are on a model B despite its spoofing.
     ldx #1
     bne host_type_in_x ; always_branch
-}
 not_integra_b
     ; Determine the host type.
     lda #osbyte_read_host
@@ -390,14 +417,15 @@ host_type_in_x
 just_rts
     rts
 not_electron
+
     ; SFTODO: We should probably just rts if we're in mode 7 - there's no point slowing things down with vsync events we don't care about. - this shouldn't actually be necessary now, as we just won't enable vsync in mode 7 - OTOH we would save a few cycles per OSWRCH call by not bother to hook OSWRCH in mode 7
     ; We special-case the B+. The shadow driver can't page in the shadow RAM, but we can copy our code into private RAM to execute it, as long as we have use of the private RAM.
     cpx #2 ; SFTODO: magic number - generally do this, maybe it's OK
     bne not_b_plus
-    ;rts ; SFTODO TEMP HACK
     lda shadow_state
     cmp #shadow_state_b_plus_private
     bne just_rts
+    ; If we're on a B+, copy the relevant code into private RAM so it can access the shadow screen. We do this after copying our code to fast_scroll_start, so we can copy it from there.
     lda romsel_copy
     pha
     lda #128
@@ -462,11 +490,15 @@ supported_bbc_with_shadow_driver_yx
     beq just_rts ; branch if we've already claimed wrchv
 }
 not_already_claimed
-    ; We haven't already claimed vectors, so set up ready for action and claim the vectors.
+    ; We haven't already claimed vectors.
+    ; Claim vectors; this patches the code we just copied down to
+    ; fast_scroll_start.
     sei
-    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm Need proper cvomments
+    lda wrchv
+    ldx wrchv+1
     sta parent_wrchv
     stx parent_wrchv+1
+    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm Need proper cvomments
     lda #<our_wrchv
     sta wrchv
     lda #>our_wrchv

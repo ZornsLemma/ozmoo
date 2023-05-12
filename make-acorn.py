@@ -1339,12 +1339,13 @@ def make_insv_executable():
 
 def make_fast_hw_scroll_executable():
     # SFTODO: Location of this is an utter hack right now
-    workspace_start = 0xa80
-    workspace_end = 0xd00
+    workspace_end = himem_by_mode(6)
+    workspace_start = workspace_end - 0x400
     e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, ["-DACORN_HW_SCROLL_CUSTOM=1", "-DACORN_SHADOW_VMEM=1"])
     init = e.labels['init']
     assert e.start_addr + len(e.binary()) <= workspace_end
     e.exec_addr = host | init
+    loader_symbols["fast_scroll_load_addr"] = basic_int(workspace_start)
     return e
 
 
@@ -2087,13 +2088,13 @@ def make_disc_image():
     ozmoo_variants = sorted(ozmoo_variants, key=disc_size, reverse=True)
 
     # SFTODO: INCONSISTENT ABOUT WHETHER ALL-LOWER OR ALL-UPPER IN LOADER_SYMBOLS
-    loader_symbols = {
+    loader_symbols.update({
         "default_mode": basic_int(cmd_args.default_mode),
         "DEFAULT_FG_COLOUR": basic_int(cmd_args.default_fg_colour),
         "DEFAULT_BG_COLOUR": basic_int(cmd_args.default_bg_colour),
         "DEFAULT_M7_STATUS_COLOUR": basic_int(cmd_args.default_mode_7_status_colour),
         "DEFAULT_M7_INPUT_COLOUR": basic_int(cmd_args.default_mode_7_input_colour)
-    }
+    })
     for executable_group in ozmoo_variants:
         for e in executable_group:
             e.add_loader_symbols(loader_symbols)
@@ -2285,6 +2286,7 @@ if cmd_args.max_page is not None:
 
 
 common_labels = {}
+loader_symbols = {}
 
 with open(cmd_args.input_file, "rb") as f:
     game_data = bytearray(f.read())
