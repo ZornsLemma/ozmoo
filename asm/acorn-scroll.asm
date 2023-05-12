@@ -332,6 +332,7 @@ byte_loop2
     sta (dst),y
     dey
     bpl byte_loop2
+    +assert_no_page_crossing byte_loop2
     ; SFTODO: The overhead of moving this double-bump into a subroutine so it can be shared with the loop below might well be acceptable and could give a worthwhile saving on code size, allowing us to actually fit and/or have more space for other optimisations. The "dex" could be shared as well, saving one more byte.
     +bump src
     +bump dst
@@ -349,6 +350,7 @@ line_loop
 chunk_loop
     ldy #chunk_size - 1
     ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something. - BE CAREFUL, THIS MIGHT BREAK B+
+    ; SFTODO: Unrolling this loop twice would cost 9 bytes and would drop the per-iteration cost from 24 cycles to 22.5 cycles. That doesn't sound much, but over a 640 byte copy it is 960 cycles, which is 7.5 scanlines - *nearly* an entire text row. Going to a 4-unroll drops it to 21.75, saving an additional 3.75 scanlines.
 byte_loop
     lda (src),y
     sta (dst),y
@@ -356,6 +358,7 @@ byte_loop
     sta (src),y
     dey
     bpl byte_loop
+    +assert_no_page_crossing byte_loop
     +bump src
     +bump dst
     dex
@@ -697,3 +700,5 @@ awkward_inner_loop
 ; SFTODO: Quick fiddle with Border Zone suggests the multi-line hardware scrolling works but it looks quite nasty. It may still be better than software scrolling. This is just a note to go back and experiment with this later. Just maybe we should never use the new scrolling for anything except a single line (as we do with the redraw-via-OS based hw scrolling).
 
 ; SFTODONOW: It *might* actually be possible for us to do a two line protected area in 40 column modes, or maybe even in 80 column modes if the code is optimised further (at the very least, not doing the redundant zero stores - which is probably cosmetically desirable - might make this work). Core Ozmoo code would need to change to enable vsync events in this case as well as this code deciding to check raster position in this case.
+
+; SFTODONOW: Suspect I already have a TODO about this, but note that we need to be careful when copying the copy loops into B+ private RAM that we don't accidentally end up making the copy loops cross pages. I suspect the best way to handle this is (space permitting) just to always copy code into the B+ private RAM at the same sub-page offset as it lives at in low RAM.

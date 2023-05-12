@@ -70,12 +70,6 @@ timestamp_adjustment = $40 ; SFTODO: $80?
 
 page_in_swr_bank_a_electron_size = 13
 
-!macro assert_no_page_crossing .target {
-    !if (>*) <> (>.target) {
-        !error "Unacceptable page crossing"
-    }
-}
-
 program_start
     jmp relocate_setup
 
