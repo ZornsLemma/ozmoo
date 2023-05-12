@@ -236,10 +236,14 @@ dont_wait_for_raster
     ; frame where the protected line temporarily appears at the bottom of the
     ; screen; it's probably less annoying for it to flicker (because we can't
     ; keep up with the raster) than have it jump around that much.
+    ;
+    ; As we're doing this we also save the post-scroll top left address to dst
+    ; ready for use in the data copy loops below.
     lda vdu_screen_top_left_address_low
     clc
     adc vdu_bytes_per_character_row_low
     sta vdu_screen_top_left_address_low
+    sta dst
     sta vdu_temp_store_da
     lda vdu_screen_top_left_address_high
     adc vdu_bytes_per_character_row_high
@@ -248,6 +252,7 @@ dont_wait_for_raster
     sbc vdu_screen_size_high_byte
 +
     sta vdu_screen_top_left_address_high
+    sta dst+1
     ldy #crtc_start_screen_address_high_register
     lsr
     ror vdu_temp_store_da
@@ -261,12 +266,6 @@ dont_wait_for_raster
     iny
     sty crtc_address_register
     stx crtc_address_write
-
-    ; Save the current screen top left address after we scroll.
-    lda vdu_screen_top_left_address_low
-    sta dst
-    lda vdu_screen_top_left_address_high
-    sta dst+1
 
     ; Tell the OS to move the cursor to the same co-ordinates it already has,
     ; but taking account of the hardware scrolled screen. We could do this
