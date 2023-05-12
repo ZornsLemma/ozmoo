@@ -1,4 +1,36 @@
-; SFTODO: Temporary experimental - BBC B only for now
+; Fast hardware scroll driver installation code
+;
+; This executable examines the current hardware (including shadow RAM, as
+; reported by acorn-shadow-driver.asm, which must have been run first) to see if
+; we can support fast hardware scrolling. If we can we copy code into low RAM,
+; hook WRCHV and EVNTV to point into that code and work with the core Ozmoo
+; executable to enable/disable the fast hardware scrolling as appropriate.
+;
+; Normal OS hardware scrolling only works on the full screen. the OS updates the
+; CRTC screen start address to be the currently second-from-top line of the screen,
+; and blanks the current top line; these become the top and bottom lines respectively
+; with the new CRTC screen start address. This code detects when a LF is being
+; used to scroll the screen up and replaces the OS behaviour with a
+; copy-and-blank operation which effectively protects one or more lines of the
+; screen at the top from scrolling. This means Ozmoo does not need to worry
+; about redrawing the top line or using a text window to protect it. For a
+; single protected line (where there isn't too much data to copy) we also use
+; the VSYNC event to try to avoid flicker by deferring our updates until the
+; raster is in a safe place.
+;
+; This is *not* a general implementation of hardware scrolling with a protected
+; area at the top of the screen. If the screen scrolls because a character is
+; printed at the bottom right, the OS hardware scroll code will be invoked as
+; normal and the protected area will not be protected. We can get away with this
+; here because it is our code running to output text to the screen, and we just
+; make sure it never prints in the bottom right character position (the screen
+; is scrolled first, then we go back and print at the rightmost position on the
+; now second-to-bottom line). (In principle we could trap more OSWRCH calls and
+; detect this case and handle it, but it would bloat the code and slow down
+; normal output, and it's easier all round to just not print at the bottom
+; right.)
+
+; SFTODONOW: ELECTRON SUPPORT
 
 !source "acorn-shared-constants.asm"
 
