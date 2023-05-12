@@ -262,6 +262,7 @@ dont_wait_for_raster
     sty crtc_address_register
     stx crtc_address_write
 
+    ; Save the current screen top left address after we scroll.
     lda vdu_screen_top_left_address_low
     sta dst
     lda vdu_screen_top_left_address_high
