@@ -106,6 +106,8 @@ buffer_keyboard = 0
 
 shadow_mode_bit = 128
 
+vdu_goto_xy = 31
+
 osargs = $ffda
 osbyte = $fff4
 osbyte_read_host = 0

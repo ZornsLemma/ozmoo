@@ -57,7 +57,6 @@ vdu_reset_text_window = 26
 vdu_escape = 27
 vdu_define_text_window = 28
 vdu_home = 30
-vdu_goto_xy = 31
 osfile_save = $00
 osfile_load = $ff
 osfile_read_catalogue_information = $05

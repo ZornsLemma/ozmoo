@@ -10,6 +10,39 @@ vdu_screen_top_left_address_high = $351
 vdu_screen_size_high_byte = $354
 vdu_status_byte = $D0       ; Each bit holds part the VDU status:
 
+
+; SFTODO: A LOT OF THESE AREN'T NEEDED ANY MORE (AND ANY I KEEP SHOULD BE RENAMED TO MY foo_bar_baz STYLE)
+; Code copied from OS 1.2 (TobyLobster disassembly).
+.vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
+.vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
+; SFTODO: Row multiplication table probably doesn't exist on Master so need to find alternative
+.vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
+.vduMultiplicationTableHigh                 = $E1       ; to use
+;.vduTextWindowBottom = $309
+.vduTextCursorXPosition                     = $0318     ; } text cursor position
+.vduTextCursorYPosition = $319
+.vduTextCursorCRTCAddressLow                = $034A     ; CRTC address of the cursor
+.vduTextCursorCRTCAddressHigh               = $034B     ;
+.vduBytesPerCharacter                       = $034F     ;
+.vduScreenTopLeftAddressLow = $350
+.vduScreenTopLeftAddressHigh = $351
+.vduScreenSizeHighByte = $354
+.vduCurrentScreenMODE                       = $0355     ;
+.vduCurrentScreenMODEGroup                  = $0356     ; MODE group = screen memory size:
+.vduTextInputCursorYCoordinate              = $0365     ;
+.vduTempStoreDA                             = $DA       ; }
+.crtcAddressRegister                        = $FE00     ;
+.crtcAddressWrite                           = $FE01     ;
+.vduStatusByte                              = $D0       ; Each bit holds part the VDU status:
+.vduTextWindowTop                           = $030B     ; }
+.vduBytesPerCharacterRowLow                 = $0352     ;
+.vduBytesPerCharacterRowHigh                = $0353     ;
+
+
+
+.crtcStartScreenAddressHighRegister         = 12        ;
+
+.crtcCursorPositionHighRegister             = 14        ;
 ; SFTODO RENAME THIS - "driver" IS UNHELPFUL
 b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
 
@@ -128,61 +161,97 @@ SFTODO882
     bit vdu_status_byte
     bne SFTODO44X
 
-    ; It's a line feed on the bottom line of the text window.
-    ; SFTODO: This code probably needs to disable itself if there is an OS text window defined. We *might* get away without it - we'd just perhaps be optimising some scrolls, and any which go through to the OS as a result of printing at bottom right would have desired effect, just slower. However, the DFS 2.24 *HELP weirdness on M128 would manifest (I think) if you did this during save/restore - remember we do and probably will continue to have an OS text window in effect then, because we can't control printing at bottom right - and there might be other weirdness.
+    ; It's a line feed on the bottom line of the screen with no text window in
+    ; effect. That's what we're here for!
     ; SFTODO: It's not a huge deal, but FWIW - I think this LF character will be omitted from any *SPOOL file being produced, unless we take extra steps to include it.
     txa
     pha
     tya
     pha
+
+    ; Save the current screen top left address before we scroll.
     lda vdu_screen_top_left_address_low
     sta src
     lda vdu_screen_top_left_address_high
     sta src+1
+
     ; Page in shadow RAM; this is a no-op if we have no shadow RAM.
     lda #1
 jsr_shadow_paging_control1
     jsr $ffff ; patched
-!if 0 { ; SFTODO: EXPERIMENT - NEED TO REWORK FOR NEW APPROACH
-    ; SFTODO: WE SHOULD PROBABLY *NOT* DO THIS WAIT IF WE ARE PROTECTING >=2 LINES - THAT'S SLOW ENOUGH WE CAN'T RELIABLY STOP FLICKER, SO WE SHOULD JUST GO AHEAD AT MAX SPEED - JUST POSSIBLY FOR TWO LINES IT IS MOSTLY GOING TO NOT FLICKER, MAY BE PAINFUL TO DO RASTER WAIT OR MAY NOT
-wait_for_safe_raster_position
-    lda current_crtc_row
-    bne wait_for_safe_raster_position
-} else { ; SFTODO
-    ; We don't try to avoid flicker if we're protecting two or more lines at the
-    ; top of the screen; our copy code isn't fast enough to get the job done in
-    ; the time available in a single frame.
+
+    ; If we're protecting a single row at the top of the screen, wait for a
+    ; "safe" raster position - one where we expect to be able to complete the
+    ; movement of data in screen memory before the raster reaches that data.
+    ; This should give a flicker-free appearance, like software scrolling but
+    ; much faster. If we have more than one row to protect, the copying takes so
+    ; long that we don't try to be flicker-free and just go right ahead to get
+    ; the job done ASAP.
     lda fast_scroll_lines_to_move
     cmp #2
-    bcs SFTODO44
-    ; We're protecting a single row (our wrchv handler only executes if we are
-    ; protecting a non-0 number of rows), so busy wait until the raster is in a
-    ; position at which we can start our update and get it done before the
-    ; raster starts to retrace the protected part of the screen.
-SFTODOLOOP
-    lda $fe69 ; timer 2 high-order counter
+    bcs dont_wait_for_raster
+raster_wait_loop
+    lda $fe69 ; timer 2 high-order counter SFTODO: USE LABEL
     cmp #>first_safe_start_row_time_us
-    bcs SFTODOLOOP
+    bcs raster_wait_loop
     cmp #>last_safe_start_row_time_us
-    bcc SFTODOLOOP
-    ;sta $ffff ; SFTODO HACK
-    ;and #7:eor #7:sta $fe21
-SFTODO44
-    ;jmp SFTODOLOOP
-}
+    bcc raster_wait_loop
+dont_wait_for_raster
 !ifdef DEBUG_COLOUR_BARS {
 !ifdef DEBUG_COLOUR_BARS2 {
     lda #6:sta SFTODOHACK
 }
     lda #4 xor 7:sta $fe21 ;jsr debug_set_bg
 }
-    ; SFTODO: I think this is a good spot to do the hardware scroll. We shouldn't start this until after vsync, and if we start a little too close to the next vsync, the chances are we'll finish our update before the raster reaches the last bit of data we're moving around. If we did the hw scroll at the end of the copy, we might end up getting a frame where the top window has been moved in  screen RAM but the hw scroll hasn't happened yet and we'd see it in the wrong place.
-    jsr .hardwareScrollUp
+
+    ; We update the CRTC screen start address now; we don't want to leave it too
+    ; late otherwise we might miss the next vsync. We also don't want to have a
+    ; frame where the protected line temporarily appears at the bottom of the
+    ; screen; it's probably less annoying for it to flicker (because we can't
+    ; keep up with the raster) than have it jump around that much.
+    ; SFTODO: STRIP OFF SOMEWHAT OUT OF PLACE COMMENTS FROM TOBY'S DISASSEMBLY
+    LDA .vduScreenTopLeftAddressLow                     ; screen top left address low
+    CLC                                                 ;
+    ADC .vduBytesPerCharacterRowLow                     ; add bytes per character row
+    TAX                                                 ; put low byte back into X
+    LDA .vduScreenTopLeftAddressHigh                    ; screen top left address high
+    ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
+    BPL +                                               ;
+    SEC                                                 ; wrap around
+    SBC .vduScreenSizeHighByte                          ; screen RAM size high byte
++
+    STA .vduScreenTopLeftAddressHigh                    ; screen top left address high
+    STX .vduScreenTopLeftAddressLow                     ; screen top left address low
+    LDY #.crtcStartScreenAddressHighRegister            ; Y = value to change screen address
+    STX .vduTempStoreDA                                 ; store X
+    LSR                                                 ; divide X/A by 8
+    ROR .vduTempStoreDA                                 ;
+    LSR                                                 ;
+    ROR .vduTempStoreDA                                 ;
+    LSR                                                 ;
+    ROR .vduTempStoreDA                                 ;
+    LDX .vduTempStoreDA                                 ;
+    STY .crtcAddressRegister                            ; set which CRTC register to write into
+    STA .crtcAddressWrite                               ; write A into CRTC register
+    INY                                                 ; increment Y to the next CRTC register
+    STY .crtcAddressRegister                            ; set which CRTC register to write into
+    STX .crtcAddressWrite                               ; write X into CRTC register
+
     lda vdu_screen_top_left_address_low
     sta dst
     lda vdu_screen_top_left_address_high
     sta dst+1
-    jsr .setCursorSoftwareAndHardwarePosition
+
+    ; Tell the OS to move the cursor to the same co-ordinates it already has,
+    ; but taking account of the hardware scrolled screen. We could do this
+    ; ourselves, but it isn't that slow (compared to all the copying we do) to
+    ; get the OS to do it for us, which saves a lot of code here.
+    lda #vdu_goto_xy
+    jsr jmp_parent_wrchv
+    lda .vduTextCursorXPosition
+    jsr jmp_parent_wrchv
+    lda .vduTextCursorYPosition
+    jsr jmp_parent_wrchv
 
     ; We need this code to be reasonably fast and also reasonably small. SFTODO: I am sure it's possible to do better, particularly once I have a better idea of exactly how much code size I can tolerate.
     ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
@@ -267,79 +336,6 @@ finish_oswrch
     lda #10
 null_shadow_driver
     rts
-
-; SFTODO: A LOT OF THESE AREN'T NEEDED ANY MORE (AND ANY I KEEP SHOULD BE RENAMED TO MY foo_bar_baz STYLE)
-; Code copied from OS 1.2 (TobyLobster disassembly).
-.vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
-.vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
-; SFTODO: Row multiplication table probably doesn't exist on Master so need to find alternative
-.vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
-.vduMultiplicationTableHigh                 = $E1       ; to use
-;.vduTextWindowBottom = $309
-.vduTextCursorXPosition                     = $0318     ; } text cursor position
-.vduTextCursorYPosition = $319
-.vduTextCursorCRTCAddressLow                = $034A     ; CRTC address of the cursor
-.vduTextCursorCRTCAddressHigh               = $034B     ;
-.vduBytesPerCharacter                       = $034F     ;
-.vduScreenTopLeftAddressLow = $350
-.vduScreenTopLeftAddressHigh = $351
-.vduScreenSizeHighByte = $354
-.vduCurrentScreenMODE                       = $0355     ;
-.vduCurrentScreenMODEGroup                  = $0356     ; MODE group = screen memory size:
-.vduTextInputCursorYCoordinate              = $0365     ;
-.vduTempStoreDA                             = $DA       ; }
-.crtcAddressRegister                        = $FE00     ;
-.crtcAddressWrite                           = $FE01     ;
-.vduStatusByte                              = $D0       ; Each bit holds part the VDU status:
-.vduTextWindowTop                           = $030B     ; }
-.vduBytesPerCharacterRowLow                 = $0352     ;
-.vduBytesPerCharacterRowHigh                = $0353     ;
-
-
-
-.crtcStartScreenAddressHighRegister         = 12        ;
-
-.crtcCursorPositionHighRegister             = 14        ;
-
-; SFTODO: Only one caller, could and probably should inline
-.setCursorSoftwareAndHardwarePosition
-    ; SFTODO: We could (and used to) do this ourselves, but the code is relatively bulky even if we take advantage of the fact we know we are moving down exactly one line from the current position and can use the current values as a starting point instead of working things out from first principles as the OS does. As we're short of space, let's be a bit slower but force the OS to do the calculation for us by telling it to move the cursor to the desired location.
-    lda #31 ; SFTODO: vdu_goto_xy
-    jsr jmp_parent_wrchv
-    lda .vduTextCursorXPosition
-    jsr jmp_parent_wrchv
-    lda .vduTextCursorYPosition
-    jmp jmp_parent_wrchv
-
-.hardwareScrollUp
-    LDA .vduScreenTopLeftAddressLow                     ; screen top left address low
-    CLC                                                 ;
-    ADC .vduBytesPerCharacterRowLow                     ; add bytes per character row
-    TAX                                                 ; put low byte back into X
-    LDA .vduScreenTopLeftAddressHigh                    ; screen top left address high
-    ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
-    BPL +                                               ;
-    SEC                                                 ; wrap around
-    SBC .vduScreenSizeHighByte                          ; screen RAM size high byte
-+
-    STA .vduScreenTopLeftAddressHigh                    ; screen top left address high
-    STX .vduScreenTopLeftAddressLow                     ; screen top left address low
-    LDY #.crtcStartScreenAddressHighRegister            ; Y = value to change screen address
-.setHardwareScreenOrCursorAddress
-    STX .vduTempStoreDA                                 ; store X
-    LSR                                                 ; divide X/A by 8
-    ROR .vduTempStoreDA                                 ;
-    LSR                                                 ;
-    ROR .vduTempStoreDA                                 ;
-    LSR                                                 ;
-    ROR .vduTempStoreDA                                 ;
-    LDX .vduTempStoreDA                                 ;
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STA .crtcAddressWrite                               ; write A into CRTC register
-    INY                                                 ; increment Y to the next CRTC register
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STX .crtcAddressWrite                               ; write X into CRTC register
-    RTS                                                 ;
 
 ; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
 
