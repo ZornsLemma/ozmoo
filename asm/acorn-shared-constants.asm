@@ -176,7 +176,7 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 !ifdef ACORN_HW_SCROLL_CUSTOM {
     fast_scroll_lines_to_move = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
 
-    fast_scroll_start = 0xa80 ; SFTODO: NEEDS TO BE ADJUSTED LATER, JUST A HACK FOR NOW
+    fast_scroll_start = 0xa60 ; SFTODO: NEEDS TO BE ADJUSTED LATER, JUST A HACK FOR NOW
     fast_scroll_end = 0xc00 ; SFTODO: NOT ACCEPTABLE LONG TERM - THIS NEEDS TO LIVE IN 900-AFF AND COEXIST WITH INSV
 }
 

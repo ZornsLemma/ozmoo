@@ -277,13 +277,13 @@ dont_wait_for_raster
     ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
 
 chunk_size = 128 ; SFTODO: hard-coded for 640 byte per line modes for now
-chunks_per_page = 256 / chunk_size
 chunks_per_line = 5
 
     ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
     ; on the B+ and this code in main RAM is patched to execute it from private
     ; RAM. This allows it to access screen memory directly. Because of this, we
     ; must not use any absolute addresses within this code. SFTODO: DO THAT!
+    ; SFTODO: COULD WE MAKE BETTER USE OF X IN THIS LOOP?
 b_plus_copy_start
     ldy fast_scroll_lines_to_move:sty lines_to_move_working_copy
     dey:beq line_loop
@@ -304,6 +304,38 @@ add_loop
     ldx #dst:jsr add_line_x
     dey:bne add_loop
 
+!macro bump .ptr {
+    clc:lda .ptr:adc #chunk_size:sta .ptr
+    bcc .no_carry
+    inc .ptr+1
+    bpl .no_wrap
+    sec:lda .ptr+1:sbc vdu_screen_size_high_byte:sta .ptr+1
+.no_carry
+.no_wrap
+}
+
+    ; SFTODO EXPERIMENTAL HACK - LOTS OF COPY AND PASTE, MAYBE ACCEPTABLE, MAYBE NOT
+line_loop2
+    ldx #chunks_per_line
+chunk_loop2
+    ldy #chunk_size - 1
+    ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something. - BE CAREFUL, THIS MIGHT BREAK B+
+byte_loop2
+    lda (src),y
+    sta (dst),y
+    dey
+    bpl byte_loop2
+    +bump src
+    +bump dst
+    dex
+    bne chunk_loop2
+    dec lines_to_move_working_copy
+    ldx lines_to_move_working_copy
+    pla:sta dst:pla:sta dst+1
+    pla:sta src:pla:sta src+1
+    cpx #1:beq line_loop
+    bne line_loop2 ; always branch
+
 line_loop
     ldx #chunks_per_line
 chunk_loop
@@ -316,26 +348,10 @@ byte_loop
     sta (src),y
     dey
     bpl byte_loop
-    ; SFTODO: experimental - this will be a bit slower, but will save code size
-!macro bump .ptr {
-    clc:lda .ptr:adc #chunk_size:sta .ptr
-    bcc .no_carry
-    inc .ptr+1
-    bpl .no_wrap
-    sec:lda .ptr+1:sbc vdu_screen_size_high_byte:sta .ptr+1
-.no_carry
-.no_wrap
-}
     +bump src
     +bump dst
     dex
     bne chunk_loop
-    dec lines_to_move_working_copy
-    beq done
-    pla:sta dst:pla:sta dst+1
-    pla:sta src:pla:sta src+1
-    bpl line_loop ; always branch
-done
 
 !ifdef DEBUG_COLOUR_BARS {
 !ifdef DEBUG_COLOUR_BARS2 {
