@@ -191,6 +191,9 @@ jsr_shadow_paging_control1
     cmp #2
     bcs dont_wait_for_raster
 raster_wait_loop
+    ; We only examine the high-order counter; this is good enough and avoids
+    ; complications trying to read a two byte counter which is counting down as
+    ; we read it a byte at a time.
     lda $fe69 ; timer 2 high-order counter SFTODO: USE LABEL
     cmp #>first_safe_start_row_time_us
     bcs raster_wait_loop
