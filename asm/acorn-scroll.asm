@@ -63,7 +63,12 @@ evntv = $220
 ; SFTODO: for now just assume 80 column mode - though these values are available at $352/$353 as that's where OS keeps them
 bytes_per_line = 640
 
-zp = $db ; 5 bytes - VDU temporary storage, 6 bytes starting at $da SFTODO: can I get away with this? simply by experiment I think $da is used by the code I'm going to call in the OS, but the others are OK
+
+; 6 bytes of zero page are allocated to the VDU driver starting at $da, but as
+; we're not too tight for space, we permanently allocate $da to
+; vdu_temp_store_da, imitating how it is used in OS 1.20. This could be shared
+; if necessary.
+zp = $db ; 5 bytes
 src = zp ; 2 bytes
 dst = zp + 2 ; 2 bytes
 
@@ -666,3 +671,5 @@ awkward_inner_loop
 }
 
 ; SFTODO: Quick fiddle with Border Zone suggests the multi-line hardware scrolling works but it looks quite nasty. It may still be better than software scrolling. This is just a note to go back and experiment with this later. Just maybe we should never use the new scrolling for anything except a single line (as we do with the redraw-via-OS based hw scrolling).
+
+; SFTODONOW: It *might* actually be possible for us to do a two line protected area in 40 column modes, or maybe even in 80 column modes if the code is optimised further (at the very least, not doing the redundant zero stores - which is probably cosmetically desirable - might make this work). Core Ozmoo code would need to change to enable vsync events in this case as well as this code deciding to check raster position in this case.
