@@ -20,7 +20,7 @@
 ;   have one.
 ;   Execution corrupts: &900-&AFF, &70-&8F
 ;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end (including shadow_ram_copy, shadow_paging_control_ptr)
-;   Runtime memory: as "Execution sets"
+;   Runtime memory: shadow_driver_start-shadow_driver_end
 ;
 ; - FINDSWR (acorn-findswr.asm)
 ;   This checks for sideways RAM.
@@ -31,8 +31,12 @@
 ;
 ; - FASTSCR (acorn-scroll.asm)
 ;   This allows hardware scrolling of the bottom part of the screen while
-;   leaving a runtime-controllable number of lines untouched at the top.
-;   Execution corrupts: &900-&AFF SFTODO NOT CURRENTLY, BUT FINAL PLAN, PROBABLY
+;   leaving a runtime-controllable number of lines untouched at the top. We need
+;   all of the runtime memory for code so there's no room for discardable
+;   initialisation code there; we therefore load and run just below the mode 6
+;   screen and copy the runtime part of the code to the final location as part
+;   of the initialisation.
+;   Execution corrupts: &5C00-&5FFF
 ;   Execution inputs: screen_mode_host, shadow_state, shadow_paging_control_ptr
 ;   Execution outputs: fast_scroll_status_host
 ;   Runtime memory: SFTODO, PROBABLY A SUBSET OF &900-AFF WHICH LEAVES ROOM FOR INSV
