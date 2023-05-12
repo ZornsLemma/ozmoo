@@ -320,7 +320,7 @@ add_loop
 }
 
     ; SFTODO EXPERIMENTAL HACK - LOTS OF COPY AND PASTE, MAYBE ACCEPTABLE, MAYBE NOT
-line_loop2
+line_loop2 ; SFTODO: "2" suffix on labels here is hacky
     ldx #chunks_per_line
 chunk_loop2
     ldy #chunk_size - 1
@@ -332,7 +332,7 @@ byte_loop2
     dey
     bpl byte_loop2
     +assert_no_page_crossing byte_loop2
-    ; SFTODO: The overhead of moving this double-bump into a subroutine so it can be shared with the loop below might well be acceptable and could give a worthwhile saving on code size, allowing us to actually fit and/or have more space for other optimisations. The "dex" could be shared as well, saving one more byte.
+    ; SFTODO: The overhead of moving this double-bump into a subroutine so it can be shared with the loop below might well be acceptable and could give a worthwhile saving on code size, allowing us to actually fit and/or have more space for other optimisations. The "dex" could be shared as well, saving one more byte. Each bump is 21 bytes, so ignoring the jsr+rts overhead we'd save 2*21+1=43 bytes factoring this out - minus 1+2*3 for the rts+jsrs, so 36 bytes overall. We'd pay an extra 12 cycles in each case for the jsr+rts; double-unrolling each loop would cost 5+9=14 bytes, so we could in fact afford to 4-unroll and still come out ahead. 4-unrolling the more complex loop saves 11.25 *scanlines* of time per line of screen, whereas we only pay 10 jsr+rts penalties (120 cycles total) for moving the bumps into a subroutine. This seems such a clear win I half wonder if I've got confused.
     +bump src
     +bump dst
     dex
