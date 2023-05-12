@@ -338,11 +338,10 @@ byte_loop2
     dex
     bne chunk_loop2
     dec lines_to_move_working_copy
-    ldx lines_to_move_working_copy
     pla:sta dst:pla:sta dst+1
     pla:sta src:pla:sta src+1
-    cpx #1:beq line_loop
-    bne line_loop2 ; always branch
+    ldx lines_to_move_working_copy
+    cpx #1:bne line_loop2
 
 line_loop
     ldx #chunks_per_line
@@ -350,6 +349,7 @@ chunk_loop
     ldy #chunk_size - 1
     ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something. - BE CAREFUL, THIS MIGHT BREAK B+
     ; SFTODO: Unrolling this loop twice would cost 9 bytes and would drop the per-iteration cost from 24 cycles to 22.5 cycles. That doesn't sound much, but over a 640 byte copy it is 960 cycles, which is 7.5 scanlines - *nearly* an entire text row. Going to a 4-unroll drops it to 21.75, saving an additional 3.75 scanlines.
+    ; SFTODO: Not sure it is worth it, but if we stashed X elsewhere we could load it with 0 and replace "lda #0" with "txa". This saves no cycles, but it saves a byte, so if we 4-unroll we save four bytes - though that only breaks even with stx zp:...:ldx zp. We could possibly store the chunk counter in zp location all the time, we'd pay an extra two bytes to store to it and one extra byte to dec it (and some cycles, but those are outside the core loop) - and then by the time we ldx #0:tax instead of lda #0 we've burned an extra byte, so we're breakig even again, and we've slowed down the outer loop slightly. If we were to 8-unroll we'd probably come out ahead, but gut feeling is this just isn't worth it.
 byte_loop
     lda (src),y
     sta (dst),y
