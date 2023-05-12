@@ -2,47 +2,24 @@
 
 !source "acorn-shared-constants.asm"
 
-; SFTODO: Constant names etc taken from TobyLobster's OS 1.20 disassembly
+; The constant names and fragments of OS 1.20 code which have been hacked up to
+; form part of this code are based on TobyLobster's OS 1.20 disassembly.
 vdu_text_window_bottom = $309
+vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
+vdu_bytes_per_character_row_low = $0352
+vdu_bytes_per_character_row_high = $0353
 vdu_screen_size_high_byte = $354
-vdu_status_byte = $D0       ; Each bit holds part the VDU status:
+vdu_status_byte = $d0
+vdu_temp_store_da = $da
 
+crtc_address_register = $fe00
+crtc_address_write = $fe01
+crtc_start_screen_address_high_register = 12
+crtc_cursor_position_high_register = 14
 
-; SFTODO: A LOT OF THESE AREN'T NEEDED ANY MORE (AND ANY I KEEP SHOULD BE RENAMED TO MY foo_bar_baz STYLE)
-; Code copied from OS 1.2 (TobyLobster disassembly).
-.vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
-.vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
-; SFTODO: Row multiplication table probably doesn't exist on Master so need to find alternative
-.vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
-.vduMultiplicationTableHigh                 = $E1       ; to use
-;.vduTextWindowBottom = $309
-.vduTextCursorXPosition                     = $0318     ; } text cursor position
-.vduTextCursorYPosition = $319
-.vduTextCursorCRTCAddressLow                = $034A     ; CRTC address of the cursor
-.vduTextCursorCRTCAddressHigh               = $034B     ;
-.vduBytesPerCharacter                       = $034F     ;
-.vduScreenTopLeftAddressLow = $350
-.vduScreenTopLeftAddressHigh = $351
-.vduScreenSizeHighByte = $354
-.vduCurrentScreenMODE                       = $0355     ;
-.vduCurrentScreenMODEGroup                  = $0356     ; MODE group = screen memory size:
-.vduTextInputCursorYCoordinate              = $0365     ;
-.vduTempStoreDA                             = $DA       ; }
-.crtcAddressRegister                        = $FE00     ;
-.crtcAddressWrite                           = $FE01     ;
-.vduStatusByte                              = $D0       ; Each bit holds part the VDU status:
-.vduTextWindowTop                           = $030B     ; }
-.vduBytesPerCharacterRowLow                 = $0352     ;
-.vduBytesPerCharacterRowHigh                = $0353     ;
-
-
-
-.crtcStartScreenAddressHighRegister         = 12        ;
-
-.crtcCursorPositionHighRegister             = 14        ;
 ; SFTODO RENAME THIS - "driver" IS UNHELPFUL
 b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
 
@@ -216,32 +193,32 @@ dont_wait_for_raster
     ; screen; it's probably less annoying for it to flicker (because we can't
     ; keep up with the raster) than have it jump around that much.
     ; SFTODO: STRIP OFF SOMEWHAT OUT OF PLACE COMMENTS FROM TOBY'S DISASSEMBLY
-    LDA .vduScreenTopLeftAddressLow                     ; screen top left address low
-    CLC                                                 ;
-    ADC .vduBytesPerCharacterRowLow                     ; add bytes per character row
-    TAX                                                 ; put low byte back into X
-    LDA .vduScreenTopLeftAddressHigh                    ; screen top left address high
-    ADC .vduBytesPerCharacterRowHigh                    ; add bytes per character row high byte (and carry)
-    BPL +                                               ;
-    SEC                                                 ; wrap around
-    SBC .vduScreenSizeHighByte                          ; screen RAM size high byte
+    lda vdu_screen_top_left_address_low
+    clc
+    adc vdu_bytes_per_character_row_low
+    tax
+    lda vdu_screen_top_left_address_high
+    adc vdu_bytes_per_character_row_high
+    bpl +
+    sec
+    sbc vdu_screen_size_high_byte
 +
-    STA .vduScreenTopLeftAddressHigh                    ; screen top left address high
-    STX .vduScreenTopLeftAddressLow                     ; screen top left address low
-    LDY #.crtcStartScreenAddressHighRegister            ; Y = value to change screen address
-    STX .vduTempStoreDA                                 ; store X
-    LSR                                                 ; divide X/A by 8
-    ROR .vduTempStoreDA                                 ;
-    LSR                                                 ;
-    ROR .vduTempStoreDA                                 ;
-    LSR                                                 ;
-    ROR .vduTempStoreDA                                 ;
-    LDX .vduTempStoreDA                                 ;
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STA .crtcAddressWrite                               ; write A into CRTC register
-    INY                                                 ; increment Y to the next CRTC register
-    STY .crtcAddressRegister                            ; set which CRTC register to write into
-    STX .crtcAddressWrite                               ; write X into CRTC register
+    sta vdu_screen_top_left_address_high
+    stx vdu_screen_top_left_address_low
+    ldy #crtc_start_screen_address_high_register
+    stx vdu_temp_store_da
+    lsr
+    ror vdu_temp_store_da
+    lsr
+    ror vdu_temp_store_da
+    lsr
+    ror vdu_temp_store_da
+    ldx vdu_temp_store_da
+    sty crtc_address_register
+    sta crtc_address_write
+    iny
+    sty crtc_address_register
+    stx crtc_address_write
 
     lda vdu_screen_top_left_address_low
     sta dst
@@ -254,9 +231,9 @@ dont_wait_for_raster
     ; get the OS to do it for us, which saves a lot of code here.
     lda #vdu_goto_xy
     jsr jmp_parent_wrchv
-    lda .vduTextCursorXPosition
+    lda vdu_text_cursor_x_position
     jsr jmp_parent_wrchv
-    lda .vduTextCursorYPosition
+    lda vdu_text_cursor_y_position
     jsr jmp_parent_wrchv
 
     ; We need this code to be reasonably fast and also reasonably small. SFTODO: I am sure it's possible to do better, particularly once I have a better idea of exactly how much code size I can tolerate.
@@ -373,8 +350,8 @@ lda_runtime_start_abs
     lda runtime_start
 sta_fast_scroll_start_abs
     sta fast_scroll_start
-    inc lda_runtime_start_abs+1:+inceq lda_runtime_start_abs+2
-    inc sta_fast_scroll_start_abs+1:+inceq sta_fast_scroll_start_abs+2
+    +inc16 lda_runtime_start_abs+1
+    +inc16 sta_fast_scroll_start_abs+1
     dey
     bne SFTODOCOPYLOOP
     dex
