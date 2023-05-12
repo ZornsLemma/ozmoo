@@ -23,6 +23,8 @@ copy_key = 139
 cursor_up_key = 143
 cursor_down_key = 142
 
++assert * == insv_start
+
 ; On entry:
 ;     A=140-143 for unshifted cursors
 ;     A=156-159 for shifted cursors
@@ -95,6 +97,8 @@ is_copy_key
     jsr jmp_old_insv
     pla ; restore original A
     rts
+
++assert * <= insv_resident_end
 
 ; This code is for initialisation and can be overwritten afterwards.
 init

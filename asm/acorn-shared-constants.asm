@@ -29,6 +29,13 @@
 ;   Runtime memory: N/A
 ;   SFTODO: RAM BANK COUNT AND RAM BANK LIST ARE USED DURING GAMEPLAY, SWR TYPE IS ONLY FOR LOADER
 ;
+; - INSV (acorn-insv.asm)
+;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
+;   history-enabled builds.
+;   Execution corrupts: &900-&AFF
+;   Runtime memory: &900-&931
+;   Runtime inputs: nominal_cursor_key_status
+;
 ; - FASTSCR (acorn-scroll.asm)
 ;   This allows hardware scrolling of the bottom part of the screen while
 ;   leaving a runtime-controllable number of lines untouched at the top. We need
@@ -39,18 +46,11 @@
 ;   Execution corrupts: &5C00-&5FFF
 ;   Execution inputs: screen_mode_host, shadow_state, shadow_paging_control_ptr
 ;   Execution outputs: fast_scroll_status_host
-;   Runtime memory: SFTODO, PROBABLY A SUBSET OF &900-AFF WHICH LEAVES ROOM FOR INSV
+;   Runtime memory: &932-&AFF
 ;   Runtime inputs: fast_scroll_lines_to_move
 ;   Note: The loader copies fast_scroll_status_host into fast_scroll_status in SFTODO: IT ACTUALLY COPIES TO use_custom_hw_scroll BUT I SHOULD RENAME THAT
 ;   the language processor, so it's available to the Ozmoo executable wherever
 ;   it's running.
-;
-; - INSV (acorn-insv.asm)
-;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
-;   history-enabled builds.
-;   Execution corrupts: &A00-&B00 SFTODO MAY WANT TO TIGHTEN THIS UP - IT PROB WANTS TO OVERLAP THE DISCARDABLE INIT CODE AT END OF PAGE A AFTER FASTSCR HAS LOADED, IF FASTSCR ISN'T TOO BIG
-;   Runtime memory: SFTODO
-;   Runtime inputs: nominal_cursor_key_status
 ;
 ; - CACHE2P (acorn-cache.asm)
 ;   This is a cache to allow use of spare main, sideways and shadow RAM on the
@@ -175,13 +175,16 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 
 !ifdef USE_HISTORY {
     nominal_cursor_key_status = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count ; 1 byte
+
+    insv_start = 0x900
+    insv_resident_end = 0x932
 }
 
 !ifdef ACORN_HW_SCROLL_CUSTOM {
     fast_scroll_lines_to_move = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
 
-    fast_scroll_start = 0xa60 ; SFTODO: NEEDS TO BE ADJUSTED LATER, JUST A HACK FOR NOW
-    fast_scroll_end = 0xc00 ; SFTODO: NOT ACCEPTABLE LONG TERM - THIS NEEDS TO LIVE IN 900-AFF AND COEXIST WITH INSV
+    fast_scroll_start = 0x932
+    fast_scroll_end = 0xb00
 }
 
 +assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900

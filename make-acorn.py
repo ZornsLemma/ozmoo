@@ -1328,7 +1328,7 @@ def make_insv_executable():
     # niceties like preserving A on exit even when Copy is pressed, but I'm not too
     # optimistic. I thought I could put it in the CFS/RFS workspace at &380 but IBOS
     # uses that.
-    workspace_start = 0xa00
+    workspace_start = 0x900
     workspace_end = 0xb00
     e = Executable("acorn-insv.asm", "INSV", None, workspace_start, ["-DUSE_HISTORY=1"])
     init = e.labels['init']
@@ -2131,10 +2131,10 @@ def make_disc_image():
     # smarter about including it, but really the cases where it's not useful aren't all that likely
     # or interesting.
     disc_contents += [loader, shaddrv_executable, findswr_executable]
-    if not cmd_args.slow_hw_scroll:
-        disc_contents.append(fast_hw_scroll_executable)
     if not cmd_args.no_history:
         disc_contents.append(make_insv_executable())
+    if not cmd_args.slow_hw_scroll:
+        disc_contents.append(fast_hw_scroll_executable)
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
         disc2_contents = []

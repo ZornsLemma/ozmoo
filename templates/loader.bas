@@ -198,6 +198,9 @@ VDU 23,255,-1;-1;-1;-1;
 !ifdef screen_mode_host {
     PROCpoke(${screen_mode_host},?${screen_mode})
 }
+!ifdef USE_HISTORY {
+    */INSV
+}
 !ifdef ACORN_HW_SCROLL_CUSTOM {
     REM We really don't expect this check to fail, but it seems prudent to check and avoid random corruption.
     DIM vartop -1
@@ -205,11 +208,6 @@ VDU 23,255,-1;-1;-1;-1;
     HIMEM=${fast_scroll_load_addr}
     */FASTSCR
     ?${use_custom_hw_scroll}=FNpeek(${fast_scroll_status_host})
-}
-REM INSV will be placed on the disc before CACHE2P, so by running them in this
-REM order we reduce the chances of the drive head moving backwards.
-!ifdef USE_HISTORY {
-    */INSV
 }
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}
