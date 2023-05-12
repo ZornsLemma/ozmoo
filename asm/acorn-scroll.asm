@@ -351,8 +351,6 @@ runtime_size = runtime_end - runtime_start
 
 ; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
 
-; SFTODO: If we have a "number of lines to protect" variable which Ozmoo can poke to control this, it being 0 would naturally mean "disable this code". I am not sure off top of my head if we want/need that, but I guess we might.
-
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
 ; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
@@ -361,10 +359,12 @@ runtime_size = runtime_end - runtime_start
 init
     ; Before we do anything else, we copy our code from inside this executable
     ; to its final location - we can then patch it in-place in the following
-    ; code (the way acme's !pseudpc directive works means that it's fiddly to
-    ; patch the copy embedded in this executable, as all the labels refer to its
-    ; final address). If we decide not to support fast hardware scrolling this
-    ; is still OK; we "own" this block of memory so there's no problem with us
+    ; code and copy it from in-place to the B+ private RAM if necessary. (The
+    ; way acme's !pseudpc directive works means that it's fiddly to patch the
+    ; copy embedded in this executable, as we don't have labels within the block
+    ; of code addressing the embedded copy so we'd have to manually apply
+    ; offsets.) If we decide not to support fast hardware scrolling this is
+    ; still OK; we own this block of memory so there's no problem with us
     ; corrupting it.
     ldx #>runtime_size
     ldy #<runtime_size
@@ -418,14 +418,27 @@ just_rts
     rts
 not_electron
 
-    ; SFTODO: We should probably just rts if we're in mode 7 - there's no point slowing things down with vsync events we don't care about. - this shouldn't actually be necessary now, as we just won't enable vsync in mode 7 - OTOH we would save a few cycles per OSWRCH call by not bother to hook OSWRCH in mode 7
-    ; We special-case the B+. The shadow driver can't page in the shadow RAM, but we can copy our code into private RAM to execute it, as long as we have use of the private RAM.
+    ; If we're going to run in mode 7, we don't bother installing anything. This
+    ; would be mostly harmless - the core Ozmoo executable will not enable the
+    ; vsync events in mode 7, and we will have a screen window in effect for
+    ; software scrolling so our OSWRCH code will never execute - but it seems
+    ; better to avoid the unnecessary overhead on the OSWRCH vector. This might
+    ; (although it probably won't) help to ensure that "there is no fast scroll
+    ; support" code paths get at least a little bit of routine testing.
+    lda screen_mode_host
+    cmp #7
+    beq just_rts
+    ; We special-case the B+. The shadow driver can't page in the shadow RAM,
+    ; but we can copy our code into private RAM to execute it, as long as we
+    ; have use of the private RAM.
     cpx #2 ; SFTODO: magic number - generally do this, maybe it's OK
     bne not_b_plus
     lda shadow_state
     cmp #shadow_state_b_plus_private
     bne just_rts
-    ; If we're on a B+, copy the relevant code into private RAM so it can access the shadow screen. We do this after copying our code to fast_scroll_start, so we can copy it from there.
+    ; If we're on a B+, copy the relevant code into private RAM so it can access
+    ; the shadow screen. We do this after copying our code to fast_scroll_start,
+    ; so we can copy it from there.
     lda romsel_copy
     pha
     lda #128
