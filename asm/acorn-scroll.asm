@@ -343,7 +343,7 @@ finish_oswrch
 null_shadow_driver
     rts
 }
-runtime_end
+runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
 ; The code between runtime_start and runtime_end is copied down to runtime_start
 ; by our discardable initialisation code. Make sure it fits!
 runtime_size = runtime_end - runtime_start
