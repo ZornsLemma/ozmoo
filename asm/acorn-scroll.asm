@@ -239,7 +239,8 @@ dont_wait_for_raster
     lda vdu_screen_top_left_address_low
     clc
     adc vdu_bytes_per_character_row_low
-    tax
+    sta vdu_screen_top_left_address_low
+    sta vdu_temp_store_da
     lda vdu_screen_top_left_address_high
     adc vdu_bytes_per_character_row_high
     bpl +
@@ -247,9 +248,7 @@ dont_wait_for_raster
     sbc vdu_screen_size_high_byte
 +
     sta vdu_screen_top_left_address_high
-    stx vdu_screen_top_left_address_low
     ldy #crtc_start_screen_address_high_register
-    stx vdu_temp_store_da
     lsr
     ror vdu_temp_store_da
     lsr
