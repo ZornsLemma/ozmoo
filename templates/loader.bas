@@ -842,3 +842,8 @@ REM extra complication, if OSHWM is high in host, we may not have room for the h
 REM cache. Not saying I should massively complicate the loader for this, but giving
 REM some kind of error if OSHWM is super high in host might be better than just
 REM crashing.
+
+REM SFTODO: Should we report the B+ private RAM as 12K when showing the sideways
+REM RAM available? I am not sure it's really helpful to treat it as 11.5K for
+REM reporting purposes. I think it *is* reasonable to report 11K for the Integra-B
+REM private RAM given IBOS is permanently using 1K of it.
