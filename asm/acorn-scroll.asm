@@ -443,11 +443,11 @@ raster_wait_table_entries = 3
 raster_wait_table
 raster_wait_table_first
     +scan_line 1*8 ; 1 line window
-    +scan_line 2*8 ; 2 line window SFTODO HACK
+    +scan_line 2*8 ; 2 line window
     +scan_line 2*8 ; 3 line window SFTODO HACK
 raster_wait_table_last
     +scan_line 8*8 ; 1 line window - this seems solid
-    +scan_line 3*8 ; 2 line window SFTODO HACK
+    +scan_line 8*8 ; 2 line window - seems surprisingly solid
     +scan_line 3*8 ; 3 line window SFTODO HACK
 raster_wait_table_end
     +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
@@ -469,7 +469,7 @@ raster_wait_table_first_40
     +scan_line 2*8 ; 3 line window SFTODO HACK
 raster_wait_table_last_40
     +scan_line 21*8 ; 1 line window - this seems solid
-    +scan_line 3*8 ; 2 line window SFTODO HACK
+    +scan_line 21*8 ; 2 line window - seems surprisingly solid
     +scan_line 3*8 ; 3 line window SFTODO HACK
 raster_wait_table_end_40
     +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
