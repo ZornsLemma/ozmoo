@@ -231,12 +231,7 @@ set_shadow_state_from_a_and_install_driver
     lda #128
     sta romsel_copy
     sta bbc_romsel
-    ldy #b_plus_high_driver_size-1
-.copy_high_loop
-    lda shadow_driver_b_plus_private_high,y
-    sta shadow_copy_private_ram,y
-    dey
-    bpl .copy_high_loop
+    +copy_data shadow_driver_b_plus_private_high, shadow_driver_b_plus_private_high_end, shadow_copy_private_ram
     pla
     sta romsel_copy
     sta bbc_romsel

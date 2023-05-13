@@ -231,6 +231,8 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
     bne -
 }
 
+; As copy_data, but additionally given the (exclusive) end of the destination
+; and checks that the copy won't write past that point.
 !macro copy_data_checked from_start, from_end, to_start, to_end {
     +assert (from_end - from_start) <= (to_end - to_start)
     +copy_data from_start, from_end, to_start
