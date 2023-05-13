@@ -889,6 +889,7 @@ z_ins_set_colour
 forward_window_start_row_plus_1_corrupt_xy ; SFTODO: rename? it also controls events
     pha
     ; Enable or disable vsync events; we want them to be enabled iff window_start_row + 1 == 1.
+    ; SFTODONOW: OZMOOE BUILD SHOULD OMIT THE OSBYTE 13/14 CODE - THERE'S NO VSYNC HANDLER INSTALLED ON ELECTRON, RUNNING THE DEFAULT RTS OS ONE WILL SLOW THE MACHINE DOWN SLIGHTLY AND WE'RE ALSO WASTING A BIT OF MEMORY ON THIS CODE HERE
     lda #13 ; SFTODO: MAGIC
     ldy window_start_row + 1
     dey
