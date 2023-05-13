@@ -82,11 +82,11 @@ SFTODO99 = total_rows * us_per_row ; SFTODO: idea is that as we're comparing aga
 frame_time_us = SFTODO99 - 2 * us_per_scanline
 ; SFTODO: I think it would be possible to auto-tune these parameters (although first_safe_start_row_time_us is probably more sensible kept fixed) - we could examine timer 2 (and an optional frame counter, to detect really bad overruns) after we finish our scroll copy and if we overran we could nudge last_safe_start_row_time_us towards the top of the screen (with some kind of min value so we don't push it up ridiculously far). I am not actually sure this is a good idea - do we *really* want outliers to slow everything down afterwards? Are we really hell-bent on getting no flicker if humanly possible, or are we trying to compromise and get virtually no flicker without killing performance? We *might* want to behave differently if we have tube - if we are on tube the fifo smoothes things out and stops us doing a lot of busy waiting delaying things too badly.
 first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row ; SFTODO: SHOULD PROBABLY BE 1 AND MIGHT NEED FURTHER TWEAKING, SINCE WE ONLY REALLY CARE ABOUT AVOIDING FLICKER FOR SINGLE PROTECTED ROW
-last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20 - PROBABLY BENEFIT FROM TUNING ONCE FINISHED OPTIMISING
+last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 3) * us_per_row ; SFTODO: ARBITRARY 20 - PROBABLY BENEFIT FROM TUNING ONCE FINISHED OPTIMISING
 ; SFTODO: Make sure to use different first/last safe rows in 80 and 40 column modes - there's less data to copy in 40 column modes so it takes less time and we can start safely further down the screen.
 
 ; SFTODO: At the moment colour bar writes break Electron (I think) - can we make it build-time selectable which platform we want to support for these?
-DEBUG_COLOUR_BARS = 1
+;DEBUG_COLOUR_BARS = 1
 ;DEBUG_COLOUR_BARS2 = 1
 ; 1=red=post-vsync
 ; 3=yellow=first timer 2
@@ -229,17 +229,17 @@ check_raster
     ; much faster. If we have more than one row to protect, the copying takes so
     ; long that we don't try to be flicker-free and just go right ahead to get
     ; the job done ASAP. SFTODO: WE MAY BE ABLE TO DO MORE THAN ONE ROW WITHOUT FLICKER NOW, WOULD NEED TO EXPERIMENT AND TUNE THIS, AND PROBABLY THE FIRST/LAST SAFE ROWS WOULD BE SELECTED FROM TABLES INDEXED BY NUMBER OF PROTECTED ROWS - THAT SAID, IT MAY BE THAT PROTECTING >1 ROW AND WAITING FOR FLICKER FREE SAFE REGIONS WILL SLOW THINGS DOWN TOO MUCH
-    lda fast_scroll_lines_to_move
-    cmp #2
+    ldx fast_scroll_lines_to_move
+    cpx #raster_wait_table_entries + 1
     bcs dont_wait_for_raster
 raster_wait_loop
     ; We only examine the high-order counter; this is good enough and avoids
     ; complications trying to read a two byte counter which is counting down as
     ; we read it a byte at a time.
     lda user_via_t2_high_order_counter
-    cmp #>first_safe_start_row_time_us
+    cmp raster_wait_table_first-1,x
     bcs raster_wait_loop
-    cmp #>last_safe_start_row_time_us
+    cmp raster_wait_table_last-1,x
     bcc raster_wait_loop
 dont_wait_for_raster
 !ifdef DEBUG_COLOUR_BARS {
@@ -303,8 +303,10 @@ update_hardware_screen_start_address_done
     ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
     ; SFTODO: If we are in an 80 column mode and thus have 128 byte chunks, should we patch this code at init time to do ldy #0 instead of ldy #chunk_size -1 and change the dey to iny? (We'd do it for both copy loops.) This would not change the behaviour (because we test with bpl) and it *might* look slightly nicer. This gets awkward with the unrolled loops though, as patching the dey->iny is faffy. Still, we *could* do it, and it's discardable init code. We are already patching the ldy # so changing what we patch with is not hard.
 
-min_chunk_size = 64 ; in 40 column modes
 chunks_per_line = 5
+chunk_size_40 = 320 / chunks_per_line
+chunk_size_80 = 640 / chunks_per_line
+min_chunk_size = chunk_size_40
 
     ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
     ; on the B+ and this code in main RAM is patched to execute it from private
@@ -336,7 +338,7 @@ line_loop2 ; SFTODO: "2" suffix on labels here is hacky
     ldx #chunks_per_line
 chunk_loop2
 ldy_imm_for_byte_loop2 ; SFTODO: perhaps be good to rename these labels (one on each loop) ldy_imm_chunk_size_minus_1 - that would help clarify the use of it in the bump macro too
-    ldy #$ff ; patched
+    ldy #chunk_size_80 - 1 ; patched
 byte_loop2
 byte_loop2_unroll_count = 8
 +assert min_chunk_size % byte_loop2_unroll_count == 0
@@ -355,7 +357,7 @@ byte_loop2_unroll_count = 8
     bne line_loop2
 
     ; Copy the final (possibly only, if fast_scroll_lines_to_move is 1) line,
-    ;clearing the source afterwards.
+    ; clearing the source afterwards.
     ;
     ; It is somewhat tempting to add a special case here, where if src and dst
     ; are both not the one line on the screen which can wrap part-way through,
@@ -374,7 +376,7 @@ line_loop
     ldx #chunks_per_line
 chunk_loop
 ldy_imm_for_byte_loop
-    ldy #$ff ; patched
+    ldy #chunk_size_80 - 1 ; patched
 byte_loop
 ; The body of this loop is slow enough that we fairly rapidly hit diminishing
 ; returns by unrolling it, *but* we do have spare space for the unroll at the
@@ -416,6 +418,40 @@ finish_oswrch
     lda #10
 null_shadow_driver
     rts
+
+; For a window of n lines at the top of the screen to protect from scrolling,
+; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
+; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
+; raster waiting and just scroll regardless, specify $ff and $00 respectively.
+;
+; This macro helps create bytes in terms of scan lines from the top of the
+; visible screen. Don't forget this is only approximate as we only check the
+; high byte of the timer. There are 312 scanlines per frame.
+!macro scan_line .scan_lines_from_visible_top {
+    .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
+    .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
+    !byte >(SFTODO99 - .scan_lines_to_wait * us_per_scanline)
+}
+; SFTODO: In modes 3 and 6, we *might* want to use a different start position. In general we're talking about time to execute code and a constant 50hz refresh rate and the line height doesn't matter. However, in terms of "not starting too early", if (say) we start at scan line 16 in mode 0 we can never (barring overrun) modify top two lines while they are being drawn, *but* in mode 3 the top two lines cover scan lines 0-19 inclusive. My inclination is to not worry about this; if I tune the start safe scan line in the 25 line modes I will be playing it safe and not costing that much performance in 32 line modes. Should probably have a perm comment regarding this though.
+; SFTODO: PERM COMMENT - I THINK HAVING A COPRO HITS THE HOST WITH MORE FREQUENT LINE FEEDS, SO IT SHOWS UP INTERMITTENT FLICKER MORE OFTEN - THE FASTER THE COPRO THE BETTER FOR TESTING, PROBABLY
+
+; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
+
+; This table is for 80 column modes; the 40 column table at raster_wait_table_40
+; is copied over this by the discardable init code if necessary.
+raster_wait_table_entries = 3
+raster_wait_table
+raster_wait_table_first
+    +scan_line 1*8 ; 1 line window
+    +scan_line 2*8 ; 2 line window SFTODO HACK
+    +scan_line 2*8 ; 3 line window SFTODO HACK
+raster_wait_table_last
+    +scan_line 9*8 ; 1 line window - 22 FLICKERS BIT ON  TUBE, DITTO 20, 18 SEEMS SOLID BUT NOT GONE ALL WAY, 19 FLICKERS SLIGHTLY, 18 FLICKERS SLIGHTLY, DITTO 17, DITTO 16, 15, 12, 11, 10 - 9 SEEMS SOLID AT 500% BUT NOT TRIED 100% YET
+    +scan_line 3*8 ; 2 line window SFTODO HACK
+    +scan_line 3*8 ; 3 line window SFTODO HACK
+raster_wait_table_end
+    +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
+    +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
 }
 runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
 ; The code between runtime_start and runtime_end is copied down to runtime_start
@@ -423,6 +459,17 @@ runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g.
 runtime_size = runtime_end - runtime_start
 +assert runtime_size <= fast_scroll_end - fast_scroll_start
 !warn "SFTODO TEMP: free space ", (fast_scroll_end - fast_scroll_start) - runtime_size
+
+; This table is for 40 column modes; it is copied over raster_wait_table by the
+; discardable init code if appropriate.
+raster_wait_table_40
+raster_wait_table_first_40
+    !byte 0, 0, 0 ; SFTODO!
+raster_wait_table_last_40
+    !byte 0, 0, 0 ; SFTODO!
+raster_wait_table_end_40
+    +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
+    +assert raster_wait_table_end_40 - raster_wait_table_last_40 == raster_wait_table_entries
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
@@ -513,14 +560,16 @@ sta_fast_scroll_start_abs
     lda screen_mode_host
     cmp #7
     beq .just_rts
-    ; Patch the instructions which use the chunk size (minus 1) for the screen
-    ; mode we're going to use.
-    ldx #63
+    ; The runtime code has constants for 80 column modes; patch some code/data
+    ; if we're going to run in a 40 column mode.
     cmp #4
-    bcs +
-    ldx #127
-+   stx ldy_imm_for_byte_loop2 + 1
+    bcc +
+    ldx #chunk_size_40 - 1
+    stx ldy_imm_for_byte_loop2 + 1
     stx ldy_imm_for_byte_loop + 1
+    +copy_data raster_wait_table_40, raster_wait_table_end_40, raster_wait_table
++
+
     ; If we don't have shadow RAM, that's fine. If we do have shadow RAM, we
     ; must have a shadow driver for it which is capable of paging. The only
     ; exception is a B+ with the private RAM available for our use.
