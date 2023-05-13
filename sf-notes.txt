@@ -19,6 +19,7 @@ Before this hack (commit 20e4b7f25adcb10b6b7a493e036f939851620372) $006fbc (-$8b
 That's a 26% reduction in benchmark runtime, and while still a bit flickery I think (hard to be sure under emulation, and I may be able to make it a smidge "nicer" anyway) it actually looks slightly nicer
 With current hacky interrupt-based "no flicker" scrolling, same system gives $576a - only 3.5% slower than the fast hardware scrolling with flicker (this is apples-to-apples as we're on tube, but non-tube systems may - not sure - suffer more)
 With current commit $5a3a - this didn't flicker at all (I think) and it is slower but probably worth it (assuming it really is flicker free) and it's still significantly faster than with old-style hw scrolling
+Current commit $553e (similar -value), which is nice - it's nearly as fast as the original hack which didn't do any anti-flicker syncing.
 
 M128 no shadow mode 7 benchmark $8e9e $8e9e (-$7bc)
 Tweaked down to $8e86 $8e88 (-$7bc)
