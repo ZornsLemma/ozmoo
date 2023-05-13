@@ -64,10 +64,6 @@ opcode_rts = $60
 wrchv = $20e
 evntv = $220
 
-; SFTODO: for now just assume 80 column mode - though these values are available at $352/$353 as that's where OS keeps them
-bytes_per_line = 640
-
-
 ; 6 bytes of zero page are allocated to the VDU driver starting at $da, but as
 ; we're not too tight for space, we permanently allocate $da to
 ; vdu_temp_store_da, imitating how it is used in OS 1.20. This could be shared
@@ -87,6 +83,7 @@ frame_time_us = SFTODO99 - 2 * us_per_scanline
 ; SFTODO: I think it would be possible to auto-tune these parameters (although first_safe_start_row_time_us is probably more sensible kept fixed) - we could examine timer 2 (and an optional frame counter, to detect really bad overruns) after we finish our scroll copy and if we overran we could nudge last_safe_start_row_time_us towards the top of the screen (with some kind of min value so we don't push it up ridiculously far). I am not actually sure this is a good idea - do we *really* want outliers to slow everything down afterwards? Are we really hell-bent on getting no flicker if humanly possible, or are we trying to compromise and get virtually no flicker without killing performance? We *might* want to behave differently if we have tube - if we are on tube the fifo smoothes things out and stops us doing a lot of busy waiting delaying things too badly.
 first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row ; SFTODO: SHOULD PROBABLY BE 1 AND MIGHT NEED FURTHER TWEAKING, SINCE WE ONLY REALLY CARE ABOUT AVOIDING FLICKER FOR SINGLE PROTECTED ROW
 last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20 - PROBABLY BENEFIT FROM TUNING ONCE FINISHED OPTIMISING
+; SFTODO: Make sure to use different first/last safe rows in 80 and 40 column modes - there's less data to copy in 40 column modes so it takes less time and we can start safely further down the screen.
 
 ; SFTODO: At the moment colour bar writes break Electron (I think) - can we make it build-time selectable which platform we want to support for these?
 DEBUG_COLOUR_BARS = 1
@@ -148,8 +145,8 @@ loopSFTODO
 add_line_x
 !zone {
     clc
-    lda $00,x:adc #<bytes_per_line:sta $00,x
-    lda $01,x:adc #>bytes_per_line
+    lda $00,x:adc vdu_bytes_per_character_row_low:sta $00,x
+    lda $01,x:adc vdu_bytes_per_character_row_high
     bpl .no_wrap
     sec:sbc vdu_screen_size_high_byte
 .no_wrap
@@ -159,7 +156,8 @@ add_line_x
 
 bump_src_dst_and_dex
 !macro bump .ptr {
-    clc:lda .ptr:adc #chunk_size:sta .ptr
+    ; SFTODO: This way of getting chunk_size is a bit hacky, maybe? If we had a spare zp address to stash it in that might be nicer, tho we'd have to poke it into that zp address every time we were called so no real code size saving.
+    sec:lda .ptr:adc ldy_imm_for_byte_loop2+1:sta .ptr ; adc adds chunk_size-1, +1 as carry set
     bcc .no_carry
     inc .ptr+1
     bpl .no_wrap
@@ -222,6 +220,7 @@ jsr_shadow_paging_control1
     jsr $ffff ; patched
 
     ; This code is patched out at runtime on the Electron.
+    ; SFTODO: It is *just* possible - would need to time it - that in e.g. 40 column modes we *can* do this quickly enough to avoid flicker on the Electron if we wait for vsync here (we can't time it more precisely). That said, even if that works, it would essentially add "on average" 0.01s to every line feed (since we'd hit at a random point during the 50Hz frame and have to wait half that on average for vsync) and might slow things down too painfully. Still, if it is flicker free, worth trying some timings to see if it's actually a problem in practice.
 check_raster
     ; If we're protecting a single row at the top of the screen, wait for a
     ; "safe" raster position - one where we expect to be able to complete the
@@ -302,29 +301,29 @@ update_hardware_screen_start_address_done
 
     ; We need this code to be reasonably fast and also reasonably small. SFTODO: I am sure it's possible to do better, particularly once I have a better idea of exactly how much code size I can tolerate.
     ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
+    ; SFTODO: If we are in an 80 column mode and thus have 128 byte chunks, should we patch this code at init time to do ldy #0 instead of ldy #chunk_size -1 and change the dey to iny? (We'd do it for both copy loops.) This would not change the behaviour (because we test with bpl) and it *might* look slightly nicer. This gets awkward with the unrolled loops though, as patching the dey->iny is faffy. Still, we *could* do it, and it's discardable init code. We are already patching the ldy # so changing what we patch with is not hard.
 
-chunk_size = 128 ; SFTODO: hard-coded for 640 byte per line modes for now
+min_chunk_size = 64 ; in 40 column modes
 chunks_per_line = 5
 
     ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
     ; on the B+ and this code in main RAM is patched to execute it from private
-    ; RAM. This allows it to access screen memory directly. Because of this, we
-    ; must not use any absolute addresses within this code. SFTODO: DO THAT!
+    ; RAM. This allows it to access screen memory directly. Because the code is
+    ; also present in main RAM we can use absolute addresses here, as long as
+    ; they don't cause us to execute screen memory-accessing code from main RAM
+    ; instead of private RAM.
     ; SFTODO: COULD WE MAKE BETTER USE OF X IN THIS LOOP?
 b_plus_copy_start
     ldy fast_scroll_lines_to_move
     dey:beq line_loop
     sty lines_to_move_without_clearing
-    ; SFTODO: It's not exactly efficient to add bytes_per_line n times instead
-    ; of adding n*bytes_per_line, but we don't want to be doing a generic
-    ; multiply, n is small (and not generally a power of two) and as n grows the
-    ; amount of data we have to copy grows proportionally so the extra overhead
-    ; of doing this adding is always a small fraction of the total work.
-    ;
-    ; Because the wrapping makes everything so painful, we push the addresses on
-    ; the stack as we calculate them so we can pop them off again to work
-    ; through them backwards, rather than decrementing-with-wrapping. SFTODO:
-    ; This does mean that the multiply-by-adding is kind of necessary.
+
+    ; We need to copy lines_to_move_without_clearing lines up by one line,
+    ; working from the bottom-most line to the top-most line. We just add
+    ; repeatedly to generate the addresses; this is relatively easy and saves
+    ; using a general-purpose multiplication routine. We push the addresses onto
+    ; the stack as we generate this; this saves having to write
+    ; subtract-with-wrap code as well.
 add_loop
     lda src+1:pha:lda src:pha
     ldx #src:jsr add_line_x
@@ -336,10 +335,11 @@ add_loop
 line_loop2 ; SFTODO: "2" suffix on labels here is hacky
     ldx #chunks_per_line
 chunk_loop2
-    ldy #chunk_size - 1
+ldy_imm_for_byte_loop2
+    ldy #$ff ; patched
 byte_loop2
 byte_loop2_unroll_count = 8
-+assert chunk_size % byte_loop2_unroll_count == 0
++assert min_chunk_size % byte_loop2_unroll_count == 0
 !for i, 1, byte_loop2_unroll_count {
     lda (src),y
     sta (dst),y
@@ -357,7 +357,8 @@ byte_loop2_unroll_count = 8
 line_loop
     ldx #chunks_per_line
 chunk_loop
-    ldy #chunk_size - 1
+ldy_imm_for_byte_loop
+    ldy #$ff ; patched
 byte_loop
 ; The body of this loop is slow enough that we fairly rapidly hit diminishing
 ; returns by unrolling it, *but* we do have spare space for the unroll at the
@@ -367,7 +368,7 @@ byte_loop
 ; chances of maintaining a flicker free display without slowing things down too
 ; much by having over-tight safe raster bounds.
 byte_loop_unroll_count = 8
-+assert chunk_size % byte_loop_unroll_count == 0
++assert min_chunk_size % byte_loop_unroll_count == 0
 !for i, 1, byte_loop_unroll_count {
     lda (src),y
     sta (dst),y
@@ -496,6 +497,14 @@ sta_fast_scroll_start_abs
     lda screen_mode_host
     cmp #7
     beq .just_rts
+    ; Patch the instructions which use the chunk size (minus 1) for the screen
+    ; mode we're going to use.
+    ldx #63
+    cmp #4
+    bcs +
+    ldx #127
++   stx ldy_imm_for_byte_loop2 + 1
+    stx ldy_imm_for_byte_loop + 1
     ; If we don't have shadow RAM, that's fine. If we do have shadow RAM, we
     ; must have a shadow driver for it which is capable of paging. The only
     ; exception is a B+ with the private RAM available for our use.
