@@ -667,6 +667,7 @@ userv_already_claimed
     sta sta_abs_tube_data + 2
 
     ; Patch page_in_swr_bank_a
+    ; SFTODONOW: Use +copy_data here
     ldx #page_in_swr_bank_a_electron_size - 1
 -   lda page_in_swr_bank_a_electron,x
     sta page_in_swr_bank_a,x

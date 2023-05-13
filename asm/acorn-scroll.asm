@@ -157,6 +157,21 @@ add_line_x
     rts
 }
 
+bump_src_dst_and_dex
+!macro bump .ptr {
+    clc:lda .ptr:adc #chunk_size:sta .ptr
+    bcc .no_carry
+    inc .ptr+1
+    bpl .no_wrap
+    sec:lda .ptr+1:sbc vdu_screen_size_high_byte:sta .ptr+1
+.no_carry
+.no_wrap
+}
+    +bump src
+    +bump dst
+    dex
+    rts
+
 our_wrchv
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
     ; interested in passed through ASAP. We only care about LF characters.
@@ -316,16 +331,6 @@ add_loop
     ldx #dst:jsr add_line_x
     dey:bne add_loop
 
-!macro bump .ptr {
-    clc:lda .ptr:adc #chunk_size:sta .ptr
-    bcc .no_carry
-    inc .ptr+1
-    bpl .no_wrap
-    sec:lda .ptr+1:sbc vdu_screen_size_high_byte:sta .ptr+1
-.no_carry
-.no_wrap
-}
-
     ; SFTODO EXPERIMENTAL HACK - LOTS OF COPY AND PASTE, MAYBE ACCEPTABLE, MAYBE NOT
 line_loop2 ; SFTODO: "2" suffix on labels here is hacky
     ldx #chunks_per_line
@@ -340,9 +345,7 @@ byte_loop2
     bpl byte_loop2
     +assert_no_page_crossing byte_loop2
     ; SFTODO: The overhead of moving this double-bump into a subroutine so it can be shared with the loop below might well be acceptable and could give a worthwhile saving on code size, allowing us to actually fit and/or have more space for other optimisations. The "dex" could be shared as well, saving one more byte. Each bump is 21 bytes, so ignoring the jsr+rts overhead we'd save 2*21+1=43 bytes factoring this out - minus 1+2*3 for the rts+jsrs, so 36 bytes overall. We'd pay an extra 12 cycles in each case for the jsr+rts; double-unrolling each loop would cost 5+9=14 bytes, so we could in fact afford to 4-unroll and still come out ahead. 4-unrolling the more complex loop saves 11.25 *scanlines* of time per line of screen, whereas we only pay 10 jsr+rts penalties (120 cycles total) for moving the bumps into a subroutine. This seems such a clear win I half wonder if I've got confused. We *would* have to take special care to patch up the absolute jsr when copying to the B+ private RAM, but that is a small-ish bit of complexity and is handled in discardable init code.
-    +bump src
-    +bump dst
-    dex
+    jsr bump_src_dst_and_dex
     bne chunk_loop2
     dec lines_to_move_working_copy
     pla:sta dst:pla:sta dst+1
@@ -365,9 +368,7 @@ byte_loop
     dey
     bpl byte_loop
     +assert_no_page_crossing byte_loop
-    +bump src
-    +bump dst
-    dex
+    jsr bump_src_dst_and_dex
     bne chunk_loop
 
 !ifdef DEBUG_COLOUR_BARS {
@@ -395,6 +396,7 @@ runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g.
 ; by our discardable initialisation code. Make sure it fits!
 runtime_size = runtime_end - runtime_start
 +assert runtime_size <= fast_scroll_end - fast_scroll_start
+!warn "SFTODO TEMP: free space ", (fast_scroll_end - fast_scroll_start) - runtime_size
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
