@@ -490,20 +490,10 @@ sta_fast_scroll_start_abs
     lda #128
     sta romsel_copy
     sta bbc_romsel
-    ; SFTODO: SHOULD WE FACTOR OUT THE COPY LOOP IF IT'S DUPLICATED?
-    ; SFTODO: ASSERT THIS COPY COPIES OK
-    ldy #b_plus_copy_end-b_plus_copy_start
--   lda b_plus_copy_start-1,y
-    sta b_plus_private_ram_driver-1,y
-    dey
-    bne -
+    +copy_data b_plus_copy_start, b_plus_copy_end, b_plus_private_ram_driver
     lda #opcode_rts
     sta b_plus_private_ram_driver + (b_plus_copy_end - b_plus_copy_start)
-    ldy #b_plus_copy_start_patch_end-b_plus_copy_start_patch_start ; SFTODO: THESE LABELS ARE INSANE
--   lda b_plus_copy_start_patch_start-1,y
-    sta b_plus_copy_start-1,y
-    dey
-    bne -
+    +copy_data b_plus_copy_start_patch_start, b_plus_copy_start_patch_end, b_plus_copy_start ; SFTODO: THESE LABELS ARE INSANE
     pla
     sta romsel_copy
     sta bbc_romsel
@@ -532,16 +522,7 @@ use_shadow_driver_yx
     lda #<dont_wait_for_raster:sta check_raster + 1
     lda #>dont_wait_for_raster:sta check_raster + 2
     ; Overwrite the BBC hardware screen start address update with the Electron code.
-    ; SFTODO: Should I maybe have a macro which generates these code copy loops? We don't care about the odd byte or two as it's discardable init.
-!zone {
-    size = electron_update_hardware_screen_start_address_end - electron_update_hardware_screen_start_address
-    +assert size <= update_hardware_screen_start_address_done - update_hardware_screen_start_address
-    ldy #size
--   lda electron_update_hardware_screen_start_address-1,y
-    sta update_hardware_screen_start_address-1,y
-    dey
-    bne -
-}
+    +copy_data_checked electron_update_hardware_screen_start_address, electron_update_hardware_screen_start_address_end, update_hardware_screen_start_address, update_hardware_screen_start_address_done
     jmp common_init
 not_electron
     ; Install our EVNTV handler so we can tell where the raster is.

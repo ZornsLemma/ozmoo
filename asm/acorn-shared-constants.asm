@@ -218,3 +218,20 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
         !error "Unacceptable page crossing"
     }
 }
+
+; SFTODO: DOCUMENT - INCL FROM_END BEING *EXCLUSIVE*
+; SFTODO: USEFUL? USE IN MORE PLACES? GET RID? MOVE?
+; SFTODO: EXPERIMENTAL
+!macro copy_data from_start, from_end, to {
+.size = from_end - from_start
+    ldy #.size
+-   lda from_start-1,y
+    sta to-1,y
+    dey
+    bne -
+}
+
+!macro copy_data_checked from_start, from_end, to_start, to_end {
+    +assert (from_end - from_start) <= (to_end - to_start)
+    +copy_data from_start, from_end, to_start
+}
