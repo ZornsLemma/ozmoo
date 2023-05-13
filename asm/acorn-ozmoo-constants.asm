@@ -851,7 +851,6 @@ jmp_buf	+allocate jmp_buf_size
 streams_stack
 	+allocate 60
 
-; SFTODONOW: THIS LOOKS WRONG - DON'T THESE LIVE IN THE STACK *UNLESS* WE'RE DOING OSRDCH BUILD OR SOMETHING?!
 !ifdef ACORN_HW_SCROLL_SLOW {
 	+pre_allocate max_screen_width
 top_line_buffer

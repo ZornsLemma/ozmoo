@@ -1726,6 +1726,7 @@ def parse_args():
     group.add_argument("--nfs-install-only", action="store_true", help="generate a disc image for installation to NFS")
     group.add_argument("--disc-title", metavar="DISCTITLE", type=str, help="set disc image title")
     group.add_argument("--try-support-32k", action="store_true", help="try to support unexpanded 32K machines")
+    group.add_argument("--no-slow-hw-scroll", action="store_true", help="disable use of slow hardware scroll")
     group.add_argument("--no-fast-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
@@ -1939,7 +1940,6 @@ def make_disc_image():
         "-DACORN_CURSOR_PASS_THROUGH=1",
         "-DSTACK_PAGES=4",
         "-DSPLASHWAIT=0",
-        "-DACORN_HW_SCROLL_SLOW=1",
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
         "-DACORN_GAME_PAGES=%d" % game_pages,
@@ -2020,6 +2020,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DCHECK_ERRORS=1"]
     if cmd_args.min_mode <= 3:
         ozmoo_base_args += ["-DSUPPORT_80COL=1"]
+    if not cmd_args.no_slow_hw_scroll:
+        ozmoo_base_args += ["-DACORN_HW_SCROLL_SLOW=1"]
     if not cmd_args.no_fast_hw_scroll:
         ozmoo_base_args += ["-DACORN_HW_SCROLL_FAST=1"]
 
