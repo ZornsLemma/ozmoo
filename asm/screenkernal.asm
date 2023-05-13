@@ -51,6 +51,23 @@
     }
 }
 
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
+    !macro acorn_update_scroll_state {
+        jsr acorn_update_scroll_state_subroutine
+    }
+} else {
+    !macro acorn_update_scroll_state {
+        ; nothing to do
+    }
+}
+
+; Note that the ACORN_HW_SCROLL_SLOW and ACORN_HW_SCROLL_FAST constants are
+; defined if the executable *supports* the relevant type of scrolling. Whether
+; they are actually available and used varies at runtime depending on the
+; hardware we're running on, the size of the upper window and the user's
+; preference. Although typically both will be defined, it's valid to have just
+; one or neither of these constants defined. SFTODO: TEST THAT!
+
 !zone screenkernal {
 
 !ifdef Z3 {
@@ -402,12 +419,9 @@ s_printchar
 }
 	cpx s_screen_width ; #SCREEN_WIDTH
 	bcs - ; .printchar_end
-!ifdef ACORN_HW_SCROLL {
-    ; SFTODONOW: Should we skip this code if we're in mode 7? We will never use hardware scroll, so we shouldn't waste time updating this.
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-    ldy use_custom_hw_scroll ; SFTODO: THIS NAME IS INCONSISTENT IN ORDER WITH ACORN_HW_SCROLL_CUSTOM MACRO NAME
-    bne +
-}
+!ifdef ACORN_HW_SCROLL_SLOW {
+    bit acorn_scroll_flags
+    bvc +
     ldy zp_screenrow
     bne +
     sta top_line_buffer,x
@@ -494,9 +508,7 @@ s_printchar
 	bcc +
 	sty cursor_row
 +
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-    jsr forward_window_start_row_plus_1_corrupt_xy
-}
+    +acorn_update_scroll_state
     jmp .resume_printing_normal_char ; Always branch
 }
 ; SFTODONOW: Stating the obvious, test software, hardware-old-style and hardware-new-style scrolling once finished. Also be good to *SPOOL the output and have a look for apparently gratutious VDU codes, e.g. cursor movement when not necessary, stray text windows, etc.
@@ -507,22 +519,17 @@ s_printchar
     ; always want the new line to be in normal video so make sure we're in normal video mode; this is harmless even if
     ; we are using the custom OSWRCH routine.
     jsr set_os_normal_video
-!ifdef ACORN_HW_SCROLL {
-    ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
-    lda use_hw_scroll
-    beq .sw_scroll
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-    ; SFTODO: Although it currently only protect 1 row, the custom hw scroll can protect any number of rows, so we don't want to disable hardware scrolling regardless of the window size.
-    lda use_custom_hw_scroll
-    bne .hw_scrollSFTODO8
-}
-    ldx window_start_row + 1 ; how many top lines to protect
-    dex
-    beq .hw_scrollSFTODO8
-}
-.sw_scroll
+    !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
+        ; For this subroutine, we always issue a line feed on the bottom row of
+        ; the screen. If we're software scrolling we define a text window first;
+        ; for either hardware scroll option we don't need a text window.
+        lda acorn_scroll_flags
+        ; SFTODO: SHOULD WE MOVE THE "MAINTAIN TOP LINE BUFFER" FLAG INTO ITS OWN BYTE? IT WOULD SAVE TWO BYTES OF CODE HERE SO MIGHT BE A NET WIN AS WELL AS BEING SIMPLER AND FASTER
+        and #not(acorn_scroll_flag_maintain_top_line_buffer)
+        bne .no_text_window
+    }
     jsr .s_pre_scroll_leave_cursor_bottom_right
-.hw_scrollSFTODO8
+.no_text_window
     +lda_screen_height_minus_one
     sta zp_screenrow
     lda #vdu_down
@@ -532,35 +539,53 @@ s_printchar
     lda #1
     sta s_cursors_inconsistent
 .perform_line_feed_on_bottom_row2
-!ifdef ACORN_HW_SCROLL {
-    ; SFTODO: Can we factor out this test and set a single variable we can test which keeps up to date appropriately?
-    lda use_hw_scroll
-    beq +
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-    ; SFTODO: Although it currently only protect 1 row, the custom hw scroll can protect any number of rows, so we don't want to disable hardware scrolling regardless of the window size.
-    lda use_custom_hw_scroll
-    bne .SFTODORTS
-}
-    ldx window_start_row + 1 ; how many top lines to protect
-    dex
-    bne +
-    ; SFTODO: Is there any value in trying to only redraw the top line after
-    ; all "short term" updates are done? Suppose the game scrolls a
-    ; five line room description onto the screen. At the moment we'll
-    ; redraw the top line after every single line. It would be faster
-    ; to just redraw once output has finished and we're waiting for user
-    ; input. I don't know if this is feasible - what if the game decides to
-    ; (making this up as a simple example) pause for 10 seconds, expecting
-    ; the status line to be there but we haven't shown it because there's
-    ; no user input happening? It might also look ugly even if there were
-    ; no implementation concerns, but I'm just speculating - it might look
-    ; nicer overall due to the faster scroll and reduced flicker.
-    jmp .redraw_top_line
-+
-}
+    !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
+        lda acorn_scroll_flags
+        !ifdef ACORN_HW_SCROLL_FAST {
+            bmi .SFTODORTS ; nothing to do for fast hardware scrolling
+        }
+        !ifdef ACORN_HW_SCROLL_SLOW {
+            and #acorn_scroll_flag_slow_hw_scroll
+            bne .redraw_top_line
+        }
+    }
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
     jmp oswrch
+
+!ifdef ACORN_HW_SCROLL_SLOW {
+.redraw_top_line
+    jsr turn_off_cursor
+    lda #vdu_home
+    jsr oswrch
+    +ldy_screen_width
+    ; SFTODONOW: Is the following code redundant? We will never do hardware scrolling in mode 7 so isn't this wasted code?
+!ifdef MODE_7_STATUS {
+!ifdef Z4PLUS {
+    lda screen_mode
+    cmp #7
+    bne +
+    jsr .output_mode_7_colour_code
+    ldy #39
++
+}
+}
+    ldx #0
+    ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO. - OK, we are smart(ish) as set_os_*_video use an internal flag to do just this.
+    ; SFTODO: It's fraught with complexities (but hey, we have our swanky shadow driver to help), but I can't help wondering if (semi-optionally) using some machine code (running in the host, always) to save/restore the top up-to-640 bytes of RAM when we scroll in hardware scrolling mode might be quicker and more attractive than going via the OS text routines to redraw this - and it would also mean we wouldn't have to maintain the internal buffer of what's been written to the top row so we can reconstruct it, as we'd just save the binary data immediately before scrolling and restore it after. - actually, what would be visually nicer, faster and need no extra (data) RAM would be to "do the newline+hw scroll operation instead of letting OS do it (but updating all relevant OS state", except that as we loop over the data that was on the top line to zero it out, we copy it onto the new top line before zeroing it. This requires getting intimate with the OS, although it probably mostly boils down to separate Electron and BBC routines (although shadow RAM complicates things further; on the B+ we could stick the routine in the last 512 bytes of private RAM and we can probably assume that all B shadow expansions support shadow paging, and of course the Master does - Electron MRB is not so nice here). Worth mulling this over though. Could of course do a proof of concept version of this which only works on (say) the Master and breaks everything else, as it's just to see if it looks nice/is a lot faster.
+-   lda top_line_buffer_reverse,x
+    beq +
+    jsr set_os_reverse_video
+    jmp ++
++   jsr set_os_normal_video
+++  lda top_line_buffer,x
+    jsr oswrch
+    inx
+    dey
+    bne -
+    stx s_cursors_inconsistent
+    jmp turn_on_cursor
+}
 
 .perform_newline
 	; newline/enter/return
@@ -610,24 +635,21 @@ s_erase_line
 	lda #0
 	sta zp_screencolumn
 s_erase_line_from_cursor
-!ifdef ACORN_HW_SCROLL {
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-    lda use_custom_hw_scroll
-    bne +
-}
-    ; SFTODONOW: Should we skip this code if we're in mode 7? We will never use hardware scroll, so we shouldn't waste time updating this.
-    ldx zp_screenrow
-    bne +
-    ldx zp_screencolumn
--   lda #' '
-    sta top_line_buffer,x
-    lda #0
-    sta top_line_buffer_reverse,x
-    inx
-    +cpx_screen_width
-    bne -
+    !ifdef ACORN_HW_SCROLL_SLOW {
+        bit acorn_scroll_flags
+        bvc +
+        ldx zp_screenrow
+        bne +
+        ldx zp_screencolumn
+-       lda #' '
+        sta top_line_buffer,x
+        lda #0
+        sta top_line_buffer_reverse,x
+        inx
+        +cpx_screen_width
+        bne -
 +
-}
+    }
     ; Define a text window covering the region to clear
     lda #vdu_define_text_window
     jsr oswrch
@@ -708,40 +730,6 @@ s_pre_scroll_leave_cursor_in_place
     sbc window_start_row + 1
     tay
     jmp do_oswrch_vdu_goto_xy
-
-!ifdef ACORN_HW_SCROLL {
-.redraw_top_line
-    jsr turn_off_cursor
-    lda #vdu_home
-    jsr oswrch
-    +ldy_screen_width
-    ; SFTODONOW: Is the following code redundant? We will never do hardware scrolling in mode 7 so isn't this wasted code?
-!ifdef MODE_7_STATUS {
-!ifdef Z4PLUS {
-    lda screen_mode
-    cmp #7
-    bne +
-    jsr .output_mode_7_colour_code
-    ldy #39
-+
-}
-}
-    ldx #0
-    ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO. - OK, we are smart(ish) as set_os_*_video use an internal flag to do just this.
-    ; SFTODO: It's fraught with complexities (but hey, we have our swanky shadow driver to help), but I can't help wondering if (semi-optionally) using some machine code (running in the host, always) to save/restore the top up-to-640 bytes of RAM when we scroll in hardware scrolling mode might be quicker and more attractive than going via the OS text routines to redraw this - and it would also mean we wouldn't have to maintain the internal buffer of what's been written to the top row so we can reconstruct it, as we'd just save the binary data immediately before scrolling and restore it after. - actually, what would be visually nicer, faster and need no extra (data) RAM would be to "do the newline+hw scroll operation instead of letting OS do it (but updating all relevant OS state", except that as we loop over the data that was on the top line to zero it out, we copy it onto the new top line before zeroing it. This requires getting intimate with the OS, although it probably mostly boils down to separate Electron and BBC routines (although shadow RAM complicates things further; on the B+ we could stick the routine in the last 512 bytes of private RAM and we can probably assume that all B shadow expansions support shadow paging, and of course the Master does - Electron MRB is not so nice here). Worth mulling this over though. Could of course do a proof of concept version of this which only works on (say) the Master and breaks everything else, as it's just to see if it looks nice/is a lot faster.
--   lda top_line_buffer_reverse,x
-    beq +
-    jsr set_os_reverse_video
-    jmp ++
-+   jsr set_os_normal_video
-++  lda top_line_buffer,x
-    jsr oswrch
-    inx
-    dey
-    bne -
-    stx s_cursors_inconsistent
-    jmp turn_on_cursor
-}
 
 
 update_colours
@@ -840,14 +828,22 @@ check_user_interface_controls
     ldy screen_mode
     cpy #7
     beq .done
-!ifdef ACORN_HW_SCROLL {
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
     cmp #'S' - ctrl_key_adjust
     bne .not_scroll
-    lda use_hw_scroll
+    lda user_prefers_hw_scroll ; SFTODO: RENAME THIS TO MAKE IT CLEAR IT'S THE USER'S PREFERENCE, NOT WHAT WE ARE CURRENTLY DOING
     eor #1
-    sta use_hw_scroll
+    sta user_prefers_hw_scroll
+    +acorn_update_scroll_state
     ; We make a sound here because this has no immediately visible effect, so
-    ; it's nice to offer the user some sort of feedback.
+    ; it's nice to offer the user some sort of feedback. SFTODO: Should we not
+    ; beep if hw scrolling is not supported? Although at runtime we, the game,
+    ; have no way to know in general - just because *right now* there is a huge
+    ; upper window, that might not be the case always, in which case the user's
+    ; choice *does* have some effect. This ties in with something I think I have
+    ; a comment about elsewhere about maybe hiding CTRL-S from the loading
+    ; screen where we "know" (with help from whoever built the game) that we'll
+    ; always use software scrolling.
     jsr sound_high_pitched_beep
     lda #0
     rts
@@ -884,34 +880,108 @@ z_ins_set_colour
 }
 
 ; SFTODONOW: IT OCCURS TO ME THAT BOTH HERE AND FOR THE OTHER CASE WHERE WE WRITE DATA ACROSS TUBE VIA OSWORD, WE HAVE A SEPARATE TUBE EXECUTABLE SO THERE'S NO REASON TO WASTE SPACE ON THIS CODE TO USE OSWORD IN THE NON-TUBE EXECUTABLES
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-; SFTODONOW: I am currently glossing over the problem of whether this should be sent - what if HW scrolling is disabled? And then what if the user turns it on afterwards? We probably need to only forward it here if HW scrolling is in use (it's harmless to forward if we don't have custom scroll support tho) and also forward (via a "do it, I say so" sub-part of this routine) when hardware scrolling is toggled on by the user - and maybe send a 0 to turn it off if user toggles sw scrolling on, although maybe having a text window defined is good enough in practice
-forward_window_start_row_plus_1_corrupt_xy ; SFTODO: rename? it also controls events
-    pha
-    ; Enable or disable vsync events; we want them to be enabled iff window_start_row + 1 == 1.
-    ; SFTODONOW: OZMOOE BUILD SHOULD OMIT THE OSBYTE 13/14 CODE - THERE'S NO VSYNC HANDLER INSTALLED ON ELECTRON, RUNNING THE DEFAULT RTS OS ONE WILL SLOW THE MACHINE DOWN SLIGHTLY AND WE'RE ALSO WASTING A BIT OF MEMORY ON THIS CODE HERE
-    lda #13 ; SFTODO: MAGIC
-    ldy window_start_row + 1
-    dey
-    bne +
-    lda #14
-+   ldx #4 ; SFTODO: MAGIC
-    jsr osbyte
-    ; Update fast_scroll_lines_to_move to tell our fast scroll driver how many lines to protect.
-    lda window_start_row + 1
-    ;lda #2 ; SFTODONOW TEMP HACK FOR TIMING EXP
-    sta .osword_write_host_block_data2 ; SFTODO: rename, but we already have a ...data - can we share!? perhaps more code needed to share than do sep
-    lda #osword_write_host
-    ldx #<.osword_write_host_block2
-    ldy #>.osword_write_host_block2
-    jsr osword
-    pla
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
+; This subroutine is called (via the acorn_update_scroll_state macro) when the
+; user scrolling preference or the size of the upper window is changed.
+acorn_update_scroll_state_subroutine
+!zone {
+    pha:txa:pha:tya:pha ; SFTODO MAY NOT BE NECESSARY BUT PLAY IT SAFE FOR NOW, REVIEW LATER
+
+    ; We build up the new value of acorn_scroll_flags in A. Start all bits zero.
+    lda #0
+
+    ; If we're in mode 7, we always use software scrolling. SFTODO: COULD OMIT THIS IN ELECTRON BUILD
+    ldx screen_mode
+    cpx #7
+    beq .new_acorn_scroll_flags_in_a
+
+    ; During any specific run of the game, we don't mix fast and slow hardware
+    ; scrolling. We toggle between fast hardware scrolling and software
+    ; scrolling, or between slow hardware scrolling and software scrolling. The
+    ; user doesn't choose between the two types of hardware scrolling, only
+    ; between hardware scrolling and software scrolling.
+
+    ; Note that hardware scrolling (either kind) can be turned on or off at any
+    ; moment. Provided the user's preference is hardware scrolling, the game can
+    ; change the size of the upper window at any time (SFTODO: ACTUALLY THIS
+    ; IS PROBABLY NOT TRUE IN <=Z3 - CHECK AND MAYBE OPTIMISE) and that can cause
+    ; us to change between software and hardware scrolling, as both hardware
+    ; scrolling methods have limits on the maximum size of the upper window.
+
+    ; Soft hardware scrolling requires us to keep track of what the game outputs
+    ; to the top line of the screen, regardless of whether or not we are
+    ; currently using slow hardware scrolling - we need that information to be
+    ; up to date in case slow hardware scrolling is turned on. If we have fast
+    ; hardware scroll capabilities, this isn't necessary because we'll never try
+    ; to do slow hardware scrolling.
+    !ifdef ACORN_HW_SCROLL_SLOW {
+        !ifdef ACORN_HW_SCROLL_FAST {
+            ldx fast_scroll_status
+            bne +
+        }
+        ora #acorn_scroll_flag_maintain_top_line_buffer
++
+    }
+
+    ; If the user's preference is to use software scrolling, we're done.
+    ldx user_prefers_hw_scroll
+    beq .new_acorn_scroll_flags_in_a
+
+    ; The user wants hardware scrolling, so the deciding factor now is whether
+    ; the current upper window size is acceptable.
+    ldx window_start_row + 1
+    !ifdef ACORN_HW_SCROLL_FAST {
+         ldy fast_scroll_status
+         beq +
+         cpx #fast_scroll_max_upper_window_size+1
+         bcs .new_acorn_scroll_flags_in_a ; stick with software scrolling
+         ora #acorn_scroll_flag_fast_hw_scroll
+         bne .new_acorn_scroll_flags_in_a ; always branch
++
+    }
+    !ifdef ACORN_HW_SCROLL_SLOW {
+        ; Slow hardware scrolling can only handle a one line upper window.
+        dex
+        bne +
+        ora #acorn_scroll_flag_slow_hw_scroll
++
+    }
+.new_acorn_scroll_flags_in_a
+    sta acorn_scroll_flags
+
+    !ifdef ACORN_HW_SCROLL_FAST {
+        ; Enable vsync events iff we're actually using fast hardware scrolling now. The Electron doesn't need this as it's fast hardware scrolling doesn't use vsync and we never turn the event on.
+        !ifndef ACORN_ELECTRON_SWR {
+            lda #13 ; SFTODO: MAGIC
+            ldx acorn_scroll_flags
+            bpl +
+            lda #14
++           ldx #4 ; SFTODO MAGIC
+            jsr osbyte
+        }
+
+        lda window_start_row + 1
+        sta .osword_write_host_block_data2 ; SFTODO: rename, but we already have a ...data - can we share!? perhaps more code needed to share than do sep
+        lda #osword_write_host
+        ldx #<.osword_write_host_block2
+        ldy #>.osword_write_host_block2
+        jsr osword
+
+    }
+
+    pla:tay:pla:tax:pla
     rts
+
+!ifdef ACORN_HW_SCROLL_FAST {
 .osword_write_host_block2
     !word fast_scroll_lines_to_move ; low order word of address
     !word $ffff                     ; high order word of address
 .osword_write_host_block_data2
     !byte 0                         ; data to write, patched at runtime
 }
+
+} ; local zone
+} ; !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW
+; SFTODO: In general if we know we're not a tube build, we should just sta instead of using osword_write_host. Can possibly wrap this in a macro.
 
 }

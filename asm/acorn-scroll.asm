@@ -439,7 +439,7 @@ null_shadow_driver
 
 ; This table is for 80 column modes; the 40 column table at raster_wait_table_40
 ; is copied over this by the discardable init code if necessary.
-raster_wait_table_entries = 3
+raster_wait_table_entries = fast_scroll_max_upper_window_size
 raster_wait_table
 raster_wait_table_first
     +scan_line 1*8 ; 1 line window

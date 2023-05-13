@@ -48,7 +48,7 @@
 ;   Execution outputs: fast_scroll_status_host
 ;   Runtime memory: &932-&AFF
 ;   Runtime inputs: fast_scroll_lines_to_move
-;   Note: The loader copies fast_scroll_status_host into fast_scroll_status in SFTODO: IT ACTUALLY COPIES TO use_custom_hw_scroll BUT I SHOULD RENAME THAT
+;   Note: The loader copies fast_scroll_status_host into fast_scroll_status in
 ;   the language processor, so it's available to the Ozmoo executable wherever
 ;   it's running.
 ;
@@ -79,7 +79,7 @@
     shadow_state = $8b
     private_ram_in_use = $8c
 }
-!ifdef ACORN_HW_SCROLL_CUSTOM {
+!ifdef ACORN_HW_SCROLL_FAST {
     WANT_HOST_SCREEN_MODE = 1
     fast_scroll_status_host = $8d
 }
@@ -180,11 +180,13 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
     insv_resident_end = 0x932
 }
 
-!ifdef ACORN_HW_SCROLL_CUSTOM {
+!ifdef ACORN_HW_SCROLL_FAST {
     fast_scroll_lines_to_move = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
 
     fast_scroll_start = 0x932
     fast_scroll_end = 0xb00
+
+    fast_scroll_max_upper_window_size = 3
 }
 
 +assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900

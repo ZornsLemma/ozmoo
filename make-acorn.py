@@ -1341,7 +1341,7 @@ def make_fast_hw_scroll_executable():
     # SFTODO: Location of this is an utter hack right now
     workspace_end = himem_by_mode(6)
     workspace_start = workspace_end - 0x400
-    e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, ["-DACORN_HW_SCROLL_CUSTOM=1", "-DACORN_SHADOW_VMEM=1"])
+    e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, ["-DACORN_HW_SCROLL_FAST=1", "-DACORN_SHADOW_VMEM=1"])
     init = e.labels['init']
     assert e.start_addr + len(e.binary()) <= workspace_end
     e.exec_addr = host | init
@@ -1726,7 +1726,7 @@ def parse_args():
     group.add_argument("--nfs-install-only", action="store_true", help="generate a disc image for installation to NFS")
     group.add_argument("--disc-title", metavar="DISCTITLE", type=str, help="set disc image title")
     group.add_argument("--try-support-32k", action="store_true", help="try to support unexpanded 32K machines")
-    group.add_argument("--slow-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
+    group.add_argument("--no-fast-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -1939,7 +1939,7 @@ def make_disc_image():
         "-DACORN_CURSOR_PASS_THROUGH=1",
         "-DSTACK_PAGES=4",
         "-DSPLASHWAIT=0",
-        "-DACORN_HW_SCROLL=1",
+        "-DACORN_HW_SCROLL_SLOW=1",
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
         "-DACORN_GAME_PAGES=%d" % game_pages,
@@ -2020,10 +2020,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DCHECK_ERRORS=1"]
     if cmd_args.min_mode <= 3:
         ozmoo_base_args += ["-DSUPPORT_80COL=1"]
-    if not cmd_args.slow_hw_scroll:
-        # SFTODO: If some of our executables can *never* use HW scrolling, we shouldn't set this option (it will bloat their code slightly). Right now that is true of the Electron, but since I intend to add fast HW scrolling for Electron without MRB, I won't faff excluding this from the Electron build.
-        # SFTODO: Rename this macro ACORN_HW_SCROLL_FAST?
-        ozmoo_base_args += ["-DACORN_HW_SCROLL_CUSTOM=1"]
+    if not cmd_args.no_fast_hw_scroll:
+        ozmoo_base_args += ["-DACORN_HW_SCROLL_FAST=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -2133,7 +2131,7 @@ def make_disc_image():
     disc_contents += [loader, shaddrv_executable, findswr_executable]
     if not cmd_args.no_history:
         disc_contents.append(make_insv_executable())
-    if not cmd_args.slow_hw_scroll:
+    if not cmd_args.no_fast_hw_scroll:
         disc_contents.append(fast_hw_scroll_executable)
     assert all(f is not None for f in disc_contents)
     if double_sided_dfs():
@@ -2357,7 +2355,7 @@ check_if_special_game()
 boot_file = make_boot()
 shaddrv_executable = make_shaddrv_executable()
 findswr_executable = make_findswr_executable()
-if not cmd_args.slow_hw_scroll:
+if not cmd_args.no_fast_hw_scroll:
     fast_hw_scroll_executable = make_fast_hw_scroll_executable()
 
 single_to_double_sided = False

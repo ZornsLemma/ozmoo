@@ -470,13 +470,13 @@ deletable_screen_init_2
     ; deletable_screen_init_1.
     jsr deletable_screen_init_1
 
-!ifdef ACORN_HW_SCROLL {
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
     ldx #1
     ldy screen_mode
     cpy #7
     bne +
     dex
-+   stx use_hw_scroll
++   stx user_prefers_hw_scroll
 }
 !ifdef MODE_7_INPUT {
     ; We're not currently in the middle of using coloured input, so stop update_colours

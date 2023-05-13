@@ -201,13 +201,13 @@ VDU 23,255,-1;-1;-1;-1;
 !ifdef USE_HISTORY {
     */INSV
 }
-!ifdef ACORN_HW_SCROLL_CUSTOM {
+!ifdef ACORN_HW_SCROLL_FAST {
     REM We really don't expect this check to fail, but it seems prudent to check and avoid random corruption.
     DIM vartop -1
     IF vartop+256>=${fast_scroll_load_addr} THEN PROCdie("No room for FASTSCR")
     HIMEM=${fast_scroll_load_addr}
     */FASTSCR
-    ?${use_custom_hw_scroll}=FNpeek(${fast_scroll_status_host})
+    ?${fast_scroll_status}=FNpeek(${fast_scroll_status_host})
 }
 !ifdef CACHE2P_BINARY {
     IF tube THEN */${CACHE2P_BINARY}

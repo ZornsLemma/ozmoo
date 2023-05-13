@@ -1372,12 +1372,12 @@ deletable_init_start
 ; fit on screen neatly soon. This is probably not all that interesting in the
 ; long run, although it's useful for now while this code is new, so it could be
 ; removed or commented out later.
-!ifdef ACORN_HW_SCROLL_CUSTOM {
+!ifdef ACORN_HW_SCROLL_FAST {
     lda .show_runtime_info
     beq +
     jsr .print_indented_following_string
-    !text 13, "use_custom_hw_scroll=$", 0
-    lda use_custom_hw_scroll
+    !text 13, "fast_scroll_status=$", 0
+    lda fast_scroll_status
     jsr print_byte_as_hex
 +
 }

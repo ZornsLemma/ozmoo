@@ -310,8 +310,8 @@ wordoffset
 }
 	* = * + 1
 
-!ifdef ACORN_HW_SCROLL_CUSTOM {
-use_custom_hw_scroll
+!ifdef ACORN_HW_SCROLL_FAST {
+fast_scroll_status ; SFTODO: maybe rename this (and its _host variant) to something like fast_hw_scroll_supported
 } else {
 textend
 }
@@ -726,8 +726,12 @@ sideways_ram_hole_vmap_max_size = 254 ; see convert_index_x_to_ram_bank_and_addr
 vmap_used_entries	+allocate 1
 }
 
-!ifdef ACORN_HW_SCROLL {
-use_hw_scroll 	+allocate 1
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW { ; SFTODONOW: REVIEW THIS - TEMP HACKED TO FAST OR SLOW
+user_prefers_hw_scroll 	+allocate 1
+acorn_scroll_flags +allocate 1
+acorn_scroll_flag_fast_hw_scroll = 1 << 7
+acorn_scroll_flag_maintain_top_line_buffer = 1 << 6
+acorn_scroll_flag_slow_hw_scroll = 1 << 0
 }
 
 !ifdef ACORN_SWR {
@@ -804,7 +808,7 @@ numwords   +allocate 1
 !ifdef ACORN_RELOCATABLE {
 wordoffset +allocate 1
 }
-!ifdef ACORN_HW_SCROLL_CUSTOM {
+!ifdef ACORN_HW_SCROLL_FAST {
 textend    +allocate 1
 }
 wordstart  +allocate 1
@@ -847,7 +851,8 @@ jmp_buf	+allocate jmp_buf_size
 streams_stack
 	+allocate 60
 
-!ifdef ACORN_HW_SCROLL {
+; SFTODONOW: THIS LOOKS WRONG - DON'T THESE LIVE IN THE STACK *UNLESS* WE'RE DOING OSRDCH BUILD OR SOMETHING?!
+!ifdef ACORN_HW_SCROLL_SLOW {
 	+pre_allocate max_screen_width
 top_line_buffer
 	+allocate max_screen_width
