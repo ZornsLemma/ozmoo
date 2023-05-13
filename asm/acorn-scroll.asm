@@ -389,8 +389,6 @@ runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g.
 runtime_size = runtime_end - runtime_start
 +assert runtime_size <= fast_scroll_end - fast_scroll_start
 
-; SFTODO: Of course (assuming they survive) some of these subroutines are called only once and can be inlined.
-
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
 ; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
@@ -402,13 +400,13 @@ init
     ; code and copy it from in-place to the B+ private RAM if necessary. (The
     ; way acme's !pseudpc directive works means that it's fiddly to patch the
     ; copy embedded in this executable, as we don't have labels within the block
-    ; of code addressing the embedded copy so we'd have to manually apply
+    ; of code addressing the embedded copy, so we'd have to manually apply
     ; offsets.) If we decide not to support fast hardware scrolling this is
     ; still OK; we own this block of memory so there's no problem with us
     ; corrupting it.
     ldx #>runtime_size
     ldy #<runtime_size
-SFTODOCOPYLOOP
+copy_runtime_code_loop
 lda_runtime_start_abs
     lda runtime_start
 sta_fast_scroll_start_abs
@@ -416,69 +414,45 @@ sta_fast_scroll_start_abs
     +inc16 lda_runtime_start_abs+1
     +inc16 sta_fast_scroll_start_abs+1
     dey
-    bne SFTODOCOPYLOOP
+    bne copy_runtime_code_loop
     dex
-    bpl SFTODOCOPYLOOP
+    bpl copy_runtime_code_loop
     ; Examine the current hardware and decide if we can support fast hardware
     ; scrolling on it; if not the Ozmoo executable will fall back to slow
     ; hardware scrolling or software scrolling as appropriate.
     lda #0
     sta fast_scroll_status_host
-    sta fast_scroll_lines_to_move ; SFTODO: I THINK THIS IS RIGHT, MEANS WE START OFF DISABLED
-!if 0 { ; SFTODO?
-    ; If we're going to run the game in mode 7, we will use software scrolling. SFTODO: Technically we shouldn't *need* to do this, as the game shouldn't try to use it. Don't bother checking?
+    sta fast_scroll_lines_to_move
+    ; If we're going to run in mode 7, we don't bother installing anything. It
+    ; would be mostly harmless if we did - the core Ozmoo executable will not
+    ; enable the vsync events in mode 7, and we will have a screen window in
+    ; effect for software scrolling so our OSWRCH code will do anything - but it
+    ; seems better to avoid the unnecessary overhead on the OSWRCH vector. This
+    ; might (although it probably won't) also help to ensure that "there is no
+    ; fast scroll support" code paths get at least a little bit of routine
+    ; testing.
     lda screen_mode_host
     cmp #7
     beq just_rts
-}
-    ; Are we running on an Integra-B? We check for this explicitly as the
-    ; Integra-B spoofs the result of osbyte_read_host.
-    lda #$49
-    ldx #$ff
-    ldy #0
-    jsr osbyte
-    cpx #$49
-    bne not_integra_b
-    ; We don't need to handle the Integra-B specially here, except for
-    ; recognising that we are on a model B despite its spoofing.
-    ldx #1
-    bne host_type_in_x ; always_branch
-not_integra_b
-    ; Determine the host type.
-    lda #osbyte_read_host
-    ldx #1
-    jsr osbyte
-host_type_in_x
-    cpx #1
-    bcs not_electron
-    ; We're on an Electron.
-    ; SFTODONOW: For the moment this doesn't support fast hardware scrolling. I intend to implement this, so later we will need to check for MRB in shadow mode here and use Electron fast hw scrolling code provided we are't in MRB shadow mode.
-    ; Return with fast_scroll_status_host 0.
-just_rts
-    rts
-not_electron
-
-    ; If we're going to run in mode 7, we don't bother installing anything. This
-    ; would be mostly harmless - the core Ozmoo executable will not enable the
-    ; vsync events in mode 7, and we will have a screen window in effect for
-    ; software scrolling so our OSWRCH code will never execute - but it seems
-    ; better to avoid the unnecessary overhead on the OSWRCH vector. This might
-    ; (although it probably won't) help to ensure that "there is no fast scroll
-    ; support" code paths get at least a little bit of routine testing.
-    lda screen_mode_host
-    cmp #7
-    beq just_rts
-    ; We special-case the B+. The shadow driver can't page in the shadow RAM,
-    ; but we can copy our code into private RAM to execute it, as long as we
-    ; have use of the private RAM.
-    cpx #2 ; SFTODO: magic number - generally do this, maybe it's OK
-    bne not_b_plus
+    ; If we don't have shadow RAM, that's fine. If we do have shadow RAM, we
+    ; must have a shadow driver for it which is capable of paging. The only
+    ; exception is a B+ with the private RAM available for our use.
+    ldx #<null_shadow_driver
+    ldy #>null_shadow_driver
     lda shadow_state
+    cmp #shadow_state_none
+    beq use_null_shadow_driver
+    cmp #shadow_state_first_driver
+    bcc just_rts ; we have shadow RAM but no driver
+    ldx shadow_paging_control_ptr
+    ldy shadow_paging_control_ptr + 1
+    bne use_shadow_driver_yx ; we have shadow RAM with a paging-capable driver
+    ; We don't have a paging-capable shadow driver. Unless this is the B+
+    ; special case, we can't support fast scrolling.
     cmp #shadow_state_b_plus_private
     bne just_rts
-    ; If we're on a B+, copy the relevant code into private RAM so it can access
-    ; the shadow screen. We do this after copying our code to fast_scroll_start,
-    ; so we can copy it from there.
+    ; It's the B+ special case. Copy the relevant code into private RAM so it
+    ; can access the shadow screen.
     lda romsel_copy
     pha
     lda #128
@@ -501,31 +475,32 @@ not_electron
     pla
     sta romsel_copy
     sta bbc_romsel
-    jmp supported_bbc_with_null_shadow_driver
-not_b_plus
-    ; We can't support fast hardware scrolling unless we can page in any shadow RAM. If we have no shadow RAM, that's fine but for consistency we provide a null shadow paging driver. SFTODO: This slightly penalises a machine with no shadow RAM, but probably not so much that we really need to care.
-    ; SFTODO: We need to special case the B+ and *if* we have private RAM available  (we can check shadow_state_b_plus_private) we need to copy the scroll code in there with a low memory stub. For the moment this will "work" and nicely disable fast hw scrolling on B+.
-    ; SFTODO: Rather than explicitly test for Electron MRB shadow mode, the fact we have no shadow RAM paging control is probably what we should check - this hides some of the logic in a single place (in the shadow driver) instead of duplicating tests here.
+    ; fall through to use_null_shadow_driver
+use_null_shadow_driver
     ldx #<null_shadow_driver
     ldy #>null_shadow_driver
-    lda shadow_state
-    cmp #shadow_state_none
-    beq supported_bbc_with_null_shadow_driver
-    cmp #shadow_state_first_driver
-    bcc just_rts ; we have shadow RAM but no driver
-    ldx shadow_paging_control_ptr
-    ldy shadow_paging_control_ptr + 1
-    beq just_rts ; we have no shadow paging control
-    bne supported_bbc_with_shadow_driver_yx ; always branch
-supported_bbc_with_null_shadow_driver
-    ldx #<null_shadow_driver
-    ldy #>null_shadow_driver
-supported_bbc_with_shadow_driver_yx
+use_shadow_driver_yx
     ; We have shadow paging control, so patch up this code to call it.
     stx jsr_shadow_paging_control1 + 1
     stx jsr_shadow_paging_control2 + 1
     sty jsr_shadow_paging_control1 + 2
     sty jsr_shadow_paging_control2 + 2
+    ; Determine the host type. We don't care about the Integra-B spoofing this
+    ; here, as all we're checking for is Electron vs non-Electron.
+    lda #osbyte_read_host
+    ldx #1
+    jsr osbyte
+    cpx #1
+    bcs not_electron
+    ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
+    ; SFTODO: I need to implement this - the Electron will need different code to set the hardware screen address. NB WE MAY NEED TO MOVE THE PATCHING OF THE JSR_SHADOW_PAGING_CONTROL INSTRUCTIONS ELSEWHERE - ONCE WE HAVE VARIANT ELECTGRON CODE THE ABOVE STX/STY INSNS WILL ACCESS WRONG PLACE
+    ; SFTO
+    ; SFTODONOW: For the moment this doesn't support fast hardware scrolling. I intend to implement this, so later we will need to check for MRB in shadow mode here and use Electron fast hw scrolling code provided we are't in MRB shadow mode. We can do this check by looking at the shadow_state and shadow driver flags and seeing that we have a shadow screen with no driver or no
+    ; Return with fast_scroll_status_host 0.
+just_rts
+    rts
+not_electron
+    ; SFTODO: THIS CAN MOVE UP ONCE WE SUPPORT THE ELECTRON - AFTER WE'VE CHECKED FOR ACCEPTABLE SHADOW SITUATION (INCL NO SHADOW), WE KNOW WE DO SUPPORT THIS SO WE CAN SET THIS.
     lda #1
     sta fast_scroll_status_host ; SFTODO: maybe this variable should have _host appended, to avoid confusion if I accidentally use it in the core Ozmoo code (which runs on tube if we have one, of course)
 
@@ -536,12 +511,10 @@ supported_bbc_with_shadow_driver_yx
     ; well check.
     lda wrchv
     ldx wrchv+1
-!if 0 { ; SFTODO TEMP REMOVED AS WE STRUGGLE FOR SPACE
     cmp #<our_wrchv
     bne not_already_claimed
     cpx #>our_wrchv
     beq just_rts ; branch if we've already claimed wrchv
-}
 not_already_claimed
     ; We haven't already claimed vectors.
     ; Claim vectors; this patches the code we just copied down to
