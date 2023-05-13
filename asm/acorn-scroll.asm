@@ -525,6 +525,8 @@ use_shadow_driver_yx
     txa
     bne not_electron
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
+    ; We can support fast scrolling, but we need to tweak the code to remove
+    ; BBC-specific aspects.
     ; Disable the check for the raster position.
     lda #opcode_jmp:sta check_raster
     lda #<dont_wait_for_raster:sta check_raster + 1
