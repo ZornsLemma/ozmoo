@@ -446,7 +446,7 @@ raster_wait_table_first
     +scan_line 2*8 ; 2 line window SFTODO HACK
     +scan_line 2*8 ; 3 line window SFTODO HACK
 raster_wait_table_last
-    +scan_line 8*8 ; 1 line window - this seems solid, 9*8 flickers intermittently
+    +scan_line 8*8 ; 1 line window - this seems solid
     +scan_line 3*8 ; 2 line window SFTODO HACK
     +scan_line 3*8 ; 3 line window SFTODO HACK
 raster_wait_table_end
@@ -468,7 +468,7 @@ raster_wait_table_first_40
     +scan_line 2*8 ; 2 line window SFTODO HACK
     +scan_line 2*8 ; 3 line window SFTODO HACK
 raster_wait_table_last_40
-    +scan_line 22*8 ; 1 line window - this seems solid, 238* flickers intermittently SFTODO I WAAS ABLE TO GET A FLICKER IN MODE 4 BY BASHING KEYS
+    +scan_line 21*8 ; 1 line window - this seems solid
     +scan_line 3*8 ; 2 line window SFTODO HACK
     +scan_line 3*8 ; 3 line window SFTODO HACK
 raster_wait_table_end_40
