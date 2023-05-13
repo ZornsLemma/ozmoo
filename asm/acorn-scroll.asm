@@ -444,11 +444,11 @@ raster_wait_table
 raster_wait_table_first
     +scan_line 1*8 ; 1 line window
     +scan_line 2*8 ; 2 line window
-    +scan_line 2*8 ; 3 line window SFTODO HACK
+    +scan_line 3*8 ; 3 line window
 raster_wait_table_last
     +scan_line 8*8 ; 1 line window - this seems solid
     +scan_line 8*8 ; 2 line window - seems surprisingly solid
-    +scan_line 3*8 ; 3 line window SFTODO HACK
+    +scan_line 4*8 ; 3 line window - not great, maybe nicer than with no raster check
 raster_wait_table_end
     +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
     +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
@@ -470,7 +470,7 @@ raster_wait_table_first_40
 raster_wait_table_last_40
     +scan_line 21*8 ; 1 line window - this seems solid
     +scan_line 21*8 ; 2 line window - seems surprisingly solid
-    +scan_line 4*8 ; 3 line window - not perfect, but nicer than with no raster check
+    +scan_line 4*8 ; 3 line window - not perfect, maybe nicer than with no raster check
 raster_wait_table_end_40
     +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
     +assert raster_wait_table_end_40 - raster_wait_table_last_40 == raster_wait_table_entries
@@ -694,3 +694,5 @@ common_init
 
 ; SFTODONOW: Probably be good to do some timings, e.g. in mode 3 with the safe window hacked to be super tight - that gives us a kind of "worst case". Then compare that with mode 3 with a (moderately; don't go nuts) tuned safe window and mode 3 with no raste waiting at all, and for good measure maybe a build with the fast hw scrolling disabled. Do this on a non-tube machine, at least to start with. This would give some idea what kind of impact raster waiting has and would help me decide how to handle things like maybe doing flicker-free >1 line protected stuff.
 
+
+; SFTODONOW: Prob have note elsewhere, but I think we must make the core Ozmoo game switch (temporarily - the upper window size may vary during game) to software scrolling (i.e. we must not toggle the user-controlled flag, so we can go back to hw scrolling if upper window gets smaller) to software scrolling even if we support fast hw scrolling but the upper window is too big - just use a simple constant for now, but I suspect three is just about OK.

@@ -899,7 +899,7 @@ forward_window_start_row_plus_1_corrupt_xy ; SFTODO: rename? it also controls ev
     jsr osbyte
     ; Update fast_scroll_lines_to_move to tell our fast scroll driver how many lines to protect.
     lda window_start_row + 1
-    lda #2 ; SFTODONOW TEMP HACK FOR TIMING EXP
+    ;lda #2 ; SFTODONOW TEMP HACK FOR TIMING EXP
     sta .osword_write_host_block_data2 ; SFTODO: rename, but we already have a ...data - can we share!? perhaps more code needed to share than do sep
     lda #osword_write_host
     ldx #<.osword_write_host_block2
