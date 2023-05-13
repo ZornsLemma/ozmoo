@@ -50,7 +50,6 @@ vdu_temp_store_da = $da
 crtc_address_register = $fe00
 crtc_address_write = $fe01
 crtc_start_screen_address_high_register = 12
-crtc_cursor_position_high_register = 14
 
 user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
@@ -58,6 +57,7 @@ user_via_t2_high_order_counter = $fe69
 ; SFTODO RENAME THIS - "driver" IS UNHELPFUL
 b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
 
+opcode_jmp = $4c
 opcode_rts = $60
 
 wrchv = $20e
@@ -87,7 +87,8 @@ frame_time_us = SFTODO99 - 2 * us_per_scanline
 first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row ; SFTODO: SHOULD PROBABLY BE 1 AND MIGHT NEED FURTHER TWEAKING, SINCE WE ONLY REALLY CARE ABOUT AVOIDING FLICKER FOR SINGLE PROTECTED ROW
 last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20
 
-DEBUG_COLOUR_BARS = 1
+; SFTODO: At the moment colour bar writes break Electron (I think) - can we make it build-time selectable which platform we want to support for these?
+;DEBUG_COLOUR_BARS = 1
 ;DEBUG_COLOUR_BARS2 = 1
 ; 1=red=post-vsync
 ; 3=yellow=first timer 2
@@ -204,6 +205,8 @@ protecting_some_lines
 jsr_shadow_paging_control1
     jsr $ffff ; patched
 
+    ; This code is patched out at runtime on the Electron.
+check_raster
     ; If we're protecting a single row at the top of the screen, wait for a
     ; "safe" raster position - one where we expect to be able to complete the
     ; movement of data in screen memory before the raster reaches that data.
@@ -253,6 +256,8 @@ dont_wait_for_raster
 +
     sta vdu_screen_top_left_address_high
     sta dst+1
+    ; The following code is patched at runtime on the Electron.
+update_hardware_screen_start_address
     ldy #crtc_start_screen_address_high_register
     lsr
     ror vdu_temp_store_da
@@ -266,6 +271,7 @@ dont_wait_for_raster
     iny
     sty crtc_address_register
     stx crtc_address_write
+update_hardware_screen_start_address_done
 
     ; Tell the OS to move the cursor to the same co-ordinates it already has,
     ; but taking account of the hardware scrolled screen. We could do this
@@ -393,8 +399,34 @@ runtime_size = runtime_end - runtime_start
 
 ; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
 
+; This is copied over the code at update_hardware_screen_start_address on an
+; Electron.
+electron_update_hardware_screen_start_address
+!pseudopc update_hardware_screen_start_address {
+    lsr
+    ror vdu_temp_store_da
+    sta $fe03 ; SFTODO MAGIC
+    lda vdu_temp_store_da
+    sta $fe02 ; SFTODO MAGIC
+    jmp update_hardware_screen_start_address_done
+}
+electron_update_hardware_screen_start_address_end
+
+; SFTODO: Feels a bit crap to have to shove this here rather than re-using one, though it's all discardable init
+just_rts
+    rts
 
 init
+    ; Check if we've already claimed vectors and do nothing if so. We don't
+    ; expect this to happen, but since this is discardable init code we might as
+    ; well check.
+    lda wrchv
+    cmp #<our_wrchv
+    bne not_already_claimed
+    lda wrchv+1
+    cmp #>our_wrchv
+    beq just_rts
+not_already_claimed
     ; Before we do anything else, we copy our code from inside this executable
     ; to its final location - we can then patch it in-place in the following
     ; code and copy it from in-place to the B+ private RAM if necessary. (The
@@ -490,52 +522,55 @@ use_shadow_driver_yx
     lda #osbyte_read_host
     ldx #1
     jsr osbyte
-    cpx #1
-    bcs not_electron
+    txa
+    bne not_electron
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
-    ; SFTODO: I need to implement this - the Electron will need different code to set the hardware screen address. NB WE MAY NEED TO MOVE THE PATCHING OF THE JSR_SHADOW_PAGING_CONTROL INSTRUCTIONS ELSEWHERE - ONCE WE HAVE VARIANT ELECTGRON CODE THE ABOVE STX/STY INSNS WILL ACCESS WRONG PLACE
-    ; SFTO
-    ; SFTODONOW: For the moment this doesn't support fast hardware scrolling. I intend to implement this, so later we will need to check for MRB in shadow mode here and use Electron fast hw scrolling code provided we are't in MRB shadow mode. We can do this check by looking at the shadow_state and shadow driver flags and seeing that we have a shadow screen with no driver or no
-    ; Return with fast_scroll_status_host 0.
-just_rts
-    rts
+    ; Disable the check for the raster position.
+    lda #opcode_jmp:sta check_raster
+    lda #<dont_wait_for_raster:sta check_raster + 1
+    lda #>dont_wait_for_raster:sta check_raster + 2
+    ; Overwrite the BBC hardware screen start address update with the Electron code.
+    ; SFTODO: Should I maybe have a macro which generates these code copy loops? We don't care about the odd byte or two as it's discardable init.
+!zone {
+    size = electron_update_hardware_screen_start_address_end - electron_update_hardware_screen_start_address
+    +assert size <= update_hardware_screen_start_address_done - update_hardware_screen_start_address
+    ldy #size
+-   lda electron_update_hardware_screen_start_address-1,y
+    sta update_hardware_screen_start_address-1,y
+    dey
+    bne -
+}
+    jmp common_init
 not_electron
-    ; SFTODO: THIS CAN MOVE UP ONCE WE SUPPORT THE ELECTRON - AFTER WE'VE CHECKED FOR ACCEPTABLE SHADOW SITUATION (INCL NO SHADOW), WE KNOW WE DO SUPPORT THIS SO WE CAN SET THIS.
-    lda #1
-    sta fast_scroll_status_host ; SFTODO: maybe this variable should have _host appended, to avoid confusion if I accidentally use it in the core Ozmoo code (which runs on tube if we have one, of course)
-
-    ; SFTODONOW: At some point this code will load in one place (probably page &9/&A) and copy the relevant driver to the final place (wherever that is), as the shadow driver executable does, but for now it just loads into the final place.
-
-    ; Check if we've already claimed vectors and do nothing if so. We don't
-    ; expect this to happen, but since this is discardable init code we might as
-    ; well check.
-    lda wrchv
-    ldx wrchv+1
-    cmp #<our_wrchv
-    bne not_already_claimed
-    cpx #>our_wrchv
-    beq just_rts ; branch if we've already claimed wrchv
-not_already_claimed
-    ; We haven't already claimed vectors.
-    ; Claim vectors; this patches the code we just copied down to
-    ; fast_scroll_start.
-    sei
-    lda wrchv
-    ldx wrchv+1
-    sta parent_wrchv
-    stx parent_wrchv+1
-    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm Need proper cvomments
-    lda #<our_wrchv
-    sta wrchv
-    lda #>our_wrchv
-    sta wrchv+1
+    ; Install our EVNTV handler so we can tell where the raster is.
     ; SFTODO: inconsistent - old__evntv but parent_wrchv
+    sei
     lda evntv:sta old_evntv
     lda evntv+1:sta old_evntv+1
     lda #<evntv_handler:sta evntv
     lda #>evntv_handler:sta evntv+1
     lda #0
     sta $fe6b ; user via ACR
+    cli
+common_init
+    lda #1
+    sta fast_scroll_status_host
+
+    ; SFTODONOW: At some point this code will load in one place (probably page &9/&A) and copy the relevant driver to the final place (wherever that is), as the shadow driver executable does, but for now it just loads into the final place.
+
+    ; We haven't already claimed vectors.
+    ; Claim vectors; this patches the code we just copied down to
+    ; fast_scroll_start.
+    sei
+    lda wrchv
+    sta parent_wrchv
+    lda wrchv+1
+    sta parent_wrchv+1
+    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm Need proper cvomments
+    lda #<our_wrchv
+    sta wrchv
+    lda #>our_wrchv
+    sta wrchv+1
     cli
     ; We don't enable vsync events; we don't need them while
     ; fast_scroll_lines_to_move is zero, and the Ozmoo executable takes care of
@@ -676,3 +711,5 @@ awkward_inner_loop
 ; SFTODONOW: Suspect I already have a TODO about this, but note that we need to be careful when copying the copy loops into B+ private RAM that we don't accidentally end up making the copy loops cross pages. I suspect the best way to handle this is (space permitting) just to always copy code into the B+ private RAM at the same sub-page offset as it lives at in low RAM.
 
 ; SFTODO: Move vdu_down constant to shared constants header and use it in this code instead of literal 10 all over the place?
+
+; SFTODO: Give Electron support a good test at some point once this settles down. Does split cursor mode work? Do we need to hide the (software generated) cursor when we are scrolling? I suspect we don't, but perhaps test a bit more thoroughly.
