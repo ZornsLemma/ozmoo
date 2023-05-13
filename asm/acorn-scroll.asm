@@ -464,9 +464,13 @@ runtime_size = runtime_end - runtime_start
 ; discardable init code if appropriate.
 raster_wait_table_40
 raster_wait_table_first_40
-    !byte 0, 0, 0 ; SFTODO!
+    +scan_line 1*8 ; 1 line window
+    +scan_line 2*8 ; 2 line window SFTODO HACK
+    +scan_line 2*8 ; 3 line window SFTODO HACK
 raster_wait_table_last_40
-    !byte 0, 0, 0 ; SFTODO!
+    +scan_line 22*8 ; 1 line window - this seems solid, 238* flickers intermittently SFTODO I WAAS ABLE TO GET A FLICKER IN MODE 4 BY BASHING KEYS
+    +scan_line 3*8 ; 2 line window SFTODO HACK
+    +scan_line 3*8 ; 3 line window SFTODO HACK
 raster_wait_table_end_40
     +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
     +assert raster_wait_table_end_40 - raster_wait_table_last_40 == raster_wait_table_entries
