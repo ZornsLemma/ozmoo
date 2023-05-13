@@ -139,6 +139,14 @@ electron_romsel = $fe05
 xxx_shadow_driver_end = $900 - 16
 xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
 
+; On a B+, code running at $axxx in the 12K private RAM can access shadow RAM
+; directly. If the private RAM is free, we copy some code there for use as part
+; of the shadow driver and/or the fast scroll driver.
+xxx_shadow_copy_private_ram = $ae00
+xxx_shadow_copy_private_ram_end = xxx_shadow_copy_private_ram + 20
+xxx_fast_scroll_private_ram = xxx_shadow_copy_private_ram_end
+xxx_fast_scroll_private_ram_end = $b000
+
 !ifdef ACORN_SHADOW_VMEM {
     shadow_start = $3000
 
@@ -161,10 +169,16 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
     shadow_state_integra_b      = 6 ; Integra-B shadow RAM
     shadow_state_watford        = 7 ; BBC B Watford shadow RAM
     shadow_state_aries          = 8 ; BBC B Aries shadow RAM
+
+    ; On a B+, code running at $axxx in the 12K private RAM can access shadow RAM
+    ; directly. If the private RAM is free, we copy some code there for use as part
+    ; of the shadow driver - it's faster than going via the OSRDSC/OSWRSC routines.
+    shadow_copy_private_ram = xxx_shadow_copy_private_ram
+    shadow_copy_private_ram_end = xxx_shadow_copy_private_ram_end
 }
 
 !ifdef ACORN_SWR {
-    b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy code
+    b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy/fast scroll code
     integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 
     ; SFTODO: Might want to move these to free up $9 and $a for vmem cache or something.
@@ -187,6 +201,13 @@ xxx_max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
     fast_scroll_end = 0xb00
 
     fast_scroll_max_upper_window_size = 3
+
+    ; On a B+, code running at $axxx in the 12K private RAM can access shadow
+    ; RAM directly. If the private RAM is free, we copy some code there for use
+    ; as part of the fast scroll implementation, as it needs to be able to
+    ; access screen RAM directly.
+    fast_scroll_private_ram = xxx_fast_scroll_private_ram
+    fast_scroll_private_ram_end = xxx_fast_scroll_private_ram_end
 }
 
 +assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900

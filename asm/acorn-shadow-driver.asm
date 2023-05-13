@@ -33,12 +33,6 @@ tmp = $74
 
 extended_vector_table = $d9f
 
-; On a B+, code running at $axxx in the 12K private RAM can access shadow RAM
-; directly. If the private RAM is free, we copy some code there for use as part
-; of the shadow driver - it's faster than going via the OSRDSC/OSWRSC routines.
-; SFTODO: MOVE THIS INTO SHARED CONSTANTS TO "COORDINATE" PRIVATE RAM ALLOCATION WITH FAST SCROLL USE OF IT?
-shadow_copy_private_ram = $ae00
-
 ; NB: If an OSBYTE call fails because it's not supported, it returns normally
 ; with X=$FF. It does *not* generate an OS error via BRK; that is a function of
 ; the *FX command, not OSBYTE itself. I have used *FX a lot in comments, but
@@ -217,39 +211,6 @@ not_watford
     ; intercepted by an older Watford DFS, but we have to assume it's fine.
     lda #shadow_state_aries
     jmp set_shadow_state_from_a_and_install_driver
-
-set_shadow_state_from_a_and_install_driver
-!zone {
-    sta shadow_state
-    tax ; SFTODO: pass value in X in first place?
-    cmp #shadow_state_b_plus_private
-    bne .no_private_ram_driver
-    ; For shadow_state_b_plus_private, we need to copy driver code into the 12K
-    ; private RAM as well as installing a driver in main RAM.
-    lda romsel_copy
-    pha
-    lda #128
-    sta romsel_copy
-    sta bbc_romsel
-    +copy_data shadow_driver_b_plus_private_high, shadow_driver_b_plus_private_high_end, shadow_copy_private_ram
-    pla
-    sta romsel_copy
-    sta bbc_romsel
-.no_private_ram_driver
-    lda shadow_driver_table_low-shadow_state_first_driver,x
-    sta src
-    lda shadow_driver_table_high-shadow_state_first_driver,x
-    sta src+1
-    +assert (max_shadow_driver_size - 1) < 128
-    ldy #max_shadow_driver_size-1
-.copy_loop
-    lda (src),y
-    sta shadow_driver_start,y
-    dey
-    bpl .copy_loop
-    rts
-}
-
 ; SFTODO: Need to keep this in sync with shadow_state_* enum
 shadow_driver_table_low
     !byte <shadow_driver_b_plus_os
@@ -549,6 +510,38 @@ shadow_driver_watford
 shadow_driver_aries
     +shadow_driver_watford_aries 111
     +assert_shadow_driver_fits shadow_driver_aries
+
+set_shadow_state_from_a_and_install_driver
+!zone {
+    sta shadow_state
+    tax ; SFTODO: pass value in X in first place?
+    cmp #shadow_state_b_plus_private
+    bne .no_private_ram_driver
+    ; For shadow_state_b_plus_private, we need to copy driver code into the 12K
+    ; private RAM as well as installing a driver in main RAM.
+    lda romsel_copy
+    pha
+    lda #128
+    sta romsel_copy
+    sta bbc_romsel
+    +copy_data_checked shadow_driver_b_plus_private_high, shadow_driver_b_plus_private_high_end, shadow_copy_private_ram, shadow_copy_private_ram_end
+    pla
+    sta romsel_copy
+    sta bbc_romsel
+.no_private_ram_driver
+    lda shadow_driver_table_low-shadow_state_first_driver,x
+    sta src
+    lda shadow_driver_table_high-shadow_state_first_driver,x
+    sta src+1
+    +assert (max_shadow_driver_size - 1) < 128
+    ldy #max_shadow_driver_size-1
+.copy_loop
+    lda (src),y
+    sta shadow_driver_start,y
+    dey
+    bpl .copy_loop
+    rts
+}
 
 ; Determine if the private 12K is free on an Integra-B or B+ by checking for any
 ; extended vectors pointing into it. On entry A is the bit which is set in the

@@ -30,8 +30,6 @@
 ; normal output, and it's easier all round to just not print at the bottom
 ; right.)
 
-; SFTODONOW: ELECTRON SUPPORT
-
 !source "acorn-shared-constants.asm"
 
 ; The constant names and fragments of OS 1.20 code which have been hacked up to
@@ -55,8 +53,7 @@ user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
 user_via_auxiliary_control_register = $fe6b
 
-; SFTODO RENAME THIS - "driver" IS UNHELPFUL
-b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
+; SFTODO: WE MAY GET BAD ALIGNMENT ON LOOPS IN B+ PRIVATE RAM IF WE DON'T CHECK SOMEHOW
 
 opcode_jmp = $4c
 opcode_rts = $60
@@ -502,7 +499,7 @@ raster_wait_table_end_40
     lda #128
     sta romsel_copy
     sta bbc_romsel
-    jsr b_plus_private_ram_driver
+    jsr fast_scroll_private_ram
     pla
     sta romsel_copy
     sta bbc_romsel
@@ -598,9 +595,10 @@ sta_fast_scroll_start_abs
     lda #128
     sta romsel_copy
     sta bbc_romsel
-    +copy_data b_plus_copy_start, b_plus_copy_end, b_plus_private_ram_driver
+    ; -1 in the next line to allow for the RTS opcode we patch on afterwards.
+    +copy_data_checked b_plus_copy_start, b_plus_copy_end, fast_scroll_private_ram, fast_scroll_private_ram_end - 1
     lda #opcode_rts
-    sta b_plus_private_ram_driver + (b_plus_copy_end - b_plus_copy_start)
+    sta fast_scroll_private_ram + (b_plus_copy_end - b_plus_copy_start)
     +copy_data .b_plus_copy_start_patch_start, .b_plus_copy_start_patch_end, b_plus_copy_start ; SFTODO: THESE LABELS ARE INSANE
     pla
     sta romsel_copy
