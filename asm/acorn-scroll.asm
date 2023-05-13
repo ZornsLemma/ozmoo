@@ -465,12 +465,12 @@ runtime_size = runtime_end - runtime_start
 raster_wait_table_40
 raster_wait_table_first_40
     +scan_line 1*8 ; 1 line window
-    +scan_line 2*8 ; 2 line window SFTODO HACK
-    +scan_line 2*8 ; 3 line window SFTODO HACK
+    +scan_line 2*8 ; 2 line window
+    +scan_line 3*8 ; 3 line window
 raster_wait_table_last_40
     +scan_line 21*8 ; 1 line window - this seems solid
     +scan_line 21*8 ; 2 line window - seems surprisingly solid
-    +scan_line 3*8 ; 3 line window SFTODO HACK
+    +scan_line 4*8 ; 3 line window - not perfect, but nicer than with no raster check
 raster_wait_table_end_40
     +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
     +assert raster_wait_table_end_40 - raster_wait_table_last_40 == raster_wait_table_entries
