@@ -86,10 +86,10 @@ SFTODO99 = total_rows * us_per_row ; SFTODO: idea is that as we're comparing aga
 frame_time_us = SFTODO99 - 2 * us_per_scanline
 ; SFTODO: I think it would be possible to auto-tune these parameters (although first_safe_start_row_time_us is probably more sensible kept fixed) - we could examine timer 2 (and an optional frame counter, to detect really bad overruns) after we finish our scroll copy and if we overran we could nudge last_safe_start_row_time_us towards the top of the screen (with some kind of min value so we don't push it up ridiculously far). I am not actually sure this is a good idea - do we *really* want outliers to slow everything down afterwards? Are we really hell-bent on getting no flicker if humanly possible, or are we trying to compromise and get virtually no flicker without killing performance? We *might* want to behave differently if we have tube - if we are on tube the fifo smoothes things out and stops us doing a lot of busy waiting delaying things too badly.
 first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row ; SFTODO: SHOULD PROBABLY BE 1 AND MIGHT NEED FURTHER TWEAKING, SINCE WE ONLY REALLY CARE ABOUT AVOIDING FLICKER FOR SINGLE PROTECTED ROW
-last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20
+last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 20) * us_per_row ; SFTODO: ARBITRARY 20 - PROBABLY BENEFIT FROM TUNING ONCE FINISHED OPTIMISING
 
 ; SFTODO: At the moment colour bar writes break Electron (I think) - can we make it build-time selectable which platform we want to support for these?
-;DEBUG_COLOUR_BARS = 1
+DEBUG_COLOUR_BARS = 1
 ;DEBUG_COLOUR_BARS2 = 1
 ; 1=red=post-vsync
 ; 3=yellow=first timer 2
@@ -229,7 +229,7 @@ check_raster
     ; This should give a flicker-free appearance, like software scrolling but
     ; much faster. If we have more than one row to protect, the copying takes so
     ; long that we don't try to be flicker-free and just go right ahead to get
-    ; the job done ASAP.
+    ; the job done ASAP. SFTODO: WE MAY BE ABLE TO DO MORE THAN ONE ROW WITHOUT FLICKER NOW, WOULD NEED TO EXPERIMENT AND TUNE THIS, AND PROBABLY THE FIRST/LAST SAFE ROWS WOULD BE SELECTED FROM TABLES INDEXED BY NUMBER OF PROTECTED ROWS - THAT SAID, IT MAY BE THAT PROTECTING >1 ROW AND WAITING FOR FLICKER FREE SAFE REGIONS WILL SLOW THINGS DOWN TOO MUCH
     lda fast_scroll_lines_to_move
     cmp #2
     bcs dont_wait_for_raster
@@ -339,9 +339,13 @@ chunk_loop2
     ; SFTODO: It may be worth using self-modifying code and abs,y addressing for byte_loop, especially in 128 byte chunks, but let's avoid that complexity for now as I write something. - BE CAREFUL, THIS MIGHT BREAK B+
     ; SFTODO: This loop may benefit from being unrolled somewhat - there are sufficiently few cycles per iteration that the bpl overhead is non-negligible. (The other loop with the extra lda #0:sta doesn't show the same kind of gains, at least when I do calculations about the possible benefits - I haven't experimented with it.) Worth noting that just "double-unrolling" reduces per loop cost from 16 cycles to 14.5 cycles and only costs five bytes of extra code. If we play games to use lda/sta abs,y addressing we save two cycles and that adds two bytes to the loop and (finger in air) 20-ish bytes of setup code; we'd probably (given our relatively tight space budget) come out ahead unrolling the loop a couple of extra times.
 byte_loop2
+byte_loop2_unroll_count = 8
++assert chunk_size % byte_loop2_unroll_count == 0
+!for i, 1, byte_loop2_unroll_count {
     lda (src),y
     sta (dst),y
     dey
+}
     bpl byte_loop2
     +assert_no_page_crossing byte_loop2
     ; SFTODO: The overhead of moving this double-bump into a subroutine so it can be shared with the loop below might well be acceptable and could give a worthwhile saving on code size, allowing us to actually fit and/or have more space for other optimisations. The "dex" could be shared as well, saving one more byte. Each bump is 21 bytes, so ignoring the jsr+rts overhead we'd save 2*21+1=43 bytes factoring this out - minus 1+2*3 for the rts+jsrs, so 36 bytes overall. We'd pay an extra 12 cycles in each case for the jsr+rts; double-unrolling each loop would cost 5+9=14 bytes, so we could in fact afford to 4-unroll and still come out ahead. 4-unrolling the more complex loop saves 11.25 *scanlines* of time per line of screen, whereas we only pay 10 jsr+rts penalties (120 cycles total) for moving the bumps into a subroutine. This seems such a clear win I half wonder if I've got confused. We *would* have to take special care to patch up the absolute jsr when copying to the B+ private RAM, but that is a small-ish bit of complexity and is handled in discardable init code.
@@ -361,11 +365,22 @@ chunk_loop
     ; SFTODO: Unrolling this loop twice would cost 9 bytes and would drop the per-iteration cost from 24 cycles to 22.5 cycles. That doesn't sound much, but over a 640 byte copy it is 960 cycles, which is 7.5 scanlines - *nearly* an entire text row. Going to a 4-unroll drops it to 21.75, saving an additional 3.75 scanlines.
     ; SFTODO: Not sure it is worth it, but if we stashed X elsewhere we could load it with 0 and replace "lda #0" with "txa". This saves no cycles, but it saves a byte, so if we 4-unroll we save four bytes - though that only breaks even with stx zp:...:ldx zp. We could possibly store the chunk counter in zp location all the time, we'd pay an extra two bytes to store to it and one extra byte to dec it (and some cycles, but those are outside the core loop) - and then by the time we ldx #0:tax instead of lda #0 we've burned an extra byte, so we're breakig even again, and we've slowed down the outer loop slightly. If we were to 8-unroll we'd probably come out ahead, but gut feeling is this just isn't worth it.
 byte_loop
+; The body of this loop is slow enough that we fairly rapidly hit diminishing
+; returns by unrolling it, *but* we do have spare space for the unroll at the
+; moment and this loop executes for every single screen scroll. A scanline is
+; only 128 cycles and in 80 column modes we go round this inner loop body 640
+; times, so small savings really do add up and contribute towards increasing our
+; chances of maintaining a flicker free display without slowing things down too
+; much by having over-tight safe raster bounds.
+byte_loop_unroll_count = 8
++assert chunk_size % byte_loop_unroll_count == 0
+!for i, 1, byte_loop_unroll_count {
     lda (src),y
     sta (dst),y
     lda #0
     sta (src),y
     dey
+}
     bpl byte_loop
     +assert_no_page_crossing byte_loop
     jsr bump_src_dst_and_dex
