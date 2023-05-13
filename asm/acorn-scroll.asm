@@ -335,7 +335,7 @@ add_loop
 line_loop2 ; SFTODO: "2" suffix on labels here is hacky
     ldx #chunks_per_line
 chunk_loop2
-ldy_imm_for_byte_loop2
+ldy_imm_for_byte_loop2 ; SFTODO: perhaps be good to rename these labels (one on each loop) ldy_imm_chunk_size_minus_1 - that would help clarify the use of it in the bump macro too
     ldy #$ff ; patched
 byte_loop2
 byte_loop2_unroll_count = 8
