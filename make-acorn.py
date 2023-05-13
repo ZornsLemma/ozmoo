@@ -1726,6 +1726,7 @@ def parse_args():
     group.add_argument("--nfs-install-only", action="store_true", help="generate a disc image for installation to NFS")
     group.add_argument("--disc-title", metavar="DISCTITLE", type=str, help="set disc image title")
     group.add_argument("--try-support-32k", action="store_true", help="try to support unexpanded 32K machines")
+    group.add_argument("--slow-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -1752,7 +1753,6 @@ def parse_args():
     group.add_argument("--no-loader-crunch", action="store_true", help="don't crunch the BASIC loader")
     group.add_argument("--no-exe-compression", action="store_true", help="don't compress executables")
     group.add_argument("--no-shadow-vmem", action="store_true", help="disable use of spare shadow RAM as vmem cache")
-    group.add_argument("--slow-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
     group.add_argument("--extra-build-at", metavar="ADDR", type=str, help="perform an extra build at ADDR")
     group.add_argument("--no-runtime-info", action="store_true", help="disable debug info at runtime")
     group.add_argument("--debug-assert", action="store_true", help="include debug assertion code")

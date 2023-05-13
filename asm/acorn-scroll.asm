@@ -314,7 +314,7 @@ chunks_per_line = 5
     ; instead of private RAM.
     ; SFTODO: COULD WE MAKE BETTER USE OF X IN THIS LOOP?
 b_plus_copy_start
-    ldy fast_scroll_lines_to_move
+    ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
     dey:beq line_loop
     sty lines_to_move_without_clearing
 
@@ -354,6 +354,22 @@ byte_loop2_unroll_count = 8
     dec lines_to_move_without_clearing
     bne line_loop2
 
+    ; Copy the final (possibly only, if fast_scroll_lines_to_move is 1) line,
+    ;clearing the source afterwards.
+    ;
+    ; It is somewhat tempting to add a special case here, where if src and dst
+    ; are both not the one line on the screen which can wrap part-way through,
+    ; we execute a different version of the code which just copies the 320/640
+    ; bytes in one loop without breaking it into chunks. This would be a bit
+    ; faster (a back-of-envelope calculation suggests about 220 cycles saved
+    ; IIRC), *but* it wouldn't improve the worst-case time and so to be flicker
+    ; free we'd still have to keep the raster timings tight enough for the
+    ; chunk-based copy. I therefore don't think it's worth it - it doesn't help
+    ; us be flicker free or use looser raster bounds, and saving about 220
+    ; cycles on about 23/25ths of the scrolling line feeds isn't huge - there
+    ; are 2518 such line feeds in the benchmark, so we'd save about 0.25 seconds
+    ; on the benchmark even if none of our savings just got thrown away waiting
+    ; on the raster.
 line_loop
     ldx #chunks_per_line
 chunk_loop
@@ -625,4 +641,3 @@ common_init
 
 ; SFTODONOW: Probably be good to do some timings, e.g. in mode 3 with the safe window hacked to be super tight - that gives us a kind of "worst case". Then compare that with mode 3 with a (moderately; don't go nuts) tuned safe window and mode 3 with no raste waiting at all, and for good measure maybe a build with the fast hw scrolling disabled. Do this on a non-tube machine, at least to start with. This would give some idea what kind of impact raster waiting has and would help me decide how to handle things like maybe doing flicker-free >1 line protected stuff.
 
-; SFTODO: I am wondering if I should do a "src and dst do not point near $7f00 and therefore we know there's no wrap so do a faster 320/640 byte copy with no wrap checks" version of the copy-and-zero loop. This would bloat the code but I could claw it back by reducing the unrolling of the copy-and-zero loop to say 4. This would be faster - rough estimates suggest a 220 cycle saving. However, while not negligible, that isn't huge *and* this would make the copy time more variable - for flicker free we'd still need to tune the raster window on the assumption this wrap case occurs, although of course in general we'd return earlier from the scroll code because of the speed up.
