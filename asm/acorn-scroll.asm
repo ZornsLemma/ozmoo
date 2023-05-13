@@ -322,7 +322,7 @@ b_plus_copy_start
     ; working from the bottom-most line to the top-most line. We just add
     ; repeatedly to generate the addresses; this is relatively easy and saves
     ; using a general-purpose multiplication routine. We push the addresses onto
-    ; the stack as we generate this; this saves having to write
+    ; the stack as we generate them; this saves having to write
     ; subtract-with-wrap code as well.
 add_loop
     lda src+1:pha:lda src:pha
@@ -622,3 +622,5 @@ common_init
 ; SFTODO: Move vdu_down constant to shared constants header and use it in this code instead of literal 10 all over the place?
 
 ; SFTODO: Give Electron support a good test at some point once this settles down. Does split cursor mode work? Do we need to hide the (software generated) cursor when we are scrolling? I suspect we don't, but perhaps test a bit more thoroughly.
+
+; SFTODONOW: Probably be good to do some timings, e.g. in mode 3 with the safe window hacked to be super tight - that gives us a kind of "worst case". Then compare that with mode 3 with a (moderately; don't go nuts) tuned safe window and mode 3 with no raste waiting at all, and for good measure maybe a build with the fast hw scrolling disabled. Do this on a non-tube machine, at least to start with. This would give some idea what kind of impact raster waiting has and would help me decide how to handle things like maybe doing flicker-free >1 line protected stuff.
