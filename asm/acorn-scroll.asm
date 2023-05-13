@@ -53,6 +53,7 @@ crtc_start_screen_address_high_register = 12
 
 user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
+user_via_auxiliary_control_register = $fe6b
 
 ; SFTODO RENAME THIS - "driver" IS UNHELPFUL
 b_plus_private_ram_driver = $ae80 ; SFTODONOW JUST GUESSING THIS FITS WITH SHADOW DRIVER - ALSO WE MAY GET BAD ALIGNMENT ON LOOPS IF WE DON'T "CHECK" SOMEHOW
@@ -543,7 +544,9 @@ use_shadow_driver_yx
     +copy_data_checked .electron_update_hardware_screen_start_address, .electron_update_hardware_screen_start_address_end, update_hardware_screen_start_address, update_hardware_screen_start_address_done
     jmp common_init
 not_electron
-    ; Install our EVNTV handler so we can tell where the raster is.
+    ; Install our EVNTV handler so we can tell where the raster is. We don't
+    ; install this on the Electron as it doesn't have a user VIA, and there
+    ; isn't an alternative timer we can use.
     ; SFTODO: inconsistent - old__evntv but parent_wrchv
     sei
     lda evntv:sta old_evntv
@@ -551,23 +554,19 @@ not_electron
     lda #<evntv_handler:sta evntv
     lda #>evntv_handler:sta evntv+1
     lda #0
-    sta $fe6b ; user via ACR
+    sta user_via_auxiliary_control_register
     cli
 common_init
     lda #1
     sta fast_scroll_status_host
 
-    ; SFTODONOW: At some point this code will load in one place (probably page &9/&A) and copy the relevant driver to the final place (wherever that is), as the shadow driver executable does, but for now it just loads into the final place.
-
-    ; We haven't already claimed vectors.
-    ; Claim vectors; this patches the code we just copied down to
-    ; fast_scroll_start.
+    ; We haven't already claimed vectors, so claim them. This patches the code
+    ; we just copied down to fast_scroll_start.
     sei
     lda wrchv
     sta parent_wrchv
     lda wrchv+1
     sta parent_wrchv+1
-    ; SFTODO: Hacky interrupt support - cpied from Kieran's screen-example.asm Need proper cvomments
     lda #<our_wrchv
     sta wrchv
     lda #>our_wrchv
