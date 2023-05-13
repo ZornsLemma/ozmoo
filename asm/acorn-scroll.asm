@@ -446,7 +446,7 @@ raster_wait_table_first
     +scan_line 2*8 ; 2 line window SFTODO HACK
     +scan_line 2*8 ; 3 line window SFTODO HACK
 raster_wait_table_last
-    +scan_line 9*8 ; 1 line window - 22 FLICKERS BIT ON  TUBE, DITTO 20, 18 SEEMS SOLID BUT NOT GONE ALL WAY, 19 FLICKERS SLIGHTLY, 18 FLICKERS SLIGHTLY, DITTO 17, DITTO 16, 15, 12, 11, 10 - 9 SEEMS SOLID AT 500% BUT NOT TRIED 100% YET
+    +scan_line 8*8 ; 1 line window - this seems solid, 9*8 flickers intermittently
     +scan_line 3*8 ; 2 line window SFTODO HACK
     +scan_line 3*8 ; 3 line window SFTODO HACK
 raster_wait_table_end
