@@ -399,9 +399,11 @@ runtime_size = runtime_end - runtime_start
 
 ; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
 
+!zone { ; discardable init code
+
 ; This is copied over the code at update_hardware_screen_start_address on an
 ; Electron.
-electron_update_hardware_screen_start_address
+.electron_update_hardware_screen_start_address
 !pseudopc update_hardware_screen_start_address {
     lsr
     ror vdu_temp_store_da
@@ -410,10 +412,26 @@ electron_update_hardware_screen_start_address
     sta $fe02 ; SFTODO MAGIC
     jmp update_hardware_screen_start_address_done
 }
-electron_update_hardware_screen_start_address_end
+.electron_update_hardware_screen_start_address_end
+
+; This code is copied over b_plus_copy_start in main RAM after we've copied that code into the private RAM.
+.b_plus_copy_start_patch_start
+!pseudopc b_plus_copy_start {
+    lda romsel_copy
+    pha
+    lda #128
+    sta romsel_copy
+    sta bbc_romsel
+    jsr b_plus_private_ram_driver
+    pla
+    sta romsel_copy
+    sta bbc_romsel
+    jmp finish_oswrch
+}
+.b_plus_copy_start_patch_end
 
 ; SFTODO: Feels a bit crap to have to shove this here rather than re-using one, though it's all discardable init
-just_rts
+.just_rts
     rts
 
 init
@@ -425,7 +443,7 @@ init
     bne not_already_claimed
     lda wrchv+1
     cmp #>our_wrchv
-    beq just_rts
+    beq .just_rts
 not_already_claimed
     ; Before we do anything else, we copy our code from inside this executable
     ; to its final location - we can then patch it in-place in the following
@@ -465,7 +483,7 @@ sta_fast_scroll_start_abs
     ; testing.
     lda screen_mode_host
     cmp #7
-    beq just_rts
+    beq .just_rts
     ; If we don't have shadow RAM, that's fine. If we do have shadow RAM, we
     ; must have a shadow driver for it which is capable of paging. The only
     ; exception is a B+ with the private RAM available for our use.
@@ -475,14 +493,14 @@ sta_fast_scroll_start_abs
     cmp #shadow_state_none
     beq use_null_shadow_driver
     cmp #shadow_state_first_driver
-    bcc just_rts ; we have shadow RAM but no driver
+    bcc .just_rts ; we have shadow RAM but no driver
     ldx shadow_paging_control_ptr
     ldy shadow_paging_control_ptr + 1
     bne use_shadow_driver_yx ; we have shadow RAM with a paging-capable driver
     ; We don't have a paging-capable shadow driver. Unless this is the B+
     ; special case, we can't support fast scrolling.
     cmp #shadow_state_b_plus_private
-    bne just_rts
+    bne .just_rts
     ; It's the B+ special case. Copy the relevant code into private RAM so it
     ; can access the shadow screen.
     lda romsel_copy
@@ -493,7 +511,7 @@ sta_fast_scroll_start_abs
     +copy_data b_plus_copy_start, b_plus_copy_end, b_plus_private_ram_driver
     lda #opcode_rts
     sta b_plus_private_ram_driver + (b_plus_copy_end - b_plus_copy_start)
-    +copy_data b_plus_copy_start_patch_start, b_plus_copy_start_patch_end, b_plus_copy_start ; SFTODO: THESE LABELS ARE INSANE
+    +copy_data .b_plus_copy_start_patch_start, .b_plus_copy_start_patch_end, b_plus_copy_start ; SFTODO: THESE LABELS ARE INSANE
     pla
     sta romsel_copy
     sta bbc_romsel
@@ -522,7 +540,7 @@ use_shadow_driver_yx
     lda #<dont_wait_for_raster:sta check_raster + 1
     lda #>dont_wait_for_raster:sta check_raster + 2
     ; Overwrite the BBC hardware screen start address update with the Electron code.
-    +copy_data_checked electron_update_hardware_screen_start_address, electron_update_hardware_screen_start_address_end, update_hardware_screen_start_address, update_hardware_screen_start_address_done
+    +copy_data_checked .electron_update_hardware_screen_start_address, .electron_update_hardware_screen_start_address_end, update_hardware_screen_start_address, update_hardware_screen_start_address_done
     jmp common_init
 not_electron
     ; Install our EVNTV handler so we can tell where the raster is.
@@ -560,19 +578,7 @@ common_init
     ; turning them on and off as that changes.
     rts
 
-; This code is copied over b_plus_copy_start in main RAM after we've copied that code into the private RAM.
-b_plus_copy_start_patch_start
-    lda romsel_copy
-    pha
-    lda #128
-    sta romsel_copy
-    sta bbc_romsel
-    jsr b_plus_private_ram_driver
-    pla
-    sta romsel_copy
-    sta bbc_romsel
-    jmp finish_oswrch
-b_plus_copy_start_patch_end
+}
 
 ; SFTODO: Some thoughts on making this work properly without hacks:
 ;
@@ -610,82 +616,6 @@ b_plus_copy_start_patch_end
 
 ; SFTODO: Thinking out loud - this code needs to know what mode it is in, because it needs to tweak its timings accordingly. We don't really want to waste bytes or cycles (especially bytes, I suspect) adapting on the fly, unless it's very cheap, because this code is probably fairly large already and it's best if the installation executable can set this up and be done with it to keep the runtime memory requirement down. The trouble is that we aren't in the final screen mode when the installation executable will be loaded, so we may need to pass it through as we do with the host cache. I guess this is fine-ish, because we can poke it into memory from the loader and it only has to remain valud there until this code initisalises itself.
 
-!if 0 { ; SFTODO SKETCHING/THINKING OUT LOUD
-    ; Because we need to account for wrapping at the top of screen RAM, we *don't* handle multiple lines just by copying bytes_per_line*number of line bytes in a single operation. By copying only a line's worth of data at a time, most of the time our inner loop doesn't have to worry about line wrapping.
-    lda #n:sta working_lines_to_copy
-
-multi_line_loop
-    ldx #bytes_per_line / 256
-    ; If the high byte of (pre-modification) src or dst is $7f, we will wrap in the middle of a line.
-    lda #0:ldy src+1:cmp #$7f:rol:ldy dst+1:cmp #$7f:rol:php
-    ; On the first pass we are potentially copying less than 256 bytes, but the code to increment src/src2/dst assumes we work a page at a time. To compensate for this, we adjust Y and src/dst.
-    initial_y = (256 - (bytes_per_line % 256)) & $ff
-    ldy #initial_y
-    sec:lda src:sbc #initial_y:sta src:deccc src+1
-    sec:lda dst:sbc #initial_y:sta dst:deccc dst+1
-    plp:bne awkward
-copy_and_zero_outer_loop
-    ; Patch the lda/sta abs instructions in the inner loop to use the values in src/dst; this allows us to use (zp),y addressing in the awkward case loop and saves us a handful of bytes/cycles elsewhere by using zp instructions to modify src/dst, while still giving us the performance benefits of abs,y in the inner loop.
-    lda src+0:sta src1abs+0:sta src2abs+0 ; 3+4+4
-    lda src+1:sta src1abs+1:sta src2abs+1 ; 3+4+4
-    lda dst+0:sta dstabs+0 ; 3+4
-    lda dst+1:sta dstabs+1 ; 3+4
-    ; so 36 cycles to do that copy, and we then save 3 cycles on each pass round the loop, so we break even after 12 bytes, so this is a win for speed.
-copy_and_zero_inner_loop
-src1abs = *+1
-    lda $ffff,y ; patched
-dstabs = *+1
-    sta $ffff,y ; patched
-    ; SFTODO: If working_lines_to_copy>1, the lda #0:sta are redundant - we would just be zeroing out memory we are going to deal with on the next line pair - apart from being slower I also suspect this looks really bad (e.g. might be responsible for ugliness of Border Zone?)
-    lda #0
-src2abs = *+1
-    sta $ffff,y ; patched
-    iny
-    bne copy_and_zero_inner_loop
-    ; These cannot wrap because they are within a line and we already handed the awkward case off to a different piece of code.
-    inc src+1
-    inc dst+1
-    dex
-    bne copy_and_zero_outer_loop
-done ; SFTODO: done_line?
-
-    dec working_lines_to_copy:beq done_all
-    dst = src
-    src += bytes_per_line:wrap src if nec
-    jmp multi_line_loop
-done_all
-
-
-
-awkward
-    ldy #initial_y:sty working_y ; SFTODO: ldy # probably redundant, Y probably already set
-awkward_outer_loop
-awkward_inner_loop
-    ldy #0
-    lda (src),y
-    sta (dst),y
-    lda #0 ; SFTODO: tya
-    sta (src),y
-    inc src:bne no_wrap_src:inceq src+1:bpl no_wrap_src:wrap:.no_wrap_src
-    inc dst:bne no_wrap_dst:inceq dst+1:bpl no_wrap_dst:wrap:.no_wrap_dst:inceq dst+1
-    inc working_y
-    bne awkward_inner_loop
-    dex
-    bne awkward_outer_loop
-    beq done ; always branch
-
-
-
-    ; SFTODO: IS THIS TOO CLEVER? THE SIMPLE INNER LOOP AS IT STANDS LOOPS WITH INY:BNE INNER - 5 cycles
-    ; IF WE KEEP Y 0, DO INCS AND TEST FOR WRAPPING WE HAVE (looking at common case only):
-    ;     inc src:beq not_simple
-    ;     inc dst:bne inner
-    ; that is 5+2+5+3=15 cycles, so 10 cycles worse per byte copied (ignoring the 1-in-256 non-simple cases).
-    ; OK, it's slightly worse, because that assumes src/dst are in zp, so we're paying an extra cycle on each lda/sta in the inner loop as we can't use the abs,y mode.
-    ; An advantage of just blatting round the inner loop using inc-and-test-for-wrap is that in the multi-line case, we don't need to treat things any differently - we just keep going. Oh, but I forgot we need to handle counting how many bytes we copy. Gah.
-
-
-}
 
 ; SFTODO: Quick fiddle with Border Zone suggests the multi-line hardware scrolling works but it looks quite nasty. It may still be better than software scrolling. This is just a note to go back and experiment with this later. Just maybe we should never use the new scrolling for anything except a single line (as we do with the redraw-via-OS based hw scrolling).
 
