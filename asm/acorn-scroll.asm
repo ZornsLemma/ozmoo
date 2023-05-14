@@ -104,7 +104,11 @@ runtime_start
 ; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
 evntv_handler
-    ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
+    ; SQUASH: If we're pushed for space we don't need to chain to parent evntv
+    ; or check it's our event - we are the foreground application and we
+    ; more-or-less know there aren't any other events. Of course it's possible
+    ; some kind of utility ROM a user wants to use is using events so it's nice
+    ; to play nice.
     cmp #event_vsync:bne jmp_parent_evntv
     lda #<initial_t2_value:sta user_via_t2_low_order_latch_counter
     lda #>initial_t2_value:sta user_via_t2_high_order_counter
@@ -127,12 +131,19 @@ add_line_x
 
 bump_src_dst_and_dex
 !macro bump .ptr {
-    ; SFTODO: This way of getting chunk_size is a bit hacky, maybe? If we had a spare zp address to stash it in that might be nicer, tho we'd have to poke it into that zp address every time we were called so no real code size saving.
-    sec:lda .ptr:adc ldy_imm_for_byte_loop2+1:sta .ptr ; adc adds chunk_size-1, +1 as carry set
+    ; .ptr += chunk_size
+    sec ; not clc as we want to offset the minus 1 just below
+    lda .ptr
+    adc ldy_imm_chunk_size_minus_1_a+1 ; add chunk_size - 1
+    sta .ptr
     bcc .no_carry
     inc .ptr+1
     bpl .no_wrap
-    sec:lda .ptr+1:sbc vdu_screen_size_high_byte:sta .ptr+1
+    ; .ptr has gone past the top of screen memory, wrap it.
+    sec
+    lda .ptr+1
+    sbc vdu_screen_size_high_byte
+    sta .ptr+1
 .no_carry
 .no_wrap
 }
@@ -309,7 +320,7 @@ add_loop
 line_loop2 ; SFTODO: "2" suffix on labels here is hacky
     ldx #chunks_per_line
 chunk_loop2
-ldy_imm_for_byte_loop2 ; SFTODO: perhaps be good to rename these labels (one on each loop) ldy_imm_chunk_size_minus_1 - that would help clarify the use of it in the bump macro too
+ldy_imm_chunk_size_minus_1_a ; SFTODO: perhaps be good to rename these labels (one on each loop) ldy_imm_chunk_size_minus_1 - that would help clarify the use of it in the bump macro too
     ldy #chunk_size_80 - 1 ; patched
 byte_loop2
 byte_loop2_unroll_count = 8
@@ -347,7 +358,7 @@ byte_loop2_unroll_count = 8
 line_loop
     ldx #chunks_per_line
 chunk_loop
-ldy_imm_for_byte_loop
+ldy_imm_chunk_size_minus_1_b
     ldy #chunk_size_80 - 1 ; patched
 byte_loop
 ; The body of this loop is slow enough that we fairly rapidly hit diminishing
@@ -560,8 +571,8 @@ sta_fast_scroll_start_abs
     cmp #4
     bcc +
     ldx #chunk_size_40 - 1
-    stx ldy_imm_for_byte_loop2 + 1
-    stx ldy_imm_for_byte_loop + 1
+    stx ldy_imm_chunk_size_minus_1_a + 1
+    stx ldy_imm_chunk_size_minus_1_b + 1
     +copy_data raster_wait_table_40, raster_wait_table_end_40, raster_wait_table
 +
 
