@@ -954,11 +954,11 @@ acorn_update_scroll_state_subroutine
         ; now. The Electron doesn't need this as its fast hardware scrolling
         ; doesn't use vsync and we never turn the event on.
         !ifndef ACORN_ELECTRON_SWR {
-            lda #13 ; SFTODO: MAGIC
+            lda #osbyte_disable_event
             ldx acorn_scroll_flags
             bpl +
-            lda #14
-+           ldx #4 ; SFTODO MAGIC
+            lda #osbyte_enable_event
++           ldx #event_vsync
             jsr osbyte
         }
 

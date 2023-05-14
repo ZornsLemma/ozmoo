@@ -108,6 +108,8 @@ brkv = $202
 
 buffer_keyboard = 0
 
+event_vsync = 4
+
 shadow_mode_bit = 128
 
 vdu_goto_xy = 31
@@ -115,6 +117,8 @@ vdu_goto_xy = 31
 osargs = $ffda
 osbyte = $fff4
 osbyte_read_host = 0
+osbyte_disable_event = 13
+osbyte_enable_event = 14
 osbyte_read_screen_address_for_mode = $85
 osbyte_issue_service_request = $8f
 

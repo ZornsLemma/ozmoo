@@ -30,6 +30,15 @@
 ; normal output, and it's easier all round to just not print at the bottom
 ; right.)
 
+; SFTODO: I should probably make an effort to go through and rename
+; constants/labels and tweak comments to talk consistently about an "upper
+; window" rather than the alternative phrasing of "protecting n lines" or (even
+; more confusingly; it works from the internal perspective of this code, where
+; we move lines in RAM to keep the fixed in place on the screen) "moving n
+; lines". (I think it's fine, if it feels helpful, to talk about "moving" inside
+; this file, where we're actually doing it, but outside of this file we probably
+; shouldn't.)
+
 !source "acorn-shared-constants.asm"
 
 ; The constant names and fragments of OS 1.20 code which have been hacked up to
@@ -71,35 +80,21 @@ src = zp ; 2 bytes
 dst = zp + 2 ; 2 bytes
 lines_to_move_without_clearing = zp + 4 ; 1 byte
 
-irq1v = $204
+; Timings here are based on Kieran's "Intro to Interrupts" talk and example
+; code.
 us_per_scanline = 64
-us_per_row = 8*us_per_scanline
+us_per_row = 8 * us_per_scanline
 vsync_position = 35
 total_rows = 39
-SFTODO99 = total_rows * us_per_row ; SFTODO: idea is that as we're comparing against timer most of the time (not loading it) we don't want the 2*us_per_scanline adjustment
-frame_time_us = SFTODO99 - 2 * us_per_scanline
-; SFTODO: I think it would be possible to auto-tune these parameters (although first_safe_start_row_time_us is probably more sensible kept fixed) - we could examine timer 2 (and an optional frame counter, to detect really bad overruns) after we finish our scroll copy and if we overran we could nudge last_safe_start_row_time_us towards the top of the screen (with some kind of min value so we don't push it up ridiculously far). I am not actually sure this is a good idea - do we *really* want outliers to slow everything down afterwards? Are we really hell-bent on getting no flicker if humanly possible, or are we trying to compromise and get virtually no flicker without killing performance? We *might* want to behave differently if we have tube - if we are on tube the fifo smoothes things out and stops us doing a lot of busy waiting delaying things too badly.
-first_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 2) * us_per_row ; SFTODO: SHOULD PROBABLY BE 1 AND MIGHT NEED FURTHER TWEAKING, SINCE WE ONLY REALLY CARE ABOUT AVOIDING FLICKER FOR SINGLE PROTECTED ROW
-last_safe_start_row_time_us = SFTODO99 - ((total_rows - vsync_position) + 3) * us_per_row ; SFTODO: ARBITRARY 20 - PROBABLY BENEFIT FROM TUNING ONCE FINISHED OPTIMISING
-; SFTODO: Make sure to use different first/last safe rows in 80 and 40 column modes - there's less data to copy in 40 column modes so it takes less time and we can start safely further down the screen.
+frame_us = total_rows * us_per_row
+initial_t2_value = frame_us - 2 * us_per_scanline
 
-; SFTODO: At the moment colour bar writes break Electron (I think) - can we make it build-time selectable which platform we want to support for these?
-;DEBUG_COLOUR_BARS = 1
-;DEBUG_COLOUR_BARS2 = 1
-; 1=red=post-vsync
-; 3=yellow=first timer 2
-; 2=green=second timer 2
-; 4=blue=safe raster, starting copy
-; 6=cyan=first timer 2 if occurs during copy
-; 5=magenta=second timer 2 if occurs during copy
-; 0=black=copy finished
-
-; SFTODO: This kinda-sorta works, although if the *OS* scrolls the screen because we print a character at the bottom right cell, its own scroll routines kick and do the clearing that we don't want.
-; SFTODO: Damn! My strategy so far has been to just not do that - we control the printing most of the time. But what about during user text input? Oh no, it's probably fine, because we are doing that via s_printchar too. Yes, a quick test suggests it is - but test this with final version, and don't forget to test the case where we're doing split cursor editing on the command line... - I think this is currently broken, copying at the final prompt at the end of thed benchmark ccauses cursor editing to go (non-crashily) wrong when copying into bottom right and causing a scroll
-
-; SFTODO: A quick test on a B+ in non-shadow mode suggests this works. It kinda-sorta works on a M128 in non-shadow mode, but some bits of text end up being invisible, so I must still be doing something wrong. This might be a good thing to investigate next. DFS 2.24 does *HELP (which is what I was testing with) oddly, and even on a M128 with this code *not* running, *SPOOL output doesn't contain DFS *HELP. I suspect this is something to do with its logic to avoid infinite recursion when *SPOOLing. It may or may not be related to this code's problems, but it may be this code works fine on a M128 in "normal" use, and it only has to deal with Ozmoo's output. Yes, superficial testing (can't test Ozmoo itself as it forces shadow RAM and this doesn't support that yet) suggests ordinary output works. Would be curious to find out how DFS 2.24 is feeding these characters to the screen in a way that bypasses WRCHV, but ultimately it's probably not an issue.
-
-; SFTODO: If we inline the single-use subroutines, I think this code is completely relocatable, which is handy, as we ideally don't want multiple copies of it inside the installation executable, and we need to be able to copy part of it into private RAM on the B+ and to insert shadow page in/out tsb/trb instructions before/after the main body of the "our new logic" part of the WRCHV handler.
+; SFTODO: At the moment colour bar writes are BBC-specific; can/should we add
+; Electron support?
+; DEBUG_COLOUR_BARS = 1
+!ifdef DEBUG_COLOUR_BARS {
+    bbc_palette = $fe21
+}
 
 runtime_start
 !pseudopc fast_scroll_start {
@@ -110,35 +105,15 @@ runtime_start
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
 evntv_handler
     ; SFTODO: If we're pushed for space we don't need to chain to parent evntv or check it's our event
-    cmp #4:bne jmp_parent_evntv
-    lda #<frame_time_us:sta user_via_t2_low_order_latch_counter
-    lda #>frame_time_us:sta user_via_t2_high_order_counter
-    lda #4
+    cmp #event_vsync:bne jmp_parent_evntv
+    lda #<initial_t2_value:sta user_via_t2_low_order_latch_counter
+    lda #>initial_t2_value:sta user_via_t2_high_order_counter
+    lda #event_vsync
 jmp_parent_evntv
 old_evntv = *+1
     jmp $ffff ; patched
 
      ; SFTODO: *SOMETIMES* (DOING REP:PRINT:UN.FA. IN BASIC DOESN'T SEEM TO TRIGGER IT, DOING *HELP IN A LOOP ON B-EM'S B 1770 CONFIG DOES) WE GET STUCK  - I REALLY DON'T KNOW WHY
-
-!ifdef DEBUG_COLOUR_BARS_SFTODO {
-debug_set_bg
-    sta SFTODO9
-    txa
-    pha
-    ldx #7
-SFTODO9 = *+1
-    lda #0 ; patched
-loopSFTODO
-    sta $fe21
-    clc
-    adc #16
-    dex
-    bpl loopSFTODO
-    pla
-    tax
-    rts
-}
-
 
 add_line_x
 !zone {
@@ -241,10 +216,7 @@ raster_wait_loop
     bcc raster_wait_loop
 dont_wait_for_raster
 !ifdef DEBUG_COLOUR_BARS {
-!ifdef DEBUG_COLOUR_BARS2 {
-    lda #6:sta SFTODOHACK
-}
-    lda #4 xor 7:sta $fe21 ;jsr debug_set_bg
+    lda #4 xor 7:sta bbc_palette
 }
 
     ; We update the CRTC screen start address now; we don't want to leave it too
@@ -402,10 +374,7 @@ byte_loop_unroll_count = 8
     bne chunk_loop
 
 !ifdef DEBUG_COLOUR_BARS {
-!ifdef DEBUG_COLOUR_BARS2 {
-    lda #3:sta SFTODOHACK
-}
-    lda #0 xor 7:sta $fe21 ;jsr debug_set_bg
+    lda #0 xor 7:sta bbc_palette
 }
 b_plus_copy_end
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
@@ -432,7 +401,7 @@ null_shadow_driver
 !macro scan_line .scan_lines_from_visible_top {
     .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
     .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
-    !byte >(SFTODO99 - .scan_lines_to_wait * us_per_scanline)
+    !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
 }
 ; SFTODO: In modes 3 and 6, we *might* want to use a different start position. In general we're talking about time to execute code and a constant 50hz refresh rate and the line height doesn't matter. However, in terms of "not starting too early", if (say) we start at scan line 16 in mode 0 we can never (barring overrun) modify top two lines while they are being drawn, *but* in mode 3 the top two lines cover scan lines 0-19 inclusive. My inclination is to not worry about this; if I tune the start safe scan line in the 25 line modes I will be playing it safe and not costing that much performance in 32 line modes. Should probably have a perm comment regarding this though.
 ; SFTODO: PERM COMMENT - I THINK HAVING A COPRO HITS THE HOST WITH MORE FREQUENT LINE FEEDS, SO IT SHOWS UP INTERMITTENT FLICKER MORE OFTEN - THE FASTER THE COPRO THE BETTER FOR TESTING, PROBABLY
@@ -476,6 +445,19 @@ raster_wait_table_last_40
 raster_wait_table_end_40
     +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
     +assert raster_wait_table_end_40 - raster_wait_table_last_40 == raster_wait_table_entries
+
+; It is vaguely tempting to try to have the code auto-tune the safe window end
+; position. We could maintain a frame count to disambiguate the timer wrapping
+; round. By inspecting (frame count, timer value) before and after executing our
+; copy code, we could tell if we got the job done before hitting the first
+; visible line on the following frame, and if we didn't we could (subject to a
+; minimum value) nudge the safe end position closer to the top of the screen.
+; This is probably not too complex, even in the limited code space we have here.
+; However, we don't necessarily want to let rare outlying cases force us to use
+; an extremely tight safe window when 99% of the time we can get away with
+; something looser. And of course, auto-tuning is also potentially error prone
+; and since manual tuning seems to have worked fairly well so far I don't want
+; to rush into implementing this.
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
