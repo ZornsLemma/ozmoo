@@ -326,7 +326,7 @@ b_plus_copy_start
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
 +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
     ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
-    dey:beq line_loop
+    dey:beq line_move_and_clear_loop
     sty lines_to_move_without_clearing
 
     ; We need to copy lines_to_move_without_clearing lines up by one line,
@@ -342,28 +342,27 @@ add_loop
     ldx #dst:jsr add_line_x
     dey:bne add_loop
 
-    ; SFTODO EXPERIMENTAL HACK - LOTS OF COPY AND PASTE, MAYBE ACCEPTABLE, MAYBE NOT
-line_loop2 ; SFTODO: "2" suffix on labels here is hacky
+line_move_loop
     ldx #chunks_per_line
-chunk_loop2
-ldy_imm_chunk_size_minus_1_a ; SFTODO: perhaps be good to rename these labels (one on each loop) ldy_imm_chunk_size_minus_1 - that would help clarify the use of it in the bump macro too
+chunk_move_loop
+ldy_imm_chunk_size_minus_1_a
     ldy #chunk_size_80 - 1 ; patched
-byte_loop2
-byte_loop2_unroll_count = 8
-+assert min_chunk_size % byte_loop2_unroll_count == 0
-!for i, 1, byte_loop2_unroll_count {
+byte_move_loop
+byte_move_loop_unroll_count = 8
++assert min_chunk_size % byte_move_loop_unroll_count == 0
+!for i, 1, byte_move_loop_unroll_count {
     lda (src),y
     sta (dst),y
     dey
 }
-    bpl byte_loop2
-    +assert_no_page_crossing byte_loop2
+    bpl byte_move_loop
+    +assert_no_page_crossing byte_move_loop
     jsr bump_src_dst_and_dex
-    bne chunk_loop2
+    bne chunk_move_loop
     pla:sta dst:pla:sta dst+1
     pla:sta src:pla:sta src+1
     dec lines_to_move_without_clearing
-    bne line_loop2
+    bne line_move_loop
 
     ; Copy the final (possibly only, if fast_scroll_lines_to_move is 1) line,
     ; clearing the source afterwards.
@@ -381,12 +380,12 @@ byte_loop2_unroll_count = 8
     ; are 2518 such line feeds in the benchmark, so we'd save about 0.25 seconds
     ; on the benchmark even if none of our savings just got thrown away waiting
     ; on the raster.
-line_loop
+line_move_and_clear_loop
     ldx #chunks_per_line
-chunk_loop
+chunk_move_and_clear_loop
 ldy_imm_chunk_size_minus_1_b
     ldy #chunk_size_80 - 1 ; patched
-byte_loop
+byte_move_and_clear_loop
 ; The body of this loop is slow enough that we fairly rapidly hit diminishing
 ; returns by unrolling it, *but* we do have spare space for the unroll at the
 ; moment and this loop executes for every single screen scroll. A scanline is
@@ -394,19 +393,19 @@ byte_loop
 ; times, so small savings really do add up and contribute towards increasing our
 ; chances of maintaining a flicker free display without slowing things down too
 ; much by having over-tight safe raster bounds.
-byte_loop_unroll_count = 8
-+assert min_chunk_size % byte_loop_unroll_count == 0
-!for i, 1, byte_loop_unroll_count {
+byte_move_and_clear_loop_unroll_count = 8
++assert min_chunk_size % byte_move_and_clear_loop_unroll_count == 0
+!for i, 1, byte_move_and_clear_loop_unroll_count {
     lda (src),y
     sta (dst),y
     lda #0
     sta (src),y
     dey
 }
-    bpl byte_loop
-    +assert_no_page_crossing byte_loop
+    bpl byte_move_and_clear_loop
+    +assert_no_page_crossing byte_move_and_clear_loop
     jsr bump_src_dst_and_dex
-    bne chunk_loop
+    bne chunk_move_and_clear_loop
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #0 xor 7:sta bbc_palette
@@ -438,8 +437,16 @@ null_shadow_driver
     .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
     !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
 }
-; SFTODO: In modes 3 and 6, we *might* want to use a different start position. In general we're talking about time to execute code and a constant 50hz refresh rate and the line height doesn't matter. However, in terms of "not starting too early", if (say) we start at scan line 16 in mode 0 we can never (barring overrun) modify top two lines while they are being drawn, *but* in mode 3 the top two lines cover scan lines 0-19 inclusive. My inclination is to not worry about this; if I tune the start safe scan line in the 25 line modes I will be playing it safe and not costing that much performance in 32 line modes. Should probably have a perm comment regarding this though.
-; SFTODO: PERM COMMENT - I THINK HAVING A COPRO HITS THE HOST WITH MORE FREQUENT LINE FEEDS, SO IT SHOWS UP INTERMITTENT FLICKER MORE OFTEN - THE FASTER THE COPRO THE BETTER FOR TESTING, PROBABLY
+
+; As we're mainly concerned with cycles taking to move data in screen memory, we
+; mostly don't care about the distinction between 25 and 32 line modes. Strictly
+; speaking, the *start* of the safe window should maybe vary in 25 and 32 line
+; modes, as it's about not starting to write to memory until the raster has
+; finished scanning it, and in 25 line modes the gaps between lines slow down
+; the raster with respect to screen memory. (The end of the safe window is about
+; getting the move done before we hit the top line again, which isn't affected
+; by this.) In practice the difference doesn't seem to be big enough to need
+; taking into account.
 
 ; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
 
@@ -464,7 +471,6 @@ runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g.
 ; by our discardable initialisation code. Make sure it fits!
 runtime_size = runtime_end - runtime_start
 +assert runtime_size <= fast_scroll_end - fast_scroll_start
-!warn "SFTODO TEMP: free space ", (fast_scroll_end - fast_scroll_start) - runtime_size
 
 ; This table is for 40 column modes; it is copied over raster_wait_table by the
 ; discardable init code if appropriate.
@@ -495,8 +501,6 @@ raster_wait_table_end_40
 ; to rush into implementing this.
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
-
-; SFTODO: We should probably disable (in as few bytes of code as possible) our custom OSWRCH routine if we quit and don't force press break - or maybe this should just be the job of any custom code that runs on quit and BREAK is the default and all we care about in detail?
 
 !zone { ; discardable init code
 
@@ -538,7 +542,6 @@ raster_wait_table_end_40
 }
 .b_plus_copy_start_patch_end
 
-; SFTODO: Feels a bit crap to have to shove this here rather than re-using one, though it's all discardable init
 .just_rts
     rts
 

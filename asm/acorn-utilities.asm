@@ -224,6 +224,13 @@ kernal_readtime
     jsr printstring
 -   jmp -
 } else {
+    ; SFTODO: I should build up a list of things the code called via the option
+    ; might want to deal with and leave a permanent comment here or document
+    ; this elsewhere. The following is a start, but isn't complete:
+    ; - reset host WRCHV and EVNTV in case the fast hardware scroll code is in
+    ; - use
+    ; - disable VSYNC event in case the fast hardware scroll code was using it
+    ; - reset host INSV in case the our INSV handler is in use
     !ifdef ACORN_ON_QUIT_COMMAND_SILENT {
         lda #vdu_disable
         jsr oswrch
