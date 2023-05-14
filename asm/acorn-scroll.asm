@@ -700,22 +700,32 @@ common_init
 
 }
 
-; SFTODO: Some thoughts on making this work properly without hacks:
+; SFTODO: Notes on Electron MRB support:
 ;
-; If https://stardot.org.uk/forums/viewtopic.php?f=54&t=12242&p=155982&hilit=fc7f#p155982 is correct (and looking at the Elkulator source seems to back it up), code running at &8000 or above can toggle MRB access for the *whole* of the lower 32K. So we could steal 512 bytes from the last sideways RAM bank, treat that as short and install a variant on the above code in there if we're running with MRB shadow. We could probably also shove a B+ private RAM style shadow driver in there, although it still wouldn't be paging capable it would be faster at copying whole pages. The biggest faff factor there is really the problem of the loader deciding whether we can "afford" to lose 512 bytes of sideways RAM to this - or are we willing to say "if you have MRB, you must be willing to give this up?" Not sure. Ah, and there's also a post by Sarah Walker pointing out that you can (probably? not sure if she tried it) use the MRB OS routine to copy your code across to the corresponding location in the "other" RAM beforehand, and then you *can* toggle MRB access (carefully - may need to disable interrupts too, not sure) while running from <&8000 without crashing. (As per notes below, it would still be faster - bear in mind the "shadow" RAM is probably the slow RAM, so we'd be running in fast RAM by default but when our driver toggled over into MRB mode, we'd be running from the slow RAM - the video memory will always be slow, but if we were running from sideways RAM we'd not suffer any slowdown in our code. So running from sideways RAM is still better, except it raises the - maybe awkward, maybe not that hard really, not thought in detail - issue of how to decide if we can spare 512 bytes of sideways RAM for our driver.
+; If https://stardot.org.uk/forums/viewtopic.php?f=54&t=12242&p=155982 is
+; correct (and looking at the Elkulator source seems to back it up), code
+; running at &8000 or above can toggle MRB access for the *whole* of the lower
+; 32K. So we could steal 512 bytes from the last sideways RAM bank, treat that
+; as short (as we do for B+ private RAM) and install a variant on this code in
+; there if we're running with MRB shadow. (We could probably also shove a B+
+; private RAM style shadow driver in there; although it still wouldn't be paging
+; capable it would be faster at copying whole pages.) The biggest faff factor
+; with this is really the problem of the loader deciding whether we can "afford"
+; to lose 512 bytes of sideways RAM to this - or are we willing to say "if you
+; have MRB, you must be willing to give this up?" Not sure.
 ;
-; Worth noting that even without MRB issues, it would be *nicer* to implement this on the Electron by stealing 512 bytes of sideways RAM because then this code would be running at 2MHz (although it would still be contending with the ULA for the screen data itself, but that's no worse than the OS doing it). But maybe for a first cut, I'd support Electron running only from low RAM and only if there's no MRB (shadow; MRB turbo is absolutely fine of course, assuming the machine is "big" enough to run the game OK without the extra shadow RAM), and then this could be tweaked further later on.
-;
-; Maybe this driver *doesn't* need to disable itself if there's an OS text window defined (but if that's true it should probably disable itself in mode 7 to avoid confusion). Or at least if there's an OS text window defined covering all but the top row of the screen. (Games with "bigger" top rows were never compatible with our hw scrolling use and will force sw scrolling with suitable OS text windows, and we need to make sure that doesn't break.) If there is an OS text window defined which covers all but the top window of the screen, the scrolling performed by this code is faster and uglier, but compatible, and if the OS decides to do the scroll itself because of printing at bottom right the text window will mean it does the right thing. However, this would mean we'd need some other way to allow Ozmoo to toggle between software and hardware scrolling at runtime, and it also gives us a more complex check to perform before triggering our new behaviour. So gut feeling is that all in all it's simpler both here and in the Ozmoo code for this driver to just disable itself if there is a software text window in effect, then everything should "just work" nicely.
-;
-; It is a bit of a shame we can't get rid of the in-Ozmoo code to handle old-style hardware scrolling, but at least it isn't a huge quantity of code - still, it would have been nice to shrink the Ozmoo executable a bit and just maybe move towards getting an extra 512 bytes of RAM free at runtime (it all adds up, right?). I half wonder if the OSWRCH driver installer could install a copy of the old-style hw scrolling code from Ozmoo somewhere if it doesn't have a new-style driver, but that feels like it could get messy.
-;
-; I half wonder if (by peeking OS text cursor Y and text fg/bg colours) it wouldn't be *too* hard for a pure-OS OSWRCH version of the current HW scrolling implementation to be added, although to start with I should definitely try simplifying the pure OS HW scrolling in Ozmoo itself and if that doesn't add too much complexity it may be silly to go to the trouble and risk of bugs by trying to implement the same thing on the OSWRCH vector with less information to hand and less "nicely allocated" memory available etc.
-;
-; Should we cap the maximum size of upper window we support? As the upper window gets bigger, this technique will look uglier and software scrolling will be less annoyingly slow. Experiment with a game with a big upper window - Seastalker?? (The capping would probably need to be done in the core Ozmoo binary, although just *maybe* the driver would write a "recommended max upper window size" somewhere in ZP, just like it indicates its status (maybe that status is repurposed, with 0 meaning nothing but >0 meaning "max recommended upper window size") which the loader would copy somewhere for Ozmoo to use - that way it can switch to software scrolling for upper windows over a size based on our judgement of the current HW capabilities. It may not really be useful to do this extra complexity though, perhaps at least to start with just hard-code a particular value in the Ozmoo binary.
-;
-; SFTODO: Although that code was probably written without much care about code size, STEM has a highly-optimised line-oriented memmove which would potentially be ideal for copying the line data when we scroll (especially if we start to do it for >1 line of data). Gut feeling is this is too complex/bug for the memory we have here, but I'll leave this note around for now.
+; There's also a post by Sarah Walker pointing out that you can (probably? not
+; sure if she tried it) use the MRB OS routine to copy your code across to the
+; corresponding location in the "other" RAM beforehand, and then you *can*
+; toggle MRB access (carefully - may need to disable interrupts too, not sure)
+; while running from <&8000 without crashing. Any such code would probably be
+; running from slow RAM, so it would be faster to run the code from sideways RAM
+; (because sideways RAM is always accessed at 2MHz), but this is an option.
 
-; SFTODO: Move vdu_down constant to shared constants header and use it in this code instead of literal 10 all over the place?
+; SFTODO: Move vdu_down constant to shared constants header and use it in this
+; code instead of literal 10 all over the place?
 
-; SFTODO: Give Electron support a good test at some point once this settles down. Does split cursor mode work? Do we need to hide the (software generated) cursor when we are scrolling? I suspect we don't, but perhaps test a bit more thoroughly.
+; SFTODO: Give Electron support a good test at some point once this settles
+; down. Does split cursor mode work? Do we need to hide the (software generated)
+; cursor when we are scrolling? I suspect we don't, but perhaps test a bit more
+; thoroughly.
