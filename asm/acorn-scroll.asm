@@ -53,8 +53,6 @@ user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
 user_via_auxiliary_control_register = $fe6b
 
-; SFTODO: WE MAY GET BAD ALIGNMENT ON LOOPS IN B+ PRIVATE RAM IF WE DON'T CHECK SOMEHOW
-
 opcode_jmp = $4c
 opcode_rts = $60
 
@@ -310,13 +308,17 @@ min_chunk_size = chunk_size_40
     ; RAM. This allows it to access screen memory directly. Because the code is
     ; also present in main RAM we can use absolute addresses here, as long as
     ; they don't cause us to execute screen memory-accessing code from main RAM
-    ; instead of private RAM.
-    ; SFTODO: COULD WE MAKE BETTER USE OF X IN THIS LOOP?
+    ; instead of private RAM. We preserve the within-page alignment when we copy
+    ; the code into private RAM so loops don't incur page crossing penalties
+    ; despite our checks.
 b_plus_copy_start
+fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
++assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
     ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
     dey:beq line_loop
     sty lines_to_move_without_clearing
 
+    ; SFTODO: COULD WE MAKE BETTER USE OF X IN THIS LOOP?
     ; We need to copy lines_to_move_without_clearing lines up by one line,
     ; working from the bottom-most line to the top-most line. We just add
     ; repeatedly to generate the addresses; this is relatively easy and saves
@@ -499,7 +501,7 @@ raster_wait_table_end_40
     lda #128
     sta romsel_copy
     sta bbc_romsel
-    jsr fast_scroll_private_ram
+    jsr fast_scroll_private_ram_aligned
     pla
     sta romsel_copy
     sta bbc_romsel
@@ -596,9 +598,9 @@ sta_fast_scroll_start_abs
     sta romsel_copy
     sta bbc_romsel
     ; -1 in the next line to allow for the RTS opcode we patch on afterwards.
-    +copy_data_checked b_plus_copy_start, b_plus_copy_end, fast_scroll_private_ram, fast_scroll_private_ram_end - 1
+    +copy_data_checked b_plus_copy_start, b_plus_copy_end, fast_scroll_private_ram_aligned, fast_scroll_private_ram_end - 1
     lda #opcode_rts
-    sta fast_scroll_private_ram + (b_plus_copy_end - b_plus_copy_start)
+    sta fast_scroll_private_ram_aligned + (b_plus_copy_end - b_plus_copy_start)
     +copy_data .b_plus_copy_start_patch_start, .b_plus_copy_start_patch_end, b_plus_copy_start ; SFTODO: THESE LABELS ARE INSANE
     pla
     sta romsel_copy
