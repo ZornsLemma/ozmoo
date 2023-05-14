@@ -114,6 +114,7 @@ shadow_mode_bit = 128
 
 vdu_goto_xy = 31
 
+osbput = $ffd4
 osargs = $ffda
 osbyte = $fff4
 osbyte_read_host = 0

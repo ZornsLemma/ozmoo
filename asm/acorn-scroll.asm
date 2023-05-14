@@ -71,6 +71,8 @@ opcode_rts = $60
 wrchv = $20e
 evntv = $220
 
+spool_file_handle = $257
+
 ; 6 bytes of zero page are allocated to the VDU driver starting at $da, but as
 ; we're not too tight for space, we permanently allocate $da to
 ; vdu_temp_store_da, imitating how it is used in OS 1.20. This could be shared
@@ -180,15 +182,23 @@ protecting_some_lines
 
     ; It's a line feed on the bottom line of the screen with no text window in
     ; effect. That's what we're here for!
-    ; SFTODO: It's not a huge deal, but FWIW - I think this LF character will be
-    ; omitted from any *SPOOL file being produced, unless we take extra steps to
-    ; include it.
 
     ; We must preserve X and Y (as well as A, although we know that's 10).
     txa
     pha
     tya
     pha
+
+    ; The user might be *SPOOLing the output of Ozmoo - perhaps to postprocess
+    ; it to make a transcript of play. The output is not necessarily going to be
+    ; that nice (we make some OSWRCH calls of our own in this code), but let's
+    ; at least make the LF we're processing part of the file.
+    ; SQUASH: This is very much a luxury we indulge in as we have the space.
+    ldy spool_file_handle
+    beq +
+    lda #10
+    jsr osbput
++
 
     ; Save the current screen top left address before we scroll.
     lda vdu_screen_top_left_address_low
