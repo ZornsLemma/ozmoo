@@ -130,11 +130,6 @@ max_lines = s_screen_height
 }
 
 
-; SFTODO: I could move these into page 4 to save a few bytes in main RAM. However, page 4 is getting quite full now we can use otherwise wasted space for history storage. It would be a bit conditionally messy but we could squeeze these into spare space in page 5 *if* vmap_max_size is small enough. Probably something to reconsider when I finally tidy up the low memory allocation/constants.asm. It might be possible in constants.asm to conditionally allocate in page 4/5 or to allocate "inline" (i.e. as part of the main executable), which might make it not too painful and would allow maximum flexibility to use spare parts of page 5 without complicating the code too much. I am thinking this would be useful not just for this, but for other uninitialised data which *could* live in low memory as well.
-s_screen_height !byte 0
-s_screen_width_minus_one !byte 0
-s_screen_height_minus_one !byte 0
-
 !macro screenkernal_init_inline {
     ; We don't want to be querying the OS for the screen resolution all the
     ; time, so initialise the relevant variables here. (The Commodore versions

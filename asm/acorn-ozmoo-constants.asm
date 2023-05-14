@@ -821,6 +821,10 @@ game_disc_crc	+allocate 2
 				+pre_allocate 5
 initial_clock	+allocate 5
 
+s_screen_height +allocate 1
+s_screen_width_minus_one +allocate 1
+s_screen_height_minus_one +allocate 1
+
 	+pre_allocate 1
 streams_stack_items
 	+allocate 1
