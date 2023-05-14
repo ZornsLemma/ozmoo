@@ -484,6 +484,15 @@ raster_wait_table_end_40
 ; Electron.
 .electron_update_hardware_screen_start_address
 !pseudopc update_hardware_screen_start_address {
+    ; For the record, I have briefly experimented with putting a *FX19 call in
+    ; here to wait for vsync on the Electron. It looks worse that way, unless
+    ; I've got confused. I think this isn't too surprising, because even on the
+    ; BBC (with faster RAM and no memory contention with the screen) for a
+    ; flicker-free update of even a single line upper window we have to start in
+    ; the visible region of the screen. So by waiting for vsync here, we
+    ; deliberately force the Electron to start in a position that practically
+    ; guarantees flicker, whereas by not waiting we will start somewhere better
+    ; some of the time just by luck.
     lsr
     ror vdu_temp_store_da
     sta $fe03 ; SFTODO MAGIC
