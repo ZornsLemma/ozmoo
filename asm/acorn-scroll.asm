@@ -114,7 +114,7 @@ evntv_handler
     lda #>initial_t2_value:sta user_via_t2_high_order_counter
     lda #event_vsync
 jmp_parent_evntv
-old_evntv = *+1
+parent_evntv = *+1
     jmp $ffff ; patched
 
 add_line_x
@@ -152,7 +152,7 @@ bump_src_dst_and_dex
     dex
     rts
 
-our_wrchv
+our_oswrch
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
     ; interested in passed through ASAP. We only care about LF characters.
     cmp #10
@@ -521,10 +521,10 @@ init
     ; expect this to happen, but since this is discardable init code we might as
     ; well check.
     lda wrchv
-    cmp #<our_wrchv
+    cmp #<our_oswrch
     bne not_already_claimed
     lda wrchv+1
-    cmp #>our_wrchv
+    cmp #>our_oswrch
     beq .just_rts
 not_already_claimed
     ; Before we do anything else, we copy our code from inside this executable
@@ -639,12 +639,12 @@ not_electron
     ; Install our EVNTV handler so we can tell where the raster is. We don't
     ; install this on the Electron as it doesn't have a user VIA, and there
     ; isn't an alternative timer we can use.
-    ; SFTODO: inconsistent - old__evntv but parent_wrchv
     sei
-    lda evntv:sta old_evntv
-    lda evntv+1:sta old_evntv+1
+    lda evntv:sta parent_evntv
+    lda evntv+1:sta parent_evntv+1
     lda #<evntv_handler:sta evntv
     lda #>evntv_handler:sta evntv+1
+    ; Set up user VIA timer 2.
     lda #0
     sta user_via_auxiliary_control_register
     cli
@@ -659,9 +659,9 @@ common_init
     sta parent_wrchv
     lda wrchv+1
     sta parent_wrchv+1
-    lda #<our_wrchv
+    lda #<our_oswrch
     sta wrchv
-    lda #>our_wrchv
+    lda #>our_oswrch
     sta wrchv+1
     cli
     ; We don't enable vsync events; we don't need them while
