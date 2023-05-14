@@ -286,10 +286,29 @@ update_hardware_screen_start_address_done
     lda vdu_text_cursor_y_position
     jsr jmp_parent_wrchv
 
-    ; We need this code to be reasonably fast and also reasonably small. SFTODO: I am sure it's possible to do better, particularly once I have a better idea of exactly how much code size I can tolerate.
-    ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 320 bytes per line modes and 128 bytes in 640 bytes per line modes. This works out so that wrapping at the end of screen memory can only ever occur between chunks, not within a chunk.
-    ; SFTODO: If we are in an 80 column mode and thus have 128 byte chunks, should we patch this code at init time to do ldy #0 instead of ldy #chunk_size -1 and change the dey to iny? (We'd do it for both copy loops.) This would not change the behaviour (because we test with bpl) and it *might* look slightly nicer. This gets awkward with the unrolled loops though, as patching the dey->iny is faffy. Still, we *could* do it, and it's discardable init code. We are already patching the ldy # so changing what we patch with is not hard.
-
+    ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 40
+    ; column modes and 128 bytes in 80 column modes. This chunk size is chosen
+    ; because it means the wrapping can only ever occur on chunk boundaries,
+    ; allowing us to avoid checking as we process each chunk.
+    ; SFTODO: We could potentially be a lot cleverer about the data move
+    ; operations in here. STEM has some very optimised but complex and perhaps
+    ; over-large code for memmove() and memset which just might be reusable.
+    ; It's also worth noting that we never wrap within a screen line in 32 line
+    ; modes, and even in 25 lines modes only one screen line (starting somewhere
+    ; in page $7f) can have a wrap within it. I think what I have here is
+    ; reasonably good, especially with the loop unrolling, but I'm sure it could
+    ; be better.
+    ; SFTODO: It just might look nicer (when we can't successfully avoid
+    ; flicker) if these loops iterated forwards instead of backwards. This would
+    ; be easiest to do in 80 column modes, where we iterate over Y from 0 to 127
+    ; and changing to iterate from 127 down to 0 would not alter the loop test
+    ; (bpl) or the setup; we'd "just" need to patch the initial "ldy
+    ; #chunk_size-1" and change the deys to iny, although the fact the loop has
+    ; been unrolled makes this fiddlier. The patching would be done in
+    ; discardable init code so the fact it's mildly fiddly isn't a huge problem.
+    ; Iterating forwards with 64 byte chunks would probably be more effort, as
+    ; we don't want to pay for a cpy #chunk_size in the loop body, although
+    ; given the loop is unrolled it really wouldn't hurt that much.
 chunks_per_line = 5
 chunk_size_40 = 320 / chunks_per_line
 chunk_size_80 = 640 / chunks_per_line
@@ -298,11 +317,11 @@ min_chunk_size = chunk_size_40
     ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
     ; on the B+ and this code in main RAM is patched to execute it from private
     ; RAM. This allows it to access screen memory directly. Because the code is
-    ; also present in main RAM we can use absolute addresses here, as long as
-    ; they don't cause us to execute screen memory-accessing code from main RAM
-    ; instead of private RAM. We preserve the within-page alignment when we copy
-    ; the code into private RAM so loops don't incur page crossing penalties
-    ; despite our checks.
+    ; also present in main RAM calls to subroutines like bump_src_dst_and_dex
+    ; don't need to be patched to refer to the copy in private RAM, although
+    ; this is only OK for code which isn't accessing screen memory. We preserve
+    ; the within-page alignment when we copy the code into private RAM so loops
+    ; don't incur page crossing penalties despite our checks.
 b_plus_copy_start
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
 +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
@@ -310,12 +329,11 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_co
     dey:beq line_loop
     sty lines_to_move_without_clearing
 
-    ; SFTODO: COULD WE MAKE BETTER USE OF X IN THIS LOOP?
     ; We need to copy lines_to_move_without_clearing lines up by one line,
     ; working from the bottom-most line to the top-most line. We just add
     ; repeatedly to generate the addresses; this is relatively easy and saves
     ; using a general-purpose multiplication routine. We push the addresses onto
-    ; the stack as we generate them; this saves having to write
+    ; the stack as we generate them, which saves having to write
     ; subtract-with-wrap code as well.
 add_loop
     lda src+1:pha:lda src:pha
