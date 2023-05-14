@@ -49,6 +49,9 @@ crtc_address_register = $fe00
 crtc_address_write = $fe01
 crtc_start_screen_address_high_register = 12
 
+electron_screen_start_address_low = $fe02
+electron_screen_start_address_high = $fe03
+
 user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
 user_via_auxiliary_control_register = $fe6b
@@ -495,9 +498,9 @@ raster_wait_table_end_40
     ; some of the time just by luck.
     lsr
     ror vdu_temp_store_da
-    sta $fe03 ; SFTODO MAGIC
+    sta electron_screen_start_address_high
     lda vdu_temp_store_da
-    sta $fe02 ; SFTODO MAGIC
+    sta electron_screen_start_address_low
     jmp update_hardware_screen_start_address_done
 }
 .electron_update_hardware_screen_start_address_end
