@@ -212,17 +212,15 @@ jsr_shadow_paging_control1
     jsr $ffff ; patched
 
     ; This code is patched out at runtime on the Electron.
-    ; SFTODO: It is *just* possible - would need to time it - that in e.g. 40 column modes we *can* do this quickly enough to avoid flicker on the Electron if we wait for vsync here (we can't time it more precisely). That said, even if that works, it would essentially add "on average" 0.01s to every line feed (since we'd hit at a random point during the 50Hz frame and have to wait half that on average for vsync) and might slow things down too painfully. Still, if it is flicker free, worth trying some timings to see if it's actually a problem in practice.
 check_raster
-    ; If we're protecting a single row at the top of the screen, wait for a
-    ; "safe" raster position - one where we expect to be able to complete the
-    ; movement of data in screen memory before the raster reaches that data.
-    ; This should give a flicker-free appearance, like software scrolling but
-    ; much faster. If we have more than one row to protect, the copying takes so
-    ; long that we don't try to be flicker-free and just go right ahead to get
-    ; the job done ASAP. SFTODO: WE MAY BE ABLE TO DO MORE THAN ONE ROW WITHOUT FLICKER NOW, WOULD NEED TO EXPERIMENT AND TUNE THIS, AND PROBABLY THE FIRST/LAST SAFE ROWS WOULD BE SELECTED FROM TABLES INDEXED BY NUMBER OF PROTECTED ROWS - THAT SAID, IT MAY BE THAT PROTECTING >1 ROW AND WAITING FOR FLICKER FREE SAFE REGIONS WILL SLOW THINGS DOWN TOO MUCH
+    ; To minimise flicker, we check timer 2 (which is reloaded every vsync) to
+    ; see where the raster is and wait until it's in a "safe" location before
+    ; proceeding. What counts as a safe location depends on whether or not we're
+    ; in a 40 or 80 column mode (the latter require moving twice as much data)
+    ; and how big the upper window is (the bigger it is, the more data we have
+    ; to move).
     ldx fast_scroll_lines_to_move
-    cpx #raster_wait_table_entries + 1
+    cpx #raster_wait_table_entries+1
     bcs dont_wait_for_raster
 raster_wait_loop
     ; We only examine the high-order counter; this is good enough and avoids
