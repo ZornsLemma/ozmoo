@@ -950,7 +950,9 @@ acorn_update_scroll_state_subroutine
     sta acorn_scroll_flags
 
     !ifdef ACORN_HW_SCROLL_FAST {
-        ; Enable vsync events iff we're actually using fast hardware scrolling now. The Electron doesn't need this as it's fast hardware scrolling doesn't use vsync and we never turn the event on.
+        ; Enable vsync events iff we're actually using fast hardware scrolling
+        ; now. The Electron doesn't need this as its fast hardware scrolling
+        ; doesn't use vsync and we never turn the event on.
         !ifndef ACORN_ELECTRON_SWR {
             lda #13 ; SFTODO: MAGIC
             ldx acorn_scroll_flags

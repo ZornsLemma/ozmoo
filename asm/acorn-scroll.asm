@@ -684,15 +684,6 @@ common_init
 ;
 ; SFTODO: Although that code was probably written without much care about code size, STEM has a highly-optimised line-oriented memmove which would potentially be ideal for copying the line data when we scroll (especially if we start to do it for >1 line of data). Gut feeling is this is too complex/bug for the memory we have here, but I'll leave this note around for now.
 
-; SFTODONOW: It *might* actually be possible for us to do a flicker-free two line protected area in 40 column modes, or maybe even in 80 column modes if the code is optimised further (at the very least, not doing the redundant zero stores - which is probably cosmetically desirable - might make this work). Core Ozmoo code would need to change to enable vsync events in this case as well as this code deciding to check raster position in this case.
-
-; SFTODONOW: Suspect I already have a TODO about this, but note that we need to be careful when copying the copy loops into B+ private RAM that we don't accidentally end up making the copy loops cross pages. I suspect the best way to handle this is (space permitting) just to always copy code into the B+ private RAM at the same sub-page offset as it lives at in low RAM.
-
 ; SFTODO: Move vdu_down constant to shared constants header and use it in this code instead of literal 10 all over the place?
 
 ; SFTODO: Give Electron support a good test at some point once this settles down. Does split cursor mode work? Do we need to hide the (software generated) cursor when we are scrolling? I suspect we don't, but perhaps test a bit more thoroughly.
-
-; SFTODONOW: Probably be good to do some timings, e.g. in mode 3 with the safe window hacked to be super tight - that gives us a kind of "worst case". Then compare that with mode 3 with a (moderately; don't go nuts) tuned safe window and mode 3 with no raste waiting at all, and for good measure maybe a build with the fast hw scrolling disabled. Do this on a non-tube machine, at least to start with. This would give some idea what kind of impact raster waiting has and would help me decide how to handle things like maybe doing flicker-free >1 line protected stuff.
-
-
-; SFTODONOW: Prob have note elsewhere, but I think we must make the core Ozmoo game switch (temporarily - the upper window size may vary during game) to software scrolling (i.e. we must not toggle the user-controlled flag, so we can go back to hw scrolling if upper window gets smaller) to software scrolling even if we support fast hw scrolling but the upper window is too big - just use a simple constant for now, but I suspect three is just about OK.
