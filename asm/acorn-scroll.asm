@@ -212,6 +212,7 @@ jsr_shadow_paging_control1
     jsr $ffff ; patched
 
     ; This code is patched out at runtime on the Electron.
+    ; SFTODO: Although it's not a huge deal, it would really make more sense to do this immediately before we write the new screen start address to the CRTC - that just might let us slip in where we'd otherwise not. This would also (although it's not the only reason to do it) make it easier to patch the code on the Electron, as we'd then patch check_raste and update_hardware_screen_start_address in the same code and just patch once. I think the only real downside to doing this is that we'd have to do an extra lda dst+1 to restore A for the hardware screen start code after using it in this code.
 check_raster
     ; To minimise flicker, we check timer 2 (which is reloaded every vsync) to
     ; see where the raster is and wait until it's in a "safe" location before
@@ -260,6 +261,7 @@ dont_wait_for_raster
     sta dst+1
     ; The following code is patched at runtime on the Electron.
 update_hardware_screen_start_address
+    ; nop:nop:nop:nop ; SFTODO TEMP HACK TO MAKE MORE SPACE FOR ELECTRON PATCH WHILE I EXPERIMENT
     ldy #crtc_start_screen_address_high_register
     lsr
     ror vdu_temp_store_da
@@ -519,6 +521,18 @@ raster_wait_table_end_40
     ; some of the time just by luck.
     lsr
     ror vdu_temp_store_da
+!if 0 { ; SFTODO THIS HACK WORKS REALLY WELL (AT LEAST IN MODE 6 SINGLE TOP LINE), TRY TO TIDY UP
+    ; SFTODO START EXP
+    pha
+    sei ; SFTODO SUPER HACKY, BUT I HOPE THIS WILL ALLOW ME TO WAIT FOR THIS INTERRUPT WITHOUT FAFFING WITH OS INTERACTION FOR NOW
+    lda #1<<3
+SFTODOHACKLOOP
+    bit $fe00
+    beq SFTODOHACKLOOP
+    cli ; SFTODO HACK CONTD - I EXPECT/HOPE THE OS WILL NOW SERVICE THE INTERRUPT AND CLEAR THIS BIT
+    pla
+    ; SFTODO END EXP
+}
     sta electron_screen_start_address_high
     lda vdu_temp_store_da
     sta electron_screen_start_address_low
