@@ -62,11 +62,11 @@
 }
 
 ; Note that the ACORN_HW_SCROLL_SLOW and ACORN_HW_SCROLL_FAST constants are
-; defined if the executable *supports* the relevant type of scrolling. Whether
+; defined if the *executable* supports the relevant type of scrolling. Whether
 ; they are actually available and used varies at runtime depending on the
 ; hardware we're running on, the size of the upper window and the user's
 ; preference. Although typically both will be defined, it's valid to have just
-; one or neither of these constants defined. SFTODO: TEST THAT!
+; one or neither of these constants defined.
 
 !zone screenkernal {
 

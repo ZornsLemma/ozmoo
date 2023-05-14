@@ -113,8 +113,6 @@ jmp_parent_evntv
 old_evntv = *+1
     jmp $ffff ; patched
 
-     ; SFTODO: *SOMETIMES* (DOING REP:PRINT:UN.FA. IN BASIC DOESN'T SEEM TO TRIGGER IT, DOING *HELP IN A LOOP ON B-EM'S B 1770 CONFIG DOES) WE GET STUCK  - I REALLY DON'T KNOW WHY
-
 add_line_x
 !zone {
     clc
