@@ -481,7 +481,7 @@ parent_evntv = *+1
 ; by this.) In practice the difference doesn't seem to be big enough to need
 ; taking into account.
 
-; SFTODONOW: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
+; SFTODONOW: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN? IF WE DO, THE EASIEST WAY TO HANDLE THIS MIGHT BE TO PATCH THE VALUE WE LOAD INTO TIMER 2 EVERY VSYNC, RATHER THAN TRYING TO ADJUST ALL THE ENTRIES IN THE RASTER TABLES AND WORRYING ABOUT WRAPPING.
 
 ; This table is for 80 column modes; the 40 column table at raster_wait_table_40
 ; is copied over this by the discardable init code if necessary.
