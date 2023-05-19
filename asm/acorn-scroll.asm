@@ -162,7 +162,7 @@ chunk_size_40 = 320 / chunks_per_line
 chunk_size_80 = 640 / chunks_per_line
 min_chunk_size = chunk_size_40
 
-    ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
+    ; Code from rs_screen_ram_copy to re_screen_ram_copy is copied into private RAM
     ; on the B+ and this code in main RAM is patched to execute it from private
     ; RAM. This allows it to access screen memory directly. Because the code is
     ; also present in main RAM calls to subroutines like bump_src_dst_and_dex
@@ -170,8 +170,8 @@ min_chunk_size = chunk_size_40
     ; this is only OK for code which isn't accessing screen memory. We preserve
     ; the within-page alignment when we copy the code into private RAM so loops
     ; don't incur page crossing penalties despite our checks.
-b_plus_copy_start
-fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
+rs_screen_ram_copy
+fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
 +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
     ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
@@ -259,7 +259,7 @@ byte_move_and_clear_loop_unroll_count = 8
 !ifdef DEBUG_COLOUR_BARS {
     lda #0 xor 7:sta bbc_palette
 }
-b_plus_copy_end
+re_screen_ram_copy
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
     lda #0
 jsr_shadow_paging_control2
@@ -429,9 +429,10 @@ dont_wait_for_raster
     sty crtc_address_register
     stx crtc_address_write
 
+    ; Carry on with the code common to the BBC and Electron.
     jmp our_oswrch_common_tail
 
-; We hook evntv to detect vsync rather than checking for this on IRQ1V. This
+; We hook EVNTV to detect vsync rather than checking for this on IRQ1V. This
 ; avoids missing vsync events where they occur after we check but before the OS
 ; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
@@ -611,9 +612,9 @@ max_runtime_size = fast_scroll_end - fast_scroll_start
 ; SFTODONOW: I THINK THE FACT I'M NOT CLEARING THE BIT IN THE IRQ MASK DURING ONE-OFF INIT *IS* GOING TO MEAN I CAN MISS THINGS
 ; SFTODONOW: TESTING AT CMD PROMPT ON ELECTRON IN MODE 6, I THINK THIS *CAN* LEAVE THE SOFTWARE CURSOR "BURNED IN" TO SCREEN RAM AS WELL SCROLL. I DON'T KNOW IF THIS CAN OCCUR IN OZMOO - WE PROBABLY WOULD HAVE CURSOR ENABLED IF USER INPUT IS BEING PROCESSED AND IS WHAT CAUSES SCREEN TO SCROLL, I HAVEN'T EXPERIMENTED YET. MAY NEED TO ADDRESS THIS - YES, IT DOES LEAVE A CORRUPT CURSOR IF I TYPE A LONG LINE (AT END OF BENCHMARK FWIW) - THE FIX MAY BE AS SIMPLE AS HAVING OZMOOE ALWAYS FORCE CURSOR OFF BEFORE SCROLLING SCREEN
 
-; This code is copied over b_plus_copy_start in main RAM after we've copied that code into the private RAM.
-.b_plus_copy_start_patch_start
-!pseudopc b_plus_copy_start {
+; This code is copied over rs_screen_ram_copy in main RAM after we've copied that code into the private RAM.
+.bs_b_plus_screen_ram_copy_shim
+!pseudopc rs_screen_ram_copy {
     lda romsel_copy
     pha
     lda #128
@@ -625,7 +626,7 @@ max_runtime_size = fast_scroll_end - fast_scroll_start
     sta bbc_romsel
     jmp finish_oswrch
 }
-.b_plus_copy_start_patch_end
+.be_b_plus_screen_ram_copy_shim
 
 .just_rts
     rts
@@ -715,10 +716,12 @@ sta_fast_scroll_start_abs
     sta romsel_copy
     sta bbc_romsel
     ; -1 in the next line to allow for the RTS opcode we patch on afterwards.
-    +copy_data_checked b_plus_copy_start, b_plus_copy_end, fast_scroll_private_ram_aligned, fast_scroll_private_ram_end - 1
+    +copy_data_checked rs_screen_ram_copy, re_screen_ram_copy, fast_scroll_private_ram_aligned, fast_scroll_private_ram_end - 1
     lda #opcode_rts
-    sta fast_scroll_private_ram_aligned + (b_plus_copy_end - b_plus_copy_start)
-    +copy_data .b_plus_copy_start_patch_start, .b_plus_copy_start_patch_end, b_plus_copy_start ; SFTODO: THESE LABELS ARE INSANE
+    sta fast_scroll_private_ram_aligned + (re_screen_ram_copy - rs_screen_ram_copy)
+    ; Overwrite the screen copy code in main RAM with a shim to call the copy we
+    ; just placed in private RAM.
+    +copy_data_checked .bs_b_plus_screen_ram_copy_shim, .be_b_plus_screen_ram_copy_shim, rs_screen_ram_copy, re_screen_ram_copy
     pla
     sta romsel_copy
     sta bbc_romsel
