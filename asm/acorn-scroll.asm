@@ -538,15 +538,23 @@ bs_electron
     ; At this point A contains vdu_screen_top_left_address_high; we avoid using
     ; A so we have that value for later.
 
-    ; SFTODONOW: I need to experiment and tweak this, I suspect we may only want to do the RTC interrupt wait if we have a single top line, and maybe only a single top line in 40 column modes, but let's just always do it for the moment
+    ; If we have a single line upper window, wait for the RTC interrupt on
+    ; scanline 99 before starting to update the screen.
+    ; SFTODO: Experimenting in MAME, this gives a flicker free upper window in
+    ; mode 6, but not in mode 3. It's a bit subjective but I think it maybe
+    ; looks slightly nicer in mode 3 with this raster wait, so I haven't
+    ; disabled the raster wait in 80 column modes. I haven't actually
+    ; experimented with larger upper windows, but I think it is probably
+    ; sensible to avoid wasting time waiting in those cases, as it's going to
+    ; flicker anyway.
     ldx fast_scroll_lines_to_move:dex:bne no_raster_wait
-    ; Wait for the "RTC" interrupt on scanline 99.
     ldx rtc_count
 busy_wait
 rtc_count = * + 1
     cpx #$ff ; patched
     beq busy_wait
 no_raster_wait
+
     ; Update the hardware screen start address.
     ; A already contains vdu_screen_top_left_address_high.
     lsr
@@ -554,6 +562,7 @@ no_raster_wait
     sta electron_screen_start_address_high
     lda vdu_temp_store_da
     sta electron_screen_start_address_low
+
     ; Continue with the platform-independent code.
     jmp our_oswrch_common_tail
 
