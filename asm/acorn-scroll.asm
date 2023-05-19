@@ -745,10 +745,9 @@ use_shadow_driver_yx
     txa
     bne not_electron
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
-    ; We can support fast scrolling, but we need to tweak the code to remove
-    ; BBC-specific aspects.
+    ; Overwrite the BBC-specific code with Electron-specific code.
     +copy_data_checked bs_electron, be_electron, rs_bbc, fast_scroll_end
-    ; Install our IRQ1V handler
+    ; Install our IRQ1V handler so we can busy wait on RTC interrupts.
     sei
     lda irq1v:sta parent_irq1v
     lda irq1v+1:sta parent_irq1v+1
@@ -757,9 +756,7 @@ use_shadow_driver_yx
     cli
     jmp common_init
 not_electron
-    ; Install our EVNTV handler so we can tell where the raster is. We don't
-    ; install this on the Electron as it doesn't have a user VIA, and there
-    ; isn't an alternative timer we can use.
+    ; Install our EVNTV handler so we can tell where the raster is.
     sei
     lda evntv:sta parent_evntv
     lda evntv+1:sta parent_evntv+1
@@ -769,12 +766,14 @@ not_electron
     lda #0
     sta user_via_auxiliary_control_register
     cli
+    ; We don't enable vsync events here; we don't need them while
+    ; fast_scroll_lines_to_move is zero, and the Ozmoo executable takes care of
+    ; turning them on and off as that changes.
 common_init
     lda #1
     sta fast_scroll_status_host
 
-    ; We haven't already claimed vectors, so claim them. This patches the code
-    ; we just copied down to fast_scroll_start.
+    ; Install our WRCHV handler.
     sei
     lda wrchv
     sta parent_wrchv
@@ -785,9 +784,6 @@ common_init
     lda #>our_oswrch
     sta wrchv+1
     cli
-    ; We don't enable vsync events; we don't need them while
-    ; fast_scroll_lines_to_move is zero, and the Ozmoo executable takes care of
-    ; turning them on and off as that changes.
     rts
 
 }
