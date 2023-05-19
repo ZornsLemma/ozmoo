@@ -39,10 +39,27 @@
 ; this file, where we're actually doing it, but outside of this file we probably
 ; shouldn't.)
 
+; This executable is relatively complex in terms of runtime copying and patching, because:
+; - It loads into user RAM between OSHWM and HIMEM and has to copy its "payload"
+;   into the smaller region of memory allocated for its runtime use.
+; - It has large amounts of different code for BBC and Electron machines.
+; - Memory is tight enough in the allocated region that we can't afford too much
+;   wasted space to help with the BBC-vs-Electron patching.
+;
+; SFTODO: I HAVEN'T ACTUALLY DONE THIS YET...
+; I've tried to keep the complexity under control by using "rs_", "re_", "bs_"
+; and "be_" prefixes on labels. "r" stands for "runtime" and refers to an
+; address where code is deployed for use while the game is running. "b" stands
+; for "binary" and refers to an address in the copy of this code loaded "high"
+; in main user RAM when this executable is run. "s" and "e" stand for "start"
+; and "end" respectively.
+
+
 !source "acorn-shared-constants.asm"
 
 ; The constant names and fragments of OS 1.20 code which have been hacked up to
 ; form part of this code are based on TobyLobster's OS 1.20 disassembly.
+spool_file_handle = $257
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
@@ -67,14 +84,13 @@ user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
 user_via_auxiliary_control_register = $fe6b
 
+; SFTODO: MAY NOT BE NEEDED NOW
 opcode_jmp = $4c
 opcode_rts = $60
 
 irq1v = $204
 wrchv = $20e
 evntv = $220
-
-spool_file_handle = $257
 
 ; 6 bytes of zero page are allocated to the VDU driver starting at $da, but as
 ; we're not too tight for space, we permanently allocate $da to
@@ -101,81 +117,10 @@ initial_t2_value = frame_us - 2 * us_per_scanline
     bbc_palette = $fe21
 }
 
-runtime_start
+bs_runtime_common_and_bbc
 !pseudopc fast_scroll_start {
-
-; We hook evntv to detect vsync rather than checking for this on irq1v. This
-; avoids missing vsync events where they occur after we check but before the OS
-; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
-; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
-;
-; This code is BBC-specific; we overwrite it with our Electron IRQ handler on
-; the Electron.
-electron_irq_handler_space
-evntv_handler
-    ; SQUASH: If we're pushed for space we don't need to chain to parent evntv
-    ; or check it's our event - we are the foreground application and we
-    ; more-or-less know there aren't any other events. Of course it's possible
-    ; some kind of utility ROM a user wants to use is using events so it's nice
-    ; to play nice.
-    cmp #event_vsync:bne jmp_parent_evntv
-    lda #<initial_t2_value:sta user_via_t2_low_order_latch_counter
-    lda #>initial_t2_value:sta user_via_t2_high_order_counter
-    lda #event_vsync
-jmp_parent_evntv
-parent_evntv = *+1
-    jmp $ffff ; patched
-evntv_handler_end
-
-; raster_wait_table isn't used on the Electron, so by placing it here we can use
-; evntv_handler's space plus this as one contiguous chunk for Electron-specific
-; code.
-;
-; For a window of n lines at the top of the screen to protect from scrolling,
-; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
-; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
-; raster waiting and just scroll regardless, specify $ff and $00 respectively.
-;
-; This macro helps create bytes in terms of scan lines from the top of the
-; visible screen. Don't forget this is only approximate as we only check the
-; high byte of the timer. There are 312 scanlines per frame.
-!macro scan_line .scan_lines_from_visible_top {
-    .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
-    .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
-    !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
-}
-
-; As we're mainly concerned with cycles taken to move data in screen memory, we
-; mostly don't care about the distinction between 25 and 32 line modes. Strictly
-; speaking, the *start* of the safe window should maybe vary in 25 and 32 line
-; modes, as it's about not starting to write to memory until the raster has
-; finished scanning it, and in 25 line modes the gaps between lines slow down
-; the raster with respect to screen memory. (The end of the safe window is about
-; getting the move done before we hit the top line again, which isn't affected
-; by this.) In practice the difference doesn't seem to be big enough to need
-; taking into account.
-
-; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
-
-; This table is for 80 column modes; the 40 column table at raster_wait_table_40
-; is copied over this by the discardable init code if necessary.
-raster_wait_table_entries = fast_scroll_max_upper_window_size
-raster_wait_table
-raster_wait_table_first
-    +scan_line 1*8 ; 1 line window
-    +scan_line 2*8 ; 2 line window
-    +scan_line 3*8 ; 3 line window
-raster_wait_table_last
-    +scan_line 8*8 ; 1 line window - this seems solid
-    +scan_line 8*8 ; 2 line window - seems surprisingly solid
-    +scan_line 4*8 ; 3 line window - not great, maybe nicer than with no raster check
-raster_wait_table_end
-    +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
-    +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
-
-; SFTODONOW: COMMENT
-    !fill 16
-electron_irq_handler_space_end
+; We start with code which is common to the BBC and Electron so we can avoid
+; having two copies of it in this executable on disc.
 
 add_line_x
 !zone {
@@ -210,6 +155,156 @@ bump_src_dst_and_dex
     +bump src
     +bump dst
     dex
+    rts
+
+our_oswrch_common_tail
+    ; Tell the OS to move the cursor to the same co-ordinates it already has,
+    ; but taking account of the hardware scrolled screen. We could do this
+    ; ourselves, but it isn't that slow (compared to all the copying we do) to
+    ; get the OS to do it for us, which saves a lot of code here.
+    lda #vdu_goto_xy
+    jsr jmp_parent_wrchv
+    lda vdu_text_cursor_x_position
+    jsr jmp_parent_wrchv
+    lda vdu_text_cursor_y_position
+    jsr jmp_parent_wrchv
+
+    ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 40
+    ; column modes and 128 bytes in 80 column modes. This chunk size is chosen
+    ; because it means the wrapping can only ever occur on chunk boundaries,
+    ; allowing us to avoid checking as we process each chunk.
+    ; SFTODO: We could potentially be a lot cleverer about the data move
+    ; operations in here. STEM has some very optimised but complex and perhaps
+    ; over-large code for memmove() and memset which just might be reusable.
+    ; It's also worth noting that we never wrap within a screen line in 32 line
+    ; modes, and even in 25 lines modes only one screen line (starting somewhere
+    ; in page $7f) can have a wrap within it. I think what I have here is
+    ; reasonably good, especially with the loop unrolling, but I'm sure it could
+    ; be better.
+    ; SFTODO: It just might look nicer (when we can't successfully avoid
+    ; flicker) if these loops iterated forwards instead of backwards. This would
+    ; be easiest to do in 80 column modes, where we iterate over Y from 0 to 127
+    ; and changing to iterate from 127 down to 0 would not alter the loop test
+    ; (bpl) or the setup; we'd "just" need to patch the initial "ldy
+    ; #chunk_size-1" and change the deys to iny, although the fact the loop has
+    ; been unrolled makes this fiddlier. The patching would be done in
+    ; discardable init code so the fact it's mildly fiddly isn't a huge problem.
+    ; Iterating forwards with 64 byte chunks would probably be more effort, as
+    ; we don't want to pay for a cpy #chunk_size in the loop body, although
+    ; given the loop is unrolled it really wouldn't hurt that much.
+chunks_per_line = 5
+chunk_size_40 = 320 / chunks_per_line
+chunk_size_80 = 640 / chunks_per_line
+min_chunk_size = chunk_size_40
+
+    ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
+    ; on the B+ and this code in main RAM is patched to execute it from private
+    ; RAM. This allows it to access screen memory directly. Because the code is
+    ; also present in main RAM calls to subroutines like bump_src_dst_and_dex
+    ; don't need to be patched to refer to the copy in private RAM, although
+    ; this is only OK for code which isn't accessing screen memory. We preserve
+    ; the within-page alignment when we copy the code into private RAM so loops
+    ; don't incur page crossing penalties despite our checks.
+b_plus_copy_start
+fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
++assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
+    ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
+    dey:beq line_move_and_clear_loop
+    sty lines_to_move_without_clearing
+
+    ; We need to copy lines_to_move_without_clearing lines up by one line,
+    ; working from the bottom-most line to the top-most line. We just add
+    ; repeatedly to generate the addresses; this is relatively easy and saves
+    ; using a general-purpose multiplication routine. We push the addresses onto
+    ; the stack as we generate them, which saves having to write
+    ; subtract-with-wrap code as well.
+add_loop
+    lda src+1:pha:lda src:pha
+    ldx #src:jsr add_line_x
+    lda dst+1:pha:lda dst:pha
+    ldx #dst:jsr add_line_x
+    dey:bne add_loop
+
+line_move_loop
+    ldx #chunks_per_line
+chunk_move_loop
+ldy_imm_chunk_size_minus_1_a
+    ldy #chunk_size_80 - 1 ; patched
+byte_move_loop
+byte_move_loop_unroll_count = 8
++assert min_chunk_size % byte_move_loop_unroll_count == 0
+    !for i, 1, byte_move_loop_unroll_count {
+        lda (src),y
+        sta (dst),y
+        dey
+    }
+    bpl byte_move_loop
+    ; SFTODONOW TCO +assert_no_page_crossing byte_move_loop
+    jsr bump_src_dst_and_dex
+    bne chunk_move_loop
+    pla:sta dst:pla:sta dst+1
+    pla:sta src:pla:sta src+1
+    dec lines_to_move_without_clearing
+    bne line_move_loop
+
+    ; Copy the final (possibly only, if fast_scroll_lines_to_move is 1) line,
+    ; clearing the source afterwards.
+    ;
+    ; It is somewhat tempting to add a special case here, where if src and dst
+    ; are both not the one line on the screen which can wrap part-way through,
+    ; we execute a different version of the code which just copies the 320/640
+    ; bytes in one loop without breaking it into chunks. This would be a bit
+    ; faster (a back-of-envelope calculation suggests about 220 cycles saved
+    ; IIRC), *but* it wouldn't improve the worst-case time and so to be flicker
+    ; free we'd still have to keep the raster timings tight enough for the
+    ; chunk-based copy. I therefore don't think it's worth it - it doesn't help
+    ; us be flicker free or use looser raster bounds, and saving about 220
+    ; cycles on about 23/25ths of the scrolling line feeds isn't huge - there
+    ; are 2518 such line feeds in the benchmark, so we'd save about 0.25 seconds
+    ; on the benchmark even if none of our savings just got thrown away waiting
+    ; on the raster.
+line_move_and_clear_loop
+    ldx #chunks_per_line
+chunk_move_and_clear_loop
+ldy_imm_chunk_size_minus_1_b
+    ldy #chunk_size_80 - 1 ; patched
+byte_move_and_clear_loop
+; The body of this loop is slow enough that we fairly rapidly hit diminishing
+; returns by unrolling it, *but* we do have spare space for the unroll at the
+; moment and this loop executes for every single screen scroll. A scanline is
+; only 128 cycles and in 80 column modes we go round this inner loop body 640
+; times, so small savings really do add up and contribute towards increasing our
+; chances of maintaining a flicker free display without slowing things down too
+; much by having over-tight safe raster bounds.
+byte_move_and_clear_loop_unroll_count = 8
++assert min_chunk_size % byte_move_and_clear_loop_unroll_count == 0
+!for i, 1, byte_move_and_clear_loop_unroll_count {
+    lda (src),y
+    sta (dst),y
+    lda #0
+    sta (src),y
+    dey
+}
+    bpl byte_move_and_clear_loop
+    ; SFTODONOW TCO +assert_no_page_crossing byte_move_and_clear_loop
+    jsr bump_src_dst_and_dex
+    bne chunk_move_and_clear_loop
+
+!ifdef DEBUG_COLOUR_BARS {
+    lda #0 xor 7:sta bbc_palette
+}
+b_plus_copy_end
+    ; Page in main RAM; this is a no-op if we have no shadow RAM.
+    lda #0
+jsr_shadow_paging_control2
+    jsr $ffff ; patched
+finish_oswrch
+    pla
+    tay
+    pla
+    tax
+    lda #10
+null_shadow_driver
     rts
 
 our_oswrch
@@ -287,14 +382,14 @@ jsr_shadow_paging_control1
     sta vdu_screen_top_left_address_high
     sta dst+1
 
-    ; This code is patched at runtime on the Electron.
-check_raster_and_update_hardware_screen_start_address
+    ; The code up to here has been common to the BBC and Electron. We start to
+    ; diverge here; the BBC code is written inline and Electron code is copied
+    ; over the top of it by the discardable initialisation code.
+
+rs_bbc
     ; To minimise flicker, we check timer 2 (which is reloaded every vsync) to
     ; see where the raster is and wait until it's in a "safe" location before
-    ; proceeding. What counts as a safe location depends on whether or not we're
-    ; in a 40 or 80 column mode (the latter require moving twice as much data)
-    ; and how big the upper window is (the bigger it is, the more data we have
-    ; to move).
+    ; proceeding.
     ldx fast_scroll_lines_to_move
     cpx #raster_wait_table_entries+1
     bcs dont_wait_for_raster
@@ -307,7 +402,6 @@ raster_wait_loop
     bcs raster_wait_loop
     cmp raster_wait_table_last-1,x
     bcc raster_wait_loop
-    nop:nop ; SFTODONOW MASSIVE HACK TO MAKE ROOM FOR ELECTRON - NOT ACCEPTABLE TO HAVE NOPS EXECUTING
 dont_wait_for_raster
 !ifdef DEBUG_COLOUR_BARS {
     lda #4 xor 7:sta bbc_palette
@@ -332,163 +426,82 @@ dont_wait_for_raster
     iny
     sty crtc_address_register
     stx crtc_address_write
-update_hardware_screen_start_address_done
 
-    ; Tell the OS to move the cursor to the same co-ordinates it already has,
-    ; but taking account of the hardware scrolled screen. We could do this
-    ; ourselves, but it isn't that slow (compared to all the copying we do) to
-    ; get the OS to do it for us, which saves a lot of code here.
-    lda #vdu_goto_xy
-    jsr jmp_parent_wrchv
-    lda vdu_text_cursor_x_position
-    jsr jmp_parent_wrchv
-    lda vdu_text_cursor_y_position
-    jsr jmp_parent_wrchv
+    jmp our_oswrch_common_tail
 
-    ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 40
-    ; column modes and 128 bytes in 80 column modes. This chunk size is chosen
-    ; because it means the wrapping can only ever occur on chunk boundaries,
-    ; allowing us to avoid checking as we process each chunk.
-    ; SFTODO: We could potentially be a lot cleverer about the data move
-    ; operations in here. STEM has some very optimised but complex and perhaps
-    ; over-large code for memmove() and memset which just might be reusable.
-    ; It's also worth noting that we never wrap within a screen line in 32 line
-    ; modes, and even in 25 lines modes only one screen line (starting somewhere
-    ; in page $7f) can have a wrap within it. I think what I have here is
-    ; reasonably good, especially with the loop unrolling, but I'm sure it could
-    ; be better.
-    ; SFTODO: It just might look nicer (when we can't successfully avoid
-    ; flicker) if these loops iterated forwards instead of backwards. This would
-    ; be easiest to do in 80 column modes, where we iterate over Y from 0 to 127
-    ; and changing to iterate from 127 down to 0 would not alter the loop test
-    ; (bpl) or the setup; we'd "just" need to patch the initial "ldy
-    ; #chunk_size-1" and change the deys to iny, although the fact the loop has
-    ; been unrolled makes this fiddlier. The patching would be done in
-    ; discardable init code so the fact it's mildly fiddly isn't a huge problem.
-    ; Iterating forwards with 64 byte chunks would probably be more effort, as
-    ; we don't want to pay for a cpy #chunk_size in the loop body, although
-    ; given the loop is unrolled it really wouldn't hurt that much.
-chunks_per_line = 5
-chunk_size_40 = 320 / chunks_per_line
-chunk_size_80 = 640 / chunks_per_line
-min_chunk_size = chunk_size_40
+; We hook evntv to detect vsync rather than checking for this on irq1v. This
+; avoids missing vsync events where they occur after we check but before the OS
+; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
+; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
+evntv_handler
+    ; SQUASH: If we're pushed for space we don't need to chain to parent evntv
+    ; or check it's our event - we are the foreground application and we
+    ; more-or-less know there aren't any other events. Of course it's possible
+    ; some kind of utility ROM a user wants to use is using events so it's nice
+    ; to play nice.
+    cmp #event_vsync:bne jmp_parent_evntv
+    lda #<initial_t2_value:sta user_via_t2_low_order_latch_counter
+    lda #>initial_t2_value:sta user_via_t2_high_order_counter
+    lda #event_vsync
+jmp_parent_evntv
+parent_evntv = *+1
+    jmp $ffff ; patched
 
-    ; Code from b_plus_copy_start to b_plus_copy_end is copied into private RAM
-    ; on the B+ and this code in main RAM is patched to execute it from private
-    ; RAM. This allows it to access screen memory directly. Because the code is
-    ; also present in main RAM calls to subroutines like bump_src_dst_and_dex
-    ; don't need to be patched to refer to the copy in private RAM, although
-    ; this is only OK for code which isn't accessing screen memory. We preserve
-    ; the within-page alignment when we copy the code into private RAM so loops
-    ; don't incur page crossing penalties despite our checks.
-b_plus_copy_start
-fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
-+assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
-    ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
-    dey:beq line_move_and_clear_loop
-    sty lines_to_move_without_clearing
+; raster_wait_table isn't used on the Electron, so by placing it here we can use
+; evntv_handler's space plus this as one contiguous chunk for Electron-specific
+; code.
+;
+; For a window of n lines at the top of the screen to protect from scrolling,
+; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
+; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
+; raster waiting and just scroll regardless, specify $ff and $00 respectively.
 
-    ; We need to copy lines_to_move_without_clearing lines up by one line,
-    ; working from the bottom-most line to the top-most line. We just add
-    ; repeatedly to generate the addresses; this is relatively easy and saves
-    ; using a general-purpose multiplication routine. We push the addresses onto
-    ; the stack as we generate them, which saves having to write
-    ; subtract-with-wrap code as well.
-add_loop
-    lda src+1:pha:lda src:pha
-    ldx #src:jsr add_line_x
-    lda dst+1:pha:lda dst:pha
-    ldx #dst:jsr add_line_x
-    dey:bne add_loop
-
-line_move_loop
-    ldx #chunks_per_line
-chunk_move_loop
-ldy_imm_chunk_size_minus_1_a
-    ldy #chunk_size_80 - 1 ; patched
-byte_move_loop
-byte_move_loop_unroll_count = 8
-+assert min_chunk_size % byte_move_loop_unroll_count == 0
-!for i, 1, byte_move_loop_unroll_count {
-    lda (src),y
-    sta (dst),y
-    dey
+; SFTODO FORMAT ETC
+    ; What counts as a safe location depends on whether or not we're
+    ; in a 40 or 80 column mode (the latter require moving twice as much data)
+    ; and how big the upper window is (the bigger it is, the more data we have
+    ; to move).
+;
+; This macro helps create bytes in terms of scan lines from the top of the
+; visible screen. Don't forget this is only approximate as we only check the
+; high byte of the timer. There are 312 scanlines per frame.
+!macro scan_line .scan_lines_from_visible_top {
+    .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
+    .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
+    !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
 }
-    bpl byte_move_loop
-    +assert_no_page_crossing byte_move_loop
-    jsr bump_src_dst_and_dex
-    bne chunk_move_loop
-    pla:sta dst:pla:sta dst+1
-    pla:sta src:pla:sta src+1
-    dec lines_to_move_without_clearing
-    bne line_move_loop
 
-    ; Copy the final (possibly only, if fast_scroll_lines_to_move is 1) line,
-    ; clearing the source afterwards.
-    ;
-    ; It is somewhat tempting to add a special case here, where if src and dst
-    ; are both not the one line on the screen which can wrap part-way through,
-    ; we execute a different version of the code which just copies the 320/640
-    ; bytes in one loop without breaking it into chunks. This would be a bit
-    ; faster (a back-of-envelope calculation suggests about 220 cycles saved
-    ; IIRC), *but* it wouldn't improve the worst-case time and so to be flicker
-    ; free we'd still have to keep the raster timings tight enough for the
-    ; chunk-based copy. I therefore don't think it's worth it - it doesn't help
-    ; us be flicker free or use looser raster bounds, and saving about 220
-    ; cycles on about 23/25ths of the scrolling line feeds isn't huge - there
-    ; are 2518 such line feeds in the benchmark, so we'd save about 0.25 seconds
-    ; on the benchmark even if none of our savings just got thrown away waiting
-    ; on the raster.
-line_move_and_clear_loop
-    ldx #chunks_per_line
-chunk_move_and_clear_loop
-ldy_imm_chunk_size_minus_1_b
-    ldy #chunk_size_80 - 1 ; patched
-byte_move_and_clear_loop
-; The body of this loop is slow enough that we fairly rapidly hit diminishing
-; returns by unrolling it, *but* we do have spare space for the unroll at the
-; moment and this loop executes for every single screen scroll. A scanline is
-; only 128 cycles and in 80 column modes we go round this inner loop body 640
-; times, so small savings really do add up and contribute towards increasing our
-; chances of maintaining a flicker free display without slowing things down too
-; much by having over-tight safe raster bounds.
-byte_move_and_clear_loop_unroll_count = 8
-+assert min_chunk_size % byte_move_and_clear_loop_unroll_count == 0
-!for i, 1, byte_move_and_clear_loop_unroll_count {
-    lda (src),y
-    sta (dst),y
-    lda #0
-    sta (src),y
-    dey
-}
-    bpl byte_move_and_clear_loop
-    +assert_no_page_crossing byte_move_and_clear_loop
-    jsr bump_src_dst_and_dex
-    bne chunk_move_and_clear_loop
+; As we're mainly concerned with cycles taken to move data in screen memory, we
+; mostly don't care about the distinction between 25 and 32 line modes. Strictly
+; speaking, the *start* of the safe window should maybe vary in 25 and 32 line
+; modes, as it's about not starting to write to memory until the raster has
+; finished scanning it, and in 25 line modes the gaps between lines slow down
+; the raster with respect to screen memory. (The end of the safe window is about
+; getting the move done before we hit the top line again, which isn't affected
+; by this.) In practice the difference doesn't seem to be big enough to need
+; taking into account.
 
-!ifdef DEBUG_COLOUR_BARS {
-    lda #0 xor 7:sta bbc_palette
-}
-b_plus_copy_end
-    ; Page in main RAM; this is a no-op if we have no shadow RAM.
-    lda #0
-jsr_shadow_paging_control2
-    jsr $ffff ; patched
-finish_oswrch
-    pla
-    tay
-    pla
-    tax
-    lda #10
-null_shadow_driver
-    rts
+; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
 
+; This table is for 80 column modes; the 40 column table at raster_wait_table_40
+; is copied over this by the discardable init code if necessary.
+raster_wait_table_entries = fast_scroll_max_upper_window_size
+raster_wait_table
+waster_wait_table_80
+raster_wait_table_first
+    +scan_line 1*8 ; 1 line window
+    +scan_line 2*8 ; 2 line window
+    +scan_line 3*8 ; 3 line window
+raster_wait_table_last
+    +scan_line 8*8 ; 1 line window - this seems solid
+    +scan_line 8*8 ; 2 line window - seems surprisingly solid
+    +scan_line 4*8 ; 3 line window - not great, maybe nicer than with no raster check
+raster_wait_table_end
+    +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
+    +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
+
+re_bbc ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
 }
-runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
-; The code between runtime_start and runtime_end is copied down to runtime_start
-; by our discardable initialisation code. Make sure it fits!
-runtime_size = runtime_end - runtime_start
-+assert runtime_size <= fast_scroll_end - fast_scroll_start
 
 ; This table is for 40 column modes; it is copied over raster_wait_table by the
 ; discardable init code if appropriate.
@@ -522,9 +535,31 @@ raster_wait_table_end_40
 
 !zone { ; discardable init code
 
-; This is copied over the code at evntv_handler on the Electron.
-.electron_irq_handler
-!pseudopc evntv_handler {
+; Electron code copied over rs_bbc.
+bs_electron
+!pseudopc rs_bbc {
+    ; At this point A contains vdu_screen_top_left_address_high; we avoid using
+    ; A so we have that value for later.
+
+    ; SFTODONOW: I need to experiment and tweak this, I suspect we may only want to do the RTC interrupt wait if we have a single top line, and maybe only a single top line in 40 column modes, but let's just always do it for the moment
+    ldx fast_scroll_lines_to_move:dex:bne no_raster_wait
+    ; Wait for the "RTC" interrupt on scanline 99.
+    ldx rtc_count
+busy_wait
+rtc_count = * + 1
+    cpx #$ff ; patched
+    beq busy_wait
+no_raster_wait
+    ; Update the hardware screen start address.
+    ; A already contains vdu_screen_top_left_address_high.
+    lsr
+    ror vdu_temp_store_da
+    sta electron_screen_start_address_high
+    lda vdu_temp_store_da
+    sta electron_screen_start_address_low
+    ; Continue with the platform-independent code.
+    jmp our_oswrch_common_tail
+
 irq_handler
     lda #electron_isc_rtc_bit
     bit electron_isc
@@ -555,38 +590,6 @@ LDBD1
     BNE LDBD1
 LDBDF
     PLA
-    jmp electron_irq_handler_continued
-}
-.electron_irq_handler_end
-
-; SFTODONOW: I THINK THE FACT I'M NOT CLEARING THE BIT IN THE IRQ MASK DURING ONE-OFF INIT *IS* GOING TO MEAN I CAN MISS THINGS
-; SFTODONOW: TESTING AT CMD PROMPT ON ELECTRON IN MODE 6, I THINK THIS *CAN* LEAVE THE SOFTWARE CURSOR "BURNED IN" TO SCREEN RAM AS WELL SCROLL. I DON'T KNOW IF THIS CAN OCCUR IN OZMOO - WE PROBABLY WOULD HAVE CURSOR ENABLED IF USER INPUT IS BEING PROCESSED AND IS WHAT CAUSES SCREEN TO SCROLL, I HAVEN'T EXPERIMENTED YET. MAY NEED TO ADDRESS THIS - YES, IT DOES LEAVE A CORRUPT CURSOR IF I TYPE A LONG LINE (AT END OF BENCHMARK FWIW) - THE FIX MAY BE AS SIMPLE AS HAVING OZMOOE ALWAYS FORCE CURSOR OFF BEFORE SCROLLING SCREEN
-; This is copied over the code at
-; check_raster_and_update_hardware_screen_start_address on the Electron.
-.electron_check_raster_and_update_hardware_screen_start_address
-!pseudopc check_raster_and_update_hardware_screen_start_address {
-    ; At this point A contains vdu_screen_top_left_address_high; we avoid using
-    ; A so we have that value for later.
-
-    ; SFTODONOW: I need to experiment and tweak this, I suspect we may only want to do the RTC interrupt wait if we have a single top line, and maybe only a single top line in 40 column modes, but let's just always do it for the moment
-    ldx fast_scroll_lines_to_move:dex:bne no_raster_wait
-    ; Wait for the "RTC" interrupt on scanline 99.
-    ldx rtc_count
-busy_wait
-rtc_count = * + 1
-    cpx #$ff ; patched
-    beq busy_wait
-no_raster_wait
-    ; Update the hardware screen start address.
-    ; A already contains vdu_screen_top_left_address_high.
-    lsr
-    ror vdu_temp_store_da
-    sta electron_screen_start_address_high
-    lda vdu_temp_store_da
-    sta electron_screen_start_address_low
-    jmp update_hardware_screen_start_address_done
-; SFTODONOW: It's sucky having to split this up like this
-electron_irq_handler_continued
     STA $0283
     ; Bump rtc_count; this allows us to busy wait on RTC interrupts in user
     ; code.
@@ -601,8 +604,17 @@ electron_irq_handler_continued
     pla:tax
     lda $fc
     rti
+
+re_electron
 }
-.electron_check_raster_and_update_hardware_screen_start_address_end
+be_electron
+
+max_runtime_size = fast_scroll_end - fast_scroll_start
++assert re_bbc - fast_scroll_start <= max_runtime_size
++assert re_electron - fast_scroll_start <= max_runtime_size
+
+; SFTODONOW: I THINK THE FACT I'M NOT CLEARING THE BIT IN THE IRQ MASK DURING ONE-OFF INIT *IS* GOING TO MEAN I CAN MISS THINGS
+; SFTODONOW: TESTING AT CMD PROMPT ON ELECTRON IN MODE 6, I THINK THIS *CAN* LEAVE THE SOFTWARE CURSOR "BURNED IN" TO SCREEN RAM AS WELL SCROLL. I DON'T KNOW IF THIS CAN OCCUR IN OZMOO - WE PROBABLY WOULD HAVE CURSOR ENABLED IF USER INPUT IS BEING PROCESSED AND IS WHAT CAUSES SCREEN TO SCROLL, I HAVEN'T EXPERIMENTED YET. MAY NEED TO ADDRESS THIS - YES, IT DOES LEAVE A CORRUPT CURSOR IF I TYPE A LONG LINE (AT END OF BENCHMARK FWIW) - THE FIX MAY BE AS SIMPLE AS HAVING OZMOOE ALWAYS FORCE CURSOR OFF BEFORE SCROLLING SCREEN
 
 ; This code is copied over b_plus_copy_start in main RAM after we've copied that code into the private RAM.
 .b_plus_copy_start_patch_start
@@ -643,11 +655,11 @@ not_already_claimed
     ; offsets.) If we decide not to support fast hardware scrolling this is
     ; still OK; we own this block of memory so there's no problem with us
     ; corrupting it.
-    ldx #>runtime_size
-    ldy #<runtime_size
+    ldx #>max_runtime_size
+    ldy #<max_runtime_size
 copy_runtime_code_loop
-lda_runtime_start_abs
-    lda runtime_start
+lda_runtime_start_abs ; SFTODO: RENAME THIS LABEL TO MATCH THE LDA
+    lda bs_runtime_common_and_bbc
 sta_fast_scroll_start_abs
     sta fast_scroll_start
     +inc16 lda_runtime_start_abs+1
@@ -735,11 +747,7 @@ use_shadow_driver_yx
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
     ; We can support fast scrolling, but we need to tweak the code to remove
     ; BBC-specific aspects.
-    ; Overwrite the BBC EVNTV handler with the Electron IRQ1V handler.
-    +copy_data_checked .electron_irq_handler, .electron_irq_handler_end, electron_irq_handler_space, electron_irq_handler_space_end
-    ; SFTODONOW: WE WILL NEED TO REPLACE EVNTVHANDLER WITH OUR IRQ1 HANDLER AND INSTALL IT
-    ; Overwrite the BBC check raster and update hardware screen address code with the Electron code.
-    +copy_data_checked .electron_check_raster_and_update_hardware_screen_start_address, .electron_check_raster_and_update_hardware_screen_start_address_end, check_raster_and_update_hardware_screen_start_address, update_hardware_screen_start_address_done ; SFTODO: THESE LABELS ARE INSANE
+    +copy_data_checked bs_electron, be_electron, rs_bbc, fast_scroll_end
     ; Install our IRQ1V handler
     sei
     lda irq1v:sta parent_irq1v
