@@ -122,41 +122,6 @@ bs_runtime_common_and_bbc
 ; We start with code which is common to the BBC and Electron so we can avoid
 ; having two copies of it in this executable on disc.
 
-add_line_x
-!zone {
-    clc
-    lda $00,x:adc vdu_bytes_per_character_row_low:sta $00,x
-    lda $01,x:adc vdu_bytes_per_character_row_high
-    bpl .no_wrap
-    sec:sbc vdu_screen_size_high_byte
-.no_wrap
-    sta $01,x
-    rts
-}
-
-bump_src_dst_and_dex
-!macro bump .ptr {
-    ; .ptr += chunk_size
-    sec ; not clc as we want to offset the minus 1 just below
-    lda .ptr
-    adc ldy_imm_chunk_size_minus_1_a+1 ; add chunk_size - 1
-    sta .ptr
-    bcc .no_carry
-    inc .ptr+1
-    bpl .no_wrap
-    ; .ptr has gone past the top of screen memory, wrap it.
-    sec
-    lda .ptr+1
-    sbc vdu_screen_size_high_byte
-    sta .ptr+1
-.no_carry
-.no_wrap
-}
-    +bump src
-    +bump dst
-    dex
-    rts
-
 our_oswrch_common_tail
     ; Tell the OS to move the cursor to the same co-ordinates it already has,
     ; but taking account of the hardware scrolled screen. We could do this
@@ -239,7 +204,7 @@ byte_move_loop_unroll_count = 8
         dey
     }
     bpl byte_move_loop
-    ; SFTODONOW TCO +assert_no_page_crossing byte_move_loop
+    +assert_no_page_crossing byte_move_loop
     jsr bump_src_dst_and_dex
     bne chunk_move_loop
     pla:sta dst:pla:sta dst+1
@@ -286,7 +251,7 @@ byte_move_and_clear_loop_unroll_count = 8
     dey
 }
     bpl byte_move_and_clear_loop
-    ; SFTODONOW TCO +assert_no_page_crossing byte_move_and_clear_loop
+    +assert_no_page_crossing byte_move_and_clear_loop
     jsr bump_src_dst_and_dex
     bne chunk_move_and_clear_loop
 
@@ -306,6 +271,42 @@ finish_oswrch
     lda #10
 null_shadow_driver
     rts
+
+add_line_x
+!zone {
+    clc
+    lda $00,x:adc vdu_bytes_per_character_row_low:sta $00,x
+    lda $01,x:adc vdu_bytes_per_character_row_high
+    bpl .no_wrap
+    sec:sbc vdu_screen_size_high_byte
+.no_wrap
+    sta $01,x
+    rts
+}
+
+bump_src_dst_and_dex
+!macro bump .ptr {
+    ; .ptr += chunk_size
+    sec ; not clc as we want to offset the minus 1 just below
+    lda .ptr
+    adc ldy_imm_chunk_size_minus_1_a+1 ; add chunk_size - 1
+    sta .ptr
+    bcc .no_carry
+    inc .ptr+1
+    bpl .no_wrap
+    ; .ptr has gone past the top of screen memory, wrap it.
+    sec
+    lda .ptr+1
+    sbc vdu_screen_size_high_byte
+    sta .ptr+1
+.no_carry
+.no_wrap
+}
+    +bump src
+    +bump dst
+    dex
+    rts
+
 
 our_oswrch
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
