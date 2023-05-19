@@ -537,7 +537,9 @@ ENDPROC
     IF y>max_y(x) THEN max_y(x)=y
     IF y>max_y THEN max_y=y
     cell_x(i)=x:cell_y(i)=y
-    READ highlight_left_x(x),highlight_right_x(x)
+    READ hlx,hrx
+    IF electron THEN hlx=hlx-1:hrx=hrx-1
+    highlight_left_x(x)=hlx:highlight_right_x(x)=hrx
     NEXT
 
     PRINT CHR$header_fg;"Screen mode:";CHR$normal_fg;CHR$electron_space;"(hit ";:sep$="":FOR i=1 TO LEN(mode_list$):PRINT sep$;MID$(mode_list$,i,1);:sep$="/":NEXT:PRINT " to change)"
