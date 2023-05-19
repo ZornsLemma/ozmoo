@@ -213,7 +213,26 @@ jsr_shadow_paging_control1
 
     ; This code is patched out at runtime on the Electron.
     ; SFTODO: Although it's not a huge deal, it would really make more sense to do this immediately before we write the new screen start address to the CRTC - that just might let us slip in where we'd otherwise not. This would also (although it's not the only reason to do it) make it easier to patch the code on the Electron, as we'd then patch check_raste and update_hardware_screen_start_address in the same code and just patch once. I think the only real downside to doing this is that we'd have to do an extra lda dst+1 to restore A for the hardware screen start code after using it in this code.
-check_raster
+    ; Calculate the new screen start address, ready for updating the CRTC/ULA.
+    ; We also save the new screen start address to dst ready for use in the data
+    ; copy loops below.
+    lda vdu_screen_top_left_address_low
+    clc
+    adc vdu_bytes_per_character_row_low
+    sta vdu_screen_top_left_address_low
+    sta dst
+    sta vdu_temp_store_da
+    lda vdu_screen_top_left_address_high
+    adc vdu_bytes_per_character_row_high
+    bpl +
+    sec
+    sbc vdu_screen_size_high_byte
++
+    sta vdu_screen_top_left_address_high
+    sta dst+1
+
+    ; This code is patched at runtime on the Electron.
+check_raster_and_update_hardware_screen_start_address
     ; To minimise flicker, we check timer 2 (which is reloaded every vsync) to
     ; see where the raster is and wait until it's in a "safe" location before
     ; proceeding. What counts as a safe location depends on whether or not we're
@@ -242,27 +261,8 @@ dont_wait_for_raster
     ; frame where the protected line temporarily appears at the bottom of the
     ; screen; it's probably less annoying for it to flicker (because we can't
     ; keep up with the raster) than have it jump around that much.
-    ;
-    ; As we're doing this we also save the post-scroll top left address to dst
-    ; ready for use in the data copy loops below.
-    lda vdu_screen_top_left_address_low
-    clc
-    adc vdu_bytes_per_character_row_low
-    sta vdu_screen_top_left_address_low
-    sta dst
-    sta vdu_temp_store_da
-    lda vdu_screen_top_left_address_high
-    adc vdu_bytes_per_character_row_high
-    bpl +
-    sec
-    sbc vdu_screen_size_high_byte
-+
-    sta vdu_screen_top_left_address_high
-    sta dst+1
-    ; The following code is patched at runtime on the Electron.
-update_hardware_screen_start_address
-    ; nop:nop:nop:nop ; SFTODO TEMP HACK TO MAKE MORE SPACE FOR ELECTRON PATCH WHILE I EXPERIMENT
     ldy #crtc_start_screen_address_high_register
+    lda dst+1 ; equivalent to lda vdu_screen_top_left_address_high but shorter
     lsr
     ror vdu_temp_store_da
     lsr
@@ -506,39 +506,20 @@ raster_wait_table_end_40
 
 !zone { ; discardable init code
 
-; This is copied over the code at update_hardware_screen_start_address on an
-; Electron.
-.electron_update_hardware_screen_start_address
-!pseudopc update_hardware_screen_start_address {
-    ; For the record, I have briefly experimented with putting a *FX19 call in
-    ; here to wait for vsync on the Electron. It looks worse that way, unless
-    ; I've got confused. I think this isn't too surprising, because even on the
-    ; BBC (with faster RAM and no memory contention with the screen) for a
-    ; flicker-free update of even a single line upper window we have to start in
-    ; the visible region of the screen. So by waiting for vsync here, we
-    ; deliberately force the Electron to start in a position that practically
-    ; guarantees flicker, whereas by not waiting we will start somewhere better
-    ; some of the time just by luck.
+; This is copied over the code at
+; check_raster_and_update_hardware_screen_start_address on the Electron.
+.electron_check_raster_and_update_hardware_screen_start_address
+!pseudopc check_raster_and_update_hardware_screen_start_address {
+    ; SFTODONOW: IMPLEMENT THE RTC TIMER WAIT, POSS ONLY FOR SINGLE LINE - BUT JUST RESTRUCTURING CODE FOR NOW
+    lda dst+1 ; equivalent to lda vdu_screen_top_left_address_high but shorter
     lsr
     ror vdu_temp_store_da
-!if 0 { ; SFTODO THIS HACK WORKS REALLY WELL (AT LEAST IN MODE 6 SINGLE TOP LINE), TRY TO TIDY UP
-    ; SFTODO START EXP
-    pha
-    sei ; SFTODO SUPER HACKY, BUT I HOPE THIS WILL ALLOW ME TO WAIT FOR THIS INTERRUPT WITHOUT FAFFING WITH OS INTERACTION FOR NOW
-    lda #1<<3
-SFTODOHACKLOOP
-    bit $fe00
-    beq SFTODOHACKLOOP
-    cli ; SFTODO HACK CONTD - I EXPECT/HOPE THE OS WILL NOW SERVICE THE INTERRUPT AND CLEAR THIS BIT
-    pla
-    ; SFTODO END EXP
-}
     sta electron_screen_start_address_high
     lda vdu_temp_store_da
     sta electron_screen_start_address_low
     jmp update_hardware_screen_start_address_done
 }
-.electron_update_hardware_screen_start_address_end
+.electron_check_raster_and_update_hardware_screen_start_address_end
 
 ; This code is copied over b_plus_copy_start in main RAM after we've copied that code into the private RAM.
 .b_plus_copy_start_patch_start
@@ -671,12 +652,9 @@ use_shadow_driver_yx
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
     ; We can support fast scrolling, but we need to tweak the code to remove
     ; BBC-specific aspects.
-    ; Disable the check for the raster position.
-    lda #opcode_jmp:sta check_raster
-    lda #<dont_wait_for_raster:sta check_raster + 1
-    lda #>dont_wait_for_raster:sta check_raster + 2
-    ; Overwrite the BBC hardware screen start address update with the Electron code.
-    +copy_data_checked .electron_update_hardware_screen_start_address, .electron_update_hardware_screen_start_address_end, update_hardware_screen_start_address, update_hardware_screen_start_address_done
+    ; SFTODONOW: WE WILL NEED TO REPLACE EVNTVHANDLER WITH OUR IRQ1 HANDLER AND INSTALL IT
+    ; Overwrite the BBC check raster and update hardware screen address code with the Electron code.
+    +copy_data_checked .electron_check_raster_and_update_hardware_screen_start_address, .electron_check_raster_and_update_hardware_screen_start_address_end, check_raster_and_update_hardware_screen_start_address, update_hardware_screen_start_address_done ; SFTODO: THESE LABELS ARE INSANE
     jmp common_init
 not_electron
     ; Install our EVNTV handler so we can tell where the raster is. We don't
