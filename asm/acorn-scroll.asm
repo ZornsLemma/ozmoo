@@ -78,7 +78,9 @@ crtc_start_screen_address_high_register = 12
 electron_isc = $fe00 ; SFTODO: EXPAND ISC GIVEN HOW VERBOSE WE ARE ELSEWHERE
 electron_screen_start_address_low = $fe02
 electron_screen_start_address_high = $fe03
+electron_interrupt_clear_and_paging_register = $fe05
 electron_isc_rtc_bit = 1 << 3
+electron_icpr_rtc_bit = 1 << 5
 
 user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
@@ -577,7 +579,7 @@ is_rtc_interrupt
     lda $0283
     tax
     eor #$0F
-    ; SFTODO: To be honest I don't understand why we can't just update $0283 now instead of doing PHA here and PLA:STA below - we are running with interrupts disabled here so no other code should be able to observe the difference. I will leave it for now as this is how the OS does it. Fixing this would save a couple of bytes and allow us to avoid the need to waste a couple of bytes in the BBC EVNTV code (we could push a couple of bytes of code from the first part of the IRQ handler into this continued part).
+    ; SFTODO: To be honest I don't understand why we can't just update $0283 now instead of doing PHA here and PLA:STA below - we are running with interrupts disabled here so no other code should be able to observe the difference. I will leave it for now as this is how the OS does it. Changing this would save a couple of bytes.
     pha
     tay
     sec
@@ -595,12 +597,11 @@ LDBDF
     ; Bump rtc_count; this allows us to busy wait on RTC interrupts in user
     ; code.
     inc rtc_count
-    ; Clear RTC interrupt.
-    lda #1<<5 ; SFTODO MAGIC
-    sta $fe05 ; SFTODO MAGIC
-    ; SFTODO SEMI VOODOO
-    lda $f4
-    sta $fe05
+    ; Clear the RTC interrupt now we've handled it. We must take romsel_copy
+    ; into account as this register controls both interrupts and paging.
+    lda #electron_icpr_rtc_bit
+    ora romsel_copy
+    sta electron_interrupt_clear_and_paging_register
     pla:tay
     pla:tax
     lda $fc
