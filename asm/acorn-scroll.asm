@@ -58,8 +58,10 @@ crtc_address_register = $fe00
 crtc_address_write = $fe01
 crtc_start_screen_address_high_register = 12
 
+electron_isc = $fe00 ; SFTODO: EXPAND ISC GIVEN HOW VERBOSE WE ARE ELSEWHERE
 electron_screen_start_address_low = $fe02
 electron_screen_start_address_high = $fe03
+electron_isc_rtc_bit = 1 << 3
 
 user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
@@ -68,6 +70,7 @@ user_via_auxiliary_control_register = $fe6b
 opcode_jmp = $4c
 opcode_rts = $60
 
+irq1v = $204
 wrchv = $20e
 evntv = $220
 
@@ -105,6 +108,10 @@ runtime_start
 ; avoids missing vsync events where they occur after we check but before the OS
 ; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
+;
+; This code is BBC-specific; we overwrite it with our Electron IRQ handler on
+; the Electron.
+electron_irq_handler_space
 evntv_handler
     ; SQUASH: If we're pushed for space we don't need to chain to parent evntv
     ; or check it's our event - we are the foreground application and we
@@ -118,6 +125,57 @@ evntv_handler
 jmp_parent_evntv
 parent_evntv = *+1
     jmp $ffff ; patched
+evntv_handler_end
+
+; raster_wait_table isn't used on the Electron, so by placing it here we can use
+; evntv_handler's space plus this as one contiguous chunk for Electron-specific
+; code.
+;
+; For a window of n lines at the top of the screen to protect from scrolling,
+; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
+; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
+; raster waiting and just scroll regardless, specify $ff and $00 respectively.
+;
+; This macro helps create bytes in terms of scan lines from the top of the
+; visible screen. Don't forget this is only approximate as we only check the
+; high byte of the timer. There are 312 scanlines per frame.
+!macro scan_line .scan_lines_from_visible_top {
+    .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
+    .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
+    !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
+}
+
+; As we're mainly concerned with cycles taken to move data in screen memory, we
+; mostly don't care about the distinction between 25 and 32 line modes. Strictly
+; speaking, the *start* of the safe window should maybe vary in 25 and 32 line
+; modes, as it's about not starting to write to memory until the raster has
+; finished scanning it, and in 25 line modes the gaps between lines slow down
+; the raster with respect to screen memory. (The end of the safe window is about
+; getting the move done before we hit the top line again, which isn't affected
+; by this.) In practice the difference doesn't seem to be big enough to need
+; taking into account.
+
+; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
+
+; This table is for 80 column modes; the 40 column table at raster_wait_table_40
+; is copied over this by the discardable init code if necessary.
+raster_wait_table_entries = fast_scroll_max_upper_window_size
+raster_wait_table
+raster_wait_table_first
+    +scan_line 1*8 ; 1 line window
+    +scan_line 2*8 ; 2 line window
+    +scan_line 3*8 ; 3 line window
+raster_wait_table_last
+    +scan_line 8*8 ; 1 line window - this seems solid
+    +scan_line 8*8 ; 2 line window - seems surprisingly solid
+    +scan_line 4*8 ; 3 line window - not great, maybe nicer than with no raster check
+raster_wait_table_end
+    +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
+    +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
+
+; SFTODONOW: COMMENT
+    !fill 16
+electron_irq_handler_space_end
 
 add_line_x
 !zone {
@@ -211,8 +269,6 @@ protecting_some_lines
 jsr_shadow_paging_control1
     jsr $ffff ; patched
 
-    ; This code is patched out at runtime on the Electron.
-    ; SFTODO: Although it's not a huge deal, it would really make more sense to do this immediately before we write the new screen start address to the CRTC - that just might let us slip in where we'd otherwise not. This would also (although it's not the only reason to do it) make it easier to patch the code on the Electron, as we'd then patch check_raste and update_hardware_screen_start_address in the same code and just patch once. I think the only real downside to doing this is that we'd have to do an extra lda dst+1 to restore A for the hardware screen start code after using it in this code.
     ; Calculate the new screen start address, ready for updating the CRTC/ULA.
     ; We also save the new screen start address to dst ready for use in the data
     ; copy loops below.
@@ -251,6 +307,7 @@ raster_wait_loop
     bcs raster_wait_loop
     cmp raster_wait_table_last-1,x
     bcc raster_wait_loop
+    nop:nop ; SFTODONOW MASSIVE HACK TO MAKE ROOM FOR ELECTRON - NOT ACCEPTABLE TO HAVE NOPS EXECUTING
 dont_wait_for_raster
 !ifdef DEBUG_COLOUR_BARS {
     lda #4 xor 7:sta bbc_palette
@@ -426,47 +483,6 @@ finish_oswrch
 null_shadow_driver
     rts
 
-; For a window of n lines at the top of the screen to protect from scrolling,
-; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
-; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
-; raster waiting and just scroll regardless, specify $ff and $00 respectively.
-;
-; This macro helps create bytes in terms of scan lines from the top of the
-; visible screen. Don't forget this is only approximate as we only check the
-; high byte of the timer. There are 312 scanlines per frame.
-!macro scan_line .scan_lines_from_visible_top {
-    .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
-    .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
-    !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
-}
-
-; As we're mainly concerned with cycles taking to move data in screen memory, we
-; mostly don't care about the distinction between 25 and 32 line modes. Strictly
-; speaking, the *start* of the safe window should maybe vary in 25 and 32 line
-; modes, as it's about not starting to write to memory until the raster has
-; finished scanning it, and in 25 line modes the gaps between lines slow down
-; the raster with respect to screen memory. (The end of the safe window is about
-; getting the move done before we hit the top line again, which isn't affected
-; by this.) In practice the difference doesn't seem to be big enough to need
-; taking into account.
-
-; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
-
-; This table is for 80 column modes; the 40 column table at raster_wait_table_40
-; is copied over this by the discardable init code if necessary.
-raster_wait_table_entries = fast_scroll_max_upper_window_size
-raster_wait_table
-raster_wait_table_first
-    +scan_line 1*8 ; 1 line window
-    +scan_line 2*8 ; 2 line window
-    +scan_line 3*8 ; 3 line window
-raster_wait_table_last
-    +scan_line 8*8 ; 1 line window - this seems solid
-    +scan_line 8*8 ; 2 line window - seems surprisingly solid
-    +scan_line 4*8 ; 3 line window - not great, maybe nicer than with no raster check
-raster_wait_table_end
-    +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
-    +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
 }
 runtime_end ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
 ; The code between runtime_start and runtime_end is copied down to runtime_start
@@ -506,18 +522,85 @@ raster_wait_table_end_40
 
 !zone { ; discardable init code
 
+; This is copied over the code at evntv_handler on the Electron.
+.electron_irq_handler
+!pseudopc evntv_handler {
+irq_handler
+    lda #electron_isc_rtc_bit
+    bit electron_isc
+    bne is_rtc_interrupt
+    ; lda $fc ; SFTODO VOODOO - I DON'T *THINK* THIS IS NEEDED (BUT THINK FRESH)
+parent_irq1v = *+1
+    jmp $ffff ; patched
+is_rtc_interrupt
+    txa:pha
+    tya:pha
+    ; Update OS 100Hz timer; we have to do this as the OS will no longer see RTC
+    ; interrupts.
+    ; SFTODO FIX MAGIC CONSTANTS
+    lda $0283
+    tax
+    eor #$0F
+    ; SFTODO: To be honest I don't understand why we can't just update $0283 now instead of doing PHA here and PLA:STA below - we are running with interrupts disabled here so no other code should be able to observe the difference. I will leave it for now as this is how the OS does it. Fixing this would save a couple of bytes and allow us to avoid the need to waste a couple of bytes in the BBC EVNTV code (we could push a couple of bytes of code from the first part of the IRQ handler into this continued part).
+    pha
+    tay
+    sec
+LDBD1
+    LDA $0290,X
+    ADC #$00
+    STA $0290,Y
+    DEX
+    BEQ LDBDF
+    DEY
+    BNE LDBD1
+LDBDF
+    PLA
+    jmp electron_irq_handler_continued
+}
+.electron_irq_handler_end
+
+; SFTODONOW: I THINK THE FACT I'M NOT CLEARING THE BIT IN THE IRQ MASK DURING ONE-OFF INIT *IS* GOING TO MEAN I CAN MISS THINGS
+; SFTODONOW: TESTING AT CMD PROMPT ON ELECTRON IN MODE 6, I THINK THIS *CAN* LEAVE THE SOFTWARE CURSOR "BURNED IN" TO SCREEN RAM AS WELL SCROLL. I DON'T KNOW IF THIS CAN OCCUR IN OZMOO - WE PROBABLY WOULD HAVE CURSOR ENABLED IF USER INPUT IS BEING PROCESSED AND IS WHAT CAUSES SCREEN TO SCROLL, I HAVEN'T EXPERIMENTED YET. MAY NEED TO ADDRESS THIS
 ; This is copied over the code at
 ; check_raster_and_update_hardware_screen_start_address on the Electron.
 .electron_check_raster_and_update_hardware_screen_start_address
 !pseudopc check_raster_and_update_hardware_screen_start_address {
-    ; SFTODONOW: IMPLEMENT THE RTC TIMER WAIT, POSS ONLY FOR SINGLE LINE - BUT JUST RESTRUCTURING CODE FOR NOW
-    lda dst+1 ; equivalent to lda vdu_screen_top_left_address_high but shorter
+    ; At this point A contains vdu_screen_top_left_address_high; we avoid using
+    ; A so we have that value for later.
+
+    ; SFTODONOW: I need to experiment and tweak this, I suspect we may only want to do the RTC interrupt wait if we have a single top line, and maybe only a single top line in 40 column modes, but let's just always do it for the moment
+    ldx fast_scroll_lines_to_move:dex:bne no_raster_wait
+    ; Wait for the "RTC" interrupt on scanline 99.
+    ldx rtc_count
+busy_wait
+rtc_count = * + 1
+    cpx #$ff ; patched
+    beq busy_wait
+no_raster_wait
+    ; Update the hardware screen start address.
+    ; A already contains vdu_screen_top_left_address_high.
     lsr
     ror vdu_temp_store_da
     sta electron_screen_start_address_high
     lda vdu_temp_store_da
     sta electron_screen_start_address_low
     jmp update_hardware_screen_start_address_done
+; SFTODONOW: It's sucky having to split this up like this
+electron_irq_handler_continued
+    STA $0283
+    ; Bump rtc_count; this allows us to busy wait on RTC interrupts in user
+    ; code.
+    inc rtc_count
+    ; Clear RTC interrupt.
+    lda #1<<5 ; SFTODO MAGIC
+    sta $fe05 ; SFTODO MAGIC
+    ; SFTODO SEMI VOODOO
+    lda $f4
+    sta $fe05
+    pla:tay
+    pla:tax
+    lda $fc
+    rti
 }
 .electron_check_raster_and_update_hardware_screen_start_address_end
 
@@ -652,9 +735,18 @@ use_shadow_driver_yx
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
     ; We can support fast scrolling, but we need to tweak the code to remove
     ; BBC-specific aspects.
+    ; Overwrite the BBC EVNTV handler with the Electron IRQ1V handler.
+    +copy_data_checked .electron_irq_handler, .electron_irq_handler_end, electron_irq_handler_space, electron_irq_handler_space_end
     ; SFTODONOW: WE WILL NEED TO REPLACE EVNTVHANDLER WITH OUR IRQ1 HANDLER AND INSTALL IT
     ; Overwrite the BBC check raster and update hardware screen address code with the Electron code.
     +copy_data_checked .electron_check_raster_and_update_hardware_screen_start_address, .electron_check_raster_and_update_hardware_screen_start_address_end, check_raster_and_update_hardware_screen_start_address, update_hardware_screen_start_address_done ; SFTODO: THESE LABELS ARE INSANE
+    ; Install our IRQ1V handler
+    sei
+    lda irq1v:sta parent_irq1v
+    lda irq1v+1:sta parent_irq1v+1
+    lda #<irq_handler:sta irq1v
+    lda #>irq_handler:sta irq1v+1
+    cli
     jmp common_init
 not_electron
     ; Install our EVNTV handler so we can tell where the raster is. We don't
