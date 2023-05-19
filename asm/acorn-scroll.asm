@@ -60,6 +60,7 @@
 ; The constant names and fragments of OS 1.20 code which have been hacked up to
 ; form part of this code are based on TobyLobster's OS 1.20 disassembly.
 spool_file_handle = $257
+electron_irq_mask = $25b
 time_clock_switch = $283
 electron_time_clock_a = $291
 vdu_text_window_bottom = $309
@@ -628,7 +629,6 @@ max_runtime_size = fast_scroll_end - fast_scroll_start
 +assert re_bbc - fast_scroll_start <= max_runtime_size
 +assert re_electron - fast_scroll_start <= max_runtime_size
 
-; SFTODONOW: I THINK THE FACT I'M NOT CLEARING THE BIT IN THE IRQ MASK DURING ONE-OFF INIT *IS* GOING TO MEAN I CAN MISS THINGS
 ; SFTODONOW: TESTING AT CMD PROMPT ON ELECTRON IN MODE 6, I THINK THIS *CAN* LEAVE THE SOFTWARE CURSOR "BURNED IN" TO SCREEN RAM AS WELL SCROLL. I DON'T KNOW IF THIS CAN OCCUR IN OZMOO - WE PROBABLY WOULD HAVE CURSOR ENABLED IF USER INPUT IS BEING PROCESSED AND IS WHAT CAUSES SCREEN TO SCROLL, I HAVEN'T EXPERIMENTED YET. MAY NEED TO ADDRESS THIS - YES, IT DOES LEAVE A CORRUPT CURSOR IF I TYPE A LONG LINE (AT END OF BENCHMARK FWIW) - THE FIX MAY BE AS SIMPLE AS HAVING OZMOOE ALWAYS FORCE CURSOR OFF BEFORE SCROLLING SCREEN
 
 ; This code is copied over rs_screen_ram_copy in main RAM after we've copied that code into the private RAM.
@@ -770,6 +770,13 @@ use_shadow_driver_yx
     lda irq1v+1:sta parent_irq1v+1
     lda #<irq_handler:sta irq1v
     lda #>irq_handler:sta irq1v+1
+    ; Stop the OS processing RTC interrupts. We need to do this in case one
+    ; occurs after our IRQ1V handler runs (because some other interrupt has
+    ; occurred) but before the OS handler we chain onto checks; if the OS is
+    ; allowed to see RTC interrupts we might miss them.
+    lda electron_irq_mask
+    and #not(electron_isc_rtc_bit)
+    sta electron_irq_mask
     cli
     jmp common_init
 not_electron
