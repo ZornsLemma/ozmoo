@@ -60,6 +60,8 @@
 ; The constant names and fragments of OS 1.20 code which have been hacked up to
 ; form part of this code are based on TobyLobster's OS 1.20 disassembly.
 spool_file_handle = $257
+time_clock_switch = $283
+electron_time_clock_a = $291
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
@@ -573,38 +575,46 @@ irq_handler
     ; lda $fc ; SFTODO VOODOO - I DON'T *THINK* THIS IS NEEDED (BUT THINK FRESH)
 parent_irq1v = *+1
     jmp $ffff ; patched
+
 is_rtc_interrupt
     txa:pha
     tya:pha
-    ; Update OS 100Hz timer; we have to do this as the OS will no longer see RTC
-    ; interrupts.
-    ; SFTODO FIX MAGIC CONSTANTS
-    lda $0283
+
+    ; Update the OS 100Hz timer; we have to do this as the OS will no longer see
+    ; RTC interrupts.
+    lda time_clock_switch
     tax
-    eor #$0F
-    ; SFTODO: To be honest I don't understand why we can't just update $0283 now instead of doing PHA here and PLA:STA below - we are running with interrupts disabled here so no other code should be able to observe the difference. I will leave it for now as this is how the OS does it. Changing this would save a couple of bytes.
+    eor #$0f
+    ; SFTODO: To be honest I don't understand why we can't just update
+    ; time_clock_switch now instead of doing PHA here and PLA:STA below - we are
+    ; running with interrupts disabled so no other code should be able to
+    ; observe the difference. I will leave it for now as this is how the OS does
+    ; it. Changing this would save a couple of bytes.
     pha
     tay
     sec
-LDBD1
-    LDA $0290,X
-    ADC #$00
-    STA $0290,Y
-    DEX
-    BEQ LDBDF
-    DEY
-    BNE LDBD1
-LDBDF
-    PLA
-    STA $0283
+-
+    lda electron_time_clock_a-1,x
+    adc #0
+    sta electron_time_clock_a-1,y
+    dex
+    beq +
+    dey
+    bne -
++
+    pla
+    sta time_clock_switch
+
     ; Bump rtc_count; this allows us to busy wait on RTC interrupts in user
     ; code.
     inc rtc_count
+
     ; Clear the RTC interrupt now we've handled it. We must take romsel_copy
     ; into account as this register controls both interrupts and paging.
     lda #electron_icpr_rtc_bit
     ora romsel_copy
     sta electron_interrupt_clear_and_paging_register
+
     pla:tay
     pla:tax
     lda $fc
