@@ -173,6 +173,7 @@ min_chunk_size = chunk_size_40
 b_plus_copy_start
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (b_plus_copy_start & $ff)
 +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
+
     ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
     dey:beq line_move_and_clear_loop
     sty lines_to_move_without_clearing
@@ -430,7 +431,7 @@ dont_wait_for_raster
 
     jmp our_oswrch_common_tail
 
-; We hook evntv to detect vsync rather than checking for this on irq1v. This
+; We hook evntv to detect vsync rather than checking for this on IRQ1V. This
 ; avoids missing vsync events where they occur after we check but before the OS
 ; irq handler that we chain onto checks. Thanks to Coeus for help with this! See
 ; https://stardot.org.uk/forums/viewtopic.php?f=54&t=26939.
@@ -448,33 +449,28 @@ jmp_parent_evntv
 parent_evntv = *+1
     jmp $ffff ; patched
 
-; raster_wait_table isn't used on the Electron, so by placing it here we can use
-; evntv_handler's space plus this as one contiguous chunk for Electron-specific
-; code.
-;
-; For a window of n lines at the top of the screen to protect from scrolling,
-; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
-; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
-; raster waiting and just scroll regardless, specify $ff and $00 respectively.
-
-; SFTODO FORMAT ETC
-    ; What counts as a safe location depends on whether or not we're
-    ; in a 40 or 80 column mode (the latter require moving twice as much data)
-    ; and how big the upper window is (the bigger it is, the more data we have
-    ; to move).
-;
-; This macro helps create bytes in terms of scan lines from the top of the
-; visible screen. Don't forget this is only approximate as we only check the
-; high byte of the timer. There are 312 scanlines per frame.
+; This macro converts a count of scan lines from the top of the visible screen
+; into a byte which can be compared against timer 2's high byte. Don't forget
+; this is only approximate as we only check the high byte of the timer. There
+; are 312 scanlines per frame.
 !macro scan_line .scan_lines_from_visible_top {
     .vsync_to_visible_top_scan_lines = (total_rows - vsync_position) * 8
     .scan_lines_to_wait = (.vsync_to_visible_top_scan_lines + .scan_lines_from_visible_top) % 312
     !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
 }
 
+; For a window of n lines at the top of the screen to protect from scrolling,
+; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
+; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
+; raster waiting and just scroll regardless, specify $ff and $00 respectively.
+;
+; What counts as a safe location depends on whether or not we're in a 40 or 80
+; column mode (the latter require moving twice as much data) and how big the
+; upper window is (the bigger it is, the more data we have to move).
+;
 ; As we're mainly concerned with cycles taken to move data in screen memory, we
 ; mostly don't care about the distinction between 25 and 32 line modes. Strictly
-; speaking, the *start* of the safe window should maybe vary in 25 and 32 line
+; speaking, the start of the safe window should maybe vary in 25 and 32 line
 ; modes, as it's about not starting to write to memory until the raster has
 ; finished scanning it, and in 25 line modes the gaps between lines slow down
 ; the raster with respect to screen memory. (The end of the safe window is about
@@ -482,13 +478,12 @@ parent_evntv = *+1
 ; by this.) In practice the difference doesn't seem to be big enough to need
 ; taking into account.
 
-; SFTODO: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
+; SFTODONOW: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN?
 
 ; This table is for 80 column modes; the 40 column table at raster_wait_table_40
 ; is copied over this by the discardable init code if necessary.
 raster_wait_table_entries = fast_scroll_max_upper_window_size
 raster_wait_table
-waster_wait_table_80
 raster_wait_table_first
     +scan_line 1*8 ; 1 line window
     +scan_line 2*8 ; 2 line window
@@ -503,6 +498,8 @@ raster_wait_table_end
 
 re_bbc ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
 }
+
+!zone { ; discardable init code
 
 ; This table is for 40 column modes; it is copied over raster_wait_table by the
 ; discardable init code if appropriate.
@@ -533,8 +530,6 @@ raster_wait_table_end_40
 ; to rush into implementing this.
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
-
-!zone { ; discardable init code
 
 ; Electron code copied over rs_bbc.
 bs_electron
@@ -785,8 +780,7 @@ common_init
     sta wrchv+1
     cli
     rts
-
-}
+} ; end of discardable init code
 
 ; SFTODO: Notes on Electron MRB support:
 ;
