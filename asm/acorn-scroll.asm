@@ -75,7 +75,7 @@ crtc_address_register = $fe00
 crtc_address_write = $fe01
 crtc_start_screen_address_high_register = 12
 
-electron_isc = $fe00 ; SFTODO: EXPAND ISC GIVEN HOW VERBOSE WE ARE ELSEWHERE
+electron_interrupt_status_and_control = $fe00
 electron_screen_start_address_low = $fe02
 electron_screen_start_address_high = $fe03
 electron_interrupt_clear_and_paging_register = $fe05
@@ -86,8 +86,6 @@ user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
 user_via_auxiliary_control_register = $fe6b
 
-; SFTODO: MAY NOT BE NEEDED NOW
-opcode_jmp = $4c
 opcode_rts = $60
 
 irq1v = $204
@@ -565,7 +563,7 @@ no_raster_wait
 
 irq_handler
     lda #electron_isc_rtc_bit
-    bit electron_isc
+    bit electron_interrupt_status_and_control
     bne is_rtc_interrupt
     ; lda $fc ; SFTODO VOODOO - I DON'T *THINK* THIS IS NEEDED (BUT THINK FRESH)
 parent_irq1v = *+1
