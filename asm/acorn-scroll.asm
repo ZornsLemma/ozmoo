@@ -182,7 +182,7 @@ min_chunk_size = chunk_size_40
     ; checks.
 rs_screen_ram_copy
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
-+assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
+    +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
     ldy fast_scroll_upper_window_size
     dey:beq line_move_and_clear_loop
@@ -208,7 +208,7 @@ ldy_imm_chunk_size_minus_1_a
     ldy #chunk_size_80 - 1 ; patched
 byte_move_loop
 byte_move_loop_unroll_count = 8
-+assert min_chunk_size % byte_move_loop_unroll_count == 0
+    +assert min_chunk_size % byte_move_loop_unroll_count == 0
     !for i, 1, byte_move_loop_unroll_count {
         lda (src),y
         sta (dst),y
@@ -245,22 +245,23 @@ chunk_move_and_clear_loop
 ldy_imm_chunk_size_minus_1_b
     ldy #chunk_size_80 - 1 ; patched
 byte_move_and_clear_loop
-; The body of this loop is slow enough that we fairly rapidly hit diminishing
-; returns by unrolling it, *but* we do have spare space for the unroll at the
-; moment and this loop executes for every single screen scroll. A scanline is
-; only 128 cycles and in 80 column modes we go round this inner loop body 640
-; times, so small savings really do add up and contribute towards increasing our
-; chances of maintaining a flicker free display without slowing things down too
-; much by having over-tight safe raster bounds.
+    ; The body of this loop is slow enough that we fairly rapidly hit
+    ; diminishing returns by unrolling it, *but* we do have spare space for the
+    ; unroll at the moment and this loop executes for every single screen
+    ; scroll. A scanline is only 128 cycles and in 80 column modes we go round
+    ; this inner loop body 640 times, so small savings really do add up and
+    ; contribute towards increasing our chances of maintaining a flicker free
+    ; display without slowing things down too much by having over-tight safe
+    ; raster bounds.
 byte_move_and_clear_loop_unroll_count = 8
-+assert min_chunk_size % byte_move_and_clear_loop_unroll_count == 0
-!for i, 1, byte_move_and_clear_loop_unroll_count {
-    lda (src),y
-    sta (dst),y
-    lda #0
-    sta (src),y
-    dey
-}
+    +assert min_chunk_size % byte_move_and_clear_loop_unroll_count == 0
+    !for i, 1, byte_move_and_clear_loop_unroll_count {
+        lda (src),y
+        sta (dst),y
+        lda #0
+        sta (src),y
+        dey
+    }
     bpl byte_move_and_clear_loop
     +assert_no_page_crossing byte_move_and_clear_loop
     jsr bump_src_dst_and_dex
@@ -270,10 +271,12 @@ byte_move_and_clear_loop_unroll_count = 8
     lda #0 xor 7:sta bbc_palette
 }
 re_screen_ram_copy
+
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
     lda #0
 jsr_shadow_paging_control2
     jsr $ffff ; patched
+
 finish_oswrch
     pla
     tay
@@ -421,9 +424,10 @@ dont_wait_for_raster
 
     ; We update the CRTC screen start address now; we don't want to leave it too
     ; late otherwise we might miss the next vsync. We also don't want to have a
-    ; frame where the upper window temporarily appears at the bottom of the
-    ; screen; it's probably less annoying for it to flicker (because we can't
-    ; keep up with the raster) than have it jump around that much.
+    ; frame where the upper window's first line temporarily appears at the
+    ; bottom of the screen; it's probably less annoying for it to flicker
+    ; (because we can't keep up with the raster) than have it jump around that
+    ; much.
     ldy #crtc_start_screen_address_high_register
     lda dst+1 ; equivalent to lda vdu_screen_top_left_address_high but shorter
     lsr
@@ -475,8 +479,8 @@ parent_evntv = *+1
 }
 
 ; For an upper window of n lines at the top of the screen to protect from
-; scrolling, raster_wait_table_first[n-1] is the first "safe" timer 2 high byte
-; and raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To
+; scrolling, raster_wait_table_first[n-1]-1 is the first "safe" timer 2 high
+; byte and raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To
 ; disable raster waiting and just scroll regardless, specify $ff and $00
 ; respectively.
 ;
@@ -486,8 +490,8 @@ parent_evntv = *+1
 ;
 ; As we're mainly concerned with cycles taken to move data in screen memory, we
 ; mostly don't care about the distinction between 25 and 32 line modes. Strictly
-; speaking, the start of the safe window should maybe vary in 25 and 32 line
-; modes, as it's about not starting to write to memory until the raster has
+; speaking, the start of the safe window should maybe vary between 25 and 32
+; line modes, as it's about not starting to write to memory until the raster has
 ; finished scanning it, and in 25 line modes the gaps between lines slow down
 ; the raster with respect to screen memory. (The end of the safe window is about
 ; getting the move done before we hit the top line again, which isn't affected
@@ -498,8 +502,8 @@ parent_evntv = *+1
 ; is copied over this by the discardable init code if necessary.
 raster_wait_table_entries = fast_scroll_max_upper_window_size
 raster_wait_table
-raster_wait_table_first
-    +scan_line 2*8 ; 1 line window SFTODO WAS 1
+raster_wait_table_first ; SFTODO: rename ...first_minus_1? Tho maybe it gets confusing as minus applies to decreasing timer values but we write this table in terms of incrementing scan line numbers
+    +scan_line 2*8 ; 1 line window
     +scan_line 2*8 ; 2 line window
     +scan_line 3*8 ; 3 line window
 raster_wait_table_last
@@ -510,7 +514,7 @@ raster_wait_table_end
     +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
     +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
 
-re_bbc ; SFTODO: label names in this file are a bit crappy in general, e.g. this is the runtime *code* but this label is its non-runtime (end) address
+re_bbc
 }
 
 !zone { ; discardable init code
@@ -637,7 +641,8 @@ max_runtime_size = fast_scroll_end - fast_scroll_start
 +assert re_bbc - fast_scroll_start <= max_runtime_size
 +assert re_electron - fast_scroll_start <= max_runtime_size
 
-; This code is copied over rs_screen_ram_copy in main RAM after we've copied that code into the private RAM.
+; This code is copied over rs_screen_ram_copy in main RAM after we've copied
+; that code into the private RAM.
 .bs_b_plus_screen_ram_copy_shim
 !pseudopc rs_screen_ram_copy {
     lda romsel_copy
@@ -667,10 +672,11 @@ init
     cmp #>our_oswrch
     beq .just_rts
 not_already_claimed
+
     ; Before we do anything else, we copy our code from inside this executable
     ; to its final location - we can then patch it in-place in the following
     ; code and copy it from in-place to the B+ private RAM if necessary. (The
-    ; way acme's !pseudpc directive works means that it's fiddly to patch the
+    ; way acme's !pseudopc directive works means that it's fiddly to patch the
     ; copy embedded in this executable, as we don't have labels within the block
     ; of code addressing the embedded copy, so we'd have to manually apply
     ; offsets.) If we decide not to support fast hardware scrolling this is
@@ -679,29 +685,31 @@ not_already_claimed
     ldx #>max_runtime_size
     ldy #<max_runtime_size
 copy_runtime_code_loop
-lda_runtime_start_abs ; SFTODO: RENAME THIS LABEL TO MATCH THE LDA
+lda_bs_runtime_common_and_bbc_abs
     lda bs_runtime_common_and_bbc
 sta_fast_scroll_start_abs
     sta fast_scroll_start
-    +inc16 lda_runtime_start_abs+1
+    +inc16 lda_bs_runtime_common_and_bbc_abs+1
     +inc16 sta_fast_scroll_start_abs+1
     dey
     bne copy_runtime_code_loop
     dex
     bpl copy_runtime_code_loop
+
     ; Examine the current hardware and decide if we can support fast hardware
     ; scrolling on it; if not the Ozmoo executable will fall back to slow
     ; hardware scrolling or software scrolling as appropriate.
     lda #0
     sta fast_scroll_status_host
     sta fast_scroll_upper_window_size
+
     ; If we're going to run in mode 7, we don't bother installing anything. It
     ; would be mostly harmless if we did - the core Ozmoo executable will not
     ; enable the vsync events in mode 7, and we will have a screen window in
-    ; effect for software scrolling so our OSWRCH code will do anything - but it
-    ; seems better to avoid the unnecessary overhead on the OSWRCH vector. This
-    ; might (although it probably won't) also help to ensure that "there is no
-    ; fast scroll support" code paths get at least a little bit of routine
+    ; effect for software scrolling so our OSWRCH code would do anything - but
+    ; it seems better to avoid the unnecessary overhead on the OSWRCH vector.
+    ; This might (although it probably won't) also help to ensure that "there is
+    ; no fast scroll support" code paths get at least a little bit of routine
     ; testing.
     lda screen_mode_host
     cmp #7
@@ -760,6 +768,7 @@ use_shadow_driver_yx
     stx jsr_shadow_paging_control2 + 1
     sty jsr_shadow_paging_control1 + 2
     sty jsr_shadow_paging_control2 + 2
+
     ; Determine the host type. We don't care about the Integra-B spoofing this
     ; here, as all we're checking for is Electron vs non-Electron.
     lda #osbyte_read_host
@@ -767,6 +776,7 @@ use_shadow_driver_yx
     jsr osbyte
     txa
     bne not_electron
+
     ; We're on an Electron with no shadow RAM or a paging-capable shadow driver.
     ; Overwrite the BBC-specific code with Electron-specific code.
     +copy_data_checked bs_electron, be_electron, rs_bbc, fast_scroll_end
@@ -785,8 +795,10 @@ use_shadow_driver_yx
     sta electron_irq_mask
     cli
     jmp common_init
+
 not_electron
-    ; Install our EVNTV handler so we can tell where the raster is.
+    ; We're on a BBC. Install our EVNTV handler so we can tell where the raster
+    ; is.
     sei
     lda evntv:sta parent_evntv
     lda evntv+1:sta parent_evntv+1
@@ -827,6 +839,7 @@ tmp = src
     ; We don't enable vsync events here; we don't need them while
     ; fast_scroll_upper_window_size is zero, and the Ozmoo executable takes care of
     ; turning them on and off as that changes.
+
 common_init
     lda #1
     sta fast_scroll_status_host
@@ -869,8 +882,3 @@ common_init
 
 ; SFTODO: Move vdu_down constant to shared constants header and use it in this
 ; code instead of literal 10 all over the place?
-
-; SFTODO: Give Electron support a good test at some point once this settles
-; down. Does split cursor mode work? Do we need to hide the (software generated)
-; cursor when we are scrolling? I suspect we don't, but perhaps test a bit more
-; thoroughly.
