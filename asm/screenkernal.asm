@@ -890,10 +890,12 @@ acorn_update_scroll_state_subroutine
     ; We build up the new value of acorn_scroll_flags in A. Start all bits zero.
     lda #0
 
-    ; If we're in mode 7, we always use software scrolling. SFTODO: COULD OMIT THIS IN ELECTRON BUILD
-    ldx screen_mode
-    cpx #7
-    beq .new_acorn_scroll_flags_in_a
+    !ifndef ACORN_ELECTRON_SWR {
+        ; If we're in mode 7, we always use software scrolling.
+        ldx screen_mode
+        cpx #7
+        beq .new_acorn_scroll_flags_in_a
+    }
 
     ; During any specific run of the game, we don't mix fast and slow hardware
     ; scrolling. We toggle between fast hardware scrolling and software
@@ -908,7 +910,7 @@ acorn_update_scroll_state_subroutine
     ; us to change between software and hardware scrolling, as both hardware
     ; scrolling methods have limits on the maximum size of the upper window.
 
-    ; Soft hardware scrolling requires us to keep track of what the game outputs
+    ; Slow hardware scrolling requires us to keep track of what the game outputs
     ; to the top line of the screen, regardless of whether or not we are
     ; currently using slow hardware scrolling - we need that information to be
     ; up to date in case slow hardware scrolling is turned on. If we have fast
@@ -963,27 +965,31 @@ acorn_update_scroll_state_subroutine
         }
 
         lda window_start_row + 1
-        sta .osword_write_host_block_data2 ; SFTODO: rename, but we already have a ...data - can we share!? perhaps more code needed to share than do sep
-        lda #osword_write_host
-        ldx #<.osword_write_host_block2
-        ldy #>.osword_write_host_block2
-        jsr osword
-
+        !ifdef ACORN_SWR {
+            sta fast_scroll_upper_window_size
+        } else {
+            sta .osword_write_host_block_data2 ; SFTODO: rename, but we already have a ...data
+            lda #osword_write_host
+            ldx #<.osword_write_host_block2
+            ldy #>.osword_write_host_block2
+            jsr osword
+        }
     }
 
     pla:tay:pla:tax:pla
     rts
 
 !ifdef ACORN_HW_SCROLL_FAST {
+!ifndef ACORN_SWR {
 .osword_write_host_block2
     !word fast_scroll_upper_window_size ; low order word of address
     !word $ffff                         ; high order word of address
 .osword_write_host_block_data2
     !byte 0                             ; data to write, patched at runtime
 }
+}
 
 } ; local zone
 } ; !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW
-; SFTODO: In general if we know we're not a tube build, we should just sta instead of using osword_write_host. Can possibly wrap this in a macro.
 
 }
