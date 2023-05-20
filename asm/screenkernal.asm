@@ -550,6 +550,9 @@ s_printchar
 
 !ifdef ACORN_HW_SCROLL_SLOW {
 .redraw_top_line
+    ; SFTODO: I don't think it's a big deal, but note that turning the cursor
+    ; off here will cancel split cursor editing if the user is using it and the
+    ; screen has to scroll during their input.
     jsr turn_off_cursor
     lda #vdu_home
     jsr oswrch

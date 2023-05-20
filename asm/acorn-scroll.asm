@@ -538,6 +538,8 @@ raster_wait_table_end_40
 
 ; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
 
+; SFTODONOW: On model B (probably others), split cursor editing with fast hw scroll works but if the user is copying from the bottom line of the screen, minor display corruption occurs. Noting that with soft hw scroll we currently "accidentally" disable split cursor editing when the screen scrolls anyway (because we turn the cursor off before redrawing the top line), it may be acceptable to just cancel split cursor editing when the screen scrolls. Turning the cursor off may be a way to do this, and it may also sidestep problems with screen corruption from the Electron's cursor (in non-split mode), though I haven't experimented with this.
+
 ; Electron code copied over rs_bbc.
 bs_electron
 !pseudopc rs_bbc {
