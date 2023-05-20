@@ -479,6 +479,11 @@ s_printchar
     ; b) if we are not turning the cursor off when timed events occur during
     ; input and we should be, which would make this unnecessary if the explanation
     ; given is correct.
+    ; SFTODO: Actually this has nothing to do with timed input. You can see it
+    ; in the TerpEtude "full line input" test with the current code as long as
+    ; you have software scrolling in non-mode-7. (I suspect it doesn't happen in
+    ; mode 7 in full line input test because of the fiddling we do to handle the
+    ; coloured input.) (With next line commented out, of course.)
     jsr s_cursor_to_screenrowcolumn
 .printchar_end
 	ldx s_stored_x
