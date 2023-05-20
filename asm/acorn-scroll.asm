@@ -585,7 +585,6 @@ irq_handler
     lda #electron_isc_rtc_bit
     bit electron_interrupt_status_and_control
     bne is_rtc_interrupt
-    ; lda $fc ; SFTODO VOODOO - I DON'T *THINK* THIS IS NEEDED (BUT THINK FRESH)
 parent_irq1v = *+1
     jmp $ffff ; patched
 
