@@ -3,10 +3,10 @@
 ; This executable examines the current hardware (including shadow RAM, as
 ; reported by acorn-shadow-driver.asm, which must have been run first) to see if
 ; we can support fast hardware scrolling. If we can we copy code into low RAM,
-; hook WRCHV and EVNTV to point into that code and work with the core Ozmoo
-; executable to enable/disable the fast hardware scrolling as appropriate.
+; hook WRCHV, EVNTV and/or IRQ1V to point into that code and work with the core
+; Ozmoo executable to enable/disable the fast hardware scrolling as appropriate.
 ;
-; Normal OS hardware scrolling only works on the full screen. the OS updates the
+; Normal OS hardware scrolling only works on the full screen. The OS updates the
 ; CRTC screen start address to be the currently second-from-top line of the
 ; screen, and blanks the current top line; these become the top and bottom lines
 ; respectively with the new CRTC screen start address. This code detects when a
@@ -14,9 +14,8 @@
 ; copy-and-blank operation which effectively stops one or more lines at the top
 ; of the screen from scrolling. This means Ozmoo does not need to worry about
 ; redrawing the upper window or using an OS text window to protect it. For a
-; small upper window (where there isn't too much data to copy) we also use the
-; VSYNC event to try to avoid flicker by deferring our updates until the raster
-; is in a safe place.
+; small upper window (where there isn't too much data to copy) we also try to
+; avoid flicker by deferring our updates until the raster is in a safe place.
 ;
 ; This is *not* a general implementation of hardware scrolling with an upper
 ; window protected from scrolling:
@@ -41,19 +40,22 @@
 ; - We ensure the cursor is off before scrollling.
 ;
 ; It would be possible to fix these problems here in our OSWRCH code, but it would
-; take quite a lot of extra code which we don't have space for and add complexity.
+; add complexity and take quite a lot of extra code which we don't have space for.
 
-; This executable is relatively complex in terms of runtime copying and patching, because:
+; This executable is relatively complex in terms of runtime copying and
+; patching, because:
 ; - It loads into user RAM between OSHWM and HIMEM and has to copy its "payload"
 ;   into the smaller region of memory allocated for its runtime use.
 ; - It has large amounts of different code for BBC and Electron machines.
+; - It has some extra patching-and-shuffling for the B+ shadow/private RAM.
 ; - Memory is tight enough in the allocated region that we can't afford too much
 ;   wasted space to help with the BBC-vs-Electron patching.
 ;
 ; I've tried to use a convention for labels relating to copying and patching
 ; code. "b" indicates an address in this binary in user memory and "r" means a
 ; runtime address where code is copied and left installed. Similarly "s" and "e"
-; are used to abbreviate "start" and "end".
+; are used to abbreviate "start" and "end". So we have "rs_bbc", "be_electron",
+; etc.
 
 !source "acorn-shared-constants.asm"
 
@@ -140,16 +142,19 @@ our_oswrch_common_tail
 
     ; We work with chunks of data which are 1/5 of a line, i.e. 64 bytes in 40
     ; column modes and 128 bytes in 80 column modes. This chunk size is chosen
-    ; because it means the wrapping can only ever occur on chunk boundaries,
-    ; allowing us to avoid checking as we process each chunk.
+    ; because it means wrapping at the top of screen memory can only ever occur
+    ; on chunk boundaries, allowing us to avoid checking as we process each
+    ; chunk.
+    ;
     ; SFTODO: We could potentially be a lot cleverer about the data move
     ; operations in here. STEM has some very optimised but complex and perhaps
-    ; over-large code for memmove() and memset which just might be reusable.
+    ; over-large code for memmove() and memset() which just might be reusable.
     ; It's also worth noting that we never wrap within a screen line in 32 line
     ; modes, and even in 25 lines modes only one screen line (starting somewhere
     ; in page $7f) can have a wrap within it. I think what I have here is
     ; reasonably good, especially with the loop unrolling, but I'm sure it could
     ; be better.
+    ;
     ; SFTODO: It just might look nicer (when we can't successfully avoid
     ; flicker) if these loops iterated forwards instead of backwards. This would
     ; be easiest to do in 80 column modes, where we iterate over Y from 0 to 127
@@ -166,14 +171,15 @@ chunk_size_40 = 320 / chunks_per_line
 chunk_size_80 = 640 / chunks_per_line
 min_chunk_size = chunk_size_40
 
-    ; Code from rs_screen_ram_copy to re_screen_ram_copy is copied into private RAM
-    ; on the B+ and this code in main RAM is patched to execute it from private
-    ; RAM. This allows it to access screen memory directly. Because the code is
-    ; also present in main RAM calls to subroutines like bump_src_dst_and_dex
-    ; don't need to be patched to refer to the copy in private RAM, although
-    ; this is only OK for code which isn't accessing screen memory. We preserve
-    ; the within-page alignment when we copy the code into private RAM so loops
-    ; don't incur page crossing penalties despite our checks.
+    ; Code from rs_screen_ram_copy to re_screen_ram_copy is copied into private
+    ; RAM on the B+ and this code in main RAM is patched to execute it from
+    ; private RAM. This allows it to access screen memory directly. Because the
+    ; code is also present in main RAM, calls to subroutines like
+    ; bump_src_dst_and_dex don't need to be patched to refer to the copy in
+    ; private RAM, although this is only OK for code which isn't accessing
+    ; screen memory. We preserve the within-page alignment when we copy the code
+    ; into private RAM so loops don't incur page crossing penalties despite our
+    ; checks.
 rs_screen_ram_copy
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
 +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
