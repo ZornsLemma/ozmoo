@@ -46,14 +46,10 @@
 ; - Memory is tight enough in the allocated region that we can't afford too much
 ;   wasted space to help with the BBC-vs-Electron patching.
 ;
-; SFTODO: I HAVEN'T ACTUALLY DONE THIS YET...
-; I've tried to keep the complexity under control by using "rs_", "re_", "bs_"
-; and "be_" prefixes on labels. "r" stands for "runtime" and refers to an
-; address where code is deployed for use while the game is running. "b" stands
-; for "binary" and refers to an address in the copy of this code loaded "high"
-; in main user RAM when this executable is run. "s" and "e" stand for "start"
-; and "end" respectively.
-
+; I've tried to use a convention for labels relating to copying and patching
+; code. "b" indicates an address in this binary in user memory and "r" means a
+; runtime address where code is copied and left installed. Similarly "s" and "e"
+; are used to abbreviate "start" and "end".
 
 !source "acorn-shared-constants.asm"
 
