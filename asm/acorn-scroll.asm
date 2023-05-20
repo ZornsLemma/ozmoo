@@ -62,6 +62,7 @@
 spool_file_handle = $257
 electron_irq_mask = $25b
 time_clock_switch = $283
+vdu_vertical_adjust = $290
 electron_time_clock_a = $291
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
@@ -446,7 +447,11 @@ evntv_handler
     ; some kind of utility ROM a user wants to use is using events so it's nice
     ; to play nice.
     cmp #event_vsync:bne jmp_parent_evntv
+    ; The initial timer values are patched by the discardable init code to take
+    ; *TV into account.
+lda_imm_initial_t2_value_low
     lda #<initial_t2_value:sta user_via_t2_low_order_latch_counter
+lda_imm_initial_t2_value_high
     lda #>initial_t2_value:sta user_via_t2_high_order_counter
     lda #event_vsync
 jmp_parent_evntv
@@ -481,8 +486,6 @@ parent_evntv = *+1
 ; getting the move done before we hit the top line again, which isn't affected
 ; by this.) In practice the difference doesn't seem to be big enough to need
 ; taking into account.
-
-; SFTODONOW: DO WE NEED TO BE ADJUSTING THESE COUNTS IF THE USER HAS USED *TV TO MOVE SCREEN UP/DOWN? IF WE DO, THE EASIEST WAY TO HANDLE THIS MIGHT BE TO PATCH THE VALUE WE LOAD INTO TIMER 2 EVERY VSYNC, RATHER THAN TRYING TO ADJUST ALL THE ENTRIES IN THE RASTER TABLES AND WORRYING ABOUT WRAPPING.
 
 ; This table is for 80 column modes; the 40 column table at raster_wait_table_40
 ; is copied over this by the discardable init code if necessary.
@@ -786,6 +789,34 @@ not_electron
     lda evntv+1:sta parent_evntv+1
     lda #<evntv_handler:sta evntv
     lda #>evntv_handler:sta evntv+1
+    ; Patch our EVNTV handler so the initial timer 2 value takes the *TV setting
+    ; into account. We need to calculate (signed vdu_vertical_adjust) *
+    ; us_per_row and subtract that from the initial timer 2 value. (A
+    ; vdu_vertical_adjust of -1/255 moves the screen down from the viewer's
+    ; perspective, so it takes longer to hit any given scanline.)
+    ; SFTODO: This implementation is over-complex - the fact us_per_row is 512
+    ; means we could just work with the high byte of the T2 value here. But I'll
+    ; stick with this for now as it will leave scope for tinkering if it turns
+    ; out I've got this wrong, and I can simplify it later.
+tmp = src
+    lda vdu_vertical_adjust
+    ; Sign-extend A into tmp.
+    and #$80
+    bpl +
+    lda #$ff
++   sta tmp+1
+    ; Multiply bv us_per_row.
+    lda vdu_vertical_adjust
+    ldx #9 ; us_per_row == 512 == 2^9
+-   asl
+    rol tmp+1
+    dex
+    bne -
+    sta tmp
+    ; Apply the offset.
+    sec
+    lda lda_imm_initial_t2_value_low +1:sbc tmp  :sta lda_imm_initial_t2_value_low +1
+    lda lda_imm_initial_t2_value_high+1:sbc tmp+1:sta lda_imm_initial_t2_value_high+1
     ; Set up user VIA timer 2.
     lda #0
     sta user_via_auxiliary_control_register
