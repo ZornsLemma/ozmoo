@@ -631,8 +631,6 @@ max_runtime_size = fast_scroll_end - fast_scroll_start
 +assert re_bbc - fast_scroll_start <= max_runtime_size
 +assert re_electron - fast_scroll_start <= max_runtime_size
 
-; SFTODONOW: TESTING AT CMD PROMPT ON ELECTRON IN MODE 6, I THINK THIS *CAN* LEAVE THE SOFTWARE CURSOR "BURNED IN" TO SCREEN RAM AS WELL SCROLL. I DON'T KNOW IF THIS CAN OCCUR IN OZMOO - WE PROBABLY WOULD HAVE CURSOR ENABLED IF USER INPUT IS BEING PROCESSED AND IS WHAT CAUSES SCREEN TO SCROLL, I HAVEN'T EXPERIMENTED YET. MAY NEED TO ADDRESS THIS - YES, IT DOES LEAVE A CORRUPT CURSOR IF I TYPE A LONG LINE (AT END OF BENCHMARK FWIW) - THE FIX MAY BE AS SIMPLE AS HAVING OZMOOE ALWAYS FORCE CURSOR OFF BEFORE SCROLLING SCREEN
-
 ; This code is copied over rs_screen_ram_copy in main RAM after we've copied that code into the private RAM.
 .bs_b_plus_screen_ram_copy_shim
 !pseudopc rs_screen_ram_copy {
