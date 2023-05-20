@@ -19,16 +19,29 @@
 ; raster is in a safe place.
 ;
 ; This is *not* a general implementation of hardware scrolling with a protected
-; area at the top of the screen. If the screen scrolls because a character is
-; printed at the bottom right, the OS hardware scroll code will be invoked as
-; normal and the protected area will not be protected. We can get away with this
-; here because it is our code running to output text to the screen, and we just
-; make sure it never prints in the bottom right character position (the screen
-; is scrolled first, then we go back and print at the rightmost position on the
-; now second-to-bottom line). (In principle we could trap more OSWRCH calls and
-; detect this case and handle it, but it would bloat the code and slow down
-; normal output, and it's easier all round to just not print at the bottom
-; right.)
+; area at the top of the screen:
+;
+; - If the screen scrolls because a character is printed at the bottom right,
+;   the OS hardware scroll code will be invoked as normal and the protected area
+;   will not be protected.
+;
+; - If split cursor editing is being used to copy text on the bottom line of the
+;   screen and this code is used to scroll, the old solid block cursor gets
+;   "stuck". (Tested on OS 1.2.)
+;
+; - The Electron's cursor is software generated and sometimes gets "stuck" on
+;   the screen when this code scrolls.
+;
+; We can work around these problems in the Ozmoo code:
+;
+; - We control the text output so we just never output a character in the bottom
+;   right character position; we scroll the screen first, then go back and print
+;   at the rightmost position of the now second-to-bottom line.
+;
+; - We ensure the cursor is off before scrollling.
+;
+; It would be possible to fix these problems here in our OSWRCH code, but it would
+; take quite a lot of extra code which we don't have space for and add complexity.
 
 ; SFTODO: I should probably make an effort to go through and rename
 ; constants/labels and tweak comments to talk consistently about an "upper
@@ -531,10 +544,6 @@ raster_wait_table_end_40
 ; something looser. And of course, auto-tuning is also potentially error prone
 ; and since manual tuning seems to have worked fairly well so far I don't want
 ; to rush into implementing this.
-
-; SFTODO: OK, right now *without* this driver, using split cursor editing to copy when the inputs cause the screen to scroll causes split cursor editing to terminate. I am surprised - we are not emitting a CR AFAIK - but this is acceptable (if not absolutely ideal) and if it happens without this driver being in the picture I am not going to worry about it too much. But may want to investigate/retest this later. It may well be that some of the split cursor stuff I've put in this code in a voodoo-ish ways turns out not to actually matter after all.
-
-; SFTODONOW: On model B (probably others), split cursor editing with fast hw scroll works but if the user is copying from the bottom line of the screen, minor display corruption occurs. Noting that with soft hw scroll we currently "accidentally" disable split cursor editing when the screen scrolls anyway (because we turn the cursor off before redrawing the top line), it may be acceptable to just cancel split cursor editing when the screen scrolls. Turning the cursor off may be a way to do this, and it may also sidestep problems with screen corruption from the Electron's cursor (in non-split mode), though I haven't experimented with this.
 
 ; Electron code copied over rs_bbc.
 bs_electron

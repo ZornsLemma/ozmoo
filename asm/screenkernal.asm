@@ -521,7 +521,11 @@ s_printchar
         lda acorn_scroll_flags
         ; SFTODO: SHOULD WE MOVE THE "MAINTAIN TOP LINE BUFFER" FLAG INTO ITS OWN BYTE? IT WOULD SAVE TWO BYTES OF CODE HERE SO MIGHT BE A NET WIN AS WELL AS BEING SIMPLER AND FASTER
         and #not(acorn_scroll_flag_maintain_top_line_buffer)
-        bne .no_text_window
+        beq .use_text_window
+        ; We turn off the cursor if we're using hardware scrolling. For fast hardware scrolling this works around glitches with the split cursor editing block cursor and (on the Electron) the normal cursor. For slow hardware scrolling it makes the redraw of the top line less ugly. SFTODO: This has the unfortunate side effect of disabling split cursor editing if it's in effect, but in practice I don't think this is a huge problem. It would be nice to fix, but the effort and amount of code required is probably disproportionate.
+        jsr turn_off_cursor
+        jmp .no_text_window
+.use_text_window
     }
     jsr .s_pre_scroll_leave_cursor_bottom_right
 .no_text_window
@@ -537,7 +541,7 @@ s_printchar
     !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
         lda acorn_scroll_flags
         !ifdef ACORN_HW_SCROLL_FAST {
-            bmi .SFTODORTS ; nothing to do for fast hardware scrolling
+            bmi .jmp_turn_on_cursor ; nothing else to do for fast hardware scrolling
         }
         !ifdef ACORN_HW_SCROLL_SLOW {
             and #acorn_scroll_flag_slow_hw_scroll
@@ -550,10 +554,6 @@ s_printchar
 
 !ifdef ACORN_HW_SCROLL_SLOW {
 .redraw_top_line
-    ; SFTODO: I don't think it's a big deal, but note that turning the cursor
-    ; off here will cancel split cursor editing if the user is using it and the
-    ; screen has to scroll during their input.
-    jsr turn_off_cursor
     lda #vdu_home
     jsr oswrch
     +ldy_screen_width
@@ -570,7 +570,6 @@ s_printchar
 }
     ldx #0
     ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO. - OK, we are smart(ish) as set_os_*_video use an internal flag to do just this.
-    ; SFTODO: It's fraught with complexities (but hey, we have our swanky shadow driver to help), but I can't help wondering if (semi-optionally) using some machine code (running in the host, always) to save/restore the top up-to-640 bytes of RAM when we scroll in hardware scrolling mode might be quicker and more attractive than going via the OS text routines to redraw this - and it would also mean we wouldn't have to maintain the internal buffer of what's been written to the top row so we can reconstruct it, as we'd just save the binary data immediately before scrolling and restore it after. - actually, what would be visually nicer, faster and need no extra (data) RAM would be to "do the newline+hw scroll operation instead of letting OS do it (but updating all relevant OS state", except that as we loop over the data that was on the top line to zero it out, we copy it onto the new top line before zeroing it. This requires getting intimate with the OS, although it probably mostly boils down to separate Electron and BBC routines (although shadow RAM complicates things further; on the B+ we could stick the routine in the last 512 bytes of private RAM and we can probably assume that all B shadow expansions support shadow paging, and of course the Master does - Electron MRB is not so nice here). Worth mulling this over though. Could of course do a proof of concept version of this which only works on (say) the Master and breaks everything else, as it's just to see if it looks nice/is a lot faster.
 -   lda top_line_buffer_reverse,x
     beq +
     jsr set_os_reverse_video
@@ -582,6 +581,9 @@ s_printchar
     dey
     bne -
     stx s_cursors_inconsistent
+}
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
+.jmp_turn_on_cursor
     jmp turn_on_cursor
 }
 
