@@ -489,7 +489,7 @@ parent_evntv = *+1
 raster_wait_table_entries = fast_scroll_max_upper_window_size
 raster_wait_table
 raster_wait_table_first
-    +scan_line 1*8 ; 1 line window
+    +scan_line 2*8 ; 1 line window SFTODO WAS 1
     +scan_line 2*8 ; 2 line window
     +scan_line 3*8 ; 3 line window
 raster_wait_table_last
