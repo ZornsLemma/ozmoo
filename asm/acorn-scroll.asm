@@ -338,7 +338,7 @@ is_lf
     bne have_upper_window
 jmp_parent_wrchv_with_lf
     lda #10
-    jmp jmp_parent_wrchv
+    bne jmp_parent_wrchv ; always branch
 have_upper_window
     ; If there's a text window in effect, just pass through to the parent.
     lda #%00001000
