@@ -904,11 +904,13 @@ acorn_update_scroll_state_subroutine
     ; between hardware scrolling and software scrolling.
 
     ; Note that hardware scrolling (either kind) can be turned on or off at any
-    ; moment. Provided the user's preference is hardware scrolling, the game can
-    ; change the size of the upper window at any time (SFTODO: ACTUALLY THIS
-    ; IS PROBABLY NOT TRUE IN <=Z3 - CHECK AND MAYBE OPTIMISE) and that can cause
-    ; us to change between software and hardware scrolling, as both hardware
-    ; scrolling methods have limits on the maximum size of the upper window.
+    ; moment. The user could change their preference any time input is
+    ; permitted, of course. But even beyond that, provided the user's preference
+    ; is hardware scrolling, the game can change the size of the upper window at
+    ; any time (SFTODO: this is true for Z3+, there is maybe scope for a small
+    ; optimisation for Z1 and Z2) and that can cause us to change between
+    ; software and hardware scrolling, as both hardware scrolling methods have
+    ; limits on the maximum size of the upper window.
 
     ; Slow hardware scrolling requires us to keep track of what the game outputs
     ; to the top line of the screen, regardless of whether or not we are
