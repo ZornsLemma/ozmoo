@@ -468,23 +468,7 @@ s_printchar
     ; This OSWRCH call is the one which actually prints most of the text on the
     ; screen.
     jsr oswrch
-.printchar_oswrch_done
-    ; Force the OS text cursor to move if necessary; normally it would be
-    ; invisible at this point, but TerpEtude's "Timed full-line input" test can
-    ; leave the OS text cursor visible at the top left if you type a character
-    ; in the rightmost column and then wait for the timed message to appear.
-    ; SFTODO: Is there any way we can optimise this? It seems a shame to have
-    ; to do this after every character output when it's almost always unnecessary.
-    ; I am wondering if a) we should be doing this *when we scroll*, not always
-    ; b) if we are not turning the cursor off when timed events occur during
-    ; input and we should be, which would make this unnecessary if the explanation
-    ; given is correct.
-    ; SFTODO: Actually this has nothing to do with timed input. You can see it
-    ; in the TerpEtude "full line input" test with the current code as long as
-    ; you have software scrolling in non-mode-7. (I suspect it doesn't happen in
-    ; mode 7 in full line input test because of the fiddling we do to handle the
-    ; coloured input.) (With next line commented out, of course.)
-    jsr s_cursor_to_screenrowcolumn
+.printchar_oswrch_done ; SFTODO: redundant label now
 .printchar_end
 	ldx s_stored_x
 	ldy s_stored_y
@@ -519,6 +503,15 @@ s_printchar
     ; always want the new line to be in normal video so make sure we're in normal video mode; this is harmless even if
     ; we are using the custom OSWRCH routine.
     jsr set_os_normal_video
+    ; We turn off the cursor while we're scrolling:
+    ; - For fast hardware scrolling, this works around glitches with the split
+    ;   cursor editing block cursor and (on the Electron) the normal cursor.
+    ; - For slow hardware scrolling it makes the redraw of the top line less
+    ;   ugly.
+    ; - For software scrolling, it hides the cursor blipping up to the top left
+    ;   corner of the screen when we remove the text window after scrolling.
+    ; SFTODO: This has the unfortunate side effect of disabling split cursor editing if it's in effect, but in practice I don't think this is a huge problem. It would be nice to fix, but the effort and amount of code required is probably disproportionate.
+    jsr turn_off_cursor
     !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
         ; For this subroutine, we always issue a line feed on the bottom row of
         ; the screen. If we're software scrolling we define a text window first;
@@ -526,11 +519,7 @@ s_printchar
         lda acorn_scroll_flags
         ; SFTODO: SHOULD WE MOVE THE "MAINTAIN TOP LINE BUFFER" FLAG INTO ITS OWN BYTE? IT WOULD SAVE TWO BYTES OF CODE HERE SO MIGHT BE A NET WIN AS WELL AS BEING SIMPLER AND FASTER
         and #not(acorn_scroll_flag_maintain_top_line_buffer)
-        beq .use_text_window
-        ; We turn off the cursor if we're using hardware scrolling. For fast hardware scrolling this works around glitches with the split cursor editing block cursor and (on the Electron) the normal cursor. For slow hardware scrolling it makes the redraw of the top line less ugly. SFTODO: This has the unfortunate side effect of disabling split cursor editing if it's in effect, but in practice I don't think this is a huge problem. It would be nice to fix, but the effort and amount of code required is probably disproportionate.
-        jsr turn_off_cursor
-        jmp .no_text_window
-.use_text_window
+        bne .no_text_window
     }
     jsr .s_pre_scroll_leave_cursor_bottom_right
 .no_text_window
@@ -555,7 +544,9 @@ s_printchar
     }
     lda #vdu_reset_text_window
     sta s_cursors_inconsistent ; vdu_reset_text_window moves cursor to home
-    jmp oswrch
+    jsr oswrch
+.jmp_turn_on_cursor
+    jmp turn_on_cursor
 
 !ifdef ACORN_HW_SCROLL_SLOW {
 .redraw_top_line
@@ -586,10 +577,7 @@ s_printchar
     dey
     bne -
     stx s_cursors_inconsistent
-}
-!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
-.jmp_turn_on_cursor
-    jmp turn_on_cursor
+    jmp turn_on_cursor ; SFTODO: could probably "beq .jmp_turn_on_cursor ; always branch" to save a byte
 }
 
 .perform_newline
@@ -684,6 +672,7 @@ s_erase_line_from_cursor
 
 s_pre_scroll_leave_cursor_in_place
     ; Define a text window covering the region to scroll.
+    ; SFTODONOW: I think these comments about C on entry are outdated.
     ; If C is set on entry, leave the OS text cursor at the bottom right of the
     ; text window.
     ; If C is clear on entry, leave the OS text cursor where it was on the
