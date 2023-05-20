@@ -7,23 +7,23 @@
 ; executable to enable/disable the fast hardware scrolling as appropriate.
 ;
 ; Normal OS hardware scrolling only works on the full screen. the OS updates the
-; CRTC screen start address to be the currently second-from-top line of the screen,
-; and blanks the current top line; these become the top and bottom lines respectively
-; with the new CRTC screen start address. This code detects when a LF is being
-; used to scroll the screen up and replaces the OS behaviour with a
-; copy-and-blank operation which effectively protects one or more lines of the
-; screen at the top from scrolling. This means Ozmoo does not need to worry
-; about redrawing the top line or using a text window to protect it. For a
-; single protected line (where there isn't too much data to copy) we also use
-; the VSYNC event to try to avoid flicker by deferring our updates until the
-; raster is in a safe place.
+; CRTC screen start address to be the currently second-from-top line of the
+; screen, and blanks the current top line; these become the top and bottom lines
+; respectively with the new CRTC screen start address. This code detects when a
+; LF is being used to scroll the screen up and replaces the OS behaviour with a
+; copy-and-blank operation which effectively stops one or more lines at the top
+; of the screen from scrolling. This means Ozmoo does not need to worry about
+; redrawing the upper window or using an OS text window to protect it. For a
+; small upper window (where there isn't too much data to copy) we also use the
+; VSYNC event to try to avoid flicker by deferring our updates until the raster
+; is in a safe place.
 ;
-; This is *not* a general implementation of hardware scrolling with a protected
-; area at the top of the screen:
+; This is *not* a general implementation of hardware scrolling with an upper
+; window protected from scrolling:
 ;
 ; - If the screen scrolls because a character is printed at the bottom right,
 ;   the OS hardware scroll code will be invoked as normal and the protected area
-;   will not be protected.
+;   will not actually be protected.
 ;
 ; - If split cursor editing is being used to copy text on the bottom line of the
 ;   screen and this code is used to scroll, the old solid block cursor gets
@@ -42,15 +42,6 @@
 ;
 ; It would be possible to fix these problems here in our OSWRCH code, but it would
 ; take quite a lot of extra code which we don't have space for and add complexity.
-
-; SFTODO: I should probably make an effort to go through and rename
-; constants/labels and tweak comments to talk consistently about an "upper
-; window" rather than the alternative phrasing of "protecting n lines" or (even
-; more confusingly; it works from the internal perspective of this code, where
-; we move lines in RAM to keep the fixed in place on the screen) "moving n
-; lines". (I think it's fine, if it feels helpful, to talk about "moving" inside
-; this file, where we're actually doing it, but outside of this file we probably
-; shouldn't.)
 
 ; This executable is relatively complex in terms of runtime copying and patching, because:
 ; - It loads into user RAM between OSHWM and HIMEM and has to copy its "payload"
@@ -187,7 +178,7 @@ rs_screen_ram_copy
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
 +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
-    ldy fast_scroll_lines_to_move ; SFTODO: RENAME THIS "fast_scroll_lines_to_protect" or "fast_scroll_top_window_size"?
+    ldy fast_scroll_upper_window_size
     dey:beq line_move_and_clear_loop
     sty lines_to_move_without_clearing
 
@@ -226,8 +217,8 @@ byte_move_loop_unroll_count = 8
     dec lines_to_move_without_clearing
     bne line_move_loop
 
-    ; Copy the final (possibly only, if fast_scroll_lines_to_move is 1) line,
-    ; clearing the source afterwards.
+    ; Copy the final (possibly only, if fast_scroll_upper_window_size is 1)
+    ; line, clearing the source afterwards.
     ;
     ; It is somewhat tempting to add a special case here, where if src and dst
     ; are both not the one line on the screen which can wrap part-way through,
@@ -336,13 +327,13 @@ is_lf
     lda vdu_text_cursor_y_position
     cmp vdu_text_window_bottom
     bcc jmp_parent_wrchv_with_lf
-    ; If we're not protecting any lines at the top of the screen we're not interested.
-    lda fast_scroll_lines_to_move
-    bne protecting_some_lines
+    ; If we don't have an upper window we're not interested.
+    lda fast_scroll_upper_window_size
+    bne have_upper_window
 jmp_parent_wrchv_with_lf
     lda #10
     jmp jmp_parent_wrchv
-protecting_some_lines
+have_upper_window
     ; If there's a text window in effect, just pass through to the parent.
     lda #%00001000
     bit vdu_status_byte
@@ -405,7 +396,7 @@ rs_bbc
     ; To minimise flicker, we check timer 2 (which is reloaded every vsync) to
     ; see where the raster is and wait until it's in a "safe" location before
     ; proceeding.
-    ldx fast_scroll_lines_to_move
+    ldx fast_scroll_upper_window_size
     cpx #raster_wait_table_entries+1
     bcs dont_wait_for_raster
 raster_wait_loop
@@ -424,7 +415,7 @@ dont_wait_for_raster
 
     ; We update the CRTC screen start address now; we don't want to leave it too
     ; late otherwise we might miss the next vsync. We also don't want to have a
-    ; frame where the protected line temporarily appears at the bottom of the
+    ; frame where the upper window temporarily appears at the bottom of the
     ; screen; it's probably less annoying for it to flicker (because we can't
     ; keep up with the raster) than have it jump around that much.
     ldy #crtc_start_screen_address_high_register
@@ -477,10 +468,11 @@ parent_evntv = *+1
     !byte >(frame_us - .scan_lines_to_wait * us_per_scanline)
 }
 
-; For a window of n lines at the top of the screen to protect from scrolling,
-; raster_wait_table_first[n-1] is the first "safe" timer 2 high byte and
-; raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To disable
-; raster waiting and just scroll regardless, specify $ff and $00 respectively.
+; For an upper window of n lines at the top of the screen to protect from
+; scrolling, raster_wait_table_first[n-1] is the first "safe" timer 2 high byte
+; and raster_wait_table_last[n-1] is the last "safe" timer 2 high byte. To
+; disable raster waiting and just scroll regardless, specify $ff and $00
+; respectively.
 ;
 ; What counts as a safe location depends on whether or not we're in a 40 or 80
 ; column mode (the latter require moving twice as much data) and how big the
@@ -560,7 +552,7 @@ bs_electron
     ; experimented with larger upper windows, but I think it is probably
     ; sensible to avoid wasting time waiting in those cases, as it's going to
     ; flicker anyway.
-    ldx fast_scroll_lines_to_move:dex:bne no_raster_wait
+    ldx fast_scroll_upper_window_size:dex:bne no_raster_wait
     ldx rtc_count
 busy_wait
 rtc_count = * + 1
@@ -698,7 +690,7 @@ sta_fast_scroll_start_abs
     ; hardware scrolling or software scrolling as appropriate.
     lda #0
     sta fast_scroll_status_host
-    sta fast_scroll_lines_to_move
+    sta fast_scroll_upper_window_size
     ; If we're going to run in mode 7, we don't bother installing anything. It
     ; would be mostly harmless if we did - the core Ozmoo executable will not
     ; enable the vsync events in mode 7, and we will have a screen window in
@@ -829,7 +821,7 @@ tmp = src
     sta user_via_auxiliary_control_register
     cli
     ; We don't enable vsync events here; we don't need them while
-    ; fast_scroll_lines_to_move is zero, and the Ozmoo executable takes care of
+    ; fast_scroll_upper_window_size is zero, and the Ozmoo executable takes care of
     ; turning them on and off as that changes.
 common_init
     lda #1

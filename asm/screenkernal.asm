@@ -976,10 +976,10 @@ acorn_update_scroll_state_subroutine
 
 !ifdef ACORN_HW_SCROLL_FAST {
 .osword_write_host_block2
-    !word fast_scroll_lines_to_move ; low order word of address
-    !word $ffff                     ; high order word of address
+    !word fast_scroll_upper_window_size ; low order word of address
+    !word $ffff                         ; high order word of address
 .osword_write_host_block_data2
-    !byte 0                         ; data to write, patched at runtime
+    !byte 0                             ; data to write, patched at runtime
 }
 
 } ; local zone

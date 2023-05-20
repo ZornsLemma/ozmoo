@@ -47,7 +47,7 @@
 ;   Execution inputs: screen_mode_host, shadow_state, shadow_paging_control_ptr
 ;   Execution outputs: fast_scroll_status_host
 ;   Runtime memory: &932-&AFF
-;   Runtime inputs: fast_scroll_lines_to_move
+;   Runtime inputs: fast_scroll_upper_window_size
 ;   Note: The loader copies fast_scroll_status_host into fast_scroll_status in
 ;   the language processor, so it's available to the Ozmoo executable wherever
 ;   it's running.
@@ -66,7 +66,7 @@
 ; The Ozmoo executable itself uses some addresses associated with the above utilities: SFTODO SEMI DUPLICATING THE ABOVE
 ; - SHADDRV: shadow_ram_copy
 ; - FINDSWR: ram_bank_count, ram_bank_list
-; - FASTSCR: fast_scroll_lines_to_move
+; - FASTSCR: fast_scroll_upper_window_size
 ; - INSV: nominal_cursor_key_status
 ; -
 ;
@@ -200,7 +200,7 @@ xxx_fast_scroll_private_ram_end = $b000
 }
 
 !ifdef ACORN_HW_SCROLL_FAST {
-    fast_scroll_lines_to_move = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
+    fast_scroll_upper_window_size = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
 
     fast_scroll_start = 0x932
     fast_scroll_end = 0xb00
