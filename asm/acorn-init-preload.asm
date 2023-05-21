@@ -250,6 +250,7 @@ deletable_init_start
 
 !ifdef VMEM {
     ; {{{ Copy initial_vmap_z_l to vmap_z_l.
+    ; SFTODO: Use copy_data(_checked)?
     ldx #vmap_max_size
 -   lda initial_vmap_z_l - 1,x
     sta vmap_z_l - 1,x

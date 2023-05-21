@@ -188,7 +188,6 @@ xxx_fast_scroll_private_ram_end = $b000
     b_plus_private_ram_size = 12 * 1024 - 512 ; -512 to leave space for shadow copy/fast scroll code
     integra_b_private_ram_size = 12 * 1024 - 1024 ; -1024 to leave space for IBOS workspace
 
-    ; SFTODO: Might want to move these to free up $9 and $a for vmem cache or something.
     max_ram_bank_count = xxx_max_ram_bank_count
     ram_bank_count = xxx_shadow_driver_end ; 1 byte
     ram_bank_list = xxx_shadow_driver_end + 1 ; max_ram_bank_count bytes
