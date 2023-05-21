@@ -382,6 +382,7 @@ DEF FNmode_ok_big_dynmem
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
 REM calculation we prefer to take it from flexible_swr so we can use the result to
 REM determine the available main RAM for shadow vmem cache if that's enabled.
+REM SFTODONOW: I *think* we need to take the first 256 bytes of dynamic memory from main RAM, so that the assumptino the read/write header code makes is valid. But think about this fresh before implementing. Implementing this may be as simple as a check before we do anything else that extra_main_ram>=256. Although that doesn't address the "reporting failures" case, as we need to convey the non-interchangeability of this 256 bytes with swr, unlike all the rest of our dynamic memory requirements.
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
