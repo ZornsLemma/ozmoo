@@ -455,6 +455,7 @@ page_in_swr_bank_a
     ; Leave room for the larger Electron version of page_in_swr_bank_a to be copied
     ; over the BBC version.
     !fill page_in_swr_bank_a_electron_size - (* - page_in_swr_bank_a)
+page_in_swr_bank_a_end
 
 claim_tube
     lda #tube_reason_claim + our_tube_reason_claim_id
@@ -627,6 +628,19 @@ main_ram_cache_start = aligned_data_start + $300
 +assert ($3000 - main_ram_cache_start) >= (2*512 + 256)
 
 ; Discardable initialisation code.
+
+    ; This is copied over page_in_swr_bank_a, so must not contain absolute
+    ; addresses within this executable.
+page_in_swr_bank_a_electron
+    ldx #12
+    stx romsel_copy
+    stx electron_romsel
+    sta romsel_copy
+    sta electron_romsel
+    rts
+page_in_swr_bank_a_electron_end
++assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
+
 initialize
 ; SFTODONOW: RE-REVIEW THIS COMMENT AND LOGIC
     ; Install ourselves on USERV and save the old value at old_userv iff USERV
@@ -667,12 +681,7 @@ userv_already_claimed
     sta sta_abs_tube_data + 2
 
     ; Patch page_in_swr_bank_a
-    ; SFTODONOW: Use +copy_data here
-    ldx #page_in_swr_bank_a_electron_size - 1
--   lda page_in_swr_bank_a_electron,x
-    sta page_in_swr_bank_a,x
-    dex
-    bpl -
+    +copy_data_checked page_in_swr_bank_a_electron, page_in_swr_bank_a_electron_end, page_in_swr_bank_a, page_in_swr_bank_a_end
 not_electron
 
     ; Calculate main_ram_cache_entries. We have RAM available between main_ram_cache_start
@@ -748,18 +757,6 @@ no_carry2
     ; than 255 cache entries. SFTODONOW: Pretty sure this is true, but think about
     ; it fresh and do some testing.
     rts
-
-    ; This is copied over page_in_swr_bank_a, so must not contain absolute
-    ; addresses within this executable.
-page_in_swr_bank_a_electron
-    ldx #12
-    stx romsel_copy
-    stx electron_romsel
-    sta romsel_copy
-    sta electron_romsel
-    rts
-page_in_swr_bank_a_electron_end
-+assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
 
 ; On an Electron with a Master RAM Board in shadow mode, the shadow RAM can't be
 ; turned off under software control and osbyte_read_screen_address_for_mode will
