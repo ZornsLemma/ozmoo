@@ -546,19 +546,7 @@ s_printchar
     lda #vdu_home
     jsr oswrch
     +ldy_screen_width
-    ; SFTODONOW: Is the following code redundant? We will never do hardware scrolling in mode 7 so isn't this wasted code?
-!ifdef MODE_7_STATUS {
-!ifdef Z4PLUS {
-    lda screen_mode
-    cmp #7
-    bne +
-    jsr .output_mode_7_colour_code
-    ldy #39
-+
-}
-}
     ldx #0
-    ; SFTODO: We do call this code quite a lot - every time the screen scrolls - and are we maybe causing noticeable slowdown by constantly setting the correct foreground colours? Would it speed things up if we were smarter and only set normal/reverse video when there's an actual change. This might have even more effect on tube, where all these colour change codes will clog up the VDU FIFO. - OK, we are smart(ish) as set_os_*_video use an internal flag to do just this.
 -   lda top_line_buffer_reverse,x
     beq +
     jsr set_os_reverse_video
@@ -570,7 +558,7 @@ s_printchar
     dey
     bne -
     stx s_cursors_inconsistent
-    jmp turn_on_cursor ; SFTODO: could probably "beq .jmp_turn_on_cursor ; always branch" to save a byte
+    beq .jmp_turn_on_cursor ; always branch
 }
 
 .perform_newline
@@ -593,12 +581,12 @@ s_printchar
 	sta zp_screencolumn
     lda zp_screenrow
     cmp s_screen_height_minus_one
-    bcc SFTODOHACK43
+    bcc +
     jsr s_cursor_to_screenrowcolumn
     jsr .perform_line_feed_on_bottom_row1
     jsr .perform_line_feed_on_bottom_row2b
     jmp .printchar_end
-SFTODOHACK43
++
     inc zp_screenrow
     lda #1
     sta s_cursors_inconsistent
