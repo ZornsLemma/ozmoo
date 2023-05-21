@@ -1772,13 +1772,13 @@ def parse_args():
 
     if cmd_args.only_40_column and cmd_args.only_80_column:
         die("--only-40-column and --only-80-column are incompatible")
-    if (cmd_args.only_40_column and cmd_args.min_mode):
+    if cmd_args.only_40_column and cmd_args.min_mode:
         die("--only-40-column and --min-mode are incompatible")
-    if (cmd_args.only_80_column and cmd_args.min_mode):
+    if cmd_args.only_80_column and cmd_args.min_mode:
         die("--only-80-column and --min-mode are incompatible")
-    if (cmd_args.only_40_column and cmd_args.max_mode):
+    if cmd_args.only_40_column and cmd_args.max_mode:
         die("--only-40-column and --max-mode are incompatible")
-    if (cmd_args.only_80_column and cmd_args.max_mode):
+    if cmd_args.only_80_column and cmd_args.max_mode:
         die("--only-80-column and --max-mode are incompatible")
     if cmd_args.only_40_column:
         cmd_args.min_mode = 4
