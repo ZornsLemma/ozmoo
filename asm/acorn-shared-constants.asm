@@ -20,14 +20,13 @@
 ;   have one.
 ;   Execution corrupts: &900-&AFF, &70-&8F
 ;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end (including shadow_ram_copy, shadow_paging_control_ptr)
-;   Runtime memory: shadow_driver_start-shadow_driver_end
+;   Runtime memory: &8C0-&8DF
 ;
 ; - FINDSWR (acorn-findswr.asm)
 ;   This checks for sideways RAM.
 ;   Execution corrupts: &900-&AFF, &70-&8F
-;   Sets: swr_type, ram_bank_count, ram_bank_list
-;   Runtime memory: N/A
-;   SFTODO: RAM BANK COUNT AND RAM BANK LIST ARE USED DURING GAMEPLAY, SWR TYPE IS ONLY FOR LOADER
+;   Execution sets: swr_type, ram_bank_count, ram_bank_list
+;   Runtime memory: &8F0-&8F9
 ;
 ; - INSV (acorn-insv.asm)
 ;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
@@ -38,11 +37,11 @@
 ;
 ; - FASTSCR (acorn-scroll.asm)
 ;   This allows hardware scrolling of the bottom part of the screen while
-;   leaving a runtime-controllable number of lines untouched at the top. We need
-;   all of the runtime memory for code so there's no room for discardable
-;   initialisation code there; we therefore load and run just below the mode 6
-;   screen and copy the runtime part of the code to the final location as part
-;   of the initialisation.
+;   leaving an upper window untouched at the top. We need all of the runtime
+;   memory for code so there's no room for discardable initialisation code
+;   there; we therefore load and run just below the mode 6 screen and copy the
+;   runtime part of the code to the final location as part of the
+;   initialisation.
 ;   Execution corrupts: &5C00-&5FFF
 ;   Execution inputs: screen_mode_host, shadow_state, shadow_paging_control_ptr
 ;   Execution outputs: fast_scroll_status_host
@@ -72,9 +71,9 @@
 ;
 ;
 
-; For communicating values between the utilities themselves and the loader, we
-; allocate some bytes at the end of user zero page. All of these are available
-; for re-use while the game is running.
+; For communicating values between the utilities and the loader, we allocate
+; some bytes at the end of user zero page. All of these are available for re-use
+; while the game is running.
 !ifdef ACORN_SHADOW_VMEM {
     shadow_state = $8b
     private_ram_in_use = $8c
