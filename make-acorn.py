@@ -1690,10 +1690,10 @@ def parse_args():
     group = parser.add_argument_group("optional in-game appearance arguments")
     group.add_argument("-7", "--no-mode-7-status", action="store_true", help="disable coloured status line in mode 7")
     group.add_argument("--no-mode-7-input", action="store_true", help="disable coloured input in mode 7")
-    group.add_argument("--default-fg-colour", metavar="N", type=int, help="set the default foreground colour (0-7) for modes 0-6")
-    group.add_argument("--default-bg-colour", metavar="N", type=int, help="set the default background colour (0-7) for modes 0-6")
-    group.add_argument("--default-mode-7-status-colour", metavar="N", type=int, help="set the default colour (0-7) for the mode 7 status line")
-    group.add_argument("--default-mode-7-input-colour", metavar="N", type=int, help="set the default colour (0-7) for mode 7 player input")
+    group.add_argument("--default-fg-colour", metavar="N", type=str, help="set the default foreground colour (0-7) for modes 0-6")
+    group.add_argument("--default-bg-colour", metavar="N", type=str, help="set the default background colour (0-7) for modes 0-6")
+    group.add_argument("--default-mode-7-status-colour", metavar="N", type=str, help="set the default colour (0-7) for the mode 7 status line")
+    group.add_argument("--default-mode-7-input-colour", metavar="N", type=str, help="set the default colour (0-7) for mode 7 player input")
     group.add_argument("-4", "--only-40-column", action="store_true", help="only run in 40 column modes")
     group.add_argument("-8", "--only-80-column", action="store_true", help="only run in 80 column modes")
     group.add_argument("--min-mode", metavar="N", type=int, help="set the minimum allowed screen mode (0-7)")
@@ -1805,10 +1805,20 @@ def parse_args():
     def validate_colour(colour, default = None, mode_7 = False):
         if colour is None:
             colour = default
+        colour = {
+            "black": 0,
+            "red": 1,
+            "green": 2,
+            "yellow": 3,
+            "blue": 4,
+            "magenta": 5,
+            "cyan": 6,
+            "white": 7,
+        }.get(str(colour).lower(), colour)
         try:
             i = int(colour)
         except:
-            die("Invalid colour %s; colours must be specified as physical colour numbers" % colour)
+            die("Invalid colour '%s'; colours must be specified as physical colour numbers or names" % colour)
         min_colour = 1 if mode_7 else 0
         max_colour = 7 if mode_7 else 15
         if i is not None and (i < 0 or i > 7):
