@@ -1702,7 +1702,8 @@ def parse_args():
     group = parser.add_argument_group("optional advanced user arguments") # SFTODO: tweak description
     group.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
     group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
-    group.add_argument("--osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
+    # SFTODO: Rename "--force-osrdch" to "--no-timed-input"? This (slightly) hints that it can be used to optimise Z4+ games which don't use timed input, but it (slightly) fails to hint that it's a good workaround for people with emulators that work better with OSRDCH.
+    group.add_argument("--force-osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
     group.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
     group.add_argument("--history-upper-case", action="store_true", help="show command history in upper case")
     group.add_argument("--leave-caps-lock-alone", action="store_true", help="don't force lower case input by default")
@@ -2002,7 +2003,9 @@ def make_disc_image():
         ozmoo_base_args += ["-DSLOW=1"]
     if cmd_args.waste_bytes:
         ozmoo_base_args += ["-DWASTE_BYTES=%s" % cmd_args.waste_bytes]
-    if cmd_args.osrdch:
+    # Z1-3 don't support timed input, so we always use OSRDCH as the code is
+    # slightly shorter.
+    if cmd_args.force_osrdch or z_machine_version in (1, 2, 3):
         ozmoo_base_args += ["-DACORN_OSRDCH=1"]
     if cmd_args.on_quit_command:
         ozmoo_base_args += ["-DACORN_ON_QUIT_COMMAND=1"]

@@ -1233,9 +1233,6 @@ getchar_and_maybe_toggle_darkmode
     ; a lot, but this will fix things for the typical game anyway.)
     jsr s_reverse_to_os_reverse
 
-    ; SFTODO: Is there any possibity of shortening the code by using OSRDCH even
-    ; if not explicitly requested, if we know (because of the Z-machine version?)
-    ; that timed events can't occur?
 !ifndef ACORN_OSRDCH {
     lda #osbyte_read_key
     ldx #0
@@ -1244,10 +1241,6 @@ getchar_and_maybe_toggle_darkmode
     ldx #0
 +   txa
 } else {
-    ; Some emulators (e.g. BeebEm 4.15) don't allow text to be pasted in unless
-    ; it's read via OSRDCH, so we allow the use of OSRDCH as a workaround. This
-    ; will break games which rely on timers being able to break into user
-    ; input.
     jsr osrdch
 }
 !ifdef USE_HISTORY {
