@@ -672,19 +672,14 @@ s_erase_line_from_cursor
 
 s_pre_scroll_leave_cursor_in_place
     ; Define a text window covering the region to scroll.
-    ; SFTODONOW: I think these comments about C on entry are outdated.
-    ; If C is set on entry, leave the OS text cursor at the bottom right of the
-    ; text window.
-    ; If C is clear on entry, leave the OS text cursor where it was on the
-    ; physical screen (its co-ordinates will be different because of the text
-    ; window).
     ; SF: ENHANCEMENT: If window_start_row+1 is 0 we are scrolling the whole
     ; screen, so defining the text window has no visible effect and will slow
     ; things down by preventing the OS doing a hardware scroll. It wouldn't be
     ; hard to avoid defining the text window in this case, but in reality I
     ; suspect there's nearly always a status bar or similar on the screen and
     ; this case won't occur. If a game where this would be useful turns up I
-    ; can consider it.
+    ; can consider it. (I think Terpetude is an example of this, albeit not
+    ; one that's terribly important from a performance POV.)
     lda #osbyte_read_cursor_position
     jsr osbyte
     tya
