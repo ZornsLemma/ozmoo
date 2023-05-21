@@ -268,9 +268,9 @@ ENDPROC
 
 DEF FNshadow_extra
 IF shadow_state=${shadow_state_screen_only} THEN ="(screen only)
-IF shadow_state=${shadow_state_integra_b} THEN ="(Integra-B)"
-IF shadow_state=${shadow_state_mrb} THEN ="(Master RAM board)"
 IF shadow_state=${shadow_state_b_plus_os} THEN ="(via OS)"
+IF shadow_state=${shadow_state_mrb} THEN ="(Master RAM board)"
+IF shadow_state=${shadow_state_integra_b} THEN ="(Integra-B)"
 IF shadow_state=${shadow_state_watford} THEN ="(Watford)"
 IF shadow_state=${shadow_state_aries} THEN ="(Aries)"
 REM Not all shadow states have an "extra" message; for example, on a Master,

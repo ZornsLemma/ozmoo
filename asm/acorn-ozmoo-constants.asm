@@ -723,7 +723,7 @@ sideways_ram_hole_vmap_max_size = 254 ; see convert_index_x_to_ram_bank_and_addr
 vmap_used_entries	+allocate 1
 }
 
-!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW { ; SFTODONOW: REVIEW THIS - TEMP HACKED TO FAST OR SLOW
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
 user_prefers_hw_scroll 	+allocate 1
 acorn_scroll_flags +allocate 1
 acorn_scroll_flag_fast_hw_scroll = 1 << 7

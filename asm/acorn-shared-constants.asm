@@ -162,7 +162,10 @@ xxx_fast_scroll_private_ram_end = $b000
     shadow_ram_copy = shadow_driver_start + 2
     shadow_driver_end = xxx_shadow_driver_end ; exclusive
 
-    ; SFTODONOW: Decide if I prefer to reorder these for some cosmetic reason before I embed them in the loader
+    ; The order here is mostly irrelevant for values >=
+    ; shadow_state_first_driver, but we put the Electron/BBC B shadow RAM at the
+    ; end as it's more likely we'll want to add new values for these machines as
+    ; further hardware is supported.
     shadow_state_none           = 0 ; no shadow RAM
     shadow_state_screen_only    = 1 ; shadow RAM with no driver for spare shadow RAM access
     shadow_state_first_driver   = 2 ; shadow_state >= this means we have a driver
