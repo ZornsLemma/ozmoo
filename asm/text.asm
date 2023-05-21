@@ -2610,6 +2610,7 @@ z_alphabet_table ; 26 * 3
 !ifdef ACORN_OSRDCH {
     ; BeebEm (4.15, at least) pokes code into memory at $100 to implement paste
     ; via OSRDCH, so we need to relocate these buffers to avoid problems.
+    ; SFTODONOW: Should I stop doing this? There are newer versions of BeebEm which I don't believe have this problem. If nothing else, perhaps this should be a separate option no longer tied to OSRDCH, which in itself may be a nice small optimisation for games where we know from Z version or are told by the user that timed input isn't needed. As it stands OSRDCH *isn't* an optimisation because we burn space on these two buffers.
 print_buffer
     !fill 81
 print_buffer2
