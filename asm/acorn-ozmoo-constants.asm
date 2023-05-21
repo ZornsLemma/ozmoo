@@ -236,10 +236,8 @@ zp_start = $00
 ; this is a temporary buffer used only during printing, so there shouldn't be
 ; any filing system calls, and an interrupt handler is unlikely to go crazy with
 ; stack use, but even so, making this change would be slightly better I think.
-; (It *might* also remove the need for relocating these when using ACORN_OSRDCH,
-; though it's probably safest not to let the stack get "too full" if we can
-; help it.)
-!ifndef ACORN_OSRDCH {
+; Maybe not though, think carefully.
+!ifndef ACORN_NO_DATA_IN_STACK {
 ; SFTODO: Not specifically related to print_buffer etc, but do I need to tweak anything because SCREEN_WIDTH is variable at runtime on some Acorn builds? I don't know if it's variable at runtime on any Commodore platforms.
 print_buffer		  = $100 ; SCREEN_WIDTH + 1 bytes
 print_buffer2		  = $151 ; SCREEN_WIDTH + 1 bytes

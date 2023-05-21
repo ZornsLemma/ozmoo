@@ -1763,6 +1763,7 @@ def parse_args():
     group.add_argument("--check-errors", action="store_true", help="enable runtime error checking")
     group.add_argument("--cache-test", action="store_true", help="include host cache test program")
     group.add_argument("--no-sd-card-reset", action="store_true", help="don't force an error to reset SD cards")
+    group.add_argument("--no-data-in-stack", action="store_true", help="disable use of stack space for data")
 
     cmd_args = parser.parse_args()
 
@@ -2024,6 +2025,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_HW_SCROLL_SLOW=1"]
     if not cmd_args.no_fast_hw_scroll:
         ozmoo_base_args += ["-DACORN_HW_SCROLL_FAST=1"]
+    if cmd_args.no_data_in_stack:
+        ozmoo_base_args += ["-DACORN_NO_DATA_IN_STACK=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]

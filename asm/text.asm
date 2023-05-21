@@ -2607,10 +2607,7 @@ z_alphabet_table ; 26 * 3
 	!raw 32,13,"0123456789.,!?_#'",34,47,92,"-:()"
 }
 
-!ifdef ACORN_OSRDCH {
-    ; BeebEm (4.15, at least) pokes code into memory at $100 to implement paste
-    ; via OSRDCH, so we need to relocate these buffers to avoid problems.
-    ; SFTODONOW: Should I stop doing this? There are newer versions of BeebEm which I don't believe have this problem. If nothing else, perhaps this should be a separate option no longer tied to OSRDCH, which in itself may be a nice small optimisation for games where we know from Z version or are told by the user that timed input isn't needed. As it stands OSRDCH *isn't* an optimisation because we burn space on these two buffers. Might want to make this move of these buffer depend on a build time option "--no-buffers-in-stack" or something, then it is available for anyone who wants/needs it for any particular reason. I suspect MacBeebEm/Horizon also doesn't have the latest BeebEm changes so given it's easy it is probably worth maintaining this option, even if the new --no-buffers-in-stack option needs specifying.
+!ifdef ACORN_NO_DATA_IN_STACK {
 print_buffer
     !fill 81
 print_buffer2
