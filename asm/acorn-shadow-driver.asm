@@ -189,6 +189,11 @@ not_watford
     ; it's possible Watford DFS is present but not the current filing system, in
     ; which case Watford DFS's current drive might not be 0 even if Ozmoo is
     ; running from drive 0.)
+    ; SFTODONOW: I am not sure it's 100% guaranteed we *are* in a shadow mode at
+    ; this point. If we have a splash screen *and* the preloader didn't need to
+    ; change into a shadow mode before CHAINing the loader (because it would fit
+    ; below &3000) we might be in a non-shadow mode. This is not likely, but I
+    ; think it's theoretically possible.
     ;
     ; SFTODO: *If* we eventually allow running the shadow driver executable from
     ; a preloader (counting the time taken to run it against any default delay
@@ -230,8 +235,8 @@ shadow_driver_table_high
     !byte >shadow_driver_aries
 
 ; The shadow driver API consists of two calls. Before trying to use either, the
-; driver executable must have been run to examine the current hardware, install
-; the appropriate driver (if any) and the driver executable must have set
+; driver executable must have been run to examine the current hardware and
+; install the appropriate driver (if any) and it must have returned with
 ; shadow_state >= shadow_state_first_driver.
 ;
 ; shadow_ram_copy:
@@ -259,17 +264,8 @@ shadow_driver_table_high
 ;        A=0 to page in main RAM at $3000-$7fff inclusive
 ;        A=1 to page in shadow RAM at $3000-$7fff inclusive
 ;        (any other value of A will result in undefined behaviour)
-;    SFTODONOW: Once all shadow drivers written, consider using X instead of A - it might simplify code overall, it might not
-;    SFTODONOW: It's not a huge deal but swapping 0 and 1 here might also simplify the cache code - not sure, just a thought
 ;
 ;    All registers are corrupt on exit.
-
-; SFTODO: Looks like non-2P shadow driver only copies a 256 byte page. *May*
-; want to define a completely separate shadow driver API for 2P host cache case.
-; Let's get this working first anyway. (Probably best to make code changes to
-; host cache to support shadow RAM first and see what I "want" to be able to do,
-; then decide on driver API based on that, rather than guessing and implementing
-; the API *first*.)
 
 shadow_driver_integra_b
 !pseudopc shadow_driver_start {
@@ -569,8 +565,7 @@ end
 
 ; SFTODONOW: Must test that this works for all the different shadow options
 
-; SFTODONOW: Gut feeling based on quick look at code is that for shadow paging driver, entering with A=0 for main and A=1 for shadow is a good API. This mirrors X in OSBYTE &6C - just for "mnemonic" value really. Entering with it in A makes it easier to do swizzling on it (e.g. EOR #1 or ASL A:ASL A) to tweak it to the value actually required within any given driver.
-; - probably change !pseudopc to a new shadow_driver_start (=$8c4) and make shadow_ram_copy 2 higher than currently (i.e. $8c6), then $8c4 (which we'd call shadow_driver_page_in_out=$8c4 again) is a two byte value which is zero if the driver doesn't support paging and can be lda #n:jmp (shadow_driver_page_in_out) if it's been checked to be non-zero) - callers obviously have option to e.g. self-modify to make a directly jsr-able version or whatever if they prefer
-; - looking at shared-constants I already set aside 8c0-8c3 for this kind of thing, I'm not using quite that API, but I actually therefore have four bytes I was "wasting" and can move shadow_driver down to 8c0 and shadow_ram_copy down to 8c2
-
-; SFTODO: If it's desirable to shrink the shadow drivers to free up more low memory for other purposes, don't forget the drivers with shadow paging support could jsr into that support from their shadow copy code instead of duplicating the code inline.
+; SQUASH: If it's desirable to shrink the shadow drivers to free up more low
+; memory for other purposes, don't forget the drivers with shadow paging support
+; could jsr into that support from their shadow copy code instead of duplicating
+; the code inline.
