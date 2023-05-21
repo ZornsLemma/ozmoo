@@ -233,8 +233,6 @@ xxx_fast_scroll_private_ram_end = $b000
     !text error_message, 0
 }
 
-; SFTODO: MOVE?
-; SFTODO: Use in more places?
 !macro inc16 addr {
     inc addr
     bne +
@@ -248,9 +246,7 @@ xxx_fast_scroll_private_ram_end = $b000
     }
 }
 
-; SFTODO: DOCUMENT - INCL FROM_END BEING *EXCLUSIVE*
-; SFTODO: USEFUL? USE IN MORE PLACES? GET RID? MOVE?
-; SFTODO: EXPERIMENTAL
+; Copy data from "from_start" (inclusive) up to "from_end" (exclusive) to "to".
 !macro copy_data from_start, from_end, to {
 .size = from_end - from_start
     ldy #.size
