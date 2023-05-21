@@ -29,10 +29,8 @@ tube_reason_release = $80
 tube_reason_256_byte_to_io = 6
 tube_reason_256_byte_from_io = 7
 osbyte_read_oshwm = $83
-osbyte_read_screen_address_for_mode = $85
 
 zp_temp = $70 ; 3 bytes
-; SFTODO: If it helps squashing this code, may want to move some vars into zp of course.
 
 ; osword_[axy] will be corrupted by the OS when we make OSBYTE or OSWORD calls, so we have
 ; to copy the pointer to our OSWORD block in here.
@@ -642,7 +640,6 @@ page_in_swr_bank_a_electron_end
 +assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
 
 initialize
-; SFTODONOW: RE-REVIEW THIS COMMENT AND LOGIC
     ; Install ourselves on USERV and save the old value at old_userv iff USERV
     ; doesn't already point to us; this avoids ending up with old_userv pointing
     ; to our own handler in a circle if we're re-executed. In practice nothing
