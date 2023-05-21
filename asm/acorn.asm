@@ -167,8 +167,6 @@ assert_carry_clear_sub
 
 ; SFTODO: Perhaps do some timings to see how much of an impact replacing direct SWR paging code with a JSR to that same code has. It's probably significant, but it may be that some of the optimisations in Ozmoo over time mean this actually isn't a huge performance overhead, which would help make executables more shareable across different machines.
 
-; SFTODO: Would there be any value in always using $400-$800 as two pages of VM cache, and using $900-B00 plus space allocated within the binary itself to substitute for existing uses of $400-800?
-
 ; SFTODO: Perhaps given the problems with auto-detecting restart commad and the save directory, we could have --nfs-install-dir and/or --nfs-save-dir options or something which hard-code these values in the loader or something? Don't just give up on auto-detection if it can be made to work though.
 
 ; SFTODO: In b-em, the benchmark seems to work on ReCo 65816 *except* the timestamps at start and end are wrong/odd. Might be worth having a quick look into this.
