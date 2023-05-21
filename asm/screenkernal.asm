@@ -155,15 +155,8 @@ max_lines = s_screen_height
     jsr osbyte
     stx zp_screencolumn
     sty zp_screenrow
-	; Set to 0: s_ignore_next_linebreak, s_reverse, s_os_reverse
-    ; SFTODONOW: I suspect we don't need any of this zero initialisation on Acorn, but let's play it safe while I'm in the middle of zp tweaking.
-    lda #0
-    ldx #2
--	sta s_ignore_next_linebreak,x
-	dex
-	bpl -
-    sta s_reverse
-    sta s_os_reverse
+    ; The Commodore code sets some values to 0 here; we don't need that because
+    ; we zero initialise all our workspace anyway.
 
     ; If we didn't change mode after a restart, we may have been left with the
     ; OS colours set to reverse video. Force the OS settings to normal video so
@@ -868,7 +861,6 @@ z_ins_set_colour
     jmp printchar_flush
 }
 
-; SFTODONOW: IT OCCURS TO ME THAT BOTH HERE AND FOR THE OTHER CASE WHERE WE WRITE DATA ACROSS TUBE VIA OSWORD, WE HAVE A SEPARATE TUBE EXECUTABLE SO THERE'S NO REASON TO WASTE SPACE ON THIS CODE TO USE OSWORD IN THE NON-TUBE EXECUTABLES
 !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
 ; This subroutine is called (via the acorn_update_scroll_state macro) when the
 ; user scrolling preference or the size of the upper window is changed.
