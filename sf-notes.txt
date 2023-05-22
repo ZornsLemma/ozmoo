@@ -10,6 +10,7 @@ $ egrep '(stack_start|program_end)' temp/acme_labels_ozmoo_bbc_swr_shr_3000
 - so the hack saves 34 bytes of code and increases the benchmark time by 2.9%
 - I had kind of already established with Electron hack documented below that the savings from this kind of hack weren't huge (though I may have done them a bit stupidly back then), but this confirms my recollection that paging is done frequently enough that the subroutine call overheard is not negligible (albeit not absolutely terrible).
 (Incidentally I just ran M128 commit fbb56d02 mode 7 (shadow) and got $91f8 -$7c8, so the m128 "no shadow" time below is not evidence of the current code having slowed down - I am guessing it really *was* no shadow back then due to a hack and this is the small negative effect of shadow paging coming into play, which sucks if true but is just "how it is" and in real world terms it is a win compared to disc - it may even be something else, e.g. b-em version changes.)
+- and FWIW running on M128 in mode 3 benchmark takes $916d, so despite having 15K less free shadow RAM it is nearly as fast to run the benchmark in mode 3 (I guess the working set very nearly fits in 64K SWR+spare main RAM anyway, and maybe b-em's disc is fast), but my real point here is that with the fast scroll code there is no longer a significant performance advantage to the text output benefits of mode 7.
 
 
 
