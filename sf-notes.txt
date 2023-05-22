@@ -1,3 +1,19 @@
+Experimentally hacking BBC SWR code to use subroutines for paging SWR: (standard M128, mode 7)
+- with the hack: $009484 $009484 (-$7c8)
+$ egrep '(stack_start|program_end)' temp/acme_labels_ozmoo_bbc_swr_shr_3000
+	program_end	= $69c0	; unused
+	stack_start	= $6a00	; ?
+- without the hack: $009089 $009089 (-$7c7)
+$ egrep '(stack_start|program_end)' temp/acme_labels_ozmoo_bbc_swr_shr_3000
+	program_end	= $69e2	; unused
+	stack_start	= $6a00	; ?
+- so the hack saves 34 bytes of code and increases the benchmark time by 2.9%
+- I had kind of already established with Electron hack documented below that the savings from this kind of hack weren't huge (though I may have done them a bit stupidly back then), but this confirms my recollection that paging is done frequently enough that the subroutine call overheard is not negligible (albeit not absolutely terrible).
+
+
+
+
+
 What do we want to be able to test easily when we're taking the current scroll mode into account?
 - soft scroll only (i.e. mode 7) => no need to maintain top_line_buffer as we can never use it
 - soft scroll, slow hw scroll or fast hw scroll? at runtime only one of the hw scroll types is possible, but it could be either (depending on hardware)
