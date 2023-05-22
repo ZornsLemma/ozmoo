@@ -964,5 +964,3 @@ acorn_update_scroll_state_subroutine
 } ; !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW
 
 }
-
-; SFTODONOW: I am maybe seeing a $100 slowdown in M128 mode 7 benchmark compared to "older" times. Need to investigate. This may just be some extra vsyncs or something but it doesn't feel quite right.
