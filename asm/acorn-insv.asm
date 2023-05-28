@@ -23,7 +23,7 @@ copy_key = 139
 cursor_up_key = 143
 cursor_down_key = 142
 
-+assert * == insv_start
++assert * = insv_start
 
 ; On entry:
 ;     A=140-143 for unshifted cursors
