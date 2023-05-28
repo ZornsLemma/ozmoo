@@ -208,7 +208,7 @@ ldy_imm_chunk_size_minus_1_a
     ldy #chunk_size_80 - 1 ; patched
 byte_move_loop
 byte_move_loop_unroll_count = 8
-    +assert min_chunk_size % byte_move_loop_unroll_count == 0
+    +assert min_chunk_size % byte_move_loop_unroll_count = 0
     !for i, 1, byte_move_loop_unroll_count {
         lda (src),y
         sta (dst),y
@@ -254,7 +254,7 @@ byte_move_and_clear_loop
     ; display without slowing things down too much by having over-tight safe
     ; raster bounds.
 byte_move_and_clear_loop_unroll_count = 8
-    +assert min_chunk_size % byte_move_and_clear_loop_unroll_count == 0
+    +assert min_chunk_size % byte_move_and_clear_loop_unroll_count = 0
     !for i, 1, byte_move_and_clear_loop_unroll_count {
         lda (src),y
         sta (dst),y
@@ -511,8 +511,8 @@ raster_wait_table_last
     +scan_line 8*8 ; 2 line window - seems surprisingly solid
     +scan_line 4*8 ; 3 line window - not great, maybe nicer than with no raster check
 raster_wait_table_end
-    +assert raster_wait_table_last - raster_wait_table_first == raster_wait_table_entries
-    +assert raster_wait_table_end - raster_wait_table_last == raster_wait_table_entries
+    +assert raster_wait_table_last - raster_wait_table_first = raster_wait_table_entries
+    +assert raster_wait_table_end - raster_wait_table_last = raster_wait_table_entries
 
 re_bbc
 }
@@ -531,8 +531,8 @@ raster_wait_table_last_40
     +scan_line 21*8 ; 2 line window - seems surprisingly solid
     +scan_line 4*8 ; 3 line window - not perfect, maybe nicer than with no raster check
 raster_wait_table_end_40
-    +assert raster_wait_table_last_40 - raster_wait_table_first_40 == raster_wait_table_entries
-    +assert raster_wait_table_end_40 - raster_wait_table_last_40 == raster_wait_table_entries
+    +assert raster_wait_table_last_40 - raster_wait_table_first_40 = raster_wait_table_entries
+    +assert raster_wait_table_end_40 - raster_wait_table_last_40 = raster_wait_table_entries
 
 ; It is vaguely tempting to try to have the code auto-tune the safe window end
 ; position. We could maintain a frame count to disambiguate the timer wrapping

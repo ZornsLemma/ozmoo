@@ -42,7 +42,7 @@ start
     ; Do we have shadow RAM?
     lda #shadow_state_none
     sta shadow_state
-    +assert shadow_state_none == 0
+    +assert shadow_state_none = 0
     sta private_ram_in_use
     lda #osbyte_read_screen_address_for_mode
     ldx #shadow_mode_bit + 0
@@ -51,7 +51,7 @@ start
     bpl no_shadow_ram
     ; We have shadow RAM, which we can use for screen memory via the OS without
     ; any special knowledge on our part.
-    +assert shadow_state_screen_only == shadow_state_none + 1
+    +assert shadow_state_screen_only = shadow_state_none + 1
     inc shadow_state
     ; Are we running on an Integra-B? We check for this explicitly as the
     ; Integra-B spoofs the result of osbyte_read_host.

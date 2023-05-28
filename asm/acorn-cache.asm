@@ -58,7 +58,7 @@ osword_block_ptr = $73 ; 2 bytes
 ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
 ; some standard number allocated to the foreground application.
 our_tube_reason_claim_id = $25 ; a six bit value
-+assert (our_tube_reason_claim_id & %11000000) == 0
++assert (our_tube_reason_claim_id & %11000000) = 0
 
 ; When current_tick would wrap round to 0, we subtract timestamp_adjustment from
 ; all the existing timestamps (setting any which would become negative to 0). A
@@ -602,14 +602,14 @@ shadow_cache_entries
 ; At the moment, the first byte of each page is just wasted, but we could
 ; potentially store single byte variables there.
 
-+assert max_cache_entries == 255
++assert max_cache_entries = 255
 
-!if (* & $ff) == 0 {
+!if (* & $ff) = 0 {
     aligned_data_start = *
 } else {
     aligned_data_start = (* & $ff00) + $100
 }
-+assert (aligned_data_start & $ff) == 0
++assert (aligned_data_start & $ff) = 0
 cache_id_low         = aligned_data_start + $001
 cache_id_high        = aligned_data_start + $101
 cache_timestamp      = aligned_data_start + $201
