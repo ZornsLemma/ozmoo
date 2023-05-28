@@ -1054,6 +1054,7 @@ draw_status_line
 	lda #>.ampm_str
 	ldx #<.ampm_str
 	jsr printstring_raw
+} ; !ifdef Z3
 .statusline_done
     ldy s_screen_width
     jsr print_spaces_to_column_y
@@ -1083,8 +1084,7 @@ draw_status_line
 .turns_str !text "Moves: ",0
 }
 }
-}
-}
+} ; !ifndef Z4PLUS
 
 !ifdef ACORN {
     ; We keep the hardware cursor off most of the time; this way the user can't
