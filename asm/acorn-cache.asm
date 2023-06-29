@@ -29,6 +29,7 @@ tube_reason_release = $80
 tube_reason_256_byte_to_io = 6
 tube_reason_256_byte_from_io = 7
 osbyte_read_oshwm = $83
+opcode_jmp = $4c
 
 zp_temp = $70 ; 3 bytes
 
@@ -183,6 +184,7 @@ our_osword_block_offered_offset = 6
 our_osword_block_offered_timestamp_hint_offset = 8
 our_osword_block_requested_offset = 9
 our_osword_result_offset = 11
+
 our_osword
 our_cache_ptr = zp_temp ; 2 bytes
 count = zp_temp + 2 ; 1 byte
@@ -197,6 +199,7 @@ count = zp_temp + 2 ; 1 byte
     lda romsel_copy
     pha
 
+patch_if_no_cache_entries
     ; Is a block being offered to us by the caller?
     ldy #our_osword_block_offered_offset + 1
     lda (osword_block_ptr),y
@@ -360,6 +363,7 @@ not_match
     dey
     bne find_cache_entry_by_id_loop
     +assert_no_page_crossing find_cache_entry_by_id_loop
+requested_block_not_found
     ; We don't have the requested block.
     lda #1
     ldy #our_osword_result_offset
@@ -616,14 +620,15 @@ cache_timestamp      = aligned_data_start + $201
 main_ram_cache_start = aligned_data_start + $300
 
 ; The relocation process can't relocate us upwards in memory, so by asserting
-; that all builds (including the one at the high relocation address) have enough
-; free memory for at least two cache entries and a bounce buffer, we avoid the
-; corner cases where we have zero or one pages of cache and/or no space for a
-; bounce buffer and this code misbehaves. The resulting maximum host OSHWM we
-; support is high enough that we don't seriously expect this to happen, so this
-; doesn't significantly penalise machines which have non-main RAM for cache and
-; could therefore run with OSHWM that bit higher.
-+assert ($3000 - main_ram_cache_start) >= (2*512 + 256)
+; that all builds (including the one at the high relocation address) fit below a
+; mode 0 screen, we know our code won't be corrupted; the worst case is we have
+; no free memory for cache. (It's tempting to make allowance for the possible
+; bounce buffer here, but this is the wrong place for it. This assertion checks
+; the high relocation address - the highest we will run at - is low enough for
+; us to fit below the screen. The bounce buffer is allocated at OSHWM below our
+; code, so we want as high a high relocation address as possible to maximise the
+; chances of being able to allocate a page for a bounce buffer at OSHWM.)
++assert main_ram_cache_start <= $3000
 
 ; Discardable initialisation code.
 
@@ -747,6 +752,21 @@ carry
 no_carry2
     sta cache_entries
 
+    ; If cache_entries < 2, we don't really have any usable cache. To avoid misbehaving,
+    ; we set cache_entries to 1 (so our_osbyte will return 0) and we patch our_osword so
+    ; it just returns immediately indicating block not found.
+    cmp #2
+    bcs cache_has_entries
+    lda #1
+    sta cache_entries
+    lda #opcode_jmp
+    sta patch_if_no_cache_entries
+    lda #<requested_block_not_found
+    sta patch_if_no_cache_entries + 1
+    lda #>requested_block_not_found
+    sta patch_if_no_cache_entries + 2
+cache_has_entries
+
     ; We don't need to adjust swr_cache_entries or shadow_cache_entries to make
     ; the values actually sum to 255 if the previous addition saturated. Note
     ; that we do have at least as much of each type of cache as those values
@@ -803,19 +823,14 @@ relocate_setup
     ; OSHWM<=$2F00 so any bounce buffer we allocate is below screen RAM. Since
     ; this is discardable init code we do check for this and if it's not true we
     ; disable using spare shadow RAM, which obviously means we don't need a
-    ; buffer. This is irrelevant in practice because OSHWM will seldom be that
-    ; high, and in particular we choose our high loading address such that there
-    ; will always be room for two pages of cache plus a bounce buffer, so if
-    ; OSHWM is that high we'll generate an error when the cache executable is
-    ; run.
+    ; buffer.
     ;
     ; SFTODO: It might be nice if the loader checked host OSHWM<=max OSHWM for
-    ; this executable
+    ; this executable. This is maybe a smidge tricky as we might effectively bump
+    ; OSHWM by one page for a bounce buffer.
     lda #0
     sta shadow_cache_entries
     sta shadow_bounce_buffer_page
-    cpy #>(shadow_start - $100)
-    bcs spare_shadow_init_done ; branch if no room for bounce buffer
     lda shadow_state
     cmp #shadow_state_first_driver
     bcc spare_shadow_init_done ; branch if no shadow driver
@@ -828,8 +843,14 @@ relocate_setup
     beq spare_shadow_init_done ; branch if no spare shadow RAM (mode 0)
     lda shadow_paging_control_ptr+1
     bne init_shadow_paging ; branch if we can page shadow RAM in directly
+    cpy #>shadow_start
+    bcs no_room_for_bounce_buffer
     sty shadow_bounce_buffer_page
     iny
+    jmp spare_shadow_init_done
+no_room_for_bounce_buffer
+    lda #0
+    sta shadow_cache_entries
     jmp spare_shadow_init_done
 init_shadow_paging
     ; We can page shadow RAM in/out directly, so patch up the places where we
