@@ -846,18 +846,6 @@ spare_shadow_init_done
     ; This must be the last thing in the executable.
     !source "acorn-relocate.asm"
 
-; SFTODO: Is this code small enough that it could run in what's left of pages
-; &9/A after the list of sideways RAM banks? That would make better use of
-; memory as we'd have an extra two pages above OSHWM for cached data. Don't
-; forget though that the INSV handler currently lives in page &A. This would
-; lose the advantage of having various absolute references to variables patched
-; up "for free" by the relocation, but the reality is this probably wouldn't be
-; too big a deal/cost too many cycles to change (especially if we used some zp
-; space for these variables instead of allocating them just after the program
-; code here). Alternately we could pay a very small price in code to just count
-; 1 extra block of cache and redirect block 0 to &9 instead of
-; main_ram_cache_start, and leave this code at OSHWM where it currently is.
-
 ; A note on the SIMPLE_DUMMY !ifdefs: SIMPLE_DUMMY is not normally defined, but
 ; I wanted to leave this code around for future reference. It works perfectly
 ; and is reasonably obviously correct. However, by forcing both reads and writes
