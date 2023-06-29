@@ -824,10 +824,6 @@ relocate_setup
     ; this is discardable init code we do check for this and if it's not true we
     ; disable using spare shadow RAM, which obviously means we don't need a
     ; buffer.
-    ;
-    ; SFTODO: It might be nice if the loader checked host OSHWM<=max OSHWM for
-    ; this executable. This is maybe a smidge tricky as we might effectively bump
-    ; OSHWM by one page for a bounce buffer.
     lda #0
     sta shadow_cache_entries
     sta shadow_bounce_buffer_page
