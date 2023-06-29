@@ -57,12 +57,16 @@ def page_le(i):
     return "PAGE<=&" + ourhex(i).upper()
 
 
+def basic_hex_int(i):
+    if i < 0:
+        return "-&" + ourhex(-i).upper()
+    else:
+        return "&" + ourhex(i).upper()
+
+
 def basic_int(i):
     as_decimal = str(i)
-    if i < 0:
-        as_hex = "-&" + ourhex(-i).upper()
-    else:
-        as_hex = "&" + ourhex(i).upper()
+    as_hex = basic_hex_int(i)
     return as_decimal if len(as_decimal) < len(as_hex) else as_hex
 
 
@@ -513,6 +517,8 @@ class LoaderScreen(Exception):
         # Other symbols
         if cmd_args.no_sd_card_reset:
             loader_symbols["NO_SD_CARD_RESET"] = basic_int(1)
+        if not cmd_args.no_tube_cache:
+            loader_symbols["CACHE_START_ADDR"] = basic_hex_int(cache_start_addr)
 
 
 class GameWontFit(Exception):
@@ -1357,7 +1363,7 @@ def make_cache_executable():
     # The load address here is chosen to be as high as possible while still
     # satisfying the assertion in acorn-cache.asm that there's a minimum amount
     # of free main RAM available for cache.
-    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2b00, relocatable_args + ["-DACORN_TUBE_CACHE=1", "-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
+    return Executable("acorn-cache.asm", "CACHE2P", None, cache_start_addr, relocatable_args + ["-DACORN_TUBE_CACHE=1", "-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
 
 
 def make_boot():
@@ -2299,6 +2305,7 @@ if cmd_args.max_page is not None:
     small_dynmem_page_threshold = cmd_args.max_page
     bbc_max_start_addr = max(bbc_max_start_addr, cmd_args.max_page)
     electron_max_start_addr = max(electron_max_start_addr, cmd_args.max_page)
+cache_start_addr = 0x2b00
 
 
 common_labels = {}

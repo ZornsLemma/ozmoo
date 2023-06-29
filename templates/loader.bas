@@ -284,6 +284,11 @@ IF electron AND max_mode=7 THEN max_mode=6
 
 REM The tube build works on both the BBC and Electron, so we check that first.
 !ifdef OZMOO2P_BINARY {
+    !ifdef CACHE_START_ADDR {
+        REM If we're going to *RUN CACHE2P, check that the host's OSHWM allows
+        REM this to avoid an unfriendly error later.
+        IF tube THEN host_oshwm=256*FNpeek(&244):IF host_oshwm>${CACHE_START_ADDR} THEN PROCdie("Sorry, the host's PAGE needs to be <=${CACHE_START_ADDR} (after font explosion); it is &"+STR$~host_oshwm+".")
+    }
     IF tube THEN binary$="${OZMOO2P_BINARY}":ENDPROC
 } else {
     IF tube THEN PROCunsupported_machine("a second processor")
