@@ -1357,7 +1357,7 @@ def make_cache_executable():
     # The load address here is chosen to be as high as possible while still
     # satisfying the assertion in acorn-cache.asm that there's a minimum amount
     # of free main RAM available for cache.
-    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2600, relocatable_args + ["-DACORN_TUBE_CACHE=1", "-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
+    return Executable("acorn-cache.asm", "CACHE2P", None, 0x2b00, relocatable_args + ["-DACORN_TUBE_CACHE=1", "-DACORN_SWR=1", "-DACORN_SHADOW_VMEM=1"])
 
 
 def make_boot():
