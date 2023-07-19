@@ -29,6 +29,7 @@
 }
 
 
+; SFTODO: Could this function move into discardable init code?
 stack_init
 	lda #<(stack_start)
 	sta stack_ptr

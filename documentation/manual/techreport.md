@@ -120,21 +120,31 @@ On the MEGA65, the boot file doesn't hold any story data, the entire Z-code file
 
 ### MEGA65 Memory map
 | **Address range** | **KB** |  **Usage** |
-| -- |  ---- |
+| -- |  - | ---- |
 | \$0000-\$ffff | 64 | System RAM, screen RAM, interpreter |
 | \$40000-\$40fff | 4 | Screen RAM for scrollback mode |
+| \$40000-\$4ffff | 64 | Current sound effect |
+| \$50000-\$5ffff | 64 | Undo buffer |
 | \$08000000-\$0807ffff | 512| Story file |
-| \$08080000-\$080800ff: | 0.25 | Signature of last game that was loaded (to make restart faster) |
-| \$08100000-\$081fffff: | 1024 | Sound data |
-| \$08200000-\$082fffff: | 1024 | Scrollback buffer |
-| \$0ff80000-\$0ff807ff: | 2 | Colour RAM |
-| \$0ff80800-\$0ff817ff: | 4 | Colour RAM for scrollback mode|
+| \$08080000-\$080800ff | 0.25 | Signature of last game that was loaded (to make restart faster) |
+| \$08100000-\$081fffff | 1024 | Sound data |
+| \$08200000-\$082fffff | 1024 | Scrollback buffer |
+| \$0ff80000-\$0ff807ff | 2 | Colour RAM |
+| \$0ff80800-\$0ff817ff | 4 | Colour RAM for scrollback mode|
 
 ## Save and Restore
 
 The story file is read piece by piece by mapping the program counter to the correct track and sector, and read it into memory. The main function doing this is readblocks located in disk.asm
 
 disk.asm also contains save and restore functionality. The main functions are do_save and do_restore. The save files are normal files that contain some important internal variables such as the program counter, the Z-machine stack, and the dynmem part of the RAM.
+
+# Undo
+
+If extra memory is available then it can be used to support undo for games that probe for this functionality. This is currently supported for C64 and C128 with a RAM Expansion Unit (REU), and for the MEGA65. To enable undo support the make.rb script should be called with the -u switch. If undo is enabled and the header has the undo flag set, then Ozmoo checks for available memory. If not found, then the undo header flag is cleared, and an error message is shown.
+
+When undo support is active then the current game state (the stack, dynamic memory and some variables) are copied into the undo buffer before a new command is read from the user. This is similar to the save command, but saves to memory instead of saving to a file. If the user gives the undo command, then the state (dynamic memory, stack etc.) is instead copied from the undo buffer, and the execution continues from the saved state, undoing the previous turn.
+
+The main functions for undo are do_save_undo and do_restore_undo in disk.asm. As in Frotz, a hotkey (Ctrl-U) has been added to enable undo support for z3 games, even if official undo support is only available for z5 and upwards. The hotkey handling code is found in text.asm.
 
 # Screenkernal 
 

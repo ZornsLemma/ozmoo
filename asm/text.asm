@@ -45,6 +45,14 @@ input_colour_active !byte 0
 .ignore_unknown_words = ignore_unknown_words
 }
 
+!ifndef Z5PLUS {
+!ifdef UNDO {
+undo_possible   !byte 0
+undo_requested  !byte 0
+undo_msg        !pet "(Turn undone)",13,13,">",0 
+}
+}
+
 ; only ENTER + cursor + F1-F8 possible on a C64
 ; SFTODO: It may be a good idea to tweak this to reflect the fact we have F1-F9 or F1-F10 on Acorn (depending on what the f0 key is mapped to), but I'll leave it alone for now until the handling of function keys settles down.
 num_terminating_characters !byte 1
@@ -344,6 +352,7 @@ z_ins_read
 	; z4: sread text parse time routine
 	; z5: aread text parse time routine -> (result)
 	jsr printchar_flush
+
 !ifdef ACORN_CURSOR_PASS_THROUGH {
 !ifdef ACORN_CURSOR_EDIT_READ {
     ; Since we're reading a line of text here, we temporarily re-enable cursor
@@ -351,6 +360,15 @@ z_ins_read
     jsr do_osbyte_set_cursor_editing_x_0
 }
 }
+
+;;;  SFTODONOW: NEED TO REVIEW ALL UNDO STUFF
+!ifndef Z5PLUS {
+!ifdef UNDO {
+	lda undo_state_available
+	sta undo_possible
+}
+}
+
 !ifndef Z4PLUS {
 	; Z1 - Z3 should redraw the status line before input
 	jsr draw_status_line
@@ -405,6 +423,7 @@ z_ins_read
 	lda z_operand_value_high_arr
 	ldx z_operand_value_low_arr
 	jsr read_text
+
 !ifdef TRACE_READTEXT {
 	jsr print_following_string
 !ifndef ACORN {
@@ -550,6 +569,35 @@ z_ins_read
 	jsr s_set_text_colour
 }
 
+!ifdef UNDO {
+	lda undo_requested
+	beq ++
+	dec undo_requested
+	jsr do_restore_undo
+	lda #>undo_msg
+	ldx #<undo_msg
+	jsr printstring_raw
+	jmp +++
+++	
+	; Save undo state, where z_pc points to where this read instruction starts
+	ldx #2
+-	lda z_pc,x
+	pha
+	lda z_pc_before_instruction,x
+	sta z_pc,x
+	dex
+	bpl -
+	jsr do_save_undo
+	pla
+	sta z_pc
+	pla
+	sta z_pc + 1
+	pla
+	sta z_pc + 2
+	
++++	lda #0
+	sta undo_possible ; Set to not possible whenever we exit the read instruction
+}
 	rts
 }
 ; ============================= End of new unified read instruction
@@ -1169,8 +1217,16 @@ getchar_and_maybe_toggle_darkmode
 +	
 }
 !ifdef SMOOTHSCROLL {
-	cmp #137 ; F2
+!ifdef TARGET_C128 { ; Smooth scroll not available on 80 col C128
+	bit COLS_40_80
+	bmi +
+}
+	cmp #18 ; Ctrl-9
 	bne +
+	bit smoothscrolling
+	bmi .did_something
+	ldx #0
+	stx scroll_delay
 	jsr toggle_smoothscroll
 	jmp .did_something
 +
@@ -1178,21 +1234,29 @@ getchar_and_maybe_toggle_darkmode
 !ifdef SCROLLBACK {
 	cmp #135 ; F5
 	bne +
+	ldx scrollback_supported
+	beq +
 	jsr launch_scrollback
 	jmp .did_something
 +
 }
-	ldx #3
+	ldx #8
 -	cmp .scroll_delay_keys,x
 	beq .is_scroll_delay_key
 	dex
 	bpl -
 	bmi +
 .is_scroll_delay_key
-	stx scroll_delay
+	lda scroll_delay_values,x
+	sta scroll_delay
+!ifdef SMOOTHSCROLL {
+	bit smoothscrolling
+	bpl .did_something
+	jsr toggle_smoothscroll
+}
 	jmp .did_something
 +
-	cmp #18 ; Ctrl-R for key repeating
+	cmp #11 ; Ctrl-K for key repeating
 	bne +
 	; Toggle key repeat (People using fast emulators want to turn it off)
 	lda #64
@@ -1202,6 +1266,19 @@ getchar_and_maybe_toggle_darkmode
 ++	sta key_repeat
 	jmp .did_something
 +
+
+!ifndef Z5PLUS {
+!ifdef UNDO {
+	cmp #21 ; Ctrl-U for Undo
+	bne +
+	ldx undo_possible
+	beq +
+	stx undo_requested
+	dec undo_possible
+	jmp .did_something
++	
+}
+}
 
 	cmp #4 ; Ctrl-D to forget device# for saves
 	bne .did_nothing
@@ -1217,7 +1294,18 @@ getchar_and_maybe_toggle_darkmode
 	ldx .getchar_save_x
 	rts
 
-.scroll_delay_keys !byte 146, 144, 5, 28 ; Ctrl-0, 1, 2, 3
+!ifdef SMOOTHSCROLL {
+scroll_delay !byte 0
+} else {
+scroll_delay !byte 1 ; Start in fastest flicker-free + tear-free scroll speed
+}
+
+.scroll_delay_keys !byte 146, 144, 5, 28, 159, 156, 30, 31, 158 ; Ctrl-0, 1, 2, 3
+!ifdef TARGET_MEGA65 {
+scroll_delay_values !byte 0, 1, 2, 3, 4, 5, 6, 7, 9 ; Ctrl-0, 1, 2, 3
+} else {
+scroll_delay_values !byte 0, 1, 2, 3, 4, 5, 6, 7, 8 ; Ctrl-0, 1, 2, 3
+}
 .getchar_save_x !byte 0
 } else { ; ACORN
     ; Commodore code saves X here but I don't think we need that on Acorn - on
@@ -1375,74 +1463,21 @@ read_char
 }
 .no_timer
 	jsr getchar_and_maybe_toggle_darkmode
+
+!ifndef Z5PLUS {
+!ifdef UNDO {
+	ldy undo_requested
+	beq ++
+	lda #13 ; Pretend the user pressed Enter, to get out of routine
+++
+}
+}
+
 	cmp #$00
 	bne +
 	jmp read_char
 +	sta .petscii_char_read
 	jmp translate_petscii_to_zscii
-
-!ifndef ACORN {
-s_cursorswitch !byte 0
-!ifdef USE_BLINKING_CURSOR {
-s_cursormode !byte 0
-}
-turn_on_cursor
-!ifdef USE_BLINKING_CURSOR {
-	jsr reset_cursor_blink
-	lda #CURSORCHAR
-	sta cursor_character
-}
-	lda #1
-	sta s_cursorswitch
-	bne update_cursor ; always branch
-
-turn_off_cursor
-	lda #0
-	sta s_cursorswitch
-
-update_cursor
-	sty object_temp
-	ldy zp_screencolumn
-	lda s_cursorswitch
-	bne +++
-	; no cursor
-	jsr s_delete_cursor
-	ldy object_temp
-	rts
-+++	; cursor
-!ifdef TARGET_C128 {
-	ldx COLS_40_80
-	beq +
-	; 80 columns
-	lda cursor_character
-	jsr VDCPrintChar
-	lda current_cursor_colour
-	jsr VDCPrintColour
-	jmp .vdc_printed_char_and_colour
-+	; 40 columns
-}
-	lda cursor_character
-	sta (zp_screenline),y
-	lda current_cursor_colour
-!ifdef TARGET_PLUS4 {
-	stx object_temp + 1
-	tax
-	lda plus4_vic_colours,x
-	ldx object_temp + 1
-}
-!ifdef TARGET_MEGA65 {
-	jsr colour2k
-}
-	sta (zp_colourline),y
-!ifdef TARGET_MEGA65 {
-	jsr colour1k
-}
-
-.vdc_printed_char_and_colour
-
-	ldy object_temp
-	rts
-}
 
 !ifndef ACORN {
 !ifdef USE_BLINKING_CURSOR {

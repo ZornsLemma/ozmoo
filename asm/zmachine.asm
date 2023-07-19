@@ -27,6 +27,13 @@ z_test_mode_print = 1
 z_test_mode_print_and_store = 2
 }
 
+; SFTODONOW: Probably fine, but need to review all undo-related stuff
+!ifndef Z5PLUS {
+!ifdef UNDO {
+z_pc_before_instruction !byte 0,0,0
+}
+}
+
 ; opcount0 = 0
 ; opcount1 = 16
 ; opcount2 = 32
@@ -273,6 +280,17 @@ dumptovice
 	dey
 	bne -
 +
+}
+
+; SFTODONOW PROBABLY FINE BUT NEED TO REVIEW ALL UNDO STUFF
+!ifndef Z5PLUS {
+!ifdef UNDO {
+	ldx #2
+-	lda z_pc,x
+	sta z_pc_before_instruction,x
+	dex
+	bpl -
+}
 }
 
 !ifdef TRACE {
@@ -2239,6 +2257,9 @@ z_ins_set_font
 	ldx z_font,y ; a is already 0
 	jmp z_store_result
 
+; SFTODONOW: Need to review all undo stuff. Let's leave this for the moment, but note the Commdore code has z_ins_save_restore_undo commented out here and a note saying it has moved to disk.asm:
+; z_ins_save_restore_undo moved to disk.asm
+; SFTODONOW: I *assume* this is correct, but just check - do we need to have code to indicate unsupported, we can't just communicate this to the game via setting bits in the header? It would save a few bytes when undo is not supported.
 z_ins_save_restore_undo
 	; Return -1 to indicate that this is not supported
 	ldx #$ff

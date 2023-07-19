@@ -188,9 +188,12 @@ story_start_far_ram = $1000 + (STACK_PAGES + 2 -  (STACK_PAGES & 1))  * $100 ; N
 
 ; --- I/O registers ---
 reg_screen_char_mode  = $0a2c
+reg_rasterline_highbit=	$d011
+reg_rasterline        = $d012
 reg_bordercolour      = $d020
 reg_backgroundcolour  = $d021 
 reg_2mhz			  = $d030
+rasterline_for_scroll = 56; 56 works well for PAL and NTSC
 
 ; --- MMU config ---
 c128_mmu_pcra         = $d501
@@ -209,6 +212,7 @@ c128_mmu_load_pcrd    = $ff04
 ; --- Kernel routines ---
 kernal_delay_1ms      = $eeb3 ; delay 1 ms
 kernal_reset          = $ff3d ; cold reset of the C128
+kernal_jswapper       = $ff5f ; set bank for I/O
 kernal_setbnk         = $ff68 ; set bank for I/O
 kernal_readst         = $ffb7 ; set file parameters
 kernal_setlfs         = $ffba ; set file parameters

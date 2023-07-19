@@ -321,16 +321,16 @@
 		COLOURFUL_LOWER_WIN = 1
 	}
 }
-!if CURSORCOL > 1 {
-	!ifndef COLOURFUL_LOWER_WIN {
-		COLOURFUL_LOWER_WIN = 1
-	}
-}
-!if CURSORCOLDM > 1 {
-	!ifndef COLOURFUL_LOWER_WIN {
-		COLOURFUL_LOWER_WIN = 1
-	}
-}
+;!if CURSORCOL > 1 {
+;	!ifndef COLOURFUL_LOWER_WIN {
+;		COLOURFUL_LOWER_WIN = 1
+;	}
+;}
+;!if CURSORCOLDM > 1 {
+;	!ifndef COLOURFUL_LOWER_WIN {
+;		COLOURFUL_LOWER_WIN = 1
+;	}
+;}
 
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
@@ -593,8 +593,8 @@ z_opcount_ext_jump_high_arr
 	!byte >(z_not_implemented - 1)
 	!byte >(z_not_implemented - 1)
 	!byte >(z_not_implemented - 1)
-	!byte >(z_ins_save_restore_undo - 1)
-	!byte >(z_ins_save_restore_undo - 1)
+	!byte >(z_ins_save_undo - 1)
+	!byte >(z_ins_restore_undo - 1)
 	!byte >(z_ins_print_unicode - 1)
 	!byte >(z_ins_check_unicode - 1)
 	!byte >(z_ins_set_true_colour - 1)
@@ -792,8 +792,8 @@ z_opcount_ext_jump_low_arr
 	!byte <(z_not_implemented - 1)
 	!byte <(z_not_implemented - 1)
 	!byte <(z_not_implemented - 1)
-	!byte <(z_ins_save_restore_undo - 1)
-	!byte <(z_ins_save_restore_undo - 1)
+	!byte <(z_ins_save_undo - 1)
+	!byte <(z_ins_restore_undo - 1)
 	!byte <(z_ins_print_unicode - 1)
 	!byte <(z_ins_check_unicode - 1)
 	!byte <(z_ins_set_true_colour - 1)
@@ -805,6 +805,44 @@ z_number_of_opcodes_implemented = * - z_jump_low_arr
 
 !ifdef TARGET_C128 {
 !source "constants-c128.asm"
+
+!ifdef CUSTOM_FONT {
+!ifdef UNDO {
+.setup_copy_font
+	ldy #>$1800
+	lda reu_bank_for_undo
+	ldx #$fc
+	clc
+	jsr store_reu_transfer_params
+	lda #8
+    sta reu_translen + 1
+	rts
+
+; Font is actually at $1800, where it can't be copied to bank 1, since dynmem starts at $1600
+; so we copy it to $0800 instead
+c128_copy_font_to_bank_1
+	jsr .setup_copy_font
+	lda #%10110000;  C64 -> REU with immediate execution
+	sta reu_command
+	; Wait until raster is in border
+-	bit $d011
+	bpl -
+	; Make REU see RAM bank 1
+	lda $d506
+	ora #%01000000 ; Bit 6: 0 means bank 0, bit 7 is unused
+	sta $d506
+	jsr .setup_copy_font
+	ldy #>$0800
+	sty reu_c64base + 1
+	lda #%10110001;  REU -> c64 with immediate execution
+	sta reu_command
+	; Restore REU to see RAM bank 0
+	lda $d506
+	and #%00111111 ; Bit 6: 0 means bank 0, bit 7 is unused
+	sta $d506
+	rts	
+}
+}
 
 c128_reset_to_basic
 	; this needs to be at the start of the program since
@@ -919,7 +957,6 @@ game_id		!byte 0,0,0,0
 }
 ; SFTODO: Looks like upstream supports scrollback with a REU; could we support this on Acorn?
 
-
 .initialize2
 	jsr stack_init
 
@@ -937,8 +974,8 @@ game_id		!byte 0,0,0,0
 	; this needs to be after the z_init call since 
 	; z_init uses SID to initialize the random number generator
 	; and SID doesn't work in fast mode.
-	ldx COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode
 	; switch to 2MHz
 	lda #use_2mhz_in_80_col_in_game_value
@@ -1005,6 +1042,10 @@ game_id		!byte 0,0,0,0
 	sta zp_pc_l
 }
 
+!if SUPPORT_REU = 1 {
+statmem_reu_banks !byte 0
+}
+
 
 ; include other assembly files
 !ifdef ACORN {
@@ -1020,6 +1061,7 @@ game_id		!byte 0,0,0,0
 !source "scrollback.asm"
 }
 !source "screenkernal.asm"
+!source "screen.asm"
 !source "streams.asm" ; Must come before "text.asm"
 !ifndef ACORN {
 	!source "disk.asm"
@@ -1035,7 +1077,6 @@ game_id		!byte 0,0,0,0
 	!source "reu.asm"
 	}
 ;}
-!source "screen.asm"
 !source "memory.asm"
 !source "stack.asm"
 ;##!ifdef VMEM {
@@ -1113,6 +1154,50 @@ c128_setup_mmu
 	bne -
 	rts
 
+!ifdef UNDO_RAM {
+; Setup a RAM buffer for Undo
+undo_ram_setup
+	bit reu_bank_for_undo
+	bpl + ; An REU bank has already been assigned
+	; Check if undo fits in bank 1
+	jsr calc_dynmem_size
+	clc
+	lda #(>stack_size) + 1
+	adc nonstored_pages
+	bcs + ; Dynmem + stack + ZP > 64 KB, so no way to fit in RAM buffer
+	sta object_temp
+	adc nonstored_pages
+	; adc story_start + header_static_mem
+	; bcs +
+	; ldy story_start + header_static_mem + 1
+	; beq +++
+	; clc
+	; adc #1
+	bcs +
++++	adc #>story_start_far_ram
+	bcs +
+	cmp #VMEM_END_PAGE
+	bcs +
+	lda #VMEM_END_PAGE
+	sec
+	sbc object_temp
+	sta ram_undo_page
+	; Decrease vmem size
+	lda object_temp
+	lsr ; Divide by 2 to get # of VMEM blocks
+	bcc ++
+	adc #0 ; Adds one since C=1 (for when undo size is e.g. 20.5 VMEM blocks)
+++	sta vmap_entries_reserved
+	; lda vmap_max_entries
+	; sec
+	; sbc object_temp + 1
+	; sta vmap_max_entries
+	ldy #$7f
+	sty reu_bank_for_undo ; Special value $7f means undo uses RAM buffer
++
+	rts
+}
+
 c128_move_dynmem_and_calc_vmem
 	; Copy dynmem to bank 1
 	lda #>story_start
@@ -1178,7 +1263,13 @@ c128_move_dynmem_and_calc_vmem
 	sec
 	sbc vmap_first_ram_page_in_bank_1
 	lsr ; Convert from 256-byte pages to 512-byte vmem blocks
+!ifdef UNDO_RAM {
+	sec
+	sbc vmap_entries_reserved
+	clc
+}
 	; Now A holds the # of vmem blocks we can fit in bank 1
+
 	adc first_vmap_entry_in_bank_1 ; Add the # of vmem blocks in bank 0
 	cmp #vmap_max_size
 	bcc +
@@ -1240,11 +1331,22 @@ load_suggested_pages
 } ; ifndef NOSECTORPRELOAD
 } ; ifdef VMEM
 
-	jsr $fda3 ; init I/O
-	;jsr $fd50 ; init memory
-	jsr $fd15 ; set I/O vectors
-	jsr $ff5b ; more init
-    jmp ($a000)
+} ; ifndef ACORN
+
+	; SFTODONOW: Do we need print_no_undo on Acorn? If so, is this the best place for it in the code?
+!ifdef UNDO {
+print_no_undo
+	; ldy #header_flags_2 + 1
+	; jsr read_header_word
+	; and #(255 - 16) ; no undo
+	; ldy #header_flags_2 + 1
+	; jsr write_header_byte
+	lda #>.no_undo_msg
+	ldx #<.no_undo_msg
+	jsr printstring_raw
+	jmp wait_a_sec
+.no_undo_msg
+	!pet "Undo not available",13,13,0
 }
 
 program_end
@@ -1334,8 +1436,8 @@ deletable_screen_init_1
 
 !ifndef Z4PLUS {
 	!ifdef TARGET_C128 {
-		lda COLS_40_80
-		beq .width40
+		bit COLS_40_80
+		bpl .width40
 		; 80 col
 		lda #54
 		sta sl_score_pos
@@ -1364,28 +1466,9 @@ deletable_screen_init_1
         }
     }
 }
-	
-!ifndef ACORN {
-	lda #147 ; clear screen
-	jsr s_printchar
-}
-	ldy #0
-	sty current_window
-	sty window_start_row + 3
-!ifndef Z4PLUS {
-	iny
-}
-	sty window_start_row + 2
-	sty window_start_row + 1
-	ldy s_screen_height
-	sty window_start_row
-    +acorn_update_scroll_state
-!ifndef ACORN {
-	ldy #0
-	sty is_buffered_window
-	ldx #$ff
-	jmp erase_window
+	+init_screen_model
 
+!ifndef ACORN {
 deletable_screen_init_2
 !ifdef SMOOTHSCROLL {
 	jsr toggle_smoothscroll
@@ -1466,9 +1549,22 @@ z_init
 	and #(255 - 4 - 8 - (1 - COLOUR)) ; bold font, italic font not available
 	ora #(COLOUR + 16 + 128) ; Colours, Fixed-space style, timed input available
 	jsr write_header_byte
+
+; check_undo
 	ldy #header_flags_2 + 1
 	jsr read_header_word
+	and #(255 - 8 - 32) ; pictures and mouse never available
+!ifdef UNDO {
+	bit reu_bank_for_undo
+	bpl .undo_is_available
+}
+	; Tell game UNDO isn't supported
+	and #(255 - 16) ; no undo
+.undo_is_available	
+	pha
 !ifdef SOUND {
+	; check if the game wants to play sounds, and if we can support this
+	pla
 	pha
 	and #$80
 	beq + ; Game doesn't want to play sounds
@@ -1476,15 +1572,16 @@ z_init
 	bcc +
 	; No sound files found, so tell game sound isn't supported
 	pla
-	and #(255 - 128) 
-	ldy #header_flags_2 + 1
+	and #(255 - 128)  ; no sound effect
 	pha
-+	pla
-	and #(255 - 8 - 16 - 32) ; pictures, undo and mouse not available
++
+    pla
 	ldy #header_flags_2 + 1
 	jsr write_header_byte
 } else {
-	and #(255 - 8 - 16 - 32 - 128) ; pictures, undo, mouse, sound effect not available
+    pla
+	and #(255 - 128)  ; no sound effect
+	ldy #header_flags_2 + 1
 	jsr write_header_byte
 }
 }
@@ -1493,7 +1590,7 @@ z_init
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
 	jsr write_header_byte
-	lda #(64 + 11) ; "K" = release 11
+	lda #(64 + 13) ; "M" = release 13
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
 	jsr write_header_byte
 	+lda_screen_height
@@ -1509,7 +1606,7 @@ z_init
 !ifdef TARGET_C128 {
 	jsr update_screen_width_in_header
 } else {
-	lda s_screen_width
+	lda #SCREEN_WIDTH
 	ldy #header_screen_width_chars
 	jsr write_header_byte
 !ifdef Z5PLUS {
@@ -1616,7 +1713,19 @@ z_init
 }
 
 !ifndef ACORN {
-	!error "Lots of Non-ACORN code has been removed here"
+	!error "Lots of non-ACORN code has been removed here"
+
+	;;  SFTODONOW: TEMP KEPT THIS FRAGMENT OF C64 CODE JUST IN CASE IT'S USEFUL FOR REFERENCE WHEN DOING ACORN UNDO, REMOVE THIS LATER
+!ifdef UNDO {
+	clc
+	lda #(>stack_size) + 1
+	adc nonstored_pages
+	bcc + ; Dynmem + stack + ZP fits in 64 KB
+	ldy #$ff
+	sty reu_bank_for_undo ; Disable undo
+	jsr print_no_undo
++
+}
 }
 
 !ifdef VMEM {

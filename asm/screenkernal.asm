@@ -14,10 +14,6 @@
 ; usage: first call s_init, then replace
 ; $ffd2 with s_printchar and so on.
 ; s_scrollstart is set to the number of top lines to keep when scrolling
-;
-; Uncomment TESTSCREEN and call testscreen for a demo.
-
-;TESTSCREEN = 1
 
 ; SF: s_printchar should be used for virtually all text output. This way it can
 ; update zp_screen{column,row} to match what it has sent to OSWRCH and they will
@@ -71,7 +67,7 @@
 !zone screenkernal {
 
 !ifdef Z3 {
-max_lines = s_screen_height_minus_one
+max_lines = s_screen_height_minus_one ; SFTODO: Needed? Not sure upstream has this. Comment it out and see what breaks... Also it looks superficially odd that Z3 is the odd one out - aren't Z1 and Z2 similar to Z3 in this regard??
 } else {
 max_lines = s_screen_height
 }
@@ -381,7 +377,7 @@ s_printchar
 ++
     ; SF: Reverse video isn't handled by sending control codes through
     ; s_printchar on the Acorn. It could be, but it seems simplest just to
-    ; update s_reverse directly.
+    ; update s_reverse directly. SFTODO: This comment seems a bit outdated now, the Commodore code doens't seem to have support for these control codes either.
 +
 	jmp .printchar_end
 

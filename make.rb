@@ -6,11 +6,11 @@ $is_windows = (ENV['OS'] == 'Windows_NT')
 
 if $is_windows then
 	# Paths on Windows
-    $X64 = "C:\\ProgramsWoInstall\\GTK3VICE-3.6.1-win64\\bin\\x64sc.exe -autostart-warp" # -autostart-delay-random"
-    $X128 = "C:\\ProgramsWoInstall\\GTK3VICE-3.6.1-win64\\bin\\x128.exe -80 -autostart-delay-random"
-    $XPLUS4 = "C:\\ProgramsWoInstall\\GTK3VICE-3.6.1-win64\\bin\\xplus4.exe -autostart-delay-random"
+    $X64 = "C:\\ProgramsWoInstall\\GTK3VICE-3.7.1-win64\\bin\\x64sc.exe -autostart-warp" # -autostart-delay-random"
+    $X128 = "C:\\ProgramsWoInstall\\GTK3VICE-3.7.1-win64\\bin\\x128.exe -80 -autostart-delay-random"
+    $XPLUS4 = "C:\\ProgramsWoInstall\\GTK3VICE-3.7.1-win64\\bin\\xplus4.exe -autostart-delay-random"
 	$MEGA65 = "\"C:\\Program Files\\xemu\\xmega65.exe\" -syscon" # -syscon is a workaround for a serious xemu bug
-    $C1541 = "C:\\ProgramsWoInstall\\WinVICE-3.1-x64\\c1541.exe"
+    $C1541 = "C:\\ProgramsWoInstall\\GTK3VICE-3.7.1-win64\\bin\\c1541.exe"
     $EXOMIZER = "C:\\ProgramsWoInstall\\Exomizer-3.1.0\\win32\\exomizer.exe"
     $ACME = "C:\\ProgramsWoInstall\\acme0.97win\\acme\\acme.exe"
 	$commandline_quotemark = "\""
@@ -20,7 +20,7 @@ else
     $X128 = "x128 -autostart-delay-random"
     #$X128 = "x128 -80col -autostart-delay-random"
     $XPLUS4 = "xplus4 -autostart-delay-random"
-    $MEGA65 = "xemu-xmega65"
+    $MEGA65 = "xemu-xmega65 -besure"
     $C1541 = "c1541"
     $EXOMIZER = "exomizer/src/exomizer"
     $ACME = "acme"
@@ -2005,7 +2005,8 @@ def print_usage
 	puts "         [-dm[:0|1]] [-dmdc:[n]:[n]] [-dmbc:[n]] [-dmsc:[n]] [-dmic:[n]]"
 	puts "         [-ss[1-4]:\"text\"] [-sw:[nnn]] [-smooth[:0|1]]"
 	puts "         [-cb:[n]] [-cc:[n]] [-dmcc:[n]] [-cs:[b|u|l]] "
-	puts "         [-dt:\"text\"] [-rd] [-as(a|w) <soundpath>] <storyfile>"
+	puts "         [-dt:\"text\"] [-rd] [-as(a|w) <soundpath>] "
+	puts "         [-u[:0|1|r]] <storyfile>"
 	puts "  -t: specify target machine. Available targets are c64 (default), c128, plus4 and mega65."
 	puts "  -S1|-S2|-D2|-D3|-71|-81|-P: build mode. Defaults to S1 (71 for C128, 81 for MEGA65). See docs."
 	puts "  -v: Verbose mode. Print as much details as possible about what make.rb is doing."
@@ -2043,6 +2044,7 @@ def print_usage
 	puts "  -rd: Reserve the entire directory track, typically for directory art."
 	puts "  -asa: Add the .aiff sound files found at the specified path (003.aiff - 255.aiff)."
 	puts "  -asw: Add the .wav sound files found at the specified path (003.wav - 255.wav)."
+	puts "  -u: Add support for UNDO. Enabled by default for MEGA65. Use -u:r for RAM buffer (C128 only)"
 	puts "  storyfile: path optional (e.g. infocom/zork1.z3)"
 end
 
@@ -2096,6 +2098,8 @@ $use_history = nil
 $no_sector_preload = nil
 $file_name = 'story'
 custom_file_name = nil
+$undo = nil
+$undo_ram = nil
 $sound_format = nil
 $disk_title = nil
 $scrollback_ram_pages = nil
@@ -2171,6 +2175,8 @@ begin
 			end
 		elsif ARGV[i] =~ /^-v$/ then
 			$verbose = true
+		elsif ARGV[i] =~ /^-debug$/ then
+			$force_debug = true
 		elsif ARGV[i] =~ /^-b$/ then
 			$no_sector_preload = true
 		elsif ARGV[i] =~ /^-rc:((?:\d\d?=\d\d?)(?:,\d=\d\d?)*)$/ then
@@ -2209,6 +2215,15 @@ begin
 			end
 			$sound_format = 'wav'
 			await_soundpath = true
+		elsif ARGV[i] =~ /^-u(?::([01r]))?$/ then
+			if $1 == nil
+				$undo = 1
+			elsif $1 == 'r'
+				$undo = 1
+				$undo_ram = 1
+			else
+				$undo = $1.to_i
+			end
 		elsif ARGV[i] =~ /^-cf$/ then
 			await_preloadfile = true
 			fill_preload = true
@@ -2345,34 +2360,6 @@ if $use_history and $use_history > 0
 		exit 1
 	end
 end
-
-if scrollback == nil
-	if $target == "mega65"
-		scrollback = 1
-	else
-		scrollback = 0
-	end
-end
-if scrollback == 1 and $target == "plus4"
-	puts "ERROR: Scrollback buffer in REU is not supported on this target platform. Try e.g. -sb:6 to enable scrollback in RAM."
-	exit 1
-elsif scrollback == 0
-	$GENERALFLAGS.push('NOSCROLLBACK') unless $GENERALFLAGS.include?('NOSCROLLBACK') 
-end
-if scrollback > 1
-	if $target =~ /^(c64|c128|plus4)$/
-		scrollback = 11 if $target == "c128" and scrollback > 11 # Because 11 KB fits above $d000 on C128
-		$scrollback_ram_pages = 4 * scrollback
-	else
-		puts "ERROR: Scrollback buffer in RAM is not supported on this target platform."
-		exit 1
-	end
-end
-if scrollback > 0 and mode == MODE_P
-	puts "ERROR: Scrollback is not supported for build mode P."
-	exit 1
-end
-
 
 if $target == "mega65"
 	$GENERALFLAGS.push('CHECK_ERRORS') unless $GENERALFLAGS.include?('CHECK_ERRORS')
@@ -2619,6 +2606,38 @@ if ($input_colour or $input_colour_dm) and $zcode_version > 4
 	exit 1
 end	
 
+if scrollback == nil
+	if $target == "mega65" and $zcode_version != 6
+		scrollback = 1
+	else
+		scrollback = 0
+	end
+end
+if scrollback == 1 and $target == "plus4"
+	puts "ERROR: Scrollback buffer in REU is not supported on this target platform. Try e.g. -sb:6 to enable scrollback in RAM."
+	exit 1
+elsif scrollback > 0 and $zcode_version == 6
+	puts "ERROR: Scrollback buffer not supported in version 6 games"
+	exit 1
+elsif scrollback == 0
+	$GENERALFLAGS.push('NOSCROLLBACK') unless $GENERALFLAGS.include?('NOSCROLLBACK') 
+end
+if scrollback > 1
+	if $target =~ /^(c64|c128|plus4)$/
+		scrollback = 11 if $target == "c128" and scrollback > 11 # Because 11 KB fits above $d000 on C128
+		$scrollback_ram_pages = 4 * scrollback
+	else
+		puts "ERROR: Scrollback buffer in RAM is not supported on this target platform."
+		exit 1
+	end
+end
+if scrollback > 0 and mode == MODE_P
+	puts "ERROR: Scrollback is not supported for build mode P."
+	exit 1
+end
+
+
+
 # check header.static_mem_start (size of dynmem)
 $static_mem_start = $story_file_data[14 .. 15].unpack("n")[0]
 
@@ -2702,6 +2721,43 @@ $statmem_blocks = $story_size / $VMEM_BLOCKSIZE - $dynmem_blocks
 if $verbose then 
 	puts "$zmachine_memory_size = #{$zmachine_memory_size}"
 	puts "$story_size = #{$story_size}"
+end
+
+$undo = 2 if ($undo == nil and $target == 'mega65') # undo is enabled by default on MEGA65
+$undo = 0 if $undo == nil
+
+undo_size = $dynmem_blocks * $VMEM_BLOCKSIZE + ($stack_pages + 1) * 256
+max_dynmem_for_ram_undo = 18 # 18 KB dynmem is a good limit to keep a decent speed and vmem size. Up to 28 KB is possible.
+max_ram_undo_size = (max_dynmem_for_ram_undo + 1) * 1024 + 256 # dynmem + stack + 256 bytes for ZP-vars 
+
+if $undo > 0
+	if $target !~ /^(c64|c128|mega65)$/
+		puts "ERROR: Undo is only supported for the MEGA65, C64 and C128 target platforms."
+		exit 1
+	end
+	if $undo_ram == 1
+		$GENERALFLAGS.push('UNDO_RAM')
+		if $target !~ /^c128$/ 
+			puts "ERROR: Undo RAM buffer is only supported for the C128 target platform."
+			exit 1
+		elsif undo_size > max_ram_undo_size
+			puts "ERROR: Undo size (dynmem + stack + 1 page) too big for Undo RAM buffer. Undo size is #{undo_size} bytes" +
+				", while maximum allowed size is #{max_ram_undo_size} bytes."
+			exit 1
+		end
+	end
+	if undo_size > 64*1024
+		if $undo == 1
+			puts "ERROR: Dynmem + stack too large to support UNDO."
+			exit 1
+		else
+			$undo = 0
+		end
+	end
+	if $undo > 0
+		$GENERALFLAGS.push('UNDO')
+		$undo = 1
+	end
 end
 
 
@@ -2793,8 +2849,8 @@ end
 if $target != 'mega65'
 	puts "VMEM blocks in RAM is #{$vmem_blocks_in_ram}" if $verbose
 	puts "Unbanked VMEM blocks in RAM is #{$unbanked_vmem_blocks}" if $verbose 
-	if	$unbanked_vmem_blocks < 2 and $story_size != $dynmem_blocks * $VMEM_BLOCKSIZE then
-		puts "ERROR: Dynamic memory is too big (#{$dynmem_blocks * $VMEM_BLOCKSIZE} bytes), there would be less than 1 KB of unbanked RAM for VMEM." 
+	if	$unbanked_vmem_blocks < 1 and $story_size != $dynmem_blocks * $VMEM_BLOCKSIZE then
+		puts "ERROR: Dynamic memory is too big (#{$dynmem_blocks * $VMEM_BLOCKSIZE} bytes), there would be no unbanked RAM for VMEM." 
 		exit 1
 	end
 end
