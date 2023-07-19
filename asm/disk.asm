@@ -10,6 +10,17 @@ ask_for_save_device !byte $ff
 
 !ifdef TARGET_MEGA65 {
 
+mega65io
+    ; enable C65GS/VIC-IV IO registers
+    ;
+    ; (they will only be active until the first access
+    ; so mega65io needs to be called before any extended I/O)
+    lda #$47
+    sta $d02f
+    lda #$53
+    sta $d02f
+    rts
+
 nonstored_pages			!byte 0
 
 m65_run_dma
@@ -534,7 +545,6 @@ insert_msg_3
 !pet " [ENTER] ",0
 }
 
-
 !ifdef RESTART_SUPPORTED {
 z_ins_restart
 	; insert device# for boot disk in LOAD command
@@ -616,12 +626,22 @@ z_ins_restart
 	+disable_interrupts
 	cld
 !ifdef TARGET_C128 {
+	lda COLS_40_80
+	sta first_unavailable_save_slot_charcode
 	lda #0
 	sta c128_mmu_cfg
 }
 	jsr $ff8a ; restor (Fill vector table at $0314-$0333 with default values)
 	jsr $ff84 ; ioinit (Initialize CIA's, SID, memory config, interrupt timer)
 	jsr $ff81 ; scinit (Initialize VIC; set nput/output to keyboard/screen)
+!ifdef TARGET_C128 {
+	lda COLS_40_80
+	cmp first_unavailable_save_slot_charcode
+	beq +
+	jsr kernal_jswapper
++
+}
+
 	+enable_interrupts
 !ifdef TARGET_C128 {
 	sta c128_mmu_load_pcra
@@ -904,8 +924,8 @@ list_save_files
 	bne .not_a_save_file ; Since there is another save file with the same number, we ignore this file.
 
 !ifdef TARGET_C128 {
-	lda COLS_40_80
-	bne +++
+	bit COLS_40_80
+	bmi +++
 }
 ; Set the first 40 chars of each row to the current text colour	
 	lda s_colour
@@ -955,8 +975,8 @@ list_save_files
 	bne +
 
 !ifdef TARGET_C128 {
-	lda COLS_40_80
-	bne +++
+	bit COLS_40_80
+	bmi +++
 }
 ; Set the first 40 chars of each row to the current text colour	
 	lda s_colour
@@ -996,8 +1016,8 @@ list_save_files
 	; Parameters: x, .sort_item: item (1-9)
 	stx .current_item
 !ifdef TARGET_C128 {
-    lda COLS_40_80
-    bne vdc_insertion_sort
+    bit COLS_40_80
+    bmi vdc_insertion_sort
 }
 --	jsr .calc_screen_address
 	stx zp_temp + 2
@@ -1261,17 +1281,6 @@ restore_game
 	jsr restore_2mhz
 	; Copy stack and pointers from bank 1 to bank 0
 	jsr .copy_stack_and_pointers_to_bank_0
-	; z_temp + 4 now holds the page# where the zp registers are stored in vmem_cache
-	lda #(>stack_start) - 1
-	sta z_temp + 2
-	lda #($100 - zp_bytes_to_save)
-	sta z_temp + 1
-	sta z_temp + 3
-	ldy #zp_bytes_to_save - 1
--	lda (z_temp + 3),y
-	sta (z_temp + 1),y
-	dey
-	bpl -
 }
 	; Swap in z_pc and stack_ptr
 	jsr .swap_pointers_for_save
@@ -1756,7 +1765,19 @@ do_save
 	dec z_temp + 1
 	dec z_temp + 2
 	bne - ; Always branch
-+	rts
++	
+	; z_temp + 4 now holds the page# where the zp registers are stored in vmem_cache
+	lda #(>stack_start) - 1
+	sta z_temp + 2
+	lda #($100 - zp_bytes_to_save)
+	sta z_temp + 1
+	sta z_temp + 3
+	ldy #zp_bytes_to_save - 1
+-	lda (z_temp + 3),y
+	sta (z_temp + 1),y
+	dey
+	bpl -
+	rts
 
 }	
 
@@ -1830,7 +1851,420 @@ wait_an_interval
 }
 
 	
+
+!ifndef UNDO {
+z_ins_save_undo
+z_ins_restore_undo
+    ; Return -1 to indicate that this is not supported
+    ldx #$ff
+    txa
+    jmp z_store_result
+} else {
+
+undo_state_available !byte 0
+
+!ifdef Z5PLUS {
+    ; the "undo" assembler instruction is only available in Z5+
+z_ins_save_undo
+	lda reu_bank_for_undo ; This is $ff if not available
+	tax
+	bmi ++
++	jsr do_save_undo
+	; Return 2 if just restored, -1 if not supported, 1 if saved, 0 if fail
+	lda #0
+++	jmp z_store_result
+
+z_ins_restore_undo
+	ldx undo_state_available
+	beq .undo_failed
+    jsr do_restore_undo
+    ; Return 0 if failed
+    ldx #2
+-   lda #0
+    jmp z_store_result
+.undo_failed
+	ldx #0
+    beq - ; Always branch
 }
+
+reu_bank_for_undo
+!ifdef TARGET_MEGA65 {
+	!byte $00 ; $00 means it's supported by default. May be changed to $ff at boot.
+} else {
+	!byte $ff 	; $ff means no undo. May be changed at boot. Meaning:
+				; Bit 7: Undo disabled?
+				; Bit 6: Undo (if enabled) uses a RAM buffer?
+				; Bit 0-5: REU bank for undo, if enabled and doesn't use a RAM buffer
+}
+
+; we provide basic undo support for z3 as well through a hot key
+; so the basic undo routines need to be available for all versions
+
+!ifdef TARGET_MEGA65 {
+
+do_save_undo
+    ; prepare saving of zp variables
+	jsr .swap_pointers_for_save
+
+	; save zp variables + stack
+    ; source address
+    lda #>(stack_start - zp_bytes_to_save)
+    ldx #<(stack_start - zp_bytes_to_save)
+    stx dma_source_address
+    sta dma_source_address + 1
+    lda #0
+    sta dma_source_bank_and_flags
+    sta dma_source_address_top
+    ; number of bytes
+    lda #>(stack_size + zp_bytes_to_save)
+    ldx #<(stack_size + zp_bytes_to_save)
+    stx dma_count
+    sta dma_count + 1
+    ; destination address ($50000)
+    lda #0
+    sta dma_dest_address
+    sta dma_dest_address + 1
+    sta dma_dest_address_top
+    lda #$05
+    sta dma_dest_bank_and_flags
+    jsr m65_run_dma
+	jsr .swap_pointers_for_save
+
+    ; save dynmem
+    ; source address ($80000 - attic RAM)
+    lda #0
+    sta dma_source_address
+    sta dma_source_address + 1
+    sta dma_source_bank_and_flags
+    lda #$80
+    sta dma_source_address_top
+    ; number of bytes
+    ldy #header_static_mem
+    jsr read_header_word
+    stx dma_count
+    sta dma_count + 1
+    ; destination address
+    lda #0
+    sta dma_dest_address
+    sta dma_dest_address_top
+    lda #(>(stack_size + zp_bytes_to_save)) + 1
+    sta dma_dest_address + 1
+    lda #$05
+    sta dma_dest_bank_and_flags
+    jsr m65_run_dma
+    ldx #1
+	stx undo_state_available
+	rts
+
+do_restore_undo
+	; restore zp variables + stack
+    ; source address ($50000)
+	jsr .swap_pointers_for_save
+    lda #0
+    sta dma_source_address
+    sta dma_source_address + 1
+    sta dma_source_address_top
+    lda #$05
+    sta dma_source_bank_and_flags
+    ; number of bytes
+    lda #>(stack_size + zp_bytes_to_save)
+    ldx #<(stack_size + zp_bytes_to_save)
+    stx dma_count
+    sta dma_count + 1
+    ; destination address
+    lda #>(stack_start - zp_bytes_to_save)
+    ldx #<(stack_start - zp_bytes_to_save)
+    stx dma_dest_address
+    sta dma_dest_address + 1
+    lda #0
+    sta dma_dest_bank_and_flags
+    sta dma_dest_address_top
+    jsr m65_run_dma
+
+	jsr .swap_pointers_for_save
+	jsr get_page_at_z_pc
+
+    ; restore dynmem
+    ; source address
+    lda #0
+    sta dma_source_address
+    sta dma_source_address_top
+    lda #(>(stack_size + zp_bytes_to_save)) + 1
+    sta dma_source_address + 1
+    lda #$05
+    sta dma_source_bank_and_flags
+    ; number of bytes
+    ldy #header_static_mem
+    jsr read_header_word
+    stx dma_count
+    sta dma_count + 1
+    ; dest address
+    lda #0
+    sta dma_dest_address
+    sta dma_dest_address + 1
+    sta dma_dest_bank_and_flags
+    lda #$80
+    sta dma_dest_address_top
+    jsr m65_run_dma
+    ldx #0
+	stx undo_state_available
+	rts
+	
+} else {
+	; Not MEGA65, so this is for C64/C128
+
+!ifdef UNDO_RAM {
+ram_undo_page !byte $ff ; Set during init, if RAM undo is to be used
+vmap_entries_reserved !byte 0 ; Changed during init, if RAM undo is to be used
+}
+
+do_save_undo
+	bit reu_bank_for_undo
+	bmi .save_undo_done
+!ifdef UNDO_RAM {
+	bvs save_undo_in_ram
+}
+    ; prepare saving of zp variables
+	jsr .swap_pointers_for_save
+
+	jsr .setup_transfer_stack
+!ifdef TARGET_C128 {
+	lda #0
+	sta allow_2mhz_in_40_col
+	sta reg_2mhz	;CPU = 1MHz
+}
+	lda #%10110000;  C64 -> REU with immediate execution
+	sta reu_command
+	
+	jsr .swap_pointers_for_save
+
+!ifdef TARGET_C128 {
+    ; ; save dynmem
+
+	jsr .setup_transfer_dynmem
+	lda #%10110000;  c128 -> REU with immediate execution
+	sta reu_command
+	jsr restore_2mhz
+
+	; Restore REU to see RAM bank 0
+	lda $d506
+	and #%00111111 ; Bit 6: 0 means bank 0, bit 7 is unused
+	sta $d506
+
+!ifdef CUSTOM_FONT {
+	lda #$17 ; 0001 011X = $0400 $1800
+	sta $d018
+}
+}
+    ldx #1
+	stx undo_state_available
+.save_undo_done
+	rts
+
+!ifdef UNDO_RAM {
+	; This is a C128 only option, so code is C128 specific
+save_undo_in_ram
+	jsr .swap_pointers_for_save
+
+	; Copy zp + stack to bank 1
+	jsr .copy_stack_and_pointers_to_bank_1
+
+	; Copy zp + stack + dynmem to undo RAM
+	lda #(>story_start_far_ram) - (>stack_size) - 1
+	sta z_temp + 1 ; Source page
+	lda ram_undo_page
+	sta z_temp + 2 ; Destination page
+	lda #(>stack_size) + 1
+	clc
+	adc nonstored_pages
+	sta z_temp + 3 ; # of pages to copy
+-	lda z_temp + 1
+	ldy z_temp + 2
+	ldx #1 ; Copy within bank 1
+	jsr copy_page_c128 ; Copy a page
+	inc z_temp + 1
+	inc z_temp + 2
+	dec z_temp + 3
+	bne -
+	
+	jsr .swap_pointers_for_save
+    ldx #1
+	stx undo_state_available
+	rts
+
+restore_undo_from_ram
+	jsr .swap_pointers_for_save
+
+	; Copy zp + stack + dynmem from undo RAM
+	lda ram_undo_page
+	sta z_temp + 1 ; Source page
+	lda #(>story_start_far_ram) - (>stack_size) - 1
+	sta z_temp + 2 ; Destination page
+	lda #(>stack_size) + 1
+	clc
+	adc nonstored_pages
+	sta z_temp + 3 ; # of pages to copy
+-	lda z_temp + 1
+	ldy z_temp + 2
+	ldx #1 ; Copy within bank 1
+	jsr copy_page_c128 ; Copy a page
+	inc z_temp + 1
+	inc z_temp + 2
+	dec z_temp + 3
+	bne -
+
+	; Copy zp + stack to bank 0
+	jsr .copy_stack_and_pointers_to_bank_0
+
+	jmp .finalize_restore_undo
+	; jsr .swap_pointers_for_save
+	; jsr get_page_at_z_pc
+    ; ldx #0
+	; stx undo_state_available
+	; rts
+}
+
+do_restore_undo
+!ifdef UNDO_RAM {
+	bit reu_bank_for_undo
+	bvs restore_undo_from_ram ; Bit 7 is always clear if we get here, so just need to check bit 6 
+}
+	; restore zp variables + stack
+    ; source address ($50000)
+	jsr .swap_pointers_for_save
+
+	jsr .setup_transfer_stack
+!ifdef TARGET_C128 {
+	lda #0
+	sta allow_2mhz_in_40_col
+	sta reg_2mhz	;CPU = 1MHz
+}
+	lda #%10110001;  REU -> c64 with immediate execution
+	sta reu_command
+
+!ifdef TARGET_C128 {
+    ; ; restore dynmem
+
+	jsr .setup_transfer_dynmem
+	
+	lda #%10110001;  REU -> c128 with immediate execution
+	sta reu_command
+	jsr restore_2mhz
+
+	; Restore REU to see RAM bank 0
+	lda $d506
+	and #%00111111 ; Bit 6: 0 means bank 0, bit 7 is unused
+	sta $d506
+
+!ifdef CUSTOM_FONT {
+	lda #$17 ; 0001 011X = $0400 $1800
+	sta $d018
+}
+}
+
+.finalize_restore_undo
+	jsr .swap_pointers_for_save
+	jsr get_page_at_z_pc
+
+    ldx #0
+	stx undo_state_available
+	rts
+
+.setup_transfer_stack
+	; ; save zp variables + stack
+    ; source address in C64 RAM
+    ldy #>(stack_start - zp_bytes_to_save)
+	; Target address in REU
+	lda reu_bank_for_undo
+	ldx #0
+	; clc ; Doesn't matter, since we set exact transfer size after call
+	jsr store_reu_transfer_params
+	; Set C64 address lowbyte
+    ldx #<(stack_start - zp_bytes_to_save)
+	stx reu_c64base
+	; Set transfer size
+!ifdef TARGET_C64 {
+	lda story_start + header_static_mem + 1
+	clc
+	adc #<(stack_size + zp_bytes_to_save)
+	sta reu_translen
+	lda story_start + header_static_mem
+	adc #>(stack_size + zp_bytes_to_save)
+	sta reu_translen + 1
+} else {
+	; C128
+	ldx #<(stack_size + zp_bytes_to_save)
+	stx reu_translen
+	ldx #>(stack_size + zp_bytes_to_save)
+	stx reu_translen + 1
+}
+	rts
+
+!ifdef TARGET_C128 {
+.setup_copy_screen
+	ldy #>SCREEN_ADDRESS
+	lda reu_bank_for_undo
+	ldx #$fc
+	clc
+	jsr store_reu_transfer_params
+	lda #4
+    sta reu_translen + 1
+	rts
+	
+.setup_transfer_dynmem
+	bit COLS_40_80
+	bmi .no_screen_copying_to_reu
+	; Copy screen memory to REU (and later to bank 1, to avoid ugly flicker of garbage)
+	jsr .setup_copy_screen
+	
+	lda #%10110000;  C64 -> REU with immediate execution
+	sta reu_command
+
+	; Wait until raster is in border
+-	bit $d011
+	bpl -
+.no_screen_copying_to_reu
+
+	; Make REU see RAM bank 1
+	lda $d506
+	ora #%01000000 ; Bit 6: 0 means bank 0, bit 7 is unused
+	sta $d506
+
+	bit COLS_40_80
+	bmi .no_screen_copying_from_reu
+!ifdef CUSTOM_FONT {
+	lda #$12 ; 0001 001X = $0400 $0800
+	sta $d018
+}
+	; Copy screen memory contents from REU to bank 1 to avoid ugly flicker of garbage
+	jsr .setup_copy_screen
+	lda #%10110001;  REU -> c64 with immediate execution
+	sta reu_command
+.no_screen_copying_from_reu
+
+    ; source address in C128 RAM
+    ldy #>story_start_far_ram
+	; Target address in REU
+	lda reu_bank_for_undo
+	ldx #(>stack_size) + 1
+	clc
+	jsr store_reu_transfer_params
+
+	; Set transfer size
+    ldy #header_static_mem
+    jsr read_header_word
+	stx reu_translen
+    sta reu_translen + 1
+
+	rts
+}
+
+
+}
+
+}
+
+} ; end zone save_restore
 
 } ; end zone disk
 	

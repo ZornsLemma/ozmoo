@@ -1,5 +1,24 @@
 ; screen update routines
 
+!macro init_screen_model {
+    lda #147 ; clear screen
+    jsr s_printchar
+    ldy #0
+    sty current_window
+    sty window_start_row + 3
+!ifndef Z4PLUS {
+    iny
+}
+    sty window_start_row + 2
+    sty window_start_row + 1
+    ldy s_screen_height
+    sty window_start_row
+    ldy #0
+    sty is_buffered_window
+    ldx #$ff
+    jmp erase_window
+}
+
 ;init_screen_colours_invisible
 ;	lda zcolours + BGCOL
 ;	bpl + ; Always branch
@@ -74,6 +93,7 @@ init_screen_colours
 !ifdef Z4PLUS {
 z_ins_erase_window
 	; erase_window window
+	jsr printchar_flush
 	ldx z_operand_value_low_arr
 ;    jmp erase_window ; Not needed, since erase_window follows
 }
@@ -83,6 +103,7 @@ erase_window
 	;     1: clear upper window
 	;    -1: clear screen and unsplit
 	;    -2: clear screen and keep split
+;	stx save_x
 	lda zp_screenrow
 	pha
 ;    lda z_operand_value_low_arr
@@ -129,6 +150,13 @@ erase_window
 }
 	stx cursor_row + 1
 	pha
+	tax
+	ldy #0
+	clc
+	jsr s_plot ; Update screen and colour pointers
+	lda is_buffered_window
+	beq .end_erase
+	jsr start_buffering
 	jmp .end_erase
 .window_1
 	lda window_start_row + 1
@@ -459,8 +487,8 @@ show_more_prompt
 	jsr clear_num_rows
 
 !ifdef TARGET_C128 {
-    ldx COLS_40_80
-    beq +
+    bit COLS_40_80
+    bpl +
     ; 80 columns
 	jsr vdc_show_more
 	jmp .alternate_colours
@@ -492,8 +520,8 @@ show_more_prompt
 	jsr colour2k
 }
 !ifdef TARGET_C128 {
-    lda COLS_40_80
-    bne .check_for_keypress
+    bit COLS_40_80
+    bmi .check_for_keypress
     ; Only show more prompt in C128 VIC-II screen
 }
 .more_access3
@@ -515,8 +543,8 @@ show_more_prompt
 +
 }
 !ifdef TARGET_C128 {
-    ldx COLS_40_80
-    beq +
+    bit COLS_40_80
+    bpl +
     ; 80 columns
 	jsr vdc_hide_more
 	jmp .increase_num_rows_done
@@ -579,8 +607,8 @@ printchar_flush
 print_line_from_buffer
 	; Prints the text from first_buffered_column to last_break_char_buffer_pos
 !ifdef TARGET_C128 {
-	lda COLS_40_80
-	bne +
+	bit COLS_40_80
+	bmi +
 	jmp .printline40
 
 +	lda zp_screenline + 1
@@ -598,7 +626,7 @@ print_line_from_buffer
 
 	ldx first_buffered_column
 -   cpx last_break_char_buffer_pos
-	beq .done_print_80
+	bcs .done_print_80
 	lda print_buffer,x
 	jsr convert_petscii_to_screencode
 	ora print_buffer2,x
@@ -663,7 +691,7 @@ print_line_from_buffer
 }
 	ldy first_buffered_column
 -   cpy last_break_char_buffer_pos
-	beq ++
+	bcs ++
 	lda print_buffer,y
 	jsr convert_petscii_to_screencode
 	ora print_buffer2,y
@@ -863,17 +891,6 @@ printstring_raw
 	bne .read_byte
 +	rts
 	
-set_cursor
-	; input: y=column (0-39)
-	;        x=row (0-24)
-	clc
-	jmp s_plot
-
-get_cursor
-	; output: y=column (0-39)
-	;         x=row (0-24)
-	sec
-	jmp s_plot
 
 save_cursor
 	jsr get_cursor
@@ -888,7 +905,19 @@ restore_cursor
 	ldx cursor_row,y
 	lda cursor_column,y
 	tay
-	jmp set_cursor
+;	jmp set_cursor
+
+set_cursor
+	; input: y=column (0-39)
+	;        x=row (0-24)
+	clc
+	jmp s_plot
+
+get_cursor
+	; output: y=column (0-39)
+	;         x=row (0-24)
+	sec
+	jmp s_plot
 
 !ifndef Z4PLUS {
 

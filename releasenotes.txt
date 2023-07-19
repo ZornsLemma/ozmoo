@@ -1,7 +1,52 @@
 RELEASE NOTES
 
+Upcoming release
+
 ================================================
-Release 12: ---
+Release 13.1: 19 July 2022
+
+Bugfixes:
+
+- Fixed bug in text printing that could crash game, when printing a word longer than a line, or when text buffering was started in the middle of a screen line.
+
+================================================
+Release 13: 18 July 2022
+
+New/changed features:
+
+- Single step undo is supported for z5+ (using UNDO command) and for z1-z4 (using Ctrl-U key) on C64/C128 with REU, C128 without REU (slower, and with limited dynmem size), and on MEGA65.
+
+Bugfixes:
+
+- Picture loader gave build error.
+- Fix buggy printing when erase_window was called while buffered printing was active.
+- Don't recognize F5 key if there's no REU or RAM available for scrollback.
+- Ozmoo on C128 would boot into 80 column mode when game restarted in 40 column mode.
+
+Refactoring:
+- Moved cursor code from text.asm to screenkernal.asm.
+- Moved screen model specific code from ozmoo.asm.
+
+================================================
+Release 12.2: 26 December 2022
+
+New/changed features:
+
+- Allow games with just one vmem block in unbanked RAM (requirement was two, up to now).
+
+Bugfixes:
+
+- Game could hang if player pressed backspace while entering a save comment on MEGA65.
+
+================================================
+Release 12.1: 22 December 2022
+
+Bugfixes:
+
+- z1 and z2 games that used an REU for scrollback buffer *and* the player chose to use the REU for caching, crashed due to scrollback data overwriting story data.
+
+================================================
+Release 12: 20 December 2022
 
 New/changed features:
 
@@ -9,8 +54,11 @@ New/changed features:
 - Allow build mode 71 (for 1571 disk) on C64 and Plus/4.
 - Empty keyboard buffer when game starts, so player doesn't accidentally miss an initial quote screen or something.
 - Allow a non-standard boot file name on MEGA65 too (makes the game not auto-boot, which may be what you want.)
-- Let player choose slower scrolling, key repeat mode and change device# for saves.
 - Fixed bug that could cause z5+ games that use colour to print invisible text.
+- Let player choose slower scrolling, key repeat mode and change device# for saves.
+- Made scrolling flicker free and tear free except when using fastest scroll speed, on all but 80 col C128.
+- Added soft scrolling as an option for C64 and for C128 in 40 col mode
+- Games start in slow scroll mode if available, otherwise with scroll slowness = 1 (fastest mode that is flicker-free and tear-free).
 
 Optimizations:
 
@@ -19,7 +67,7 @@ Optimizations:
 - Faster screen clearing on C128 in 80 col mode.
 - Faster writing of characters to screen on C128 in 80 col mode.
 - Faster writing of buffered text to screen (faster on all platforms, a lot faster on C128 in 80 col mode).
-- Optimized scrolling (don't scroll colour memory for games that don't use colour).
+- Optimized scrolling (don't scroll colour memory for games that don't use colour, + general code optimization).
 
 Bugfixes:
 

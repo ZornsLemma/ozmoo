@@ -14,10 +14,6 @@
 ; usage: first call s_init, then replace
 ; $ffd2 with s_printchar and so on.
 ; s_scrollstart is set to the number of top lines to keep when scrolling
-;
-; Uncomment TESTSCREEN and call testscreen for a demo.
-
-;TESTSCREEN = 1
 
 !zone screenkernal {
 
@@ -39,7 +35,6 @@ statuslinecol !byte STATCOL, STATCOLDM
 cursorcol !byte CURSORCOL, CURSORCOLDM
 current_cursor_colour !byte CURSORCOL
 cursor_character !byte CURSORCHAR
-scroll_delay !byte 0
 
 !ifdef TARGET_PLUS4 {
 plus4_vic_colours
@@ -61,7 +56,6 @@ plus4_vic_colours
 	!byte $56   ; light blue
 	!byte $61   ; light grey
 }
-
 
 !ifdef TARGET_C128 {
 !source "vdc.asm"
@@ -108,8 +102,8 @@ vdc_vic_colours = $ce5c ; The official conversion table in ROM
 
 C128SetBackgroundColour
 	stx .stored_x_or_y
-	ldx COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	sta .stored_a
 	tax
@@ -124,8 +118,8 @@ C128SetBackgroundColour
 
 C128SetBorderColour
 	stx .stored_x_or_y
-	ldx COLS_40_80
-	bne + ; no border in VDC, only use background
+	bit COLS_40_80
+	bmi + ; no border in VDC, only use background
 	; 40 column mode
 	sta reg_bordercolour
 +	ldx .stored_x_or_y
@@ -192,16 +186,6 @@ VDCPrintColour
 }
 
 !ifdef TARGET_MEGA65 {
-mega65io
-	; enable C65GS/VIC-IV IO registers
-	;
-	; (they will only be active until the first access
-	; so mega65io needs to be called before any extended I/O)
-	lda #$47
-	sta $d02f
-	lda #$53
-	sta $d02f
-	rts
 
 init_mega65
 	; MEGA65 IO enable
@@ -262,11 +246,11 @@ convert_petscii_to_screencode
 	cmp #$60
 	bcs +
 	and #%00111111
-	bcc ++ ; always jump
+	rts
 +   cmp #$80
 	bcs +
 	and #%11011111
-	bcc ++ ; always jump
+	rts
 +	cmp #$c0
 	bcs +
 	eor #%11000000
@@ -277,8 +261,8 @@ s_init
 	; set up screen_width and screen_width_minus_one
 !ifdef TARGET_C128 {
 	lda #40
-	ldx COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	lda #80
 +
@@ -343,15 +327,28 @@ s_set_text_colour
 	rts
 
 s_delete_cursor
+!ifdef TARGET_MEGA65 {
+	jsr colour2k
+}
 	lda #$20 ; blank space
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	jmp VDCPrintChar
 +
 }
 	ldy zp_screencolumn
 	sta (zp_screenline),y
+!ifdef TARGET_PLUS4 {
+	ldx s_colour
+	lda plus4_vic_colours,x
+} else {
+	lda s_colour
+}
+	sta (zp_colourline),y
+!ifdef TARGET_MEGA65 {
+	jsr colour1k
+}
 	rts
 
 s_printchar
@@ -395,8 +392,8 @@ s_printchar
 	lda #$20
 	ldy zp_screencolumn
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	bne .col80_1
+	bit COLS_40_80
+	bmi .col80_1
 	; 40 columns, use VIC-II screen
 	sta (zp_screenline),y
 	lda s_colour
@@ -471,8 +468,8 @@ s_printchar
 	pla
 	ldy zp_screencolumn
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	bne .col80_2
+	bit COLS_40_80
+	bmi .col80_2
 	; 40 columns, use VIC-II screen
 	sta (zp_screenline),y
 	lda s_colour
@@ -519,8 +516,8 @@ s_printchar
 	jmp .printchar_end
 +
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	bne .col80_3
+	bit COLS_40_80
+	bmi .col80_3
 	; 40 columns, use VIC-II screen
 	jsr .s_scroll
 	jmp .col80_3_end
@@ -574,8 +571,8 @@ s_printchar
 	sta zp_screencolumn
 	inc zp_screenrow
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	bne .col80_4
+	bit COLS_40_80
+	bmi .col80_4
 	; 40 columns, use VIC-II screen
 	jsr .s_scroll
 	jmp .col80_4_end
@@ -651,8 +648,8 @@ s_erase_window
 	asl
 	rol product + 1 ; 40x
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	beq ++
+	bit COLS_40_80
+	bpl ++
 	asl
 	rol product + 1
 ++
@@ -759,27 +756,15 @@ s_scrolled_lines !byte 0
 	cmp s_screen_height
 	bpl +
 	rts
-+	
-	ldx scroll_delay
-	beq .done_delaying
--	txa
-	pha
-	jsr wait_an_interval
-	pla
-	tax
-	dex
-	bne -
-.done_delaying
 
++	
 !ifdef SCROLLBACK {
 	inc s_scrolled_lines
 }
-!ifdef TARGET_MEGA65 {
-	jsr colour2k	
-}
 	ldx window_start_row + 1 ; how many top lines to protect
+	inx
 	stx zp_screenrow
-	inc zp_screenrow
+;	inc zp_screenrow
 	jsr .update_screenpos
 	lda zp_screenline
 	sta .scroll_load_screen + 1
@@ -793,65 +778,149 @@ s_scrolled_lines !byte 0
 }
 	dec zp_screenrow
 	jsr .update_screenpos
+	lda zp_screenline
+	sta .scroll_store_screen + 1
+	lda zp_screenline + 1
+	sta .scroll_store_screen + 2
+!ifdef COLOURFUL_LOWER_WIN {
+	lda zp_colourline
+	sta .scroll_store_colour + 1
+	lda zp_colourline + 1
+	sta .scroll_store_colour + 2
+}
 !ifdef SMOOTHSCROLL {
 	lda smoothscrolling
 	beq +
 	jsr smoothscroll
 +
 }
+
+; ----------- Delay for slower scrolling
+
+	ldx scroll_delay
+	beq .done_delaying
+!ifdef TARGET_MEGA65 {
+	clc ; Carry is expected to be clear when entering the following loop
+	lda #rasterline_for_scroll
+} else {
+	lda window_start_row + 1 ; how many top lines to protect
+	asl
+	asl
+	asl ; Multiplied by 8 (There are 8 raster lines per row)
+	adc #rasterline_for_scroll
+}
+	sei
+--
+	cmp reg_rasterline
+	bne --
+!ifndef TARGET_MEGA65 {
+!ifdef TARGET_PLUS4 {
+	pha
+	lda reg_rasterline_highbit
+	lsr
+	pla
+	bcs --
+} else {
+	bit reg_rasterline_highbit
+	bmi --
+}
+}
+	adc #0 ; Carry is always set, so this adds 1
+;	lda #rasterline_for_scroll + 1
+-	cmp reg_rasterline
+	bne -
+	sbc #1 ; Carry is set, so this subtracts 1
+	dex
+	bne --
+	cli
+; -	txa
+	; pha
+	; jsr wait_an_interval
+	; pla
+	; tax
+	; dex
+	; bne -
+.done_delaying
+;	dec reg_backgroundcolour
+;	inc	 reg_backgroundcolour
+
+!ifdef TARGET_MEGA65 {
+	jsr colour2k	
+}
+
 	lda s_screen_height_minus_one
 	sec
 	sbc zp_screenrow
 	tax
+	clc
+;	sei
 -
 	ldy s_screen_width_minus_one
 .scroll_load_screen
 	lda $8000,y ; This address is modified above
-	sta (zp_screenline),y
+.scroll_store_screen
+	sta $8000,y ; This address is modified above
 !ifdef COLOURFUL_LOWER_WIN {
 .scroll_load_colour
 	lda $8000,y ; This address is modified above
-	sta (zp_colourline),y
+.scroll_store_colour
+	sta $8000,y ; This address is modified above
 }
 	dey
 	bpl .scroll_load_screen
 	dex
 	beq .done_scrolling
-	lda zp_screenline
-	clc
+	lda .scroll_store_screen + 1
+;	clc
 	adc s_screen_width
-	sta zp_screenline
-	bcc +
-	inc zp_screenline + 1
-+		
+	sta .scroll_store_screen + 1
 !ifdef COLOURFUL_LOWER_WIN {
-	lda zp_colourline
-	clc
-	adc s_screen_width
-	sta zp_colourline
-	bcc +
-	inc zp_colourline + 1
-+	
+	sta .scroll_store_colour + 1
 }
-	lda .scroll_load_screen + 1
+	bcc +
 	clc
+	inc .scroll_store_screen + 2
+!ifdef COLOURFUL_LOWER_WIN {
+	inc .scroll_store_colour + 2
+}
++		
+; !ifdef COLOURFUL_LOWER_WIN {
+	; lda .scroll_store_colour + 1
+	; adc s_screen_width
+	; sta .scroll_store_colour + 1
+	; bcc +
+	; clc
+	; inc .scroll_store_colour + 2
+; +	
+; }
+	lda .scroll_load_screen + 1
 	adc s_screen_width
 	sta .scroll_load_screen + 1
-	bcc +
-	inc .scroll_load_screen + 2
-+		
 !ifdef COLOURFUL_LOWER_WIN {
-	lda .scroll_load_colour + 1
-	clc
-	adc s_screen_width
 	sta .scroll_load_colour + 1
-	bcc +
+}
+	bcc -
+	clc
+	inc .scroll_load_screen + 2
+!ifdef COLOURFUL_LOWER_WIN {
 	inc .scroll_load_colour + 2
-+
-}	
-	jmp -
+}
+
+; !ifdef COLOURFUL_LOWER_WIN {
+	; lda .scroll_load_colour + 1
+	; adc s_screen_width
+	; sta .scroll_load_colour + 1
+	; bcc -
+	; clc
+	; inc .scroll_load_colour + 2
+; }	
+	bne - ; Always branch
 
 .done_scrolling
+;	cli
+;	dec reg_backgroundcolour
+;	inc reg_backgroundcolour
+
 !ifdef TARGET_MEGA65 {
 	jsr colour1k
 }
@@ -870,8 +939,8 @@ s_erase_line
 	ldy #0
 .erase_line_from_any_col	
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	bne .col80_5
+	bit COLS_40_80
+	bmi .col80_5
 	; 40 columns, use VIC-II screen
 -	cpy s_screen_width
 	bcs .done_erasing
@@ -995,6 +1064,66 @@ s_erase_line_from_cursor
 	ldy zp_screencolumn
 	jmp .erase_line_from_any_col
 
+s_cursorswitch !byte 0
+!ifdef USE_BLINKING_CURSOR {
+s_cursormode !byte 0
+}
+turn_on_cursor
+!ifdef USE_BLINKING_CURSOR {
+    jsr reset_cursor_blink
+    lda #CURSORCHAR
+    sta cursor_character
+}
+    lda #1
+    sta s_cursorswitch
+    bne update_cursor ; always branch
+
+turn_off_cursor
+    lda #0
+    sta s_cursorswitch
+
+update_cursor
+    sty object_temp
+    ldy zp_screencolumn
+    lda s_cursorswitch
+    bne +++
+    ; no cursor
+    jsr s_delete_cursor
+    ldy object_temp
+    rts
++++ ; cursor
+!ifdef TARGET_C128 {
+	bit COLS_40_80
+	bpl +
+    ; 80 columns
+    lda cursor_character
+    jsr VDCPrintChar
+    lda current_cursor_colour
+    jsr VDCPrintColour
+    jmp .vdc_printed_char_and_colour
++   ; 40 columns
+}
+    lda cursor_character
+    sta (zp_screenline),y
+    lda current_cursor_colour
+!ifdef TARGET_PLUS4 {
+    stx object_temp + 1
+    tax
+    lda plus4_vic_colours,x
+    ldx object_temp + 1
+}
+!ifdef TARGET_MEGA65 {
+    jsr colour2k
+}
+    sta (zp_colourline),y
+!ifdef TARGET_MEGA65 {
+    jsr colour1k
+}
+
+.vdc_printed_char_and_colour
+
+    ldy object_temp
+    rts
 
 !ifndef NODARKMODE {
 toggle_darkmode
@@ -1011,8 +1140,8 @@ toggle_darkmode
 	ldy fgcol,x
 	lda zcolours,y
 !ifdef TARGET_C128 {
-	ldy COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	tay
 	lda vdc_vic_colours,y
@@ -1031,8 +1160,8 @@ toggle_darkmode
 	ldy inputcol,x
 	lda zcolours,y
 !ifdef TARGET_C128 {
-	ldy COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	tay
 	lda vdc_vic_colours,y
@@ -1066,8 +1195,8 @@ toggle_darkmode
 	ldy inputcol,x
 	lda zcolours,y
 !ifdef TARGET_C128 {
-	ldy COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	tay
 	lda vdc_vic_colours,y
@@ -1090,8 +1219,8 @@ toggle_darkmode
 	sta z_temp + 6 ; New foreground colour, as C64 colour 
 	jsr s_set_text_colour
 !ifdef TARGET_C128 {
-	ldy COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	tay
 	lda vdc_vic_colours,y
@@ -1145,8 +1274,8 @@ toggle_darkmode
 	ldy statuslinecol,x
 	lda zcolours,y
 !ifdef TARGET_C128 {
-	ldy COLS_40_80
-	beq +
+	bit COLS_40_80
+	bpl +
 	; 80 columns mode selected
 	tay
 	lda vdc_vic_colours,y
@@ -1159,8 +1288,8 @@ toggle_darkmode
 	ldy s_screen_width_minus_one
 -
 !ifdef TARGET_C128 {
-	ldx COLS_40_80
-	bne +
+	bit COLS_40_80
+	bmi +
 	sta COLOUR_ADDRESS,y
 	jmp ++
 +
@@ -1234,8 +1363,8 @@ toggle_darkmode
 ; }
 !ifdef TARGET_C128 {
 	pha
-	lda COLS_40_80
-	bne +
+	bit COLS_40_80
+	bmi +
 	pla
 	sta (z_temp + 10),y
 	jmp ++
@@ -1343,71 +1472,5 @@ z_ins_set_colour
 	rts
 }
 
-!ifdef TESTSCREEN {
-
-.testtext
-	!pet 2, 5,147,18,"Status Line 123         ",146,13    ; white REV
-	!pet 3, 28,"tesx",20,"t aA@! ",18,"Test aA@!",146,13  ; red
-	!pet 155,"third",20,13                                ; light gray
-	!pet "fourth line",13
-	!pet 13,13,13,13,13,13
-	!pet 13,13,13,13,13,13,13
-	!pet 13,13,13,13,13,13,13
-	!pet "last line",1
-	!pet "aaaaaaaaabbbbbbbbbbbcccccccccc",1
-	!pet "d",1 ; last char on screen
-	!pet "efg",1 ; should scroll here and put efg on new line
-	!pet 13,"h",1; should scroll again and f is on new line
-	!pet 0
-
-testscreen
-	jsr init_screen_colours
-!ifdef TARGET_PLUS4 {
-	lda #212 ; 212 upper/lower, 208 = upper/special
-} else {
-	lda #23 ; 23 upper/lower, 21 = upper/special (22/20 also ok)
-}
-	sta reg_screen_char_mode
-	jsr s_init
-	;lda #1
-	;sta s_scrollstart
-	lda #25
-	sta window_start_row ; 25 lines in window 0
-	lda #1
-	sta window_start_row + 1 ; 1 status line
-	sta window_start_row + 2 ; 1 status line
-	lda #0
-	sta window_start_row + 3
-	ldx #0
--   lda .testtext,x
-	bne +
-	rts
-+   cmp #2
-	bne +
-	; use upper window
-	lda #1
-	sta current_window
-	jmp ++
-+   cmp #3
-	bne +
-	; use lower window
-	lda #0
-	sta current_window
-	jmp ++
-+   cmp #1
-	bne +
-	txa
-	pha
---  jsr kernal_getchar
-	beq --
-	pla
-	tax
-	bne ++
-	; NOTE: s_printchar no longer recognizes the colour codes, so the
-	; colours will not change. But rev on/off still works
-+   jsr s_printchar
-++  inx
-	bne -
-}
 }
 
