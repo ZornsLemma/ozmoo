@@ -67,7 +67,7 @@
 !zone screenkernal {
 
 !ifdef Z3 {
-max_lines = s_screen_height_minus_one ; SFTODO: Needed? Not sure upstream has this. Comment it out and see what breaks... Also it looks superficially odd that Z3 is the odd one out - aren't Z1 and Z2 similar to Z3 in this regard??
+max_lines = s_screen_height_minus_one ; SFTODONOW: Needed? Not sure upstream has this. Comment it out and see what breaks... Also it looks superficially odd that Z3 is the odd one out - aren't Z1 and Z2 similar to Z3 in this regard??
 } else {
 max_lines = s_screen_height
 }

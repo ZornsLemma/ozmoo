@@ -569,6 +569,7 @@ z_ins_read
 	jsr s_set_text_colour
 }
 
+; SFTODONOW: ALL UNDO STUFF NEEDS REVIEWING
 !ifdef UNDO {
 	lda undo_requested
 	beq ++
@@ -1268,6 +1269,7 @@ getchar_and_maybe_toggle_darkmode
 +
 
 !ifndef Z5PLUS {
+; SFTODONOW: ALL UNDO STUFF NEEDS REVIEWING
 !ifdef UNDO {
 	cmp #21 ; Ctrl-U for Undo
 	bne +
@@ -1465,6 +1467,7 @@ read_char
 	jsr getchar_and_maybe_toggle_darkmode
 
 !ifndef Z5PLUS {
+; SFTODONOW: REVIEW ALL UNDO STUFF
 !ifdef UNDO {
 	ldy undo_requested
 	beq ++

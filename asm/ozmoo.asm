@@ -593,6 +593,7 @@ z_opcount_ext_jump_high_arr
 	!byte >(z_not_implemented - 1)
 	!byte >(z_not_implemented - 1)
 	!byte >(z_not_implemented - 1)
+	;;  SFTODONOW: I SUSPECT THIS IS BROKEN, I JUST HAVEN'T NOTICED AS I HAVEN'T DONE A Z5+ BUILD YET
 	!byte >(z_ins_save_undo - 1)
 	!byte >(z_ins_restore_undo - 1)
 	!byte >(z_ins_print_unicode - 1)
@@ -1550,6 +1551,7 @@ z_init
 	ora #(COLOUR + 16 + 128) ; Colours, Fixed-space style, timed input available
 	jsr write_header_byte
 
+	;;  SFTODONOW: REVIEW ALL UNDO RELATED STUFF
 ; check_undo
 	ldy #header_flags_2 + 1
 	jsr read_header_word
@@ -1606,6 +1608,7 @@ z_init
 !ifdef TARGET_C128 {
 	jsr update_screen_width_in_header
 } else {
+	;;  SFTODONOW: DOES THIS EXECUTE ON ACORN? IF SO, ISN'T IT WRONG AS WE DON'T HAVE A FIXED SCREEN WIDTH?
 	lda #SCREEN_WIDTH
 	ldy #header_screen_width_chars
 	jsr write_header_byte
