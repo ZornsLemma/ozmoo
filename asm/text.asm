@@ -49,7 +49,11 @@ input_colour_active !byte 0
 !ifdef UNDO {
 undo_possible   !byte 0
 undo_requested  !byte 0
-undo_msg        !pet "(Turn undone)",13,13,">",0 
+!ifndef ACORN {
+undo_msg        !pet "(Turn undone)",13,13,">",0
+} else {
+undo_msg        !text "(Turn undone)",13,13,">",0
+}
 }
 }
 
@@ -1269,7 +1273,6 @@ getchar_and_maybe_toggle_darkmode
 +
 
 !ifndef Z5PLUS {
-; SFTODONOW: ALL UNDO STUFF NEEDS REVIEWING
 !ifdef UNDO {
 	cmp #21 ; Ctrl-U for Undo
 	bne +
@@ -1343,6 +1346,19 @@ scroll_delay_values !byte 0, 1, 2, 3, 4, 5, 6, 7, 8 ; Ctrl-0, 1, 2, 3
     jsr turn_on_cursor
     lda #vdu_escape
 .not_escape
+}
+!ifndef Z5PLUS {
+!ifdef UNDO {
+	cmp #21 ; Ctrl-U for Undo
+	bne +
+	ldx undo_possible
+	beq +
+	stx undo_requested
+	dec undo_possible
+	;  SFTODONOW: Commodore code looks like it beeps iff the restore is possible. Acorn code is currently silent - I don't normally make a noise if there's a visible text output. I wonder if we should beep (perhaps a vaguely low-pitched "sorry/failed" kind of noise) if we *can't* undo?
+	lda #0 ; SFTODONOW!? jmp .did_something
++
+}
 }
     ; Commodore code restores X at end (i.e. "after"
     ; check_user_interface_controls) but I don't think we need that on Acorn.
@@ -1468,6 +1484,7 @@ read_char
 
 !ifndef Z5PLUS {
 ; SFTODONOW: REVIEW ALL UNDO STUFF
+; ; SFTODONOW: I THINK I AM FORCING 0 INTO A IN GETCHAR_AND_MAYBE... IN THE UNDO REQUESTED CASE, CAN I JUST PUT 13 IN THERE AND GET RID OF THIS CODE?
 !ifdef UNDO {
 	ldy undo_requested
 	beq ++

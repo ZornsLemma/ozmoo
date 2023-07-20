@@ -1336,6 +1336,7 @@ load_suggested_pages
 
 	; SFTODONOW: Do we need print_no_undo on Acorn? If so, is this the best place for it in the code? I suspect it could be discardable init code.
 	; SFTODONOW: This is interesting because it looks like the interpreter showing a message to the user on startup. I have a vague feeling I would have "liked" to do this in some other context, although it slips my mind right now. That said, it feels vaguely inelegant to be "interfering" with the game even in this small way. Is the wait_a_sec just to help make it noticeable? I would assume the usual "more" prompt stuff is still in play here and this message will automatically be protected from scrolling off without the user pressing a key.
+!ifndef ACORN { ; SFTODONOW: For the moment, we know at build time if undo is supported on Acorn or not, so we don't need any code to handle "oh, there isn't enough memory after all" cases
 !ifdef UNDO {
 print_no_undo
 	; ldy #header_flags_2 + 1
@@ -1349,6 +1350,7 @@ print_no_undo
 	jmp wait_a_sec
 .no_undo_msg
 	!pet "Undo not available",13,13,0
+}
 }
 
 program_end
@@ -1552,18 +1554,25 @@ z_init
 	ora #(COLOUR + 16 + 128) ; Colours, Fixed-space style, timed input available
 	jsr write_header_byte
 
-	;;  SFTODONOW: REVIEW ALL UNDO RELATED STUFF
 ; check_undo
 	ldy #header_flags_2 + 1
 	jsr read_header_word
 	and #(255 - 8 - 32) ; pictures and mouse never available
+!ifndef ACORN {
 !ifdef UNDO {
 	bit reu_bank_for_undo
 	bpl .undo_is_available
 }
 	; Tell game UNDO isn't supported
 	and #(255 - 16) ; no undo
-.undo_is_available	
+.undo_is_available
+} else {
+	; SFTODONOW: For the moment, on Acorn we know at build time if undo is supported or not.
+	!ifndef UNDO {
+		; Tell game UNDO isn't supported
+		and #(255 - 16) ; no undo
+	}
+}
 	pha
 !ifdef SOUND {
 	; check if the game wants to play sounds, and if we can support this
@@ -1609,8 +1618,7 @@ z_init
 !ifdef TARGET_C128 {
 	jsr update_screen_width_in_header
 } else {
-	;;  SFTODONOW: DOES THIS EXECUTE ON ACORN? IF SO, ISN'T IT WRONG AS WE DON'T HAVE A FIXED SCREEN WIDTH?
-	lda #SCREEN_WIDTH
+	+lda_screen_width
 	ldy #header_screen_width_chars
 	jsr write_header_byte
 !ifdef Z5PLUS {

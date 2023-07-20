@@ -103,7 +103,12 @@ max_screen_width = 80
 flat_ramtop = $8000
 swr_ramtop = $c000
 } else {
+    ;;  SFTODONOW: FOR THE MOMENT WE ASSUME WE *ALWAYS* SUPPORT UNDO ON TUBE, SO WE CAN TRIVIALLY ALLOCATE THE UNDO BUFFER JUST BY ADJSUTING FLAT_RAMTOP
+!ifndef UNDO {
 flat_ramtop = $f800
+} else {
+flat_ramtop = $f800 - UNDO_BUFFER_SIZE_BYTES
+}
 }
 !ifdef ACORN_SHOW_RUNTIME_INFO {
 inkey_ctrl = -2
@@ -465,6 +470,7 @@ z_pc_mempointer ; 2 bytes (first byte shared with z_pc)
 	+allocate 2
 zp_save_start = z_local_vars_ptr
 zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
+    +assert zp_bytes_to_save == ZP_BYTES_TO_SAVE
 ;
 ; End of contiguous zero page block
 ;
@@ -835,6 +841,21 @@ streams_output_selected
 	+pre_allocate 4
 streams_current_entry
 	+allocate 4
+
+!ifdef UNDO {
+    ; SF: It's tempting to think that if the game's dynamic memory leaves
+    ; >=zp_bytes_to_save free at the end of the last page, we could re-use that
+    ; space in the undo buffer for the saved zp bytes. We *could*, but that
+    ; memory in the main copy of dynamic memory is still real data, it's just
+    ; the first part of static memory, so we can't corrupt it. We'd therefore
+    ; have to make sure to copy precisely the right amount of data instead of
+    ; copying whole pages, and the extra complexity of that means it's probably
+    ; better to just always use a separate undo buffer for the zero page data.
+undo_buffer_start = $f800 - UNDO_BUFFER_SIZE_BYTES
+    +pre_allocate zp_bytes_to_save
+zp_undo_buffer_start
+    +allocate zp_bytes_to_save
+}
 
 ; SFTODO: On second processor build, we have zero page free which goes to waste
 ; because jmp_buf won't fit in it. So we might as well move some inline

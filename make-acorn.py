@@ -109,8 +109,16 @@ def divide_round_up(x, y):
         return (x // y) + 1
 
 
+def round_up(x, y):
+    return divide_round_up(x, y) * y
+
+
 def bytes_to_pages(x):
     return divide_round_up(x, bytes_per_page)
+
+
+def format_kb(bytes):
+    return ("%.2f" % (bytes / 1024.0)).rstrip("0").rstrip(".") + "K"
 
 
 def pad_to(data, size):
@@ -1692,6 +1700,7 @@ def parse_args():
     group.add_argument("--custom-title-page", metavar="P", type=str, help="use custom title page P, where P is a filename of mode 7 screen data or an edit.tf URL")
     group.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
     group.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
+    group.add_argument("--undo", action="store_true", help="enable use of undo during gameplay")
 
     group = parser.add_argument_group("optional in-game appearance arguments")
     group.add_argument("-7", "--no-mode-7-status", action="store_true", help="disable coloured status line in mode 7")
@@ -1956,12 +1965,13 @@ def make_disc_image():
     ozmoo_base_args = [
         "-DACORN=1",
         "-DACORN_CURSOR_PASS_THROUGH=1",
-        "-DSTACK_PAGES=4",
+        "-DSTACK_PAGES=%d" % stack_pages,
         "-DSPLASHWAIT=0",
         "-DACORN_INITIAL_NONSTORED_PAGES=%d" % nonstored_pages,
         "-DACORN_DYNAMIC_SIZE_BYTES=%d" % dynamic_size_bytes,
         "-DACORN_GAME_PAGES=%d" % game_pages,
         "-DACORN_LOADER_HIGHLIGHT_FG=%d" % loader_screen.highlight_fg,
+        "-DZP_BYTES_TO_SAVE=%d" % zp_bytes_to_save,
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -2046,6 +2056,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_HW_SCROLL_FAST=1"]
     if cmd_args.no_data_in_stack:
         ozmoo_base_args += ["-DACORN_NO_DATA_IN_STACK=1"]
+    if cmd_args.undo:
+        tube_args += ["-DUNDO=1", "-DUNDO_BUFFER_SIZE_BYTES=%d" % undo_buffer_size]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -2280,6 +2292,7 @@ bytes_per_vmem_block = pages_per_vmem_block * bytes_per_page
 min_vmem_blocks = 2 # absolute minimum, one for PC, one for data SFTODO: ALLOW USER TO SPECIFY ON CMD LINE?
 min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
+zp_bytes_to_save = 0xd
 
 if not os.path.exists("temp"):
     os.makedirs("temp")
@@ -2324,6 +2337,7 @@ else:
 game_pages = bytes_to_pages(len(game_data))
 dynamic_size_bytes = read_be_word(game_data, header_static_mem)
 nonstored_pages = bytes_to_pages(dynamic_size_bytes)
+stack_pages = 4
 assert nonstored_pages > 0
 # We round nonstored_pages up to a multiple of pages_per_vmem_block; this is
 # irrelevant but harmless for non-VMEM builds, and for VMEM builds it is
@@ -2359,6 +2373,14 @@ while ((game_pages < nonstored_pages + pages_per_vmem_block) or
        (game_pages % pages_per_vmem_block != 0)):
     game_data += bytearray(bytes_per_page)
     game_pages = bytes_to_pages(len(game_data))
+
+if cmd_args.undo:
+    undo_buffer_size = round_up(round_up(dynamic_size_bytes, 256) + stack_pages * 256, 512)
+    # We impose this maximum undo buffer size limit to match the upstream limits for the Commodore 128. This precise value doesn't have any significance, but SFTODONOW: MAY CHANGE AS CODE EVOLVES we can't support anything much bigger than this, as we have ~46K SFTODO DID I GET THIS WRONG, IS IT MORE LIKE ~50K? of free RAM for stack, story and vmem cache on a second processor, so if the undo buffer gets close to half of this there's no RAM left over for dynamic memory or virtual memory cache.
+    max_undo_buffer_size = 19.25 * 1024
+    if undo_buffer_size > max_undo_buffer_size:
+        cmd_args.undo = False
+        warn("Ignoring --undo option as the undo buffer would need %s and the maximum is %s" % (format_kb(undo_buffer_size), format_kb(max_undo_buffer_size)))
 
 bbc_args = []
 tube_args = []
@@ -2454,10 +2476,11 @@ show_deferred_output()
 # I don't know if there are going to be complications with this approach. By shrinking vmap_max_entries we avoid wasting time and adding complexity in the regular vmem use skipping over the blocks which are actually assigned to the undo buffer. Piggybacking on the existing memory allocation in this way should work nicely on both tube and sideways RAM builds. Off the top of my head I don't know if this "extra" use of the lower levels of the vmem subsystem might upset the running game code and require some kind of "protection". My gut feeling is the biggest risk of complication is that these "end" vmap entries are likely to be the ones which are held in spare shadow RAM if any, which may slow things down in an undesirable way (given how often we will be writing to the undo buffer) *and* may cause problems - though performance aside it may "just work" - with the bounce buffers (not sure if that's what we call them) in low memory getting overwritten by this used. I half wonder if I should try to move spare shadow RAM to the *start* of the vmap cache rather than having it at the end, but that might be error prone (and would potentially change performance in a hand-wavy way, as it would alter the "luck" of which game data gets stuck in shadow RAQM despite being potentially hot).
 # The alternative is to allocate specially, but this would need different implementations on tube and SWR builds. For tube builds, we probably expect both story_start and flat_ramtop to be known at build time (and note that we don't currently relocate, and the fact we need to handle soft break gracefully probably makes adding relocation and using that to allocate an undo buffer at $700 upwards is undesirable), so allocating is fiddly. For sideways RAM builds, we could "almost" just steal the required amount of sideways RAM from the end of the sideways RAM serving as vmem cache - this would avoid us getting hit with performance concerns with shadow RAM, *but* we'd pretty much have to allow for wrapping across multiple banks and dealing with the IBOS memory hole as otherwise the fact that on a B+ or Integra-B the "last" sideways bank is short would mean we'd be limited to 11.5K of undo buffer. TBH as I write this out, while a bit annoying, for sideways RAM builds this may actually be easier, safer and more performant (the wrapping/memory hole stuff is not rocket science). And given the vmem cache is "flat" on a tube build, the "oh, but shadow RAM and paging worries" aspect would go away if we only stole vmem cache space for the undo buffer on the tube - we could near trivially just compute the start address of the undo buffer and then we have a simple way to access it. (Small downside there is that it's not true that the vmem cache is flat on a turbo copro. But it would probably only be mildly fiddly to use part of currently unused bank 3 for undo cache on a turbo, and if we later on switched to having bank 3 for use as dynmem, we could trivially just relocate the undo cache into bank 0 where the dynmem would have been.)
 # Note that for both tube and SWR versions, we may want to take into account total RAM (host+tube if available) to decide whether to allow undo - this *kind of* means that at least for tube, we want the discardable init code (which knows the size of the host cache) to make the decision, and that therefore for both tube and SWR versions, we *cannot* (unless the min vmem cache to have after allocating undo buffer is small enough to fit entirely in tube RAM without needing host cache on top) ever assume that just because we are in an undo-capable build, we *will* actually support undo.
-# Hmm, having slept on this, I am thinking maybe doing this just for tube is best - at least to start with. The problem with sideways RAM is that in general (and yes, some dynmem may be in main RAM sometimes) we would be copying from dynmem in SWR to undo buffer in SWR, so we'd have to go via a bounce buffer and that essentially doubles the amount of data we need to copy. So if we have 10K of dynmem, we have to copy 20K "in general". The core of a LDA abs,y:STA abs,y:iny:bne inner copy loop is 4+5+2+3=14 cycles, so at 2MHz copying 20K (i.e. just 10K of dynmem) will take ~0.15s. Double that if we have 20K dynmem of course. This *might* be OK, but it starts to feel a bit chuggy - especially if the user is e.g. bashing out a series of commands to navigate through already explored territory to get somewhere, rather than exploring something new and going a bit slower. Not saying I won't do it - I think it's mildly fiddly with the banking and the IBOS memory holes, but not tremendously hard - but I think to start with I'll do it tube only. I don't want to rely on it yet, but if we impose an upstream-compatible ~20K max undo buffer size, given we have ~46K of memory at story_start on tube, we could allocate 20K dynmem, 20K undo buffer and still have 6K worst case for caching before relying on host cache to add more, which is a bit low but not utterly terrible and might mean that on tube an undo build *always* supports undo, which would simplify the code slightly and also allow the loader to show "CTRL-U" as an in-game key for tube builds without any complicated "how mucH RAM do we have?" logic.
+# Hmm, having slept on this, I am thinking maybe doing this just for tube is best - at least to start with. The problem with sideways RAM is that in general (and yes, some dynmem may be in main RAM sometimes) we would be copying from dynmem in SWR to undo buffer in SWR, so we'd have to go via a bounce buffer and that essentially doubles the amount of data we need to copy. So if we have 10K of dynmem, we have to copy 20K "in general". The core of a LDA abs,y:STA abs,y:iny:bne inner copy loop is 4+5+2+3=14 cycles, so at 2MHz copying 20K (i.e. just 10K of dynmem) will take ~0.15s. Double that if we have 20K dynmem of course. This *might* be OK, but it starts to feel a bit chuggy - especially if the user is e.g. bashing out a series of commands to navigate through already explored territory to get somewhere, rather than exploring something new and going a bit slower. Not saying I won't do it - I think it's mildly fiddly with the banking and the IBOS memory holes, but not tremendously hard - but I think to start with I'll do it tube only. I don't want to rely on it yet, but if we impose an upstream-compatible ~20K max undo buffer size, given we have ~46K of memory at story_start on tube, we could allocate 20K dynmem, 20K undo buffer and still have 6K worst case for caching before relying on host cache to add more, which is a bit low but not utterly terrible and might mean that on tube an undo build *always* supports undo, which would simplify the code slightly and also allow the loader to show "CTRL-U" as an in-game key for tube builds without any complicated "how mucH RAM do we have?" logic. - also worth bearing in mind that even on an otherwise unexpanded model B/Electron with copro, the user can always run in mode 6 or 7 and have at least 12K of host cache on top of that ~6K of vmem cache left in the copro - so performance may be a bit crappy, but it probably won't be *terrible*, even if the user who built the game doesn't do any performance testing.
+# SFTODONOW: It might be *nice* if the user could toggle undo off at the loader screen, but this may also be a bit annoyingly un-automatic. Just possibly it would be worth making tube undo a runtime choice, although in reality I'd probably want it to be automatically controlled and it feels potentially confusing for the loader to sometimes decide to turn it off "just because" the user decided to run in mode 0, for example.
 #
 # SFTODONOW: Can/should I give some kind of feedback (maybe there is some already - not checked code) like a beep when pressing CTRL-U to undo? If there is textual feedback then that's fine, I only do the beep for CTRL-S as there's no immediate acknowledgement/effect otherwise.
 
-# SFTODONOW: Z-Machine std 1.1 says the interpreter clears the "undo" bit of the header if it can't provide the requested effect. Is Ozmoo doing that? Should it? I find myself wondering if a) games respect this b) this would allow us to avoid having code for "undo not supported", saving a few bytes. May be worth asking Fredrik about this. But should probably play with it myself, e.g. once I have undo working, find a Z5+ game which supports "undo", forcibly clear this bit in the header anyway and see how the game responds to an "undo" command - does it still call the save/restore-for-undo opcodes? Also interesting to note the commented out code to do this in print_no_undo - but why? because no game respected it, so it's a waste of space?
+# SFTODONOW: Z-Machine std 1.1 says the interpreter clears the "undo" bit of the header if it can't provide the requested effect. Is Ozmoo doing that? Should it? I find myself wondering if a) games respect this b) this would allow us to avoid having code for "undo not supported", saving a few bytes. May be worth asking Fredrik about this. But should probably play with it myself, e.g. once I have undo working, find a Z5+ game which supports "undo", forcibly clear this bit in the header anyway and see how the game responds to an "undo" command - does it still call the save/restore-for-undo opcodes? Also interesting to note the commented out code to do this in print_no_undo - but why? because no game respected it, so it's a waste of space? - ah, note also there is code to modify this stuff in the hader in ozmoo.asm at "; check undo" comment
 
 # SFTODONOW: HAVE A LOOK AT ADDING "X"->"EXAMINE" SUPPORT FOR GAMES WHICH DON'T ALLOW IT BY DEFAULT
