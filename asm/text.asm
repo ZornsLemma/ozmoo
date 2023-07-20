@@ -1356,7 +1356,7 @@ scroll_delay_values !byte 0, 1, 2, 3, 4, 5, 6, 7, 8 ; Ctrl-0, 1, 2, 3
 	stx undo_requested
 	dec undo_possible
 	;  SFTODONOW: Commodore code looks like it beeps iff the restore is possible. Acorn code is currently silent - I don't normally make a noise if there's a visible text output. I wonder if we should beep (perhaps a vaguely low-pitched "sorry/failed" kind of noise) if we *can't* undo?
-	lda #0 ; SFTODONOW!? jmp .did_something
+	lda #13 ; Pretend the user pressed Enter, to get out of routine
 +
 }
 }
@@ -1481,17 +1481,6 @@ read_char
 }
 .no_timer
 	jsr getchar_and_maybe_toggle_darkmode
-
-!ifndef Z5PLUS {
-; SFTODONOW: REVIEW ALL UNDO STUFF
-; ; SFTODONOW: I THINK I AM FORCING 0 INTO A IN GETCHAR_AND_MAYBE... IN THE UNDO REQUESTED CASE, CAN I JUST PUT 13 IN THERE AND GET RID OF THIS CODE?
-!ifdef UNDO {
-	ldy undo_requested
-	beq ++
-	lda #13 ; Pretend the user pressed Enter, to get out of routine
-++
-}
-}
 
 	cmp #$00
 	bne +
