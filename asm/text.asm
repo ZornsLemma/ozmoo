@@ -578,7 +578,7 @@ z_ins_read
 	lda undo_requested
 	beq ++
 	dec undo_requested
-	jsr do_restore_undo
+	+do_restore_undo_inline
 	lda #>undo_msg
 	ldx #<undo_msg
 	jsr printstring_raw
@@ -592,7 +592,7 @@ z_ins_read
 	sta z_pc,x
 	dex
 	bpl -
-	jsr do_save_undo
+	+do_save_undo_inline
 	pla
 	sta z_pc
 	pla

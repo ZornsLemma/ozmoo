@@ -41,7 +41,7 @@ readblocks
     bpl +
     lda #>scratch_double_page
     sta readblocks_mempos + 1
-    sta .copy_lda_abs_y + 2
+    sta undo_copy_lda_abs_y + 2
 +
 }
 
@@ -237,18 +237,18 @@ readblocks
     pla
     bpl +
     sta readblocks_mempos + 1
-    sta .copy_sta_abs_y + 2
+    sta undo_copy_sta_abs_y + 2
     ldx #1
     ldy #0
 -   
-.copy_lda_abs_y
+undo_copy_lda_abs_y
     lda scratch_double_page,y
-.copy_sta_abs_y
+undo_copy_sta_abs_y
     sta $ff00,y ; patched
     iny
     bne -
-    inc .copy_sta_abs_y + 2
-    inc .copy_lda_abs_y + 2
+    inc undo_copy_sta_abs_y + 2
+    inc undo_copy_lda_abs_y + 2
     dex
     bpl -
 +
@@ -1165,24 +1165,6 @@ z_ins_restore_undo
 
 undo_state_available !byte 0
 
-!ifdef Z5PLUS {
-    ; the "undo" assembler instruction is only available in Z5+
-z_ins_save_undo
- 	jsr do_save_undo
-	; Return 2 if just restored, -1 if not supported, 1 if saved, 0 if fail
-	lda #0
-  	jmp z_store_result
-
-z_ins_restore_undo
-	ldx undo_state_available
-	beq +
-    jsr do_restore_undo
-    ; Return 0 if failed
-    ldx #2
-+   lda #0
-    jmp z_store_result
-}
-
 ; we provide basic undo support for z3 as well through a hot key
 ; so the basic undo routines need to be available for all versions
 ; SFTODONOW: Bit micro-optimising, but do we need to jsr to these in Z5+ builds or can we inline them via macros? If they can return early it may well be shorter to do it via a jsr anyway.
@@ -1191,15 +1173,15 @@ z_ins_restore_undo
     !error "This undo implementation only works for tube builds."
 }
 
-do_save_undo
+!macro do_save_undo_inline {
     lda #>undo_buffer_start
-    sta .copy_sta_abs_y + 2
+    sta undo_copy_sta_abs_y + 2
 
     ; Copy the stack and dynamic memory into the undo buffer.
     lda #>stack_start
-    sta .copy_lda_abs_y + 2
+    sta undo_copy_lda_abs_y + 2
     ldx #(>stack_size) + ACORN_INITIAL_NONSTORED_PAGES
-    jsr .copy_x_pages
+    jsr undo_copy_x_pages
 
     ; Now copy the zp_bytes_to_save bytes at zp_save_start into the undo buffer.
     ; We use X for this loop as there are zp,x but no zp,y addressing modes.
@@ -1211,17 +1193,17 @@ do_save_undo
 
     ldx #1
 	stx undo_state_available
-    rts
+}
 
-do_restore_undo
+!macro do_restore_undo_inline {
     lda #>undo_buffer_start
-    sta .copy_lda_abs_y + 2
+    sta undo_copy_lda_abs_y + 2
 
     ; Restore the stack and dynamic memory from the undo buffer.
     lda #>stack_start
-    sta .copy_sta_abs_y + 2
+    sta undo_copy_sta_abs_y + 2
     ldx #(>stack_size) + ACORN_INITIAL_NONSTORED_PAGES
-    jsr .copy_x_pages
+    jsr undo_copy_x_pages
 
     ; Now restore the zp_bytes_to_save bytes at zp_save_start from the undo buffer.
     ; We use X for this loop as there are zp,x but no zp,y addressing modes.
@@ -1235,27 +1217,45 @@ do_restore_undo
 
     ldx #0
 	stx undo_state_available
-	rts
+}
 
     ; SFTODO: Near-identical copy code appears in a few places in Acorn Ozmoo,
     ; although I believe this is the only copy in the tube executable. We could
     ; possibly factor out the commonality at the source level using a macro, but
     ; given the "caller" is expected to modify the operands of two of the
     ; instructions it's probably more confusing than necessary to do that.
-.copy_x_pages
+undo_copy_x_pages
     ldy #0
 -
-.copy_lda_abs_y
+undo_copy_lda_abs_y
     lda $ff00,y ; patched at runtime
-.copy_sta_abs_y
+undo_copy_sta_abs_y
     sta $ff00,y ; patched at runtime
     iny
     bne -
-    inc .copy_lda_abs_y + 2
-    inc .copy_sta_abs_y + 2
+    inc undo_copy_lda_abs_y + 2
+    inc undo_copy_sta_abs_y + 2
     dex
     bne -
     rts
+
+!ifdef Z5PLUS {
+    ; the "undo" assembler instruction is only available in Z5+
+z_ins_save_undo
+    +do_save_undo_inline
+	; Return 2 if just restored, -1 if not supported, 1 if saved, 0 if fail
+	lda #0
+  	jmp z_store_result
+
+z_ins_restore_undo
+	ldx undo_state_available
+	beq +
+    +do_restore_undo_inline
+    ; Return 0 if failed
+    ldx #2
++   lda #0
+    jmp z_store_result
 }
+} ; ifdef UNDO
 
 } ; zone save_restore
