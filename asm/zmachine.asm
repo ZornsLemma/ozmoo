@@ -1937,6 +1937,7 @@ z_ins_sound_effect
 sound_high_pitched_beep
 .sound_high_pitched_beep
     lda #144 ; B4
+sound_a
 .sound_low_pitched_beep
     sta .sound_block + 4
     ; SF: ENHANCEMENT: The C64 code won't return until the sound has finished

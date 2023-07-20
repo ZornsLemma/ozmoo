@@ -1351,12 +1351,14 @@ scroll_delay_values !byte 0, 1, 2, 3, 4, 5, 6, 7, 8 ; Ctrl-0, 1, 2, 3
 !ifdef UNDO {
 	cmp #21 ; Ctrl-U for Undo
 	bne +
-	ldx undo_possible
-	beq +
-	stx undo_requested
+	lda undo_possible
+	beq ++
+	sta undo_requested
 	dec undo_possible
 	;  SFTODONOW: Commodore code looks like it beeps iff the restore is possible. Acorn code is currently silent - I don't normally make a noise if there's a visible text output. I wonder if we should beep (perhaps a vaguely low-pitched "sorry/failed" kind of noise) if we *can't* undo?
 	lda #13 ; Pretend the user pressed Enter, to get out of routine
+	bne + ; always branch
+++  jsr sound_a ; A=0, which is what we want
 +
 }
 }
