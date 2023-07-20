@@ -1203,10 +1203,11 @@ do_save_undo
     jsr .copy_x_pages
 
     ; Now copy the zp_bytes_to_save bytes at zp_save_start into the undo buffer.
-    ldy #zp_bytes_to_save - 1
--   lda zp_save_start,y         ; SFTODONOW: This is assembling as absolute when it could be zp
-    sta zp_undo_buffer_start,y  ; SFTODONOW: This isn't guaranteed to be in zp, but in practice it is, and we're not taking advantage as this is assembling as absolute
-    dey
+    ; We use X for this loop as there are zp,x but no zp,y addressing modes.
+    ldx #zp_bytes_to_save - 1
+-   lda zp_save_start,x
+    sta zp_undo_buffer_start,x
+    dex
     bpl -
 
     ldx #1
@@ -1224,11 +1225,11 @@ do_restore_undo
     jsr .copy_x_pages
 
     ; Now restore the zp_bytes_to_save bytes at zp_save_start from the undo buffer.
-    ldy #zp_bytes_to_save - 1
-    ;;  SFTODONOW: NEXT TWO LINES PROB NOT USING ZP WHEN THEY CAN - *IN FACT, THIS *MAY* BE A GENERAL ISSUE, COSTING US CODE SIZE UNNECESSARILY*
--   lda zp_undo_buffer_start,y
-    sta zp_save_start,y
-    dey
+    ; We use X for this loop as there are zp,x but no zp,y addressing modes.
+    ldx #zp_bytes_to_save - 1
+-   lda zp_undo_buffer_start,x
+    sta zp_save_start,x
+    dex
     bpl -
 
 	jsr get_page_at_z_pc
