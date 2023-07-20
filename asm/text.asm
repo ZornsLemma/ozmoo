@@ -573,7 +573,6 @@ z_ins_read
 	jsr s_set_text_colour
 }
 
-; SFTODONOW: ALL UNDO STUFF NEEDS REVIEWING
 !ifdef UNDO {
 	lda undo_requested
 	beq ++
