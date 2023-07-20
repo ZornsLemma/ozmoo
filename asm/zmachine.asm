@@ -2257,16 +2257,7 @@ z_ins_set_font
 	ldx z_font,y ; a is already 0
 	jmp z_store_result
 
-!ifdef SFTODONOWDELETE {
-; SFTODONOW: Need to review all undo stuff. Let's leave this for the moment, but note the Commdore code has z_ins_save_restore_undo commented out here and a note saying it has moved to disk.asm:
 ; z_ins_save_restore_undo moved to disk.asm
-; SFTODONOW: I *assume* this is correct, but just check - do we need to have code to indicate unsupported, we can't just communicate this to the game via setting bits in the header? It would save a few bytes when undo is not supported.
-z_ins_save_restore_undo
-	; Return -1 to indicate that this is not supported
-	ldx #$ff
-	txa
-	jmp z_store_result
-}
 }
 
 ; z_ins_set_true_colour placed at end of VAR z_ins_print_num

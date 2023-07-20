@@ -1154,7 +1154,9 @@ osgbpb_block_pointer
 !ifdef Z5PLUS {
 z_ins_save_undo
 z_ins_restore_undo
-    ; Return -1 to indicate that this is not supported
+    ; Return -1 to indicate that this is not supported.
+    ; SF: I asked Fredrik and we need this to be safe even if we've indicated
+    ; via the header that undo isn't supported.
     ldx #$ff
     txa
     jmp z_store_result
@@ -1173,15 +1175,12 @@ z_ins_save_undo
 
 z_ins_restore_undo
 	ldx undo_state_available
-	beq .undo_failed            ; SFTODONOW: Can we optimise this? X=0 and undo_failed then sets X=0 again...
+	beq +
     jsr do_restore_undo
     ; Return 0 if failed
     ldx #2
--   lda #0
++   lda #0
     jmp z_store_result
-.undo_failed
-	ldx #0
-    beq - ; Always branch
 }
 
 ; we provide basic undo support for z3 as well through a hot key
