@@ -879,13 +879,13 @@ save_game
     ; account. This is unnecessary but harmless if we just saved.
 !ifdef ACORN_SWR {
     ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
-    ; outdated value in mempointer_ram_bank.
+    ; outdated value in mempointer_ram_bank. SFTODO: Do I mean z_pc_mempointer_ram_bank really?
     lda #$ff
     sta zp_pc_h
 }
 !ifdef ACORN_TURBO_SUPPORTED {
     ; We set zp_pc_h to an invalid value to avoid any risk of relying on an
-    ; outdated value in mempointer_turbo_bank.
+    ; outdated value in mempointer_turbo_bank. SFTODO: Do I mean z_pc_mempointer_turbo_bank really?
     lda #$ff
     sta zp_pc_h
 }

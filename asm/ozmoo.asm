@@ -1334,7 +1334,8 @@ load_suggested_pages
 
 } ; ifndef ACORN
 
-	; SFTODONOW: Do we need print_no_undo on Acorn? If so, is this the best place for it in the code?
+	; SFTODONOW: Do we need print_no_undo on Acorn? If so, is this the best place for it in the code? I suspect it could be discardable init code.
+	; SFTODONOW: This is interesting because it looks like the interpreter showing a message to the user on startup. I have a vague feeling I would have "liked" to do this in some other context, although it slips my mind right now. That said, it feels vaguely inelegant to be "interfering" with the game even in this small way. Is the wait_a_sec just to help make it noticeable? I would assume the usual "more" prompt stuff is still in play here and this message will automatically be protected from scrolling off without the user pressing a key.
 !ifdef UNDO {
 print_no_undo
 	; ldy #header_flags_2 + 1
