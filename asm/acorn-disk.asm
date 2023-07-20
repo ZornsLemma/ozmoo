@@ -1189,22 +1189,18 @@ z_ins_restore_undo
 ; SFTODONOW: Bit micro-optimising, but do we need to jsr to these in Z5+ builds or can we inline them via macros? If they can return early it may well be shorter to do it via a jsr anyway.
 
 !ifdef ACORN_SWR {
-    !error "Undo implementation only works for tube builds"
+    !error "This undo implementation only works for tube builds."
 }
 
 do_save_undo
     lda #>undo_buffer_start
     sta .copy_sta_abs_y + 2
 
-    ; SFTODONOW: The stack and dynamic memory will "often" (if the stack is an even number of pages) be contiguous, and we can optimise this into a single copy operation (and we don't actually even need the subroutine, we can just inline it) in that case. Can/should/do we in fact already start the stack at an odd page boundary in order to butt right up against the dynamic memory if the stack is an odd number of pages? This would allow this optimisation here always, and it would give a larger contiguous block of space between the end of the program and the start of the stack, which might be more useful for e.g. history buffer. As I say, we *may* already do this - haven't checked. (But if we don't already do it, is there any assumption the stack starts at an even page boundary? Probably isn't, but check.)
-    ; Copy the stack into the undo buffer.
+    ; Copy the stack and dynamic memory into the undo buffer.
     lda #>stack_start
-    ldx #>stack_size
-    jsr SFTODOCOPYXPAGES
-    ; Copy the dynamic memory into the undo buffer.
-    lda #>story_start
-    ldx #ACORN_INITIAL_NONSTORED_PAGES
-    jsr SFTODOCOPYXPAGES
+    sta .copy_lda_abs_y + 2
+    ldx #(>stack_size) + ACORN_INITIAL_NONSTORED_PAGES
+    jsr .copy_x_pages
 
     ; Now copy the zp_bytes_to_save bytes at zp_save_start into the undo buffer.
     ldy #zp_bytes_to_save - 1
@@ -1217,13 +1213,37 @@ do_save_undo
 	stx undo_state_available
     rts
 
-    ; SFTODO: Is there another "copy X pages" chunk of code elsewhere which I can share? It looks like the shadow driver and the SWR-only code above both have something similar, we could perhaps (though it's maybe more confusing) share the code via a macro but not at run time, unless there's another copy somewhere I've overlooked.
-SFTODOCOPYXPAGES2
-    sta .copy_sta_abs_y + 2
-    jmp +                       ; SFTODONOW IN PRACTICE WE MAY BE ABLE TO BNE ALWAYS
-SFTODOCOPYXPAGES
+do_restore_undo
+    lda #>undo_buffer_start
     sta .copy_lda_abs_y + 2
-+   ldy #0
+
+    ; Restore the stack and dynamic memory from the undo buffer.
+    lda #>stack_start
+    sta .copy_sta_abs_y + 2
+    ldx #(>stack_size) + ACORN_INITIAL_NONSTORED_PAGES
+    jsr .copy_x_pages
+
+    ; Now restore the zp_bytes_to_save bytes at zp_save_start from the undo buffer.
+    ldy #zp_bytes_to_save - 1
+    ;;  SFTODONOW: NEXT TWO LINES PROB NOT USING ZP WHEN THEY CAN - *IN FACT, THIS *MAY* BE A GENERAL ISSUE, COSTING US CODE SIZE UNNECESSARILY*
+-   lda zp_undo_buffer_start,y
+    sta zp_save_start,y
+    dey
+    bpl -
+
+	jsr get_page_at_z_pc
+
+    ldx #0
+	stx undo_state_available
+	rts
+
+    ; SFTODO: Near-identical copy code appears in a few places in Acorn Ozmoo,
+    ; although I believe this is the only copy in the tube executable. We could
+    ; possibly factor out the commonality at the source level using a macro, but
+    ; given the "caller" is expected to modify the operands of two of the
+    ; instructions it's probably more confusing than necessary to do that.
+.copy_x_pages
+    ldy #0
 -
 .copy_lda_abs_y
     lda $ff00,y ; patched at runtime
@@ -1236,34 +1256,6 @@ SFTODOCOPYXPAGES
     dex
     bne -
     rts
-
-do_restore_undo
-    lda #>undo_buffer_start
-    sta .copy_lda_abs_y + 2
-
-    ; SFTODONOW: SAME CONTIG-STACK-AND-DYNMEM OPTIMISATION AS FOR DO_SAVE_UNDO
-    ; Restore the stack from the undo buffer.
-    lda #>stack_start
-    ldx #>stack_size
-    jsr SFTODOCOPYXPAGES2
-    ; Restore the dynamic memory from the undo buffer.
-    lda #>story_start
-    ldx #ACORN_INITIAL_NONSTORED_PAGES
-    jsr SFTODOCOPYXPAGES2
-
-    ; Now restore the zp_bytes_to_save bytes at zp_save_start from the undo buffer.
-    ldy #zp_bytes_to_save - 1
-    ;;  SFTODONOW: NEXT TWO LINES PROB NOT USING ZP WHEN THEY CAN
--   lda zp_undo_buffer_start,y
-    sta zp_save_start,y
-    dey
-    bpl -
-
-	jsr get_page_at_z_pc
-
-    ldx #0
-	stx undo_state_available
-	rts
 }
 
 } ; zone save_restore
