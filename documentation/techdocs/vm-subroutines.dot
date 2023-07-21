@@ -6,14 +6,16 @@ digraph subroutines {
     # parse_array_read_byte -> read_byte_at_z_address;
 
     subgraph cluster_mempointer {
-	label = "z_address (Z-machine)\nmempointer (6502)";
+	label = "z_address (Z-machine)\lmempointer (6502)\l";
+	labeljust="l";
 	style=dashed;
 	{ rank=same; set_z_address -> read_next_byte [label="controls", style=dotted] };
 	read_next_byte -> read_byte_at_z_address [label="(hot)"];
     }
 
     subgraph cluster_z_pc_mempointer {
-	label = "z_pc (Z-machine)\nz_pc_mempointer (6502)";
+	label = "z_pc (Z-machine)\lz_pc_mempointer (6502)\l";
+	labeljust="l";
 	style=dashed
 	{ rank=same; set_z_pc -> read_next_byte_at_z_pc [label="controls", style=dotted] };
 	read_next_byte_at_z_pc -> inc_z_pc_page;
@@ -21,7 +23,6 @@ digraph subroutines {
     }
 
     get_page_at_z_pc -> read_byte_at_z_address;
-
 }
 
 # vi: sw=4 sts=4
