@@ -1,3 +1,11 @@
+Undo penalty benchmarks:
+No undo support, 32K B with 3MHz copro, mode 3: $3b7-$5aa3 222.52
+ditto but with 144K SWR: $8a1-$58b9 205.04
+Undo support, 32K B with 3MHz copro, mode 3: $31b-$782c 299.69
+ditto but with 144K SWR: $8c3-$6d7f 257.88
+So with no SWR takes 35% longer with undo, and with SWR takes 26% longer
+
+
 Experimentally hacking BBC SWR code to use subroutines for paging SWR: (standard M128, mode 7)
 - with the hack: $009484 $009484 (-$7c8)
 $ egrep '(stack_start|program_end)' temp/acme_labels_ozmoo_bbc_swr_shr_3000
