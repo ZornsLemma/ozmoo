@@ -1,0 +1,27 @@
+digraph subroutines {
+    graph [nodesep=1, label="Ozmoo virtual memory subroutines", fontsize=20, labelloc=t];
+    node [shape=rectangle, style=rounded];
+
+    # string_array_read_byte -> read_byte_at_z_address;
+    # parse_array_read_byte -> read_byte_at_z_address;
+
+    subgraph cluster_mempointer {
+	label = "mempointer";
+	style=dashed;
+	{ rank=same; set_z_address -> read_next_byte [label="controls", style=dotted] };
+	read_next_byte -> read_byte_at_z_address;
+    }
+
+    subgraph cluster_z_pc_mempointer {
+	label = "z_pc_mempointer";
+	style=dashed
+	{ rank=same; set_z_pc -> read_next_byte_at_z_pc [label="controls", style=dotted] };
+	read_next_byte_at_z_pc -> inc_z_pc_page;
+	inc_z_pc_page -> get_page_at_z_pc;
+    }
+
+    get_page_at_z_pc -> read_byte_at_z_address;
+
+}
+
+# vi: sw=4 sts=4
