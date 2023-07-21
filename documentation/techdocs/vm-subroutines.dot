@@ -18,6 +18,7 @@ digraph subroutines {
 	labeljust="l";
 	style=dashed
 	{ rank=same; set_z_pc -> read_next_byte_at_z_pc [label="controls", style=dotted] };
+	set_z_pc -> get_page_at_z_pc;
 	read_next_byte_at_z_pc -> inc_z_pc_page;
 	inc_z_pc_page -> get_page_at_z_pc;
     }
