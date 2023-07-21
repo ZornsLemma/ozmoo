@@ -2491,3 +2491,5 @@ show_deferred_output()
 # SFTODONOW: HAVE A LOOK AT ADDING "X"->"EXAMINE" SUPPORT FOR GAMES WHICH DON'T ALLOW IT BY DEFAULT
 
 # SFTODONOW: Is there any value in checking the "undo" bit in the header at build time and ignoring --undo (with a warning) if it's not supported? We'd only do this for Z5+ games of course. Fredrik says some (check e-mail) solid gold Z5 games don't support undo; would this catch them?
+
+# SFTODONOW: Try to show CTRL-U on the loader screen; this is easy if we stick with it being enabled at build time and only and always supported on tube.
