@@ -1887,14 +1887,76 @@ read_text
 	ldy .read_text_column ; compare with size of keybuffer
 	lda #0
 	+macro_string_array_write_byte
-}	
+}
 !ifdef USE_HISTORY {
 	jsr add_line_to_history
+}
+!ifdef X_FOR_EXAMINE {
+	; Change "x" as the first word on the line into "examine", to work around
+	; older games which don't recognise this themselves. We do this after adding
+	; the line to the history to try to preserve the illusion "x" is supported
+	; natively.
+	; SFTODO: In order to keep things simple I'm not trying to support Z5+ here.
+	; I suspect most Z5+ games will allow "x" to mean "examine" anyway.
+	!ifdef Z5PLUS {
+		!error "'X' alias not supported for Z5+ games"
+	}
+	; If there isn't room in the buffer for another 6 characters, we can't
+	; possibly replace "x" with "examine".
+	lda .read_text_char_limit
+	sec
+	sbc .read_text_column
+	cmp #6
+	bcc .no_room_to_expand
+	; There's room. Do we actually have "x" at the start?
+	; Skip leading spaces, if any.
+	ldy #0
+-	iny
+	+macro_string_array_read_byte
+	beq .not_x
+	cmp #' '
+	beq -
+	cmp #'x'
+	bne .not_x
+	sty .XINDEX
+	iny
+	+macro_string_array_read_byte
+	beq .is_x
+	cmp #' '
+	bne .not_x
+.is_x
+	; We have "x" as the first (and possibly only) word in the input.
+	; Shuffle the rest of the line up to make room for "examine".
+	ldy .read_text_column
+-
+	+macro_string_array_read_byte
+	iny:iny:iny:iny:iny:iny
+	+macro_string_array_write_byte
+	dey:dey:dey:dey:dey:dey
+	dey
+	cpy .XINDEX
+	bne -
+	; Replace "x" with "examine"
+	ldx #6
+-   lda .examine_reversed,x
+	+macro_string_array_write_byte
+	iny
+	dex
+	bpl -
+.not_x
+.no_room_to_expand
 }
 	pla ; the terminating character, usually newline
 	beq +
 	jsr s_printchar; print terminating char unless 0 (0 indicates timer abort)
 +   rts
+
+!ifdef X_FOR_EXAMINE {
+.XINDEX ; SFTODONOW: HACKY NAME, ALSO IS THERE A HANDY ZP LOC WE CAN BORROW FOR THIS?
+	!byte 0
+.examine_reversed
+	!text "enimaxe"
+}
 
 !ifdef USE_HISTORY {
 	; MAIN DATASTRUCTURE:

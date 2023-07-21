@@ -1701,6 +1701,7 @@ def parse_args():
     group.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
     group.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
     group.add_argument("--undo", action="store_true", help="enable use of undo during gameplay")
+    group.add_argument("--x-for-examine", action="store_true", help="interpret 'x' as 'examine' (Z1-4 games only)")
 
     group = parser.add_argument_group("optional in-game appearance arguments")
     group.add_argument("-7", "--no-mode-7-status", action="store_true", help="disable coloured status line in mode 7")
@@ -2058,6 +2059,10 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_NO_DATA_IN_STACK=1"]
     if cmd_args.undo:
         tube_args += ["-DUNDO=1", "-DUNDO_BUFFER_SIZE_BYTES=%d" % undo_buffer_size]
+    if cmd_args.x_for_examine:
+        if z_machine_version >= 5:
+            die("--x-for-examine is not supported for Z-machine versions 5 and above")
+        ozmoo_base_args += ["-DX_FOR_EXAMINE=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
