@@ -2291,6 +2291,8 @@ header_version = 0
 header_release = 2
 header_serial = 18
 header_static_mem = 0xe
+header_flags_2 = 0x10
+header_flags_2_undo = 1 << 4
 pages_per_vmem_block = 2 # SFTODO: rename back to vmem_block_pagecount to match (upstream) assembly constant?
 bytes_per_page = 256
 bytes_per_vmem_block = pages_per_vmem_block * bytes_per_page
@@ -2378,6 +2380,11 @@ while ((game_pages < nonstored_pages + pages_per_vmem_block) or
        (game_pages % pages_per_vmem_block != 0)):
     game_data += bytearray(bytes_per_page)
     game_pages = bytes_to_pages(len(game_data))
+
+if cmd_args.undo:
+    if z_machine_version >= 5 and ((game_data[header_flags_2 + 1] & header_flags_2_undo) == 0):
+        warn("Ignoring --undo as this version %d game does not support undo" % z_machine_version)
+        cmd_args.undo = False
 
 if cmd_args.undo:
     undo_buffer_size = round_up(round_up(dynamic_size_bytes, 256) + stack_pages * 256, 512)
