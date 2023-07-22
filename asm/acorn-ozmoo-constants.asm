@@ -470,7 +470,7 @@ z_pc_mempointer ; 2 bytes (first byte shared with z_pc)
 	+allocate 2
 zp_save_start = z_local_vars_ptr
 zp_bytes_to_save = z_pc + 3 - z_local_vars_ptr
-    +assert zp_bytes_to_save == ZP_BYTES_TO_SAVE
+    +assert zp_bytes_to_save = ZP_BYTES_TO_SAVE
 ;
 ; End of contiguous zero page block
 ;
