@@ -26,4 +26,12 @@ digraph subroutines {
     get_page_at_z_pc -> read_byte_at_z_address;
 }
 
+# TODO: Check these in code before adding, but looking at an old paper version I found, it may be worth adding:
+# - z_init and restore_game calling get_page_at_z_pc
+# - z_ins_copy_table (Z5+) calling read_byte_at_z_address
+# - read_byte_at_z_address 'owns' zp_pc_[hl] (perhaps not on this diagram; if
+#   these are not used elsewhere, they perhaps just want a mention in
+#   accompanying text noting they are an internal detail, mainly because their
+#   names are similar to other variables which aren't internal)
+
 # vi: sw=4 sts=4
