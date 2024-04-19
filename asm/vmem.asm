@@ -58,7 +58,13 @@ read_byte_at_z_address
 	; a,x,y (high, mid, low) contains address.
 	; Returns: value in a
 
-!ifdef TARGET_MEGA65 {
+!ifdef TARGET_X16 {
+	sta mempointer + 1
+	stx mempointer
+    jsr x16_prepare_bankmem
+	lda (mempointer),y
+	rts
+} else ifdef TARGET_MEGA65 {
 	sta mempointer + 2
 	stx mempointer + 1
 	sty mempointer
@@ -139,7 +145,7 @@ read_byte_at_z_address
 	jmp .return_result 
 } ; Not SKIP_VMEM_BUFFERS
 } ; Not TARGET_PLUS4
-} ; Not target MEGA65	
+} ; Not target MEGA6A or X16
 } else {
 ; virtual memory
 
@@ -216,7 +222,7 @@ print_optimized_vm_map
 	sta streams_output_selected + 2
 	sta is_buffered_window
 	jsr print_following_string
-	!pet 13,"$po$:",0
+	!text 13,"$PO$:",0
 
 	ldx #0
 -	lda vmap_z_h,x
@@ -239,7 +245,7 @@ print_optimized_vm_map
 	
 +++	
 	jsr print_following_string
-	!pet "$$$$",0
+	!text "$$$$",0
 	jsr kernal_readchar   ; read keyboard
 	jmp kernal_reset      ; reset
 }
@@ -370,7 +376,7 @@ load_blocks_from_index
 	jsr readblocks
 !ifdef TRACE_VM {
 	jsr print_following_string
-	!pet "load_blocks (normal) ",0
+	!text "load_blocks (normal) ",0
 	jsr print_vm_map
 }
 	rts
@@ -494,7 +500,6 @@ read_byte_at_z_address
 	bit reu_boost_mode
 	bmi .boost
 	jmp .no_boost
-hej
 .boost
 	lda zp_pc_h
 	clc

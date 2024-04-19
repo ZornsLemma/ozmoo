@@ -23,11 +23,126 @@ reu_error
 .reu_error_msg
 	!pet 13,"REU error, disabled. [SPACE]",0
 
+!ifdef TARGET_MEGA65_OR_X16 {
+m65_x16_reu_load_page_limit = z_temp + 10  ; max page # to read
+m65_x16_reu_enable_load_page_limit !byte 0 ; respect page # limit or not
+}
+
+!ifdef TARGET_X16 {
+
+.x16_reu_load_address = object_temp
+.x16_reu_page_count = z_temp + 11
+;.x16_bank !byte 0 ; current bank (8 KB, $a000-$bfff)
+
+x16_load_file_to_reu
+	; In: a,x: REU load page (0-63 are in normal RAM, at $6000-$9fff, 64- are in high RAM, bank 1 and up)
+	; Returns: a: Number of pages loaded.
+	; Call SETNAM before calling this
+	; Opens file as #2. Closes file at end.
+
+	; Prepare for copying data to REU
+	stz z_temp
+
+    ; find out which bank
+	cmp #0
+	bne .in_high_ram
+	cpx #64
+	bcs .in_high_ram
+	
+	; In normal RAM
+	; Set bank to -1 or 0
+	stz 0
+	cpx #$21
+	bcs +
+	dec 0
+	cpx #0
+	bne +
+	dec 0
++	txa
+	clc
+	adc #$5f 	; Start at $5f00
+	sta z_temp + 1
+	bne .done_bank_calc ; Always branch
+
+.in_high_ram
+	
+	stx .x16_reu_load_address ; Lowbyte of current page in REU memory
+	sta .x16_reu_load_address + 1 ; Highbyte of current page in REU memory
+	txa
+	asl
+	rol .x16_reu_load_address + 1
+	asl
+	rol .x16_reu_load_address + 1
+	asl
+	lda .x16_reu_load_address + 1
+	rol
+	sbc #0 ; Carry is already clear, so this substracts 1
+	sta 0
+	lda .x16_reu_load_address
+	and #$1f
+	ora #$a0
+	sta z_temp + 1
+
+.done_bank_calc
+
+	lda #2      ; file number 2
+	tay
+	ldx boot_device
+	jsr kernal_setlfs ; call SETLFS
+
+	jsr kernal_open     ; call OPEN
+	bcc +
+	lda #ERROR_FLOPPY_READ_ERROR
+	jsr fatalerror
++
+	ldx #2      ; filenumber 2
+	jsr kernal_chkin ; call CHKIN (file 2 now used as input)
+
+	ldy #0
+-	jsr kernal_readst
+	bne .file_copying_done
+	jsr kernal_readchar
+    sta (z_temp),y
+	iny
+	bne -
+
+    jsr .update_progress_bar
+	inc .x16_reu_page_count
+
+	lda m65_x16_reu_enable_load_page_limit
+	beq +
+	dec m65_x16_reu_load_page_limit
+	beq .file_copying_done
+
+	; Go to next page
++
+--	inc z_temp + 1
+    lda z_temp + 1
+	cmp #$9f ; Skip $9f00, since it holds I/O registers
+	beq --
+	and #$1f
+	bne - ; No bank change
+	inc 0
+    lda z_temp + 1
+    cmp #$c0
+    bne -
+	lda #$a0
+	sta z_temp + 1
+	bne - ; Always jump
+
+.file_copying_done
+	ldx #$00
+	stx m65_x16_reu_enable_load_page_limit
+	jsr kernal_chkin  ; restore input to keyboard
+	lda #$02      ; filenumber 2
+	jsr kernal_close ; call CLOSE
+	jsr kernal_clrchn
+	lda .x16_reu_page_count
+	rts
+}
 
 !ifdef TARGET_MEGA65 {
 
-m65_reu_load_page_limit = z_temp + 10
-m65_reu_enable_load_page_limit !byte 0
 .m65_reu_load_address = object_temp
 .m65_reu_memory_buffer = zp_temp + 2
 .m65_reu_page_count = z_temp + 11
@@ -83,9 +198,9 @@ m65_load_file_to_reu
 
 	inc .m65_reu_page_count
 
-	lda m65_reu_enable_load_page_limit
+	lda m65_x16_reu_enable_load_page_limit
 	beq +
-	dec m65_reu_load_page_limit
+	dec m65_x16_reu_load_page_limit
 	beq .file_copying_done
 
 +
@@ -98,7 +213,7 @@ m65_load_file_to_reu
 	
 .file_copying_done
 	lda #$00     
-	sta m65_reu_enable_load_page_limit
+	sta m65_x16_reu_enable_load_page_limit
 	jsr kernal_chkin  ; restore input to keyboard
 	lda #$02      ; filenumber 2
 	jsr kernal_close ; call CLOSE
@@ -277,8 +392,21 @@ store_reu_transfer_params
 reu_banks !byte 0
 
 check_reu_size
+    ; return REU size in multiples of 64 KB
+    ; input: -
+    ; output: a=number of 64 KB banks of REU memory
+    ; side effects: 
+    ; used registers: 
 
-!ifdef TARGET_MEGA65 {
+!ifdef TARGET_X16 {
+    ; TODO: we know that at least 512 KB is available, but thei
+    ; emulator wraps around, so we cannot test by writing to $a000
+    ; how large the memory actually is. Is there a better method?
+    lda #8 ; 8 * 64 = 512 KB
+    rts
+
+;TODO TODO
+} else ifdef TARGET_MEGA65 {
 	; Start checking at address $08 00 00 00
 	ldz #0
 	ldy #0

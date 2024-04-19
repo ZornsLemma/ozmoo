@@ -2,9 +2,7 @@
 
 # Overview
 
-Ozmoo is a a redistributable interpreter of Z-code games - Infocom games and games written in Inform, ZIL or Dialog. Ozmoo can be used for new interactive fiction works on the Commodore 64 and similar computers.  While the old Infocom interpreters are still available, the license situation is not clear so it is risky to use in new work, especially commercial. Furthermore, some of the newer Inform-based games use features which the old Infocom interpreters on the C64 can't handle. Ozmoo is written to provide a free alternative that doesn't have these risks and limitations.
-
-Ozmoo was originally only developed for the Commodore 64, but it is structured so that it is fairly easy to retarget Ozmoo to computers with similar architecture. Apart from Commodore 64, Ozmoo can currently target the Commodore 128, the Commodore Plus/4 and the MEGA65 computers. There is also a fork of Ozmoo for the Acorn computers (BBC Micro and other variants).
+Ozmoo is a a redistributable interpreter of Z-code games - Infocom games and games written in Inform, ZIL or Dialog. Ozmoo can be used for new interactive fiction works on the Commodore 64, Commodore 128, Commodore Plus/4, Commander X16 and MEGA65. There is also a fork of Ozmoo for the Acorn computers (BBC Micro and other variants). While the old Infocom interpreters are still available, the license situation is not clear so it is risky to use in new work, especially commercial. Furthermore, some of the newer Inform-based games use features which the old Infocom interpreters can't handle. Ozmoo is written to provide a free alternative that doesn't have these risks and limitations.
 
 ## Features
 
@@ -18,12 +16,13 @@ Ozmoo for the Commodore 64 supports:
 - Custom colour schemes.
 - A fully configurable secondary colour scheme (darkmode) which the player can toggle by pressing the F1 key.
 - A configurable splash screen which is shown just before the game starts.
-- Up to ten save slots on a save disk (and most games will get the full ten slots).
+- Up to ten save slots on a save disk.
 - Writing a name for each saves position.
-- Building a Z-code game without virtual memory. This means the whole game must fit in RAM at once, imposing a size restriction of about 50-52 KB. A game built this way can then be played on a C64 without a diskdrive. This far, save/restore does require a diskdrive, but there may be a version with save/restore to tape in the future. Also, a game built in this mode doesn't support RESTART.
+- Building a game for play on systems with dual 1541 or 1571 drives, which allows for larger games. Even games that could be played on a single drive can benefit, as using two drives means the read heads need to move less.
+- Building a Z-code game without virtual memory (C64 and Plus/4 only). This means the whole game must fit in RAM at once, imposing a size restriction of about 50-52 KB. A game built this way can then be played on a C64 without a diskdrive. This far, save/restore does require a diskdrive, but there may be a version with save/restore to tape in the future. Also, a game built in this mode doesn't support RESTART.
 - Building a game as a d81 disk image. This means there is room for any size of game on a single disk. A d81 disk image can be used to create a disk for a 1581 drive or it can be used with an SD2IEC device or, of course, an emulator. Ozmoo uses the 1581 disk format's partitioning mechanism to protect the game data from being overwritten, which means you can safely use the game disk for game saves as well, thus eliminating the need for disk swapping when saving/restoring.
 - Using an REU (Ram Expansion Unit) for caching. The REU can also be used to play a game built for a dual disk drive system with just one drive.
-- Adding a loader which shows an image while the game loads.
+- Adding a loader which shows an image while the game loads (C64 and Plus/4 only).
 - Undo support if enough additional memory can be allocated from an RAM Expansion Unit (REU).
 
 ## Limitations
@@ -36,7 +35,7 @@ Ozmoo should be able to run most Z-code games, regardless of size (A Z-code game
 
 # Quickstart
 
-The simplest option is to use Ozmoo Online, a web page where you can build games with Ozmoo without installing anything on your computer. It supports most of the options Ozmoo has. Ozmoo online is located at: http://microheaven.com/ozmooonline/
+The simplest option is to use Ozmoo Online, a web page where you can build games with Ozmoo without installing anything on your computer. It supports most of the options Ozmoo has. Ozmoo online is located at: http://ozmoo.online
 
 The other option is to install Ozmoo on your computer. This can be done on Windows, Linux and Mac OS X. To build a game, you run something like "ruby make.rb game.z5" Add -s to make the game start in Vice when it has been built. 
 
@@ -49,6 +48,7 @@ You need to install:
 - Ruby (Tested with 2.4.2, but any 2.4 version should work fine)
 - The Vice emulator to test C64, C128 and Plus/4 builds on virtual hardware
 - The xemu-xmega65 emulator if you want to test MEGA65 builds on virtual hardware
+- The Commander X16 emulator test X16 builds on virtual hardware
 
 #### Windows
 
@@ -128,6 +128,7 @@ Ozmoo was originally written for the Commodore 64, but has been adapted for some
 | -t:c128 | Build Ozmoo for the Commodore 128 |
 | -t:plus4 | Build Ozmoo for the Commodore Plus/4 |
 | -t:mega65 | Build Ozmoo for the MEGA65 |
+| -t:x16 | Build Ozmoo for the Commander X16 |
 
 Note that not all build options are supported for every platform. If an option isn't supported, the make.rb script will stop with an appropriate error message, and no Ozmoo files will be produced.
 
@@ -139,7 +140,7 @@ The Commodore 64 version is the default build target, and supports all build opt
 
 The Commodore 128 version automatically detects if it is started from 40 or 80 columns mode, and adjusts to the screen size. When run in 80 column mode, the CPU runs at 2 MHz, making for quite responsive games. It makes use of the additional ram available compared to the Commodore 64 version, and allows for games with up to 44 KB dynamic memory. An REU can be used for caching if present. 
 
-The Commodore 128 version does not allow a loader image, and build mode -P is not supported. Commodore 128 is the only target which can use build mode -71.
+The Commodore 128 version does not allow a loader image, and build mode -P is not supported. The default build mode for Commodore 128 is -71. For large z8 games, mode -71D is also available (requiring dual 1571 drives).
 
 ## Commodore Plus/4
 
@@ -148,6 +149,10 @@ The Commodore Plus/4 version makes use of the simplified memory map compared to 
 ## MEGA65
 
 The MEGA65 version is very similar to the C64 version of Ozmoo. It runs in C64 mode on the MEGA65, but uses the 80 column screen mode, extended sound support, higher clockspeed, and the extra RAM of the MEGA65. There is no limitation on dynamic memory size. The only supported build mode is -81. A loader image is currently not supported. Undo is enabled by default for games that support it.
+
+## X16
+
+The X16 version is using the extended RAM fully to preload the story file by default. It also adapts automatically to the screen resolution used when starting the game.
 
 ## Other targets
 
@@ -239,6 +244,17 @@ Disks used:
 
 - Boot / Story disk
 
+### Modes requiring two 1571 drive for play:
+
+71D: _Double 1571 drives, two disks_
+
+Any story size: Full preloading. Full amount of RAM available for virtual memory system.
+
+Disks used:
+
+- Boot disk / Story disk 1
+- Story disk 2
+
 ### Modes requiring a 1581 drive for play:
 
 81: _Single 1581 drive, one disk_
@@ -251,9 +267,13 @@ Disks used:
 
 - Boot / Story disk
 
-### Modes requiring an SD2IEC:
+### Archive Modes
 
-To be added at a later date. An SD2IEC mode could enable full 512 KB story sizes.
+ZIP: _Compressed archive with game and story data_
+
+Any story size: Full preloading. Full amount of RAM available for virtual memory system.
+
+Creates a ZIP archive containing a folder with two files, the game executable and the zcode story file. This is currently only used for X16 targets.
 
 # Splash Screen
 
@@ -444,7 +464,7 @@ Ozmoo includes support for Sherlock and The Lurking Horror from Infocom, with so
 
 If you have Ozmoo installed on your own computer, you can download a Blorb archive of AIFF versions of the sound files from: https://ifarchive.org/indexes/if-archive/infocom/media/blorb/
 
-The individial sound files must be extracted from the archive. For blorb files there are various tools, such as rezrov, available: https://ifarchive.org/indexes/if-archiveXprogrammingXblorb.html
+The individual sound files must be extracted from the archive. For blorb files there are various tools, such as rezrov, available: https://ifarchive.org/indexes/if-archiveXprogrammingXblorb.html
 
 The AIFF files should be moved to a folder that is later included with the -asa switch when using the make.rb script to build the game. Make sure that the filenames follow the pattern described above (starting with 003.aiff). 
 
@@ -489,6 +509,10 @@ The build option -smooth can be used to include smooth scrolling support on supp
 Smooth scrolling is automatically activated at program startup if the support was included. While playing the game, the user can disable smooth scrolling with Ctrl-0 .. Ctrl-8, and re-enable smooth scrolling with Ctrl-9.
 
 # Miscellaneous options
+
+## Option -df:n
+
+-df:n provides additional control to the ZIP build mode. ZIP mode creates a folder, adding the game binary and the zcode story file to it, and then compressing the folder into the final zip archive. -df controls what will happen with this temporary folder. The accepted values are 0 (create zip archive and keep the folder), 1 (delete the folder if zip archive created successfully) and f ('force'/always delete the folder). The default is 0.
 
 ## Option -sp:n
 

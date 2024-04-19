@@ -17,8 +17,9 @@
 
 !zone screenkernal {
 
-
-; colours		!byte 144,5,28,159,156,30,31,158,129,149,150,151,152,153,154,155
+!ifdef TARGET_X16 {
+colour_petscii !byte 144,5,28,159,156,30,31,158,129,149,150,151,152,153,154,155
+}
 zcolours	!byte $ff,$ff ; current/default colour
 			!byte COL2,COL3,COL4,COL5  ; black, red, green, yellow
 			!byte COL6,COL7,COL8,COL9  ; blue, magenta, cyan, white
@@ -55,6 +56,172 @@ plus4_vic_colours
 	!byte $75   ; light green
 	!byte $56   ; light blue
 	!byte $61   ; light grey
+}
+
+!ifdef TARGET_X16 {
+!source "vera.asm"
+
+.stored_x_or_y !byte 0
+.vera_background !byte 0
+vera_composite_colour !byte 0
+.vera_temp !byte 0,0
+
+.convert_screenline_y_to_vera_address
+    ; convert screenline,y to addres in VERA
+	tya
+	asl
+	sta VERA_addr_low
+	lda zp_screenline + 1
+	adc #$b0 ; Carry is already clear after ASL
+	sta VERA_addr_high
+    rts
+
+;vera_scroll_line !byte 0,0
+.s_scroll_vera
+	; scroll routine for VERA
+	lda zp_screenrow
+	cmp s_screen_height
+	bpl +
+	rts
++   
+
+	; Setup VERA for scrolling
+	; Read address is address 0, write address is address 1 in VERA
+	lda s_screen_width
+;	asl
+	sta .vera_temp
+	lda s_screen_height_minus_one
+	adc #$b0
+	sta .vera_temp + 1
+	lda #1
+	sta VERA_ctrl
+	lda #$11
+	sta VERA_addr_bank
+	lda window_start_row + 1 ; how many top lines to protect
+	adc #$b0
+	tay
+	lda #0
+	sta VERA_ctrl
+
+	; Delay
+	ldx scroll_delay
+	beq .done_delaying_vera
+	dex
+	beq ++
+-	tya
+	pha
+	txa
+	pha
+	jsr wait_an_interval
+	pla
+	tax
+	pla
+	tay
+	dex
+	bne -
+
+++
+
+-	ldx VERA_scanline_l
+	cpx #<450
+	bne -
+	lda VERA_ien
+	and #$40
+	beq -
+	
+.done_delaying_vera
+	
+	; Begin actual scrolling
+
+-	cpy .vera_temp + 1
+	bcs +
+	; Setup for copying a line
+	lda #1
+	sta VERA_ctrl
+	sty VERA_addr_high
+	ldx #0
+	stx VERA_addr_low
+	stx VERA_ctrl
+	iny
+	sty VERA_addr_high
+	stx VERA_addr_low
+	ldx .vera_temp
+
+--	lda VERA_data0
+	sta VERA_data1
+	lda VERA_data0
+	sta VERA_data1
+	dex
+	bne --
+	
+	beq - ; Always branch
+	
++	; prepare for erase line
+	ldy s_screen_height_minus_one
+	sty zp_screenrow
+	lda #$ff
+	sta s_current_screenpos_row ; force recalculation
+	jmp s_erase_line
+
+VERASetBorderColour
+	stz VERA_ctrl
+	sta VERA_dc_border
+    rts
+
+VERASetBackgroundColour
+	pha
+    asl
+    asl
+    asl
+    asl
+    sta .vera_background
+	ora s_colour
+	sta vera_composite_colour
+	pla
+    rts
+
+VERASetForegroundColour
+    sta s_colour
+	ora .vera_background
+	sta vera_composite_colour
+    lda s_colour
+    rts
+
+VERAPrintChar
+	; a = character, y = column
+	pha
+	sty .stored_x_or_y
+    jsr .convert_screenline_y_to_vera_address
+    ; write character
+    pla
+    sta VERA_data0
+	ldy vera_composite_colour
+	sty VERA_data0
+    ; restore y
+	ldy .stored_x_or_y
+    rts
+
+; VERAPrintColour
+	; pha
+	; sty .stored_x_or_y
+    ; jsr .convert_screenline_y_to_vera_address
+    ; ; increase to colour address
+    ; inc VERA_addr_low
+    ; bne +
+    ; inc VERA_addr_high
+    ; ; write colour
+; +   pla
+    ; ora vera_background
+    ; sta VERA_data0
+    ; ; restore y
+	; ldy .stored_x_or_y
+    ; rts
+
+; VERAPrintColourAfterChar
+	; ; a = colour
+    ; ora .vera_background
+    ; sta VERA_data0
+    ; rts
 }
 
 !ifdef TARGET_C128 {
@@ -238,6 +405,9 @@ s_screen_width_plus_one !byte 0
 s_screen_width_minus_one !byte 0
 s_screen_height_minus_one !byte 0
 s_screen_size !byte 0, 0
+!ifdef TARGET_X16 {
+s_x16_screen_mode	!byte 0
+}
 
 convert_petscii_to_screencode
    ; convert from pet ascii to screen code
@@ -266,6 +436,11 @@ s_init
 	; 80 columns mode selected
 	lda #80
 +
+} else ifdef TARGET_X16 {
+	sec
+	jsr $ff5f
+	sta s_x16_screen_mode
+	txa
 } else {
 	lda #SCREEN_WIDTH
 }
@@ -276,7 +451,11 @@ s_init
 	dec s_screen_width_minus_one
 
 	; set up screen_height and screen_width_minus_one
+!ifdef TARGET_X16 {
+	tya
+} else {
 	lda #SCREEN_HEIGHT
+}
 	sta s_screen_height
 	sta s_screen_height_minus_one
 	dec s_screen_height_minus_one
@@ -323,8 +502,12 @@ s_plot
 	jmp .update_screenpos
 
 s_set_text_colour
+!ifdef TARGET_X16 {
+	jmp VERASetForegroundColour
+} else {
 	sta s_colour
 	rts
+}
 
 s_delete_cursor
 !ifdef TARGET_MEGA65 {
@@ -337,6 +520,9 @@ s_delete_cursor
 	jmp VDCPrintChar
 +
 }
+!ifdef TARGET_X16 {
+	jmp VERAPrintChar
+} else {
 	ldy zp_screencolumn
 	sta (zp_screenline),y
 !ifdef TARGET_PLUS4 {
@@ -350,6 +536,7 @@ s_delete_cursor
 	jsr colour1k
 }
 	rts
+}
 
 s_printchar
 	; replacement for CHROUT ($ffd2)
@@ -359,6 +546,15 @@ s_printchar
 	stx s_stored_x
 	sty s_stored_y
 
+	ldx window_start_row + 1
+	cpx s_screen_height
+	bcc +
+	ldx current_window
+	bne +
+	; There is no free line to print on, return with carry set
+	ldx s_stored_x
+	rts
++
 	; Fastlane for the most common characters
 	cmp #$20
 	bcc +
@@ -402,6 +598,8 @@ s_printchar
 .col80_1
 	jsr VDCPrintChar
 .col80_1_end
+} else ifdef TARGET_X16 {
+    jsr VERAPrintChar
 } else {
 	sta (zp_screenline),y
 	!ifdef TARGET_MEGA65 {
@@ -480,6 +678,10 @@ s_printchar
 	lda s_colour
 	jsr VDCPrintColour
 .col80_2_end
+} else ifdef TARGET_X16 {
+	jsr VERAPrintChar
+	; lda s_colour
+	; jsr VERAPrintColourAfterChar
 } else {
 	sta (zp_screenline),y
 	!ifdef TARGET_MEGA65 {
@@ -524,6 +726,8 @@ s_printchar
 .col80_3
 	jsr .s_scroll_vdc
 .col80_3_end
+} else ifdef TARGET_X16 {
+	jsr .s_scroll_vera
 } else {
 	jsr .s_scroll
 }
@@ -579,6 +783,8 @@ s_printchar
 .col80_4
 	jsr .s_scroll_vdc
 .col80_4_end
+} else ifdef TARGET_X16 {
+	jsr .s_scroll_vera
 } else {
 	jsr .s_scroll
 }
@@ -605,7 +811,14 @@ s_erase_window
 	beq .same_row
 	; need to recalculate zp_screenline
 	stx s_current_screenpos_row
-!ifdef TARGET_MEGA65 {
+!ifdef TARGET_X16 {
+    txa
+	sta zp_screenline + 1
+	sta zp_colourline + 1
+    lda #0
+	sta zp_screenline
+	sta zp_colourline
+} else ifdef TARGET_MEGA65 {
 	; calculate zp_screenline = zp_current_screenpos_row * 40
 	; Use MEGA65's hardware multiplier
 	jsr mega65io
@@ -651,7 +864,7 @@ s_erase_window
 	bit COLS_40_80
 	bpl ++
 	asl
-	rol product + 1
+	rol product + 1 ; 80x
 ++
 }
 	sta zp_screenline
@@ -731,13 +944,14 @@ s_erase_window
 +	jsr VDCSetCopySourceAddress ; where to copy from (next line)
 	; start copying
 	ldy window_start_row + 1 ; how many top lines to protect
--	lda #80 ;copy 80 bytes
+-	cpy s_screen_height_minus_one
+	beq +
+	lda #80 ;copy 80 bytes
 	ldx #VDC_COUNT
 	jsr VDCWriteReg
 	iny
-	cpy s_screen_height_minus_one
-	bne -
-	rts
+	bne - ; Always branch
++	rts
 }
 
 !ifdef SCROLLBACK {
@@ -795,6 +1009,7 @@ s_scrolled_lines !byte 0
 +
 }
 
+!ifndef TARGET_X16 {
 ; ----------- Delay for slower scrolling
 
 	ldx scroll_delay
@@ -833,17 +1048,8 @@ s_scrolled_lines !byte 0
 	dex
 	bne --
 	cli
-; -	txa
-	; pha
-	; jsr wait_an_interval
-	; pla
-	; tax
-	; dex
-	; bne -
 .done_delaying
-;	dec reg_backgroundcolour
-;	inc	 reg_backgroundcolour
-
+}
 !ifdef TARGET_MEGA65 {
 	jsr colour2k	
 }
@@ -852,6 +1058,7 @@ s_scrolled_lines !byte 0
 	sec
 	sbc zp_screenrow
 	tax
+	beq .done_scrolling
 	clc
 ;	sei
 -
@@ -933,7 +1140,11 @@ s_scrolled_lines !byte 0
 	sta s_current_screenpos_row ; force recalculation
 s_erase_line
 	; registers: a,x,y
-	lda #0
+	lda zp_screenrow
+	cmp s_screen_height
+	bcc +
+	rts ; Illegal row, just ignore
++	lda #0
 	sta zp_screencolumn
 	jsr .update_screenpos
 	ldy #0
@@ -953,7 +1164,6 @@ s_erase_line
 	jmp .done_erasing	
 .col80_5
 	; erase line in VDC
-
 	tya
 	clc 
 	adc zp_screenline
@@ -1035,29 +1245,43 @@ s_erase_line
 	; iny
 	; bne -
 } else {
+
+; set colour
+!ifdef TARGET_MEGA65 {
+	jsr colour2k
+}
+!ifdef TARGET_X16 {
+	jsr .convert_screenline_y_to_vera_address
+}
 -	cpy s_screen_width
 	bcs .done_erasing
 	; set character
 	lda #$20
+!ifdef TARGET_X16 {
+    sta VERA_data0
+} else {
 	sta (zp_screenline),y
-    ; set colour
-    !ifdef TARGET_MEGA65 {
-        jsr colour2k
-    }
+}
 !ifdef TARGET_PLUS4 {
 	ldx s_colour
 	lda plus4_vic_colours,x
 } else {
 	lda s_colour
 }
+!ifdef TARGET_X16 {
+	ora .vera_background
+    sta VERA_data0
+} else {
 	sta (zp_colourline),y
-    !ifdef TARGET_MEGA65 {
-        jsr colour1k
-    }
+}
 	iny
 	bne -
 }
 .done_erasing	
+!ifdef TARGET_MEGA65 {
+	jsr colour1k
+}
+
  	rts
 s_erase_line_from_cursor
 	jsr .update_screenpos
@@ -1084,6 +1308,7 @@ turn_off_cursor
 
 update_cursor
     sty object_temp
+	jsr .update_screenpos
     ldy zp_screencolumn
     lda s_cursorswitch
     bne +++
@@ -1102,7 +1327,20 @@ update_cursor
     jsr VDCPrintColour
     jmp .vdc_printed_char_and_colour
 +   ; 40 columns
+} else ifdef TARGET_X16 {
+	lda s_colour
+	pha
+	lda current_cursor_colour
+	and #15
+	jsr VERASetForegroundColour
+	lda cursor_character
+	jsr VERAPrintChar
+	pla
+	jsr VERASetForegroundColour
+	; lda current_cursor_colour
+	; jsr VERAPrintColourAfterChar
 }
+!ifndef TARGET_X16 {
     lda cursor_character
     sta (zp_screenline),y
     lda current_cursor_colour
@@ -1119,20 +1357,44 @@ update_cursor
 !ifdef TARGET_MEGA65 {
     jsr colour1k
 }
+}
 
 .vdc_printed_char_and_colour
 
     ldy object_temp
     rts
 
+write_default_colours_to_header
+	; On exit:
+	; a = fg colour (2-9)
+	; x = darkmode
+	; y = destroyed
+	ldx darkmode
+	lda bgcol,x
+	ldy #header_default_bg_colour
+	jsr write_header_byte
+	lda fgcol,x
+	ldy #header_default_fg_colour
+	jmp write_header_byte
+
 !ifndef NODARKMODE {
+
+.new_bg 		= z_temp + 5 ; New background colour, adapted to target platform
+.new_fg_c64		= z_temp + 6 ; New foreground colour, as C64 colour
+.new_fg			= z_temp + 7 ; New foreground colour, adapted to target platform
+.new_input		= z_temp + 8 ; New input colour, adapted to target platform
+.old_input		= z_temp + 9 ; Old input colour, adapted to target platform
+.colour_ram_pointer = z_temp + 10 ; (2 bytes) Pointer into colour RAM
+
 toggle_darkmode
 
-; z_temp + 6: New foreground colour, as C64 colour 
-; z_temp + 7: New foreground colour, tranformed for target platform
-; z_temp + 8: New background colour, adapted to target platform
-; z_temp + 9: Old foreground colour, adapted to target platform
-; z_temp + 10, 11: Pointer into colour RAM
+!ifdef TARGET_X16 {
+	ldy #0
+	sty zp_screenline + 1
+	jsr .convert_screenline_y_to_vera_address
+	lda #0
+	sta VERA_ctrl
+}
 
 !ifdef Z5PLUS {
 	; We will need the old fg colour later, to check which characters have the default colour
@@ -1151,7 +1413,7 @@ toggle_darkmode
 	tay
 	lda plus4_vic_colours,y
 }
-	sta z_temp + 9 ; old fg colour
+	sta .old_input ; old fg colour TODO - was +9, but comment says old fg?
 } else { ; This is z3 or z4
 !ifdef USE_INPUTCOL {
 
@@ -1171,18 +1433,17 @@ toggle_darkmode
 	tay
 	lda plus4_vic_colours,y
 }
-	sta z_temp + 9 ; old input colour
+	sta .old_input ; old input colour
 
 	; If the mode we switch *from* has inputcol = fgcol, make sure inputcol is never matched
 	lda inputcol,x
 	cmp fgcol,x
 	bne +
-	inc z_temp + 9
+	inc .old_input
 +
 } ; USE_INPUTCOL
 
 } ; else (not Z5PLUS)
-
 
 
 ; Toggle darkmode
@@ -1206,17 +1467,20 @@ toggle_darkmode
 	tay
 	lda plus4_vic_colours,y
 }
-	sta z_temp + 8 ; new input colour
+	sta .new_input ; new input colour
 
 } ; USE_INPUTCOL	
 	
+; Write colours to header
+	jsr write_default_colours_to_header	
+	
 ; Set fgcolour
-	lda fgcol,x
-	ldy #header_default_fg_colour
-	jsr write_header_byte
+;	ldy fgcol,x
+	; ldy #header_default_fg_colour
+	; jsr write_header_byte
 	tay
 	lda zcolours,y
-	sta z_temp + 6 ; New foreground colour, as C64 colour 
+	sta .new_fg_c64 ; New foreground colour, as C64 colour 
 	jsr s_set_text_colour
 !ifdef TARGET_C128 {
 	bit COLS_40_80
@@ -1230,28 +1494,28 @@ toggle_darkmode
 	tay
 	lda plus4_vic_colours,y
 }
-	sta z_temp + 7 ; New foreground colour, tranformed for target platform
+	sta .new_fg ; New foreground colour, tranformed for target platform
 !ifdef TARGET_MEGA65 {
 	jsr colour2k
 }
 ; Set cursor colour
 	ldy cursorcol,x
-	lda z_temp + 6
+	lda .new_fg_c64
 	cpy #1
 	beq +
 	lda zcolours,y
 +	sta current_cursor_colour
 ; Set bgcolour
-	lda bgcol,x
-	ldy #header_default_bg_colour
-	jsr write_header_byte
-	tay
+	ldy bgcol,x
+	; ldy #header_default_bg_colour
+	; jsr write_header_byte
+	; tay
 	lda zcolours,y
-	+SetBackgroundColour
 !ifdef Z5PLUS {
 	; We will need the new bg colour later, to check which characters would become invisible if left unchanged
-	sta z_temp + 8 ; new background colour
+	sta .new_bg ; new background colour
 }
+	+SetBackgroundColour
 ; Set border colour 
 	ldy bordercol,x
 !ifdef BORDER_MAY_FOLLOW_BG {
@@ -1273,7 +1537,9 @@ toggle_darkmode
 ; For Z3: Set statusline colour
 	ldy statuslinecol,x
 	lda zcolours,y
-!ifdef TARGET_C128 {
+!ifdef TARGET_X16 {
+	ora .vera_background
+} else ifdef TARGET_C128 {
 	bit COLS_40_80
 	bpl +
 	; 80 columns mode selected
@@ -1287,7 +1553,11 @@ toggle_darkmode
 }
 	ldy s_screen_width_minus_one
 -
-!ifdef TARGET_C128 {
+!ifdef TARGET_X16 {
+	ldx VERA_data0 ; Go past character
+	sta VERA_data0
+;	jsr VERAPrintColourAfterChar
+} else ifdef TARGET_C128 {
 	bit COLS_40_80
 	bmi +
 	sta COLOUR_ADDRESS,y
@@ -1311,50 +1581,90 @@ toggle_darkmode
 	dey
 	bpl -
 }
+
+; ---------- CHANGE COLOURS IN MAIN WINDOW (both for Z4+)
+
+!ifdef TARGET_X16 {
+	lda s_screen_height_minus_one
+	sta zp_screenline + 1
+--	ldy #0
+	jsr .convert_screenline_y_to_vera_address
+-	lda VERA_data0 ; Skip character data
+	lda VERA_data0 ; Get colour data
+;	sta z_temp + 5 ; Temporary storage
+	and #$0f
+!ifdef USE_INPUTCOL {
+	cmp .old_input ; Old input colour
+	bne +
+	lda .new_input ; New input colour
+	jmp ++
++
+	; cmp .old_fg
+	; beq +++
+	; cmp .new_bg ; New background colour
+	; bne ++
+; +++
+}
+	lda .new_fg
+++	dec VERA_addr_low
+	ora .vera_background
+	sta VERA_data0
+;	jsr VERAPrintColourAfterChar
+	iny
+	cpy s_screen_width
+	bcc -
+	dec zp_screenline + 1
+	lda zp_screenline + 1
+!ifdef Z4PLUS {
+	bpl --
+} else {
+	bne --
+}
+} else {
 	;; Work out how many pages of colour RAM to examine
 	ldx s_screen_size + 1
 	inx
 	ldy #>COLOUR_ADDRESS
-	sty z_temp + 11
+	sty .colour_ram_pointer + 1
 	ldy #0
-	sty z_temp + 10
+	sty .colour_ram_pointer
 !ifndef Z4PLUS {
 	ldy s_screen_width ; Since we have coloured the statusline separately, skip it now
 }
 !ifndef Z5PLUS {
 ;	ldy #0 ; But y is already 0, so we skip this
-	lda z_temp + 7 ; For Z3 and Z4 we can just load this value before the loop  
+	lda .new_fg ; For Z3 and Z4 we can just load this value before the loop  
 }
 .compare
 !ifdef TARGET_C128 {
-	lda z_temp + 7  ; too much work to read old colour from VDC
+	lda .new_fg  ; too much work to read old colour from VDC
 	bit COLS_40_80
 	bmi .toggle_80
 } ; else {
 !ifdef Z5PLUS {
-	lda (z_temp + 10),y
+	lda (.colour_ram_pointer),y
 !ifndef TARGET_PLUS4 {
 	and #$0f
 }
-	cmp z_temp + 9
+	cmp .old_input
 	beq .change
-	cmp z_temp + 8
+	cmp .new_bg ; New background colour
 	bne .dont_change
 .change	
-	lda z_temp + 7
+	lda .new_fg
 }
 
 !ifdef USE_INPUTCOL {
-	lda (z_temp + 10),y
+	lda (.colour_ram_pointer),y
 !ifndef TARGET_PLUS4 {
 	and #$0f
 }
-	cmp z_temp + 9
+	cmp .old_input
 	bne .change
-	lda z_temp + 8
+	lda .new_input
 	bne + ; Always branch
 .change	
-	lda z_temp + 7
+	lda .new_fg
 +
 }
 
@@ -1366,17 +1676,17 @@ toggle_darkmode
 	bit COLS_40_80
 	bmi +
 	pla
-	sta (z_temp + 10),y
+	sta (.colour_ram_pointer),y
 	jmp ++
 +
 	; 80 columns mode selected
 	stx s_stored_x
 	sty s_stored_y
-	lda z_temp + 11
+	lda .colour_ram_pointer + 1
 	sec
 	sbc #$d0 ; adjust from $d800 (VIC-II) to $0800 (VDC)
 	tay
-	lda z_temp + 10
+	lda .colour_ram_pointer
 	clc
 	adc s_stored_y
 	bcc +
@@ -1390,17 +1700,18 @@ toggle_darkmode
 	ldx s_stored_x
 ++
 } else {
-	sta (z_temp + 10),y
+	sta (.colour_ram_pointer),y
 }
 .dont_change
 	iny
 	bne .compare
-	inc z_temp + 11
+	inc .colour_ram_pointer + 1
 	dex
 	bne .compare
 !ifdef TARGET_MEGA65 {
 	jsr colour1k
 }
+} ; Not TARGET_X16
 
 !ifdef USE_INPUTCOL {
 	; Switch to the new input colour, if input colour is active (we could be at a MORE prompt or in a timed input)
@@ -1409,6 +1720,11 @@ toggle_darkmode
 	jsr activate_inputcol
 	ldx darkmode
 +
+}
+
+!ifdef TARGET_X16 {
+	ldy zp_screenrow
+	sty zp_screenline + 1
 }
 	jmp update_cursor
 } ; ifndef NODARKMODE
@@ -1472,5 +1788,79 @@ z_ins_set_colour
 	rts
 }
 
+!ifdef TESTSCREEN {
+
+.testtext
+	;!pet 147,2,"hello",3,"johan",0
+	!pet 2, 5,147,18,"Status Line 123         ",146,13    ; white REV
+	!pet 3, 28,"resx",20,"t aA@! ",18,"Test aA@!",146,13  ; red
+	!pet 155,"third",20,13                                ; light gray
+	!pet "fourth line",13
+	!pet 13,13,13,13,13,13
+	!pet 13,13,13,13,13,13,13
+	!pet 13,13,13,13,13,13,13
+	!pet "last line",1
+	!pet "aaaaaaaaabbbbbbbbbbbcccccccccc",1
+	!pet "d",1 ; last char on screen
+	!pet "efg",1 ; should scroll here and put efg on new line
+	!pet 13,"h",1; should scroll again and f is on new line
+	!pet 0
+
+testscreen
+	jsr init_screen_colours
+!ifdef TARGET_X16 {
+    lda #14 
+    jsr $ffd2
+} else ifdef TARGET_PLUS4 {
+	lda #212 ; 212 upper/lower, 208 = upper/special
+} else {
+	lda #23 ; 23 upper/lower, 21 = upper/special (22/20 also ok)
+}
+	sta reg_screen_char_mode
+	jsr s_init
+    lda #3
+    +SetBackgroundColour
+	lda #1
+	sta zp_screenrow
+    jsr s_erase_line
+    ;rts
+	lda s_screen_height
+	sta window_start_row ; total number of  lines in window 0
+	lda #1
+	sta window_start_row + 1 ; 1 status line
+	sta window_start_row + 2 ; 1 status line
+	lda #0
+	sta window_start_row + 3
+	ldx #0
+-   lda .testtext,x
+	bne +
+	rts
++   cmp #2
+	bne +
+	; use upper window
+	lda #1
+	sta current_window
+	jmp ++
++   cmp #3
+	bne +
+	; use lower window
+	lda #0
+	sta current_window
+	jmp ++
++   cmp #1
+	bne +
+	txa
+	pha
+--  jsr kernal_getchar
+	beq --
+	pla
+	tax
+	bne ++
+	; NOTE: s_printchar no longer recognizes the colour codes, so the
+	; colours will not change. But rev on/off still works
++   jsr s_printchar
+++  inx
+	bne -
+}
 }
 

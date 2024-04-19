@@ -72,7 +72,7 @@ stack_push_top_value
 	sbc stack_pushed_bytes
 	bcs .not_push_record
 	jsr print_following_string
-!pet 13,"=== Pushed bytes record: ",0 
+!text 13,"=== Pushed bytes record: ",0 
 	lda stack_pushed_bytes
 	sta .stack_pushed_bytes_record
 	ldx stack_pushed_bytes + 1
@@ -95,7 +95,7 @@ stack_push_top_value
 	sbc .stack_size
 	bcs .no_size_record
 	jsr print_following_string
-!pet 13,"### Stack size record: ",0 
+!text 13,"### Stack size record: ",0 
 	lda .stack_size
 	sta .stack_size_record
 	ldx .stack_size + 1
@@ -344,7 +344,7 @@ stack_call_routine
 	sbc .stack_size
 	bcs .no_size_record_2
 	jsr print_following_string
-!pet 13,"### Stack size record: ",0 
+!text 13,"### Stack size record: ",0 
 	lda .stack_size
 	sta .stack_size_record
 	ldx .stack_size + 1
@@ -387,17 +387,23 @@ z_ins_catch
 	; Store pointer to first byte where pushed values are stored in current frame.
 	ldx stack_ptr
 	lda stack_ptr + 1
+	sec
+	sbc #>stack_start
 	jmp z_store_result
 
 z_ins_throw
 	; Restore pointer given. Return from routine (frame).
 	
 	; First, restore old stack_ptr, and calculate where # of local vars is stored.
+	lda z_operand_value_high_arr + 1
+	clc
+	adc #>stack_start
+	pha
 	lda z_operand_value_low_arr + 1
 	sec
 	sbc #6
 	sta zp_temp
-	lda z_operand_value_high_arr + 1
+	pla
 	sbc #0
 	sta zp_temp + 1
 	
@@ -627,7 +633,7 @@ stack_pull_no_top_value
 .stack_empty_return_0
 !ifdef DEBUG {
 	jsr print_following_string
-	!pet "WARNING: pull from empty stack",13,0
+	!text "WARNING: pull from empty stack",13,0
 }
 	lda #0
 	tax
@@ -649,7 +655,6 @@ z_ins_pull
 	pla
 	tax
 	pla
-	jsr z_set_variable_reference_to_value
-	rts
+	jmp z_set_variable_reference_to_value
 	
 }

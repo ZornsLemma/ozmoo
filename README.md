@@ -4,12 +4,14 @@
 
 A Z-machine interpreter for the Commodore 64 and similar computers
 
-Written by Johan Berntsson and Fredrik Ramsberg in 2018-2023
+Written by Johan Berntsson and Fredrik Ramsberg in 2018-2024
 
 ![Mini-Zork I running on Ozmoo](https://github.com/johanberntsson/ozmoo/blob/master/screenshots/minizork.png)
 
 
 ## Status
+
+Update 2024-Mar-27: Release 14 with Commander X16 support.
 
 Update 2023-Jul-18: Release 13 with support for undo on C64 with REU, C128 and MEGA65.
 
@@ -25,7 +27,7 @@ Update 2021-Oct-03: Release 8 with MEGA65 speedups, plus optimizations and bugfi
 
 Update 2021-May-04: Release 7 with new MEGA65 target, improved z3 statusline on 80 column displays.
 
-Update 2021-Mar-19: Release 6 with input history, input colours, a new font and bug fixes.
+Update 2021-Mar-19: Release 6 with command history, input colours, a new font and bug fixes.
 
 Update 2021-Mar-02: There is now an official port of [Ozmoo for Acorn computers](https://zornslemma.github.io/ozmoo.html).
 
@@ -99,7 +101,7 @@ There is a port of [Ozmoo for Acorn computers](https://zornslemma.github.io/ozmo
 
 ## Building and running
 
-The simplest option is to use [Ozmoo Online](http://microheaven.com/ozmooonline/), a web page we have setup where you can build games with Ozmoo without installing anything on your computer. It supports all of the most important features. If you want to be able to use all the features and have full control of the build process, this is not the option for you.
+The simplest option is to use [Ozmoo Online](http://ozmoo.online), a web page we have setup where you can build games with Ozmoo without installing anything on your computer. It supports all of the most important features. If you want to be able to use all the features and have full control of the build process, this is not the option for you.
 
 The other option is to install Ozmoo on your computer. This can be done on Windows, Linux and Mac OS X.
 
