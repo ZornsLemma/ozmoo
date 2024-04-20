@@ -1,4 +1,5 @@
-; C128 is now in a separate constants-c128 instead
+; C128 is in a separate constants-c128
+; X16 is in a separate constants-x16
 ;
 
 !ifdef TARGET_C64 {
@@ -10,10 +11,11 @@ COLOUR_ADDRESS        = $d800
 COLOUR_ADDRESS_DIFF   = COLOUR_ADDRESS - SCREEN_ADDRESS
 num_rows 			  = $a6 ; !byte 0
 CURRENT_DEVICE        = $ba
-ti_variable           = $a0; 3 bytes
+;ti_variable           = $a0; 3 bytes
 keyboard_buff_len     = $c6
 keyboard_buff         = $277
 key_repeat            = $028a
+directory_buffer      = $700 ; 140 bytes, must be near end of screen RAM
 
 use_reu				  = $9b
 reu_boost_vmap_clock  = $b1
@@ -40,10 +42,11 @@ SCREEN_ADDRESS        = $0c00
 COLOUR_ADDRESS        = $0800
 COLOUR_ADDRESS_DIFF   = $10000 + COLOUR_ADDRESS - SCREEN_ADDRESS
 CURRENT_DEVICE        = $ae
-ti_variable           = $a3; 3 bytes
+;ti_variable           = $a3; 3 bytes
 keyboard_buff_len     = $ef
 keyboard_buff         = $527
 key_repeat            = $0540
+directory_buffer      = $f00 ; 140 bytes, must be near end of screen RAM
 
 
 zp_temp               = $3b ; 5 bytes
@@ -88,11 +91,13 @@ SCREEN_ADDRESS        = $0800
 COLOUR_ADDRESS        = $d800
 COLOUR_ADDRESS_DIFF   = COLOUR_ADDRESS - SCREEN_ADDRESS
 CURRENT_DEVICE        = $ba
-ti_variable           = $a0; 3 bytes
+;ti_variable           = $a0; 3 bytes
 num_rows 			  = $a6 ; !byte 0
 keyboard_buff_len     = $c6
 keyboard_buff         = $277
 key_repeat            = $028a
+directory_buffer      = SCREEN_ADDRESS + $700 ; 140 bytes, must be near end of screen RAM
+m65_x16_checksum_quad = $255
 
 use_reu				  = $9b
 window_start_row	  = $2a; 4 bytes
@@ -104,7 +109,7 @@ s_reverse 			  = $b3 ; !byte 0
 zp_temp               = $fb ; 5 bytes
 savefile_zp_pointer   = $c1 ; 2 bytes
 first_banked_memory_page = $d0 ; Normally $d0 (meaning $d000-$ffff needs banking for read/write access) 
-reu_filled            = $0255 ; 4 bytes
+;reu_filled            = $0255 ; 4 bytes
 vmap_buffer_start     = $0334
 vmap_buffer_end       = $0400 ; Last byte + 1. Should not be more than vmap_buffer_start + 512
 
@@ -291,7 +296,6 @@ kernal_delay_1ms      = $e2dc ; delay 1 ms
 }
 !ifdef TARGET_MEGA65 {
 kernal_reset          = $e4b8 ; Reset back to C65 mode
-kernal_delay_1ms      = $eeb3 ; delay 1 ms
 }
 kernal_readst         = $ffb7 ; set file parameters
 kernal_setlfs         = $ffba ; set file parameters
@@ -307,5 +311,6 @@ kernal_readchar       = $ffcf ; read byte from default input into a
 kernal_printchar      = $ffd2 ; write char in a
 kernal_load           = $ffd5 ; load file
 kernal_save           = $ffd8 ; save file
+kernal_settime        = $ffdb ; set time of day in a/x/y
 kernal_readtime       = $ffde ; get time of day in a/x/y
 kernal_getchar        = $ffe4 ; get a character

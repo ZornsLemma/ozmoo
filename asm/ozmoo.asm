@@ -9,6 +9,8 @@
 ;Z7 = 1
 ;Z8 = 1
 
+; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
+
 ; Which machine to generate code for
 !ifndef ACORN { ; SFTODO!?
 ; C64 is default target
@@ -18,7 +20,21 @@
 }
 }
 
+!ifdef TARGET_X16 {
+	TARGET_MEGA65_OR_X16 = 1
+	NO_VMEM_CACHE = 1
+	TARGET_ASSIGNED = 1
+	COMPLEX_MEMORY = 1
+	FAR_DYNMEM = 1
+	SUPPORT_REU = 1
+	SUPPORT_80COL = 1
+	!ifndef SLOW {
+		SLOW = 1
+	}
+;	SKIP_BUFFER = 1 ; This is for SLOW mode and non-VMEM mode, which we know we have
+}
 !ifdef TARGET_MEGA65 {
+	TARGET_MEGA65_OR_X16 = 1
 	TARGET_ASSIGNED = 1
 	FAR_DYNMEM = 1
 	COMPLEX_MEMORY = 1
@@ -28,16 +44,13 @@
 	!ifndef SLOW {
 		SLOW = 1
 	}
-	!ifdef SLOW {
-		!ifndef VMEM {
-			SKIP_BUFFER = 1
-		}
-	}
+	SKIP_BUFFER = 1 ; This is for SLOW mode and non-VMEM mode, which we know we have
 	!ifndef NOSCROLLBACK {
 		SCROLLBACK = 1
 	}
 }
 !ifdef TARGET_PLUS4 {
+	NO_VMEM_CACHE = 1
 	TARGET_PLUS4_OR_C128 = 1
 	TARGET_ASSIGNED = 1
 	COMPLEX_MEMORY = 1
@@ -59,6 +72,7 @@
 	TARGET_ASSIGNED = 1
 }
 !ifdef TARGET_C128 {
+	NO_VMEM_CACHE = 1
 	TARGET_PLUS4_OR_C128 = 1
 	TARGET_ASSIGNED = 1
 	FAR_DYNMEM = 1
@@ -376,15 +390,15 @@ ACORN_PRIVATE_RAM_SUPPORTED = 1
 
 ;  * = $0801 ; This must now be set on command line: --setpc $0801
 
+!ifdef TARGET_X16 {
+; Basic: 1 SYS2061
+!byte $0b,$08,$01,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+}
+
 program_start
 
 !ifdef TARGET_C128 {
-	lda #$f0 ; Background colour
-	jsr VDCInit
-	; initialize is in Basic LO ROM in C128 mode, so we need
-	; to turn off BASIC already here. Since the set_memory_no_basic
-	; macro isn't defined yet we'll have to do it manually
-	lda #%00001110
+	lda #%00001110 ; 48K RAM0 (0-$c000)
 	sta $ff00
 }
 initial_jmp
@@ -398,6 +412,9 @@ initial_jmp
 	RESTART_SUPPORTED = 1
 } else {
 	!ifdef TARGET_MEGA65 {
+		RESTART_SUPPORTED = 1
+	} 
+	!ifdef TARGET_X16 {
 		RESTART_SUPPORTED = 1
 	} 
 }
@@ -908,6 +925,8 @@ c128_border_phase1
 	jmp $ff33	;return from IRQ
 }
 
+} else ifdef TARGET_X16 {
+!source "constants-x16.asm"
 } else {
 !ifdef ACORN {
 !source "acorn-shared-constants.asm"
@@ -964,8 +983,10 @@ game_id		!byte 0,0,0,0
 	jsr deletable_screen_init_2
 
 !ifndef ACORN {
+!ifndef TARGET_X16 {
 	lda #0
 	sta keyboard_buff_len
+}
 }
 
 	jsr z_init
@@ -1014,16 +1035,26 @@ game_id		!byte 0,0,0,0
 
 	; On Acorn we don't use z_exe_mode_exit, so z_execute can't return.
 !ifndef ACORN {
-!ifdef TARGET_PLUS4_OR_C128 {
 !ifdef TARGET_C128 {
 	jmp c128_reset_to_basic
-} else {
+} else ifdef TARGET_PLUS4 {
 	lda #$01
 	sta $2b
 	lda #$10
 	sta $2c
 	jmp basic_reset
+} else ifdef TARGET_X16 {
+!ifdef TARGET_X16 {
+	!ifdef CUSTOM_FONT {
+		lda #2
+		jsr $ff62
+	}
+    lda #$09 ; Unlock font selection
+    jsr $ffd2
+	jmp x16_restore_basic_zp
 }
+	; stz 1
+	; jmp ($fffc)
 } else {
 	; Back to normal memory banks
 	lda #%00110111
@@ -1051,7 +1082,7 @@ statmem_reu_banks !byte 0
 ; include other assembly files
 !ifdef ACORN {
 	!source "acorn.asm"
-	!source "acorn-swr.asm" ; SFTODO: rename this file? screen hole is not exactly swr (although it kind of us, because screen hole is trivial if we have no swr)
+	!source "acorn-swr.asm" ; SFTODO: rename this file? screen hole is not exactly swr (although it kind of is, because screen hole is trivial if we have no swr)
 	!source "acorn-utilities.asm"
 }
 !ifdef SMOOTHSCROLL {
@@ -1091,7 +1122,7 @@ statmem_reu_banks !byte 0
 
 
 !ifndef ACORN {
-!ifdef TARGET_PLUS4_OR_C128 {
+!ifdef NO_VMEM_CACHE {
 	!if SPLASHWAIT > 0 {
 		!source "splashscreen.asm"
 	}
@@ -1121,23 +1152,66 @@ calc_z7_offsets
 	rts
 }
 
-
-!ifdef TARGET_C128 {
-
 !ifdef Z4PLUS {
+!ifdef TARGET_C128 {
 update_screen_width_in_header
 	lda s_screen_width
 	ldy #header_screen_width_chars
-!ifdef Z5PLUS {
 	jsr write_header_byte
+!ifdef Z5PLUS {
 	ldy #header_screen_width_units
 	tax
 	lda #0
-	jmp write_header_word
-} else {
-	jmp write_header_byte
+	jsr write_header_word
 }
+	rts
+} else ifdef TARGET_X16 {
+update_screen_width_in_header
+	lda s_screen_width
+	ldy #header_screen_width_chars
+	jsr write_header_byte
+!ifdef Z5PLUS {
+	ldy #header_screen_width_units
+	tax
+	lda #0
+	jsr write_header_word
 }
+	lda s_screen_height
+	ldy #header_screen_height_lines
+	jsr write_header_byte
+!ifdef Z5PLUS {
+	ldy #header_screen_height_units
+	tax
+	lda #0
+	jsr write_header_word
+}
+	rts
+}
+} ; Z4PLUS
+
+
+!ifdef TARGET_X16 {
+x16_backup_basic_zp
+	ldx #last_basic_zp_address - first_basic_zp_address + 1
+-	lda first_basic_zp_address - 1,x
+	sta basic_zp_backup_area - 1,x
+	dex
+	bne -
+	rts
+
+x16_restore_basic_zp
+	ldx #last_basic_zp_address - first_basic_zp_address + 1
+-	lda basic_zp_backup_area - 1,x
+	sta first_basic_zp_address - 1,x
+	dex
+	bne -
+	rts
+
+basic_zp_backup_area
+!fill last_basic_zp_address - first_basic_zp_address + 1, 0
+}
+
+!ifdef TARGET_C128 {
 
 c128_setup_mmu
 	lda #5 ; 4 KB common RAM at bottom only
@@ -1351,8 +1425,66 @@ print_no_undo
 .no_undo_msg
 	!pet "Undo not available",13,13,0
 }
+
+NEED_CALC_DYNMEM = 1
+
+
+!ifndef VMEM {
+!ifndef TARGET_MEGA65_OR_X16 {
+SIMPLE_NON_VMEM = 1
+}
 }
 
+; !ifdef TARGET_MEGA65 {
+; NEED_CALC_DYNMEM = 1
+; }
+; !ifdef VMEM {
+; NEED_CALC_DYNMEM = 1
+; }
+
+!ifdef NEED_CALC_DYNMEM {
+calc_dynmem_size
+	; Store the size of dynmem AND (if VMEM is enabled)
+	; check how many z-machine memory blocks (256 bytes each) are not stored in raw disk sectors
+!ifdef TARGET_C128 {
+	; Special case because we need to read a header word from dynmem before dynmem
+	; has been moved to its final location.
+	lda story_start + header_static_mem
+	ldx story_start + header_static_mem + 1
+} else {
+	; Target is not C128
+	ldy #header_static_mem
+	jsr read_header_word
+}
+	stx dynmem_size
+	sta dynmem_size + 1
+
+!ifndef SIMPLE_NON_VMEM {	
+;!ifdef TARGET_MEGA65 {
+	tay
+	cpx #0
+	beq .maybe_inc_nonstored_pages
+	iny ; Add one page if statmem doesn't start on a new page ($xx00)
+.maybe_inc_nonstored_pages
+	tya
+!ifdef TARGET_MEGA65 {
+	and #%00000001 ; keep index into kB chunk
+} else ifdef TARGET_X16 {
+	and #%00000001 ; keep index into kB chunk
+} else {
+	and #vmem_indiv_block_mask ; keep index into kB chunk
+}
+	beq .store_nonstored_pages
+	iny
+.store_nonstored_pages
+	sty nonstored_pages
+;}
+}
+	rts
+}
+} ; not ACORN
+
+	
 program_end
 
 ; SF: The alignment is complex enough without interweaving it (probably
@@ -1435,19 +1567,51 @@ high_history_end
 
 stack_start
 
+!ifdef TARGET_X16 {
+!ifdef CUSTOM_FONT {
+fontfile_name !pet "[font]"
+fontfile_name_len = * - fontfile_name
+
+font_read_error
+	lda #ERROR_FLOPPY_READ_ERROR
+	jmp fatalerror
+}
+}
+
 deletable_screen_init_1
 	; start text output from bottom of the screen
+
+!ifdef TARGET_X16 {
+!ifdef CUSTOM_FONT {
+	lda #fontfile_name_len
+	ldx #<fontfile_name
+	ldy #>fontfile_name
+	jsr kernal_setnam ; call SETNAM
+	lda #2      ; file number 2
+	ldx #8
+	ldy #2      ; secondary address
+	jsr kernal_setlfs ; call SETLFS
+	lda #3 ; Load into VRAM, bank 1
+	ldx #$00
+	ldy #$f0
+	jsr kernal_load
+	php
+	jsr close_io
+	plp
+	bcs font_read_error
+}
+}
 
 !ifndef Z4PLUS {
 	!ifdef TARGET_C128 {
 		bit COLS_40_80
 		bpl .width40
 		; 80 col
-		lda #54
+		lda #52
 		sta sl_score_pos
-		lda #67
+		lda #66
 		sta sl_moves_pos
-		lda #64
+		lda #60
 		sta sl_time_pos
 .width40
 		; Default values are correct, nothing to do here.
@@ -1471,6 +1635,7 @@ deletable_screen_init_1
     }
 }
 	+init_screen_model
+	rts
 
 !ifndef ACORN {
 deletable_screen_init_2
@@ -1498,12 +1663,8 @@ z_init
 !ifdef DEBUG {
 !ifdef PREOPT {
 	jsr print_following_string
-!ifndef ACORN {
-	!pet "*** vmem optimization mode ***",13,13,0
-} else {
 	!text "*** vmem optimization mode ***",13,13,0
 }
-}	
 }
 
 
@@ -1602,7 +1763,7 @@ z_init
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
 	jsr write_header_byte
-	lda #(64 + 13) ; "M" = release 13
+	lda #(64 + 14) ; "N" = release 14
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
 	jsr write_header_byte
 	+lda_screen_height
@@ -1616,6 +1777,8 @@ z_init
 }
 ; SFTODO: I wonder if this C128-specific code offers me a hint; I *suspect* C128 is the only upstream platform with a *variable* screen width, so I may need to follow C128-style code path for Acorn port in this respect. Just a thought, middle of initial merge right now so not investigated.
 !ifdef TARGET_C128 {
+	jsr update_screen_width_in_header
+} else ifdef TARGET_X16 {
 	jsr update_screen_width_in_header
 } else {
 	+lda_screen_width
@@ -1678,7 +1841,7 @@ z_init
 	sta z_pc
 }
 	jsr set_z_pc
-	jsr get_page_at_z_pc
+;	jsr get_page_at_z_pc NOT NEEDED - DONE AT THE END OF set_z_pc
 
 	; Setup globals pointer
 	ldy #header_globals

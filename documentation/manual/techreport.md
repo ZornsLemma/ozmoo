@@ -10,7 +10,7 @@ The main parts of Ozmoo are as follows:
 This is the main program that sets up the memory structures, reads the config into memory, and then starts executing the program instruction by instruction in the Z-machine emulator, taking care to read portions of the Z-code file from disk as needed.
 
 - Virtual memory buffers
-On some computers it is hard to use all the available RAM without time-consuming banking operations. To improve efficiency the virtual memory buffers are used when Ozmoo is compiled with virtual memory support, and located in RAM that is guaranteed to be accessible. By having the buffers in accessible RAM most operations can be done with direct RAM accesss, and banking is only needed when the program counter leaves the buffer.
+On some computers it is hard to use all the available RAM without time-consuming banking operations. To improve efficiency the virtual memory buffers are used when Ozmoo is compiled with virtual memory support, and located in RAM that is guaranteed to be accessible. By having the buffers in accessible RAM most operations can be done with direct RAM access, and banking is only needed when the program counter leaves the buffer.
 
 - Z-machine stack
 This is used to store arguments and function calls. The stack is described in detail in a chapter of its own.
@@ -59,7 +59,7 @@ These source files are located in the asm dictory. The table also shows the most
 |  |  |
 | picloader.asm | code to show a picture while reading the story file |
 |  |  |
-| reu.asm | implements the Ram Expansion Unit interface for C64 and C128, and an interface to Attic RAM on MEGA65 |
+| reu.asm | implements the Ram Expansion Unit interface for C64 and C128, banked RAM for the X16, and an interface to Attic RAM on MEGA65 |
 |  |  |
 | screen.asm | printing routines |
 |  |  |
@@ -87,6 +87,8 @@ These source files are located in the asm dictory. The table also shows the most
 |  |  |
 | vdc.asm | low level routines to write text on the C128 in 80 column mode |
 |  |  |
+| vera.asm | defines the interface to the VERA chip for text output on the X16 |
+|  |  |
 | vmem.asm | virtual memory routines, and corresponding routines for non-vmem builds |
 |  |  |
 | zaddress.asm | routines to access data (i.e. not program code) in the Z-machine memory space |
@@ -100,7 +102,7 @@ First the screen is initialised and the splash screen displayed (if any). Then t
 
 ## Z-machine
 
-The Z-machine executes instructions, using the Z-machine stack to keep track of calls and arguments. A Z-code file (AKA game file or story file, like zork1.dat or planetfall.z3) is essentially a snapshot of the memory of a virtual computer (the Z-machine). A Z-code file is divided into dynamic memory (up to 64 KB) and static memory (everthing above dynamic memory, up to 512 KB). Dynamic memory is the only part that can be altered during program execution. Ozmoo keeps the entire contents of dynamic memory in RAM at all times, while using whatever RAM is left for virtual memory, to hold as much of static memory as possible. Whenever the player moves into a new location or tries something new and the disk starts spinning, this is because the program needs a part of static memory that isn't in RAM, so it has to be fetched from disk. What's so nice about this system is that it's handled entirely by the interpreter. The author of a game doesn't have to figure out when to load which parts of the story file - they can just write their game as if it's going to run on a computer with 128 or 256 KB of RAM, and the interpreter makes it work on a computer with much less RAM than that.
+The Z-machine executes instructions, using the Z-machine stack to keep track of calls and arguments. A Z-code file (AKA game file or story file, like zork1.dat or planetfall.z3) is essentially a snapshot of the memory of a virtual computer (the Z-machine). A Z-code file is divided into dynamic memory (up to 64 KB) and static memory (everything above dynamic memory, up to 512 KB). Dynamic memory is the only part that can be altered during program execution. Ozmoo keeps the entire contents of dynamic memory in RAM at all times, while using whatever RAM is left for virtual memory, to hold as much of static memory as possible. Whenever the player moves into a new location or tries something new and the disk starts spinning, this is because the program needs a part of static memory that isn't in RAM, so it has to be fetched from disk. What's so nice about this system is that it's handled entirely by the interpreter. The author of a game doesn't have to figure out when to load which parts of the story file - they can just write their game as if it's going to run on a computer with 128 or 256 KB of RAM, and the interpreter makes it work on a computer with much less RAM than that.
 
 To further conserve space, the Z-machine has a text compression scheme built in. Basically it means each character is translated into one or more five-bit codes. By default, the space character and all lowercase letters fit into a single five-bit code each, while uppercase letters and special characters require two or four five-bit codes. These five bit codes are then grouped together so three of them occupy two bytes. I.e. "adventure" is stored as "adv" in two bytes, "ent" in two bytes and "ure" in two bytes, thus using six bytes. On top of this, there is a system of abbreviations, so common strings can be replaced by two five-bit codes.
 
@@ -112,11 +114,45 @@ The disk I/O routines are located in disk.asm.  The virtual memory uses read_blo
 
 ## REU
 
-If Ozmoo detects a RAM Expansion Unit (REU), the player gets the question if they want to use it. If they do, the entire story file is read into the REU before the game starts. When the virtual memory system needs to read data from the story file by calling read_block or read_blocks (disk.asm) it will read the blocks from the REU instead of the floppy drive.
+If Ozmoo detects a RAM Expansion Unit (REU), and it's big enough to hold the entire story file, the player gets the question if they want to use it. If they do, the static part of the story file is read into the REU before the game starts. When the virtual memory system needs to read data from the story file by calling read_block or read_blocks (disk.asm) it will read the blocks from the REU instead of the floppy drive.
+
+The interpreter detects the size of the REU in banks, where a bank is 64 KB. After deciding whether to use the REU for caching the story file, it may also allocate a bank for undo and a bank for scrollback buffer, if there is room and the game was built with support for these features. If the story file is stored in REU, it always begins in bank 0 and may use up to 8 banks. If story data is stored in the REU, the first page of bank 0 is reserved for fast page copying operations.
+
+## X16 builds
+
+On the X16, the main game file doesn't hold any story data. The entire Z-code file is held in a file called "zcode" and is loaded into banked RAM on boot. Since the entire file is held in one linear chunk of memory, and accessed in place (using banking), this is not a virtual memory build, and the VMEM constant is not defined. No config information is needed, so there are no config blocks on disk. This means a X16 game can be copied from one disk to another using a regular file copier.
+
+### X16 Memory map
+
+Similar to C128, the graphics output is handled by a chip called VERA that contains the video memory. This means that no normal memory is needed for screen RAM. There is a standard 512 KB extended memory, of which a chunk/bank at a time is available at \$a000-\$bfff. The currently accessible bank of the extended memory is controlled by setting $0000 to the chunk number.
+
+#### Normal memory
+
+| **Address range** | **KB** |  **Usage** |
+| -- |  - | ---- |
+| \$0000-\$9fff | 40 | System RAM, interpreter |
+| \$a000-\$bfff | 8 | Story file (currently banked chunk) |
+
+#### Video memory (VERA)
+
+The standard text mode needs 80 x 60 x 2 = 9600 bytes, starting from \$1b000, since the screen is 80 columns, 60 rows, and each character is stored as a (character code, colour) tuple.
+
+| **Address range** | **KB** |  **Usage** |
+| -- |  - | ---- |
+| \$1b000-\$1d580 | about 10 | Screen RAM |
+
+#### Extended/banked memory
+
+| **Address range** | **KB** |  **Usage** |
+| -- |  - | ---- |
+| \$00000-\$02000 | 8 | Reserved space |
+| \$02000-\$7ffff | 504 | Story file |
+
+The extended memory is mapped into \$a000-\$bfff, so the memory is accessible in 8KB chunks. Note that the first 8KB is used by the kernal and DOS routines, so we load the story file from \$02000.
 
 ## MEGA65 builds
 
-On the MEGA65, the boot file doesn't hold any story data, the entire Z-code file is held in a SEQ file called "zcode" and is loaded into Attic RAM on boot. Since the entire file is held in one linear chunk of memory, and accessed in place, this is not a virtual memory build, and the VMEM constant is not defined. No config information is needed, so there are no config blocks on disk. This means a MEGA65 game can be copied from one disk to another using a regular file copier.
+On the MEGA65, the boot file doesn't hold any story data. The entire Z-code file is held in a SEQ file called "zcode" and is loaded into Attic RAM on boot. Since the entire file is held in one linear chunk of memory, and accessed in place, this is not a virtual memory build, and the VMEM constant is not defined. No config information is needed, so there are no config blocks on disk. This means a MEGA65 game can be copied from one disk to another using a regular file copier.
 
 ### MEGA65 Memory map
 | **Address range** | **KB** |  **Usage** |
@@ -161,6 +197,8 @@ The main functions of screenkernal are s_printchar, which replaced CHROUT \$FFD2
 Screenkernal is started by calling s_init. Internally it keeps track of the cursor position so it can put a character on the screen when s_printchar is called. 
 
 For the Commodore 64 version the characters are stored directly in the video memory, and the colour in the colour memory.  The Commodore 128 version detects if 40 or 80 columns mode is used while running the program. If 40 characters are used, then it works like the Commodore 64 version. But if 80 columns are used, then the C128's Video Display Controller chip (VDC) is used. Instead of writing directly into the video memory, character output, scrolling and other screen commands are sent by VDC registers. The file vdc.asm contains functions that make this communication easier.
+
+The X16 is using a separate chip called VERA for text output, similar to VDC for the C128. The file vera.asm defines the interface to the VERA chip used for putting characters on the screen.
 
 The Plus/4 and Commodore 128 in 80 column mode doesn't use the same palette as the Commodore 64. Mapping tables (plus4_vic_colours and vdc_vic_colours) are used to assign C64 colours to their closest equivalents on these platforms.
 
@@ -336,7 +374,6 @@ This also has the advantage that we can access up to 256 entries using our 8-bit
 
 ## Banking
 
-
 On the Commodore 64, Commodore 128 and MEGA65 there's an additional wrinkle because some blocks of RAM are hidden
 behind the I/O area and the kernal ROM and there's a mechanism to copy those blocks of RAM into the so-called vmem cache in always-visible RAM when necessary. 
 
@@ -466,6 +503,10 @@ Replace color in Z-machine palette with a certain colur from the C64 palette.
 
 Tell the interpreter on which track the config blocks are located (in sector 0 and 1).
 
+	CURSORCHAR=n
+
+Use this character code as the cursor.
+
     CUSTOM_FONT
 
 Tell the interpreter that a custom font will be used.
@@ -475,28 +516,49 @@ Tell the interpreter that a custom font will be used.
 
 Set the foreground colour for normal mode and darkmode.
 
+	LURKING_HORROR
+
+If the game uses sound, enable the code that defines assumptions we need to make for the Lurking Horror, i.e. use a hardcoded table defining which sounds have repetition enabled, as the Z-code opcode to play sound doesn't support setting this parameter in z3.
+
 	NOSECTORPRELOAD
 
 Don't load any parts of static memory into RAM from disk sectors on boot. If make.rb can decide that this won't be needed anyway, it will set this flag, to make the interpreter a little smaller.
 
+    PREOPT
+
+Build the interpreter in PREOPT mode (used to pick which virtual memory blocks should be preloaded into memory when the game starts).
+
+	REUBOOST
+
+Add support for an alternate virtual memory model which is simpler and faster, for use with REU. When the story file is stored in an REU, copying a page from REU to RAM is so fast that it doesn't pay off to spend a lot of time figuring out which vmem block to replace. Defining REUBOOST typically makes games played with an REU about 10% faster.
+
+    SCROLLBACK_RAM_PAGES=n
+
+This value is typically between 24 and 48. Reserve this many pages at the top of RAM bank 0 for a scrollback buffer. However, if an REU is detected and used for scrollback at runtime, this RAM buffer should not be allocated. If the interpreter is built with REUBOOST, and there is room for the story file in the REU, and the user chooses to load the story file into the REU, this won't matter, because the top 12 KB of RAM bank 0 are unused in this scenario anyway. SCROLLBACK_RAM_PAGES is not used or supported for MEGA65, since it always uses AtticRAM for scrollback buffer.
+
     SLOW
 
-Prioritise small size over speed, making the interpreter smaller and slower. For C128 and Plus/4, this is enabled by default and can't be disabled, due to their memory models.
+Prioritise small size over speed, making the interpreter smaller and slower. For X16, C128 and Plus/4, this is enabled by default and can't be disabled, due to their memory models.
 
     SOUND (MEGA65 only)
 
 Include support for sound (.wav sample files playback).
 
+SPLASHWAIT=n
+
+Set how many seconds the splash screen should show. If this is set to 0, disable the splash screen completely, making the binary slightly smaller. On the C64, the splash screen resides in the virtual memory buffer, which means story_start and the maximum amount of dynamic memory aren't affected for a virtual memory build, but the empty space does allow Exomizer to compress the boot file better.
+
     STACK_PAGES=n
 
-Set the number of memory pages to use for stack.
+Set the number of memory pages to use for stack. Can't be less than 2 for a mode P build, or less than 4 for any other build, since the stack holds initialization code on boot. 4 is good for pretty much any ZIL or Inform 6 game. Inform 7 games expect a 64 page stack, and are likely to crash at some point if they get a stack as small as 4 pages.
 
     STATCOL=n
 
 Set the statusline colour. (only for z1-z3).
 
-    TARGET_C128
     TARGET_C64
+    TARGET_X16
+    TARGET_C128
     TARGET_PLUS4
     TARGET_MEGA65
 
@@ -513,6 +575,14 @@ Allocate a page of memory to keep a record of the last 64 instructions that were
     UNSAFE
 
 Remove some checks for runtime errors, making the interpreter smaller and faster.	
+
+	USE_BLINKING_CURSOR=n
+
+Make the cursor blink during player input, where n is the number of jiffies between blinks.
+
+	USE_HISTORY=n
+
+Enable command history, and allocate at least n bytes for storing it. Since the code to support command history is small, and since the storage is placed between the interpreter and the next thing in RAM (virtual memory buffers or stack or virtual memory) which needs to be page-aligned anyway, this can sometimes be enabled without causing story_start to move up.
 
     VMEM
 
@@ -537,6 +607,34 @@ Build the interpreter to run Z-machine version 1, 2, 3, 4, 5, 7 or 8.
 
 Map national characters in ZSCII to their PETSCII equivalents. No more than one of these can be enabled.
 
+## Internal Flags
+
+These flags are set and used internally in Ozmoo, depending on the settings of the general flags, especially the TARGET_??? flag.
+
+	COMPLEX_MEMORY
+
+If COMPLEX_MEMORY is set, then the Z-machine dynamic memory is not directly accessible in RAM, so we can't use simple lda/sta to access it. Instead, special routines are required. For C128 and X16, this involves selecting the right RAM bank, for MEGA65 it involves far memory access, while for Plus/4 it just means we need to bank out ROM which normally covers large areas of RAM during execution. Plus/4 has COMPLEX_MEMORY set, but not FAR_DYNMEM.
+
+	FAR_DYNMEM
+
+If FAR_DYNMEM is set, then the Z-machine dynamic memory is not in the part of RAM which can be directly accessed with 16-bit addresses. This means we can't use simple lda/sta operations, and we can't assume that dynamic memory starts at the story_start marker. Thus, additional code is needed to read and write to dynamic memory. A platform that has FAR_DYNMEM set must also have COMPLEX_MEMORY set.
+
+	HAS_SID
+
+If the target has a SID chip for sound generation.
+
+	SUPPORT_80COL
+
+If the target has an 80 column display.
+
+	SUPPORT_REU
+
+If the target potentially supports extended memory of some sort, to be used as a RAM disk for faster game play.
+
+	VMEM_END_PAGE=n
+
+This is the page where virtual memory storage ends, i.e. the last page that can be used by the virtual memory system plus one. For the C64, the last page is $FF (address $FF00-$FFFF), so VMEM_END_PAGE is $00.
+
 ## Debug flags 
 
 (If any of the flags in this section are enabled, DEBUG is automatically enabled too.)
@@ -552,10 +650,6 @@ When the game starts, replay a number of colon-separated commands which have bee
     COUNT_SWAPS
 
 Keep track of how many vmem block reads have been done.
-
-    PREOPT
-
-Built the interpreter in PREOPT mode (used to pick which virtual memory blocks should be preloaded into memory when the game starts).
 
     PRINT_SWAPS
 
@@ -649,7 +743,7 @@ An interpreter needs to reserve this space for disk information:
 
 z1/z2/z3: 1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + (1 + 1 + 2 + 1 + 40 + 6) = 4 + 2 * 8 + 51 = 71 bytes
 
-z4/z5/z8:  1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + 2 * (1 + 1 + 2 + 1 + 40 + 5) = 4 + 2 * 8 + 2 * 50 = 120 bytes
+z4/z5/z8:  1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + 2 * (1 + 1 + 2 + 1 + 40 + 5) = 4 + 2 * 8 + 2 * 50 = 120 bytes (* see Double 1571 drive support below)
 
 1571 drive support:
 
@@ -657,10 +751,12 @@ z4/z5/z8:  1 + 1 + 1 + 1 + 2 * (1 + 1 + 2 + 1 + 0 + 3) + 2 * (1 + 1 + 2 + 1 + 40
 - z4/z5 games: A single disk using only track 1-53 can hold all story data. Disk information will then fit in less than the number of bytes stated above.
 - z8 games: Disk information for a single drive game will fit in the number of bytes stated above. 
 
-Double 1571 drive support is possible but not a high priority. 
+Double 1571 drive support:
+
+- z1/z2/z3/z4/z5 games: Any game fits in less than the amount of bytes calculated for a 3-disk game above.
+- z7/z8 games: We need an additional 28 bytes to fit a full-size game. Thus, we allocate 150 bytes, to have some margin. 
 
 1581 drive support: This system should work, without extending the limits above, using only 31 sectors per track for story data, while allowing z8 games of up to 512 KB in size on a single disk. If we want to store several games on a single 1581 disk, we should add a track offset in each disk entry (i.e. saying that tracks below track x are considered empty).
-
 
 
 # Printer Support

@@ -67,7 +67,7 @@
 !zone screenkernal {
 
 !ifdef Z3 {
-max_lines = s_screen_height_minus_one ; SFTODONOW: Needed? Not sure upstream has this. Comment it out and see what breaks... Also it looks superficially odd that Z3 is the odd one out - aren't Z1 and Z2 similar to Z3 in this regard??
+max_lines = s_screen_height_minus_one ; SFTODONOW: Needed? Not sure upstream has this. Comment it out and see what breaks... Also it looks superficially odd that Z3 is the odd one out - aren't Z1 and Z2 similar to Z3 in this regard?? - 2024/04 - I do suspect from happening to notice stuff during merge that this should be ifndef Z4PLUS instead of ifdef Z3, but do need to check before tweaking
 } else {
 max_lines = s_screen_height
 }
@@ -343,6 +343,15 @@ s_printchar
 	stx s_stored_x
 	sty s_stored_y
 
+	ldx window_start_row + 1
+	cpx s_screen_height
+	bcc +
+	ldx current_window
+	bne +
+	; There is no free line to print on, return with carry set
+	ldx s_stored_x
+	rts
++
 	; Fastlane for the most common characters
 	cmp #$20
 	bcc +
@@ -442,6 +451,9 @@ s_printchar
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
+    ; SFTODONOW: OK, this ties in with my wafflings in screen.asm - it looks like we *do* play games to allow printing at the bottom right
+    ; cell to some extent, but obviously only when we are "willing" to let the screen scroll - I need to review how all this works outside
+    ; the strain of being inside a merge.
 	+cmp_screen_height
 	bcc .printchar_nowrap
     jsr .perform_line_feed_on_bottom_row1
@@ -602,7 +614,11 @@ s_scrolled_lines !byte 0
 
 s_erase_line
 	; registers: a,x,y
-	lda #0
+	lda zp_screenrow
+	cmp s_screen_height
+	bcc +
+	rts ; Illegal row, just ignore
++	lda #0
 	sta zp_screencolumn
 s_erase_line_from_cursor
     !ifdef ACORN_HW_SCROLL_SLOW {

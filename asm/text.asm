@@ -128,21 +128,16 @@ benchmark_read_char
 	jsr translate_petscii_to_zscii
 +++	rts
 ++	jsr dollar
-!ifndef ACORN {
-	lda ti_variable
+	jsr kernal_readtime   ; read start time (in jiffys) in a,x,y (low to high)
+	pha
+	tya
+;	lda ti_variable
 	jsr print_byte_as_hex
-	lda ti_variable + 1
+	txa
+;	lda ti_variable + 1
 	jsr print_byte_as_hex
-	lda ti_variable + 2
-} else {
-    jsr kernal_readtime
-    pha
-    tya
-    jsr print_byte_as_hex
-    txa
-    jsr print_byte_as_hex
-    pla
-}
+	pla
+;	lda ti_variable + 2
 	jsr print_byte_as_hex
 	jsr space
 	jsr printchar_flush
@@ -430,11 +425,7 @@ z_ins_read
 
 !ifdef TRACE_READTEXT {
 	jsr print_following_string
-!ifndef ACORN {
-	!pet "read_text ",0
-} else {
-    !text "read_text ",0
-}
+	!text "read_text ",0
 	ldx z_operand_value_low_arr
 	lda z_operand_value_high_arr
 	jsr printx
@@ -533,7 +524,7 @@ z_ins_read
 !ifdef DEBUG {
 !ifdef PREOPT {
 	jsr print_following_string
-	!raw "[preopt mode. type xxx to exit early.]",13,0
+	!text "[preopt mode. type xxx to exit early.]",13,0
 !ifdef Z5PLUS {
 	ldy #2
 } else {
@@ -1213,6 +1204,10 @@ getchar_and_maybe_toggle_darkmode
 	jsr wait_smoothscroll
 }
 	jsr kernal_getchar
+	cmp #0
+	bne +
+	jmp .did_nothing
++
 !ifndef NODARKMODE {
  	cmp #133 ; Charcode for F1
 	bne +
@@ -1260,6 +1255,7 @@ getchar_and_maybe_toggle_darkmode
 }
 	jmp .did_something
 +
+!ifndef TARGET_X16 {
 	cmp #11 ; Ctrl-K for key repeating
 	bne +
 	; Toggle key repeat (People using fast emulators want to turn it off)
@@ -1271,6 +1267,13 @@ getchar_and_maybe_toggle_darkmode
 	jmp .did_something
 +
 
+	cmp #4 ; Ctrl-D to forget device# for saves
+	bne +
+	; Forget device# for saves
+	dec ask_for_save_device ; Normally 0. Even if we decrease 100 times, we still get the same effect
+	jmp .did_something
++
+}
 !ifndef Z5PLUS {
 !ifdef UNDO {
 	cmp #21 ; Ctrl-U for Undo
@@ -1280,16 +1283,11 @@ getchar_and_maybe_toggle_darkmode
 	stx undo_requested
 	dec undo_possible
 	jmp .did_something
-+	
++
 }
 }
-
-	cmp #4 ; Ctrl-D to forget device# for saves
-	bne .did_nothing
-	; Forget device# for saves
-	dec ask_for_save_device ; Normally 0. Even if we decrease 100 times, we still get the same effect
-	; Fall through to .did_something
-
+	jmp .did_nothing
+	
 .did_something
 	ldx #2
 	jsr play_beep
@@ -2512,13 +2510,15 @@ print_addr
 	jsr read_next_byte ; 0
 	pha
 	jsr read_next_byte ; 33
+	; abbreviation index is word, *2 for bytes, address is in first 128 KB
+	asl
 	tax
 	pla
-	jsr set_z_address
-	; abbreviation index is word, *2 for bytes
-	asl z_address + 2
-	rol z_address + 1 
-	rol z_address 
+	rol
+	ldy #0
+	bcc +
+	iny
++	jsr set_z_himem_address
 	; print the abbreviation
 	jsr print_addr
 	; restore state
@@ -2544,6 +2544,9 @@ print_addr
 	sta z_address + 1
 	pla
 	sta z_address
+!ifdef TARGET_X16 {
+	jsr x16_bank_z_address
+}
 	pla
 	tax
 	lda #0

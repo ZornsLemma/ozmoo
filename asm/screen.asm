@@ -1,5 +1,52 @@
 ; screen update routines
 
+; sl_score_pos !byte 54
+; sl_moves_pos !byte 67
+; sl_time_pos !byte 64
+
+!ifdef TARGET_X16 {
+!ifndef Z4PLUS {
+update_statusline_params
+	lda s_screen_width
+	cmp #67
+	bcs .width80
+	cmp #37
+	bcs .width40
+	cmp #30
+	bcs .width32
+	; Width 20 or 22
+	lda #$ff
+	tay
+	bne .store_and_rts ; Always branch
+.width32
+	lda s_screen_width
+	sec
+	sbc #8
+	ora #$80 ; No "Score: " or "Time: " string
+	tay
+	dey
+	ldx #0
+	beq .store_and_rts ; Always branch
+.width40
+	lda s_screen_width
+	sec
+	sbc #15
+	tay
+	ldx #0
+	beq .store_and_rts ; Always branch
+.width80
+	lda #54
+	ldx #67
+	ldy #60
+.store_and_rts
+	sta sl_score_pos
+	stx sl_moves_pos
+	sty sl_time_pos
+	rts
+	
+}
+}
+
 !macro init_screen_model {
 !ifndef ACORN {
     lda #147 ; clear screen
@@ -21,8 +68,13 @@
 } else {
     ldy #0
     sty is_buffered_window
+!ifdef TARGET_X16 {
+!ifndef Z4PLUS {
+	jsr update_statusline_params
+}
+}
     ldx #$ff
-    jmp erase_window
+    jsr erase_window
 }
 }
 
@@ -35,6 +87,7 @@ init_screen_colours
 	; calculate the position for the more prompt
 	; (self modifying code since we don't want to
 	; ZP space is limited)
+!ifndef TARGET_X16 {
 	lda s_screen_size + 1
 	clc
 	adc #>SCREEN_ADDRESS
@@ -56,7 +109,9 @@ init_screen_colours
 	sta .more_access3 + 1
 }
 	sta .more_access4 + 1
+}
 	; colours
+!ifdef NODARKMODE {
 	lda zcolours + FGCOL
 !if BORDERCOL_FINAL = 1 {
 	+SetBorderColour
@@ -87,8 +142,22 @@ init_screen_colours
 	ldy #header_default_fg_colour
 	jsr write_header_byte
 }
+} else { ; Darkmode is available
+	lda darkmode
+	eor #1
+	sta darkmode
+	jsr toggle_darkmode
+}
 	lda #147 ; clear screen
 	jmp s_printchar
+; !ifndef NODARKMODE {
+	; lda darkmode
+	; beq +
+	; dec darkmode
+	; jmp toggle_darkmode
+; +	
+; }
+;	rts
 } ; ifndef ACORN
 
 !ifdef Z4PLUS {
@@ -135,13 +204,14 @@ erase_window
 	lda window_start_row + 1
 .clear_from_a
 	sta zp_screenrow
--   jsr s_erase_line
+-	lda zp_screenrow
+	cmp s_screen_height ; SFTODO: *SOME* OF MY CMP_SCREEN_* MACROS MAY NO LONGER BE NEEDED
+	bcs +
+	jsr s_erase_line
 	inc zp_screenrow
-	lda zp_screenrow
-	+cmp_screen_height ; SFTODO: *SOME* OF MY CMP_SCREEN_* MACROS MAY NO LONGER BE NEEDED
-	bcc -
+	bne - ; Always branch
 	jsr clear_num_rows
-	; set cursor to top left (or, if Z4, bottom left)
++	; set cursor to top left (or, if Z4, bottom left)
 	pla
 	ldx #0
 	stx cursor_column + 1
@@ -497,6 +567,34 @@ vdc_hide_more
 	jmp VDCWriteReg
 }
 
+!ifdef TARGET_X16 {
+
+.vera_more_temp !byte 0
+vera_show_more
+	sty .vera_more_temp
+	lda s_screen_height_minus_one
+	sta zp_screenline + 1
+	lda #$2a + 128
+	bne .vera_common_more ; Always branch
+
+vera_hide_more
+	sty .vera_more_temp
+	lda s_screen_height_minus_one
+	sta zp_screenline + 1
+	lda #32
+.vera_common_more
+	ldy s_screen_width_minus_one
+	jsr VERAPrintChar
+	; lda s_colour
+	; jsr VERAPrintColourAfterChar
+	lda zp_screenrow
+	sta zp_screenline + 1
+	ldy .vera_more_temp
+	rts
+}
+
+
+
 increase_num_rows
 	lda current_window
 	bne .increase_num_rows_done ; Upper window is never buffered
@@ -528,7 +626,11 @@ show_more_prompt
 	sta .more_text_char
 	lda #128 + $2a ; screen code for reversed "*"
 .more_access2
-	sta SCREEN_ADDRESS + (SCREEN_WIDTH*SCREEN_HEIGHT-1) 
+!ifndef TARGET_X16 {
+	sta SCREEN_ADDRESS + (SCREEN_WIDTH*SCREEN_HEIGHT-1)
+} else {
+	lda $8000
+}
 
 	; wait for ENTER
 .alternate_colours
@@ -542,26 +644,46 @@ show_more_prompt
 	tya
 	and #1
 	beq +
+!ifdef TARGET_C128 {
+	bit COLS_40_80
+	bpl +++
+	; 80 columns
+	jsr vdc_hide_more
+	jmp ++
+	; 40 columns
++++	ldx reg_backgroundcolour
+} else ifdef TARGET_X16 {
+	jsr vera_hide_more
+	jmp ++
+} else {
 	ldx reg_backgroundcolour
+}
 +
+!ifdef TARGET_C128 {
+	bit COLS_40_80
+	bpl ++
+	; 80 columns
+	jsr vdc_show_more
+} else ifdef TARGET_X16 {
+	jsr vera_show_more
+}
+++
 !ifdef TARGET_MEGA65 {
 	jsr colour2k
 }
-!ifdef TARGET_C128 {
-    bit COLS_40_80
-    bmi .check_for_keypress
-    ; Only show more prompt in C128 VIC-II screen
-}
 .more_access3
+!ifndef TARGET_X16 {
 	stx COLOUR_ADDRESS + (SCREEN_WIDTH*SCREEN_HEIGHT-1)
+} else {
+	ldx $8000
+}
 !ifdef TARGET_MEGA65 {
 	jsr colour1k
 }
 .check_for_keypress
 	ldx #40
----	lda ti_variable + 2 ; $a2
--	cmp ti_variable + 2 ; $a2
-	beq -
+---
+	jsr wait_a_jiffy
 	jsr getchar_and_maybe_toggle_darkmode
 	cmp #0
 	bne +
@@ -581,8 +703,13 @@ show_more_prompt
 }
 	lda .more_text_char
 .more_access4
+!ifndef TARGET_X16 {
 	sta SCREEN_ADDRESS + (SCREEN_WIDTH*SCREEN_HEIGHT -1)
 } else {
+	lda $8000
+	jsr vera_hide_more
+}
+} else { ; ACORN
 !ifndef BENCHMARK {
     ; We mimic the OS paged mode behaviour here: we flicker the keyboard LEDs
     ; and wait until SHIFT is pressed. It would be difficult (impossible using
@@ -602,6 +729,8 @@ show_more_prompt
     ; SF: ENHANCEMENT: I'm not sure it's a good idea, but I *could* turn the
     ; cursor on and fiddle with the CRTC registers to give it a flashing block
     ; appearance at the bottom right position as a kind of "more" prompt.
+	; (But would this work on the Electron? Only if OS emulates this aspect and
+	; I suspect it doesn't, but haven't checked.)
     ; SFTODO: Should we also allow RETURN to scroll? And/or SPACE? And/or any
     ; key?
     ; SFTODO: Would it save code if we actually used OS page mode (without trying
@@ -635,12 +764,38 @@ printchar_flush
 	ldx first_buffered_column
 -   cpx buffer_index
 	bcs +
+!ifdef SFTODONOW {
+
+	ldx buffer_index
+	dex
+	stx last_break_char_buffer_pos
+	jsr print_line_from_buffer
+	
+	bcs + ; The line couldn't be printed
+	ldx buffer_index
+	dex
+}
 	lda print_buffer2,x
 	sta s_reverse
 	lda print_buffer,x
 	jsr s_printchar
+!ifndef SFTODONOW {
 	inx
 	bne -
+} else {
++
+
+	; ldx first_buffered_column
+; -   cpx buffer_index
+	; bcs +
+	; lda print_buffer2,x
+	; sta s_reverse
+	; lda print_buffer,x
+	; jsr s_printchar
+	; inx
+	; bne -
+
+}
 +	pla
 	sta s_reverse
 	jsr start_buffering
@@ -657,6 +812,161 @@ printchar_flush
     ; inconsistent output on various Commodore machines, but it isn't clear to
     ; me there's actually a bugfix and the change just looks more verbose from
     ; an Acorn perspective.
+	; SFTODONOW: I may need to port this as I think it is used as part of the
+	; fix for some corner cases in commits 608ac1e and 258bdfe. I am going to
+	; ignore it until the 14.x merge is done anyway.
+!ifdef SFTODONOW {
+print_line_from_buffer
+	; Prints the text from first_buffered_column to last_break_char_buffer_pos
+	ldx window_start_row + 1
+	cpx s_screen_height
+	bcc +
+	; There is no free line to print on, return with carry set
+	rts
++
+!ifdef TARGET_C128 {
+	bit COLS_40_80
+	bmi +
+	jmp .printline40
+
++	lda zp_screenline + 1
+	sec
+	sbc #$04 ; adjust from $0400 (VIC-II) to $0000 (VDC)
+	tay
+	lda zp_screenline
+	clc
+	adc zp_screencolumn
+	bcc +
+	iny
++	jsr VDCSetAddress
+	ldy #VDC_DATA
+	sty VDC_ADDR_REG
+
+	ldx first_buffered_column
+-   cpx last_break_char_buffer_pos
+	bcs .done_print_80
+	lda print_buffer,x
+	jsr convert_petscii_to_screencode
+	ora print_buffer2,x
+--	bit     VDC_ADDR_REG
+	bpl --
+	sta VDC_DATA_REG
+	inx
+	bne - ; Always branch
+
+.done_print_80	
+
+	lda last_break_char_buffer_pos
+	sec
+	sbc first_buffered_column
+
+!ifdef COLOURFUL_LOWER_WIN {
+
+	pha ; Char count
+
+	; ; Fill relevant portion of colour RAM (start at offset $1800) with the game's foreground colour
+	lda zp_colourline + 1
+	sec
+	sbc #$d0 ; adjust from $d800 (VIC-II) to $0800 (VDC)
+	tay
+	lda zp_colourline
+	clc
+	adc zp_screencolumn
+	bcc +
+	iny
++	jsr VDCSetAddress
+
+	ldx s_colour
+	lda vdc_vic_colours,x
+	ora #$80 ; Bit 7 = charset, bit 0-4 = fg colour
+	ldx #VDC_DATA
+	jsr VDCWriteReg
+	; We have written default fg colour to the first position in colour RAM. Now fill the rest positions.
+	lda #0 ; Set to Fill mode ; Not needed, we have 0 in A
+	ldx #VDC_VSCROLL
+	jsr VDCWriteReg
+	ldx #VDC_COUNT
+	pla
+	sec
+	sbc #1
+	jsr VDCWriteReg
+	
+.dont_colour_80	
+}
+	jmp .done_print_line_from_buffer
+	
+.printline40
+}
+
+!ifdef TARGET_X16 {
+	ldy first_buffered_column
+	cpy last_break_char_buffer_pos
+	bcs ++
+	lda print_buffer2,y
+	sta s_reverse
+	lda print_buffer,y
+	jsr s_printchar
+	iny
+	dec zp_screencolumn ; I have no idea why we need to do this, but we do...
+
+	; Keep colour + background in x
+	ldx vera_composite_colour
+	; lda s_colour
+	; ora vera_background
+	; tax
+	
+-   cpy last_break_char_buffer_pos
+	bcs ++
+	lda print_buffer,y
+	jsr convert_petscii_to_screencode
+	ora print_buffer2,y
+	sta VERA_data0
+	stx VERA_data0
+	iny
+	bne - ; Always branch
+++
+	
+} else {
+	!ifdef TARGET_MEGA65 {
+		jsr colour2k	
+	}
+		ldy first_buffered_column
+-		cpy last_break_char_buffer_pos
+		bcs ++
+		lda print_buffer,y
+		jsr convert_petscii_to_screencode
+		ora print_buffer2,y
+		sta (zp_screenline),y
+	!ifdef COLOURFUL_LOWER_WIN {
+	!ifdef TARGET_PLUS4 {
+		ldx s_colour
+		lda plus4_vic_colours,x
+	} else {
+		lda s_colour
+	}
+		sta (zp_colourline),y
+	}
+		iny
+		bne - ; Always branch
+
+++	
+	!ifdef TARGET_MEGA65 {
+		jsr colour1k
+	}
+}
+
+.done_print_line_from_buffer
+	lda last_break_char_buffer_pos
+	sec
+	sbc first_buffered_column
+	clc
+	adc zp_screencolumn
+	sta zp_screencolumn
+
+	clc
+	rts
+
+}
 printchar_buffered
 	; a is PETSCII character to print
 	sta .buffer_char
@@ -704,7 +1014,7 @@ is_buffered_window = *+1
 	; update index to last break character
 	sty last_break_char_buffer_pos
 .add_char
-	ldy buffer_index
+	ldy buffer_index ; SFTODONOW Upstream omits this, it may be this is redundant or it may be it's unnecessary/incorrect only with the other upstream changes I am yet to investigate
 	sta print_buffer,y
 	lda s_reverse
 	sta print_buffer2,y
@@ -725,8 +1035,9 @@ s_screen_width_plus_one = *+1
 	lda window_start_row
 	sec
 	sbc window_start_row + 1
-	sbc #2
+	sbc #1
 	cmp num_rows
+!ifndef SFTODONOW { ; this looks like it has changed upstream - it *may* be in fact I need to preserve this behaviour anyway and this is a point of divergence with upstream, given there is AFAICT no portable way to print at the bottom right of the screen or OS text window anyway - but (I really don't remember right now) maybe that case can't occur (but I strongly suspect it can, since most games will be printing game text right down to the bottom of the screen - this might be a bit crap, but I suspect in practice internal buffering for word-wrapping means this can't occur - still, it feels like there are corner cases here waiting to explode and some thought is needed)
 	bcs +
     ; SF: Note that we only allow 39 characters on the last line of the screen;
     ; this may be useful information if I ever want to implement a "more" prompt
@@ -734,6 +1045,9 @@ s_screen_width_plus_one = *+1
     ; contents of the bottom right character and I suspect a game could output
     ; text in other ways which would use the rightmost column on the bottom
     ; line.
+} else {
+	bne +
+}
 	dex ; Max 39 chars on last line on screen.
 +	stx max_chars_on_line
 	; Check if we have a "perfect space" - a space after 40 characters
@@ -761,6 +1075,7 @@ s_screen_width_plus_one = *+1
 	ldx first_buffered_column
 	lda s_reverse
 	pha
+!ifndef SFTODONOW {
 -   cpx last_break_char_buffer_pos
 	beq +
 	txa ; kernal_printchar destroys x,y
@@ -768,10 +1083,26 @@ s_screen_width_plus_one = *+1
 !ifndef ACORN {
 	!error "Big chunk of non-Acorn code deleted here"
 }
+} else {
+
+	dec last_break_char_buffer_pos ; Print last character using normal print routine, to avoid trouble
+
+	jsr print_line_from_buffer
+
+	ldx last_break_char_buffer_pos
+	inc last_break_char_buffer_pos ; Restore old value, since we decreased it by one before
+
+	bcs + ; The line couldn't be printed
+	; Print last character
+}
 	lda print_buffer2,x
 	sta s_reverse
 	lda print_buffer,x
 	jsr s_printchar
+!ifdef SFTODONOW {
++
+	inx
+}
 	pla
 	tax
 	inx
@@ -875,10 +1206,14 @@ get_cursor
 
 !ifndef Z4PLUS {
 
-!ifdef TARGET_MEGA65 {
-sl_score_pos !byte 54
-sl_moves_pos !byte 67
-sl_time_pos !byte 64
+!ifdef TARGET_X16 {
+sl_score_pos !byte 52
+sl_moves_pos !byte 66
+sl_time_pos !byte 60
+} else ifdef TARGET_MEGA65 {
+sl_score_pos !byte 52
+sl_moves_pos !byte 66
+sl_time_pos !byte 60
 } else {
 sl_score_pos !byte 25
 !ifdef TARGET_C128 {
@@ -966,14 +1301,15 @@ draw_status_line
 	lda z_operand_value_high_arr + 1
 	pha
 	ldy sl_score_pos
-	jsr print_spaces_to_column_y
+	jsr print_spaces_to_column_y ; SFTODONOW: Upstream on non-X16 targets seems to invoke jsr set_cursor here instead, do I need to do that or do I have a good reason for doing this? Need to investigate once merge is mostly done
 	ldy #0
 -   lda .score_str,y
-	beq +
+	beq .print_score_number
 	jsr s_printchar
 	iny
-	bne -
-+   lda #17
+	bne - ; Always branch
+.print_score_number
+	lda #17
 	jsr z_get_low_global_variable_value
 	stx z_operand_value_low_arr
 	sta z_operand_value_high_arr
@@ -982,6 +1318,9 @@ draw_status_line
     ; SFTODO: Probably small optimisation potential to omit a little of following
     ; code if we *only* support 80 columns for this game.
 	ldy sl_moves_pos
+!ifdef TARGET_X16 {
+	bmi .all_done_score_sl
+}
 	bne +
 	lda #'/'
 	jsr s_printchar
@@ -1003,6 +1342,7 @@ draw_status_line
 	stx z_operand_value_low_arr
 	sta z_operand_value_high_arr
 	jsr z_ins_print_num
+.all_done_score_sl
 	pla
 	sta z_operand_value_high_arr + 1
 	pla
@@ -1046,10 +1386,11 @@ draw_status_line
 .timegame
 	; time game
 	ldy sl_time_pos
-	jsr print_spaces_to_column_y
+	jsr print_spaces_to_column_y ; SFTODONOW: As above, upstream on non-X16 does jsr set_cursor instead - is my code OK for Acorn?
 	lda #>.time_str
 	ldx #<.time_str
 	jsr printstring_raw
+.print_time_data
 ; Print hours
 !ifndef ACORN {
 	lda #65 + 32

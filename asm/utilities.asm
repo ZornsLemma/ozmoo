@@ -62,6 +62,7 @@ plus4_enable_rom = $ff3e
 	lda #%00110000 
 !ifdef TARGET_PLUS4 {
 ;	sta plus4_enable_ram
+} else ifdef TARGET_X16 {
 } else {
 	sta zero_processorports
 }
@@ -77,6 +78,7 @@ plus4_enable_rom = $ff3e
 	lda #%00110000 
 !ifdef TARGET_PLUS4 {
 ;	sta plus4_enable_ram
+} else ifdef TARGET_X16 {
 } else {
 	sta zero_processorports
 }
@@ -85,6 +87,7 @@ plus4_enable_rom = $ff3e
 
 !macro set_memory_no_basic {
 	!ifdef TARGET_PLUS4 {
+    } else ifdef TARGET_X16 {
 	} else {
 			pha
 		!ifdef TARGET_C128 {
@@ -100,6 +103,7 @@ plus4_enable_rom = $ff3e
 
 !macro set_memory_no_basic_unsafe {
 	!ifdef TARGET_PLUS4 {
+    } else ifdef TARGET_X16 {
 	} else {
 		!ifdef TARGET_C128 {
 			lda #%00001110 ; 48K RAM0 (0-$c000)
@@ -113,6 +117,7 @@ plus4_enable_rom = $ff3e
 
 !macro set_memory_normal {
 	!ifdef TARGET_PLUS4 {
+    } else ifdef TARGET_X16 {
 	} else {
 			pha
 		!ifdef TARGET_C128 {
@@ -156,8 +161,8 @@ plus4_enable_rom = $ff3e
 }
 } else {
 read_next_byte_at_z_pc_sub
-	ldy #0
 !ifdef TARGET_PLUS4 {
+	ldy #0
 	+disable_interrupts
 	sta plus4_enable_ram
 	lda (z_pc_mempointer),y
@@ -165,12 +170,18 @@ read_next_byte_at_z_pc_sub
 	+enable_interrupts
 } else {
 !ifdef SKIP_BUFFER {
+	ldy #0
 	+disable_interrupts
 	+set_memory_all_ram_unsafe
 	lda (z_pc_mempointer),y
 	+set_memory_no_basic
 	+enable_interrupts
 } else {
+!ifdef TARGET_X16 {
+	ldy x16_z_pc_bank
+	sty 0
+}
+	ldy #0
 	lda (z_pc_mempointer),y
 }
 }
@@ -220,38 +231,38 @@ string_array_read_byte
 	tax
 	lda #0
 	jsr read_byte_at_z_address
-	sta .temp + 2
 	ldy .temp
 	ldx .temp + 1
-	lda .temp + 2
+	cmp #0
 	rts
 
 string_array_write_byte
 	sta .temp
 	sty .temp + 1
-	lda z_address
-	pha
+	stx .temp + 2
 	lda z_address + 1
+	pha
+	lda z_address
 	pha
 	lda z_address + 2
 	pha
 	lda string_array
 	clc
 	adc .temp + 1
-	sta z_address + 2
+	tax
 	lda string_array + 1
 	adc #0
-	sta z_address + 1
-	lda #0
-	sta z_address
+	jsr set_z_address
 	lda .temp
 	jsr write_next_byte
 	pla
-	sta z_address + 2
+	tax
 	pla
-	sta z_address + 1
+	tay
 	pla
-	sta z_address
+	jsr set_z_himem_address
+	ldx .temp + 2
+	ldy .temp + 1
 	lda .temp
 	rts
 	
@@ -267,38 +278,38 @@ parse_array_read_byte
 	tax
 	lda #0
 	jsr read_byte_at_z_address
-	sta .temp + 2
 	ldy .temp
 	ldx .temp + 1
-	lda .temp + 2
+	cmp #0
 	rts
 
 parse_array_write_byte
 	sta .temp
 	sty .temp + 1
-	lda z_address
-	pha
+	stx .temp + 2
 	lda z_address + 1
+	pha
+	lda z_address
 	pha
 	lda z_address + 2
 	pha
 	lda parse_array
 	clc
 	adc .temp + 1
-	sta z_address + 2
+	tax
 	lda parse_array + 1
 	adc #0
-	sta z_address + 1
-	lda #0
-	sta z_address
+	jsr set_z_address
 	lda .temp
 	jsr write_next_byte
 	pla
-	sta z_address + 2
+	tax
 	pla
-	sta z_address + 1
+	tay
 	pla
-	sta z_address
+	jsr set_z_himem_address
+	ldx .temp + 2
+	ldy .temp + 1
 	lda .temp
 	rts
 
@@ -410,15 +421,105 @@ convert_byte_to_two_digits
 	lda #.vector
 	sta $02aa
 	ldx #$7f
-	jsr $02a2
+	jsr $02a2 ; bank peek routine
 }
 
 !macro write_far_byte .vector {
 	ldx #.vector
 	stx $02b9
 	ldx #$7f
-	jsr $02af
+	jsr $02af ; bank poke routine
 }
+}
+
+!ifdef TARGET_X16 {
+; Macros for far memory read and write 
+
+!macro read_far_byte .vector {
+	lda #.vector
+	jsr x16_read_far_byte
+}
+
+!macro write_far_byte .vector {
+	ldx #.vector
+	jsr x16_write_far_byte
+}
+
+x16_prepare_bankmem
+    ; Read top two bytes of Z-machine address from mempointer 
+	; Store absolute address in mempointer, and set bank as necessary
+	lda mempointer + 1
+	cmp #0
+	bne .in_high_ram
+	lda mempointer
+	cmp #64
+	bcs .in_high_ram_loaded_mempointer
+
+	; Normal RAM
+	; Set bank to -1 or 0
+	; stz 0
+	; cmp #$20
+	; bcs +
+	; dec 0
+; +	
+	clc
+	adc #$5f ; Story starts at $5f00
+	sta mempointer + 1
+	bne .done_bank_calc ; Always branch
+
+.in_high_ram
+	lda mempointer
+.in_high_ram_loaded_mempointer	
+	asl
+	rol mempointer + 1
+	asl
+	rol mempointer + 1
+	asl
+	lda mempointer + 1
+	rol
+	sbc #0 ; Carry is already clear, so this substracts 1
+	sta 0
+	lda mempointer
+	and #$1f
+	ora #$a0
+	sta mempointer + 1
+.done_bank_calc
+	lda #0
+    sta mempointer
+    rts
+
+x16_read_far_byte
+; a = zp vector holding address in far memory
+; y = offset from address in zp vector
+; Returns value in a
+; y retains its value
+	tax
+	lda 1,x
+	sta mempointer
+	lda #0
+	sta mempointer + 1
+    jsr x16_prepare_bankmem
+	lda 0,x
+	sta mempointer
+	lda (mempointer),y
+	rts
+
+x16_write_far_byte
+; a = value to write
+; x = zp vector holding address in far memory
+; y = offset from address in zp vector
+; y retains its value
+    pha
+	lda 1,x
+	sta mempointer
+	lda #0
+	sta mempointer + 1
+    jsr x16_prepare_bankmem
+	lda 0,x
+	sta mempointer
+	pla
+	sta (mempointer),y
+	rts
 }
 
 !ifdef TARGET_MEGA65 {
@@ -592,7 +693,9 @@ fatalerror
 	pla
 	tax
 !ifndef ACORN {
+!ifndef TARGET_X16 {
 	stx SCREEN_ADDRESS + 79
+}
 }
 	lda #0
 	jsr printinteger
@@ -610,11 +713,7 @@ fatalerror
 } else {
 	pha
 	jsr print_following_string
-!ifndef ACORN {
-	!pet "fatal error ", 0
-} else {
 	!text "fatal error ", 0
-}
 	pla
 	tax
 	jsr printa
@@ -839,11 +938,7 @@ pause
 	stx .saved_x
 	sty .saved_y
 	jsr print_following_string
-!ifndef ACORN {
-	!pet "[Intentional pause. Press ENTER.]",13,0
-} else {
 	!text "[Intentional pause. Press ENTER.]",13,0
-}
 	jsr print_trace
 	jsr printchar_flush
 !ifndef ACORN { ; SFTODO: SHOULD I MAKE KERNAL_READCHAR AN ALIAS FOR OSRDCH??? THEN WOULDN'T NEED THIS CONDITIONAL COMPILATION, MAYBE A SAVING, MAYBE NOT
@@ -866,7 +961,7 @@ print_following_string
 !zone {
 	; usage:
 	;    jsr print_following_string
-	;    !pet "message",0
+	;    !text "message",0
 	; uses stack pointer to find start of text, then
 	; updates the stack so that execution continues
 	; directly after the end of the text
@@ -900,11 +995,7 @@ print_trace
 !ifdef TRACE {
 	jsr newline
 	jsr print_following_string
-!ifndef ACORN {
-	!pet "last opcodes: (#, z_pc, opcode)",0
-} else {
 	!text "last opcodes: (#, z_pc, opcode)",0
-}
 	jsr newline
 	lda z_trace_index
 	tay
@@ -912,11 +1003,7 @@ print_trace
 	cmp #%00000011
 	bne +
 	jsr print_following_string
-!ifndef ACORN {
-	!pet "last opcode not stored (shown as $ee)",13,0
-} else {
 	!text "last opcode not stored (shown as $ee)",13,0
-}
 	lda #$ee
 	sta z_trace_page,y
 	iny
@@ -1235,6 +1322,16 @@ divide16
 }
 
 ; screen update routines
+
+!ifdef TARGET_X16 {
+SETBORDERMACRO_DEFINED = 1
+!macro SetBorderColour {
+	jsr VERASetBorderColour
+}
+!macro SetBackgroundColour {
+	jsr VERASetBackgroundColour
+}
+}
 
 !ifdef TARGET_C128 {
 SETBORDERMACRO_DEFINED = 1

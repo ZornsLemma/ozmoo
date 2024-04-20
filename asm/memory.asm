@@ -53,7 +53,8 @@ set_z_pc
 ; Parameters: New value of z_pc in a,x,y
 !zone {
 	sty z_pc + 2
-!ifndef TARGET_MEGA65 {	
+!ifdef TARGET_X16 {
+} else ifndef TARGET_MEGA65 {	
 	!ifdef VMEM {
 		cmp z_pc
 		bne .unsafe_1
@@ -92,7 +93,7 @@ set_z_pc
 		eor #1
 		sta z_pc_mempointer + 1
 	} else {
-		; No vmem 
+		; No vmem
 		!ifndef ACORN {
 			!ifndef TARGET_PLUS4 {
 				cpx #(first_banked_memory_page - (>story_start))
@@ -199,6 +200,68 @@ get_page_at_z_pc_did_pha
 }
 
 !zone {
+
+!ifdef TARGET_X16 {
+.countdown = mem_temp + 1
+.temp !byte 0,0,0
+
+read_word_from_far_dynmem
+; a = zp vector pointing to base address
+; y = offset from address in zp vector
+; Returns word in a,x (byte 1, byte 2)
+; y retains its value
+	sty .temp
+	tax
+	lda 0,x
+	clc
+	adc .temp
+	sta mem_temp
+	lda 1,x
+	adc #0
+	ldx mem_temp
+	jsr set_z_address
+	jsr read_next_byte
+	sta .temp + 1
+	jsr read_next_byte
+	tax
+	lda .temp + 1
+	ldy .temp
+	rts
+	
+write_word_to_far_dynmem
+; zp vector pointing to base address must be stored in
+;   write_word_far_dynmem_zp_1 and write_word_far_dynmem_zp_2 before call 
+; a,x = value (byte 1, byte 2)
+; y = offset from address in zp vector
+; y is increased by 1
+	sty .temp
+	sta .temp + 1
+	stx .temp + 2
+	ldx #0
+.write_word
+	lda $ff,x
+	clc
+	adc .temp
+	sta mem_temp
+	inx
+.write_word_2
+	lda $ff,x
+	adc #0
+	ldx mem_temp
+	jsr set_z_address
+	lda .temp + 1
+	jsr write_next_byte
+	lda .temp + 2
+	jsr write_next_byte
+	ldy .temp
+	iny 
+	rts
+
+write_word_far_dynmem_zp_1 = .write_word + 1
+write_word_far_dynmem_zp_2 = .write_word_2 + 1
+
+} else {
+
 !ifdef TARGET_C128 {
 copy_page_c128_via_reu
 
@@ -527,10 +590,12 @@ write_word_far_dynmem_zp_2 = .write_word_2 + 1
 
 
 } ; Not TARGET_MEGA65
+
 } ; end zone
 } ; Not ACORN
 
 } ; not TARGET_C128
+} ; not TARGET_X16
 }
 
 
@@ -540,7 +605,12 @@ read_header_word
 ; y contains the address in the header
 ; Returns: Value in a,x
 ; y retains its original value
-!ifdef FAR_DYNMEM {
+!ifdef TARGET_X16 {
+	lda $5f01,y
+	tax
+	lda $5f00,y
+	rts
+} else ifdef FAR_DYNMEM {
 	jsr setup_to_write_to_header_far_ram
 	txa
 	jmp read_word_from_far_dynmem
@@ -548,10 +618,8 @@ read_header_word
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	+acorn_page_in_bank_using_a dynmem_ram_bank
 }
-	iny
-	lda story_start,y
+	lda story_start + 1,y
 	tax
-	dey
 	lda story_start,y
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	pha
@@ -566,7 +634,12 @@ write_header_word
 ; y contains the address in the header
 ; a,x contains word value
 ; a,x,y are destroyed
-!ifdef FAR_DYNMEM {
+!ifdef TARGET_X16 {
+	sta $5f00,y
+	txa
+	sta $5f01,y
+	rts
+} else  ifdef FAR_DYNMEM {
 	stx .tmp
 	jsr setup_to_write_to_header_far_ram
 	stx write_word_far_dynmem_zp_1
@@ -580,9 +653,8 @@ write_header_word
 	pla
 }
 	sta story_start,y
-	iny
 	txa
-	sta story_start,y
+	sta story_start + 1,y
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	+acorn_page_in_default_bank_using_a
 }
@@ -615,6 +687,9 @@ write_header_byte
 	ldz #0
 	stz dynmem_pointer + 1
 	sta [dynmem_pointer],z
+	rts
+} else ifdef TARGET_X16 {
+	sta $5f00,y
 	rts
 } else {
 	sta story_start,y
