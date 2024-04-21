@@ -388,6 +388,7 @@ z_ins_catch
 	; Store pointer to first byte where pushed values are stored in current frame.
 	ldx stack_ptr
 	lda stack_ptr + 1
+        ; SFTODONOW: This (and code in z_ins_throw) is new in 14.x, it's probably fixing a bug and necessary, but be good to check to see the commit which added it and why and if it's necessary and correct for Acorn.
 	sec
 	sbc #>stack_start
 	jmp z_store_result
