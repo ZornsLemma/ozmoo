@@ -1037,17 +1037,10 @@ s_screen_width_plus_one = *+1
 	sbc window_start_row + 1
 	sbc #1
 	cmp num_rows
-!ifndef SFTODONOW { ; this looks like it has changed upstream - it *may* be in fact I need to preserve this behaviour anyway and this is a point of divergence with upstream, given there is AFAICT no portable way to print at the bottom right of the screen or OS text window anyway - but (I really don't remember right now) maybe that case can't occur (but I strongly suspect it can, since most games will be printing game text right down to the bottom of the screen - this might be a bit crap, but I suspect in practice internal buffering for word-wrapping means this can't occur - still, it feels like there are corner cases here waiting to explode and some thought is needed)
-	bcs +
-    ; SF: Note that we only allow 39 characters on the last line of the screen;
-    ; this may be useful information if I ever want to implement a "more" prompt
-    ; character. However, I note the C64 "more" code saves and restores the
-    ; contents of the bottom right character and I suspect a game could output
-    ; text in other ways which would use the rightmost column on the bottom
-    ; line.
-} else {
 	bne +
-}
+        ; SF: This tweak to the maximum line length on the last line of the screen to avoid scrolling
+        ; may be helpful if we decide to implement some kind of "More" prompt instead of using
+        ; (simulated) OS page mode.
 	dex ; Max 39 chars on last line on screen.
 +	stx max_chars_on_line
 	; Check if we have a "perfect space" - a space after 40 characters
