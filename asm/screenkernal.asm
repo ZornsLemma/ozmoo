@@ -66,8 +66,8 @@
 
 !zone screenkernal {
 
-!ifdef Z3 {
-max_lines = s_screen_height_minus_one ; SFTODONOW: Needed? Not sure upstream has this. Comment it out and see what breaks... Also it looks superficially odd that Z3 is the odd one out - aren't Z1 and Z2 similar to Z3 in this regard?? - 2024/04 - I do suspect from happening to notice stuff during merge that this should be ifndef Z4PLUS instead of ifdef Z3, but do need to check before tweaking
+!ifndef Z4PLUS {
+max_lines = s_screen_height_minus_one
 } else {
 max_lines = s_screen_height
 }
@@ -453,7 +453,7 @@ s_printchar
 	lda zp_screenrow
     ; SFTODONOW: OK, this ties in with my wafflings in screen.asm - it looks like we *do* play games to allow printing at the bottom right
     ; cell to some extent, but obviously only when we are "willing" to let the screen scroll - I need to review how all this works outside
-    ; the strain of being inside a merge.
+    ; the strain of being inside a merge. - OK, I will keep this comment until I'm happy with screen.asm, but "all" that's happening here is working round quirks with things like reverse video or the fast scroll code. There is no "magic" here which is all that relevant to higher level code - we do allow printing at the bottom right character of the screen but it causes a scroll just as if we weren't taking any special action.
 	+cmp_screen_height
 	bcc .printchar_nowrap
     jsr .perform_line_feed_on_bottom_row1
