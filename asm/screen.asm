@@ -764,7 +764,6 @@ printchar_flush
 	ldx first_buffered_column
 -   cpx buffer_index
 	bcs +
-!ifdef SFTODONOW {
 
 	ldx buffer_index
 	dex
@@ -774,15 +773,10 @@ printchar_flush
 	bcs + ; The line couldn't be printed
 	ldx buffer_index
 	dex
-}
 	lda print_buffer2,x
 	sta s_reverse
 	lda print_buffer,x
 	jsr s_printchar
-!ifndef SFTODONOW {
-	inx
-	bne -
-} else {
 +
 
 	; ldx first_buffered_column
@@ -795,7 +789,6 @@ printchar_flush
 	; inx
 	; bne -
 
-}
 +	pla
 	sta s_reverse
 	jsr start_buffering
@@ -812,10 +805,9 @@ printchar_flush
     ; inconsistent output on various Commodore machines, but it isn't clear to
     ; me there's actually a bugfix and the change just looks more verbose from
     ; an Acorn perspective.
-	; SFTODONOW: I may need to port this as I think it is used as part of the
+	; SFTODONOW: (WIP, AM DOING SO) I may need to port this as I think it is used as part of the
 	; fix for some corner cases in commits 608ac1e and 258bdfe. I am going to
 	; ignore it until the 14.x merge is done anyway. - OK, have had a bit of a look at this (but not finished). print_line_from_buffer looks like an optimisation (which we don't use for last char on line to avoid problems) to allow bulk transfer of character data from the buffer to screen RAM on different Commodore platforms. This offers us no advantage on Acorn as we can't do direct screen memory access in general. I do probably need to do *something* to accommodate the bug fixes around the print_line_from_buffer which probably are relevant to Acorn. - OK, thinking about this some more, there *may* be some advantage on Acorn, as we can avoid doing the overhead of things like setting reverse video appropriately (we'd just do it once) and checking for mode 7 status line which we can probably avoid entirely) and blat the data through to OSWRCH directly for all but the last character on the line. Whether this would actually improve performance I don't know. The only real reason *not* to do this is the extra code, but it probably is not huge, and it would also be nice to avoid the divergence from upstream. I think the thing to do is probably to try using print_line_from_buffer and see what the effect is on performance and code size and then decide. (Yes, looking at the code and Z-machine standard, it looks like only the lower window can be buffered, so we can forget about the mode 7 status line here.)
-!ifdef SFTODONOW {
 print_line_from_buffer
 	; Prints the text from first_buffered_column to last_break_char_buffer_pos
 	ldx window_start_row + 1
@@ -926,7 +918,7 @@ print_line_from_buffer
 	bne - ; Always branch
 ++
 	
-} else {
+} else ifndef ACORN {
 	!ifdef TARGET_MEGA65 {
 		jsr colour2k	
 	}
@@ -953,6 +945,20 @@ print_line_from_buffer
 	!ifdef TARGET_MEGA65 {
 		jsr colour1k
 	}
+} else { ; ACORN
+	; SFTODONOW: This is a slow implementation to check it works, before I optimise by doing s_printchar style setup just once and using oswrch (if that's possible - it occurs to me that if wen're not careful here we won't correctly cope with partial use of reverse video in a line)
+	ldy first_buffered_column
+-	cpy last_break_char_buffer_pos
+	bcs ++
+	lda print_buffer2,y
+	sta s_reverse
+	lda print_buffer,y
+	jsr s_printchar
+	dec zp_screencolumn ; SFTODONOW: part of hack, s_printchar advances this but the code below advances it in a single go, so temporarily negate the effect of s_printchar doing this
+	iny
+	bne - ; Always branch
+
+++
 }
 
 .done_print_line_from_buffer
@@ -966,7 +972,6 @@ print_line_from_buffer
 	clc
 	rts
 
-}
 printchar_buffered
 	; a is PETSCII character to print
 	sta .buffer_char
@@ -1014,7 +1019,6 @@ is_buffered_window = *+1
 	; update index to last break character
 	sty last_break_char_buffer_pos
 .add_char
-	ldy buffer_index ; SFTODONOW Upstream omits this, it may be this is redundant or it may be it's unnecessary/incorrect only with the other upstream changes I am yet to investigate
 	sta print_buffer,y
 	lda s_reverse
 	sta print_buffer2,y
@@ -1065,18 +1069,8 @@ s_screen_width_plus_one = *+1
 .store_break_pos
 	sty last_break_char_buffer_pos
 .print_buffer
-	ldx first_buffered_column
 	lda s_reverse
 	pha
-!ifndef SFTODONOW {
--   cpx last_break_char_buffer_pos
-	beq +
-	txa ; kernal_printchar destroys x,y
-	pha
-!ifndef ACORN {
-	!error "Big chunk of non-Acorn code deleted here"
-}
-} else {
 
 	dec last_break_char_buffer_pos ; Print last character using normal print routine, to avoid trouble
 
@@ -1087,20 +1081,14 @@ s_screen_width_plus_one = *+1
 
 	bcs + ; The line couldn't be printed
 	; Print last character
-}
 	lda print_buffer2,x
 	sta s_reverse
 	lda print_buffer,x
 	jsr s_printchar
-!ifdef SFTODONOW {
 +
 	inx
-}
+
 	pla
-	tax
-	inx
-	bne - ; Always branch
-+   pla
 	sta s_reverse
 
 .move_remaining_chars_to_buffer_start
