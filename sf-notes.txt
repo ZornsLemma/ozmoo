@@ -1,3 +1,10 @@
+Quick timings as working on print_line_from_buffer, all on M128 mode 7:
+- basic optimised version: $8bf6 $8bf8 $8bf4
+- incomplete 14.x merge before print_line_from_buffer: $8e54 $8e56 $8e56
+This is about 6s or 1.6% reduction in time, and this is in mode 7 where the change probably has greatest proportional impact given the low effort required of the OS to put data onto the screen. But this isn't negligible by any means, and as long TODO CHECK it isn't massively bloating the code, it also brings us much closer to upstream which is good for consistency and bugfixes etc.
+
+
+
 Undo penalty benchmarks:
 No undo support, 32K B with 3MHz copro, mode 3: $3b7-$5aa3 222.52
 ditto but with 144K SWR: $8a1-$58b9 205.04
