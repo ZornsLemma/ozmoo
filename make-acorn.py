@@ -172,8 +172,8 @@ def run_and_check(args, output_filter=None, warning_filter=None):
     # a big deal.
     if (child.returncode != 0 or len(child_warnings) > 0 or cmd_args.verbose_level >= 2) and len(child_output) > 0:
         if cmd_args.verbose_level < 2:
-            print(" ".join(args))
-        print("".join(x.decode(encoding="ascii") for x in child_output))
+            print(" ".join(args)) # SFTODONOW: USE STDERR?
+        print("".join(x.decode(encoding="ascii") for x in child_output)) # SFTODONOW: USE STDERR?
     if child.returncode != 0:
         die("%s failed" % args[0])
 
