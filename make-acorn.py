@@ -17,7 +17,7 @@ MAX_ADFS_DISC_TITLE_LEN = 19
 
 def die(s):
     show_deferred_output()
-    print(s, file=sys.stderr)
+    print("Error: %s" % s, file=sys.stderr)
     sys.exit(1)
 
 
