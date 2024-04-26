@@ -467,7 +467,7 @@ s_printchar
 .printchar_nowrap
     pla
     ; This OSWRCH call is the one which actually prints most of the text on the
-    ; screen.
+    ; screen. SFTODONOW: But it won't be if we add the print-line-at-once optimisation.
     jsr oswrch
 .printchar_oswrch_done ; SFTODO: redundant label now
 .printchar_end
