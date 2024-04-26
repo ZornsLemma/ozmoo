@@ -193,7 +193,7 @@ def get_tool_version(name, version_finder=None):
     string_version = "unknown"
     for line in child.stdout.readlines():
         # TODO: tee-ing the output to a file breaks the next line (at least with Python 2 on Linux, not tried other variants)
-        line = line.decode(sys.stdout.encoding)
+        line = line.decode(sys.stdout.encoding) # SFTODONOW: Can we default to eg UTF-8 or ASCII if sys.stdout.encoding is None?
         if version_finder is None:
             c = line.split()
             if len(c) >= 2 and c[0] == name:
