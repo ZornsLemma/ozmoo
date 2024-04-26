@@ -946,15 +946,16 @@ print_line_from_buffer
 		jsr colour1k
 	}
 } else { ; ACORN
-	; SFTODONOW: This is a slow implementation to check it works, before I optimise by doing s_printchar style setup just once and using oswrch (if that's possible - it occurs to me that if wen're not careful here we won't correctly cope with partial use of reverse video in a line)
+	; SFTODONOW: This is a slow implementation to check it works, before I optimise by doing s_printchar style setup just once and using oswrch (if that's possible - it occurs to me that if wen're not careful here we won't correctly cope with partial use of reverse video in a line) - OK, now have first cut at optimised implementation, may be scope for more tweaks, and also needs testing with reverse video (ideally partial reverse video)
+	jsr s_cursor_to_screenrowcolumn
 	ldy first_buffered_column
 -	cpy last_break_char_buffer_pos
 	bcs ++
 	lda print_buffer2,y
 	sta s_reverse
+	jsr s_reverse_to_os_reverse
 	lda print_buffer,y
-	jsr s_printchar
-	dec zp_screencolumn ; SFTODONOW: part of hack, s_printchar advances this but the code below advances it in a single go, so temporarily negate the effect of s_printchar doing this
+	jsr oswrch
 	iny
 	bne - ; Always branch
 
