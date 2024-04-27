@@ -491,13 +491,14 @@ s_printchar
     +acorn_update_scroll_state
     jmp .resume_printing_normal_char ; Always branch
 }
-; SFTODONOW: Stating the obvious, test software, hardware-old-style and hardware-new-style scrolling once finished. Also be good to *SPOOL the output and have a look for apparently gratutious VDU codes, e.g. cursor movement when not necessary, stray text windows, etc.
+; SFTODONOW: Stating the obvious, test software, hardware-old-style and hardware-new-style scrolling once finished.
 
 .perform_line_feed_on_bottom_row1
     ; We are going to force a scroll; unless we're using the custom OSWRCH
     ; routine this will use the current background colour for the new line. We
-    ; always want the new line to be in normal video so make sure we're in normal video mode; this is harmless even if
-    ; we are using the custom OSWRCH routine.
+    ; always want the new line to be in normal video so make sure we're in
+    ; normal video mode; this is harmless even if we are using the custom OSWRCH
+    ; routine.
     jsr set_os_normal_video
     ; We turn off the cursor while we're scrolling:
     ; - For fast hardware scrolling, this works around glitches with the split
