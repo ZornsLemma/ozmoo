@@ -491,7 +491,6 @@ s_printchar
     +acorn_update_scroll_state
     jmp .resume_printing_normal_char ; Always branch
 }
-; SFTODONOW: Stating the obvious, test software, hardware-old-style and hardware-new-style scrolling once finished.
 
 .perform_line_feed_on_bottom_row1
     ; We are going to force a scroll; unless we're using the custom OSWRCH
