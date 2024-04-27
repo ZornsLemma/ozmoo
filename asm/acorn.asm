@@ -87,7 +87,7 @@
 
 ; Control a few small debug assertions and similar.
 ; SFTODO: Make this controllable via the build script?
-; SFTODONOW: Should probably do some testing with these on - and make sure I turn them off after!
+; SFTODONOW: Should probably do some testing with these on - and make sure I turn them off after! It *might* be sensible to leave them on for now and then disable them when promoting alpha to beta. It is all a bit of a mess right now really - since I (and probably everyone else) don't use --debug-assert, that is never turned on, but the hard-coded ones below are on by default right now.
 
 ; ACORN_DEBUG_ASSERT causes additional code to be included which *verifies but
 ; does not change state*.
@@ -98,7 +98,6 @@
 ACORN_DEBUG_INTRUSIVE = 1
 
 ; SFTODO: COMMENT?
-;!error "SFTODONOW: NOT A PROBLEM AS SUCH, BUT THIS IS (I BELIEVE) MAKING 9.X SEEM UNFAIRLY BIGGER THAN 7.X"
 DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; SFTODONOW: I should probably have this *on* during pre-release testing
 ; SFTODONOW: Need to think carefully about what debug flags should be on by default in a "proper" release
