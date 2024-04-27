@@ -170,10 +170,12 @@ def run_and_check(args, output_filter=None, warning_filter=None):
     child_warnings = [line for line in child_output if warning_filter(line)]
     # The child's stdout and stderr will both be output to our stdout, but that's not
     # a big deal.
-    if (child.returncode != 0 or len(child_warnings) > 0 or cmd_args.verbose_level >= 2) and len(child_output) > 0:
+    something_wrong = child.returncode != 0 or len(child_warnings) > 0
+    if (something_wrong or cmd_args.verbose_level >= 2) and len(child_output) > 0:
+        output_to = sys.stderr if something_wrong else sys.stdout
         if cmd_args.verbose_level < 2:
-            print(" ".join(args)) # SFTODONOW: USE STDERR?
-        print("".join(x.decode(encoding="ascii") for x in child_output)) # SFTODONOW: USE STDERR?
+            print(" ".join(args), file=output_to)
+        print("".join(x.decode(encoding="ascii") for x in child_output), file=output_to)
     if child.returncode != 0:
         die("%s failed" % args[0])
 
@@ -192,8 +194,12 @@ def get_tool_version(name, version_finder=None):
     version = (0, 0)
     string_version = "unknown"
     for line in child.stdout.readlines():
-        # TODO: tee-ing the output to a file breaks the next line (at least with Python 2 on Linux, not tried other variants)
-        line = line.decode(sys.stdout.encoding) # SFTODONOW: Can we default to eg UTF-8 or ASCII if sys.stdout.encoding is None?
+        # Under rare circumstances (Fredrik experienced this running this script
+        # in the context of Ozmoo Online, and it also occurs - at least with
+        # Python 2 under Linux with bash - if you tee the output of
+        # make-acorn.py to a file) sys.stdout.encoding may be None. In that case
+        # we'll hope "utf-8" will work, as None will definitely fail.
+        line = line.decode(sys.stdout.encoding if sys.stdout.encoding is not None else "utf-8")
         if version_finder is None:
             c = line.split()
             if len(c) >= 2 and c[0] == name:
@@ -2494,8 +2500,6 @@ show_deferred_output()
 # SFTODONOW: Can/should I give some kind of feedback (maybe there is some already - not checked code) like a beep when pressing CTRL-U to undo? If there is textual feedback then that's fine, I only do the beep for CTRL-S as there's no immediate acknowledgement/effect otherwise.
 
 # SFTODONOW: Z-Machine std 1.1 says the interpreter clears the "undo" bit of the header if it can't provide the requested effect. Is Ozmoo doing that? Should it? I find myself wondering if a) games respect this b) this would allow us to avoid having code for "undo not supported", saving a few bytes. May be worth asking Fredrik about this. But should probably play with it myself, e.g. once I have undo working, find a Z5+ game which supports "undo", forcibly clear this bit in the header anyway and see how the game responds to an "undo" command - does it still call the save/restore-for-undo opcodes? Also interesting to note the commented out code to do this in print_no_undo - but why? because no game respected it, so it's a waste of space? - ah, note also there is code to modify this stuff in the hader in ozmoo.asm at "; check undo" comment
-
-# SFTODONOW: HAVE A LOOK AT ADDING "X"->"EXAMINE" SUPPORT FOR GAMES WHICH DON'T ALLOW IT BY DEFAULT
 
 # SFTODONOW: Is there any value in checking the "undo" bit in the header at build time and ignoring --undo (with a warning) if it's not supported? We'd only do this for Z5+ games of course. Fredrik says some (check e-mail) solid gold Z5 games don't support undo; would this catch them?
 
