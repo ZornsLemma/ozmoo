@@ -944,7 +944,7 @@ class OzmooExecutable(Executable):
         if nonstored_pages_up_to > self.max_pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
         if "ACORN_SWR" in self.labels:
-            # SFTODONOW: This (and its symbol passed through to loader.bas and its use in loader.bas) is now a bit inconsistent - it is not "dynmem in SWR" in all cases. We only actually use it for medium and big models, and different ways for each of them. Maybe rename it something generic and just comment in the loader what it means in the model we're looking at.
+            # SFTODO: This (and its symbol passed through to loader.bas and its use in loader.bas) is now a bit inconsistent - it is not "dynmem in SWR" in all cases. We only actually use it for medium and big models, and different ways for each of them. Maybe rename it something generic and just comment in the loader what it means in the model we're looking at.
             if "ACORN_SWR_SMALL_DYNMEM" in self.labels:
                 self.swr_dynmem = 0 # not used
             elif "ACORN_SWR_MEDIUM_DYNMEM" in self.labels:
@@ -980,7 +980,10 @@ class OzmooExecutable(Executable):
         # block via the virtual memory code. In practice it shouldn't matter but we always
         # specify a timestamp of 0 (the oldest possible timestamp) when using invalid_addr
         # in a vmap entry, so the entry will be replaced by something useful ASAP in the
-        # unexpected case that the entry is used at runtime. SFTODONOW: Probably fine, but (after, if I do, I tinker with the sort code during init preload and the use of dummy entries there) this might be better changed.
+        # unexpected case that the entry is used at runtime.
+        # SFTODO: Probably fine, but (after, if I do, I tinker with the sort
+        # code during init preload and the use of dummy entries there) this
+        # might be better changed.
         invalid_addr = 0
         invalid_timestamp = 0
         for i, block_index in enumerate(blocks):
@@ -1238,7 +1241,7 @@ def make_best_model_executable(leafname, args, report_failure_prefix):
     # avoid *requiring* at least one bank of sideways RAM, which is useful as a
     # B+ or Integra-B actually has a fair bit of RAM (up to 19K of spare shadow
     # RAM in mode 7 and the private 12K) available even if it has no sideways
-    # RAM. SFTODONOW: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem. - I SHOULD PERHAPS DO SOME TIMINGS OF MEDDYN VS BIGDYN BEFORE REWRITING THIS COMMENT, AND IT MAY ALSO FORCE ME TO RECONSIDER
+    # RAM. SFTODO: Is that entirely true? I think the basic point is sound, but the advantage only exists if the machine happens to be able to fit dynmem in main RAM with its particular PAGE. OK, I think on a B+ the private 12K *is* acceptable, but on an Integra-B we will insist on one bank of real SWR as the first 1K of private 12K is used by IBOS and this makes it unsuitable for dynmem. - I SHOULD PERHAPS DO SOME TIMINGS OF MEDDYN VS BIGDYN BEFORE REWRITING THIS COMMENT, AND IT MAY ALSO FORCE ME TO RECONSIDER
     medium_e = None
     if cmd_args.force_medium_dynmem or ("-DACORN_SCREEN_HOLE=1" in args and not cmd_args.force_big_dynmem):
         if nonstored_pages * bytes_per_page <= 16 * 1024:
@@ -2323,7 +2326,10 @@ bbc_max_start_addr = 0x3000
 # SFTODONOW: Now that a non-shadow machine *can* run in modes other than the
 # minimal screen RAM (e.g. a B running in mode 6 instead of mode 7), should
 # we try to avoid loading "extra high" on the B as well? Maybe lower
-# bbc_max_start_addr to something like 0x2000?
+# bbc_max_start_addr to something like 0x2000? I believe the concern here is
+# that when we restart the game in mode (say) 3, a higher pre-relocation load
+# increases the chances of visible screen corruption. (On a BBC the initial
+# load is fine, as we're in mode 7 showing the loaders creen.)
 if not cmd_args.adfs:
     electron_max_start_addr = 0x1900
 else:
