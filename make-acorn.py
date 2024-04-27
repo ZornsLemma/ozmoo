@@ -2384,7 +2384,7 @@ while nonstored_pages % pages_per_vmem_block != 0:
 #   initialisation. (Non-VMEM builds only require story_start to be 256-byte
 #   aligned, and it's therefore possible to have (say) 201 pages of memory free
 #   with a 201 page game but end up insisting on using VMEM because we treat it
-#   as a 202 page game.) SFTODONOW: Is this quite right? Didn't I switch to making non-VMEM builds meet the same 512-byte alignment anyway? Not sure right now.
+#   as a 202 page game.) SFTODO: Is this quite right? Didn't I switch to making non-VMEM builds meet the same 512-byte alignment anyway? Not sure right now.
 #
 # SFTODO: It would be possible - the complexity would mainly be in the build
 # script, I beleive - to stop applying these (particularly the second) tweaks
@@ -2401,7 +2401,12 @@ if cmd_args.undo:
 
 if cmd_args.undo:
     undo_buffer_size = round_up(round_up(dynamic_size_bytes, 256) + stack_pages * 256, 512)
-    # We impose this maximum undo buffer size limit to match the upstream limits for the Commodore 128. This precise value doesn't have any significance, but SFTODONOW: MAY CHANGE AS CODE EVOLVES we can't support anything much bigger than this, as we have ~46K SFTODO DID I GET THIS WRONG, IS IT MORE LIKE ~50K? of free RAM for stack, story and vmem cache on a second processor, so if the undo buffer gets close to half of this there's no RAM left over for dynamic memory or virtual memory cache.
+    # We impose this maximum undo buffer size limit to match the upstream limits
+    # for the Commodore 128. This precise value doesn't have any significance,
+    # but we can't support anything much bigger than this, as we have ~48K of
+    # free RAM for stack, story and vmem cache on a second processor, so if the
+    # undo buffer gets close to half of this there's no RAM left over for
+    # dynamic memory or virtual memory cache.
     max_undo_buffer_size = 19.25 * 1024
     if undo_buffer_size > max_undo_buffer_size:
         cmd_args.undo = False
@@ -2457,19 +2462,15 @@ show_deferred_output()
 
 # SFTODO: I am sometimes seeing mediumdyn a bit slower than bigmem, have a think in case I need to tweak build heuristics. (There's not much in it; I think the difference is largest on machines where the dynmem adjustment kicks in, since bigdyn gives this optimisation more headroom.)
 
-# SFTODONOW: Should probably do a merge of latest upstream changes (fairly minor, but still) before I settle down to do significant amounts of testing. This can wait until I've finished dealing with any non-test-related SFTODONOW comments though.
-
 # SFTODO: It might be good to add a README.acorn.md or whatever. Contents would include (but not be limited to):
 # - notes on installing a game to an ADFS hard drive
 # - notes on installing a game to NFS
 
-# SFTODONOW: We should probably offer the option to set CHECK_ERRORS; I don't think this has ever been tested.
+# SFTODO: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat. (This *may* now be fixed in practice by not building with history support, but it would be good to check older versions and see if that's why or if there is some other source of bloat here.)
 
-# SFTODONOW: Beyond Zork doesn't seem to fit without a second processor any more - I'm sure it used to *just* fit with shadow RAM and PAGE at &E00. Check and see if this indicates bloat. (This *may* now be fixed in practice by not building with history support, but it would be good to check older versions and see if that's why or if there is some other source of bloat here.)
+# SFTODO: In Beyond Zork with --no-cursor-editing, COPY keys acts like f2 (=STATUS). Not necessarily a big deal but suggests something is subtlely awry. (Might not actually be f2 technically; I am pressing f2 on my PC keyboard but that may be f1 or something really. I don't think that's the issue, just don't get too hung up on *f2* specifically; key point is that COPY acts like one of the f keys and there's no obvious reason it should.) (FWIW, f2 *does* also work without --no-cursor-editing.) - *OK*, I see what's happening, if not what the best fix is. We explicitly set --function-keys option for BZ. This sets things up so f0 returns 133(=ZSCII f1; there is no f0 in ZSCII), so COPY key's *FX4,1 return value of 135 is indistinguishable from f2. I suspect the "right" fix would be to have the function keys return some "spare" codes and use the input character translation to map those to ZSCII function key codes, then COPY wouldn't get mixed up. But this would - admittedly only in games using --function-keys - add about 16 (8 function keys - due to no need to change, we are I believe constrained by C64's 8 function keys when parsing termination chars) bytes to the translation table. That's probably OK if a game *does* care about function keys, but think about it.
 
-# SFTODONOW: In Beyond Zork with --no-cursor-editing, COPY keys acts like f2 (=STATUS). Not necessarily a big deal but suggests something is subtlely awry. (Might not actually be f2 technically; I am pressing f2 on my PC keyboard but that may be f1 or something really. I don't think that's the issue, just don't get too hung up on *f2* specifically; key point is that COPY acts like one of the f keys and there's no obvious reason it should.) (FWIW, f2 *does* also work without --no-cursor-editing.) - *OK*, I see what's happening, if not what the best fix is. We explicitly set --function-keys option for BZ. This sets things up so f0 returns 133(=ZSCII f1; there is no f0 in ZSCII), so COPY key's *FX4,1 return value of 135 is indistinguishable from f2. I suspect the "right" fix would be to have the function keys return some "spare" codes and use the input character translation to map those to ZSCII function key codes, then COPY wouldn't get mixed up. But this would - admittedly only in games using --function-keys - add about 16 (8 function keys - due to no need to change, we are I believe constrained by C64's 8 function keys when parsing termination chars) bytes to the translation table. That's probably OK if a game *does* care about function keys, but think about it.
-
-# SFTODONOW: C64 make has a "-re" option to enable full error checking, I should add something like that to Acorn build script.
+# SFTODO: C64 make has a "-re" option to enable full error checking (CHECK_ERRORS), I should add something like that to Acorn build script.
 
 # SFTODO: For the medium dynmem model at least, could we move the Z-machine stack into the 16K "dynmem" SWR bank (assuming there's room for it with the dynmem, of course)? In medium model I *think* this would be near trivial - the dynmem bank is always paged in - oh no, it probably isn't, but I haven't checked. If this could be done it would free up 1K of main RAM which might be enough to allow e.g. mode 3 on a PAGE=&1900 machine, and since the extra 1K of SWR used would (all else being equal) free up 1K of main RAM and both can be used as vmem cache, there would be no penalty in general for doing this. I suspect this isn't going to fly unless the 16K dynmem bank really is paged in all the time (at least when executing Z-machine code accessing Z-machine stack) or could be paged in in extra cases without adding lots of complexity. Another problem would be that we put discardable init code in the Z-machine stack, and we need somewhere to load that code, whereas if we're (say) in mode 3 and *just* have enough main RAM for the game without room for the Z-machine stack in there, we have nowhere to load the discardable init code. This could possibly be worked around by switching to (say) mode 7 when we do a restart - that would give us extra memory and we could then switch back to mode 3 after discardable init code has been discarded. Perhaps a bit fiddly but perhaps not. Still, worth thinking about. (Also worth noting that *as of this writing* - I haven't tried to optimise things to squeeze extra free RAM out - HH non benchmark needs PAGE<=&1400 on B-no-shadow, so adding &400 from this stack move to SWR wouldn't quite get us mode 3 on PAGE=&1900.)
 
