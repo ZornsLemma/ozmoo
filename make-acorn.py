@@ -2149,6 +2149,8 @@ def make_disc_image():
         loader_symbols["AUTO_START"] = basic_int(1)
     if cmd_args.leave_caps_lock_alone:
         loader_symbols["LEAVE_CAPS_LOCK_ALONE"] = basic_int(1)
+    if cmd_args.undo and z_machine_version <= 4:
+        loader_symbols["CTRL_U_UNDO"] = basic_int(1)
     loader_screen.add_loader_symbols(loader_symbols)
 
     for min_menu_mode in (0, 3, 4, 6, 7):
@@ -2502,5 +2504,3 @@ show_deferred_output()
 # SFTODONOW: Z-Machine std 1.1 says the interpreter clears the "undo" bit of the header if it can't provide the requested effect. Is Ozmoo doing that? Should it? I find myself wondering if a) games respect this b) this would allow us to avoid having code for "undo not supported", saving a few bytes. May be worth asking Fredrik about this. But should probably play with it myself, e.g. once I have undo working, find a Z5+ game which supports "undo", forcibly clear this bit in the header anyway and see how the game responds to an "undo" command - does it still call the save/restore-for-undo opcodes? Also interesting to note the commented out code to do this in print_no_undo - but why? because no game respected it, so it's a waste of space? - ah, note also there is code to modify this stuff in the hader in ozmoo.asm at "; check undo" comment
 
 # SFTODONOW: Is there any value in checking the "undo" bit in the header at build time and ignoring --undo (with a warning) if it's not supported? We'd only do this for Z5+ games of course. Fredrik says some (check e-mail) solid gold Z5 games don't support undo; would this catch them?
-
-# SFTODONOW: Try to show CTRL-U on the loader screen; this is easy if we stick with it being enabled at build time and only and always supported on tube.

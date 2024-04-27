@@ -716,6 +716,9 @@ REM SFTODO: We should probably show command history up/down if USE_HISTORY is se
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-B: change background colour "
 REM SFTODO: Should the next one be conditional on ACORN_HW_SCROLL?
         IF ?screen_mode<>7 THEN PRINT CHR$normal_fg;"  CTRL-S: change scrolling mode    "
+!ifdef CTRL_U_UNDO {
+        IF tube THEN            PRINT CHR$normal_fg;"  CTRL-U: undo last move           "
+}
 REM Clear any additional rows which we used last time but haven't used this time.
 IF VPOS<mode_keys_last_max_y THEN PRINT SPC(40*(mode_keys_last_max_y-VPOS));
 mode_keys_last_max_y=VPOS
