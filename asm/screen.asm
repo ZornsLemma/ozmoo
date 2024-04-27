@@ -1257,7 +1257,6 @@ draw_status_line
 	;
 	;
 	; score or time game?
-    ; SFTODONOW: TEST ALL THE CASES HERE GIVEN I REWORKED THE SPACE HANDLING
 	;
 +   
 !ifdef Z3 {
