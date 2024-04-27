@@ -762,7 +762,7 @@ printchar_flush
 	lda s_reverse
 	pha
 	ldx first_buffered_column
--   cpx buffer_index
+	cpx buffer_index
 	bcs +
 
 	ldx buffer_index
