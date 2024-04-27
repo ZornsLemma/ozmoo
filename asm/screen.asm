@@ -800,14 +800,6 @@ printchar_flush
 	; We have re-selected the upper window, restore cursor position
 	jmp restore_cursor
 
-    ; SF: Upstream has a change here to introduce a print_line_from_buffer
-    ; subroutine. As far as I can tell this allows sharing some code to avoid
-    ; inconsistent output on various Commodore machines, but it isn't clear to
-    ; me there's actually a bugfix and the change just looks more verbose from
-    ; an Acorn perspective.
-	; SFTODONOW: (WIP, AM DOING SO) I may need to port this as I think it is used as part of the
-	; fix for some corner cases in commits 608ac1e and 258bdfe. I am going to
-	; ignore it until the 14.x merge is done anyway. - OK, have had a bit of a look at this (but not finished). print_line_from_buffer looks like an optimisation (which we don't use for last char on line to avoid problems) to allow bulk transfer of character data from the buffer to screen RAM on different Commodore platforms. This offers us no advantage on Acorn as we can't do direct screen memory access in general. I do probably need to do *something* to accommodate the bug fixes around the print_line_from_buffer which probably are relevant to Acorn. - OK, thinking about this some more, there *may* be some advantage on Acorn, as we can avoid doing the overhead of things like setting reverse video appropriately (we'd just do it once) and checking for mode 7 status line which we can probably avoid entirely) and blat the data through to OSWRCH directly for all but the last character on the line. Whether this would actually improve performance I don't know. The only real reason *not* to do this is the extra code, but it probably is not huge, and it would also be nice to avoid the divergence from upstream. I think the thing to do is probably to try using print_line_from_buffer and see what the effect is on performance and code size and then decide. (Yes, looking at the code and Z-machine standard, it looks like only the lower window can be buffered, so we can forget about the mode 7 status line here.)
 print_line_from_buffer
 	; Prints the text from first_buffered_column to last_break_char_buffer_pos
 	ldx window_start_row + 1
@@ -1287,7 +1279,7 @@ draw_status_line
 	lda z_operand_value_high_arr + 1
 	pha
 	ldy sl_score_pos
-	jsr print_spaces_to_column_y ; SFTODONOW: Upstream on non-X16 targets seems to invoke jsr set_cursor here instead, do I need to do that or do I have a good reason for doing this? Need to investigate once merge is mostly done
+	jsr print_spaces_to_column_y
 	ldy #0
 -   lda .score_str,y
 	beq .print_score_number
@@ -1372,7 +1364,7 @@ draw_status_line
 .timegame
 	; time game
 	ldy sl_time_pos
-	jsr print_spaces_to_column_y ; SFTODONOW: As above, upstream on non-X16 does jsr set_cursor instead - is my code OK for Acorn?
+	jsr print_spaces_to_column_y
 	lda #>.time_str
 	ldx #<.time_str
 	jsr printstring_raw
