@@ -1707,7 +1707,6 @@ def parse_args():
     group.add_argument("--title", metavar="TITLE", type=str, help="set title for use on title page")
     group.add_argument("--subtitle", metavar="SUBTITLE", type=str, help="set subtitle for use on title page")
     group.add_argument("--undo", action="store_true", help="enable use of undo during gameplay")
-    group.add_argument("--x-for-examine", action="store_true", help="interpret 'x' as 'examine' (Z1-4 games only)")
 
     group = parser.add_argument_group("optional in-game appearance arguments")
     group.add_argument("-7", "--no-mode-7-status", action="store_true", help="disable coloured status line in mode 7")
@@ -1751,6 +1750,7 @@ def parse_args():
     group.add_argument("--try-support-32k", action="store_true", help="try to support unexpanded 32K machines")
     group.add_argument("--no-slow-hw-scroll", action="store_true", help="disable use of slow hardware scroll")
     group.add_argument("--no-fast-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
+    group.add_argument("--x-for-examine", action="store_true", help="interpret 'x' as 'examine' (Z1-4 games only)")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
