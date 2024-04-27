@@ -1728,7 +1728,7 @@ z_init
 	and #(255 - 16) ; no undo
 .undo_is_available
 } else {
-	; SFTODONOW: For the moment, on Acorn we know at build time if undo is supported or not.
+	; SF: For the moment, on Acorn we know at build time if undo is supported or not.
 	!ifndef UNDO {
 		; Tell game UNDO isn't supported
 		and #(255 - 16) ; no undo
