@@ -451,9 +451,6 @@ s_printchar
     sta zp_screencolumn
     inc zp_screenrow
 	lda zp_screenrow
-    ; SFTODONOW: OK, this ties in with my wafflings in screen.asm - it looks like we *do* play games to allow printing at the bottom right
-    ; cell to some extent, but obviously only when we are "willing" to let the screen scroll - I need to review how all this works outside
-    ; the strain of being inside a merge. - OK, I will keep this comment until I'm happy with screen.asm, but "all" that's happening here is working round quirks with things like reverse video or the fast scroll code. There is no "magic" here which is all that relevant to higher level code - we do allow printing at the bottom right character of the screen but it causes a scroll just as if we weren't taking any special action.
 	+cmp_screen_height
 	bcc .printchar_nowrap
     jsr .perform_line_feed_on_bottom_row1
@@ -463,13 +460,11 @@ s_printchar
     pla
     jsr oswrch
     jsr .perform_line_feed_on_bottom_row2
-    jmp .printchar_oswrch_done
+    jmp .printchar_end
 .printchar_nowrap
     pla
-    ; This OSWRCH call is the one which actually prints most of the text on the
-    ; screen. SFTODONOW: But it won't be if we add the print-line-at-once optimisation.
+    ; This is one of the two main OSWRCH calls.
     jsr oswrch
-.printchar_oswrch_done ; SFTODO: redundant label now
 .printchar_end
 	ldx s_stored_x
 	ldy s_stored_y

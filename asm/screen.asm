@@ -1492,6 +1492,7 @@ turn_off_cursor
     ; in practice this doesn't seem to help much.)
     lda #vdu_cr
     sta s_cursors_inconsistent
+    ; This is one of the two main OSWRCH calls.
     jsr oswrch
     jmp .cursor_control
 .really_turn_on_cursor
