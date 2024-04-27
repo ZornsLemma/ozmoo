@@ -951,6 +951,7 @@ print_line_from_buffer
 	; anyway.
 	jsr s_reverse_to_os_reverse
 	lda print_buffer,y
+    ; This is one of the two main OSWRCH calls.
 	jsr oswrch
 	iny
 	bne - ; Always branch
@@ -1492,7 +1493,6 @@ turn_off_cursor
     ; in practice this doesn't seem to help much.)
     lda #vdu_cr
     sta s_cursors_inconsistent
-    ; This is one of the two main OSWRCH calls.
     jsr oswrch
     jmp .cursor_control
 .really_turn_on_cursor
