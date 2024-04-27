@@ -12,7 +12,7 @@ MAX_DFS_DISC_TITLE_LEN = 12
 MAX_ADFS_DISC_TITLE_LEN = 19
 
 # TODO: Should this script always refer to the "temp" directory in the same directory as itself? at the moment if you were to run make-acorn.py from some random directory I think you'd end up with a temp directory there. I just tried it and it actually fails because it can't find "asm", but again, should that be accessed using the same path as make-acorn.py?
-# SFTODO: We should not refuse to build for Electron if the game won't fit on a sideways RAM only machine but will work on one with shadow RAM - obviously the loader should give a sensible message if the resulting game is run on an Electron without shadow RAM.
+# SFTODO: We should not refuse to build for Electron if the game won't fit on a sideways RAM only machine but will work on one with shadow RAM - obviously the loader should give a sensible message if the resulting game is run on an Electron without shadow RAM. I suspect Border Zone is an example of where this is a concern (albeit not quite the one just outlined) - it requires PAGE<=&1500 on the Electron because the build assumes we have to allocate 8K for mode 6, which means it *will* run fine on Electrons with PAGE=&E00, but it would refuse to run on an Electron with shadow RAM and PAGE=&1900 even though the game would (I assume) fit just fine (the BBC shadow executable needs PAGE<=&3100, and it would be higher if we weren't artificially capping it). I don't know if it's easy to fix this or not off the top of my head.
 
 
 def die(s):
