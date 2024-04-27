@@ -946,7 +946,6 @@ print_line_from_buffer
 		jsr colour1k
 	}
 } else { ; ACORN
-	; SFTODONOW: This is OK and it is a bit faster, but it needs testing, particularly with reverse video and even more particularly with a line containing a mix of reverse and normal video.
 	jsr s_cursor_to_screenrowcolumn
 	ldy first_buffered_column
 -	cpy last_break_char_buffer_pos
