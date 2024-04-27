@@ -150,7 +150,7 @@ our_oswrch_common_tail
     ; operations in here. STEM has some very optimised but complex and perhaps
     ; over-large code for memmove() and memset() which just might be reusable.
     ; It's also worth noting that we never wrap within a screen line in 32 line
-    ; modes, and even in 25 lines modes only one screen line (starting somewhere
+    ; modes, and even in 25 line modes only one screen line (starting somewhere
     ; in page $7f) can have a wrap within it. I think what I have here is
     ; reasonably good, especially with the loop unrolling, but I'm sure it could
     ; be better.
@@ -877,7 +877,10 @@ common_init
 ; toggle MRB access (carefully - may need to disable interrupts too, not sure)
 ; while running from <&8000 without crashing. Any such code would probably be
 ; running from slow RAM, so it would be faster to run the code from sideways RAM
-; (because sideways RAM is always accessed at 2MHz), but this is an option.
+; (because sideways RAM is always accessed at 2MHz), but this is an option. (And
+; running from slow RAM is what happens on an Electron without MRB anyway, and
+; we could in theory run the code from sideways RAM on an Electron without MRB
+; for better performance, so the two concerns are actually orthogonal.)
 
 ; SFTODO: Move vdu_down constant to shared constants header and use it in this
 ; code instead of literal 10 all over the place?
