@@ -1206,9 +1206,8 @@ sl_time_pos !byte 25
 }
 
 print_spaces_to_column_y
-    ; SFTODO: Can Y be >=s_screen_width and we need to handle that, or can we ignore it?
 -   cpy zp_screencolumn
-	bcc +
+	bcc + ; SF: I suspect this case can't occur, but for two bytes let's play it safe.
     beq +
 	lda #' '
 	jsr s_printchar
