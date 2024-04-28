@@ -1,6 +1,8 @@
 from __future__ import print_function
 import argparse
+import atexit
 import base64
+import contextlib
 import copy
 import hashlib
 import os
@@ -11,8 +13,31 @@ import sys
 MAX_DFS_DISC_TITLE_LEN = 12
 MAX_ADFS_DISC_TITLE_LEN = 19
 
-# TODO: Should this script always refer to the "temp" directory in the same directory as itself? at the moment if you were to run make-acorn.py from some random directory I think you'd end up with a temp directory there. I just tried it and it actually fails because it can't find "asm", but again, should that be accessed using the same path as make-acorn.py?
 # SFTODO: We should not refuse to build for Electron if the game won't fit on a sideways RAM only machine but will work on one with shadow RAM - obviously the loader should give a sensible message if the resulting game is run on an Electron without shadow RAM. I suspect Border Zone is an example of where this is a concern (albeit not quite the one just outlined) - it requires PAGE<=&1500 on the Electron because the build assumes we have to allocate 8K for mode 6, which means it *will* run fine on Electrons with PAGE=&E00, but it would refuse to run on an Electron with shadow RAM and PAGE=&1900 even though the game would (I assume) fit just fine (the BBC shadow executable needs PAGE<=&3100, and it would be higher if we weren't artificially capping it). I don't know if it's easy to fix this or not off the top of my head.
+
+
+# https://stackoverflow.com/questions/299446/how-do-i-change-directory-back-to-my-original-working-directory-with-python
+@contextlib.contextmanager
+def cwd(path):
+    oldpwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(oldpwd)
+
+
+def make_temp(s, auto_delete=True):
+    temp_file = os.path.join(temp_dir, s)
+    if auto_delete:
+        temp_files_to_delete.add(temp_file)
+    return temp_file
+
+
+def delete_temp_files():
+    for filename in temp_files_to_delete:
+        info("Deleting temp file %s" % filename, verbose_threshold=2)
+        os.remove(filename)
 
 
 def die(s):
@@ -21,8 +46,10 @@ def die(s):
     sys.exit(1)
 
 
-def info(s):
-    if cmd_args.verbose_level >= 1:
+def info(s, verbose_threshold=None):
+    if verbose_threshold is None:
+        verbose_threshold = 1
+    if cmd_args.verbose_level >= verbose_threshold:
         if defer_output:
             deferred_output.append((False, s))
         else:
@@ -780,12 +807,11 @@ class Executable(object):
             output_name += "_" + ourhex(start_addr)
         assert output_name not in Executable.all_output_names
         Executable.all_output_names.add(output_name)
-        self._labels_filename = os.path.join("temp", "acme_labels_" + output_name)
-        self._report_filename = os.path.join("temp", "acme_report_" + output_name)
-        self._asm_output_filename = os.path.join("temp", output_name)
+        self._labels_filename = make_temp("acme_labels_" + output_name)
+        self._report_filename = make_temp("acme_report_" + output_name)
+        self._asm_output_filename = make_temp(output_name)
 
-        os.chdir("asm")
-        try:
+        with cwd(os.path.join(ozmoo_base_dir, "asm")):
             def up(path):
                 return os.path.join("..", path)
             cpu = "65c02" if "-DCMOS=1" in args else "6502"
@@ -796,8 +822,6 @@ class Executable(object):
                     raise GameWontFit(line[i+len(game_wont_fit_str)+2:].strip())
                 return True
             run_and_check(["acme", "--cpu", cpu, "--format", "plain", "--setpc", "$" + ourhex(start_addr)] + self.args + ["-l", up(self._labels_filename), "-r", up(self._report_filename), "--outfile", up(self._asm_output_filename), asm_filename], acme_output_filter, lambda x: x.startswith(b"Warning"))
-        finally:
-            os.chdir("..")
 
         self.labels = self._parse_labels()
         with open(self._asm_output_filename, "rb") as f:
@@ -1077,10 +1101,10 @@ class OzmooExecutable(Executable):
             return self._binary
         binary = Executable.binary(self)
         if not cmd_args.no_exe_compression:
-            binary_filename = os.path.join("temp", "binary")
+            binary_filename = make_temp("binary")
             with open(binary_filename, "wb") as f:
                 f.write(binary)
-            compressed_binary_filename = os.path.join("temp", "binary.lzsa2")
+            compressed_binary_filename = make_temp("binary.lzsa2")
             safe_distance = compress_lzsa(binary_filename, compressed_binary_filename, [])
             new_load_addr = self.load_addr + safe_distance
             extra_args = ["-DDECOMPRESS_TO=$%x" % (self.load_addr & 0xffff)]
@@ -1088,7 +1112,7 @@ class OzmooExecutable(Executable):
                 extra_args += ["-DTUBE=1"]
                 # I can't see any way to get acme to generate a hex version of the
                 # DECOMPRESS_TO value, so do it like this.
-                with open(os.path.join("temp", "go.asm"), "w") as f:
+                with open(make_temp("go.asm"), "w") as f:
                     f.write('!text "GO %X", 13' % (self.load_addr & 0xffff))
             e = Executable("acorn-binary-lzsa.asm", "X", None, new_load_addr & 0xffff, extra_args)
             # print("QXX", self.leafname, hex(self.load_addr), hex(new_load_addr), hex(len(e.binary())))
@@ -1540,12 +1564,12 @@ def make_text_basic(template, symbols):
 
 
 def make_tokenised_basic(name, text_basic):
-    filename_text = os.path.join("temp", "%s.bas" % name)
+    filename_text = make_temp("%s.bas" % name)
     with open(filename_text, "w") as f:
         f.write(text_basic)
     if cmd_args.force_beebasm:
-        filename_beebasm = os.path.join("temp", "%s.beebasm" % name)
-        filename_ssd = os.path.join("temp", "%s.ssd" % name)
+        filename_beebasm = make_temp("%s.beebasm" % name)
+        filename_ssd = make_temp("%s.ssd" % name)
         with open(filename_beebasm, "w") as f:
             f.write('putbasic "%s", "%s"\n' % (filename_text, name.upper()))
         run_and_check([
@@ -1562,7 +1586,7 @@ def make_tokenised_basic(name, text_basic):
                     (tokenised_basic[0x10d] << 8) | tokenised_basic[0x10c])
             tokenised_basic = tokenised_basic[512:512+length]
     else:
-        filename_tokenised = os.path.join("temp", "%s.tok" % name)
+        filename_tokenised = make_temp("%s.tok" % name)
         run_and_check([
             "basictool",
             "-ts" if cmd_args.no_loader_crunch else "-tsp",
@@ -1577,7 +1601,7 @@ def make_tokenised_basic(name, text_basic):
 def make_tokenised_cache_test():
     symbols = {}
     symbols.update({k: basic_string(v) for k, v in common_labels.items()})
-    cache_text_basic = make_text_basic("templates/cache-test.bas", symbols)
+    cache_text_basic = make_text_basic(os.path.join(ozmoo_base_dir, "templates", "cache-test.bas"), symbols)
     return make_tokenised_basic("cachtst", cache_text_basic)
 
 
@@ -1588,7 +1612,7 @@ def make_tokenised_loader(symbols):
     symbols.update({k: basic_string(v) for k, v in common_labels.items()})
     symbols["MIN_VMEM_BYTES"] = basic_int(min_vmem_blocks * bytes_per_vmem_block)
     symbols["RECOMMENDED_SHADOW_CACHE_PAGES"] = basic_int(cmd_args.recommended_shadow_cache_pages)
-    loader_text_basic = make_text_basic("templates/loader.bas", symbols)
+    loader_text_basic = make_text_basic(os.path.join(ozmoo_base_dir, "templates", "loader.bas"), symbols)
     return make_tokenised_basic("loader", loader_text_basic)
 
 
@@ -1636,7 +1660,7 @@ def make_tokenised_preloader(loader, splash_start_addr):
         symbols["set_splash_palette"] = "VDU 20"
     else:
         symbols["set_splash_palette"] = "VDU " + "".join("19,%d,%d;0;" % (i, j) for i, j in enumerate(cmd_args.splash_palette))
-    preloader_text_basic = make_text_basic("templates/preloader.bas", symbols)
+    preloader_text_basic = make_text_basic(os.path.join(ozmoo_base_dir, "templates", "preloader.bas"), symbols)
     return make_tokenised_basic("preload", preloader_text_basic)
 
 
@@ -1657,7 +1681,7 @@ def make_splash_executable():
         die("Splash image is too large; is it a raw mode %d screen dump?" % cmd_args.splash_mode)
     # Do a trial build of acorn-splash.asm with a zero-length file to determine
     # the size of the machine code; this is a bit OTT, but why not?
-    compressed_data_filename = os.path.join("temp", "splash.lzsa2")
+    compressed_data_filename = make_temp("splash.lzsa2")
     with open(compressed_data_filename, "wb") as f:
         pass
     e = Executable("acorn-splash.asm", "SPLASH", None, 0x1000, ["-DSPLASH_SCREEN_ADDRESS=$1000"])
@@ -1789,6 +1813,7 @@ def parse_args():
     group.add_argument("--cache-test", action="store_true", help="include host cache test program")
     group.add_argument("--no-sd-card-reset", action="store_true", help="don't force an error to reset SD cards")
     group.add_argument("--no-data-in-stack", action="store_true", help="disable use of stack space for data")
+    group.add_argument("--save-temps", action="store_true", help="don't remove temporary files on exit")
 
     cmd_args = parser.parse_args()
 
@@ -2083,7 +2108,7 @@ def make_disc_image():
         command = cmd_args.on_quit_command
         if command is None:
             command = cmd_args.on_quit_command_silent
-        with open(os.path.join("temp", "on-quit-command.asm"), "w") as f:
+        with open(make_temp("on-quit-command.asm"), "w") as f:
             f.write("    !byte %s, cr ; %s\n" % (", ".join(str(ord(c)) for c in command), command))
 
     want_electron = True
@@ -2273,11 +2298,13 @@ def make_disc_image():
     info("Generated files: " + output_file)
 
 
+ozmoo_base_dir = os.path.dirname(os.path.realpath(__file__))
+
 defer_output = False
 deferred_output = []
 best_effort_version = "Ozmoo"
 try:
-    with open(os.path.join(os.path.dirname(sys.argv[0]), "version.txt"), "r") as f:
+    with open(os.path.join(ozmoo_base_dir, "version.txt"), "r") as f:
         version_txt = f.read().strip()
     best_effort_version += " " + version_txt
 except IOError:
@@ -2313,11 +2340,20 @@ min_timestamp = 0
 max_timestamp = 0xe0 # initial tick value
 zp_bytes_to_save = 0xd
 
-if not os.path.exists("temp"):
-    os.makedirs("temp")
+# We track temporary files created and remove them one by one on exit, unless
+# --save-temps is specified. We could just remove everything except CACHEDIR.TAG
+# in the temporary directory, but this feels safer.
+temp_files_to_delete = set()
+temp_dir = os.path.join(ozmoo_base_dir, "temp")
+if not os.path.exists(temp_dir):
+    os.makedirs(temp_dir)
 # Create a cache directory tag in temp. See https://bford.info/cachedir/
-with open(os.path.join("temp", "CACHEDIR.TAG"), "w") as f:
-    f.write("Signature: 8a477f597d28d172789f06886806bc55")
+cache_tag_file = make_temp("CACHEDIR.TAG", auto_delete=False)
+if not os.path.exists(cache_tag_file):
+    with open(cache_tag_file, "w") as f:
+        f.write("Signature: 8a477f597d28d172789f06886806bc55")
+if not cmd_args.save_temps:
+    atexit.register(delete_temp_files)
 
 host = 0xffff0000
 tube_start_addr = 0x700
@@ -2499,7 +2535,3 @@ show_deferred_output()
 # SFTODO: I should probably rationalise the naming between the acorn-foo.asm files for the little executable programs, the make-acorn variables which correspond to them and so forth - e.g. if the on-disc file is called "foo" the file should probably be called "acorn-foo.asm" not "acorn-fooble.asm", and associated macros etc should probably be consistent too.
 
 # SFTODO: I suspet I have variants on this comment in other places, but it really would be nice to not have to special case the Electron. The lack of mode 7 may complicate things, but I suspect this is mainly a loader issue and the user *can* choose (if there's room) to run in mode 6 on a BBC B anyway. The main problem I think is the sideways RAM paging. I have done analysis in the past which if I interpret it correctly and it wasn't buggy showed about a 6% slowdown for jsr-rts overhead if all SWR paging was done via a subroutine. It may be possible that I could do some profiling to identify the "hot" sideways RAM paging calls (if there are any) and those which (again, hopefully) are pretty rare and have negligible performance impact. We could then maybe do "jsr fast_page:nop:...:nop" or "jsr slow_page" and have the fast_page one patch itself out with inlie code for the current machine when called. Assuming there *are* just a handful of actually-critical paging occurrences this would mostly hide the machine differences, though the binary would be a bit larger (especially on the BBC) which might hurt performance by lowering free RAM, and because the BBC sequence is shorter it would have to end with "jmp address-past-last-nop" which would add a 3 cycle penalty to the BBC compared to the current code, and on the fast path that might not really be acceptable. But it's a thought.
-
-# SFTODONOW: TEMP FILE DELETION
-
-# SFTODONOW: ABILITY TO RUN WITHOUT MAKE-ACORN.PY BEING IN THE CURRENT WORKING DIRECTORY
