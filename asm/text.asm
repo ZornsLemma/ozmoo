@@ -1888,44 +1888,61 @@ read_text
 !ifdef USE_HISTORY {
 	jsr add_line_to_history
 }
+
 !ifdef X_FOR_EXAMINE {
 	; Change "x" as the first word on the line into "examine", to work around
 	; older games which don't recognise this themselves. We do this after adding
 	; the line to the history to try to preserve the illusion "x" is supported
 	; natively.
-	; SFTODO: In order to keep things simple I'm not trying to support Z5+ here.
-	; I suspect most Z5+ games will allow "x" to mean "examine" anyway.
-	!ifdef Z5PLUS {
-		!error "'X' alias not supported for Z5+ games"
-	}
 .x_index = zp_temp
-	; If there isn't room in the buffer for another 6 characters, we can't
-	; possibly replace "x" with "examine".
-	lda .read_text_char_limit
-	sec
-	sbc .read_text_column
-	cmp #6
-	bcc .no_room_to_expand
-	; There's room. Do we actually have "x" at the start?
-	; Skip leading spaces, if any.
+!ifdef Z5PLUS {
+	ldy #1
+} else {
 	ldy #0
--	iny
+}
+.look_for_x
+	; Skip leading spaces, if any.
+-
+!ifdef Z5PLUS {
+	cpy .read_text_column
+	bcs .done_expanding_x
+}
+	iny
 	+macro_string_array_read_byte
-	beq .not_x
+!ifndef Z5PLUS {
+	beq .done_expanding_x
+}
 	cmp #' '
 	beq -
 	cmp #'x'
 	bne .not_x
 	sty .x_index
+!ifdef Z5PLUS {
+	cpy .read_text_column
+	bcs .is_x
+}
 	iny
 	+macro_string_array_read_byte
+!ifndef Z5PLUS {
 	beq .is_x
+}
 	cmp #' '
+	beq .is_x
+	cmp #'.'
 	bne .not_x
 .is_x
-	; We have "x" as the first (and possibly only) word in the input.
+	; Check if there is space to expand x to examine
+	lda .read_text_char_limit
+	sbc .read_text_column ; Carry is already set
+	cmp #6
+	bcc .done_expanding_x
+	; We have "x" at index .x_index
 	; Shuffle the rest of the line up to make room for "examine".
 	ldy .read_text_column
+!ifdef Z5PLUS {
+	cpy .x_index
+	beq .no_shuffle
+}
 -
 	+macro_string_array_read_byte
 	iny:iny:iny:iny:iny:iny
@@ -1934,6 +1951,7 @@ read_text
 	dey
 	cpy .x_index
 	bne -
+.no_shuffle
 	; Replace "x" with "examine"
 	ldx #6
 -   lda .examine_reversed,x
@@ -1941,13 +1959,42 @@ read_text
 	iny
 	dex
 	bpl -
-.not_x
-.no_room_to_expand
+	; Add 6 to input length
+	lda .read_text_column
+	clc
+	adc #6
+	sta .read_text_column
+!ifdef Z5PLUS {
+	sty .x_index ; Temporary storage
+	ldy #1
+	sbc #0 ; Decrease by 1, since carry is clear
+	+macro_string_array_write_byte
+	ldy .x_index
 }
+	
+.not_x
+-
+!ifdef Z5PLUS {
+	cpy .read_text_column
+	bcs .done_expanding_x
+}
+	iny
+	+macro_string_array_read_byte
+!ifndef Z5PLUS {
+	beq .done_expanding_x
+}
+	cmp #'.'
+	beq .look_for_x
+	cmp #','
+	beq .look_for_x
+	bne -
+.done_expanding_x	
+}
+
 	pla ; the terminating character, usually newline
 	beq +
-	jsr s_printchar; print terminating char unless 0 (0 indicates timer abort)
-+   rts
+	jmp s_printchar; print terminating char unless 0 (0 indicates timer abort)
++   rts ; SFTODONOW: CAN WE GET RID OF THIS RTS AND BRANCH TO ANOTHER ONE NEARBY?
 
 !ifdef X_FOR_EXAMINE {
 .examine_reversed
