@@ -610,7 +610,6 @@ z_opcount_ext_jump_high_arr
 	!byte >(z_not_implemented - 1)
 	!byte >(z_not_implemented - 1)
 	!byte >(z_not_implemented - 1)
-	;;  SFTODONOW: I SUSPECT THIS IS BROKEN, I JUST HAVEN'T NOTICED AS I HAVEN'T DONE A Z5+ BUILD YET
 	!byte >(z_ins_save_undo - 1)
 	!byte >(z_ins_restore_undo - 1)
 	!byte >(z_ins_print_unicode - 1)
@@ -1408,9 +1407,7 @@ load_suggested_pages
 
 } ; ifndef ACORN
 
-	; SFTODONOW: Do we need print_no_undo on Acorn? If so, is this the best place for it in the code? I suspect it could be discardable init code.
-	; SFTODONOW: This is interesting because it looks like the interpreter showing a message to the user on startup. I have a vague feeling I would have "liked" to do this in some other context, although it slips my mind right now. That said, it feels vaguely inelegant to be "interfering" with the game even in this small way. Is the wait_a_sec just to help make it noticeable? I would assume the usual "more" prompt stuff is still in play here and this message will automatically be protected from scrolling off without the user pressing a key.
-!ifndef ACORN { ; SFTODONOW: For the moment, we know at build time if undo is supported on Acorn or not, so we don't need any code to handle "oh, there isn't enough memory after all" cases
+!ifndef ACORN {
 !ifdef UNDO {
 print_no_undo
 	; ldy #header_flags_2 + 1
@@ -1889,18 +1886,6 @@ z_init
 
 !ifndef ACORN {
 	!error "Lots of non-ACORN code has been removed here"
-
-	;;  SFTODONOW: TEMP KEPT THIS FRAGMENT OF C64 CODE JUST IN CASE IT'S USEFUL FOR REFERENCE WHEN DOING ACORN UNDO, REMOVE THIS LATER
-!ifdef UNDO {
-	clc
-	lda #(>stack_size) + 1
-	adc nonstored_pages
-	bcc + ; Dynmem + stack + ZP fits in 64 KB
-	ldy #$ff
-	sty reu_bank_for_undo ; Disable undo
-	jsr print_no_undo
-+
-}
 }
 
 !ifdef VMEM {

@@ -360,7 +360,6 @@ z_ins_read
 }
 }
 
-;;;  SFTODONOW: NEED TO REVIEW ALL UNDO STUFF
 !ifndef Z5PLUS {
 !ifdef UNDO {
 	lda undo_state_available

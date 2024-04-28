@@ -103,7 +103,6 @@ max_screen_width = 80
 flat_ramtop = $8000
 swr_ramtop = $c000
 } else {
-    ;;  SFTODONOW: FOR THE MOMENT WE ASSUME WE *ALWAYS* SUPPORT UNDO ON TUBE, SO WE CAN TRIVIALLY ALLOCATE THE UNDO BUFFER JUST BY ADJSUTING FLAT_RAMTOP
 !ifndef UNDO {
 flat_ramtop = $f800
 } else {
