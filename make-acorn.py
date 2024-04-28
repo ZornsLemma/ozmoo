@@ -1887,6 +1887,8 @@ def parse_args():
         # support this. (--force-6502 is only supported for debugging and for
         # non-standard second processors which have had their CMOS CPU
         # replaced.)
+        if not cmd_args.no_turbo:
+            warn("Disabling turbo (256K) second processor support because --force-6502 has been specified")
         cmd_args.no_turbo = True
 
     if cmd_args.output_file is not None:
