@@ -1898,6 +1898,7 @@ read_text
 	!ifdef Z5PLUS {
 		!error "'X' alias not supported for Z5+ games"
 	}
+.x_index = zp_temp
 	; If there isn't room in the buffer for another 6 characters, we can't
 	; possibly replace "x" with "examine".
 	lda .read_text_char_limit
@@ -1915,7 +1916,7 @@ read_text
 	beq -
 	cmp #'x'
 	bne .not_x
-	sty .XINDEX
+	sty .x_index
 	iny
 	+macro_string_array_read_byte
 	beq .is_x
@@ -1931,7 +1932,7 @@ read_text
 	+macro_string_array_write_byte
 	dey:dey:dey:dey:dey:dey
 	dey
-	cpy .XINDEX
+	cpy .x_index
 	bne -
 	; Replace "x" with "examine"
 	ldx #6
@@ -1949,8 +1950,6 @@ read_text
 +   rts
 
 !ifdef X_FOR_EXAMINE {
-.XINDEX ; SFTODONOW: HACKY NAME, ALSO IS THERE A HANDY ZP LOC WE CAN BORROW FOR THIS?
-	!byte 0
 .examine_reversed
 	!text "enimaxe"
 }
