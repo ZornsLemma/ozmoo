@@ -2313,6 +2313,9 @@ zp_bytes_to_save = 0xd
 
 if not os.path.exists("temp"):
     os.makedirs("temp")
+# Create a cache directory tag in temp. See https://bford.info/cachedir/
+with open(os.path.join("temp", "CACHEDIR.TAG"), "w", encoding="ascii") as f:
+    f.write("Signature: 8a477f597d28d172789f06886806bc55")
 
 host = 0xffff0000
 tube_start_addr = 0x700
