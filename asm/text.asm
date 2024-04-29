@@ -1162,21 +1162,6 @@ init_read_text_timer
 	sta .read_text_time_jiffy + 2
 	rol .read_text_time_jiffy + 1
 	rol .read_text_time_jiffy
-	; lda .read_text_time
-	; sta multiplier + 1
-	; lda .read_text_time + 1
-	; sta multiplier
-	; lda #0
-	; sta multiplicand + 1
-	; lda #6
-	; sta multiplicand ; t*6 to get jiffies
-	; jsr mult16
-	; lda product
-	; sta .read_text_time_jiffy + 2
-	; lda product + 1
-	; sta .read_text_time_jiffy + 1
-	; lda product + 2
-	; sta .read_text_time_jiffy
 }
 update_read_text_timer
 	; prepare time for next routine call (current time + time_jiffy)
@@ -1890,10 +1875,10 @@ read_text
 }
 
 !ifdef X_FOR_EXAMINE {
-	; Change "x" as the first word on the line into "examine", to work around
-	; older games which don't recognise this themselves. We do this after adding
-	; the line to the history to try to preserve the illusion "x" is supported
-	; natively.
+	; Change "x" as the first word on the line, or after a full stop or comma, 
+	; into "examine", to work around older games which don't recognise this 
+	; themselves. We do this after adding the line to the history to try to 
+	; preserve the illusion "x" is supported natively.
 .x_index = zp_temp
 !ifdef Z5PLUS {
 	ldy #1
@@ -1927,6 +1912,8 @@ read_text
 	beq .is_x
 }
 	cmp #' '
+	beq .is_x
+	cmp #','
 	beq .is_x
 	cmp #'.'
 	bne .not_x
