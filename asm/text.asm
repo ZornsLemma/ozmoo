@@ -1979,10 +1979,10 @@ read_text
 }
 
 	pla ; the terminating character, usually newline
-	beq .x_for_expand_rts
+	beq .dec_history_current_rts
 	jmp s_printchar; print terminating char unless 0 (0 indicates timer abort)
 !ifndef USE_HISTORY {
-.x_for_expand_rts
+.dec_history_current_rts
     rts
 }
 
@@ -2009,7 +2009,7 @@ read_text
 	cpx #$ff
 	bne +
 	ldx #history_lastpos
-.x_for_expand_rts
+.dec_history_current_rts
 +	rts
 
 handle_history
