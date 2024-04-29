@@ -352,7 +352,14 @@ REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
-extra_main_ram=swr_main_ram_free+(max_page-PAGE)-screen_ram
+REM Because an Ozmoo executable has a natural 512-byte alignment (which, luckily
+REM for us, is what max_page has), the amount of extra main RAM we get from having
+REM PAGE<max_page is not simply max_page-PAGE; we need to round it down to the
+REM nearest multiple of 512 bytes. (Suppose the natural alignment is "even";
+REM PAGE=&1A00 (even) and PAGE=&1900 (odd) both give us the same amount of free RAM,
+REM even though PAGE=&1900 does give us an extra 256 bytes of available RAM.)
+REM SFTODONOW: Review this fresh
+extra_main_ram=swr_main_ram_free+((max_page-PAGE) AND &FE00)-screen_ram
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
 IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem
@@ -383,15 +390,33 @@ flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 =FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main+sideways RAM")
 
+REM SFTODONOW: Review the changes to this re header in main RAM fresh.
 DEF FNmode_ok_big_dynmem
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
 REM calculation we prefer to take it from flexible_swr so we can use the result to
 REM determine the available main RAM for shadow vmem cache if that's enabled.
+REM
+REM We also need at least 256 bytes of main RAM free to satisfy the assumption
+REM of {read,write}_header_{byte,word} that the header is in main RAM. In order to
+REM report the RAM requirements correctly if we don't have enough, we make a note of
+REM whether we have enough main RAM for the header and then do the calculation as if
+REM main and flexible_swr RAM are truly interchangeable (which they otherwise are).
+header_in_main_ram=extra_main_ram>=256
 REM SFTODONOW: I *think* we need to take the first 256 bytes of dynamic memory from main RAM, so that the assumptino the read/write header code makes is valid. But think about this fresh before implementing. Implementing this may be as simple as a check before we do anything else that extra_main_ram>=256. Although that doesn't address the "reporting failures" case, as we need to convey the non-interchangeability of this 256 bytes with swr, unlike all the rest of our dynamic memory requirements.
+REM SFTODONOW: TEMP CODE PRINT mode,extra_main_ram,flexible_swr:REM TEMP!
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-=FNmaybe_die_ram(-extra_main_ram,"main+sideways RAM",0,"")
+REM At this point, if extra_main_ram is negative we don't have enough main and
+REM flexible SWR and -extra_main_ram is the shortfall. If we don't have enough main
+REM RAM for the header, we also report a separate shortfall in main RAM only, which
+REM we add back in to the main+flexible shortfall so we don't overreport the total
+REM memory required. We may need an extra 256 or 512 bytes of main RAM to get the
+REM right PAGE alignment to actually give us additional main RAM once natural
+REM alignment is taken into account. SFTODONOW REVIEW ONCE FRESH
+IF header_in_main_ram THEN main_ram=0 ELSE adjust=256-256*(((max_page-PAGE) MOD 512)=0):extra_main_ram=extra_main_ram+adjust:main_ram=-adjust
+=FNmaybe_die_ram(-main_ram,"main RAM",-extra_main_ram,"main+sideways RAM")
+REM SFTODONOW: WE *PROBABLY* NEED TO FIX UP OUR "HOW MUCH EXTRA MAIN RAM YOU NEED" REPORTS TO THE USER TO ACCOUNT FOR THE NATURAL ALIGNMENT BUSINESS IN OTHER MEMORY MODELS TOO - SO FAR I HAVE ONLY LOOKED AT BIGDYN, BUT THE SAME TYPE OF CONCERN ARISES THERE, BUT I WILL WAIT TIL I HAVE REVIEWED THE BIGDYN STUFF FRESH BEFORE UPDATING OTHER CASES (WE WON'T GET THE 'CAN I RUN OR NOT?' ANSWER WRONG, BECAUSE WE TAKE ALIGNMENT INTO ACCOUNT WHEN SETTING extra_main_ram NOW, BUT WE MAY REPORT TO THE USER THEY NEED x BYTES MORE WHEN THEY REALLY NEED x+256 BYTES MORE DUE TO ALIGNMENT)
 
 REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
 REM preferring to take from them in that order. Only extra_main_ram will be allowed

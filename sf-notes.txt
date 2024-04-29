@@ -1,3 +1,10 @@
+Notes on the "big dynmem needs at least the first 256 bytes of dynmem in main RAM for read/write header code assumptions":
+- this is uninteresting if we have shadow RAM, because there is no realistic way we have code running up to anywhere near &8000
+- it is *unlikely* to occur by default with no shadow RAM, because if dynmem is <=16K we prefer medium model, and if dynmem>16K then by definition we can only run the game at all if we have at least (dynmem-16K) bytes of main RAM free for the rest of dynmem.
+- it *can* happen if we force the use of big dynmem (or some future change means we decide to use it automatically) for a game with dynmem <=16K. I have been able to get it to go wrong with Calypso using a standard BBC B with "plenty" (48K) of sideways RAM and PAGE at &1900, by setting --waste-bytes to around 3834/4090 and choosing mode 4 and playing around with the waste bytes so the technical details shown by holding CTRL when starting the game show data_start at &5600 (which works) or &5800 (HIMEM, which doesn't).
+- it is unlikely we are going to be in a die-with-a-message case because of this, because e.g. mode 7 has HIMEM so high there's no way we aren't having several K of RAM free after code/stack/screen take their bite. This *can* happen if max-mode is set at build time to one of the tighter and more memory hungry modes.
+
+
 Quick timings as working on print_line_from_buffer, all on M128 mode 7:
 - basic optimised version: $8bf6 $8bf8 $8bf4
 - incomplete 14.x merge before print_line_from_buffer: $8e54 $8e56 $8e56
