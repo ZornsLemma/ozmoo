@@ -1979,9 +1979,12 @@ read_text
 }
 
 	pla ; the terminating character, usually newline
-	beq +
+	beq .x_for_expand_rts
 	jmp s_printchar; print terminating char unless 0 (0 indicates timer abort)
-+   rts ; SFTODONOW: CAN WE GET RID OF THIS RTS AND BRANCH TO ANOTHER ONE NEARBY?
+!ifndef USE_HISTORY {
+.x_for_expand_rts
+    rts
+}
 
 !ifdef X_FOR_EXAMINE {
 .examine_reversed
@@ -2006,6 +2009,7 @@ read_text
 	cpx #$ff
 	bne +
 	ldx #history_lastpos
+.x_for_expand_rts
 +	rts
 
 handle_history
