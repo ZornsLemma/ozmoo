@@ -4,6 +4,7 @@ import atexit
 import base64
 import contextlib
 import copy
+import datetime
 import hashlib
 import os
 import re
@@ -316,6 +317,22 @@ def apply_patch(patch, game_name):
 
 
 def check_if_special_game():
+    # SFTODO: The fact we use one option to control special game handling means
+    # it isn't possible to build Trinity with the 80 column patch but without
+    # having --x-for-examine forced on. Similar cases could potentially occur in
+    # the future if this does other things. I don't think this is a huge concern
+    # (Trinity is so big you need a co-pro to run it and the extra memory for the
+    # --x-for-examine code is likely negligible) but it's slightly inelegant.
+    if cmd_args.no_special_game_check:
+        return
+
+    # Don't force --x-for-examine for the benchmark game by default. The user
+    # can explicitly specify it if they want to see the performance impact, but
+    # for consistency with older benchmark times it seems fairer to keep it off
+    # by default.
+    if cmd_args.benchmark:
+        return
+
     release = read_be_word(game_data, header_release)
     serial = game_data[header_serial:header_serial+6].decode("ascii")
     game_key = "r%d-s%s" % (release, serial)
@@ -353,7 +370,6 @@ def check_if_special_game():
             apply_patch(trinity_releases[game_key], "Trinity")
     if is_beyond_zork:
         info("Game recognised as 'Beyond Zork'")
-        # SFTODO: Should probably offer a command line option to disable this special case handling of BZ (with a generic name, in case other games can be patched later - eg "--no-special-game-check")
         if cmd_args.interpreter_num is None:
             cmd_args.interpreter_num = 2
         cmd_args.function_keys = True
@@ -369,6 +385,30 @@ def check_if_special_game():
         # We don't patch if the game is only going to be run in 80 column modes.
         if cmd_args.max_mode > 3:
             apply_patch(beyond_zork_releases[game_key], "Beyond Zork")
+
+    # Automatic "X for examine" logic copied from upstream make.rb.
+    x_for_examine_releases = {
+        "r11-s860509": "Trinity",
+        "r12-s860926": "Trinity",
+        "r15-s870628": "Trinity",
+        "r77-s850814": "AMFV",
+        "r79-s851122": "AMFV",
+        "r52-s871125": "Zork 1 SG"
+    }
+    if not cmd_args.x_for_examine:
+        if z_machine_version < 4:
+            try:
+                serial_as_date = datetime.datetime.strptime(serial, "%y%m%d")
+            except ValueError:
+                info("Z-code version < 4 and serial is not a date, enabling --x-for-examine")
+                cmd_args.x_for_examine = True
+            else:
+                if serial_as_date.year >= 1980 and serial_as_date.year < 1990:
+                    info("Z-code version < 4 and serial is in 1980-1989, enabling --x-for-examine")
+                    cmd_args.x_for_examine = True
+        elif z_machine_version in (4, 5) and game_key in x_for_examine_releases:
+            info("Z-code version 4 or 5 and serial and release match game without native X support, enabling --x-for-examine")
+            cmd_args.x_for_examine = True
 
 
 # common_labels contains the value of every label which had the same value in
@@ -1777,6 +1817,7 @@ def parse_args():
     group.add_argument("--no-fast-hw-scroll", action="store_true", help="disable use of fast hardware scroll")
     group.add_argument("--x-for-examine", action="store_true", help="interpret 'x' as 'examine' (Z1-4 games only)")
     group.add_argument("--undo", action="store_true", help="enable use of undo during gameplay")
+    group.add_argument("--no-special-game-check", action="store_true", help="disable special treatment of some games")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -2536,6 +2577,6 @@ show_deferred_output()
 
 # SFTODO: I suspet I have variants on this comment in other places, but it really would be nice to not have to special case the Electron. The lack of mode 7 may complicate things, but I suspect this is mainly a loader issue and the user *can* choose (if there's room) to run in mode 6 on a BBC B anyway. The main problem I think is the sideways RAM paging. I have done analysis in the past which if I interpret it correctly and it wasn't buggy showed about a 6% slowdown for jsr-rts overhead if all SWR paging was done via a subroutine. It may be possible that I could do some profiling to identify the "hot" sideways RAM paging calls (if there are any) and those which (again, hopefully) are pretty rare and have negligible performance impact. We could then maybe do "jsr fast_page:nop:...:nop" or "jsr slow_page" and have the fast_page one patch itself out with inlie code for the current machine when called. Assuming there *are* just a handful of actually-critical paging occurrences this would mostly hide the machine differences, though the binary would be a bit larger (especially on the BBC) which might hurt performance by lowering free RAM, and because the BBC sequence is shorter it would have to end with "jmp address-past-last-nop" which would add a 3 cycle penalty to the BBC compared to the current code, and on the fast path that might not really be acceptable. But it's a thought.
 
-# SFTODO: Upstream automatically enables --x-for-examine for older Infocom games, should we?
-
 # SFTODO: Could we dynamically patch history_start and history_size (and history_end, if there are any, which there probably aren't) references during initialisation? This would allow us to put the history buffer in the wasted 256 bytes if the game's natural 512-byte alignment doesn't match PAGE alignment on a particular system. Perhaps this is a bad idea from a support/consistency point of view - the same game has different history buffer on different machines - but maybe it isn't.
+
+# SFTODO: It might be nicer if the build system generated the "Sorry, this game can't run on..." message itself as a string. That way you wouldn't e.g. boot Trinity on a BBC B and be told it won't run on a BBC B, then rush over to your Master only to be told it won't run on that either. The build system could generate a message like "Sorry, this game will only run on ..." which is more helpful. Not a big deal, but a nice touch.
