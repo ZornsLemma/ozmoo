@@ -1117,6 +1117,11 @@ class OzmooExecutable(Executable):
             nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
             swr_main_ram_free = 0x8000 - nonstored_pages_up_to
             assert swr_main_ram_free >= 0
+            # Because story_start is 512 byte-aligned and nonstored_pages is rounded up to be
+            # a multiple of pages_per_vmem_block (2), swr_main_ram_free will always be a multiple
+            # of 512. This isn't hugely important, but it makes reasoning about memory in the
+            # loader slightly more comfortable.
+            assert swr_main_ram_free % 512 == 0
             symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(swr_main_ram_free)
         elif "ACORN_SWR_MEDIUM_DYNMEM" in self.labels:
             symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(0x8000 - self.labels["vmem_start"])

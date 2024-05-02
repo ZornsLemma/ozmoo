@@ -352,21 +352,18 @@ REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
 screen_ram=&8000-FNhimem_for_mode(128+mode)
-REM Because an Ozmoo executable has a natural 512-byte alignment (which, luckily
-REM for us, is what max_page has), the amount of extra main RAM we get from having
+REM Because an Ozmoo executable has a natural 512-byte alignment (which we know
+REM here because max_page has it), the amount of extra main RAM we get from having
 REM PAGE<max_page is not simply max_page-PAGE; we need to round it down to the
 REM nearest multiple of 512 bytes. (Suppose the natural alignment is "even";
 REM PAGE=&1A00 (even) and PAGE=&1900 (odd) both give us the same amount of free RAM,
 REM even though PAGE=&1900 does give us an extra 256 bytes of available RAM.)
-REM SFTODONOW: Review this fresh
 extra_main_ram=swr_main_ram_free+((max_page-PAGE) AND &FE00)-screen_ram
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
 IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem
 IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem
 =FNmode_ok_big_dynmem
-
-REM SFTODONOW I NEED TO TEST EVERY SINGLE CASE IN THESE MODE OK CHECKS :-/
 
 DEF FNmode_ok_small_dynmem
 REM SFTODO: Is it confusing that main_ram_shortfall and any_ram_shortfall are "positive for not enough" whereas we are generally tracking available RAM and using "negative for not enough"?
@@ -385,7 +382,6 @@ any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
 DEF FNmode_ok_medium_dynmem
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; main RAM can't be used as dynamic memory.
-REM SFTODOTESTDONE: Although you have to force it (we won't by default use medium dynmem on shadow-capable build), I have verified that this correctly works for games with <=11.5K dynmem on a B+64K and correctly refuses to run with more dynmem, and that those games that refuse do run if you add a 16K SWR bank
 flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 =FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main+sideways RAM")
@@ -399,11 +395,10 @@ REM
 REM We also need at least 256 bytes of main RAM free to satisfy the assumption
 REM of {read,write}_header_{byte,word} that the header is in main RAM. In order to
 REM report the RAM requirements correctly if we don't have enough, we make a note of
-REM whether we have enough main RAM for the header and then do the calculation as if
-REM main and flexible_swr RAM are truly interchangeable (which they otherwise are).
+REM whether we have enough main RAM for the header and then do the main
+REM calculation as if main and flexible_swr RAM are truly interchangeable (which
+REM they otherwise are).
 header_in_main_ram=extra_main_ram>=256
-REM SFTODONOW: I *think* we need to take the first 256 bytes of dynamic memory from main RAM, so that the assumptino the read/write header code makes is valid. But think about this fresh before implementing. Implementing this may be as simple as a check before we do anything else that extra_main_ram>=256. Although that doesn't address the "reporting failures" case, as we need to convey the non-interchangeability of this 256 bytes with swr, unlike all the rest of our dynamic memory requirements.
-REM SFTODONOW: TEMP CODE PRINT mode,extra_main_ram,flexible_swr:REM TEMP!
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
@@ -411,13 +406,13 @@ REM At this point, if extra_main_ram is negative we don't have enough main and
 REM flexible SWR and -extra_main_ram is the shortfall. If we don't have enough main
 REM RAM for the header, we also report a separate shortfall in main RAM only, which
 REM we add back in to the main+flexible shortfall so we don't overreport the total
-REM memory required. We may need an extra 256 or 512 bytes of main RAM to get the
-REM right PAGE alignment to actually give us additional main RAM once natural
-REM alignment is taken into account. SFTODONOW REVIEW ONCE FRESH
-REM SFTODONOW: I HAVE A FEELING (MUCH AS WITH THE OTHER UNTOUCHED DYNMEM MODELS) THAT EVEN IF WE'RE FINE FOR THIS 256 BYTES OF MAIN RAM FREE, THIS CODE MAY STILL GIVE MISLEADING INFO ABOUT MAIN+SWR NEEDED. MAYBE THIS CAN'T GO WRONG, BUT IF (SAY) WE ARE 256 BYTES SHORT, AN EXTRA 256 BYTES SWR WOULD BE ENOUGH, BUT WE MIGHT NEED 256 OR 512 BYTES OF MAIN RAM IN ORDER TO GET 256 BYTES EXTRA. SINCE WE TEND TO DEMAND ALLOCATIONS IN 512 BYTE UNITS THIS EXAMPLE PROBABLY CAN'T ARISE (BUT I'M NOT 100% SURE RIGHT NOW), BUT THIS *KIND* OF THING COULD POTENTIALLY HAPPEN. SINCE WE ARE REPORTING A COMBINED MAIN+SWR REQUIREMENT WE CAN'T NECESSARY REPORT THIS CLEANLY WITHOUT GETTING EVEN MORE DETAILED - SINCE SWR COMES IN 16K CHUNKS ANYWAY, WE WOULD *PROBABLY* BE BEST TO JUST ROUND UP WITH AN EXTRA 256 BYTES ANYWAY SINCE ONLY IN MAIN RAM CAN THE USER POTENTIALLY MAKE A PAGE OR TWO AVAILABLE AND THUS THE PRECISION IS ONLY RELEVANT THERE. I SUPPOSE IT'S JUST POSSIBLE WE ARE 16K SHORT AND A NEW SWR BANK WOULD PERFECTLY FIX IT BUT WE ROUND UP TO 16.25K DUE TO ALIGNMENT AND THE POSS OF SUPPLYING SOME VIA MAIN RAM AND THAT STOPS THE USER REALISING ONE SWR BANK WOULD PERFECTLY FIX IT. HAVE TO SLEEP ON THIS.
-IF header_in_main_ram THEN main_ram=0 ELSE adjust=256-256*(((max_page-PAGE) MOD 512)=0):extra_main_ram=extra_main_ram+adjust:main_ram=-adjust
+REM memory required. We use 512 in the next line even though we only need 256 bytes,
+REM because in practice free RAM varies in 512 byte chunks because of PAGE alignment
+REM and the general insistence on aligning everything to 512 byte boundaries.
+REM FNmaybe_die_ram() takes care of adjusting the memory requirement shown to the
+REM user to account for PAGE alignment.
+IF header_in_main_ram THEN main_ram=0 ELSE main_ram=-512:extra_main_ram=extra_main_ram+512
 =FNmaybe_die_ram(-main_ram,"main RAM",-extra_main_ram,"main+sideways RAM")
-REM SFTODONOW: WE *PROBABLY* NEED TO FIX UP OUR "HOW MUCH EXTRA MAIN RAM YOU NEED" REPORTS TO THE USER TO ACCOUNT FOR THE NATURAL ALIGNMENT BUSINESS IN OTHER MEMORY MODELS TOO - SO FAR I HAVE ONLY LOOKED AT BIGDYN, BUT THE SAME TYPE OF CONCERN ARISES THERE, BUT I WILL WAIT TIL I HAVE REVIEWED THE BIGDYN STUFF FRESH BEFORE UPDATING OTHER CASES (WE WON'T GET THE 'CAN I RUN OR NOT?' ANSWER WRONG, BECAUSE WE TAKE ALIGNMENT INTO ACCOUNT WHEN SETTING extra_main_ram NOW, BUT WE MAY REPORT TO THE USER THEY NEED x BYTES MORE WHEN THEY REALLY NEED x+256 BYTES MORE DUE TO ALIGNMENT)
 
 REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
 REM preferring to take from them in that order. Only extra_main_ram will be allowed
@@ -715,13 +710,43 @@ DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 
+REM SFTODONOW: REVIEW THE CHANGES TO THIS RE PAGE ALIGNMENT FRESH
 DEF FNmaybe_die_ram(amount1,ram_type1$,amount2,ram_type2$)
 IF amount1<=0 AND amount2<=0 THEN =TRUE
 IF NOT die_if_not_ok THEN =FALSE
 IF amount1<=0 THEN amount1=amount2:ram_type1$=ram_type2$:amount2=0
+amount1=FNadjust_ram_shortfall(amount1,ram_type1$)
 message$="Sorry, you need at least " + STR$(amount1/1024)+"K more "+ram_type1$
-IF amount2>0 THEN message$=message$+" and at least "+STR$(amount2/1024)+"K more "+ram_type2$+" as well"
+IF amount2>0 THEN amount2=FNadjust_ram_shortfall(amount2,ram_type2$):message$=message$+" and at least "+STR$(amount2/1024)+"K more "+ram_type2$+" as well"
 PROCdie(message$+".")
+
+REM Ozmoo's memory allocation really works in 512-byte chunks because of the
+REM various forced alignments, but PAGE moves in 256 byte chunks. This function
+REM adjusts RAM shortfall amounts for display purposes after they've been calculated
+REM in 512-byte terms, since what the user controls (to some extent) is the value of
+REM PAGE.
+DEF FNadjust_ram_shortfall(shortfall,ram_type$)
+REM shortfall should already be a multiple of 512; let's be noisy about failures
+REM for now while this is an alpha. SFTODONOW
+IF shortfall MOD 512<>0 THEN PROCdie("Internal error: invalid shortfall ("+STR$shortfall+")")
+REM shortfall=(shortfall+511) AND &FE00
+REM If PAGE doesn't share the same 512-byte alignment as max_page, we will effectively get 256 bytes of
+REM main RAM for free by dropping PAGE 256 bytes.
+page_bonus=(max_page-PAGE) AND &100
+IF ram_type$="main RAM" THEN =shortfall-page_bonus
+REM The same effect happens if we drop PAGE to work towards a "main+sideways
+REM RAM" requirement, but it is technically wrong to always apply the adjustment,
+REM because the user might add sideways RAM. For example, if we need 512 bytes in
+REM Ozmoo terms but could achieve that by lowering PAGE by 256 bytes, that doesn't
+REM mean it would be enough to add just 256 bytes of sideways RAM.
+REM
+REM Because in practice sideways RAM is added in 16K chunks, no one will notice or
+REM care if we say (for example) 768 bytes of main+sideways RAM is needed and they
+REM add 768 bytes of sideways RAM and are still 256 bytes short. We therefore
+REM apply the PAGE-based adjustment if the shortfall is small.
+IF ram_type$="main+sideways RAM" AND shortfall<16384 THEN =shortfall-page_bonus
+=shortfall
+
 
 DEF PROCshow_mode_keys
 mode_keys_last_max_y=mode_keys_last_max_y:REM set variable to 0 if it doesn't exist
