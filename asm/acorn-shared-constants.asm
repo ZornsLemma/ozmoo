@@ -17,9 +17,11 @@
 ; SFTODO: MAY WANT TO TWEAK THESE COMMENTS TO IDENTIFY "EXECUTION ONE-OFF USE (CORRUPTS)" VS "RUNTIME MEM USE"
 ; - SHADDRV (acorn-shadow-driver.asm)
 ;   This checks for shadow RAM and installs an appropriate shadow driver if we
-;   have one.
+;   have one. It also checks to see if the private RAM on a B+ or Integra-B
+;   is available.
 ;   Execution corrupts: &900-&AFF, &70-&8F
-;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end (including shadow_ram_copy, shadow_paging_control_ptr)
+;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end
+;       (including shadow_ram_copy, shadow_paging_control_ptr), private_ram_in_use
 ;   Runtime memory: &8C0-&8DF (OS envelope buffers)
 ;
 ; - FINDSWR (acorn-findswr.asm)
