@@ -669,11 +669,6 @@ DEF PROCdetect_swr
 REM We use FNpeek here because FINDSWR runs on the host and we may be running on
 REM a second processor.
 swr_banks=FNpeek(${ram_bank_count}):swr$=""
-REM SFTODO: For now we only detect and include private RAM if we're not running on
-REM a second processor. We'd need to use a PROCpoke() instead of ? to write safely
-REM to host memory, but that's not a big deal. More to the point is that CACHE2P
-REM doesn't know how to skip the IBOS workspace on an Integra-B, so we'll just
-REM avoid this altogether for the moment.
 swr_adjust=0
 REM flexible_swr_ro is the amount of sideways RAM in the first bank which can be
 REM used as dynamic memory (perhaps in combination with main RAM, depending on the
