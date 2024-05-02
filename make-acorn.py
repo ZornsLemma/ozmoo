@@ -37,8 +37,11 @@ def make_temp(s, auto_delete=True):
 
 def delete_temp_files():
     for filename in temp_files_to_delete:
-        info("Deleting temp file %s" % filename, verbose_threshold=2)
-        os.remove(filename)
+        # We may have generated a temporary filename but never generated it
+        # (e.g. due to a build failure).
+        if os.path.isfile(filename):
+            info("Deleting temp file %s" % filename, verbose_threshold=2)
+            os.remove(filename)
 
 
 def die(s):
