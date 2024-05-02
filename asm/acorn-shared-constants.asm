@@ -20,13 +20,13 @@
 ;   have one.
 ;   Execution corrupts: &900-&AFF, &70-&8F
 ;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end (including shadow_ram_copy, shadow_paging_control_ptr)
-;   Runtime memory: &8C0-&8DF
+;   Runtime memory: &8C0-&8DF (OS envelope buffers)
 ;
 ; - FINDSWR (acorn-findswr.asm)
 ;   This checks for sideways RAM.
 ;   Execution corrupts: &900-&AFF, &70-&8F
 ;   Execution sets: swr_type, ram_bank_count, ram_bank_list
-;   Runtime memory: &8F0-&8F9
+;   Runtime memory: &8F0-&8F9 (OS envelope buffers)
 ;
 ; - INSV (acorn-insv.asm)
 ;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
@@ -67,9 +67,10 @@
 ; - FINDSWR: ram_bank_count, ram_bank_list
 ; - FASTSCR: fast_scroll_upper_window_size
 ; - INSV: nominal_cursor_key_status
-; -
 ;
-;
+; SFTODO: Possible other parts of memory we could use:
+; - regions at &3a7/&3d3/&380-ish
+; - the above suggests &8fa-&8ff inclusive is free
 
 ; For communicating values between the utilities and the loader, we allocate
 ; some bytes at the end of user zero page. All of these are available for re-use
