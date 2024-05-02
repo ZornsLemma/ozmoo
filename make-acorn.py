@@ -1401,7 +1401,7 @@ def make_tube_executables():
 
 def make_shaddrv_executable():
     args = ["-DACORN_SHADOW_VMEM=1"]
-    if cmd_args.ignore_integra_b_private_ram:
+    if cmd_args.no_integra_b_private_ram:
        args += ["-DACORN_IGNORE_INTEGRA_B_PRIVATE_RAM=1"]
     e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x900, args)
     assert e.start_addr + len(e.binary()) <= 0xb00
@@ -1866,7 +1866,7 @@ def parse_args():
     group.add_argument("--no-sd-card-reset", action="store_true", help="don't force an error to reset SD cards")
     group.add_argument("--no-data-in-stack", action="store_true", help="disable use of stack space for data")
     group.add_argument("--save-temps", action="store_true", help="don't remove temporary files on exit")
-    group.add_argument("--ignore-integra-b-private-ram", action="store_true", help="never use Integra-B private RAM")
+    group.add_argument("--no-integra-b-private-ram", action="store_true", help="never use Integra-B private RAM")
 
     cmd_args = parser.parse_args()
 
