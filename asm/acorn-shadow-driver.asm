@@ -63,7 +63,11 @@ start
     bne not_integra_b
     ; We're running on an Integra-B.
     lda #64
+!ifndef ACORN_IGNORE_INTEGRA_B_PRIVATE_RAM {
     jsr test_private_ram_in_use
+} else {
+    sta private_ram_in_use
+}
     lda #shadow_state_integra_b
     jmp set_shadow_state_from_a_and_install_driver
 not_integra_b

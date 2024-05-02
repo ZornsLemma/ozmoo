@@ -1400,7 +1400,10 @@ def make_tube_executables():
 
 
 def make_shaddrv_executable():
-    e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x900, ["-DACORN_SHADOW_VMEM=1"])
+    args = ["-DACORN_SHADOW_VMEM=1"]
+    if cmd_args.ignore_integra_b_private_ram:
+       args += ["-DACORN_IGNORE_INTEGRA_B_PRIVATE_RAM=1"]
+    e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x900, args)
     assert e.start_addr + len(e.binary()) <= 0xb00
     # SFTODO: Is putting these not-strictly-common things into common_labels a hack?
     common_labels.update({k:v for (k,v) in e.labels.items() if k.startswith("shadow_state") or k == "private_ram_in_use"})
@@ -1863,6 +1866,7 @@ def parse_args():
     group.add_argument("--no-sd-card-reset", action="store_true", help="don't force an error to reset SD cards")
     group.add_argument("--no-data-in-stack", action="store_true", help="disable use of stack space for data")
     group.add_argument("--save-temps", action="store_true", help="don't remove temporary files on exit")
+    group.add_argument("--ignore-integra-b-private-ram", action="store_true", help="never use Integra-B private RAM")
 
     cmd_args = parser.parse_args()
 
@@ -2586,5 +2590,3 @@ show_deferred_output()
 # SFTODO: Could we dynamically patch history_start and history_size (and history_end, if there are any, which there probably aren't) references during initialisation? This would allow us to put the history buffer in the wasted 256 bytes if the game's natural 512-byte alignment doesn't match PAGE alignment on a particular system. Perhaps this is a bad idea from a support/consistency point of view - the same game has different history buffer on different machines - but maybe it isn't.
 
 # SFTODO: It might be nicer if the build system generated the "Sorry, this game can't run on..." message itself as a string. That way you wouldn't e.g. boot Trinity on a BBC B and be told it won't run on a BBC B, then rush over to your Master only to be told it won't run on that either. The build system could generate a message like "Sorry, this game will only run on ..." which is more helpful. Not a big deal, but a nice touch.
-
-# SFTODO: It might be nice to have a build-time option to disable use of the Integra-B private RAM (but still support the Integra-B otherwise). In practice it's mostly fine but there is the lurking risk of crashes if IBOS changes the paging config behind our back.
