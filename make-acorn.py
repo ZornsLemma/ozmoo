@@ -2567,7 +2567,7 @@ show_deferred_output()
 
 # SFTODO: Any prospect of optimising SWR paging on systems with only 1 bank? If we can easily detect this (either at runtime or by checking during discardable init and patching a handful of manageable places) we can possibly avoid all SWR paging because we know our bank is always paged in.
 
-# SFTODO: Is there any prospect of shrinking the interpreter a bit by not include upper window support in Z3 if bit 5 of flags 1 in the header is not set? I don't know off top of my head if this can change at runtime (probably not, but maybe it is technically allowed) or if it would be easy/worthwhile to omit the necessary code. (Or most of it, I imagine we'd still have some e.g. data allocated for it, but we might be able to omit some stuff.)
+# SFTODO: Is there any prospect of shrinking the interpreter for Z3 (and maybe other low version) by allowing a build with no split screen support and clearing bit 5 of flags 1 on startup to reflect this? I don't know how easy it would be or how much code it would save, but maybe worth a try. I don't think we can detect whether a game wants screen splitting support or not so this would have to be a user-initiated thing.
 
 # SFTODO: Have I lost ability to run HH in mode 3 on a B with PAGE=&1900, or did that not work before either?
 
