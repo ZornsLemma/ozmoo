@@ -197,7 +197,15 @@ not_watford
     ; this point. If we have a splash screen *and* the preloader didn't need to
     ; change into a shadow mode before CHAINing the loader (because it would fit
     ; below &3000) we might be in a non-shadow mode. This is not likely, but I
-    ; think it's theoretically possible.
+    ; think it's theoretically possible. It would probably be better to read
+    ; HIMEM via OSBYTE, determine whether that corresponds to 0 or 1 and compare
+    ; that value with X - if it matches we have to assume *FX111 is working and
+    ; although it's unfortunately that this much of a test if we have an old
+    ; Watford DFS and are in non-shadow mode, at least we won't assume *FX111
+    ; has failed to control the shadow RAM when it actually has. The ideal test
+    ; would be to actually change into both shadow and non-shadow modes and
+    ; check *FX111's returned X changes, but that would lose any splash screen -
+    ; maybe this isn't a huge loss by the time we get to this point though.
     ;
     ; SFTODO: *If* we eventually allow running the shadow driver executable from
     ; a preloader (counting the time taken to run it against any default delay
