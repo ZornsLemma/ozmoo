@@ -102,7 +102,6 @@ REM ignore an error afterwards, which has the side effect of forcing a reset (an
 REM harmless if this wasn't necessary). See
 REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on this.
 */FINDSWR
-REM PROCpoke(${ram_bank_count},0):REM SFTODONOW TEMP HACK
 !ifndef NO_SD_CARD_RESET {
     ON ERROR GOTO 500
     REM If we're on a real floppy, the disc will still be spinning after running
@@ -691,14 +690,8 @@ swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
 DEF PROCadd_private_ram_as_swr
-REM If this is a tube-only build, these *_private_ram_size constants might not be
-REM defined. SFTODONOW: Still true? Might be if it's a tube only build with no host cache support.
-!ifdef integra_b_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND integra_b THEN PROCpoke(swr_banks+${ram_bank_list},64):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
-}
-!ifdef b_plus_private_ram_size {
-    IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN PROCpoke(swr_banks+${ram_bank_list},128):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
-}
+IF swr_banks<${max_ram_bank_count} AND integra_b THEN PROCpoke(swr_banks+${ram_bank_list},64):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
+IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN PROCpoke(swr_banks+${ram_bank_list},128):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
 ENDPROC
 
 DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
