@@ -2416,13 +2416,17 @@ bbc_max_start_addr = 0x3000
 # relatively low address which should be >=PAGE on nearly all systems.
 # SFTODO: The fuzziness around interpretation of max_start_addr means in
 # practice we may slip *two* pages above this, which isn't ideal.
-# SFTODONOW: Now that a non-shadow machine *can* run in modes other than the
+# SFTODO: Now that a non-shadow machine *can* run in modes other than the
 # minimal screen RAM (e.g. a B running in mode 6 instead of mode 7), should
 # we try to avoid loading "extra high" on the B as well? Maybe lower
 # bbc_max_start_addr to something like 0x2000? I believe the concern here is
 # that when we restart the game in mode (say) 3, a higher pre-relocation load
 # increases the chances of visible screen corruption. (On a BBC the initial
-# load is fine, as we're in mode 7 showing the loaders creen.)
+# load is fine, as we're in mode 7 showing the loader screen.) It's worth
+# noting that the LZSA executable compression results in a much higher load
+# address than we set here, so tweaking this doesn't achieve much in terms
+# of avoiding screen corruption unless we give up on the compression, which
+# is probably not worth it.
 if not cmd_args.adfs:
     electron_max_start_addr = 0x1900
 else:
