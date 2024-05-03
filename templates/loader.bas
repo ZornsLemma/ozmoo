@@ -385,7 +385,6 @@ flexible_swr=flexible_swr-swr_dynmem_needed
 PROCsubtract_ram(${MIN_VMEM_BYTES})
 =FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main+sideways RAM")
 
-REM SFTODONOW: Review the changes to this re header in main RAM fresh.
 DEF FNmode_ok_big_dynmem
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
 REM calculation we prefer to take it from flexible_swr so we can use the result to
@@ -698,7 +697,6 @@ DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
 
 DEF PROCunsupported_machine(machine$):PROCdie("Sorry, this game won't run on "+machine$+".")
 
-REM SFTODONOW: REVIEW THE CHANGES TO THIS RE PAGE ALIGNMENT FRESH
 DEF FNmaybe_die_ram(amount1,ram_type1$,amount2,ram_type2$)
 IF amount1<=0 AND amount2<=0 THEN =TRUE
 IF NOT die_if_not_ok THEN =FALSE
