@@ -1266,7 +1266,6 @@ def make_highest_possible_executable(leafname, args, report_failure_prefix):
     data_start_high = e_low.labels["data_start"] + (max_start_addr - e_low.start_addr)
     min_himem = 0x8000 - e_low.min_screen_hole_size()
     data_start_excess = max(data_start_high - min_himem, 0)
-    # SFTODONOW TCO assert data_start_excess == 0 # just to see if this ever occurs, if it does do a sanity check and then delete the assert so following code can fix things up
     data_start_excess = 512 * divide_round_up(data_start_excess, 512)
     max_start_addr -= data_start_excess
     assert max_start_addr >= e_low.start_addr
