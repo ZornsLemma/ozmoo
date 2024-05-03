@@ -715,7 +715,7 @@ REM in 512-byte terms, since what the user controls (to some extent) is the valu
 REM PAGE.
 DEF FNadjust_ram_shortfall(shortfall,ram_type$)
 REM shortfall should already be a multiple of 512; let's be noisy about failures
-REM for now while this is an alpha. SFTODONOW
+REM for now while this is an alpha. SFTODO: Change this later
 IF shortfall MOD 512<>0 THEN PROCdie("Internal error: invalid shortfall ("+STR$shortfall+")")
 REM shortfall=(shortfall+511) AND &FE00
 REM If PAGE doesn't share the same 512-byte alignment as max_page, we will effectively get 256 bytes of
