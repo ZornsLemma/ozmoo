@@ -1167,7 +1167,6 @@ undo_state_available !byte 0
 
 ; we provide basic undo support for z3 as well through a hot key
 ; so the basic undo routines need to be available for all versions
-; SFTODONOW: Bit micro-optimising, but do we need to jsr to these in Z5+ builds or can we inline them via macros? If they can return early it may well be shorter to do it via a jsr anyway.
 
 !ifdef ACORN_SWR {
     !error "This undo implementation only works for tube builds."
