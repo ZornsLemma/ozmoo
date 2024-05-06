@@ -266,7 +266,7 @@ PRINTTAB(0,${MIDDLE_START_Y});:space_y=${SPACE_Y}
 ENDPROC
 
 DEF FNshadow_extra
-IF shadow_state=${shadow_state_screen_only} THEN ="(screen only)
+IF shadow_state=${shadow_state_screen_only} THEN ="(screen only)"
 IF shadow_state=${shadow_state_b_plus_os} THEN ="(via OS)"
 IF shadow_state=${shadow_state_mrb} THEN ="(Master RAM board)"
 IF shadow_state=${shadow_state_integra_b} THEN ="(Integra-B)"
