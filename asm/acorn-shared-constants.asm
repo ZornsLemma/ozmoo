@@ -139,6 +139,12 @@ electron_romsel = $fe05
     ; where a) it will be safe b) it doesn't require any tricky special handling
     ; to skip over in acorn-ozmoo-constants.asm when allocating other variables
     ; to zero page. SFTODO: REVIEW THIS COMMENT LATER
+    ; SFTODONOW: Testing in b-em, this *doesn't* work on the ReCo6502 - the tube
+    ; OS appears to use EA-ED (at least) during the language transfer. This is
+    ; a problem for us because our !BOOT does *BASIC to re-enter BASIC after the
+    ; turbo test executable fails so the is_turbo flag gets corrupted. Can I
+    ; find another zero page location which is safe and relatively easy to fix
+    ; in place without wasting space on non-tube builds?
     is_turbo = $ed
 }
 
