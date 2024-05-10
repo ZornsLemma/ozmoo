@@ -1475,9 +1475,19 @@ def make_boot():
         # alternative to running it from !BOOT in this way. (We can't just try
         # setting the turbo bit at &FEF0 in the loader and testing for turbo-style
         # paging, because the ReCo6502Mini uses that address for its speed control.)
+        #
+        # At least on the ReCo6502 emulated by b-em, using *BASIC to restart BASIC
+        # after running TURBO will corrupt &EA-&ED (at least) and thus is_turbo.
+        # TURBO therefore also writes a copy of is_turbo to is_turbo_copy in main
+        # RAM and we copy it from there to the right place after relaunching BASIC.
+        # This is harmless if it isn't needed. TURBO continues to write to is_turbo
+        # directly for backwards compatibility.
         boot += [
             'IF PAGE<&E00 THEN */TURBO',
             '*BASIC',
+            'IF PAGE<&E00 THEN ?%s=?%s' %
+                (basic_hex_int(common_labels["is_turbo"]),
+                 basic_hex_int(common_labels["is_turbo_copy"])),
         ]
     if cmd_args.splash_image:
         boot += [
@@ -2206,6 +2216,7 @@ def make_disc_image():
             ozmoo_variants.append(tube_executables)
     if len(ozmoo_variants) == 0:
         die("No builds succeeded, can't generate disc image.")
+    boot_file = make_boot()
 
     # We sort the executable groups by descending order of size; this isn't really
     # important unless we're doing a double-sided DFS build (where we want to
@@ -2525,7 +2536,6 @@ if cmd_args.preload_config:
 
 check_if_special_game()
 
-boot_file = make_boot()
 shaddrv_executable = make_shaddrv_executable()
 findswr_executable = make_findswr_executable()
 if not cmd_args.no_fast_hw_scroll:

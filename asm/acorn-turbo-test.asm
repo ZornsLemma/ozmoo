@@ -19,6 +19,7 @@ copyright
 entry
     lda #$ff
     sta is_turbo
+    sta is_turbo_copy
     rts
 
     !fill is_turbo - *
