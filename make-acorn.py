@@ -1482,6 +1482,10 @@ def make_boot():
         # RAM and we copy it from there to the right place after relaunching BASIC.
         # This is harmless if it isn't needed. TURBO continues to write to is_turbo
         # directly for backwards compatibility.
+        #
+        # SFTODO: Would it be better just to make TURBO run at &7000-ish and copy
+        # the value down after? That way we'd avoid having to zero is_turbo_copy
+        # before running TURBO.
         boot += [
             'IF PAGE<&E00 THEN ?%s=0:*/TURBO' % basic_hex_int(common_labels["is_turbo_copy"]),
             '*BASIC',
