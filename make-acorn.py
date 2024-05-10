@@ -1485,8 +1485,7 @@ def make_boot():
         ]
     else:
         boot += [
-            'VDU 6:MODE 135',
-            'CHAIN "LOADER"',
+            'VDU 6:MODE 135:CHAIN "LOADER"',
         ]
     return File("!BOOT", 0, 0, "\r".join(boot).encode("ascii") + b"\r")
 
