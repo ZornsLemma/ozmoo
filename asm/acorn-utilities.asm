@@ -201,6 +201,19 @@ kernal_readtime
     ldx #<.current_clock
     ldy #>.current_clock
     jsr osword
+    ; The following insanity is because the 65816 (as used in some co-pros and
+    ; mostly 6502 compatible) does not wrap around to zero page if you use
+    ; abs,x addressing near the top of the 64K address space. On tube builds
+    ; initial_clock tends to end up in zero page and so the shorter (by three
+	; bytes) loop we prefer to use misbehaves on 65816 co-pros. I could just
+    ; sacrifice the three bytes but I really don't want to penalise SWR builds.
+!ifdef ACORN_SWR {
+    .wrap_is_safe = 1
+} else if initial_clock >= $100 {
+    +assert current_clock >= $100 ; guaranteed, but be explicit
+    .wrap_is_safe = 1
+}
+!ifdef .wrap_is_safe {
     ldx #(256-5)
     sec
 -   lda .current_clock-(256-5),x
@@ -208,6 +221,17 @@ kernal_readtime
     sta .current_clock-(256-5),x
     inx
     bne -
+} else {
+    ldx #0
+    ldy #5
+    sec
+-   lda .current_clock,x
+    sbc initial_clock,x
+    sta .current_clock,x
+    inx
+    dey ; we can't do cpx #5:bne because it corrupts the carry
+    bne -
+}
     ldy .current_clock+2
     ldx .current_clock+1
     lda .current_clock+0
