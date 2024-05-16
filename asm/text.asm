@@ -1971,9 +1971,17 @@ read_text
 	beq .done_expanding_x
 }
 	cmp #'.'
+.beq_look_for_x
 	beq .look_for_x
 	cmp #','
+!ifndef ACORN {
 	beq .look_for_x
+} else {
+	; "beq .look_for_x" can give an out-of-range error here, probably only on
+	; the Electron but I'm not sure. We can hack this by beq-ing to the
+	; preceding beq; performance is not a concern here anyway.
+	beq .beq_look_for_x
+}
 	bne -
 .done_expanding_x	
 }
