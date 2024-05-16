@@ -4,7 +4,7 @@
 
 ## 14.22 (alpha 55)
 
-* make-acorn.py incorrectly refused to allow --x-for-examine on Z4+ games, even if it itself turned it on.
+* make-acorn.py incorrectly refused to allow --x-for-examine on Z5+ games, even if it itself turned it on.
 
 * --x-for-examine could cause build failures with an out of range branch on Z5+ games.
 
