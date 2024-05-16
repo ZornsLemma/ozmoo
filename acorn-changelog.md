@@ -1,6 +1,6 @@
 ## 14.22 (alpha 56)
 
-* TODO
+* Fix save and restore for Z1 and Z2 games - the conditional assembly just omitted the relevant code at z_ins_{save,restore}. Thanks to Ken Lowe for reporting this!
 
 ## 14.22 (alpha 55)
 

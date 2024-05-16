@@ -372,19 +372,13 @@ game_data_filename = game_data_filename_or_restart_command
 }
 
 z_ins_restore
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	jsr restore_game
 	beq +
 	jmp make_branch_true
 +	jmp make_branch_false
 }
-!ifdef Z4 {
-	jsr restore_game
-	beq +
-	inx
-+	jmp z_store_result
-}
-!ifdef Z5PLUS {
+!ifdef Z4PLUS {
 	jsr restore_game
 	beq +
 	inx
@@ -392,17 +386,13 @@ z_ins_restore
 }
 
 z_ins_save
-!ifdef Z3 {
+!ifndef Z4PLUS {
 	jsr save_game
 	beq +
 	jmp make_branch_true
 +	jmp make_branch_false
 }
-!ifdef Z4 {
-	jsr save_game
-	jmp z_store_result
-}
-!ifdef Z5PLUS {
+!ifdef Z4PLUS {
 	jsr save_game
 	jmp z_store_result
 }
