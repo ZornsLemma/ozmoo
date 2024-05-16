@@ -4,8 +4,6 @@
 
 * --x-for-examine could cause build failures with an out of range branch on Z5+ games.
 
-* TODO
-
 ## 14.22 (alpha 54)
 
 * Tweak !BOOT file to avoid leaving CHAIN "LOADER" showing. I suspect I wrote it the old way out of paranoia that third-party shadow RAM boards would cause problems, but I can't see why so let's at least try it.
