@@ -2160,8 +2160,6 @@ def make_disc_image():
     if cmd_args.undo:
         tube_args += ["-DUNDO=1", "-DUNDO_BUFFER_SIZE_BYTES=%d" % undo_buffer_size]
     if cmd_args.x_for_examine:
-        if z_machine_version >= 5:
-            die("--x-for-examine is not supported for Z-machine versions 5 and above")
         ozmoo_base_args += ["-DX_FOR_EXAMINE=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
