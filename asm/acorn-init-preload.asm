@@ -1596,6 +1596,9 @@ progress_indicator_fractional_bits = 7
     ; max_nonstored_pages satisfies:
     ;     (.ram_pages - max_nonstored_pages) / vmem_block_pagecount == min_vmem_blocks
     ; So max_nonstored_pages = .ram_pages - min_vmem_blocks * vmem_block_pagecount.
+    ; SFTODO: Except that as noted below we also need to apply a minimum of
+    ; ACORN_INITIAL_NONSTORED_PAGES. Need to write this up when I can think
+    ; straight.
     ;
     ; This ensures that we always have min_vmem_blocks 512-byte blocks of vmem
     ; cache and won't deadlock in the vmem code if the Z-machine PC and data
@@ -1617,7 +1620,20 @@ progress_indicator_fractional_bits = 7
     tax
     lda .ram_pages + 1
     sbc #>(min_vmem_blocks * vmem_block_pagecount) ; 0
+    ; AX is now almost the 16-bit value of max_nonstored_pages.
+    ; We must not allow max_nonstored_pages to be smaller than
+    ; ACORN_INITIAL_NONSTORED_PAGES; this can occur for very small games because
+    ; of our insistence on having min_vmem_blocks (2) blocks of vmem free.
+    ; SFTODO: This is just horrible, it probably can't be done better but think
+    ; about it fresh. I am despairing right now.
+    cmp #0
+    bne + ; if A>0, we already have AX>ACORN_INITIAL_NONSTORED_PAGES
+    cpx #ACORN_INITIAL_NONSTORED_PAGES
+    bcs +
+    ldx #ACORN_INITIAL_NONSTORED_PAGES
++
     ; AX is now the 16-bit value of max_nonstored_pages
+    cmp #0
     bne + ; max_nonstored_pages >= 256, so nonstored_pages < max_nonstored_pages
     cpx nonstored_pages
     bcs +
