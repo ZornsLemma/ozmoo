@@ -392,6 +392,12 @@ print_optimized_vm_map
 }
 
 !ifdef TRACE_VM {
+!ifdef ACORN {
+    !ifndef ACORN_SHADOW_VMEM {
+vmem_cache_cnt !byte 0
+vmem_cache_page_index !byte 0, 0, 0, 0
+    }
+}
 print_vm_map
 !zone {
 	; print caches
@@ -470,8 +476,12 @@ print_vm_map
 }
 	jsr newline
 .next_entry
-	iny 
+	iny
+!ifndef ACORN {
 	cpy vmap_used_entries
+} else {
+    cpy vmap_max_entries
+}
 	bcc -
 	rts
 }

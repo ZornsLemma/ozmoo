@@ -181,15 +181,14 @@ deletable_init
 
 !ifdef VMEM {
 !ifndef PREOPT {
-    ; {{{ Debugging code - use this in conjunction with --print-vm.
+    ; {{{ Debugging code - use this in conjunction with --trace-vm.
+!ifdef TRACE_VM {
 !if 0 {
     jsr streams_init
-    ; vmap_used_entries is set later in normal use, but set it early here so
-    ; print_vm shows the entire vmap. SFTODO: This is probably broken by
-    ; "removal" of vmap_used_entries (except in PREOPT builds) - needs to be
-    ; tweaked.
-    lda vmap_max_entries
-    sta vmap_used_entries
+    !ifndef DEBUG {
+        !error "This code won't work reliably unless DEBUG is defined"
+    }
+    jsr newline
     lda #'X'
     jsr s_printchar
     lda #>story_start
@@ -198,6 +197,7 @@ deletable_init
     jsr print_byte_as_hex
     jsr newline
     jsr osrdch
+}
 }
     ; }}}
 
