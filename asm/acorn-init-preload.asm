@@ -1317,6 +1317,7 @@ deletable_init_start
 .temp_h_with_timestamp = zp_temp + 1
 .temp_h_without_timestamp = zp_temp + 2
     ldx #1
+    bne .outer_loop_test ; always branch
 .outer_loop
     lda vmap_z_l,x
     sta .temp_l
@@ -1352,6 +1353,7 @@ deletable_init_start
     lda .temp_h_with_timestamp
     sta vmap_z_h,y
     inx
+.outer_loop_test
     cpx vmap_meaningful_entries
     bne .outer_loop
     ; }}}
