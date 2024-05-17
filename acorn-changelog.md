@@ -1,6 +1,8 @@
 ## 14.22 (alpha 57)
 
-* TODO
+* Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.
+
+* Make --trace-vm work on Acorn again (more-or-less).
 
 ## 14.22 (alpha 56)
 
