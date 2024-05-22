@@ -30,6 +30,7 @@
 }
 
 !macro acorn_page_in_bank_using_a_comma_x .operand {
+    !error "SFTODO: Delete this macro, it isn't used"
     lda .operand,x
     sta romsel_copy
     sta bbc_romsel
@@ -58,6 +59,7 @@
 }
 
 !macro acorn_page_in_bank_using_a_comma_x .operand {
+    !error "SFTODO: Delete this macro, it isn't used"
     lda #12
     sta romsel_copy
     sta electron_romsel
