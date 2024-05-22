@@ -25,9 +25,23 @@
 
 !macro acorn_page_in_bank_using_a .operand {
     lda .operand
+!if 0 {
     sta romsel_copy
     sta bbc_romsel
+} else {
+    jsr SFTODOHACK_sta_bbc_romsel
 }
+}
+
+SFTODOHACK_sta_bbc_romsel
+    sta romsel_copy
+    sta bbc_romsel
+    rts
+
+SFTODOHACK_sty_bbc_romsel
+    sty romsel_copy
+    sty bbc_romsel
+    rts
 
 !macro acorn_page_in_bank_using_a_comma_x .operand {
     !error "SFTODO: Delete this macro, it isn't used"
@@ -38,14 +52,22 @@
 
 !macro acorn_page_in_bank_using_a_comma_y .operand {
     lda .operand,y
+!if 0 {
     sta romsel_copy
     sta bbc_romsel
+} else {
+    jsr SFTODOHACK_sta_bbc_romsel
+}
 }
 
 !macro acorn_page_in_bank_using_y .operand {
     ldy .operand
+!if 0 {
     sty romsel_copy
     sty bbc_romsel
+} else {
+    jsr SFTODOHACK_sty_bbc_romsel
+}
 }
 } else { ; ACORN_ELECTRON_SWR
 

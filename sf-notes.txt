@@ -1,3 +1,28 @@
+SWR paging via subroutine experiments (again):
+- note that the Electron case is hard because the variable address is buried in the middle of the code
+- just experimenting with BBC style paging for now to get a feeling for it
+- using M128 for testing as it has a large-but-realistic amount of SWR
+- going to ignore initial benchmark timing, it is still consistent
+- will use mode 7
+- with hack, benchmark completes in $008fc7 $008fc5 $008fc6 - so call it $8fc5
+- without hack, $8bf4 $8bf2 $8bf4 - so call it $8bf4
+- build I looked at starts at $f00 with and without hack
+- with hack (ie subroutine), program_end = $4923, without (ie inline), program_end = $4945 - so we save 34 bytes (on a BBC, remember) with the subroutine
+- the benchmark is 2.65% slower as a result of the subroutine, which isn't huge but isn't negligible
+- in absolute terms the benchmark is 9.77s slower - since we know each subroutine call is adding 12 cycles, we know this means there are 1,628,333 (1.62 million) paging operations during the benchmark (!)
+- clearly if we can reduce the amount of paging that is a big win - but let's not look at that right now (and I think I did already consider this, of course)
+- on an Electron (assuming we have a separate subroutine for each operand address) the absolute slowdown would be more because the effective clock speed is less than 2MHz, but otherwise it would be the same - and the percentage slowdown would be less because the base paging sequence takes more cycles
+- on an Electron if we did the variable operands load before calling a subroutine and the subroutine did sta lda_op:...:lda #dummy:... (6 cycles vs 7 cycles for pha:...:pla... - not to mention we can do a Y-based variant of the former but not the latter), we would only need the three subroutines we have on the beeb and we might roughly estimate a saving of double the BBC saving, so 2*34=68 bytes.
+- if we could dynamically choose a subroutine using the simple form on Electron because we know all our RAM in in banks >=12, we would save 9 cycles per paging op, but that is still outweighed by the 12 cycle overhead of the subroutine (ignoring the space saving)
+- if we dynamically patched the inline calls for the banks>=12 optimisation on the Electron, we'd pay a three cycle cost to jump over the dead space but would still come out 6 cycles ahead per paging operation - which would (even assuming 2MHz) save us 4.9 seconds over the benchmark
+- my gut feeling is that unless we have some other value from adding the complexity of dynamically patching the inline calls (we'd want to do it at init time not via a jsr patch_me approach, to avoiding wasting memory during gameplay on the patch_me code) which means we need to support this in the build system anyway, this case is rare enough and fiddly enough that it isn't worth it
+- saving 34 or 68 bytes isn't nothing, but the performance overhead is probably not worth it, and while any saving (especially a double digit one like this) might tip us over a 512 byte boundary, we probably aren't that desperate.
+- TODO: this analysis is looking at *all* paging operations, I may already have done it but it may be worth doing some profiling and seeing if one or two paging sites are hot while the rest are not, which might offer additional opportunities (eg *if* it turned out only one or two paging sites were hot, it might be more feasible to do a zero overhead initialisation patch for BBC or Electron style paging and make sharing a single binary between the two machines practical with no performance impact - because if it's one hot location, it might be possible to have the dead space somewhere we don't have to spend cycles branching over on the BBC)
+
+
+
+
+
 Notes on the "big dynmem needs at least the first 256 bytes of dynmem in main RAM for read/write header code assumptions":
 - this is uninteresting if we have shadow RAM, because there is no realistic way we have code running up to anywhere near &8000
 - it is *unlikely* to occur by default with no shadow RAM, because if dynmem is <=16K we prefer medium model, and if dynmem>16K then by definition we can only run the game at all if we have at least (dynmem-16K) bytes of main RAM free for the rest of dynmem.
