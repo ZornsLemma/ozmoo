@@ -34,7 +34,11 @@
 }
 
 SFTODOHACK_sta_bbc_romsel
+    php ; must be consistent with sty case for count hack stack examination
+    pha
     jsr SFTODOCOUNTHACK
+    pla
+    plp
     sta romsel_copy
     sta bbc_romsel
     rts

@@ -20,6 +20,56 @@ SWR paging via subroutine experiments (again):
 - TODO: this analysis is looking at *all* paging operations, I may already have done it but it may be worth doing some profiling and seeing if one or two paging sites are hot while the rest are not, which might offer additional opportunities (eg *if* it turned out only one or two paging sites were hot, it might be more feasible to do a zero overhead initialisation patch for BBC or Electron style paging and make sharing a single binary between the two machines practical with no performance impact - because if it's one hot location, it might be possible to have the dead space somewhere we don't have to spend cycles branching over on the BBC)
 - OK, hacking the paging subroutines to count how many paging operations actually change the paged in bank, we have 1579829 total (similar-ish to my estimate from before) of which 818657 (51.8%) paged in the same bank and 761172 (48.2%) paged in a different bank.
 - it might be interesting to see if the breakdown is different for different paging instructions, but that's maybe fiddlier to work out
+- ignoring code space, doing a compare before paging would cost 6 cycles and (on the BBC) would only save us 7 cycles when it works - so that would probably save us about 0.5 cycles per page given the ~50% breakdown
+
+
+SWR paging calls (from a build with --extra-build-at 0x1300, addresses are the stacked JSR return values so 1 less than return) which page in DIFFERENT bank, by count:
+&3076 : 104186 +after_dynmem_read_corrupt_y at end of z_get_referenced_value
+&305D : 104186 +before_dynmem_read_corrupt_a at start of z_get_referenced_value
+&3023 : 59351 +after_dynmem_read_corrupt_a at end of z_set_variable_reference_to_value
+&3004 : 59351 +before_dynmem_read_corrupt_y at start of z_set_variable_reference_to_value
+&14C6 : 54092 +before_dynmem_read_corrupt_a in before_dynmem_read_corrupt_a_slow_sub
+&2D90 : 41142 +acorn_page_in_bank_using_a_comma_y ram_bank_list towards end of convert_index_x_to_ram_bank_and_address
+&2D68 : 41139 +acorn_page_in_default_bank_using_y just before convert_index_x_to_ram_bank_and_address
+&291C : 39369 +acorn_page_in_bank_using_y mempointer_ram_bank for "rare" case just below ".not_in_dynmem_block"
+&2FD9 : 35041 +after_dynmem_read_corrupt_y in .read_global_var
+&2FC0 : 35041 +before_dynmem_read_corrupt_a in .read_global_var
+&14D8 : 32448
+&3687 : 31136
+&367C : 31136
+&2C34 : 24596
+&2C4F : 22193
+&14D2 : 21636
+&2FFC : 11358
+&2FE3 : 11358
+&2C2D : 2403
+&14DF : 8
+&4F34 : 1
+&4EFB : 1
+and the same but which paged in SAME bank (so sum of these with the above gives total calls for that site):
+&3687 : 83971 +after_dynmem_read_preserve_axy at end of .write_byte
+&367C : 83971 +before_dynmem_read_corrupt_a just before .write_byte
+&2D68 : 58286 +acorn_page_in_default_bank_using_y just before convert_index_x_to_ram_bank_and_address
+&2FD9 : 57780 +after_dynmem_read_corrupt_y in .read_global_var
+&2FC0 : 57780 +before_dynmem_read_corrupt_a in .read_global_var
+&2D90 : 54328 +acorn_page_in_bank_using_a_comma_y ram_bank_list towards end of convert_index_x_to_ram_bank_and_address
+&2C34 : 46477 
+&3076 : 45859 +after_dynmem_read_corrupt_y at end of z_get_referenced_value
+&305D : 45859 +before_dynmem_read_corrupt_a at start of z_get_referenced_value
+&291C : 45765 +acorn_page_in_bank_using_y mempointer_ram_bank for "rare" case just below ".not_in_dynmem_block"
+&14C6 : 42415 +before_dynmem_read_corrupt_a in before_dynmem_read_corrupt_a_slow_sub
+&3023 : 38400 +after_dynmem_read_corrupt_a at end of z_set_variable_reference_to_value
+&3004 : 38400 +before_dynmem_read_corrupt_y at start of z_set_variable_reference_to_value
+&2C4F : 26636
+&14DF : 21926
+&2C2D : 19841
+&2FFC : 15237
+&2FE3 : 15237
+&14D2 : 11535
+&14D8 : 8954
+
+
+
 
 
 
