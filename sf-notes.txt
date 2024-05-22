@@ -18,6 +18,8 @@ SWR paging via subroutine experiments (again):
 - my gut feeling is that unless we have some other value from adding the complexity of dynamically patching the inline calls (we'd want to do it at init time not via a jsr patch_me approach, to avoiding wasting memory during gameplay on the patch_me code) which means we need to support this in the build system anyway, this case is rare enough and fiddly enough that it isn't worth it
 - saving 34 or 68 bytes isn't nothing, but the performance overhead is probably not worth it, and while any saving (especially a double digit one like this) might tip us over a 512 byte boundary, we probably aren't that desperate.
 - TODO: this analysis is looking at *all* paging operations, I may already have done it but it may be worth doing some profiling and seeing if one or two paging sites are hot while the rest are not, which might offer additional opportunities (eg *if* it turned out only one or two paging sites were hot, it might be more feasible to do a zero overhead initialisation patch for BBC or Electron style paging and make sharing a single binary between the two machines practical with no performance impact - because if it's one hot location, it might be possible to have the dead space somewhere we don't have to spend cycles branching over on the BBC)
+- OK, hacking the paging subroutines to count how many paging operations actually change the paged in bank, we have 1579829 total (similar-ish to my estimate from before) of which 818657 (51.8%) paged in the same bank and 761172 (48.2%) paged in a different bank.
+- it might be interesting to see if the breakdown is different for different paging instructions, but that's maybe fiddlier to work out
 
 
 

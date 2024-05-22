@@ -34,14 +34,52 @@
 }
 
 SFTODOHACK_sta_bbc_romsel
+    jsr SFTODOCOUNTHACK
     sta romsel_copy
     sta bbc_romsel
     rts
 
 SFTODOHACK_sty_bbc_romsel
+    php
+    pha
+    tya
+    jsr SFTODOCOUNTHACK
+    pla
+    plp
     sty romsel_copy
     sty bbc_romsel
     rts
+
+!macro inc32 .operand {
+    inc .operand
+    bne +
+    inc .operand + 1
+    bne +
+    inc .operand + 2
+    bne +
+    inc .operand + 3
++
+}
+
+SFTODOCOUNTHACK
+    php
+    pha
+    cmp romsel_copy
+    beq inc_same_count
+    +inc32 SFTODOHACK_DIFF_COUNT
+    pla
+    plp
+    rts
+inc_same_count
+    +inc32 SFTODOHACK_SAME_COUNT
+    pla
+    plp
+    rts
+
+SFTODOHACK_SAME_COUNT
+    !word 0,0
+SFTODOHACK_DIFF_COUNT
+    !word 0,0
 
 !macro acorn_page_in_bank_using_a_comma_x .operand {
     !error "SFTODO: Delete this macro, it isn't used"
