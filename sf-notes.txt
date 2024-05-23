@@ -1,3 +1,9 @@
+Before local var optimisation to avoid dynmem paging, benchmark was taking $8bf4 on M128 in mode 7 (not subtracting initial benchmark value)
+After $8b33 $8b30 $8b2c, a ~0.55% saving - not huge, but maybe worth it for the relatively tiny code change (and my suspicion is the percentage improvement would be bigger on the Electron, as we save two expensive paging operations each time this kicks in)
+If I am counting correctly, the code change only adds 15 bytes
+
+
+
 Notes on the "big dynmem needs at least the first 256 bytes of dynmem in main RAM for read/write header code assumptions":
 - this is uninteresting if we have shadow RAM, because there is no realistic way we have code running up to anywhere near &8000
 - it is *unlikely* to occur by default with no shadow RAM, because if dynmem is <=16K we prefer medium model, and if dynmem>16K then by definition we can only run the game at all if we have at least (dynmem-16K) bytes of main RAM free for the rest of dynmem.
