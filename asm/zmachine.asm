@@ -817,8 +817,12 @@ z_get_variable_reference_and_value
 	jsr stack_get_ref_to_top_value
 	stx zp_temp
 	sta zp_temp + 1
-	; SFTODONOW: Can we use z_get_referenced_value_simple if we have it?
-	jmp z_get_referenced_value ; SFTODO: WRT MEM HOLE, WE KNOW IT'S ON STACK HERE - ALTHOUGH THIS HARDLY EVER GETS EXECUTED, BUT IF IT'S "FREE" TO OPTIMISE THIS, MIGHT AS WELL
+	; SFTODONOW: Can we use z_get_referenced_value_simple if we have it? I think so, but think this through again.
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+	jmp z_get_referenced_value_simple
+} else {
+	jmp z_get_referenced_value
+}
 +	tya
 	cmp #16
 	bcs .find_global_var
