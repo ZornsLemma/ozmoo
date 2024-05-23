@@ -261,6 +261,11 @@ write_next_byte
 +
 }
 	sta .write_byte + 2
+        ; SFTODO: There might be some value in (if swr but not using medium dynmem)
+        ; doing "bpl faster_case_with_no_dynmem_macros" (or something equivalent)
+        ; here - analogous to the much more common read case, on small or big
+        ; models there's a fair chance we are writing to main RAM and could avoid
+        ; the two paging operations.
 	+before_dynmem_read_corrupt_a ; SF: I added this
 	lda z_address_temp
 .write_byte
