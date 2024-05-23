@@ -2,6 +2,7 @@ Before local var optimisation to avoid dynmem paging, benchmark was taking $8bf4
 After $8b33 $8b30 $8b2c, a ~0.55% saving - not huge, but maybe worth it for the relatively tiny code change (and my suspicion is the percentage improvement would be bigger on the Electron, as we save two expensive paging operations each time this kicks in)
 If I am counting correctly, the code change only adds 15 bytes
 With extra use of _simple (a redirected jmp, so no further code size change), benchmark takes $8b30 $8b2c $8b32 - so not a big extra saving (all we do is avoid doing the test to see if we want to use _simple at the top of not-simple), but doesn't hurt either of course
+With above plus hack to assume global vars are in main RAM and this we don't need the dynmem macros: $8a4c $8a4a $8a46 - about 0.64% faster, which isn't huge but isn't bad either for such a small change (albeit one which has to be made more cleverly instead of just assuming they are in main RAM)
 
 
 
