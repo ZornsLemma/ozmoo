@@ -21,6 +21,7 @@ SWR paging via subroutine experiments (again):
 - OK, hacking the paging subroutines to count how many paging operations actually change the paged in bank, we have 1579829 total (similar-ish to my estimate from before) of which 818657 (51.8%) paged in the same bank and 761172 (48.2%) paged in a different bank.
 - it might be interesting to see if the breakdown is different for different paging instructions, but that's maybe fiddlier to work out
 - ignoring code space, doing a compare before paging would cost 6 cycles and (on the BBC) would only save us 7 cycles when it works - so that would probably save us about 0.5 cycles per page given the ~50% breakdown
+- build is using big model FWIW
 
 
 SWR paging calls (from a build with --extra-build-at 0x1300, addresses are the stacked JSR return values so 1 less than return) which page in DIFFERENT bank, by count:
@@ -35,8 +36,8 @@ SWR paging calls (from a build with --extra-build-at 0x1300, addresses are the s
 &2FD9 : 35041 +after_dynmem_read_corrupt_y in .read_global_var
 &2FC0 : 35041 +before_dynmem_read_corrupt_a in .read_global_var
 &14D8 : 32448
-&3687 : 31136
-&367C : 31136
+&3687 : 31136 +after_dynmem_read_preserve_axy at end of .write_byte
+&367C : 31136 +before_dynmem_read_corrupt_a just before .write_byte
 &2C34 : 24596
 &2C4F : 22193
 &14D2 : 21636
@@ -67,6 +68,8 @@ and the same but which paged in SAME bank (so sum of these with the above gives 
 &2FE3 : 15237
 &14D2 : 11535
 &14D8 : 8954
+
+I believe the &3687/367C cases are where we happen to be executing code which lives in the (top of) the bank holding dynamic memory. Superficially I don't see that this indicates a fundamental flaw in the code - we have in general no guarantee that this will be the case, and I'm a bit surprised it's such a relatively high percentage of the cases at these sites - this may just happen to be an artefact of how HH is structured or our particular RAM size and how the vmem cache gets used (I might guess early-ish blocks of vmem in the game file tend to stick in the first bank, but it is a guess - memory pressure is probably not very high on a M128 for this game)
 
 
 
