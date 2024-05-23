@@ -98,6 +98,7 @@
 ACORN_DEBUG_INTRUSIVE = 1
 
 ; SFTODO: COMMENT?
+; SFTODONOW: THIS IS PROBABLY KILLING PERFORMANCE AND THE CODE IS NOT NEW - REVIEW WHAT IT CTRONLS AND PROBABLY TURN IT OFF
 DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
 ; SFTODONOW: I should probably have this *on* during pre-release testing
 ; SFTODONOW: Need to think carefully about what debug flags should be on by default in a "proper" release
