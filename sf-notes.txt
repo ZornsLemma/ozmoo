@@ -75,6 +75,10 @@ I believe the &3687/367C cases are where we happen to be executing code which li
 
 
 
+Before local var optimisation to avoid dynmem paging, benchmark was taking $8bf4 on M128 in mode 7 (not subtracting initial benchmark value)
+After $8b33 $8b30 $8b2c, a ~0.55% saving - not huge, but maybe worth it for the relatively tiny code change (and my suspicion is the percentage improvement would be bigger on the Electron, as we save two expensive paging operations each time this kicks in)
+If I am counting correctly, the code change only adds 15 bytes
+With extra use of _simple (a redirected jmp, so no further code size change), benchmark takes $8b30 $8b2c $8b32 - so not a big extra saving (all we do is avoid doing the test to see if we want to use _simple at the top of not-simple), but doesn't hurt either of course
 
 
 

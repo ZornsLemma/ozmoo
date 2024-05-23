@@ -817,7 +817,12 @@ z_get_variable_reference_and_value
 	jsr stack_get_ref_to_top_value
 	stx zp_temp
 	sta zp_temp + 1
-	jmp z_get_referenced_value ; SFTODO: WRT MEM HOLE, WE KNOW IT'S ON STACK HERE - ALTHOUGH THIS HARDLY EVER GETS EXECUTED, BUT IF IT'S "FREE" TO OPTIMISE THIS, MIGHT AS WELL
+	; SFTODONOW: Can we use z_get_referenced_value_simple if we have it? I think so, but think this through again.
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+	jmp z_get_referenced_value_simple
+} else {
+	jmp z_get_referenced_value
+}
 +	tya
 	cmp #16
 	bcs .find_global_var
@@ -834,25 +839,24 @@ z_get_variable_reference_and_value
 	adc #0
 	sta zp_temp + 1
 
-!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-	; We would normally fall through into z_get_referenced_value here, but
-	; that's slow when we're doing memory hole shenanigans and here we know
-	; we're accessing a value on the stack, so we inline the standard version.
-	; There's no value in having this separate code if we don't have a memory
-	; hole in dynamic memory; it just wastes a bit of memory on redundant code.
-        ; SFTODONOW: Am I guetting confused? Surely we don't need the before/after
-        ; dynmem read macros here, if we know this is accessing the Z-machine
-        ; stack? And if that's true, wouldn't there be a big performance gain
-        ; even on non bigdyn-with-screen-hole builds from using this optimisation
-        ; there too?
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+	; Here we know we are accessing the Z-machine stack, which is always in main RAM,
+	; so we have this special code to avoid paging in the dynamic memory bank or
+	; (if we have one) working around the screen hole.
+	; SFTODONOW: Think that through fresh, do we know?
 z_get_referenced_value_simple
+!ifdef ACORN_DEBUG_ASSERT {
+	lda zp_temp+1
+	cmp #>story_start
+	bcc +
+	+assert_unreached
++
+}
 	ldy #1
-	+before_dynmem_read_corrupt_a
 	lda (zp_temp),y
 	tax
 	dey
 	lda (zp_temp),y
-	+after_dynmem_read_corrupt_y
 	rts
 }
 
@@ -869,6 +873,13 @@ z_get_referenced_value
 .in_bank_0
 }
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+	; Many calls to this code are to access stack variables, which can be
+	; accessed without worrying about paging in the dynamic RAM bank.
+	lda zp_temp + 1
+	cmp #>story_start
+	bcc z_get_referenced_value_simple
+}
 	ldy #1
 	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y zp_temp
