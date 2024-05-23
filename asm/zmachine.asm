@@ -705,6 +705,7 @@ z_set_variable_reference_to_value
 	jmp write_word_to_far_dynmem
 .set_in_bank_0
 }
+        ; SFTODONOW: I think it is "fairly likely" but not guaranteed we are accessing main RAM here - I believe zp_temp will either point to a local variable on the stack, or a global variable (which may still be in main RAM, but may not be). There may therefore be some mileage in checking if the address (bearing in mind Y is added) is in main RAM and avoiding the complex code in that case (only for big model, of course - for small we know it's in main RAM and for medium we know it's in SWR)
 	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
 	+before_dynmem_read_corrupt_y ; SFTODO: I added this but I think it's correct/necessary
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
