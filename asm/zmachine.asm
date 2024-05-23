@@ -705,7 +705,7 @@ z_set_variable_reference_to_value
 	jmp write_word_to_far_dynmem
 .set_in_bank_0
 }
-        ; SFTODONOW: I think it is "fairly likely" but not guaranteed we are accessing main RAM here - I believe zp_temp will either point to a local variable on the stack, or a global variable (which may still be in main RAM, but may not be). There may therefore be some mileage in checking if the address (bearing in mind Y is added) is in main RAM and avoiding the complex code in that case (only for big model, of course - for small we know it's in main RAM and for medium we know it's in SWR)
+        ; SFTODONOW: I think it is "fairly likely" but not guaranteed we are accessing main RAM here - I believe zp_temp will either point to a local variable on the stack, or a global variable (which may still be in main RAM, but may not be). There may therefore be some mileage in checking if the address (bearing in mind we do Y=0 and Y=1) is in main RAM and avoiding the complex code in that case (only for big model, of course - for small we know it's in main RAM and for medium we know it's in SWR) - note that the bigdyn-and-screen-hole case does this kind of check, to avoid its *very* complex fallback case - we might want to copy that, though it may be we can do better (and if we think of a better way to check, it may be worth copying for the bigdyn-and-screen-hole case too)
 	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
 	+before_dynmem_read_corrupt_y ; SFTODO: I added this but I think it's correct/necessary
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
@@ -717,6 +717,11 @@ z_set_variable_reference_to_value
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } else {
+	; SF: sta_dynmem_ind_y will take care of the screen hole, but we are
+	; accessing two adjacent bytes here and this is a relatively hot code path,
+	; so we handle it as a special case. We also know Y=0 or 1, which helps us
+	; check things a bit more efficiently. SFTODO: Fairly sure that's why this
+	; code is like this, but review fresh and update comment as appropriate.
 !zone { ; SFTODO TEMP
 SFTODOQQ4
 	ldy zp_temp + 1
