@@ -840,6 +840,11 @@ z_get_variable_reference_and_value
 	; we're accessing a value on the stack, so we inline the standard version.
 	; There's no value in having this separate code if we don't have a memory
 	; hole in dynamic memory; it just wastes a bit of memory on redundant code.
+        ; SFTODONOW: Am I guetting confused? Surely we don't need the before/after
+        ; dynmem read macros here, if we know this is accessing the Z-machine
+        ; stack? And if that's true, wouldn't there be a big performance gain
+        ; even on non bigdyn-with-screen-hole builds from using this optimisation
+        ; there too?
 z_get_referenced_value_simple
 	ldy #1
 	+before_dynmem_read_corrupt_a
