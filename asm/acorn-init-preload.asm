@@ -456,7 +456,15 @@ deletable_init_start
     ; are in sideways RAM above a screen hole and use absolute addressing (but
     ; still with paging) in that case. This is extra complexity so let's not do
     ; it for now (and remember it's always possible but unlikely the global
-    ; variables straddle the screen hole).
+    ; variables straddle the screen hole). We'd need to do is check
+    ; low_global_vars is >=$8000 (ie we're not straddling) and we'd need to add
+    ; the screen hole size to the (incorrect) absolute addresses in
+    ; low_global_vars and high_global_vars. But of course we also need to retain
+    ; the dynmem paging, so the only saving we'd get would be those for absolute
+    ; vs indirect (saving tax/iny/dey and a cycle on each of the loads), and we
+    ; would need a separate set of code to copy in place. So quite possibly this
+    ; isn't worth it, although it "only" adds discardable init code complexity
+    ; and doesn't have any runtime downside.
 
     .first_byte_after_high_global_vars = high_global_vars + 240
     lda screen_mode
