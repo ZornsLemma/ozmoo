@@ -1118,8 +1118,8 @@ HANG	bcs HANG
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
-	rts
 } ; Not ACORN_FIXED_GLOBALS
+	rts
 } ; Not SLOW
 } ; Zone
 
