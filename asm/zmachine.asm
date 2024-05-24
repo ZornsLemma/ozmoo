@@ -1082,7 +1082,6 @@ HANG	bcs HANG
 	sta low_global_vars,y
 	lda z_temp + 1
 	sta low_global_vars + 1,y
-	iny ; SFTODONOWREALLY: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 } else {
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
@@ -1102,7 +1101,6 @@ HANG	bcs HANG
 	sta high_global_vars,y
 	lda z_temp + 1
 	sta high_global_vars + 1,y
-	iny ; SFTODONOWREALLY: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 } else {
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
