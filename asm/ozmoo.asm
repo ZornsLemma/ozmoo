@@ -10,8 +10,7 @@
 ;Z8 = 1
 
 ; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
-ACORN_FIXED_GLOBALS = 1 ; SFTODONOW: This should be controlled via make-acorn.py, but hacking it for now
-ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS = 1 ; SFTODONOW: DITTO
+ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS = 1 ; SFTODONOW: THIS SHOULD BE CONTROLLED VIA MAKE-ACORN.PY, MAYBE
 
 ; Which machine to generate code for
 !ifndef ACORN { ; SFTODO!?
@@ -347,6 +346,14 @@ ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS = 1 ; SFTODONOW: DITTO
 ;		COLOURFUL_LOWER_WIN = 1
 ;	}
 ;}
+
+; For simplicity make-acorn.py just indicates whether we would like to use fixed globals, and this code
+; defines ACORN_FIXED_GLOBALS if we want to and can use them.
+!ifdef ACORN_PREFER_FIXED_GLOBALS {
+	!ifndef ACORN_SCREEN_HOLE {
+		ACORN_FIXED_GLOBALS = 1
+	}
+}
 
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define

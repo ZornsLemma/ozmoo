@@ -439,11 +439,21 @@ deletable_init_start
 ; purposes, especially while this code is new. Actually we want to really indicate
 ; more/different - they might well always be absolute, but we want to document
 ; whether we identified them as being in main RAM or not.
+!ifdef ACORN_PREFER_FIXED_GLOBALS {
 !ifdef ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS {
 !ifndef SLOW {
     ; {{{ Patch global variable access code if possible.
 
-!ifndef ACORN_SWR_MEDIUM_DYNMEM { ; would work, but never do anything useful
+    ; The following code would work but never do anything useful for a medium
+    ; dynmem build; the test would always find the global variables were not in
+    ; main RAM. It would nearly work but be useless for a tube build - reading
+    ; HIMEM would not give the right value, but if we patched we'd *nearly* be
+    ; patching identical code over the top. The catch with the tube build is
+    ; that the code we're patching is likely to use a bcc or bcs as a "branch
+    ; always" and thus we don't have room to patch the otherwise identical code
+    ; using a jmp over the top.
+!ifdef ACORN_SWR {
+!ifndef ACORN_SWR_MEDIUM_DYNMEM {
     ; If the current machine configuration has global variables in main RAM,
     ; patch the read code (which is warm, if not hot) to use absolute addressing
     ; for them, avoid paging and not try to take into account any screen hole.
@@ -453,9 +463,7 @@ deletable_init_start
     ; it for now (and remember it's always possible but unlikely the global
     ; variables straddle the screen hole).
 
-    .low_global_vars = story_start + ACORN_GLOBAL_VARS_OFFSET
-    .high_global_vars = .low_global_vars + 256
-    .first_byte_after_high_global_vars = .high_global_vars + 240 - 1
+    .first_byte_after_high_global_vars = high_global_vars + 240
     lda screen_mode
     ora #shadow_mode_bit
     tax
@@ -503,6 +511,7 @@ deletable_init_start
     jmp zmachine_store_operand
 .read_high_global_var_patch_end
 } ; Not ACORN_SWR_MEDIUM_DYNMEM
+} ; Not ACORN_SWR
 
 .globals_above_himem
 !ifdef ACORN_SHOW_RUNTIME_INFO {
@@ -519,6 +528,7 @@ deletable_init_start
 
 .global_patching_done
     ; }}}
+}
 }
 }
 

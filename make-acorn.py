@@ -1171,7 +1171,7 @@ class OzmooExecutable(Executable):
             # tweaked to try to prevent it, although if PAGE is high enough, it
             # may be unavoidable, particularly on the Electron with no shadow
             # RAM.
-            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x8000
+            assert (new_load_addr & 0xffff) + len(e.binary()) <= 0x7c00
             self.load_addr = new_load_addr
             self.exec_addr = new_load_addr + os.path.getsize(compressed_binary_filename)
             binary = e.binary()
@@ -1879,6 +1879,7 @@ def parse_args():
     group.add_argument("--no-data-in-stack", action="store_true", help="disable use of stack space for data")
     group.add_argument("--save-temps", action="store_true", help="don't remove temporary files on exit")
     group.add_argument("--no-integra-b-private-ram", action="store_true", help="never use Integra-B private RAM")
+    group.add_argument("--force-indirect-globals", action="store_true", help="never use absolute addressing for globals")
 
     cmd_args = parser.parse_args()
 
@@ -2162,6 +2163,8 @@ def make_disc_image():
         tube_args += ["-DUNDO=1", "-DUNDO_BUFFER_SIZE_BYTES=%d" % undo_buffer_size]
     if cmd_args.x_for_examine:
         ozmoo_base_args += ["-DX_FOR_EXAMINE=1"]
+    if not cmd_args.force_indirect_globals:
+        ozmoo_base_args += ["-DACORN_PREFER_FIXED_GLOBALS=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -2424,7 +2427,7 @@ if not cmd_args.save_temps:
 host = 0xffff0000
 tube_start_addr = 0x700
 small_dynmem_page_threshold = 0x2000
-bbc_max_start_addr = 0x3000
+bbc_max_start_addr = 0x2f00
 # On the Electron, we'd like to avoid the executable overwriting the mode 6
 # screen RAM and corrupting the loading screen if we can, so we pick a
 # relatively low address which should be >=PAGE on nearly all systems.

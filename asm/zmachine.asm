@@ -632,14 +632,13 @@ zmachine_store_operand ; for dynamic patching in acorn-init-preload.asm
 	jsr fatalerror
 }
 
-; SFTODO: IT'S POSSIBLE THAT THERE'S A SAVING TO BE HAD BY RECOGNISING AT RUNTIME OR BUILD TIME THAT ON A BIGDYN BUILD EVEN WITH A SCREEN HOLE, THE GLOBAL VARS MAY WELL LIVE BELOW $8000 AND CAN BE ACCESSED WITHOUT NEEDING TO PAGE IN DYNMEM SWR BANK.
 !ifndef COMPLEX_MEMORY {
 .read_global_var
-!ifdef ACORN_FIXED_GLOBALS {
-	!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-	    ; SFTODONOW: Make sure the build system doesn't do this, then
-	    !error "ACORN_FIXED_GLOBALS is incompatible with ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE"
-	}
+!ifdef ACORN_PREFER_FIXED_GLOBALS {
+	; These addresses are invalid *if* we have a screen hole and the global
+	; variables live above it, but we need them to be defined even in a screen
+	; hole build for the runtime support for patching to use fixed globals if
+	; they are below the screen hole.
 	low_global_vars = story_start + ACORN_GLOBAL_VARS_OFFSET
 	high_global_vars = low_global_vars + 256
 }
