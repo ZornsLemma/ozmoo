@@ -2165,9 +2165,9 @@ def make_disc_image():
     if cmd_args.x_for_examine:
         ozmoo_base_args += ["-DX_FOR_EXAMINE=1"]
     if not cmd_args.no_absolute_globals:
-        ozmoo_base_args += ["-DACORN_PREFER_FIXED_GLOBALS=1"]
+        ozmoo_base_args += ["-DACORN_PREFER_ABSOLUTE_GLOBALS=1"]
     if not cmd_args.no_runtime_absolute_globals:
-        ozmoo_base_args += ["-DACORN_ALLOW_DYNAMIC_FIXED_GLOBALS=1"]
+        ozmoo_base_args += ["-DACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
