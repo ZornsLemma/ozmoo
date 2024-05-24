@@ -11,6 +11,7 @@
 
 ; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
 ACORN_FIXED_GLOBALS = 1 ; SFTODONOW: This should be controlled via make-acorn.py, but hacking it for now
+ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS = 1 ; SFTODONOW: DITTO
 
 ; Which machine to generate code for
 !ifndef ACORN { ; SFTODO!?

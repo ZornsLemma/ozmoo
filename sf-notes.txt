@@ -2,7 +2,8 @@ Looking at doing "global vars" optimisations properly. Using b-em, M128. mode 7 
 Ignoring the initial timing for the benchmark and just using the final value raw
 Baseline: $8b2f $8b2f $8b28
 Removed DEBUG_BIG_DYNMEM to try to avoid it making improvements look more impressive (avoiding bigdyn stuff will get an artificial boost in performance if bigdyn stuff is heavier than normal because of debugging code): $8a0a $8a0b $8a0b
-First cut at using absolute,y instead of (zp),y addressing for global variables (also freeing up four bytes of zero page): $89ed $89eb $89f0 (not huge improvement - but code is also 10 bytes shorter and we have four extra bytes of zero page which might open up other optimisation opportunities)
+First cut at using absolute,y instead of (zp),y addressing for global variables (also freeing up four bytes of zero page): $89ed $89eb $89f0 (0.08%, not huge improvement - but code is also 10 bytes shorter and we have four extra bytes of zero page which might open up other optimisation opportunities and this change is a fairly simple one with nothing more than a bit of conditional assembly and no runtime cleverness)
+With automatic patching which in this benchmark run does turn the global reads into absolute no paging code: $896c $896b $8967
 
 
 

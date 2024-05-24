@@ -434,6 +434,94 @@ deletable_init_start
     ; }}}
 }
 
+; SFTODONOW: It would be good for the runtime info to show something like
+; "globals={always-indirect,always-absolute,indirect, absolute}" for support
+; purposes, especially while this code is new. Actually we want to really indicate
+; more/different - they might well always be absolute, but we want to document
+; whether we identified them as being in main RAM or not.
+!ifdef ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS {
+!ifndef SLOW {
+    ; {{{ Patch global variable access code if possible.
+
+!ifndef ACORN_SWR_MEDIUM_DYNMEM { ; would work, but never do anything useful
+    ; If the current machine configuration has global variables in main RAM,
+    ; patch the read code (which is warm, if not hot) to use absolute addressing
+    ; for them, avoid paging and not try to take into account any screen hole.
+    ; SFTODO: It would also be possible for us to detect if the global variables
+    ; are in sideways RAM above a screen hole and use absolute addressing (but
+    ; still with paging) in that case. This is extra complexity so let's not do
+    ; it for now (and remember it's always possible but unlikely the global
+    ; variables straddle the screen hole).
+
+    .low_global_vars = story_start + ACORN_GLOBAL_VARS_OFFSET
+    .high_global_vars = .low_global_vars + 256
+    .first_byte_after_high_global_vars = .high_global_vars + 240 - 1
+    lda screen_mode
+    ora #shadow_mode_bit
+    tax
+    lda #osbyte_read_screen_address_for_mode
+    jsr osbyte
+    ; The global variables are in main RAM if HIMEM >= .first_byte_after_high_global_vars.
+    ; SFTODONOW: STEP THROUGH THIS COMPARISON AND CHECK I GOT IT RIGHT
+    lda #0 ; low byte of HIMEM
+    cmp #<.first_byte_after_high_global_vars
+    tya ; high byte of HIMEM
+    sbc #>.first_byte_after_high_global_vars
+    bcc .globals_above_himem
+
+    ldy #.read_low_global_var_patch_end - .read_low_global_var_patch_start - 1
+-   lda .read_low_global_var_patch_start,y
+    sta read_low_global_var_patch_entry,y
+    dey
+    bpl -
+
+    ldy #.read_high_global_var_patch_end - .read_high_global_var_patch_start - 1
+-   lda .read_high_global_var_patch_start,y
+    sta read_high_global_var_patch_entry,y
+    dey
+    bpl -
+
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    lda .show_runtime_info
+    beq +
+    jsr .print_indented_following_string
+    !text 13, "globals=absolute (main RAM)", 0
++
+} ; ACORN_SHOW_RUNTIME_INFO
+
+    jmp .global_patching_done
+
+.read_low_global_var_patch_start
+	ldx low_global_vars + 1,y
+	lda low_global_vars,y
+    jmp zmachine_store_operand
+.read_low_global_var_patch_end
+
+.read_high_global_var_patch_start
+	ldx high_global_vars + 1,y
+	lda high_global_vars,y
+    jmp zmachine_store_operand
+.read_high_global_var_patch_end
+} ; Not ACORN_SWR_MEDIUM_DYNMEM
+
+.globals_above_himem
+!ifdef ACORN_SHOW_RUNTIME_INFO {
+    lda .show_runtime_info
+    beq +
+    jsr .print_indented_following_string
+!ifdef ACORN_FIXED_GLOBALS {
+    !text 13, "globals=absolute", 0
+} else {
+    !text 13, "globals=indirect", 0
+}
++
+}
+
+.global_patching_done
+    ; }}}
+}
+}
+
     ; fall through to .prepare_for_initial_load
 ; End of deletable_init_start
 

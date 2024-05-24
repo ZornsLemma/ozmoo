@@ -600,6 +600,7 @@ read_operand
 } ; Not COMPLEX_MEMORY
 
 .store_operand
+zmachine_store_operand ; for dynamic patching in acorn-init-preload.asm
 	ldy z_operand_count
 	sta z_operand_value_high_arr,y
 !ifdef TARGET_C128 {
@@ -654,6 +655,7 @@ read_operand
 	; SFTODO: IT MAY ALSO BE POSSIBLE/USEFUL TO TAKE ADVANTAGE OF THE TWO BYTE ASCENDING ACCESS TO AVOID DOING THE MEMORY HOLE CHECK ON BOTH BYTES AND JUST DO IT ONCE
 	; SFTODONOW: Experimental hackery suggests theres a 0.64% performance increase to be had here by recognising (ideally with zero runtime overhead by patching this code from discardable init) that on a partiuclar machine (only in bigdyn builds of course) the global vars live below HIMEM (this optimisation can in theory work fine with or without the screen hole), which isn't huge but is probably enough to be tempting. (This means both high and low global vars.) Probably worth double-checking the performance improvement before working on this though. Also worth noting we can save an extra cycle (which wasn't in my 0.64% measurement) by patching lda $ffff,y instructions instead of using lda (zp),y if we really want. - and we can also avoid the iny/dey overhead too by baking the off-by-one offset into the first lda of each pair - hold on, hold on, we can do better anyway (maybe not for builds whith screen hole) - the global vars address is specified in the header and cannot be modified by the game, we know the header at build time so we can do away (probably/mostly, at least) with the indirection of z_{high,low}_globals_var_ptr and just use lda abs,y access *anyway* (unless we need to skip a screen hole)
 	tay
+read_low_global_var_patch_entry
 !ifdef ACORN_FIXED_GLOBALS {
 	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a
@@ -683,6 +685,7 @@ read_operand
 .read_high_global_var
 	; If slow mode, carry was just set with ASL, otherwise we branched here with BCS, so carry is set either way
 	tay
+read_high_global_var_patch_entry
 !ifdef ACORN_FIXED_GLOBALS {
 	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a
