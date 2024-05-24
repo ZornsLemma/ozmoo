@@ -348,10 +348,10 @@
 ;}
 
 ; For simplicity make-acorn.py just indicates whether we would like to use fixed globals, and this code
-; defines ACORN_FIXED_GLOBALS if we want to and can use them.
-!ifdef ACORN_PREFER_FIXED_GLOBALS {
+; defines ACORN_ABSOLUTE_GLOBALS if we want to and can use them.
+!ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
 	!ifndef ACORN_SCREEN_HOLE {
-		ACORN_FIXED_GLOBALS = 1
+		ACORN_ABSOLUTE_GLOBALS = 1
 	}
 }
 
@@ -1855,7 +1855,7 @@ z_init
 	tay
 	txa
 	clc
-!ifndef ACORN_FIXED_GLOBALS {
+!ifndef ACORN_ABSOLUTE_GLOBALS {
 !ifdef FAR_DYNMEM  {
 	adc #<(story_start_far_ram - 32)
 	sta z_low_global_vars_ptr

@@ -434,8 +434,8 @@ deletable_init_start
     ; }}}
 }
 
-!ifdef ACORN_PREFER_FIXED_GLOBALS {
-!ifdef ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS {
+!ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
+!ifdef ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS {
 !ifndef SLOW {
     ; {{{ Patch the global variable access code if possible.
 
@@ -513,7 +513,7 @@ deletable_init_start
     lda .show_runtime_info
     beq +
     jsr .print_indented_following_string
-!ifdef ACORN_FIXED_GLOBALS {
+!ifdef ACORN_ABSOLUTE_GLOBALS {
     !text 13, "globals=absolute", 0
 } else {
     !text 13, "globals=indirect", 0
