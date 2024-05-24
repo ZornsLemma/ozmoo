@@ -99,7 +99,9 @@ ACORN_DEBUG_INTRUSIVE = 1
 
 ; SFTODO: COMMENT?
 ; SFTODONOW: THIS IS PROBABLY KILLING PERFORMANCE AND THE CODE IS NOT NEW - REVIEW WHAT IT CTRONLS AND PROBABLY TURN IT OFF
-DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
+; SFTODONOW: THAT SAID, I HAVE TURNED IT OFF FOR THE MOMENT WHILE I DO SOME TIMINGS BUT SHOULD PROBABLY TURN IT BACK ON BEFORE THE NEXT ALPHA
+;DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
+!warn "SFTODONOW: Probably want to turn DEBUG_BIG_DYNMEM back on before next alpha"
 ; SFTODONOW: I should probably have this *on* during pre-release testing
 ; SFTODONOW: Need to think carefully about what debug flags should be on by default in a "proper" release
 ; SFTODONOW: Should I have some kind of single --debug switch in make-acorn.py which turns on multiple things?
