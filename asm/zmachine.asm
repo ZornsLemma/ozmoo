@@ -637,7 +637,7 @@ zmachine_store_operand ; for dynamic patching in acorn-init-preload.asm
 !ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
 	; These addresses are invalid *if* we have a screen hole and the global
 	; variables live above it, but we need them to be defined even in a screen
-	; hole build for the runtime support for patching to use fixed globals if
+	; hole build for the runtime support for patching to use absolute globals if
 	; they are below the screen hole.
 	low_global_vars = story_start + ACORN_GLOBAL_VARS_OFFSET
 	high_global_vars = low_global_vars + 256

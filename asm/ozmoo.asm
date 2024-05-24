@@ -10,7 +10,6 @@
 ;Z8 = 1
 
 ; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
-; SFTODONOW: RENAME ALL THE "FIXED" CONSTANTS TO "ABSOLUTE" AND ADJUST COMMENTS ACCORDINGLY?
 
 ; Which machine to generate code for
 !ifndef ACORN { ; SFTODO!?
@@ -347,7 +346,7 @@
 ;	}
 ;}
 
-; For simplicity make-acorn.py just indicates whether we would like to use fixed globals, and this code
+; For simplicity make-acorn.py just indicates whether we would like to use absolute globals, and this code
 ; defines ACORN_ABSOLUTE_GLOBALS if we want to and can use them.
 !ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
 	!ifndef ACORN_SCREEN_HOLE {
