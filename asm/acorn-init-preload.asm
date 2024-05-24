@@ -465,7 +465,7 @@ deletable_init_start
     lda #osbyte_read_screen_address_for_mode
     jsr osbyte
     ; The global variables are in main RAM if HIMEM >= .first_byte_after_high_global_vars.
-    ; SFTODONOW: STEP THROUGH THIS COMPARISON AND CHECK I GOT IT RIGHT
+    ; SFTODONOWREALLY: STEP THROUGH THIS COMPARISON AND CHECK I GOT IT RIGHT
     lda #0 ; low byte of HIMEM
     cmp #<.first_byte_after_high_global_vars
     tya ; high byte of HIMEM

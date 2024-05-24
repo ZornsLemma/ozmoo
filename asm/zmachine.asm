@@ -649,14 +649,10 @@ zmachine_store_operand ; for dynamic patching in acorn-init-preload.asm
 } else {
 	asl
 	bcs .read_high_global_var
-	; SFTODO: WOULD IT BE POSSIBLE (ALSO FOR HIGH GLOBAL VARS) FOR US TO MAKE AN ASSEMBLY-TIME DECISION WHETHER OR NOT THE GLOBAL VARS (WHICH ARE AT A KNOWN OFFSET WITHIN THE GAME - IT'S IN THE HEADER, CAN A GAME CHANGE THIS AT RUNTIME!?!?!) CAN EVER COLLIDE WITH THE SCREEN HOLE? WE MIGHT NEED TO BE CAREFUL WHEN DOING ASSEMBLY AT DIFFERENT ADDRESSES TO GENERATE RELOCATIONS, IT MIGHT BE THE BUILD SYSTEM WOULD NEED TO BE IN CHARGE OF "TRYING" THIS, BUT MAYBE WE CAN DO IT JUST HERE IN THE ASSEMBLY (AND PERHAPS THE BUILD SYSTEM COULD COPY A FLAG FROM THE HIGHEST-PAGE BUILD'S OUTPUT TO THE INPUT OF THE LOWER-PAGE INPUT TO MAKE SURE THE TWO BINARIES ARE "THE SAME", OR THE BUILD SYSTEM WOULD PASS IN "ASSUME PAGE IS XXXX (THE HIGH VALUE) FOR DECISIONS LIKE THIS", THAT WOULD PROBABLY BE SIMPLER)
-	; SFTODO: OK, AT LEAST ON OZMOO (AND I SUSPECT IN GENERAL), ADDRESS OF GLOBAL VARS IN HEADER IS ONLY READ ONCE ON STARTUP, SO IT CAN'T CHANGE (AND WE THUS KNOW IT AT BUILD TIME)
 	; SFTODO: IT MAY ALSO BE POSSIBLE/USEFUL TO TAKE ADVANTAGE OF THE TWO BYTE ASCENDING ACCESS TO AVOID DOING THE MEMORY HOLE CHECK ON BOTH BYTES AND JUST DO IT ONCE
-	; SFTODONOW: Experimental hackery suggests theres a 0.64% performance increase to be had here by recognising (ideally with zero runtime overhead by patching this code from discardable init) that on a partiuclar machine (only in bigdyn builds of course) the global vars live below HIMEM (this optimisation can in theory work fine with or without the screen hole), which isn't huge but is probably enough to be tempting. (This means both high and low global vars.) Probably worth double-checking the performance improvement before working on this though. Also worth noting we can save an extra cycle (which wasn't in my 0.64% measurement) by patching lda $ffff,y instructions instead of using lda (zp),y if we really want. - and we can also avoid the iny/dey overhead too by baking the off-by-one offset into the first lda of each pair - hold on, hold on, we can do better anyway (maybe not for builds whith screen hole) - the global vars address is specified in the header and cannot be modified by the game, we know the header at build time so we can do away (probably/mostly, at least) with the indirection of z_{high,low}_globals_var_ptr and just use lda abs,y access *anyway* (unless we need to skip a screen hole)
 	tay
 read_low_global_var_patch_entry
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a
 	ldx low_global_vars + 1,y
 	lda low_global_vars,y
@@ -686,7 +682,6 @@ read_low_global_var_patch_entry
 	tay
 read_high_global_var_patch_entry
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a
 	ldx high_global_vars + 1,y
 	lda high_global_vars,y
@@ -1018,7 +1013,6 @@ z_get_low_global_variable_value
 } else {
 	; Not FAR_DYNMEM
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a_slow
 	ldx low_global_vars + 1,y
 	lda low_global_vars,y
@@ -1083,13 +1077,12 @@ HANG	bcs HANG
 	bcs .write_high_global_var
 	tay
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	sta low_global_vars,y
 	lda z_temp + 1
 	sta low_global_vars + 1,y
-	iny ; SFTODONOW: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
+	iny ; SFTODONOWREALLY: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 } else {
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
@@ -1104,13 +1097,12 @@ HANG	bcs HANG
 .write_high_global_var
 	tay
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	sta high_global_vars,y
 	lda z_temp + 1
 	sta high_global_vars + 1,y
-	iny ; SFTODONOW: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
+	iny ; SFTODONOWREALLY: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 } else {
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
