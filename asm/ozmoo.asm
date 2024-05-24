@@ -10,6 +10,7 @@
 ;Z8 = 1
 
 ; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
+ACORN_FIXED_GLOBALS = 1 ; SFTODONOW: This should be controlled via make-acorn.py, but hacking it for now
 
 ; Which machine to generate code for
 !ifndef ACORN { ; SFTODO!?
@@ -1846,6 +1847,7 @@ z_init
 	tay
 	txa
 	clc
+!ifndef ACORN_FIXED_GLOBALS {
 !ifdef FAR_DYNMEM  {
 	adc #<(story_start_far_ram - 32)
 	sta z_low_global_vars_ptr
@@ -1861,7 +1863,8 @@ z_init
 }
 	sta z_low_global_vars_ptr + 1
 	adc #1
-	sta z_high_global_vars_ptr + 1 
+	sta z_high_global_vars_ptr + 1
+}
 
 !ifndef ACORN {
 !ifdef HAS_SID {

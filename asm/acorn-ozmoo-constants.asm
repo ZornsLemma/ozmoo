@@ -497,8 +497,10 @@ object_temp	+allocate 2
 ; vmap_used_entries if it isn't used.
 vmap_max_entries	+allocate 1
 
+!ifndef ACORN_FIXED_GLOBALS {
 z_low_global_vars_ptr	+allocate 2
 z_high_global_vars_ptr	+allocate 2
+}
 z_exe_mode	+allocate 1
 
 stack_tmp	+allocate 5

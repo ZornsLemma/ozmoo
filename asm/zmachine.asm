@@ -634,6 +634,14 @@ read_operand
 ; SFTODO: IT'S POSSIBLE THAT THERE'S A SAVING TO BE HAD BY RECOGNISING AT RUNTIME OR BUILD TIME THAT ON A BIGDYN BUILD EVEN WITH A SCREEN HOLE, THE GLOBAL VARS MAY WELL LIVE BELOW $8000 AND CAN BE ACCESSED WITHOUT NEEDING TO PAGE IN DYNMEM SWR BANK.
 !ifndef COMPLEX_MEMORY {
 .read_global_var
+!ifdef ACORN_FIXED_GLOBALS {
+	!ifdef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+	    ; SFTODONOW: Make sure the build system doesn't do this, then
+	    !error "ACORN_FIXED_GLOBALS is incompatible with ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE"
+	}
+	low_global_vars = story_start + ACORN_GLOBAL_VARS_OFFSET
+	high_global_vars = low_global_vars + 256
+}
 !ifdef SLOW {
 	cmp #128
 	bcs .asl_then_read_high_global_var
@@ -646,6 +654,13 @@ read_operand
 	; SFTODO: IT MAY ALSO BE POSSIBLE/USEFUL TO TAKE ADVANTAGE OF THE TWO BYTE ASCENDING ACCESS TO AVOID DOING THE MEMORY HOLE CHECK ON BOTH BYTES AND JUST DO IT ONCE
 	; SFTODONOW: Experimental hackery suggests theres a 0.64% performance increase to be had here by recognising (ideally with zero runtime overhead by patching this code from discardable init) that on a partiuclar machine (only in bigdyn builds of course) the global vars live below HIMEM (this optimisation can in theory work fine with or without the screen hole), which isn't huge but is probably enough to be tempting. (This means both high and low global vars.) Probably worth double-checking the performance improvement before working on this though. Also worth noting we can save an extra cycle (which wasn't in my 0.64% measurement) by patching lda $ffff,y instructions instead of using lda (zp),y if we really want. - and we can also avoid the iny/dey overhead too by baking the off-by-one offset into the first lda of each pair - hold on, hold on, we can do better anyway (maybe not for builds whith screen hole) - the global vars address is specified in the header and cannot be modified by the game, we know the header at build time so we can do away (probably/mostly, at least) with the indirection of z_{high,low}_globals_var_ptr and just use lda abs,y access *anyway* (unless we need to skip a screen hole)
 	tay
+!ifdef ACORN_FIXED_GLOBALS {
+	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
+	+before_dynmem_read_corrupt_a
+	ldx low_global_vars + 1,y
+	lda low_global_vars,y
+	+after_dynmem_read_corrupt_y
+} else {
 	iny
 	+before_dynmem_read_corrupt_a
     +lda_dynmem_ind_y z_low_global_vars_ptr
@@ -654,6 +669,7 @@ read_operand
     +lda_dynmem_ind_y z_low_global_vars_ptr
 	+after_dynmem_read_corrupt_y
 }
+} ; Not SLOW
 !ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 	bcc .store_operand ; Always branch
 	+assert_unreached
@@ -667,6 +683,13 @@ read_operand
 .read_high_global_var
 	; If slow mode, carry was just set with ASL, otherwise we branched here with BCS, so carry is set either way
 	tay
+!ifdef ACORN_FIXED_GLOBALS {
+	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
+	+before_dynmem_read_corrupt_a
+	ldx high_global_vars + 1,y
+	lda high_global_vars,y
+	+after_dynmem_read_corrupt_y
+} else {
 	iny
 	+before_dynmem_read_corrupt_a
 	+lda_dynmem_ind_y z_high_global_vars_ptr
@@ -674,6 +697,7 @@ read_operand
 	dey
 	+lda_dynmem_ind_y z_high_global_vars_ptr
 	+after_dynmem_read_corrupt_y
+}
 !ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 	bcs .store_operand ; Always branch
 	+assert_unreached
@@ -778,10 +802,18 @@ SFTODOQQ4
 }
 	asl
 	rol zp_temp + 1
+!ifdef ACORN_FIXED_GLOBALS {
+	adc #<low_global_vars
+} else {
 	adc z_low_global_vars_ptr ; Carry is already clear after rol
+}
 	sta zp_temp
 	lda zp_temp + 1
+!ifdef ACORN_FIXED_GLOBALS {
+	adc #>low_global_vars
+} else {
 	adc z_low_global_vars_ptr + 1
+}
 !ifdef TARGET_X16 {
 	cmp #64
 	bcs +
@@ -983,6 +1015,13 @@ z_get_low_global_variable_value
 	jmp read_word_from_far_dynmem
 } else {
 	; Not FAR_DYNMEM
+!ifdef ACORN_FIXED_GLOBALS {
+	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
+	+before_dynmem_read_corrupt_a_slow
+	ldx low_global_vars + 1,y
+	lda low_global_vars,y
+	+after_dynmem_read_corrupt_y_slow
+} else {
 	iny
 	+before_dynmem_read_corrupt_a_slow
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
@@ -990,6 +1029,7 @@ z_get_low_global_variable_value
 	dey
 	+lda_dynmem_ind_y_slow z_low_global_vars_ptr
 	+after_dynmem_read_corrupt_y_slow
+}
 	; SFTODO: Permanent comment if true - caller *doesn't* assume carry clear if ACORN_SWR_BIG_DYNMEM, so we're OK (also need to describe MEDIUM situation in this comment)
 	rts ; Note that caller may assume that carry is clear on return!
 } ; End else - Not FAR_DYNMEM
@@ -1040,6 +1080,16 @@ HANG	bcs HANG
 	asl
 	bcs .write_high_global_var
 	tay
+!ifdef ACORN_FIXED_GLOBALS {
+	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
+	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	lda z_temp
+	sta low_global_vars,y
+	lda z_temp + 1
+	sta low_global_vars + 1,y
+	iny ; SFTODONOW: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
+	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+} else {
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
@@ -1047,9 +1097,20 @@ HANG	bcs HANG
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+}
 	rts
 .write_high_global_var
 	tay
+!ifdef ACORN_FIXED_GLOBALS {
+	; SFTODONOW: Don't forget the additional possibility of optimising away the before/after dynmem calls if we are on bigdyn and know at runtime that the globals are in main RAM on this machine
+	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	lda z_temp
+	sta high_global_vars,y
+	lda z_temp + 1
+	sta high_global_vars + 1,y
+	iny ; SFTODONOW: redundant but I haven't checked to see if our callers might rely on it happening, so play it safe for the moment - doing it last makes the above code "final" but it does alter the flags, I am just assuming our callers don't care about this but I should check
+	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+} else {
 	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
@@ -1058,6 +1119,7 @@ HANG	bcs HANG
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
 	rts
+} ; Not ACORN_FIXED_GLOBALS
 } ; Not SLOW
 } ; Zone
 

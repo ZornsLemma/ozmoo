@@ -2073,6 +2073,7 @@ def make_disc_image():
         "-DACORN_GAME_PAGES=%d" % game_pages,
         "-DACORN_LOADER_HIGHLIGHT_FG=%d" % loader_screen.highlight_fg,
         "-DZP_BYTES_TO_SAVE=%d" % zp_bytes_to_save,
+        "-DACORN_GLOBAL_VARS_OFFSET=%d" % (global_vars_addr - 32),
     ]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
@@ -2393,6 +2394,7 @@ loader_screen = LoaderScreen()
 header_version = 0
 header_release = 2
 header_serial = 18
+header_global_vars = 0xc
 header_static_mem = 0xe
 header_flags_2 = 0x10
 header_flags_2_undo = 1 << 4
@@ -2502,6 +2504,8 @@ while ((game_pages < nonstored_pages + pages_per_vmem_block) or
        (game_pages % pages_per_vmem_block != 0)):
     game_data += bytearray(bytes_per_page)
     game_pages = bytes_to_pages(len(game_data))
+
+global_vars_addr = read_be_word(game_data, header_global_vars)
 
 if cmd_args.undo:
     if z_machine_version >= 5 and ((game_data[header_flags_2 + 1] & header_flags_2_undo) == 0):
