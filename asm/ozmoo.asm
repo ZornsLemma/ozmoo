@@ -10,7 +10,6 @@
 ;Z8 = 1
 
 ; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
-ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS = 1 ; SFTODONOW: THIS SHOULD BE CONTROLLED VIA MAKE-ACORN.PY, MAYBE
 ; SFTODONOW: RENAME ALL THE "FIXED" CONSTANTS TO "ABSOLUTE" AND ADJUST COMMENTS ACCORDINGLY?
 
 ; Which machine to generate code for

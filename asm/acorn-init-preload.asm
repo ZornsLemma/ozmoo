@@ -434,15 +434,10 @@ deletable_init_start
     ; }}}
 }
 
-; SFTODONOW: It would be good for the runtime info to show something like
-; "globals={always-indirect,always-absolute,indirect, absolute}" for support
-; purposes, especially while this code is new. Actually we want to really indicate
-; more/different - they might well always be absolute, but we want to document
-; whether we identified them as being in main RAM or not.
 !ifdef ACORN_PREFER_FIXED_GLOBALS {
 !ifdef ACORN_ALLOW_DYNAMIC_FIXED_GLOBALS {
 !ifndef SLOW {
-    ; {{{ Patch global variable access code if possible.
+    ; {{{ Patch the global variable access code if possible.
 
     ; The following code would work but never do anything useful for a medium
     ; dynmem build; the test would always find the global variables were not in

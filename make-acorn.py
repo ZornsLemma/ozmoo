@@ -1879,7 +1879,8 @@ def parse_args():
     group.add_argument("--no-data-in-stack", action="store_true", help="disable use of stack space for data")
     group.add_argument("--save-temps", action="store_true", help="don't remove temporary files on exit")
     group.add_argument("--no-integra-b-private-ram", action="store_true", help="never use Integra-B private RAM")
-    group.add_argument("--force-indirect-globals", action="store_true", help="never use absolute addressing for globals")
+    group.add_argument("--no-absolute-globals", action="store_true", help="disable use of absolute globals")
+    group.add_argument("--no-runtime-absolute-globals", action="store_true", help="disable runtime patching to use absolute globals")
 
     cmd_args = parser.parse_args()
 
@@ -2163,8 +2164,10 @@ def make_disc_image():
         tube_args += ["-DUNDO=1", "-DUNDO_BUFFER_SIZE_BYTES=%d" % undo_buffer_size]
     if cmd_args.x_for_examine:
         ozmoo_base_args += ["-DX_FOR_EXAMINE=1"]
-    if not cmd_args.force_indirect_globals:
+    if not cmd_args.no_absolute_globals:
         ozmoo_base_args += ["-DACORN_PREFER_FIXED_GLOBALS=1"]
+    if not cmd_args.no_runtime_absolute_globals:
+        ozmoo_base_args += ["-DACORN_ALLOW_DYNAMIC_FIXED_GLOBALS=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
