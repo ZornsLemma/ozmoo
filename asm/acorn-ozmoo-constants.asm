@@ -879,6 +879,9 @@ streams_stack
 	+allocate 60
 
 !ifdef ACORN_HW_SCROLL_SLOW {
+    ; SFTODONOW: This does take up a lot of space in main RAM. If we could find
+    ; somewhere else to shove it, it would probably go a long way towards
+    ; lowering data_start.
 	+pre_allocate max_screen_width
 top_line_buffer
 	+allocate max_screen_width
