@@ -434,21 +434,21 @@ deletable_init_start
     ; }}}
 }
 
-!ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
-!ifdef ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS {
 !ifndef SLOW {
+!ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
     ; {{{ Patch the global variable access code if possible.
 
-    ; The following code would work but never do anything useful for a medium
-    ; dynmem build; the test would always find the global variables were not in
-    ; main RAM. It would nearly work but be useless for a tube build - reading
-    ; HIMEM would not give the right value, but if we patched we'd *nearly* be
-    ; patching identical code over the top. The catch with the tube build is
-    ; that the code we're patching is likely to use a bcc or bcs as a "branch
-    ; always" and thus we don't have room to patch the otherwise identical code
-    ; using a jmp over the top.
-!ifdef ACORN_SWR {
-!ifndef ACORN_SWR_MEDIUM_DYNMEM {
+    ; For tube, small and medium dynmem builds, we generate optimal global
+    ; variable access code at build time because all the relevant factors are
+    ; known. However, for big dynmem builds, we have to assume that global
+    ; variables might be in sideways RAM and therefore need paging support. In
+    ; builds supporting a screen hole, we also have to assume they may straddle
+    ; or follow the screen hole. This code checks the actual situation at
+    ; runtime and if global variables are in main RAM, we replace the
+    ; pessimistic global variable read code with faster code which doesn't do
+    ; any paging or worry about the screen hole.
+!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS {
     ; If the current machine configuration has global variables in main RAM,
     ; patch the read code (which is warm, if not hot) to use absolute addressing
     ; for them, avoid paging and not try to take into account any screen hole.
@@ -512,10 +512,11 @@ deletable_init_start
 	lda high_global_vars,y
     jmp zmachine_store_operand
 .read_high_global_var_patch_end
-} ; Not ACORN_SWR_MEDIUM_DYNMEM
-} ; Not ACORN_SWR
 
 .globals_above_himem
+} ; ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS
+} ; ACORN_SWR_BIG_DYNMEM
+
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
@@ -530,9 +531,8 @@ deletable_init_start
 
 .global_patching_done
     ; }}}
-}
-}
-}
+} ; ACORN_PREFER_ABSOLUTE_GLOBALS
+} ; Not SLOW
 
     ; fall through to .prepare_for_initial_load
 ; End of deletable_init_start

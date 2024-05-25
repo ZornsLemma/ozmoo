@@ -346,14 +346,6 @@
 ;	}
 ;}
 
-; For simplicity make-acorn.py just indicates whether we would like to use absolute globals, and this code
-; defines ACORN_ABSOLUTE_GLOBALS if we want to and can use them.
-!ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
-	!ifndef ACORN_SCREEN_HOLE {
-		ACORN_ABSOLUTE_GLOBALS = 1
-	}
-}
-
 ; To improve readability of code and avoid double-nesting so we can test for
 ; ACORN_SWR and !ACORN_SWR_SMALL_DYNMEM in a single !ifdef, we define
 ; ACORN_SWR_BIG_DYNMEM internally - the build script should never set this. SFTODO: COMMENT IS OUTDATED WITH INTRODUCTION OF MEDIUM
@@ -394,6 +386,14 @@ ACORN_HW_SCROLL_FAST_OR_SLOW = 1
 !ifndef ACORN_SCREEN_HOLE {
 ACORN_PRIVATE_RAM_SUPPORTED = 1
 }
+}
+
+; For simplicity make-acorn.py just indicates whether we would like to use absolute globals, and this code
+; defines ACORN_ABSOLUTE_GLOBALS if we want to and can use them.
+!ifdef ACORN_PREFER_ABSOLUTE_GLOBALS {
+	!ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+		ACORN_ABSOLUTE_GLOBALS = 1
+	}
 }
 
 ;  * = $0801 ; This must now be set on command line: --setpc $0801
