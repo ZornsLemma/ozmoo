@@ -458,10 +458,11 @@ deletable_init_start
     ; the screen hole size to the (incorrect) absolute addresses in
     ; low_global_vars and high_global_vars. But of course we also need to retain
     ; the dynmem paging, so the only saving we'd get would be those for absolute
-    ; vs indirect (saving tax/iny/dey and a cycle on each of the loads), and we
-    ; would need a separate set of code to copy in place. So quite possibly this
-    ; isn't worth it, although it "only" adds discardable init code complexity
-    ; and doesn't have any runtime downside.
+    ; vs indirect, and we would need a separate set of code to copy in place. So
+    ; quite possibly this isn't worth it, although it "only" adds discardable
+    ; init code complexity and doesn't have any runtime downside. And with a
+    ; screen hole the indirect code is quite involved and potentially slow, so
+    ; it probably is worth it.
 !ifdef ACORN_SWR_BIG_DYNMEM {
 !ifdef ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS {
 
