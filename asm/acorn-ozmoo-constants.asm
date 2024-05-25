@@ -679,7 +679,6 @@ readblocks_base         +allocate 1
     +pre_allocate 3
 s_ignore_next_linebreak	+allocate 3
 
-num_default_properties +allocate 1
 	+pre_allocate 2
 objects_start_ptr      +allocate 2
 

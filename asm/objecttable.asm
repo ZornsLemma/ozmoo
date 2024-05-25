@@ -1042,8 +1042,6 @@ parse_object_table
 !ifdef Z4PLUS {
 	lda #126 ; 63 words
 }
-	; SFTODONOW: Is num_default_properties write-only? Can we get rid of it?
-	sta num_default_properties
 	; store start of objects
 	clc
 	adc default_properties_ptr
