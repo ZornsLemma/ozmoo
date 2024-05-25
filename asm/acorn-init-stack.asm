@@ -441,6 +441,7 @@ deletable_screen_init_2
 !ifndef ACORN {
 	!error "Non-Acorn code has been removed from deletable_screen_init_2"
 }
+    +stack_init_body
 
     ; Set the desired mode. If we're already in the right mode we don't reselect
     ; it, to avoid the screen flashing briefly to black. This is deletable init

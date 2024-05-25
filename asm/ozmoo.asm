@@ -985,7 +985,11 @@ game_id		!byte 0,0,0,0
 ; SFTODO: Looks like upstream supports scrollback with a REU; could we support this on Acorn?
 
 .initialize2
+!ifndef ACORN {
 	jsr stack_init
+} else {
+	; This is inlined at the start of deleteable_screen_init_2 on Acorn.
+}
 
 	jsr deletable_screen_init_2
 

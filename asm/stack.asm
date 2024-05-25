@@ -29,8 +29,7 @@
 }
 
 
-; SFTODO: Could this function move into discardable init code?
-stack_init
+!macro stack_init_body {
 	lda #<(stack_start)
 	sta stack_ptr
 	lda #>(stack_start)
@@ -39,7 +38,13 @@ stack_init
 	sta stack_pushed_bytes
 	sta stack_pushed_bytes + 1
 	sta stack_has_top_value
+}
+
+!ifndef ACORN {
+stack_init
+	+stack_init_body
 	rts
+}
 
 	
 stack_push_top_value
