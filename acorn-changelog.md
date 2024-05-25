@@ -8,6 +8,10 @@
 
 * We use absolute,y addressing instead of (zp),y addressing for accessing global variables when possible, which it usually is - only big dynamic memory builds where there is a screen hole and the global variables live above the screen hole are currently unable to support this. For big dynamic memory builds, we also avoid paging in the sideways RAM bank if we know the global variables are in main RAM. This is implemented using a combination of conditional assembly and dynamic binary patching at runtime. Where we can know at build time that an executable will use absolute addressing, this frees up four bytes of zero page and shrinks the runtime code. The new --no-absolute-globals and --no-runtime-absolute-globals allow this to be disabled if necessary, although this is mainly for debugging and support purposes - barring bugs, there should be no downside to these changes.
 
+* Removed a couple of unused variables and tweaked the use of zero page to increase the chances of some variables that are referenced by a lot of instructions being allocated there. This shrinks the runtime code and as a bonus gives a small performance increase as well.
+
+* Moved stack_init into discardable init code, shrinking the runtime code by about 20 bytes.
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.

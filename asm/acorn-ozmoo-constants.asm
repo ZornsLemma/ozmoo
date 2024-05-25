@@ -881,7 +881,11 @@ streams_stack
 !ifdef ACORN_HW_SCROLL_SLOW {
     ; SFTODONOW: This does take up a lot of space in main RAM. If we could find
     ; somewhere else to shove it, it would probably go a long way towards
-    ; lowering data_start.
+    ; lowering data_start. Hmm, can I reuse the space in pages 9/&A allocated to
+    ; the fast scroll code? Given you can't toggle between slow and fast HW
+    ; scrolling at runtime, I think if (at runtime; the ACORN_HW_SCROLL_SLOW
+    ; build-time flag just says we support it if necessary) we are using slow HW
+    ; scrolling, we know the fast scroll code space is free.
 	+pre_allocate max_screen_width
 top_line_buffer
 	+allocate max_screen_width
