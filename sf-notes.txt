@@ -5,6 +5,7 @@ Removed DEBUG_BIG_DYNMEM to try to avoid it making improvements look more impres
 First cut at using absolute,y instead of (zp),y addressing for global variables (also freeing up four bytes of zero page): $89ed $89eb $89f0 (0.08%, not huge improvement - but code is also 10 bytes shorter and we have four extra bytes of zero page which might open up other optimisation opportunities and this change is a fairly simple one with nothing more than a bit of conditional assembly and no runtime cleverness)
 With automatic patching which in this benchmark run does turn the global reads into absolute no paging code: $896c $896b $8967
 With paranoid inys removed: $8969 $896b $896c (0.45% reduction compared to baseline without DEBUG_BIG_DYNMEM)
+With zp tweaks: $88df $88e4 $88e1 (0.4% reduction and near-negligible effort! though in part this depends on earlier tweak freeing up four bytes of zero page)
 
 
 

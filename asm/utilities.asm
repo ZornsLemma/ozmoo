@@ -733,10 +733,15 @@ fatalerror
 -   jmp -
 }
 
-; SFTODONOW: Moving these (especially saved_a/saved_y - saved_x is not used so much) into zp might shrink the code a fair bit (~20 bytes for A/Y, 11 for X). property_number is currently in zp on at least some non-tube builds and doesn't really benefit much. Need to be careful not to push something that benefits more (either in performance or code size saving) out.
+!ifndef ACORN {
 .saved_a !byte 0
 .saved_x !byte 0
 .saved_y !byte 0
+} else {
+.saved_a = saved_a
+.saved_x = saved_x
+.saved_y = saved_y
+}
 
 space
 	; subroutine: print space

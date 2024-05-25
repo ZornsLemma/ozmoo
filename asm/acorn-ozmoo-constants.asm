@@ -667,6 +667,10 @@ remainder
 vmap_c64_offset +allocate 1 ; ~2.4% of instructions executed reference this
 }
 
+saved_a +allocate 1
+saved_y +allocate 1
+saved_x +allocate 1 ; saved_x is used least of the three, but still quite a lot
+
 readblocks_numblocks +allocate 1
 					+pre_allocate 2
 readblocks_currentblock	+allocate 2
