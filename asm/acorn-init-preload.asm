@@ -440,18 +440,15 @@ deletable_init_start
 
     ; For tube, small and medium dynmem builds, we generate optimal global
     ; variable access code at build time because all the relevant factors are
-    ; known. However, for big dynmem builds, we have to assume that global
+    ; known. However, for big dynmem builds we have to assume that global
     ; variables might be in sideways RAM and therefore need paging support. In
     ; builds supporting a screen hole, we also have to assume they may straddle
     ; or follow the screen hole. This code checks the actual situation at
     ; runtime and if global variables are in main RAM, we replace the
     ; pessimistic global variable read code with faster code which doesn't do
-    ; any paging or worry about the screen hole.
-!ifdef ACORN_SWR_BIG_DYNMEM {
-!ifdef ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS {
-    ; If the current machine configuration has global variables in main RAM,
-    ; patch the read code (which is warm, if not hot) to use absolute addressing
-    ; for them, avoid paging and not try to take into account any screen hole.
+    ; any paging or worry about the screen hole. This code is warm (if not hot)
+    ; and this makes a small improvement, at least in the benchmark.
+    ;
     ; SFTODO: It would also be possible for us to detect if the global variables
     ; are in sideways RAM above a screen hole and use absolute addressing (but
     ; still with paging) in that case. This is extra complexity so let's not do
@@ -465,6 +462,8 @@ deletable_init_start
     ; would need a separate set of code to copy in place. So quite possibly this
     ; isn't worth it, although it "only" adds discardable init code complexity
     ; and doesn't have any runtime downside.
+!ifdef ACORN_SWR_BIG_DYNMEM {
+!ifdef ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS {
 
     .first_byte_after_high_global_vars = high_global_vars + 240
     lda screen_mode
