@@ -520,6 +520,9 @@ zchars	+allocate 3
 ; SFTODO: It might be worth making vmap_quick_index_length variable at runtime
 ; based on how much RAM we actually have. (It is used in few enough places the
 ; initialisation code could patch the code up.)
+; SFTODONOW: Given we have freed up a bit of zp on at least some Acorn builds,
+; it may be worth bumping this vmap_quick_index_length up slightly - but do
+; some benchmarks, on both small and big machines.
 vmap_quick_index_match	+allocate 1
 vmap_next_quick_index	+allocate 1
 vmap_quick_index_length = 6 ; Says how many bytes vmap_quick_index_uses
@@ -689,9 +692,6 @@ child_num +allocate 2
 	+pre_allocate 2
 sibling_num +allocate 2	  ; won't be used at the same time
 dest_num = sibling_num      ; won't be used at the same time
-
-bitmask_index +allocate 1
-attribute_index +allocate 1
 
 property_number +allocate 1
 property_length +allocate 1

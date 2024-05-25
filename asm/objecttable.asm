@@ -496,10 +496,6 @@ z_ins_remove_obj_body
 	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this, but think it's correct/necessary
 	rts
 
-!ifdef ACORN {
-.bitmask_index = bitmask_index
-.attribute_index = attribute_index
-}
 find_attr
 	; find attribute
 	; output: 
@@ -513,14 +509,18 @@ find_attr
 	lda z_operand_value_low_arr + 1
 	; ignore high_arr. Max 48 attributes
 	and #$07
+!ifndef ACORN {
 	sta .bitmask_index
+}
 	tax
 	lda z_operand_value_low_arr + 1
 	lsr
 	lsr
 	lsr
 	tay
+!ifndef ACORN {
 	sta .attribute_index
+}
 	rts
 .bitmask !byte 128,64,32,16,8,4,2,1
 !ifndef ACORN {
