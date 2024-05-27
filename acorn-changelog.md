@@ -14,6 +14,8 @@
 
 * Move existing benchmark into benchmarks.json, change make-acorn.py to build using a benchmark from this file and add a new benchmark (a walkthrough of LordVaderUK's Moonbase Escape, courtesy of EdwardianDuck). The existing --benchmark option still works and tries to automatically pick the benchmark to use, if this goes wrong the new --named-benchmark and --list-benchmarks options allow the benchmark to be specified explicitly on the command line.
 
+* Re-use the space allocated to the fast hardware scrolling machine code for the slow hardware scrolling buffer. This shrinks the Ozmoo main RAM use by 160 bytes on builds which support slow hardware scrolling (which is supported by default).
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.
