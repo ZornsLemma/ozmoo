@@ -428,18 +428,47 @@ def update_common_labels(labels):
                 del common_labels[label]
 
 
-
 class Benchmarks:
     def __init__(self):
         import json
         with open(os.path.join(ozmoo_base_dir, "benchmarks.json")) as f:
             self.raw = json.load(f)
         self.game_for_key = {}
+        self.game_for_name = {}
         for game in self.raw:
+            self.game_for_name[game["name"]] = game
             for key in game["keys"]:
                 assert key not in self.game_for_key
                 self.game_for_key[key] = game
 
+
+def make_benchmark_include():
+    assert cmd_args.benchmark is not None
+    benchmarks = Benchmarks()
+    if cmd_args.named_benchmark is None:
+        release = read_be_word(game_data, header_release)
+        serial = game_data[header_serial:header_serial+6].decode("ascii")
+        game_key = "r%d-s%s" % (release, serial)
+        game = benchmarks.game_for_key.get(game_key)
+        if game is None:
+            die("Unable to determine benchmark for this game (key %s) automatically" % game_key)
+        info("Game identified as '%s' with a benchmark walkthrough available" % game.get("full_name", game["name"]))
+    else:
+        game = benchmarks.game_for_name.get(cmd_args.named_benchmark)
+        if game is None:
+            die("Unknown benchmark game '%s'" % cmd_args.named_benchmark)
+
+    walkthrough = game["walkthrough"]
+    import six
+    with open(make_temp("benchmark.asm"), "w") as f:
+        f.write("!byte 255\n") # trigger initial time display
+        if isinstance(walkthrough, six.string_types):
+            f.write('!text "%s"\n' % walkthrough)
+        else:
+            for line in walkthrough:
+                f.write('!text "%s", 13\n' % line)
+        f.write("!byte 255\n") # trigger final time display
+        f.write("!byte 0\n") # mark end of walkthrough
 
 
 # SFTODO: Should this really derive from Exception?
@@ -1824,8 +1853,9 @@ def parse_args():
 
     group = parser.add_argument_group("optional advanced user arguments") # SFTODO: tweak description
     group.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
-    group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
-    group.add_argument("--list-benchmarks", action="store_true", help="list the available benchmarks")
+    group.add_argument("-b", "--benchmark", action="store_true", help="build a benchmark version of the game (implies -d)")
+    group.add_argument("--named-benchmark", metavar="GAME", help="build a benchmark version of the game using the specified benchmark (implies -d)")
+    group.add_argument("--list-benchmarks", action="store_true", help="list the available benchmarks for use with --named-benchmark")
     # SFTODO: Rename "--force-osrdch" to "--no-timed-input"? This (slightly) hints that it can be used to optimise Z4+ games which don't use timed input, but it (slightly) fails to hint that it's a good workaround for people with emulators that work better with OSRDCH.
     group.add_argument("--force-osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
     group.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
@@ -1901,7 +1931,7 @@ def parse_args():
 
     if cmd_args.list_benchmarks:
         benchmarks = Benchmarks()
-        print("\n".join(sorted(x["game"] for x in benchmarks.raw)))
+        print("\n".join(sorted(x["name"] for x in benchmarks.raw)))
         sys.exit(0)
 
     if cmd_args.input_file is None:
@@ -1940,6 +1970,8 @@ def parse_args():
         die("--splash-palette only works with --splash-image")
     if cmd_args.on_quit_command is not None and cmd_args.on_quit_command_silent is not None:
         die("--on-quit-command and --on-quit-command-silent are incompatible")
+    if cmd_args.named_benchmark is not None:
+        cmd_args.benchmark = True
 
     def validate_colour(colour, default = None, mode_7 = False):
         if colour is None:
@@ -2136,6 +2168,7 @@ def make_disc_image():
         ozmoo_base_args += ["-DCMOS=1"]
     if cmd_args.benchmark:
         ozmoo_base_args += ["-DBENCHMARK=1"]
+        make_benchmark_include()
     if cmd_args.debug:
         ozmoo_base_args += ["-DDEBUG=1"]
     if cmd_args.trace:
@@ -2390,7 +2423,6 @@ def make_disc_image():
         else:
             disc.write_adf(output_file)
     info("Generated files: " + output_file)
-
 
 
 ozmoo_base_dir = os.path.dirname(os.path.realpath(__file__))
