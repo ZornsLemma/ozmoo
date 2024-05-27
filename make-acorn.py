@@ -428,6 +428,20 @@ def update_common_labels(labels):
                 del common_labels[label]
 
 
+
+class Benchmarks:
+    def __init__(self):
+        import json
+        with open(os.path.join(ozmoo_base_dir, "benchmarks.json")) as f:
+            self.raw = json.load(f)
+        self.game_for_key = {}
+        for game in self.raw:
+            for key in game["keys"]:
+                assert key not in self.game_for_key
+                self.game_for_key[key] = game
+
+
+
 # SFTODO: Should this really derive from Exception?
 class LoaderScreen(Exception):
     def __init__(self):
@@ -1780,7 +1794,7 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="count", help="be more verbose about what we're doing (can be repeated)")
     parser.add_argument("-2", "--double-sided", action="store_true", help="generate a double-sided disc image (implied if IMAGEFILE has a .dsd or .adl extension)")
     parser.add_argument("-a", "--adfs", action="store_true", help="generate an ADFS disc image (implied if IMAGEFILE has a .adf or .adl extension)")
-    parser.add_argument("input_file", metavar="ZFILE", help="Z-machine game filename (input)")
+    parser.add_argument("input_file", metavar="ZFILE", nargs="?", default=None, help="Z-machine game filename (input)")
     parser.add_argument("output_file", metavar="IMAGEFILE", nargs="?", default=None, help="Acorn DFS/ADFS disc image filename (output)")
 
     group = parser.add_argument_group("optional splash screen arguments")
@@ -1811,6 +1825,7 @@ def parse_args():
     group = parser.add_argument_group("optional advanced user arguments") # SFTODO: tweak description
     group.add_argument("-p", "--pad", action="store_true", help="pad disc image file to full size")
     group.add_argument("-b", "--benchmark", action="store_true", help="enable the built-in benchmark (implies -d)")
+    group.add_argument("--list-benchmarks", action="store_true", help="list the available benchmarks")
     # SFTODO: Rename "--force-osrdch" to "--no-timed-input"? This (slightly) hints that it can be used to optimise Z4+ games which don't use timed input, but it (slightly) fails to hint that it's a good workaround for people with emulators that work better with OSRDCH.
     group.add_argument("--force-osrdch", action="store_true", help="read keyboard with OSRDCH (will break timed games)")
     group.add_argument("--min-history", metavar="N", type=int, help="allocate at least N bytes for command history")
@@ -1883,6 +1898,14 @@ def parse_args():
     group.add_argument("--no-runtime-absolute-globals", action="store_true", help="disable runtime patching to use absolute globals")
 
     cmd_args = parser.parse_args()
+
+    if cmd_args.list_benchmarks:
+        benchmarks = Benchmarks()
+        print("\n".join(sorted(x["game"] for x in benchmarks.raw)))
+        sys.exit(0)
+
+    if cmd_args.input_file is None:
+        die("No game file specified")
 
     cmd_args.verbose_level = 0 if cmd_args.verbose is None else cmd_args.verbose
 
@@ -2367,6 +2390,7 @@ def make_disc_image():
         else:
             disc.write_adf(output_file)
     info("Generated files: " + output_file)
+
 
 
 ozmoo_base_dir = os.path.dirname(os.path.realpath(__file__))
