@@ -360,16 +360,6 @@ ACORN_SWR_MEDIUM_OR_BIG_DYNMEM = 1
 }
 }
 
-; Similarly, we create a constant for having support for either kind of hardware
-; scrolling.
-!ifdef ACORN_HW_SCROLL_SLOW {
-ACORN_HW_SCROLL_FAST_OR_SLOW = 1
-} else {
-!ifdef ACORN_HW_SCROLL_FAST {
-ACORN_HW_SCROLL_FAST_OR_SLOW = 1
-}
-}
-
 ; The screen hole mostly "just works" for the small dynamic memory model;
 ; because the hole always comes *after* all dynamic memory, only read-only VM
 ; block access needs to take it into account. Define an extra constant to allow

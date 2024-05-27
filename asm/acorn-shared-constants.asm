@@ -205,11 +205,26 @@ xxx_fast_scroll_private_ram_end = $b000
     insv_resident_end = 0x932
 }
 
+!ifdef ACORN_HW_SCROLL_SLOW {
+    ACORN_HW_SCROLL_FAST_OR_SLOW = 1
+} else {
+    !ifdef ACORN_HW_SCROLL_FAST {
+        ACORN_HW_SCROLL_FAST_OR_SLOW = 1
+    }
+}
+
+max_screen_width = 80
+
+!ifdef ACORN_HW_SCROLL_FAST_OR_SLOW {
+    xxx_fast_scroll_start = 0x932
+    xxx_fast_scroll_end = 0xb00
+}
+
 !ifdef ACORN_HW_SCROLL_FAST {
     fast_scroll_upper_window_size = xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 ; 1 byte
 
-    fast_scroll_start = 0x932
-    fast_scroll_end = 0xb00
+    fast_scroll_start = xxx_fast_scroll_start
+    fast_scroll_end = xxx_fast_scroll_end
 
     fast_scroll_max_upper_window_size = 3
 
@@ -219,6 +234,16 @@ xxx_fast_scroll_private_ram_end = $b000
     ; access screen RAM directly.
     fast_scroll_private_ram = xxx_fast_scroll_private_ram
     fast_scroll_private_ram_end = xxx_fast_scroll_private_ram_end
+}
+
+!ifdef ACORN_HW_SCROLL_SLOW {
+    ; Although the same Ozmoo executable can support fast and slow hardware
+    ; scrolling, at runtime we are always using one or the other, so we can use
+    ; the space allocated for the fast hardware scrolling machine code for the
+    ; slow hardware scrolling line buffer. SFTODONOW: DOUBLE CHECK THIS IS VALID
+    top_line_buffer = xxx_fast_scroll_start
+    top_line_buffer_reverse = top_line_buffer + max_screen_width
+    +assert top_line_buffer_reverse + max_screen_width <= xxx_fast_scroll_end
 }
 
 +assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900

@@ -98,7 +98,6 @@ mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
 err_not_found = $d6
 ctrl_key_adjust = 64
-max_screen_width = 80
 !ifdef ACORN_SWR {
 flat_ramtop = $8000
 swr_ramtop = $c000
@@ -877,22 +876,6 @@ jmp_buf	+allocate jmp_buf_size
 	+pre_allocate 60
 streams_stack
 	+allocate 60
-
-!ifdef ACORN_HW_SCROLL_SLOW {
-    ; SFTODONOW: This does take up a lot of space in main RAM. If we could find
-    ; somewhere else to shove it, it would probably go a long way towards
-    ; lowering data_start. Hmm, can I reuse the space in pages 9/&A allocated to
-    ; the fast scroll code? Given you can't toggle between slow and fast HW
-    ; scrolling at runtime, I think if (at runtime; the ACORN_HW_SCROLL_SLOW
-    ; build-time flag just says we support it if necessary) we are using slow HW
-    ; scrolling, we know the fast scroll code space is free.
-	+pre_allocate max_screen_width
-top_line_buffer
-	+allocate max_screen_width
-	+pre_allocate max_screen_width
-top_line_buffer_reverse
-	+allocate max_screen_width
-}
 ; }}}
 
 ; {{{ Final allocations and checks depending on earlier allocations
