@@ -737,7 +737,9 @@ sta_fast_scroll_start_abs
     ldy shadow_paging_control_ptr + 1
     bne use_shadow_driver_yx ; we have shadow RAM with a paging-capable driver
     ; We don't have a paging-capable shadow driver. Unless this is the B+
-    ; special case, we can't support fast scrolling.
+    ; special case, we can't support fast scrolling. We don't install ourselves
+    ; on any vectors - this is critical, as the Ozmoo executable will re-use
+    ; the space allocated to us for slow hardware scrolling buffers.
     cmp #shadow_state_b_plus_private
     bne .just_rts
     ; It's the B+ special case. Copy the relevant code into private RAM so it
