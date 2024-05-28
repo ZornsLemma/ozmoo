@@ -40,6 +40,14 @@ z_pc_before_instruction !byte 0,0,0
 ; opcountvar = 64
 ; opcountext = 96
 
+
+not_normal_exe_mode
+!ifndef ACORN { ; ACORN builds never use z_exe_mode_exit and don't need this code.
+	!error "Commodore-specific code removed here"
+}
+	lda #z_exe_mode_normal
+	; fall through to set_z_exe_mode
+
 ; Entered with A containing new z_exe_mode value; Z flag should reflect A.
 set_z_exe_mode
 	sta z_exe_mode
@@ -83,21 +91,6 @@ z_exe_mode_exit = $ff
 
 
 !zone z_execute {
-
-not_normal_exe_mode
-!ifdef Z4PLUS {
-!ifdef VMEM { ; Non-VMEM games can't be restarted, so they don't get z_exe_mode_exit and don't need this code.
-!ifndef ACORN { ; ACORN builds never use z_exe_mode_exit and don't need this code.
-	lda z_exe_mode
-	cmp #z_exe_mode_return_from_read_interrupt
-	bne .return_from_z_execute
-}
-}
-}
-	lda #z_exe_mode_normal
-	jsr set_z_exe_mode ; SFTODO: COULD BE JMP AND OMIT FOLLOWING RTS, BUT PROB NOT WORTH THE CONDITIONAL ASSEMBLY FAFF
-.return_from_z_execute
-	rts
 
 z_execute
 
