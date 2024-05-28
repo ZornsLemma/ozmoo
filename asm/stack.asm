@@ -459,6 +459,7 @@ stack_return_from_routine
 	and #$07
 	pha ; Top byte of z_pc
 !ifdef Z4PLUS {
+	; SFTODONOW: Need to double check, but I think this is the *only* place on Acorn where set_z_exe_mode is used to select anything except normal mode. If so, we can conditionally assemble the z_exe_mode stuff to only be included in Z4PLUS builds.
 	txa
 	and #$f8
 	jsr set_z_exe_mode
