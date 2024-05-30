@@ -135,6 +135,7 @@ z_execute
 }
 }
 
+	; SFTODO: Is there any prospect on Z1-3 where we never patch jmp_main_loop of avoiding this jsr+rts? A quick look at the code suggests RTS is used to transfer control at some points so we'd need to handle those correctly, but (ignoring code size cost for now) if we replaced each RTS with jmp read_and_execute_an_instruction we would save 12 cycles per instruction, which might be noticeable. Perhaps worth at least looking into this.
 main_loop_normal_exe_mode
 	jsr read_and_execute_an_instruction
 jmp_main_loop
