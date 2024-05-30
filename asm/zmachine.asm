@@ -41,6 +41,7 @@ z_pc_before_instruction !byte 0,0,0
 ; opcountext = 96
 
 
+!ifdef Z4PLUS { ; SF: I added this, maybe suggest to upstream
 not_normal_exe_mode
 !ifndef ACORN { ; ACORN builds never use z_exe_mode_exit and don't need this code.
 	!error "Commodore-specific code removed here"
@@ -63,6 +64,7 @@ set_z_exe_mode
 .finish
 	sta jmp_main_loop + 2
 	rts
+}
 
 ; These get zeropage addresses in constants.asm:
 ; z_opcode 

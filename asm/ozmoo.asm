@@ -1667,8 +1667,10 @@ z_init
 }
 
 
+!ifdef Z4PLUS { ; SF: I added this, maybe suggest to upstream
 	lda #0
 	jsr set_z_exe_mode ; 0 = Normal
+}
 	
 !ifdef TRACE {
 	; Setup trace

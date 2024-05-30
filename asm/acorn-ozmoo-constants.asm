@@ -500,7 +500,9 @@ vmap_max_entries	+allocate 1
 z_low_global_vars_ptr	+allocate 2
 z_high_global_vars_ptr	+allocate 2
 }
+!ifdef Z4PLUS {
 z_exe_mode	+allocate 1
+}
 
 stack_tmp	+allocate 5
 default_properties_ptr	+allocate 2

@@ -16,7 +16,7 @@
 
 * Re-use the space allocated to the fast hardware scrolling machine code for the slow hardware scrolling buffer. This shrinks the Ozmoo main RAM use by 160 bytes on builds which support slow hardware scrolling (which is supported by default).
 
-* Micro-optimised the z_exe_mode code to save a few bytes. TODO: MENTION IF <=Z3 GAMES GET A SMALL EXTRA SAVING
+* Micro-optimised the z_exe_mode code to save a few bytes on Z4+ games. It is completely omitted for Z1-3 games, saving around 26 bytes.
 
 ## 14.22 (alpha 57)
 
