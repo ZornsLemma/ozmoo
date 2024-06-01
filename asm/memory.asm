@@ -621,8 +621,7 @@ read_header_word
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	+acorn_page_in_bank_using_a dynmem_ram_bank
 }
-	lda story_start + 1,y
-	tax
+	ldx story_start + 1,y
 	lda story_start,y
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	pha
