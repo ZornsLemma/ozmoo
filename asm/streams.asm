@@ -668,13 +668,14 @@ character_translation_table_out_mappings_end
 }
 }
 
-	
+
+; SFTODONOW: I think this can be moved into acorn-init-stack and depending on exactly how the code works, we may be able to get away with moving it into acorn-init-preload
 streams_init
 	; Setup/Reset streams handling
 	; input: 
 	; output:
 	; side effects: Sets all variables/tables to their starting values
-	; used registers: a
+	; used registers: a SFTODONOW: If we can corrupt X, we can save a byte byte using X instead of A and doing inx instead of lda #1
 	lda #0
 	sta streams_stack_items
 	sta streams_output_selected + 1
