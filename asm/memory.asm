@@ -665,6 +665,7 @@ write_header_word
 ; }
 }
 
+; SFTODONOW: On Acorn non-medium builds, this is just a three byte STA, so if we made "jsr write_header_byte" into a "+write_header_byte" macro, we could inline it and gain a tiny bit of performance and save a few bytes.
 write_header_byte
 ; y contains the address in the header
 ; a contains byte value
