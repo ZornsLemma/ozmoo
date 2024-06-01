@@ -1313,6 +1313,7 @@ draw_status_line
 	bne - ; Always branch
 .print_score_number
 	lda #17
+	; SFTODONOW: We have two copies of the following four instructions, factor them out? We could put them immediately before z_ins_print_num and fall through into it.
 	jsr z_get_low_global_variable_value
 	stx z_operand_value_low_arr
 	sta z_operand_value_high_arr
