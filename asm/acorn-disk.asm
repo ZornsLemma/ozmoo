@@ -96,6 +96,7 @@ readblocks
     sta divisor + 1
     jsr divide16
 
+    ; SFTODONOW: ISN'T THIS BLOCK LOADING AND STORING BACK IN SAME PLACE?
     lda division_result
     sta .track
     lda remainder
