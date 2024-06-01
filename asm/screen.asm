@@ -1209,6 +1209,7 @@ sl_moves_pos !byte 0 ; A signal that "Moves:" should not be printed
 sl_moves_pos !byte 0 ; A signal that "Turns:" should not be printed
 }
 }
+; SFTODONOW: We could (remember this is a Z1-3 only concept) recognise score vs time games at build time - the header flags are not dynamic for this - and avoid including code for the unsupported case
 sl_time_pos !byte 25
 }
 
