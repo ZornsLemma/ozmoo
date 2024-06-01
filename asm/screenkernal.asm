@@ -170,10 +170,22 @@ s_plot
 	; x=row (0- (SCREEN_HEIGHT-1))
 	bcc .set_cursor_pos
 	; get_cursor
+!ifdef ACORN {
+get_cursor
+}
 	ldx zp_screenrow
 	ldy zp_screencolumn
 	rts
 .set_cursor_pos
+!ifdef ACORN {
+restore_cursor
+	ldy current_window
+	ldx cursor_row,y
+	lda cursor_column,y
+	tay
+;	jmp set_cursor
+set_cursor
+}
  	cpx s_screen_height
 	bcc +
 	ldx s_screen_height_minus_one

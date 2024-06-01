@@ -1164,6 +1164,7 @@ save_cursor
 	sta cursor_column,y
 	rts
 
+!ifndef ACORN { ; code moved to be near s_plot on ACORN
 restore_cursor
 	ldy current_window
 	ldx cursor_row,y
@@ -1182,6 +1183,7 @@ get_cursor
 	;         x=row (0-24)
 	sec
 	jmp s_plot
+}
 
 !ifndef Z4PLUS {
 
