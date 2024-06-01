@@ -768,6 +768,7 @@ update_colours
 .redefine_colour
     lda #vdu_redefine_colour
     jsr oswrch
+    ; SFTODONOW: Any prospect of optimising the following? eg by using the X/Y-emitting part of goto_xy subroutine? And do we have any other code which emits a series of 0s to OSWRCH which we could share?
     txa
     jsr oswrch
     tya
