@@ -616,7 +616,7 @@ s_erase_line
 	cmp s_screen_height
 	bcc +
 	rts ; Illegal row, just ignore
-    ; SFTODONOW: Can we corrupt Y here? We could do ldy #0:sty zp_screencolumn and then in the following loop do sty top_line_buffer_rever,x, saving the lda #0 (and a few cycles too)
+    ; SFTODONOW: Can we corrupt Y here? We could do ldy #0:sty zp_screencolumn and then in the following loop do sty top_line_buffer_reverse,x, saving the lda #0 (and a few cycles too)
 +	lda #0
 	sta zp_screencolumn
 s_erase_line_from_cursor
@@ -636,7 +636,7 @@ s_erase_line_from_cursor
 +
     }
     ; Define a text window covering the region to clear
-    ; SFTODONOW: Can we corrupt X and Y here? We could do ldx/ldy zp_screen*:jsr do_oswrch_vdu_goto_xy_after_the_vdu_31_bit
+    ; SFTODONOW: Can we corrupt X and Y here? We could do ldx/ldy zp_screen*:jsr do_oswrch_vdu_goto_xy_after_the_vdu_31_bit (twice, since we are doing two X-Y pairs)
     lda #vdu_define_text_window
     jsr oswrch
     lda zp_screencolumn
