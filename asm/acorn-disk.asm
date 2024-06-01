@@ -665,7 +665,7 @@ restore_game
     ; As described in section 8.4 of the Z-machine standards document, we need
     ; to update the header in case the screen dimensions have changed compared
     ; to when this game was saved. (HHGTTG SG, at least, still seems to generate
-    ; the status bar using the "original" width, but I can reproduce this is
+    ; the status bar using the "original" width, but I can reproduce this in
     ; frotz so I guess it's a small bug in the game itself.)
     ; SFTODO: Not just here specifically, I can't help feeling read/write_header_*
     ; could be optimised (for space; I don't think they're performance critical)
