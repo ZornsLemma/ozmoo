@@ -1112,6 +1112,7 @@ print_bad_zscii_code
 
 
 
+	; SFTODONOW: On Acorn non-debugging (various macros, not just DEBUG, I think) builds this *may* only be used for fatalerror. Could we get rid of it and perhaps replace it with a hex print routine to save space? Also, if this is only used for fatal errors, can we get away without temp2 and its associated code? Even if we do want to keep temp2, could we just stack the data to at least save ~12 bytes?
 printinteger
 	; subroutine: print 16 bit integer value
 	; input: a,x (x = low, a = high);
