@@ -1474,6 +1474,7 @@ draw_status_line
     ; is a software creation.) We allow it to remain in "illogical" positions
     ; while it's invisible and only position it where it belongs when it's turned
     ; on, as it is during user input.
+	; SFTODONOW: Can we move init_cursor_control into acorn-init-stack.asm? Would save 7 bytes...
 init_cursor_control
     lda #$ff
     sta cursor_status
