@@ -18,6 +18,8 @@
 
 * Micro-optimised the z_exe_mode code to save a few bytes on Z4+ games. It is completely omitted for Z1-3 games, saving around 26 bytes.
 
+* Miscellaneous other micro-optimisations to save a few bytes/cycles.
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.
