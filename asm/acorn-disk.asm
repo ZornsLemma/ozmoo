@@ -414,6 +414,14 @@ z_ins_save
 ; getting confused, but I think the build system would have to be responsible
 ; for doing two trial builds.)
 ; SFTODO: Comment a bit outdated now we have medium model
+; SFTODO: In theory we might know we have enough main RAM used as vmem cache that
+; we could temporarily swap (at least in medium model) dynmem from SWR with that
+; vmem cache, use OSFILE to save/load it, and then swap back. This is probably
+; more trouble than it's worth and I don't know if the code would be shorter.
+; We could also only do this if the highest possible PAGE for this binary still
+; had enough main RAM free; we can't decide at runtime as otherwise we'd need
+; the non-OSFILE code present as well, which would negate the whole code-shrinking
+; point.
 !ifndef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 ACORN_SAVE_RESTORE_OSFILE = 1
 }
