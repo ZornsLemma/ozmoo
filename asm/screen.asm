@@ -177,7 +177,7 @@ erase_window
 	lda zp_screenrow
 	pha
 ;    lda z_operand_value_low_arr
-	cpx #0
+	cpx #0 ; SFTODONOW: txa to save a byte?
 	beq .window_0
 	cpx #1
 	beq .window_1
