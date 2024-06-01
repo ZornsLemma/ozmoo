@@ -280,6 +280,7 @@ printstring_os
    inc .printstring_os_lda + 2
    bne - ; Always branch
 
+; SFTODONOW: I think we always call this with A=0, so we could simplify callers and avoid doing sta .cpy_imm + 1, and in fact get rid of the cpy too (as we're comparing against 0).
 ; Calculate a CRC over A bytes of data at YX (A=0 => 256 bytes), returning it in
 ; YX.
 calculate_crc
