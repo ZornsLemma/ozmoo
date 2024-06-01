@@ -296,9 +296,8 @@ set_os_reverse_video
     lda s_os_reverse
     bne .rts
     jsr .set_tcol ; A = 0
-    lda #$80
-    sta s_os_reverse
     lda #135
+    sta s_os_reverse
     ; jmp .set_tcol - just fall through
 
 .set_tcol
