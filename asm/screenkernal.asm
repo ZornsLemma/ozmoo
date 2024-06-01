@@ -176,7 +176,6 @@ get_cursor
 	ldx zp_screenrow
 	ldy zp_screencolumn
 	rts
-.set_cursor_pos
 !ifdef ACORN {
 restore_cursor
 	ldy current_window
@@ -184,6 +183,7 @@ restore_cursor
 	lda cursor_column,y
 	tay
 ;	jmp set_cursor
+.set_cursor_pos
 set_cursor
 }
  	cpx s_screen_height
