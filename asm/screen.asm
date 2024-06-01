@@ -227,8 +227,12 @@ erase_window
 	pha
 	tax
 	ldy #0
+!ifndef ACORN {
 	clc
 	jsr s_plot ; Update screen and colour pointers
+} else {
+	jsr set_cursor
+}
 	lda is_buffered_window
 	beq .end_erase
 	jsr start_buffering
@@ -1259,14 +1263,22 @@ draw_status_line
 	jsr print_obj
 
 	; Make sure cursor is on top row
+!ifndef ACORN {
 	sec
 	jsr s_plot
+} else {
+	jsr get_cursor
+}
 	cpx #0
 	beq +
 	; Cursor was moved down (object name probably contains a newline character). Put cursor on top row again.
 	ldx #0
+!ifndef ACORN {
 	clc
 	jsr s_plot
+} else {
+	jsr set_cursor
+}
 +
 	;
 	;

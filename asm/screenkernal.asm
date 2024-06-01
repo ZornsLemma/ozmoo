@@ -165,10 +165,12 @@ max_lines = s_screen_height
     jsr force_set_os_normal_video
 }
 
+!ifndef ACORN {
 s_plot
 	; y=column (0-(SCREEN_WIDTH-1))
 	; x=row (0- (SCREEN_HEIGHT-1))
 	bcc .set_cursor_pos
+}
 	; get_cursor
 !ifdef ACORN {
 get_cursor
