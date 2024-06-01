@@ -979,6 +979,8 @@ game_id		!byte 0,0,0,0
 	jsr stack_init
 } else {
 	; This is inlined at the start of deleteable_screen_init_2 on Acorn.
+        ; SFTODONOW: On Acorn we have I think literally three jsrs here. Can we not
+        ; just move them to the code which does jmp initialize2? It would save six bytes but it would be trivial and actually kind of cleaner without all this Commodore code obscuring the actual control flow.
 }
 
 	jsr deletable_screen_init_2
