@@ -233,6 +233,7 @@ vmap_first_ram_page		!byte 0
 }
 }
 
+; SFTODONOW: I think on acorn vmap_temp+0 is never used
 vmap_temp			!byte 0,0,0
 
 !ifndef ACORN {
