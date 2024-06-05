@@ -18,6 +18,8 @@
 
 * Micro-optimised the z_exe_mode code to save a few bytes on Z4+ games. It is completely omitted for Z1-3 games, saving around 26 bytes.
 
+* For Z3 games, select either the score or time game code at build time rather than runtime, avoiding the need to include both in the executable. This shrinks the code by 132 bytes for a score game.
+
 * Miscellaneous other micro-optimisations to save a few bytes/cycles.
 
 ## 14.22 (alpha 57)
