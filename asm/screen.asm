@@ -3,6 +3,20 @@
 ; sl_score_pos !byte 54
 ; sl_moves_pos !byte 67
 ; sl_time_pos !byte 64
+;
+!ifdef Z3 {
+!ifndef ACORN {
+	WANT_SCORE_GAME = 1
+	WANT_TIME_GAME = 1
++
+} else {
+	!ifdef Z3_TIME_GAME {
+		WANT_TIME_GAME = 1
+	} else {
+		WANT_SCORE_GAME = 1
+	}
+}
+}
 
 !ifdef TARGET_X16 {
 !ifndef Z4PLUS {
@@ -1200,6 +1214,7 @@ sl_score_pos !byte 52
 sl_moves_pos !byte 66
 sl_time_pos !byte 60
 } else {
+!ifdef WANT_SCORE_GAME {
 sl_score_pos !byte 25
 !ifdef TARGET_C128 {
 sl_moves_pos !byte 0 ; A signal that "Moves:" should not be printed
@@ -1209,8 +1224,10 @@ sl_moves_pos !byte 0 ; A signal that "Moves:" should not be printed
 sl_moves_pos !byte 0 ; A signal that "Turns:" should not be printed
 }
 }
-; SFTODONOW: We could (remember this is a Z1-3 only concept) recognise score vs time games at build time - the header flags are not dynamic for this - and avoid including code for the unsupported case
+} ; WANT_SCORE_GAME
+!ifdef WANT_TIME_GAME {
 sl_time_pos !byte 25
+}
 }
 
 print_spaces_to_column_y
@@ -1288,20 +1305,12 @@ draw_status_line
 +   
 !ifdef Z3 {
 !ifndef ACORN {
-	WANT_SCORE_GAME = 1
-	WANT_TIME_GAME = 1
 	ldy #header_flags_1
 	jsr read_header_word
 	and #$02
 	beq +
 	jmp .timegame
 +
-} else {
-	!ifdef Z3_TIME_GAME {
-		WANT_TIME_GAME = 1
-	} else {
-		WANT_SCORE_GAME = 1
-	}
 }
 }
 !ifdef WANT_SCORE_GAME {

@@ -1623,12 +1623,16 @@ deletable_screen_init_1
                 cmp #80
                 bne .width40
                 ; 80 col
+!ifdef WANT_SCORE_GAME {
                 lda #54
                 sta sl_score_pos
                 lda #67
                 sta sl_moves_pos
+}
+!ifdef WANT_TIME_GAME {
                 lda #64
                 sta sl_time_pos
+}
 .width40
                 ; Default values are correct, nothing to do here.
             }
