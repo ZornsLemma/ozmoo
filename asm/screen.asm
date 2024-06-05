@@ -1287,13 +1287,24 @@ draw_status_line
 	;
 +   
 !ifdef Z3 {
+!ifndef ACORN {
+	WANT_SCORE_GAME = 1
+	WANT_TIME_GAME = 1
 	ldy #header_flags_1
 	jsr read_header_word
 	and #$02
 	beq +
 	jmp .timegame
 +
+} else {
+	!ifdef Z3_TIME_GAME {
+		WANT_TIME_GAME = 1
+	} else {
+		WANT_SCORE_GAME = 1
+	}
 }
+}
+!ifdef WANT_SCORE_GAME {
 	; score game
 	lda z_operand_value_low_arr
 	pha
@@ -1355,38 +1366,13 @@ draw_status_line
 	sta z_operand_value_high_arr
 	pla
 	sta z_operand_value_low_arr
+!ifdef WANT_TIME_GAME {
 	jmp .statusline_done
-
-!ifdef Z3 {
-!ifndef ACORN {
-.time_str !pet "Time: ",0
-.ampm_str !pet " AM",0
-} else {
-.time_str !text "Time: ",0
-.ampm_str !text " AM",0
+}
 }
 
-.print_clock_number
-	sty z_temp + 11
-	txa
-	ldy #0
--	cmp #10
-	bcc .print_tens
-	sbc #10 ; C is already set
-	iny
-	bne - ; Always branch
-.print_tens
-	tax
-	tya
-	bne +
-	lda z_temp + 11
-	bne ++
-+	ora #$30
-++	jsr s_printchar
-	txa
-	ora #$30
-	jmp s_printchar
-
+!ifdef Z3 {
+!ifdef WANT_TIME_GAME {
 .timegame
 	; time game
 	ldy sl_time_pos
@@ -1435,8 +1421,9 @@ draw_status_line
 	lda #>.ampm_str
 	ldx #<.ampm_str
 	jsr printstring_raw
-} ; !ifdef Z3
 .statusline_done
+} ; !ifdef TIME_GAME
+} ; !ifdef Z3
     ldy s_screen_width
     jsr print_spaces_to_column_y
 !ifndef ACORN {
@@ -1454,6 +1441,7 @@ draw_status_line
 	sta current_window
 	jmp restore_cursor
 
+!ifdef WANT_SCORE_GAME {
 !ifndef ACORN {
 .score_str !pet "Score: ",0
 !ifdef SUPPORT_80COL {
@@ -1464,6 +1452,38 @@ draw_status_line
 !ifdef SUPPORT_80COL {
 .turns_str !text "Moves: ",0
 }
+}
+}
+
+!ifdef WANT_TIME_GAME {
+!ifndef ACORN {
+.time_str !pet "Time: ",0
+.ampm_str !pet " AM",0
+} else {
+.time_str !text "Time: ",0
+.ampm_str !text " AM",0
+}
+
+.print_clock_number
+	sty z_temp + 11
+	txa
+	ldy #0
+-	cmp #10
+	bcc .print_tens
+	sbc #10 ; C is already set
+	iny
+	bne - ; Always branch
+.print_tens
+	tax
+	tya
+	bne +
+	lda z_temp + 11
+	bne ++
++	ora #$30
+++	jsr s_printchar
+	txa
+	ora #$30
+	jmp s_printchar
 }
 } ; !ifndef Z4PLUS
 

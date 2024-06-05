@@ -2132,6 +2132,8 @@ def make_disc_image():
         "-DZP_BYTES_TO_SAVE=%d" % zp_bytes_to_save,
         "-DACORN_GLOBAL_VARS_OFFSET=%d" % (global_vars_addr - 32),
     ]
+    if z_machine_version == 3 and (game_data[header_flags_1] & header_flags_1_time_game) != 0:
+        ozmoo_base_args += ["-DZ3_TIME_GAME=1"]
     # SFTODO: Re-order these to match the --help output eventually
     if double_sided_dfs():
         if cmd_args.nfs_install_only:
@@ -2458,6 +2460,8 @@ header_release = 2
 header_serial = 18
 header_global_vars = 0xc
 header_static_mem = 0xe
+header_flags_1 = 0x01
+header_flags_1_time_game = 1 << 1
 header_flags_2 = 0x10
 header_flags_2_undo = 1 << 4
 pages_per_vmem_block = 2 # SFTODO: rename back to vmem_block_pagecount to match (upstream) assembly constant?
