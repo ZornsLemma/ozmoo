@@ -2,7 +2,6 @@
 
 ; globals
 !ifndef ACORN {
-num_default_properties !byte 0
 objects_start_ptr      !byte 0, 0
 }
 

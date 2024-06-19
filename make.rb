@@ -1198,6 +1198,7 @@ end
 def read_labels(label_file_name)
 	File.open(label_file_name).each do |line|
 		$storystart = $1.to_i(16) if line =~ /\tstory_start\t=\s*\$(\w{3,4})\b/;
+		$stackstart = $1.to_i(16) if line =~ /\tstack_start\t=\s*\$(\w{3,4})\b/;
 		$program_end_address = $1.to_i(16) if line =~ /\tprogram_end\t=\s*\$(\w{3,4})\b/;
 		$loader_pic_start = $1.to_i(16) if line =~ /\tloader_pic_start\t=\s*\$(\w{3,4})\b/;
 		$config_load_address = $1.to_i(16) if line =~ /\tconfig_load_address\t=\s*\$(\w{3,4})\b/;
@@ -2803,7 +2804,7 @@ if $target == "mega65"
 	$file_name = 'autoboot.c65'
 end
 if $target == "x16"
-	$file_name = storyname + '.prg'
+	$file_name = storyname.downcase + '.prg'
 end
 
 if custom_file_name
@@ -2812,7 +2813,7 @@ if custom_file_name
 	else
 		custom_file_name = $1 if custom_file_name =~ /^(.{16}).+/
 	end
-	$file_name = custom_file_name
+	$file_name = custom_file_name.downcase
 end
 
 
@@ -2826,6 +2827,11 @@ end
 
 $zcode_version = $story_file_data[0].ord
 $ztype = "Z#{$zcode_version}"
+
+unless [1,2,3,4,5,7,8].include? $zcode_version
+	puts "Unsupported Z-code version: #{$zcode_version}"
+	exit 1
+end
 
 $zmachine_memory_size = $story_file_data[0x1a .. 0x1b].unpack("n")[0]
 if $zcode_version < 4
@@ -3130,6 +3136,11 @@ if $target == 'c128'
 		$dynmem_and_vmem_size_bank_0_max = $memory_end_address - $storystart - 
 			$scrollback_ram_pages * 256 + $dynmem_blocks * $VMEM_BLOCKSIZE
 	end
+end
+
+if $target =~ /^(x16)$/ and $stackstart + 256 * $stack_pages > 0x5f00 then
+	puts "ERROR: Stack is too big. Maximum stack size is #{(0x5f00 - $stackstart) / 256} pages." 
+	exit 1
 end
 
 if $target !~ /^(mega65|x16)$/ and 
