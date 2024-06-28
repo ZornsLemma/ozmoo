@@ -131,7 +131,11 @@ readblocks
     sta .drive
 }
 
-    ; SFTODONOW: Merge some of this into the preceding block for single/double-sided to save a few bytes?
+    ; We could almost save a few bytes for the ACORN_DSD case by storing
+    ; directly into the OSWORD &7F block instead of in .drive/.track/.sector,
+    ; but https://beebwiki.mdfs.net/OSWORD_%267F notes that we shouldn't rely on
+    ; the contents of the control block on exit and we need to be able to reset
+    ; them in order to handle retries.
 .retry
     lda .drive
     sta .osword_7f_block_drive
