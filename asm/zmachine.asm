@@ -1847,6 +1847,12 @@ z_ins_call_xs
 
 ; z_ins_print_char (moved to text.asm)
 
+!ifdef WANT_SCORE_GAME {
+print_low_global_variable_value
+	jsr z_get_low_global_variable_value
+	stx z_operand_value_low_arr
+	sta z_operand_value_high_arr
+}
 z_ins_print_num
 	lda z_operand_value_high_arr
 	bpl print_num_unsigned 
