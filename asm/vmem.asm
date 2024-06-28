@@ -234,7 +234,15 @@ vmap_first_ram_page		!byte 0
 }
 
 ; SFTODONOW: I think on acorn vmap_temp+0 is never used
+; SF: On Acorn vmap_temp+0 is never used. I've renamed things to allow me to squeeze this byte
+; out while minimising the risk of subtle breakage if upstream starts using it in code that
+; does run on Acorn.
+!ifndef ACORN {
 vmap_temp			!byte 0,0,0
+} else {
+vmap_temp1          !byte 0
+vmap_temp2          !byte 0
+}
 
 !ifndef ACORN {
 vmap_c64_offset !byte 0
@@ -1136,10 +1144,10 @@ SFTODOLL8
 	; to be comparable to vmap entries
 	lda z_pc
 	lsr
-	sta vmap_temp + 1
+	sta vmap_temp1
 	lda z_pc + 1
 	ror
-	sta vmap_temp + 2
+	sta vmap_temp2
 
 	; Store very recent oldest_age so the first valid index in the following
 	; loop will be picked as the first candidate. SFTODO: COMMENT IS OUT OF DATE NOW
@@ -1168,12 +1176,12 @@ vmem_oldest_age = *+1
 	; Found older
 	; Skip if z_pc points here; it could be in either page of the block.
 	ldy vmap_z_l,x
-	cpy vmap_temp + 2
+	cpy vmap_temp2
 !if vmem_highbyte_mask > 0 {
 	bne ++
 	tay
 	and #vmem_highbyte_mask
-	cmp vmap_temp + 1
+	cmp vmap_temp1
 	beq .try_next_index
 	tya
 } else {
