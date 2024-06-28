@@ -96,11 +96,12 @@ readblocks
     sta divisor + 1
     jsr divide16
 
-    ; SFTODONOW: ISN'T THIS BLOCK LOADING AND STORING BACK IN SAME PLACE?
-    lda division_result
-    sta .track
-    lda remainder
-    sta .sector
+    +assert division_result = .track
+    ; lda division_result
+    ; sta .track
+    +assert remainder = .sector
+    ; lda remainder
+    ; sta .sector
 } else {
     clc
     lda readblocks_currentblock
@@ -130,6 +131,7 @@ readblocks
     sta .drive
 }
 
+    ; SFTODONOW: Merge some of this into the preceding block for single/double-sided to save a few bytes?
 .retry
     lda .drive
     sta .osword_7f_block_drive
