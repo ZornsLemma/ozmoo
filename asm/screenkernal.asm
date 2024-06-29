@@ -69,7 +69,7 @@
 ; ACORN_HW_SCROLL_FAST is defined, we can avoid defining ACORN_HW_SCROLL_SLOW
 ; when building that executable to save a little bit of code. I think this is
 ; worth doing, but we need to be able to still support slow scrolling if the
-; user has explicitly done a build with fast scrolling table, rather than
+; user has explicitly done a build with fast scrolling disabled, rather than
 ; insisting on using fast scrolling.
 
 !zone screenkernal {
