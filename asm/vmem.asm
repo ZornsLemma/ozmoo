@@ -233,7 +233,6 @@ vmap_first_ram_page		!byte 0
 }
 }
 
-; SFTODONOW: I think on acorn vmap_temp+0 is never used
 ; SF: On Acorn vmap_temp+0 is never used. I've renamed things to allow me to squeeze this byte
 ; out while minimising the risk of subtle breakage if upstream starts using it in code that
 ; does run on Acorn.
