@@ -1401,7 +1401,15 @@ def make_electron_swr_executable():
 
 def make_bbc_swr_executable():
     leafname = "OZMOOB"
-    args = ozmoo_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
+    # This executable runs on machines where fast hardware scrolling is always
+    # supported, so if we're building in support for fast hardware scrolling any
+    # code for slow hardware scrolling is redundant.
+    # SFTODO: Arguably removing things from ozmoo_base_args is confusing and we
+    # should never put these strings in but have them added in other cases.
+    adjusted_base_args = ozmoo_base_args
+    if "-DACORN_HW_SCROLL_FAST=1" in adjusted_base_args and "-DACORN_HW_SCROLL_SLOW=1" in adjusted_base_args:
+        adjusted_base_args.remove("-DACORN_HW_SCROLL_SLOW=1")
+    args = adjusted_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
     return extra_build_wrapper(make_best_model_executable(leafname, args, "BBC B sideways RAM"))
 
 

@@ -14,7 +14,9 @@
 
 * Move existing benchmark into benchmarks.json, change make-acorn.py to build using a benchmark from this file and add a new benchmark (a walkthrough of LordVaderUK's Moonbase Escape, courtesy of EdwardianDuck). The existing --benchmark option still works and tries to automatically pick the benchmark to use, if this goes wrong the new --named-benchmark and --list-benchmarks options allow the benchmark to be specified explicitly on the command line.
 
-* Re-use the space allocated to the fast hardware scrolling machine code for the slow hardware scrolling buffer. This shrinks the Ozmoo main RAM use by 160 bytes on builds which support slow hardware scrolling (which is supported by default).
+* Re-use the space allocated to the fast hardware scrolling machine code for the slow hardware scrolling buffer. This shrinks the Ozmoo main RAM use by 160 bytes on builds which support slow hardware scrolling (which is the default).
+
+* In builds which support both slow and fast hardware scrolling (which is the default), don't include slow hardware scrolling support in the executable for the BBC B with no shadow RAM, saving 98 bytes. This machine configuration always supports fast hardware scrolling so the slow hardware scrolling code is redundant.
 
 * Micro-optimised the z_exe_mode code to save a few bytes on Z4+ games. It is completely omitted for Z1-3 games, saving around 26 bytes.
 
