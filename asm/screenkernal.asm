@@ -633,9 +633,8 @@ s_erase_line
 	cmp s_screen_height
 	bcc +
 	rts ; Illegal row, just ignore
-    ; SFTODONOW: Can we corrupt Y here? We could do ldy #0:sty zp_screencolumn and then in the following loop do sty top_line_buffer_reverse,x, saving the lda #0 (and a few cycles too)
-+	lda #0
-	sta zp_screencolumn
++	ldy #0
+	sty zp_screencolumn
 s_erase_line_from_cursor
     !ifdef ACORN_HW_SCROLL_SLOW {
         bit acorn_scroll_flags
@@ -645,7 +644,7 @@ s_erase_line_from_cursor
         ldx zp_screencolumn
 -       lda #' '
         sta top_line_buffer,x
-        lda #0
+        tya
         sta top_line_buffer_reverse,x
         inx
         +cpx_screen_width
