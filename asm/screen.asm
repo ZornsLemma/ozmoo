@@ -1550,6 +1550,7 @@ turn_off_cursor
     adc cursor_status ; we know A=1 and cursor_status=-1 for off or 0 for on
     jsr oswrch
     ldx #6
+do_x_plus_1_oswrch_0_with_vsync
     lda #0
 -   jsr oswrch
     dex

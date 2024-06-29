@@ -366,6 +366,7 @@ do_osbyte_y_0
 do_oswrch_vdu_goto_xy
     lda #vdu_goto_xy
     jsr oswrch
+do_oswrch_xy
     txa
     jsr oswrch
     tya

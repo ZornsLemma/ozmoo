@@ -784,16 +784,11 @@ update_colours
 .redefine_colour
     lda #vdu_redefine_colour
     jsr oswrch
-    ; SFTODONOW: Any prospect of optimising the following? eg by using the X/Y-emitting part of goto_xy subroutine?
-    ; SFTODONOW: If we are willing to accept a VSYNC (which is probably harmless and maybe even slightly neater), we could probably do ldx #2:jmp tail_bit_of_.cursor_control_just_after_ldx_#6
-    txa
-    jsr oswrch
-    tya
-    jsr oswrch
-    lda #0
-    jsr oswrch
-    jsr oswrch
-    jmp oswrch
+    jsr do_oswrch_xy
+    ; Doing a VSYNC here may well improve the appearance and is at worst
+    ; harmless. The main reason for using do_x_plus... is to save space.
+    ldx #2
+    jmp do_x_plus_1_oswrch_0_with_vsync
 
     ; SFTODO: It might be worth (for games like Border Zone where - check I'm not confused - hardware scrolling is not an option) allowing the build system to avoid showing CTRL-S on the loader screen and avoid having code for it in the Ozmoo binary. This might already be possible, I haven't checked. I suspect the user would have to specify a command line option for this, we can't really examine the game ourselves and infer it "always" uses a >1 line status area. - I guess this would come down to providing a --no-hw-scroll option in the build system
     ; SFTODO: Following on from that, for such games the mode 7 status line colouring won't work either, so we might want to have a --multiline-status-area option which is shorthand for --no-mode-7-colour and --no-hw-scroll.
