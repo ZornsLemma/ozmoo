@@ -492,6 +492,10 @@ deletable_screen_init_2
 	ldy #1
 	sty is_buffered_window
 	ldx #$ff
+    ; SF: Note that for Z1-3 this clears from line 1 down, not line 0. This is not a big deal and
+    ; I am not going to try to change it, but this is why we need to zero-initialise top_line_buffer
+    ; for when we are using slow hardware scrolling, as the buffer will not be set to all spaces
+    ; by this erase operation.
 	jsr erase_window
 	jmp start_buffering
 ; End of deletable_screen_init_2

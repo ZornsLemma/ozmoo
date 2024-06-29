@@ -83,6 +83,30 @@ deletable_init_start
     cpx #low_fixed_gap_start - low_start
     bne -
 
+    ; Make sure the top_line_buffer* buffers are zero-initialised; this won't
+    ; happen automatically because they re-use the memory allocated to the fast
+    ; hardware scrolling code. (That memory will contain the fast scrolling code
+    ; if this build supports it, or whatever is left in that memory otherwise.)
+    ; We must make sure we don't trample over that code if it is actually going
+    ; to be used.
+    ;
+    ; The only reason this is necessary is because for Z1-3 games erase_window
+    ; doesn't clear this line and so until the game actually outputs on this
+    ; line slow hardware scrolling will use the initial contents of the buffer.
+!ifdef ACORN_HW_SCROLL_SLOW {
+!ifdef ACORN_HW_SCROLL_FAST {
+    lda fast_scroll_status
+    bne +
+}
+    lda #0
+    tax
+-   sta top_line_buffer,x
+    inx
+    cpx #top_line_buffer_reverse_end - top_line_buffer
+    bne -
++
+}
+
     ; Clear memory betwen bulk_clear_start and bulk_clear_end; some of the
     ; variables which may live here need to be zero initialised and it's good
     ; for consistency to clear everything.

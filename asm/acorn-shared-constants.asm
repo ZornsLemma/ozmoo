@@ -243,7 +243,8 @@ max_screen_width = 80
     ; slow hardware scrolling line buffer. SFTODONOW: DOUBLE CHECK THIS IS VALID - IT WOULD BE GOOD TO TEST WITH THE *REAL* FASTSCR EXECUTABLE DECIDING WE CAN'T SUPPORT FAST SCROLLING, INSTEAD OF HACKING THE FLAG (THIS WOULD HELP PROVE THAT THE FASTSCR EXECUTABLE DOESN'T INSTALL ITSELF ON ANY VECTORS WHEN IT ISN'T IN USE)
     top_line_buffer = xxx_fast_scroll_start
     top_line_buffer_reverse = top_line_buffer + max_screen_width
-    +assert top_line_buffer_reverse + max_screen_width <= xxx_fast_scroll_end
+    top_line_buffer_reverse_end = top_line_buffer_reverse + max_screen_width
+    +assert top_line_buffer_reverse_end <= xxx_fast_scroll_end
 }
 
 +assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900
