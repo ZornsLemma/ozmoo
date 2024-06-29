@@ -381,10 +381,7 @@ game_data_filename = game_data_filename_or_restart_command
 z_ins_restore
 !ifndef Z4PLUS {
 	jsr restore_game
-    ; SFTODONOW: CAN WE JUST JMP TO THE 'BEQ +' IN z_ins_save HERE?
-	beq +
-	jmp make_branch_true
-+	jmp make_branch_false
+    jmp .make_branch_based_on_z
 }
 !ifdef Z4PLUS {
 	jsr restore_game
@@ -396,6 +393,7 @@ z_ins_restore
 z_ins_save
 !ifndef Z4PLUS {
 	jsr save_game
+.make_branch_based_on_z
 	beq +
 	jmp make_branch_true
 +	jmp make_branch_false
