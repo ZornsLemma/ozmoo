@@ -664,45 +664,30 @@ write_header_word
 ; }
 }
 
-; SFTODONOW: On Acorn non-medium builds, this is just a three byte STA, so if we made "jsr write_header_byte" into a "+write_header_byte" macro, we could inline it and gain a tiny bit of performance and save a few bytes.
-write_header_byte
+!ifndef ACORN {
+	!error "Commodore code for write_header_byte removed"
+}
 ; y contains the address in the header
 ; a contains byte value
 ; a,x,y are preserved
-!ifdef TARGET_C128 {
-	sta .tmp
-	stx .tmp + 1
-	jsr setup_to_write_to_header_far_ram
-	stx $02b9
-	ldx #$7f
-	jsr $02af
-	lda .tmp
-	ldx .tmp + 1
-	rts
-} else {
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
+write_header_byte
 	pha
 	+acorn_page_in_bank_using_a dynmem_ram_bank
 	pla
-}
-!ifdef TARGET_MEGA65 {
-	sty dynmem_pointer
-	ldz #0
-	stz dynmem_pointer + 1
-	sta [dynmem_pointer],z
-	rts
-} else ifdef TARGET_X16 {
-	sta $5f00,y
-	rts
-} else {
 	sta story_start,y
-!ifdef ACORN_SWR_MEDIUM_DYNMEM {
 	pha
 	+acorn_page_in_default_bank_using_a
 	pla
-}
 	rts
-}
+
+	!macro write_header_byte {
+		jsr write_header_byte
+	}
+} else {
+	!macro write_header_byte {
+		sta story_start,y
+	}
 }
 
 !ifdef FAR_DYNMEM {

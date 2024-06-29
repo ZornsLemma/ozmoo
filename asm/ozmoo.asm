@@ -1098,6 +1098,7 @@ statmem_reu_banks !byte 0
 !source "screenkernal.asm"
 !source "screen.asm"
 !source "streams.asm" ; Must come before "text.asm"
+!source "memory.asm"
 !ifndef ACORN {
 	!source "disk.asm"
 	; SFTODO: Does it make sense to try to support sound on Acorn?
@@ -1112,7 +1113,6 @@ statmem_reu_banks !byte 0
 	!source "reu.asm"
 	}
 ;}
-!source "memory.asm"
 !source "stack.asm"
 ;##!ifdef VMEM {
 !source "vmem.asm"
@@ -1160,7 +1160,7 @@ calc_z7_offsets
 update_screen_width_in_header
 	lda s_screen_width
 	ldy #header_screen_width_chars
-	jsr write_header_byte
+	+write_header_byte
 !ifdef Z5PLUS {
 	ldy #header_screen_width_units
 	tax
@@ -1172,7 +1172,7 @@ update_screen_width_in_header
 update_screen_width_in_header
 	lda s_screen_width
 	ldy #header_screen_width_chars
-	jsr write_header_byte
+	+write_header_byte
 !ifdef Z5PLUS {
 	ldy #header_screen_width_units
 	tax
@@ -1181,7 +1181,7 @@ update_screen_width_in_header
 }
 	lda s_screen_height
 	ldy #header_screen_height_lines
-	jsr write_header_byte
+	+write_header_byte
 !ifdef Z5PLUS {
 	ldy #header_screen_height_units
 	tax
@@ -1418,7 +1418,7 @@ print_no_undo
 	; jsr read_header_word
 	; and #(255 - 16) ; no undo
 	; ldy #header_flags_2 + 1
-	; jsr write_header_byte
+	; +write_header_byte
 	lda #>.no_undo_msg
 	ldx #<.no_undo_msg
 	jsr printstring_raw
@@ -1699,7 +1699,7 @@ z_init
 	jsr read_header_word
 	and #(255 - 16 - 64) ; Statusline IS available, variable-pitch font is not default
 	ora #32 ; Split screen available
-	jsr write_header_byte
+	+write_header_byte
 !ifdef SOUND {
 	jsr init_sound
 }
@@ -1709,7 +1709,7 @@ z_init
 	jsr read_header_word
 	and #(255 - 4 - 8) ; bold font, italic font not available
 	ora #(16 + 128) ; Fixed-space style, timed input available
-	jsr write_header_byte
+	+write_header_byte
 } else { ; Z5PLUS
 	ldy #header_flags_1
 	jsr read_header_word
@@ -1720,7 +1720,7 @@ z_init
     }
 	and #(255 - 4 - 8 - (1 - COLOUR)) ; bold font, italic font not available
 	ora #(COLOUR + 16 + 128) ; Colours, Fixed-space style, timed input available
-	jsr write_header_byte
+	+write_header_byte
 
 ; check_undo
 	ldy #header_flags_2 + 1
@@ -1757,25 +1757,25 @@ z_init
 +
     pla
 	ldy #header_flags_2 + 1
-	jsr write_header_byte
+	+write_header_byte
 } else {
     pla
 	and #(255 - 128)  ; no sound effect
 	ldy #header_flags_2 + 1
-	jsr write_header_byte
+	+write_header_byte
 }
 }
 }
 !ifdef Z4PLUS {
 	lda #TERPNO ; Interpreter number (8 = C64)
 	ldy #header_interpreter_number 
-	jsr write_header_byte
+	+write_header_byte
 	lda #(64 + 14) ; "N" = release 14
 	ldy #header_interpreter_version  ; Interpreter version. Usually ASCII code for a capital letter
-	jsr write_header_byte
+	+write_header_byte
 	+lda_screen_height
 	ldy #header_screen_height_lines
-	jsr write_header_byte
+	+write_header_byte
 !ifdef Z5PLUS {
 	ldy #header_screen_height_units
 	tax
@@ -1790,7 +1790,7 @@ z_init
 } else {
 	+lda_screen_width
 	ldy #header_screen_width_chars
-	jsr write_header_byte
+	+write_header_byte
 !ifdef Z5PLUS {
 	ldy #header_screen_width_units
 	tax
@@ -1807,9 +1807,9 @@ z_init
 !ifdef Z5PLUS {
 	lda #1
 	ldy #header_font_width_units
-	jsr write_header_byte
+	+write_header_byte
 	ldy #header_font_height_units
-	jsr write_header_byte
+	+write_header_byte
 	; TODO: Store default background and foreground colour in 2c, 2d (or comply to game's wish?)
 	
 	; Copy alphabet pointer from header, or default

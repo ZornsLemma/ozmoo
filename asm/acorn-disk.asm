@@ -679,17 +679,17 @@ restore_game
     pha
     +lda_screen_height
     ldy #header_screen_height_lines
-    jsr write_header_byte
+    +write_header_byte
 !ifdef Z5PLUS {
     ldy #header_screen_height_units + 1
-    jsr write_header_byte
+    +write_header_byte
 }
     +lda_screen_width
     ldy #header_screen_width_chars
-    jsr write_header_byte
+    +write_header_byte
 !ifdef Z5PLUS {
     ldy #header_screen_width_units + 1
-    jsr write_header_byte
+    +write_header_byte
 }
     pla
     plp
