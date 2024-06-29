@@ -191,12 +191,13 @@ erase_window
 	lda zp_screenrow
 	pha
 ;    lda z_operand_value_low_arr
-	cpx #0 ; SFTODONOW: txa to save a byte?
+	txa ; cpx #0
 	beq .window_0
 	cpx #1
 	beq .window_1
 	lda #0
 	sta current_window
+	; SFTODO: Could possibly do "inx:bne" here to save a byte? I don't think we use X again.
 	cpx #$ff ; clear screen, then; -1 unsplit, -2 keep as is
 	bne .keep_split
 	jsr clear_num_rows
