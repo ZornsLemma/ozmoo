@@ -737,6 +737,7 @@ z_set_variable_reference_to_value
 	;        (zp_temp) must point to variable, possibly using zp_temp + 2 to store bank
 	; affects registers: a,x,y,p
 !ifdef ACORN_SWR_MEDIUM_OR_SWR_BIG_DYNMEM {
+!ifndef ACORN_SCREEN_HOLE {
 z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE
 	; Because we are accessing two bytes pointed to by zp_temp, we need to be
 	; sure both are in main RAM. We therefore require the high byte of zp_temp
@@ -754,6 +755,7 @@ z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPRO
 	rts
 .not_main_ram
 }
+}
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	; The following code works in all cases, and for tube and small memory model
 	; builds it has no overhead. It would work for the big model with a screen hole,
@@ -766,7 +768,8 @@ z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPRO
     +sta_dynmem_ind_y zp_temp
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
-} else {
+} else { ; ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
+z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE
 	ldy zp_temp + 1
 	cpy acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
