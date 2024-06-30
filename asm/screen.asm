@@ -68,8 +68,8 @@ update_statusline_params
 }
     ldy #0
     sty current_window
-    sty window_start_row + 3
 !ifndef Z4PLUS {
+    sty window_start_row + 3 ; SF: I moved this inside ifndef
     iny
 }
     sty window_start_row + 2

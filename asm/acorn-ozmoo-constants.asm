@@ -542,8 +542,14 @@ mempointer_ram_bank	+allocate 1 ; SFTODO: have experimentally moved this into zp
 
 vmem_temp	+allocate 2
 
-; SFTODONOW: I think it may be possible to only allocate 3 bytes to window_start_row in Z4+ games. It looks like window 2 is the Z1-3 status line window internally and is otherwise not used. (We'd need to avoid initialising window_start_row+3 to 0 in init_screen_model for Z4+ games if changing this.) - draw_status_line (Z1-3 only) sets current_window to 2, but nothing else does
+; SF: current_window is always 0 or 1 for Z4+ games, so window_start_row+3 can
+; never be accessed. For Z1-3 games, draw_status_line temporarily sets
+; current_window to 2.
+!ifndef Z4PLUS {
 window_start_row	+allocate 4
+} else {
+window_start_row	+allocate 3
+}
 
 current_window	+allocate 1
 
