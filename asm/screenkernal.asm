@@ -644,17 +644,14 @@ s_erase_line_from_cursor
 +
     }
     ; Define a text window covering the region to clear
-    ; SFTODONOW: Can we corrupt X and Y here? We could do ldx/ldy zp_screen*:jsr do_oswrch_vdu_goto_xy_after_the_vdu_31_bit (twice, since we are doing two X-Y pairs)
     lda #vdu_define_text_window
     jsr oswrch
-    lda zp_screencolumn
-    jsr oswrch
-    lda zp_screenrow
-    jsr oswrch
-    +lda_screen_width_minus_one
-    jsr oswrch
-    lda zp_screenrow
-    jsr oswrch
+    ldx zp_screencolumn
+    ldy zp_screenrow
+    jsr do_oswrch_xy
+    +ldx_screen_width_minus_one
+    ; ldy zp_screenrow - already set
+    jsr do_oswrch_xy
     ; Clear it and reset the text window.
     jsr set_os_normal_video ; clear must not be to reverse video
     lda #vdu_cls
