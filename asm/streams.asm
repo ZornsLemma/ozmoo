@@ -675,7 +675,7 @@ streams_init
 	; input: 
 	; output:
 	; side effects: Sets all variables/tables to their starting values
-	; used registers: a, x (SF: I added X)
+	; used registers: x (SF: was a)
 	ldx #0
 	stx streams_stack_items
 	stx streams_output_selected + 1
