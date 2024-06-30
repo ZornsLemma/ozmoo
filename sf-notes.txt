@@ -1,3 +1,9 @@
+Looking at optimising for main RAM access in z_set_variable_reference_to_value, using B+128K mode 3, HH benchmark, DEBUG_BIG_DYNMEM off:
+- before experimental tweak: $8a7d $8a7c $8a78
+- with experimental tweak: $8a3a $8a38 $8a36 - so 0.19% faster - not great, but it only costs 14 bytes
+- with experimental tweak assuming globals are in main RAM for performance timing: $89fe $89fe $89da - so 0.36% faster than baseline - this still costs 14 bytes as we'd have to have space for the generic version and patch the shorter version over the top during initialisation
+
+
 Looking at doing "global vars" optimisations properly. Using b-em, M128. mode 7 for testing - benchmark builds with bigdyn and program_start is $1300.
 Ignoring the initial timing for the benchmark and just using the final value raw
 Baseline: $8b2f $8b2f $8b28
