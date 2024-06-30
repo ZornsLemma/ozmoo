@@ -721,11 +721,11 @@ read_high_global_var_patch_entry
 ; memory layout, globals may be in main or sideways RAM. We use the same "check
 ; first" code as in the medium model by default - this should be a bigger win
 ; than in the medium model case as it's more likely globals are in main RAM. If
-; we have ACORN_ABSOLUTE_GLOBALS, we can determine at load time whether the
-; globals are in main RAM and patch this code on startup to just assume they are
-; in main RAM. This is likely to be particularly valuable for big memory model
-; builds with a screen hole, as if the globals do end up in main RAM the slower
-; code to work around the screen hole won't be executed.
+; we have ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS, we can determine at load time if
+; the globals are in main RAM and patch this code on startup to just assume
+; that. This is likely to be particularly valuable for big memory model builds
+; with a screen hole, as if the globals do end up in main RAM the slower code to
+; work around the screen hole won't be executed.
 ;
 ; SFTODONOW: Review the above afterwards to check it is correct etc
 !ifndef ACORN {
