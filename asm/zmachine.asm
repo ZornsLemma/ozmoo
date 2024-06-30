@@ -699,51 +699,65 @@ read_high_global_var_patch_entry
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
 
-; SFTODONOW: z_set_variable_reference_to_value is moderately hot. It will be accessing either a local variable (on the stack) or a global variable. Because local variables always live in main RAM, for medium or big dynamic memory builds there is the prospect of a modest performance gain by taking advantage of that. We have no way to know which type of variable we are writing to though, so for medium model builds we have to pay the cycles to check the address and depending on an individual game's variable use, this may or may not be a net win. For big dynamic memory builds with ACORN_ABSOLUTE_GLOBALS, we can in principle work out at initialisation if the globals live in main RAM and if they do we can patch this code to assume it is accessing main RAM.
+; SFTODONOW: I am writing the following comment as if I've already implemented this (to avoid having to rewrite it), but I HAVEN'T YET.
+; SF: z_set_variable_reference_to_value is moderately hot. It will be accessing
+; either a local variable (on the stack) or a global variable. The stack is
+; always in main RAM. Global variables may (depending on the memory model and
+; sometimes the specific machine or game) be in main RAM or sideways RAM.
+;
+; Tube and small memory model builds know everything is in main RAM and we don't
+; need to do anything special.
+;
+; For the medium memory model, we know globals are in sideways RAM, but we can
+; get a small statistical performance increase by testing for zp_temp pointing
+; into main RAM and avoiding paging the dynamic memory sideways RAM bank in and
+; out unnecessarily. This is statistical because we have to pay for the test and
+; if a game does mostly global variable accesses, this will be a net loss.
+; Based on benchmarking with HH and MBE2, on average this is a small win (0.25%
+; faster for HH, 0.08% for MBE2) and it only costs 14 bytes of extra code so we
+; do it.
+;
+; For the big memory model, depending on the game and the current machine's
+; memory layout, globals may be in main or sideways RAM. We use the same "check
+; first" code as in the medium model by default - this should be a bigger win
+; than in the medium model case as it's more likely globals are in main RAM. If
+; we have ACORN_ABSOLUTE_GLOBALS, we can determine at load time whether the
+; globals are in main RAM and patch this code on startup to just assume they are
+; in main RAM. This is likely to be particularly valuable for big memory model
+; builds with a screen hole, as if the globals do end up in main RAM the slower
+; code to work around the screen hole won't be executed.
+;
+; SFTODONOW: Review the above afterwards to check it is correct etc
+!ifndef ACORN {
+	!error "Commodore code removed at z_set_variable_reference_to_value"
+}
 !zone {
 z_set_variable_reference_to_value
 	; input: Value in a,x.
 	;        (zp_temp) must point to variable, possibly using zp_temp + 2 to store bank
 	; affects registers: a,x,y,p
-!ifdef TARGET_X16 {
-	ldy zp_temp + 2
-	sty 0
-} else ifdef FAR_DYNMEM {
-	bit zp_temp + 2
-	bpl .set_in_bank_0
-	ldy #zp_temp
-	sty write_word_far_dynmem_zp_1
-	sty write_word_far_dynmem_zp_2
-	ldy #0
-	jmp write_word_to_far_dynmem
-.set_in_bank_0
-}
-        ; SFTODONOW: I think it is "fairly likely" but not guaranteed we are accessing main RAM here - I believe zp_temp will either point to a local variable on the stack, or a global variable (which may still be in main RAM, but may not be). There may therefore be some mileage in checking if the address (bearing in mind we do Y=0 and Y=1) is in main RAM and avoiding the complex code in that case (only for big model, of course - for small we know it's in main RAM and for medium we know it's in SWR) - note that the bigdyn-and-screen-hole case does this kind of check, to avoid its *very* complex fallback case - we might want to copy that, though it may be we can do better (and if we think of a better way to check, it may be worth copying for the bigdyn-and-screen-hole case too)
-	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
-	; SFTODONOW: BE CAREFUL TO HANDLE TUBE CORRECTLY HERE TOO - NOTE THAT WE SHOULD ONLY BE CHECKING SCREEN START ON NON-TUBE BUILDS (POSS ONLY ON BIGDYN WITH HOLE BUILDS, THINK CAREFULLY), AS ON TUBE BUILDS IT WILL RETURN SCREEN ADDRESS IN HOST
-	; SFTODONOW: REMEMBER SMALL AND MEDIUM WE *KNOW* GLOBALS ARE IN MAIN AND SWR RESPECTIVELY. ALSO, MY BENCHMARKING WAS WITH A BIGDYN BUILD (NO HOLE, B+128K), BUT ON A MEDIUM BUILD THE LOCAL VARS ARE IN MAIN RAM BUT THE GLOBALS ARE IN SWR AND SO THINGS ARE MAYBE NOT AS CLEAR CUT AS IN OTHER ABSOLUTE GLOBALS CASES - THE GAME'S BALANCE OF LOCAL VS GLOBAL VAR ACCESS VIA THIS PATH WILL AFFECT US, AND IT MAY BE THAT (SINCE FOR MEDIUM AT LEAST) WE CANNOT KNOW WE ARE ACCESSING SWR, THE 8-ISH CYCLE OVERHEAD OF TESTING TO SEE IF WE ARE IN MAIN RAM IS NOT A NET WIN AND WE SHOULD JUST DO THE DYNMEM PAGING ANYWAY - IT *MAY* BE WORTH IT, BUT PROB WORTH BENCHMARKING THE 'complexcaseSFTODONOW' VARIANT ON A MEDIUM BUILD BEFORE PUTTING A LOT OF EFFORT INTO A "PROPER" VERSION OF ANY OF THIS
-!ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
-!if 1 { ; SFTODONOW HACK !ifndef ACORN_ABSOLUTE_GLOBALS { ; SFTODONOW: I believe the following is always correct, but we can often do better - for moment going to hackily *assume* we can do better to see the performance impact - to do this properly we'd want to patch as we do with eg read_low_global_var_patch_entry
-	; SFTODONOW: Note that when doing this properly via runtime patching, we probably (think about it fresh) *can* apply this patch even if we have a screen hole - I believe the existing patching code re globals already checks to see if the globals are below screen RAM.
+!ifdef ACORN_SWR_MEDIUM_OR_SWR_BIG_DYNMEM {
+z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE
+	; Because we are accessing two bytes pointed to by zp_temp, we need to be
+	; sure both are in main RAM. We therefore require the high byte of zp_temp
+	; to be <$7f to rule out the corner case where zp_temp is $7fff. This may
+	; force some accesses down the slow path unnecessarily, but we don't want to
+	; waste cycles and bytes doing the check precisely.
 	ldy zp_temp + 1
 	iny
-	bmi complexcaseSFTODONOW
+	bmi .not_main_ram
 	ldy #0
 	sta (zp_temp),y
 	iny
 	txa
 	sta (zp_temp),y
 	rts
-complexcaseSFTODONOW
-} else {
-	; We (SFTODONOW: just by hacky assumption ATM) know the globals are in main RAM, and local variables are always in main RAM, so zp_temp must point into main RAM.
-	ldy #0
-	sta (zp_temp),y
-	iny
-	txa
-	sta (zp_temp),y
-	rts
+.not_main_ram
 }
+!ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+	; The following code works in all cases, and for tube and small memory model
+	; builds it has no overhead. It would work for the big model with a screen hole,
+	; but we have special optimised code below for that.
 	+before_dynmem_read_corrupt_y ; SFTODO: I added this but I think it's correct/necessary
 	ldy #0
     +sta_dynmem_ind_y zp_temp
@@ -753,14 +767,6 @@ complexcaseSFTODONOW
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
 } else {
-	+before_dynmem_read_corrupt_y ; SFTODO: I added this but I think it's correct/necessary
-	; SF: sta_dynmem_ind_y will take care of the screen hole, but we are
-	; accessing two adjacent bytes here and this is a relatively hot code path,
-	; so we handle it as a special case. We also know Y=0 or 1, which helps us
-	; check things a bit more efficiently. SFTODO: Fairly sure that's why this
-	; code is like this, but review fresh and update comment as appropriate.
-!zone { ; SFTODO TEMP
-SFTODOQQ4
 	ldy zp_temp + 1
 	cpy acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
@@ -801,7 +807,6 @@ SFTODOQQ4
 	; SFTODO: Make this next one slow? Seems a bit "unfair", what about the game+machine that happens to hit this case?
 	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
 	rts
-}
 }
 
 .find_global_var
