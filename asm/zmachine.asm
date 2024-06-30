@@ -738,7 +738,7 @@ z_set_variable_reference_to_value
 	; affects registers: a,x,y,p
 !ifdef ACORN_SWR_MEDIUM_OR_SWR_BIG_DYNMEM {
 !ifndef ACORN_SCREEN_HOLE {
-z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE
+z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE - NOTE THAT WE WILL PATCH FOR BIGDYN ONLY (BUT BIGDYN WITH OR WITHOUT SCREEN HOLE)
 	; Because we are accessing two bytes pointed to by zp_temp, we need to be
 	; sure both are in main RAM. We therefore require the high byte of zp_temp
 	; to be <$7f to rule out the corner case where zp_temp is $7fff. This may
