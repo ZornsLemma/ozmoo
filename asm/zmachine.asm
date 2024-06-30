@@ -755,7 +755,7 @@ z_set_variable_reference_to_value_patch_entry
 .not_main_ram
 }
 }
-	+before_dynmem_read_corrupt_y ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_y
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 	; The following code works in all cases, and for tube and small memory model
 	; builds it has no overhead. It would work for the big model with a screen hole,
@@ -765,7 +765,7 @@ z_set_variable_reference_to_value_patch_entry
 	iny
 	txa
     +sta_dynmem_ind_y zp_temp
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
 } else { ; ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 	ldy zp_temp + 1
@@ -779,7 +779,7 @@ z_set_variable_reference_to_value_patch_entry
 	txa
 	ldy #1
 	sta (zp_temp),y
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
 .zp_y_not_ok
 	; SF: I have forced this case to execute by manually fiddling around with
@@ -796,7 +796,7 @@ z_set_variable_reference_to_value_patch_entry
 	iny
 	txa
 	sta (screen_hole_zp_ptr),y
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
 .zp_y_maybe_no_longer_ok
 	; SF: I have forced this case to execute by changing the beq to this code
@@ -806,7 +806,7 @@ z_set_variable_reference_to_value_patch_entry
 	txa
 	+sta_dynmem_ind_y zp_temp
 	; SFTODO: Make this next one slow? Seems a bit "unfair", what about the game+machine that happens to hit this case?
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
 }
 
@@ -1098,39 +1098,39 @@ HANG	bcs HANG
 	bcs .write_high_global_var
 	tay
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	sta low_global_vars,y
 	lda z_temp + 1
 	sta low_global_vars + 1,y
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 } else {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 }
 	rts
 .write_high_global_var
 	tay
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	sta high_global_vars,y
 	lda z_temp + 1
 	sta high_global_vars + 1,y
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 } else {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 } ; Not ACORN_ABSOLUTE_GLOBALS
 	rts
 } ; Not SLOW
