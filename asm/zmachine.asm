@@ -736,7 +736,7 @@ z_set_variable_reference_to_value
 	; input: Value in a,x.
 	;        (zp_temp) must point to variable, possibly using zp_temp + 2 to store bank
 	; affects registers: a,x,y,p
-!ifdef ACORN_SWR_MEDIUM_OR_SWR_BIG_DYNMEM {
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 !ifndef ACORN_SCREEN_HOLE {
 z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE - NOTE THAT WE WILL PATCH FOR BIGDYN ONLY (BUT BIGDYN WITH OR WITHOUT SCREEN HOLE)
 	; Because we are accessing two bytes pointed to by zp_temp, we need to be
