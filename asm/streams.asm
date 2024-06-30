@@ -675,16 +675,16 @@ streams_init
 	; input: 
 	; output:
 	; side effects: Sets all variables/tables to their starting values
-	; used registers: a SFTODONOW: If we can corrupt X, we can save a byte byte using X instead of A and doing inx instead of lda #1
-	lda #0
-	sta streams_stack_items
-	sta streams_output_selected + 1
-	sta streams_output_selected + 2
-	sta streams_output_selected + 3
-	lda #1
-	sta streams_buffering
-	sta streams_buffering + 1
-	sta streams_output_selected
+	; used registers: a, x (SF: I added X)
+	ldx #0
+	stx streams_stack_items
+	stx streams_output_selected + 1
+	stx streams_output_selected + 2
+	stx streams_output_selected + 3
+	inx ; ldx #1
+	stx streams_buffering
+	stx streams_buffering + 1
+	stx streams_output_selected
 	rts
 	
 streams_print_output
