@@ -721,6 +721,7 @@ z_set_variable_reference_to_value
 	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
 !ifndef ACORN_ABSOLUTE_GLOBALS { ; SFTODONOW: I believe the following is always correct, but we can often do better - for moment going to hackily *assume* we can do better to see the performance impact - to do this properly we'd want to patch as we do with eg read_low_global_var_patch_entry
+	; SFTODONOW: Note that when doing this properly via runtime patching, we probably (think about it fresh) *can* apply this patch even if we have a screen hole - I believe the existing patching code re globals already checks to see if the globals are below screen RAM.
 	ldy zp_temp + 1
 	iny
 	bmi complexcaseSFTODONOW
