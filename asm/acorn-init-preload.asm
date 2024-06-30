@@ -515,6 +515,12 @@ deletable_init_start
     dey
     bpl -
 
+    ldy #.z_set_variable_reference_to_value_patch_end - .z_set_variable_reference_to_value_patch_start - 1
+-   lda .z_set_variable_reference_to_value_patch_start,y
+    sta z_set_variable_reference_to_value_patch_entry,y
+    dey
+    bpl -
+
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     lda .show_runtime_info
     beq +
@@ -536,6 +542,15 @@ deletable_init_start
 	lda high_global_vars,y
     jmp zmachine_store_operand
 .read_high_global_var_patch_end
+
+.z_set_variable_reference_to_value_patch_start
+	ldy #0
+	sta (zp_temp),y
+	iny
+	txa
+	sta (zp_temp),y
+	rts
+.z_set_variable_reference_to_value_patch_end
 
 .globals_above_himem
 } ; ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS

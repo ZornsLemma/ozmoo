@@ -699,43 +699,73 @@ read_high_global_var_patch_entry
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
 
+; SF: z_set_variable_reference_to_value is moderately hot. It will be accessing
+; either a local variable (on the stack) or a global variable. The stack is
+; always in main RAM. Global variables may (depending on the memory model and
+; sometimes the specific machine or game) be in main RAM or sideways RAM.
+;
+; Tube and small memory model builds know everything is in main RAM and we don't
+; need to do anything special.
+;
+; For the medium memory model, we know globals are in sideways RAM, but we can
+; get a small statistical performance increase by testing for zp_temp pointing
+; into main RAM and avoiding paging the dynamic memory sideways RAM bank in and
+; out unnecessarily. This is statistical because we have to pay for the test and
+; if a game does mostly global variable accesses, this will be a net loss.
+; Based on benchmarking with HH and MBE2, on average this is a small win (0.25%
+; faster for HH, 0.08% for MBE2) and it only costs 14 bytes of extra code so we
+; do it.
+;
+; For the big memory model, depending on the game and the current machine's
+; memory layout, globals may be in main or sideways RAM. We use the same "check
+; first" code as in the medium model by default - this should be a bigger win
+; than in the medium model case as it's more likely globals are in main RAM. If
+; we have ACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS, we can determine at load time if
+; the globals are in main RAM and patch this code on startup to just assume
+; that. This is likely to be particularly valuable for big memory model builds
+; with a screen hole, as if the globals do end up in main RAM the slower code to
+; work around the screen hole won't be executed.
+!ifndef ACORN {
+	!error "Commodore code removed at z_set_variable_reference_to_value"
+}
 !zone {
 z_set_variable_reference_to_value
 	; input: Value in a,x.
 	;        (zp_temp) must point to variable, possibly using zp_temp + 2 to store bank
 	; affects registers: a,x,y,p
-!ifdef TARGET_X16 {
-	ldy zp_temp + 2
-	sty 0
-} else ifdef FAR_DYNMEM {
-	bit zp_temp + 2
-	bpl .set_in_bank_0
-	ldy #zp_temp
-	sty write_word_far_dynmem_zp_1
-	sty write_word_far_dynmem_zp_2
+!ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
+z_set_variable_reference_to_value_patch_entry
+!ifndef ACORN_SCREEN_HOLE {
+	; Because we are accessing two bytes pointed to by zp_temp, we need to be
+	; sure both are in main RAM. We therefore require the high byte of zp_temp
+	; to be <$7f to rule out the corner case where zp_temp is $7fff. This may
+	; force some accesses down the slow path unnecessarily, but we don't want to
+	; waste cycles and bytes doing the check precisely.
+	ldy zp_temp + 1
+	iny
+	bmi .not_main_ram
 	ldy #0
-	jmp write_word_to_far_dynmem
-.set_in_bank_0
+	sta (zp_temp),y
+	iny
+	txa
+	sta (zp_temp),y
+	rts
+.not_main_ram
 }
-        ; SFTODONOW: I think it is "fairly likely" but not guaranteed we are accessing main RAM here - I believe zp_temp will either point to a local variable on the stack, or a global variable (which may still be in main RAM, but may not be). There may therefore be some mileage in checking if the address (bearing in mind we do Y=0 and Y=1) is in main RAM and avoiding the complex code in that case (only for big model, of course - for small we know it's in main RAM and for medium we know it's in SWR) - note that the bigdyn-and-screen-hole case does this kind of check, to avoid its *very* complex fallback case - we might want to copy that, though it may be we can do better (and if we think of a better way to check, it may be worth copying for the bigdyn-and-screen-hole case too)
-	; SFTODO: THIS IS A RELATIVELY HOT DYNMEM ACCESS (WRT MEM HOLE) - AND SINCE WE ARE ACCESSING TWO BYTES IN ASCENDING ORDER, WE COULD PROBABLY GET SOME BENEFIT (IF IT'S NOT TOO HARD) BY AVOIDING THE MEM HOLE CHECK AND INSERTION FOR THE SECOND WRITE
-	+before_dynmem_read_corrupt_y ; SFTODO: I added this but I think it's correct/necessary
+}
+	+before_dynmem_read_corrupt_y
 !ifndef ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE {
+	; The following code works in all cases, and for tube and small memory model
+	; builds it has no overhead. It would work for the big model with a screen hole,
+	; but we have special optimised code below for that.
 	ldy #0
     +sta_dynmem_ind_y zp_temp
 	iny
 	txa
     +sta_dynmem_ind_y zp_temp
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
-} else {
-	; SF: sta_dynmem_ind_y will take care of the screen hole, but we are
-	; accessing two adjacent bytes here and this is a relatively hot code path,
-	; so we handle it as a special case. We also know Y=0 or 1, which helps us
-	; check things a bit more efficiently. SFTODO: Fairly sure that's why this
-	; code is like this, but review fresh and update comment as appropriate.
-!zone { ; SFTODO TEMP
-SFTODOQQ4
+} else { ; ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 	ldy zp_temp + 1
 	cpy acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
@@ -747,7 +777,7 @@ SFTODOQQ4
 	txa
 	ldy #1
 	sta (zp_temp),y
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
 .zp_y_not_ok
 	; SF: I have forced this case to execute by manually fiddling around with
@@ -764,7 +794,7 @@ SFTODOQQ4
 	iny
 	txa
 	sta (screen_hole_zp_ptr),y
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
 .zp_y_maybe_no_longer_ok
 	; SF: I have forced this case to execute by changing the beq to this code
@@ -774,9 +804,8 @@ SFTODOQQ4
 	txa
 	+sta_dynmem_ind_y zp_temp
 	; SFTODO: Make this next one slow? Seems a bit "unfair", what about the game+machine that happens to hit this case?
-	+after_dynmem_read_corrupt_a ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a
 	rts
-}
 }
 
 .find_global_var
@@ -1067,39 +1096,39 @@ HANG	bcs HANG
 	bcs .write_high_global_var
 	tay
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	sta low_global_vars,y
 	lda z_temp + 1
 	sta low_global_vars + 1,y
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 } else {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_low_global_vars_ptr
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 }
 	rts
 .write_high_global_var
 	tay
 !ifdef ACORN_ABSOLUTE_GLOBALS {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	sta high_global_vars,y
 	lda z_temp + 1
 	sta high_global_vars + 1,y
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 } else {
-	+before_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+before_dynmem_read_corrupt_a_slow
 	lda z_temp
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
 	iny
 	lda z_temp + 1
 	+sta_dynmem_ind_y_slow z_high_global_vars_ptr
-	+after_dynmem_read_corrupt_a_slow ; SFTODO: I added this but I think it's correct/necessary
+	+after_dynmem_read_corrupt_a_slow
 } ; Not ACORN_ABSOLUTE_GLOBALS
 	rts
 } ; Not SLOW

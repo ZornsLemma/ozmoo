@@ -1,3 +1,19 @@
+Benchmarking medium dynmem builds with and without experimental z_set_variable_reference_to_value optimisation. b-em B-1770, mode 7. Optimisation has to test for main or swr each time here, because it's a medium build.
+HH:
+- without optimisation: $8732 $8736 $8735
+- with optimisation: $86de $86dd $86e4 - so 0.25% faster
+MBE2:
+- without optimisation: $5921 $5921 $5921
+- with optimisation: $590f $590f $590f - so 0.08% faster
+So it looks like this optimisation is at least a small win based on these two test cases, and it does only cost 14 bytes. I also suspect the same optimisation can be used in the bigdyn case (where we haven't been able to patch for known globals in main RAM), and it may be a bigger win there at least on bigdyn-with-screen-hole builds because the work involved in the "full" handling is pretty considerable so when we *do* detect a main RAM access to locals on the stack we are saving even more, while the cost of the check is the same as in the medium dyn case.
+
+
+Looking at optimising for main RAM access in z_set_variable_reference_to_value, using B+128K mode 3, HH benchmark, DEBUG_BIG_DYNMEM off:
+- before experimental tweak: $8a7d $8a7c $8a78
+- with experimental tweak: $8a3a $8a38 $8a36 - so 0.19% faster - not great, but it only costs 14 bytes
+- with experimental tweak assuming globals are in main RAM for performance timing: $89fe $89fe $89da - so 0.36% faster than baseline - this still costs 14 bytes as we'd have to have space for the generic version and patch the shorter version over the top during initialisation
+
+
 Looking at doing "global vars" optimisations properly. Using b-em, M128. mode 7 for testing - benchmark builds with bigdyn and program_start is $1300.
 Ignoring the initial timing for the benchmark and just using the final value raw
 Baseline: $8b2f $8b2f $8b28
