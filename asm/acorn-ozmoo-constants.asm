@@ -521,7 +521,7 @@ zchars	+allocate 3
 ; SFTODO: It might be worth making vmap_quick_index_length variable at runtime
 ; based on how much RAM we actually have. (It is used in few enough places the
 ; initialisation code could patch the code up.)
-; SFTODONOW: Given we have freed up a bit of zp on at least some Acorn builds,
+; SFTODO: Given we have freed up a bit of zp on at least some Acorn builds,
 ; it may be worth bumping this vmap_quick_index_length up slightly - but do
 ; some benchmarks, on both small and big machines.
 vmap_quick_index_match	+allocate 1
