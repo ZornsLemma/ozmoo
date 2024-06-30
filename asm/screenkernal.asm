@@ -868,7 +868,7 @@ z_ins_set_colour
 ; user scrolling preference or the size of the upper window is changed.
 acorn_update_scroll_state_subroutine
 !zone {
-    pha ; SFTODONOW: This used to preserve X and Y too, pretty sure just A is fine but do a double check review
+    pha
 
     ; We build up the new value of acorn_scroll_flags in A. Start all bits zero.
     lda #0
