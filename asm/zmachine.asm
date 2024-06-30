@@ -699,6 +699,7 @@ read_high_global_var_patch_entry
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
 
+; SFTODONOW: z_set_variable_reference_to_value is moderately hot. It will be accessing either a local variable (on the stack) or a global variable. Because local variables always live in main RAM, for medium or big dynamic memory builds there is the prospect of a modest performance gain by taking advantage of that. We have no way to know which type of variable we are writing to though, so for medium model builds we have to pay the cycles to check the address and depending on an individual game's variable use, this may or may not be a net win. For big dynamic memory builds with ACORN_ABSOLUTE_GLOBALS, we can in principle work out at initialisation if the globals live in main RAM and if they do we can patch this code to assume it is accessing main RAM.
 !zone {
 z_set_variable_reference_to_value
 	; input: Value in a,x.
