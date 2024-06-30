@@ -770,6 +770,7 @@ z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPRO
 	rts
 } else { ; ACORN_SWR_BIG_DYNMEM_AND_SCREEN_HOLE
 z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE
+	!error "SFTODONOW: THIS IS BROKEN, MBE2 ON B 1700 WITH PAGE &1C00 AND FORCE BIG DYNMEM FAILS IN MODE 6 - IT IS (CORRECTLY) *NOT* PATCHING THIS CODE - IT WORKS IN MODE 7 (WHEN IT DOES PATCH THIS CODE)"
 	ldy zp_temp + 1
 	cpy acorn_screen_hole_start_page
 	bcs .zp_y_not_ok
