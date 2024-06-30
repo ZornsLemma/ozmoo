@@ -699,7 +699,6 @@ read_high_global_var_patch_entry
 
 ; These instructions use variable references: inc,  dec,  inc_chk,  dec_chk,  store,  pull,  load
 
-; SFTODONOW: I am writing the following comment as if I've already implemented this (to avoid having to rewrite it), but I HAVEN'T YET.
 ; SF: z_set_variable_reference_to_value is moderately hot. It will be accessing
 ; either a local variable (on the stack) or a global variable. The stack is
 ; always in main RAM. Global variables may (depending on the memory model and
@@ -737,7 +736,7 @@ z_set_variable_reference_to_value
 	;        (zp_temp) must point to variable, possibly using zp_temp + 2 to store bank
 	; affects registers: a,x,y,p
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
-z_set_variable_reference_to_value_patch_entry ; SFTODONOW APPLY PATCH WHEN APPROPRIATE - NOTE THAT WE WILL PATCH FOR BIGDYN ONLY (BUT BIGDYN WITH OR WITHOUT SCREEN HOLE)
+z_set_variable_reference_to_value_patch_entry
 !ifndef ACORN_SCREEN_HOLE {
 	; Because we are accessing two bytes pointed to by zp_temp, we need to be
 	; sure both are in main RAM. We therefore require the high byte of zp_temp
