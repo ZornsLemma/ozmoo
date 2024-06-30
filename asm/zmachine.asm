@@ -27,7 +27,6 @@ z_test_mode_print = 1
 z_test_mode_print_and_store = 2
 }
 
-; SFTODONOW: Probably fine, but need to review all undo-related stuff
 !ifndef Z5PLUS {
 !ifdef UNDO {
 z_pc_before_instruction !byte 0,0,0
