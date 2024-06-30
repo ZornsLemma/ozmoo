@@ -725,8 +725,6 @@ read_high_global_var_patch_entry
 ; that. This is likely to be particularly valuable for big memory model builds
 ; with a screen hole, as if the globals do end up in main RAM the slower code to
 ; work around the screen hole won't be executed.
-;
-; SFTODONOW: Review the above afterwards to check it is correct etc
 !ifndef ACORN {
 	!error "Commodore code removed at z_set_variable_reference_to_value"
 }
