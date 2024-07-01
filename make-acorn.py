@@ -463,7 +463,7 @@ def make_benchmark_include():
     with open(make_temp("benchmark.asm"), "w") as f:
         f.write("!byte 255\n") # trigger initial time display
         if isinstance(walkthrough, six.string_types):
-            f.write('!text "%s"\n' % walkthrough)
+            f.write('!text "%s:"\n' % walkthrough)
         else:
             for line in walkthrough:
                 f.write('!text "%s", 13\n' % line)
