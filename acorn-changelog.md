@@ -4,6 +4,8 @@
 
 * TODO: CHECK THE BELOW ACTUALLY DID GET INCLUDED
 
+* The BUILD file added to the generated disc image now contains the operating system and Python versions used for the build. I don't think this should be a significant privacy concern, but if you are worried about this you can use the --no-build-file option to disable generation of the BUILD file. Please also let me know so we can discuss your concerns; I'd rather remove this information than have people avoid doing builds with the other useful support information in.
+
 * Medium and big dynamic memory builds now contain special-case code for accessing local variables. We know these are on the stack, so we can avoid paging the sideways RAM bank (if any) containing dynamic memory in and out. (This optimisation was previously applied only to big dynamic memory builds with a screen hole.)
 
 * We use absolute,y addressing instead of (zp),y addressing for accessing global variables when possible, which it usually is - only big dynamic memory builds where there is a screen hole and the global variables live above the screen hole are currently unable to support this. For big dynamic memory builds, we also avoid paging in the sideways RAM bank if we know the global variables are in main RAM. This is implemented using a combination of conditional assembly and dynamic binary patching at runtime. Where we can know at build time that an executable will use absolute addressing, this frees up four bytes of zero page and shrinks the runtime code. The new --no-absolute-globals and --no-runtime-absolute-globals allow this to be disabled if necessary, although this is mainly for debugging and support purposes - barring bugs, there should be no downside to these changes.

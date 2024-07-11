@@ -7,6 +7,7 @@ import copy
 import datetime
 import hashlib
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -1564,7 +1565,9 @@ def make_build_file():
     # In an attempt to avoid the minor privacy leak of including pathnames on the
     # build system in the build file, and to keep the size down, we convert them
     # to just the basename.
-    data = ""
+    data = "%s\r" % platform.platform()
+    data += "python %s\r" % ".".join(str(x) for x in sys.version_info)
+
     for name, version in sorted(tool_versions.items()):
         data += "%s\r" % version
     for arg in sys.argv:
