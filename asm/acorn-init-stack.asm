@@ -463,7 +463,7 @@ deletable_screen_init_2
     jsr oswrch
 .mode_set
     ; Setting the mode will have turned the cursor back on, so fix that.
-    jsr init_cursor_control
+    jsr force_os_cursor_to_cursor_status
     ; We must re-initialise screenkernal to pick up the details of the new mode.
     jsr screenkernal_init
     ; We must also reset the window sizes; we do this by re-executing

@@ -1541,6 +1541,7 @@ turn_off_cursor
     ; corresponding to zp_screen{column,row}, which is where it "should" have
     ; been all along.
     jsr s_cursor_to_screenrowcolumn
+force_os_cursor_to_cursor_status
 .cursor_control
     lda #vdu_miscellaneous
     jsr oswrch
