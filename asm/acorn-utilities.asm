@@ -365,8 +365,6 @@ do_oswrch_xy
     txa
     jsr oswrch
     tya
-    ; SFTODO: Probably a smidge iffy but we could bpl always to the jmp osbyte
-    ; above to save a byte.
     jmp oswrch
 
 ; SF: ENHANCEMENT: It would potentially be possible to support bold and
