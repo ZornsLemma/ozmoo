@@ -1552,8 +1552,7 @@ force_os_cursor_to_cursor_status
     jsr oswrch
     ldx #6
 do_x_plus_1_oswrch_0_with_vsync
-    lda #0
--   jsr oswrch
+-	jsr .oswrch_0
     dex
     bne -
     ; The VDU 23 command now lacks one byte to be complete, so let's wait for
@@ -1565,6 +1564,7 @@ do_x_plus_1_oswrch_0_with_vsync
     ; idea (debatable) doing it would cause more confusion than it's worth.
     lda #osbyte_wait_for_vsync
     jsr osbyte
+.oswrch_0
     lda #0
     jmp oswrch
 }
