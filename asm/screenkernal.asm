@@ -699,10 +699,10 @@ s_pre_scroll_leave_cursor_in_place
     ; SFTODO: hoglet points out that we define and clear this text window a lot - we may get better performance if we can leave it in place most of the time. However, do note that unless I've done something silly, we only have this text window when we're soft-scrolling (which is the default only in mode 7) - certainly an important case, but mode 7 is already nice and fast anyway. Definitely worth not doing things sub-optimally, but this may not be a massive win with respect to speed. If we can tweak/rewrite things to shorten the code that's always a win. (hoglet's observation was made in the context of an ongoing port to Atom+tube, when settings etc may have been a bit weird by our standards.)
     lda #vdu_define_text_window
     jsr oswrch
-    lda #0
     ; We don't need to update zp_screencolumn, our caller will have done it.
+    ; lda #0
     ; sta zp_screencolumn ; leave the ozmoo cursor at the start of the line
-    jsr oswrch
+    jsr oswrch_0
     +lda_screen_height_minus_one
     sta zp_screenrow ; leave the ozmoo cursor on the last line
     jsr oswrch
