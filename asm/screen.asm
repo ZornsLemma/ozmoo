@@ -1498,11 +1498,11 @@ draw_status_line
     ; is a software creation.) We allow it to remain in "illogical" positions
     ; while it's invisible and only position it where it belongs when it's turned
     ; on, as it is during user input.
-	; SFTODONOW: Can we move init_cursor_control into acorn-init-stack.asm? Would save 7 bytes... Just possibly we don't *really* need to call it from the stack-init code and we can move this into preload, but need to check how code works.
-init_cursor_control
+!macro init_cursor_control_inline {
     lda #$ff
     sta cursor_status
-    bne .cursor_control ; Always branch
+    jsr force_os_cursor_to_cursor_status
+}
 
     ; turn_off_cursor and turn_on_cursor adjust the value in cursor_status
     ; rather than setting a flag so they can be nested safely; the cursor should

@@ -285,7 +285,7 @@ deletable_init_start
 
     +prepare_static_high_memory_inline
     +init_readtime_inline
-    jsr init_cursor_control
+    +init_cursor_control_inline
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     ; {{{ Enable or disable runtime debug information.
