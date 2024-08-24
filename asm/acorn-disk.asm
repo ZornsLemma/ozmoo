@@ -621,10 +621,9 @@ ACORN_SAVE_RESTORE_OSFILE = 1
     lda #>scratch_page
     sta readblocks_mempos + 1
     jsr readblocks
-    lda #0
     ldx #<scratch_page
     ldy #>scratch_page
-    jsr calculate_crc
+    jsr calculate_crc_256
     cpx game_disc_crc
     bne .crc_bad
     cpy game_disc_crc + 1

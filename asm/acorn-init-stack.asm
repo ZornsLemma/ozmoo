@@ -389,10 +389,9 @@ deletable_init
 !ifdef ACORN_SWR_MEDIUM_DYNMEM {
     +acorn_page_in_bank_using_a dynmem_ram_bank
 }
-    lda #0
     ldx #<story_start
     ldy #>story_start
-    jsr calculate_crc
+    jsr calculate_crc_256
     stx game_disc_crc
     sty game_disc_crc + 1
 

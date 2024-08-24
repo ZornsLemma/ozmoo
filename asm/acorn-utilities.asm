@@ -280,14 +280,11 @@ printstring_os
    inc .printstring_os_lda + 2
    bne - ; Always branch
 
-; SFTODONOW: I think we always call this with A=0, so we could simplify callers and avoid doing sta .cpy_imm + 1, and in fact get rid of the cpy too (as we're comparing against 0).
-; Calculate a CRC over A bytes of data at YX (A=0 => 256 bytes), returning it in
-; YX.
-calculate_crc
+; Calculate a CRC over 256 bytes of data at YX, returning it in YX.
+calculate_crc_256
 ; This must not use the same location as .result in acorn-disk.asm as otherwise
 ; when .get_game_disc_back calls calculate_crc it will be overwritten.
 .crc = transient_zp ; 2 bytes
-    sta .cpy_imm + 1
     stx .eor_abs + 1
     sty .eor_abs + 2
     lda #0
@@ -316,8 +313,6 @@ calculate_crc
     dex
     bne .loop
     iny
-.cpy_imm
-    cpy #$ff ; patched by code above
     bne .nbyt
     ldx .crc
     ldy .crc + 1
