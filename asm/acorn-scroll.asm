@@ -886,3 +886,8 @@ common_init
 
 ; SFTODO: Move vdu_down constant to shared constants header and use it in this
 ; code instead of literal 10 all over the place?
+
+; SFTODO: Probably not, but is there any code in the OS ROM we could use to do
+; the necessary copying of data in screen RAM? This would be particularly
+; valuable on the B+ as it would allow us to use fast hardware scrolling even if
+; the private RAM is in use by something else.
