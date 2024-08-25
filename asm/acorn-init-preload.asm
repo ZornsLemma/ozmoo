@@ -286,6 +286,11 @@ deletable_init_start
     +prepare_static_high_memory_inline
     +init_readtime_inline
     +init_cursor_control_inline
+    ; We need to have done streams_init for ACORN_SHOW_RUNTIME_INFO to work. But
+    ; of course we need to do it before running game code too, and by doing it
+    ; here rather than just before starting we avoid wasting stack space on this
+    ; code.
+    +streams_init_inline
 
 !ifdef ACORN_SHOW_RUNTIME_INFO {
     ; {{{ Enable or disable runtime debug information.
@@ -300,9 +305,6 @@ deletable_init_start
     tya
     beq .no_runtime_info
 
-    ; Call streams_init here so we can output succesfully; this is a little bit
-    ; hacky but not a huge problem (and this is debug-only code).
-    jsr streams_init
     jsr .prepare_for_runtime_info_output
 
     ; Output some basic information we know already without further logic.
@@ -583,7 +585,7 @@ deletable_init_start
 !ifdef TRACE_FLOPPY {
     ; Call streams_init so the tracing is able to show the readblocks calls
     ; performed here.
-	jsr streams_init
+	; jsr streams_init ; we did this earlier
 }
 
 !ifndef ACORN_ADFS {

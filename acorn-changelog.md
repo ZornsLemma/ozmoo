@@ -28,6 +28,8 @@
 
 * For Z3 games, select either the score or time game code at build time rather than runtime, avoiding the need to include both in the executable. This shrinks the code by around 133 bytes for a score game.
 
+* Move streams_init to discardable init code, shrinking the runtime code by 25 bytes.
+
 * Miscellaneous other micro-optimisations to save a few bytes/cycles. I haven't counted but I suspect cumulatively these save at least 30 bytes.
 
 ## 14.22 (alpha 57)

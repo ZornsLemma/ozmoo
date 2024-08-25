@@ -669,8 +669,7 @@ character_translation_table_out_mappings_end
 }
 
 
-; SFTODONOW: I think this can be moved into acorn-init-stack and depending on exactly how the code works, we may be able to get away with moving it into acorn-init-preload
-streams_init
+!macro streams_init_inline {
 	; Setup/Reset streams handling
 	; input: 
 	; output:
@@ -685,8 +684,8 @@ streams_init
 	stx streams_buffering
 	stx streams_buffering + 1
 	stx streams_output_selected
-	rts
-	
+}
+
 streams_print_output
 	; Print a ZSCII character
 	; input:  character in a

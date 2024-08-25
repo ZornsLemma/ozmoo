@@ -1993,7 +1993,9 @@ initialize
 	jsr parse_terminating_characters
 }
 
+!ifndef ACORN { ; on Acorn this is done from acorn-init-preload.asm
 	jsr streams_init
+}
 	jmp .initialize2
 
 !ifdef ACORN {
