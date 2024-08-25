@@ -872,7 +872,6 @@ z_get_variable_reference_and_value
 	jsr stack_get_ref_to_top_value
 	stx zp_temp
 	sta zp_temp + 1
-	; SFTODONOW: Can we use z_get_referenced_value_simple if we have it? I think so, but think this through again.
 !ifdef ACORN_SWR_MEDIUM_OR_BIG_DYNMEM {
 	jmp z_get_referenced_value_simple
 } else {
@@ -898,7 +897,6 @@ z_get_variable_reference_and_value
 	; Here we know we are accessing the Z-machine stack, which is always in main RAM,
 	; so we have this special code to avoid paging in the dynamic memory bank or
 	; (if we have one) working around the screen hole.
-	; SFTODONOW: Think that through fresh, do we know?
 z_get_referenced_value_simple
 !ifdef ACORN_DEBUG_ASSERT {
 	lda zp_temp+1
