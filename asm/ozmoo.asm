@@ -1794,12 +1794,36 @@ prepare_static_high_memory
 
 } ; End of VMEM
 
+.initialize_continued
+	jsr deletable_init ; this will load game data at story_start
+	jsr parse_object_table
+!ifndef Z5PLUS {
+	; Setup default dictionary
+	jsr parse_default_dictionary
+}
+
+!ifdef Z5PLUS {
+	; set up terminating characters
+	jsr parse_terminating_characters
+}
+
+	; jsr streams_init - on Acorn this is done from acorn-init-preload.asm
+	jmp .initialize2
+
 !ifdef ACORN {
 	!source "acorn-init-stack.asm"
 }
 
 end_of_routines_in_stack_space
 
+; Optionally waste the rest of the space in the stack so any code which isn't
+; protected by our build-time check on end_of_routines_in_stack_space will be
+; forced into memory where it gets overwritten as the game data loads.
+!ifdef ACORN_DEBUG_PRELOAD_CODE {
+	!fill (stack_start + stack_size) - end_of_routines_in_stack_space, 0
+}
+
+; SFTODO: It would probably be cleaner to move .initialize into acorn-init-preload.asm
 ; SF: This code has been moved within this file compared to the Commodore
 ; version. This allows us to save approximately 21 bytes by making the first
 ; part of .initialize discardable initialization code.
@@ -1817,21 +1841,7 @@ initialize
 	jsr deletable_init_start
 ;	jsr init_screen_colours
 	jsr deletable_screen_init_1
-	jsr deletable_init ; this will load game data at story_start
-	; SFTODONOW: Do we in fact rely on the code between here and jmp .initialize2 fitting in stack space, despite coming after end_of_routines_in_stack_space?
-	jsr parse_object_table
-!ifndef Z5PLUS {
-	; Setup default dictionary
-	jsr parse_default_dictionary
-}
-
-!ifdef Z5PLUS {
-	; set up terminating characters
-	jsr parse_terminating_characters
-}
-
-	; jsr streams_init - on Acorn this is done from acorn-init-preload.asm
-	jmp .initialize2
+	jmp .initialize_continued
 
     ; It's fine for code to spill over past story_start *as long as it's going
     ; to be executed before it gets overwritten*. We don't have any preload data
