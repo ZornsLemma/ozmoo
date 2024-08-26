@@ -733,6 +733,9 @@ fatalerror
 } else {
 -   jmp -
 }
+} ; ifdef DEBUG
+
+!ifdef DEBUG {
 
 !ifndef ACORN {
 .saved_a !byte 0
@@ -1109,7 +1112,7 @@ print_bad_zscii_code
 } else {
 	!text "0123456789abcdef"
 }
-} ; ifdef DBUG
+} ; ifdef DEBUG
 
 
 
