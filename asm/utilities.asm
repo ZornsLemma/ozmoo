@@ -815,7 +815,6 @@ colon
 	plp
 	rts
 
-	; SFTODONOW: I may be confused but it looks like this (and possibly lots of other subroutines here) are included in non-DEBUG builds but never used, in which case there is a lot of potential for space saving.
 arrow
 	; subroutine: print ->
 	; input: 
