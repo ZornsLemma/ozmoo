@@ -30,6 +30,8 @@
 
 * Move streams_init to discardable init code, shrinking the runtime code by 25 bytes.
 
+* Some initialisation code has been shuffled around, shrinking the runtime code by 9 bytes. Some code which should have always been located in the Z-machine stack during initialisation (and always was, in practice) has now been moved so it is explicitly located there.
+
 * Miscellaneous other micro-optimisations to save a few bytes/cycles. I haven't counted but I suspect cumulatively these save at least 30 bytes.
 
 ## 14.22 (alpha 57)

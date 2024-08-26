@@ -943,28 +943,6 @@ c128_border_phase1
 ; c64_model !byte 0 ; 1=NTSC/6567R56A, 2=NTSC/6567R8, 3=PAL/6569
 ; SFTODO: Looks like upstream supports scrollback with a REU; could we support this on Acorn?
 
-.initialize2
-!ifndef ACORN {
-	jsr stack_init
-} else {
-	; This is inlined at the start of deleteable_screen_init_2 on Acorn.
-        ; SFTODONOW: On Acorn we have I think literally three jsrs here. Can we not
-        ; just move them to the code which does jmp initialize2? It would save six bytes but it would be trivial and actually kind of cleaner without all this Commodore code obscuring the actual control flow.
-}
-
-	jsr deletable_screen_init_2
-
-	jsr z_init
-
-!ifdef SCROLLBACK {
-	lda scrollback_supported
-	sta scrollback_enabled
-}
-
-	jsr z_execute ; SFTODONOW MAKE THIS A JMP? NO BIG DEAL BUT IT SAVES TWO BYTES OF STACK
-	; On Acorn we don't use z_exe_mode_exit, so z_execute can't return.
-
-
 ; SF: This is upstream code but moved so I can put it in a macro and inline it
 ; in a different place on Acorn.
 ; SFTODO: This is now so short can we just get rid of it as a macro?
@@ -1808,7 +1786,22 @@ prepare_static_high_memory
 }
 
 	; jsr streams_init - on Acorn this is done from acorn-init-preload.asm
-	jmp .initialize2
+
+	; jsr stack_init - this is done at the start of deletable_screen_init_2 on Acorn
+
+	jsr deletable_screen_init_2
+
+	jsr z_init
+
+!ifdef SCROLLBACK {
+	lda scrollback_supported
+	sta scrollback_enabled
+}
+
+	; On Acorn we don't use z_exe_mode_exit, so z_execute can't return. We
+	; therefore jmp to it; this saves two bytes of stack which just might be
+	; helpful and has no real downside.
+	jmp z_execute
 
 !ifdef ACORN {
 	!source "acorn-init-stack.asm"
