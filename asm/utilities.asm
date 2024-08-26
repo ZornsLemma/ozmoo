@@ -677,6 +677,7 @@ ERROR_DIVISION_BY_ZERO = 17
 	!byte <.error_division_by_zero
 }
 
+	; SFTODONOW: I think we can avoid including fatalerror at all unless at least one of CHECK_ERRORS or DEBUG is defined.
 fatalerror
 	; prints the error, then resets the computer
 	; input: a (error code)
