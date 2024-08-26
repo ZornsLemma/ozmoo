@@ -78,6 +78,10 @@ CHAIN "LOADER"
 END
 
 DEF FNusr_osbyte_x(A%,X%,Y%)=(USR&FFF4 AND &FF00) DIV &100
+
+REM Note that if we're running on the tube this still returns the value of HIMEM
+REM in the host, so it should successfully detect cases where shadow RAM is forced
+REM on even then.
 DEF FNmode_himem(X%):A%=&85:=(USR&FFF4 AND &FFFF00) DIV &100
 
 DEF PROCerror:REPORT:PRINT" at line ";ERL:*FX229
