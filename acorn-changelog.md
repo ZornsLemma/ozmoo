@@ -32,6 +32,8 @@
 
 * Some initialisation code has been shuffled around, shrinking the runtime code by 9 bytes. Some code which should have always been located in the Z-machine stack during initialisation (and always was, in practice) has now been moved so it is explicitly located there.
 
+* Omit fatalerror and printinteger code for builds which don't define DEBUG or CHECK_ERRORS. Benchmark builds always define DEBUG, but normal builds don't define either by default and this shrinks the runtime code by 124 bytes.
+
 * Miscellaneous other micro-optimisations to save a few bytes/cycles. I haven't counted but I suspect cumulatively these save at least 30 bytes.
 
 ## 14.22 (alpha 57)

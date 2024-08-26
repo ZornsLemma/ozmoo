@@ -675,9 +675,15 @@ ERROR_DIVISION_BY_ZERO = 17
 	!byte <.error_too_many_terminators
 	!byte <.error_no_vmem_index
 	!byte <.error_division_by_zero
+} ; DEBUG
+
+!ifdef DEBUG {
+	WANT_FATALERROR = 1
+} else ifdef CHECK_ERRORS {
+	WANT_FATALERROR = 1
 }
 
-	; SFTODONOW: I think we can avoid including fatalerror at all unless at least one of CHECK_ERRORS or DEBUG is defined.
+!ifdef WANT_FATALERROR {
 fatalerror
 	; prints the error, then resets the computer
 	; input: a (error code)
@@ -711,7 +717,7 @@ fatalerror
 -   jmp -
 .fatal_error_string !text "fatal error: ",0
 }
-} else {
+} else { ; DEBUG
 	pha
 	jsr print_following_string
 	!text "fatal error ", 0
@@ -734,6 +740,7 @@ fatalerror
 -   jmp -
 }
 } ; ifdef DEBUG
+} ; WANT_FATALERROR
 
 !ifdef DEBUG {
 
@@ -937,6 +944,7 @@ printa
 	plp
 	rts
 
+; SFTODONOW: Is this completely unused even on debug builds?
 pause
 	; subroutine: print newline
 	; input: 
@@ -1116,7 +1124,7 @@ print_bad_zscii_code
 
 
 
-	; SFTODONOW: On Acorn non-debugging (various macros, not just DEBUG, I think) builds this *may* only be used for fatalerror. Could we get rid of it and perhaps replace it with a hex print routine to save space? Also, if this is only used for fatal errors, can we get away without temp2 and its associated code? Even if we do want to keep temp2, could we just stack the data to at least save ~12 bytes?
+!ifdef WANT_FATALERROR {
 printinteger
 	; subroutine: print 16 bit integer value
 	; input: a,x (x = low, a = high);
@@ -1159,6 +1167,7 @@ printinteger
 .temp2
     !fill 12 ; for saving z_temp
 }
+} ; WANT_FATALERROR
 
 printstring
 	; input: a,y (lo/hi)
