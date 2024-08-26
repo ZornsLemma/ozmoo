@@ -10,6 +10,10 @@
 ;Z8 = 1
 
 ; SFTODO: It may be worth deleting lots of the Commodore code in this file, it is probably one of the more divergent bits of the Acorn port.
+; OK, I have "started" this (i.e. I have deleted a bit of Commodore code where I was reshuffling something), but this is not "done".
+!ifndef ACORN {
+	!error "Non-Acorn code has been deleted in this file"
+}
 
 ; Which machine to generate code for
 !ifndef ACORN { ; SFTODO!?
@@ -934,44 +938,9 @@ c128_border_phase1
 }
 !source "constants-header.asm"
 
-!if SUPPORT_REU = 1 {
-progress_reu = parse_array
-reu_progress_ticks = parse_array + 1
-reu_last_disk_end_block = string_array ; 2 bytes
-!ifdef REUBOOST {
-!ifdef Z4PLUS {
-	!ifdef Z7PLUS {
-		reu_boost_hash_pages = 8
-	} else {
-		reu_boost_hash_pages = 4
-	}
-} else {
-	reu_boost_hash_pages = 2
-}
-
-reu_boost_mode !byte 0 ; Set to $ff to activate
-reu_boost_hash_table = (first_banked_memory_page - reu_boost_hash_pages) * 256
-
-; The values calculated here for reu_boost_area_start_page and reu_boost_area_pagecount
-; are correct for C128. For C64, they are changed at runtime, as they can't be calculated
-; until dynmem size is known. 
-
-reu_boost_area_start_page !byte >story_start
-reu_boost_area_pagecount !byte (>reu_boost_hash_table) - (>story_start)
-} ; ifdef REUBOOST
-} ; if SUPPORT_REU = 1
-
 ; global variables
 ; filelength !byte 0, 0, 0
-!ifdef TARGET_MEGA65 {
-fileblocks !byte 0, 0, 0
-}
 ; c64_model !byte 0 ; 1=NTSC/6567R56A, 2=NTSC/6567R8, 3=PAL/6569
-!ifndef ACORN {
-!ifdef VMEM {
-game_id		!byte 0,0,0,0
-}
-}
 ; SFTODO: Looks like upstream supports scrollback with a REU; could we support this on Acorn?
 
 .initialize2
@@ -985,87 +954,15 @@ game_id		!byte 0,0,0,0
 
 	jsr deletable_screen_init_2
 
-!ifndef ACORN {
-!ifndef TARGET_X16 {
-	lda #0
-	sta keyboard_buff_len
-}
-}
-
 	jsr z_init
-
-!ifdef TARGET_C128 {
-	; Let's speed things up.
-	; this needs to be after the z_init call since 
-	; z_init uses SID to initialize the random number generator
-	; and SID doesn't work in fast mode.
-	bit COLS_40_80
-	bpl +
-	; 80 columns mode
-	; switch to 2MHz
-	lda #use_2mhz_in_80_col_in_game_value
-	sta use_2mhz_in_80_col
-	sta reg_2mhz	;CPU = 2MHz
-	lda $d011
-	; Clear top bit (to not break normal interrupt) and bit 4 to blank screen 
-	and #%01101111
-	sta $d011
-	jmp ++
-+	; 40 columns mode
-!ifndef SMOOTHSCROLL {
-	; use 2MHz only when rasterline is in the border for VIC-II
-	sei 
-	lda #<c128_border_phase2
-	ldx #>c128_border_phase2
-	sta $0314
-	stx $0315
-	lda $d011
-	and #$7f ; high raster bit = 0
-	sta $d011
-	lda #251 ; low raster bit (1 raster beyond visible screen)
-	sta $d012
-	cli
-}
-++
-}
 
 !ifdef SCROLLBACK {
 	lda scrollback_supported
 	sta scrollback_enabled
 }
 
-	jsr z_execute
-
+	jsr z_execute ; SFTODONOW MAKE THIS A JMP? NO BIG DEAL BUT IT SAVES TWO BYTES OF STACK
 	; On Acorn we don't use z_exe_mode_exit, so z_execute can't return.
-!ifndef ACORN {
-!ifdef TARGET_C128 {
-	jmp c128_reset_to_basic
-} else ifdef TARGET_PLUS4 {
-	lda #$01
-	sta $2b
-	lda #$10
-	sta $2c
-	jmp basic_reset
-} else ifdef TARGET_X16 {
-!ifdef TARGET_X16 {
-	!ifdef CUSTOM_FONT {
-		lda #2
-		jsr $ff62
-	}
-    lda #$09 ; Unlock font selection
-    jsr $ffd2
-	jmp x16_restore_basic_zp
-}
-	; stz 1
-	; jmp ($fffc)
-} else {
-	; Back to normal memory banks
-	lda #%00110111
-	sta 1
-;	+set_memory_normal
-	jmp (basic_reset)
-}
-} ; Not ACORN
 
 
 ; SF: This is upstream code but moved so I can put it in a macro and inline it
@@ -1488,12 +1385,6 @@ calc_dynmem_size
 	
 program_end
 
-; SF: The alignment is complex enough without interweaving it (probably
-; brokenly) with the Commodore code, so I've removed the Commodore code.
-!ifndef ACORN {
-	!error "Non-Acorn code at program_end has been removed"
-}
-
 ; SF: It can be helpful for testing paged RAM builds to burn some non-paged RAM.
 !ifdef WASTE_BYTES {
     !fill WASTE_BYTES
@@ -1641,26 +1532,6 @@ deletable_screen_init_1
 }
 	+init_screen_model
 	rts
-
-!ifndef ACORN {
-deletable_screen_init_2
-!ifdef SMOOTHSCROLL {
-	jsr toggle_smoothscroll
-}
-	; clear and unsplit screen, start text output from bottom of the screen (top of screen if z5)
-	ldy #1
-	sty is_buffered_window
-	ldx #$ff
-	jsr erase_window
-	jmp start_buffering
-} else {
-    ; Don't clear the screen; on Acorn we are going to spend several seconds
-    ; doing the preload in deletable_init so we want to leave whatever the
-    ; loader left on screen up while we do that. deletable_screen_init_2 will
-    ; set is_buffered_window and call erase_window so everything will still be
-    ; set up properly when we start executing the game's code.
-    rts
-}
 
 z_init
 !zone z_init {
@@ -1936,14 +1807,9 @@ end_of_routines_in_stack_space
 !ifdef ACORN_RELOCATABLE {
 initialize
 }
-!ifndef ACORN {
-	cld
-	cli
-} else {
     ; Reset the stack pointer; setjmp relies on this.
     ldx #$ff
     txs
-}
 !ifdef TESTSCREEN {
 	jmp testscreen
 }
@@ -1951,37 +1817,8 @@ initialize
 	jsr deletable_init_start
 ;	jsr init_screen_colours
 	jsr deletable_screen_init_1
-!ifndef ACORN {
-!if SPLASHWAIT > 0 {
-	jsr splash_screen
-}
-
-!ifdef VMEM {
-!ifdef TARGET_C64 {
-	; set up C64 SuperCPU if any
-	; see: http://www.elysium.filety.pl/tools/supercpu/superprog.html
-	lda $d0bc ; SuperCPU control register (read only)
-	and #$80  ; DOS extension mode? 0 if SuperCPU, 1 if standard C64
-	beq .supercpu
-	;bne .nosupercpu
-	; it doesn't matter what you store in the SuperCPU control registers
-	; it is just the access itself that counts
-	;sta $d07e ; enable hardware registers
-	;sta $d076 ; basic optimization
-	;sta $d077 ; no memory optimization
-	;sta $d07f ; disable hardware registers
-	;sta $d07a ; normal speed (1 MHz)
-}
-	; SuperCPU and REU doesn't work well together
-	; https://www.lemon64.com/forum/viewtopic.php?t=68824&sid=330a8c62e22ebd2cf654c14ae8073fb9
-	;
-!if SUPPORT_REU = 1 {
-	jsr reu_start
-}
-.supercpu
-}
-}
-	jsr deletable_init
+	jsr deletable_init ; this will load game data at story_start
+	; SFTODONOW: Do we in fact rely on the code between here and jmp .initialize2 fitting in stack space, despite coming after end_of_routines_in_stack_space?
 	jsr parse_object_table
 !ifndef Z5PLUS {
 	; Setup default dictionary
@@ -1993,12 +1830,9 @@ initialize
 	jsr parse_terminating_characters
 }
 
-!ifndef ACORN { ; on Acorn this is done from acorn-init-preload.asm
-	jsr streams_init
-}
+	; jsr streams_init - on Acorn this is done from acorn-init-preload.asm
 	jmp .initialize2
 
-!ifdef ACORN {
     ; It's fine for code to spill over past story_start *as long as it's going
     ; to be executed before it gets overwritten*. We don't have any preload data
     ; attached, unlike the C64, so this doesn't cause problems.
@@ -2009,21 +1843,7 @@ initialize
     !source "acorn-relocate.asm"
 }
 end_of_routines
-} ; ACORN
 
-!ifndef ACORN {
-	!fill stack_size - (* - stack_start),0 ; 4 pages
-story_start
-
-!ifdef vmem_cache_size {
-!if vmem_cache_size >= $200 {
-	config_load_address = vmem_cache_start
-}
-}
-!ifndef config_load_address {
-	config_load_address = SCREEN_ADDRESS
-}
-} else { ; ACORN
 	!if (end_of_routines_in_stack_space - stack_start) > stack_size {
 		!error "Routines in stack space have overflowed stack by ", end_of_routines_in_stack_space - stack_start - stack_size, " bytes"
 	}
@@ -2042,7 +1862,6 @@ story_start
 
 	!align 255, 0, 0
 scratch_overlapping_game_start
-}
 
 
 ; SFTODO: MODE_7_STATUS and MODE_7_INPUT should probably have ACORN_ prefix.
