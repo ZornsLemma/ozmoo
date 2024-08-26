@@ -890,4 +890,15 @@ common_init
 ; SFTODO: Probably not, but is there any code in the OS ROM we could use to do
 ; the necessary copying of data in screen RAM? This would be particularly
 ; valuable on the B+ as it would allow us to use fast hardware scrolling even if
-; the private RAM is in use by something else.
+; the private RAM is in use by something else. Looking at TobyLobster's OS 1.2
+; disassembly (even though OS 2.0 is what's mainly of interest, I guess they
+; will be similar), *vaguely* useful looking code is at copyCharacterRow (we
+; could enter just after the LDY #0 if desired), copyCharacterLineOfTextWindow
+; (probably too much unwanted junk after the copy and before the RTS though) and
+; clearOneLine (quite a bit of fluff). If these exist in OS 2.0 in a similar
+; form, while they'd be slower than our unrolled custom loop, they might provide
+; an option to implement an *extra* (not replacement) fast scroll in here for B+
+; with no private RAM available which would be better than falling back to slow
+; hardware scrolling. Unless someone actually expresses an interest it's
+; probably not worth the faff though.
+;
