@@ -13,9 +13,17 @@
 ; continue to allow the use of shadow RAM for screen memory.
 ;
 ; This always runs in the host; if a second processor is present we want to
-; install the driver in the host for use with the host cache. (This also avoids
-; the problem with the Watford DFS use of *FX111 not being tube-compatible; see
+; install the driver in the host for use with the host cache. (This also
+; sidesteps concerns with older Watford DFS's use of *FX111 not being
+; tube-compatible, although I think it is actually tube-compatible anyway. See
 ; the code at bbc_b_not_integra_b.)
+
+; SFTODO: This code barely fits in the space it has available at &900-&B00
+; and if we want to add a new shadow driver there is no way it's going to be
+; squashable. We really ought to be running this from somewhere in main RAM,
+; creating space by moving HIMEM down in the loader if necessary. (The runtime
+; shadow driver is fine, it's this code which decides which driver to install
+; in the runtime shadow driver space that's the problem.)
 
 !source "acorn-shared-constants.asm"
 
@@ -69,7 +77,7 @@ start
     sta private_ram_in_use
 }
     lda #shadow_state_integra_b
-    jmp set_shadow_state_from_a_and_install_driver
+    bne set_shadow_state_from_a_and_install_driver ; always branch
 not_integra_b
     ; Determine the host type.
     lda #osbyte_read_host
@@ -90,18 +98,18 @@ not_integra_b
     bne electron_not_mrb
     ; We're on an Electron with Master RAM Board shadow RAM.
     lda #shadow_state_mrb
-    jmp set_shadow_state_from_a_and_install_driver
+    bne set_shadow_state_from_a_and_install_driver ; always branch
 bbc_b_plus
     lda #128
     jsr test_private_ram_in_use
     lda #shadow_state_b_plus_os
     ldy private_ram_in_use
-    bne +
+    bne set_shadow_state_from_a_and_install_driver
     lda #shadow_state_b_plus_private
-+   jmp set_shadow_state_from_a_and_install_driver
+    bne set_shadow_state_from_a_and_install_driver ; always branch
 master
     lda #shadow_state_master
-    jmp set_shadow_state_from_a_and_install_driver
+    bne set_shadow_state_from_a_and_install_driver ; always branch
 electron_not_mrb
     ; We're on an Electron with shadow RAM but it's not a Master RAM board. We
     ; don't know how to access spare shadow RAM on this hardware, so leave
@@ -116,13 +124,6 @@ osbyte_111_failed
     ; *FX111 didn't return the expected result, so neither *FX34 nor *FX111
     ; works and we therefore don't know how to access the spare shadow RAM.
     ; Leave shadow_state alone; it's already shadow_state_screen_only.
-    ; SFTODO: This is different from earlier versions of Ozmoo, where if *FX111
-    ; returned an unexpected value we failed with an informative error. Is this
-    ; change OK? It is friendlier to owners of non-Aries/Watford shadow RAM, who
-    ; at least get to use it for screen memory instead of an error, but it might
-    ; allow users vulnerable to the *FX111 use by an older Watford DFS to live in
-    ; ignorance until they eventually get bitten by it. Gut feeling is doing it
-    ; the new way is best, but think about it fresh.
 no_shadow_ram
     ; Leave shadow_state alone; it's already shadow_state_none.
     rts
@@ -160,13 +161,13 @@ bbc_b_not_integra_b
     ; they have the DFS in a higher priority bank than the shadow RAM support
     ; ROM as well. Anyone with that kind of setup is likely to run into problems
     ; with other software trying to use *FX111 as well. Our test for the return
-    ; value of *FX111 will probably detect a clash here, but there's no
-    ; guarantee. If a clash is detected, we will run with shadow RAM for screen
-    ; memory only; if we fail to detect a clash we'll try to use spare shadow
-    ; RAM via *FX111 and the game is likely to crash at runtime. To solve this,
-    ; the user either needs to upgrade the DFS, disable their shadow RAM or,
-    ; probably, reorder their ROMs so the shadow RAM driver ROM gets dibs on
-    ; *FX111.
+    ; value of *FX111 should reliably detect a clash, and in that case we'll run
+    ; with shadow RAM for screen memory only. To allow full use of shadow RAM in
+    ; this case, the user either needs to upgrade the DFS or, probably, reorder
+    ; their ROMs so the shadow RAM driver ROM gets dibs on *FX111.
+    ;
+    ; We *could* generate an error if *FX111 is claimed by Watford DFS, so the
+    ; user can maybe fix it, but they'd probably rather have the game run.
 
     ; We use *FX34,64 to read the current shadow state but we don't check the
     ; return value precisely; all we care about is whether the call is
@@ -177,57 +178,87 @@ bbc_b_not_integra_b
     inx
     beq not_watford
     lda #shadow_state_watford
-    jmp set_shadow_state_from_a_and_install_driver
+    bne set_shadow_state_from_a_and_install_driver ; always branch
+
+    ; This code lives at this illogical place in the source because otherwise
+    ; the +copy_data_checked macro call below won't assemble. Sigh.
+shadow_driver_b_plus_private_high
+!pseudopc shadow_copy_private_ram {
+    sta .lda_abs_y+2
+    sty .sta_abs_y+2
+    ldy #0
+.copy_loop
+.lda_abs_y
+    lda $ff00,Y ; patched
+.sta_abs_y
+    sta $ff00,y ; patched
+    dey
+    bne .copy_loop
+    jmp stub_finish
+}
+shadow_driver_b_plus_private_high_end
+
 not_watford
-    ; *FX34 doesn't work. Try *FX111. We do this for two reasons. Firstly, if it
-    ; fails, we obviously have some kind of unknown shadow RAM and we must
-    ; content ourselves with using shadow RAM only for screen memory. Secondly,
-    ; this gives us a chance to test (imperfectly) if *FX111 is being picked up
-    ; by an older Watford DFS.
-    ;
-    ; If OSBYTE 111 is controlling shadow RAM state, X after *FX111,&40 will be
-    ; the shadow state (i.e. 1, as we're in a shadow mode at this point). If
-    ; OSBYTE 111 is being picked up by an older Watford DFS and used to return
-    ; the current drive, X will *probably* be afterwards 0. (There's no
-    ; guarantee; although Ozmoo assumes elsewhere it's being run from drive 0,
-    ; it's possible Watford DFS is present but not the current filing system, in
-    ; which case Watford DFS's current drive might not be 0 even if Ozmoo is
-    ; running from drive 0.)
-    ; SFTODONOW: I am not sure it's 100% guaranteed we *are* in a shadow mode at
-    ; this point. If we have a splash screen *and* the preloader didn't need to
-    ; change into a shadow mode before CHAINing the loader (because it would fit
-    ; below &3000) we might be in a non-shadow mode. This is not likely, but I
-    ; think it's theoretically possible. It would probably be better to read
-    ; HIMEM via OSBYTE, determine whether that corresponds to 0 or 1 and compare
-    ; that value with X - if it matches we have to assume *FX111 is working and
-    ; although it's unfortunately that this much of a test if we have an old
-    ; Watford DFS and are in non-shadow mode, at least we won't assume *FX111
-    ; has failed to control the shadow RAM when it actually has. The ideal test
-    ; would be to actually change into both shadow and non-shadow modes and
-    ; check *FX111's returned X changes, but that would lose any splash screen -
-    ; maybe this isn't a huge loss by the time we get to this point though.
-    ;
-    ; SFTODO: *If* we eventually allow running the shadow driver executable from
-    ; a preloader (counting the time taken to run it against any default delay
-    ; the user requested), note that we may well *not* be in a shadow mode then,
-    ; which will interfere with this test.
-    ;
-    ; SFTODO: Can we make more/cleverer OSBYTE 111 calls to establish with
-    ; confidence that it is controlling shadow RAM? Since only b0 of the
-    ; returned X is used we always get 0 or 1 back to reflect current displayed
-    ; RAM, and thus without video glitching I am not sure we can. Could we issue
-    ; a *DRIVE 0 command after checking DFS is the current filing system? This
-    ; feels error prone/annoying for the user though - someone is bound to get
-    ; bitten by it.
+    ; *FX34 doesn't work. Try *FX111. As suggested by JGH in
+    ; https://stardot.org.uk/forums/viewtopic.php?p=432945#p432945, we make a
+    ; couple of OSBYTE 111 calls which will distinguish the case where this is
+    ; controlling shadow RAM from the case where it's returning the current
+    ; drive. We check specifically for the values of X being 1 and 0 after each
+    ; call, because we're only interested in *FX111 if it is controlling shadow
+    ; RAM. If OSBYTE 111 is reading the current drive, X will not change between
+    ; these two calls.
+    ; SFTODONOW: THIS NEEDS A PROPER TEST (ON MAME)
     lda #111
-    ldx #$40
+    ldx #$80
     jsr osbyte
-    cpx #1
+    stx tmp
+    ldx #$c0
+    jsr osbyte
+    txa
     bne osbyte_111_failed
-    ; *FX111 seems to work; we have no absolute guarantee it isn't being
-    ; intercepted by an older Watford DFS, but we have to assume it's fine.
+    dec tmp
+    bne osbyte_111_failed
+    ; *FX111 is controlling shadow RAM.
     lda #shadow_state_aries
-    jmp set_shadow_state_from_a_and_install_driver
+set_shadow_state_from_a_and_install_driver
+    ; fall through to set_shadow_state_from_a_and_install_driver
+
+set_shadow_state_from_a_and_install_driver
+!zone {
+    sta shadow_state
+    tax ; SFTODO: pass value in X in first place?
+    cmp #shadow_state_b_plus_private
+    bne .no_private_ram_driver
+    ; For shadow_state_b_plus_private, we need to copy driver code into the 12K
+    ; private RAM as well as installing a driver in main RAM.
+    lda romsel_copy
+    pha
+    lda #128
+    sta romsel_copy
+    sta bbc_romsel
+    !warn shadow_driver_b_plus_private_high
+    !warn shadow_driver_b_plus_private_high_end
+    !warn shadow_copy_private_ram
+    !warn shadow_copy_private_ram_end
+    +copy_data_checked shadow_driver_b_plus_private_high, shadow_driver_b_plus_private_high_end, shadow_copy_private_ram, shadow_copy_private_ram_end
+    pla
+    sta romsel_copy
+    sta bbc_romsel
+.no_private_ram_driver
+    lda shadow_driver_table_low-shadow_state_first_driver,x
+    sta src
+    lda shadow_driver_table_high-shadow_state_first_driver,x
+    sta src+1
+    +assert (max_shadow_driver_size - 1) < 128
+    ldy #max_shadow_driver_size-1
+.copy_loop
+    lda (src),y
+    sta shadow_driver_start,y
+    dey
+    bpl .copy_loop
+    rts
+}
+
 ; SFTODO: Need to keep this in sync with shadow_state_* enum
 shadow_driver_table_low
     !byte <shadow_driver_b_plus_os
@@ -410,7 +441,7 @@ shadow_driver_b_plus_private_low
     stx romsel_copy
     stx bbc_romsel
     jmp shadow_copy_private_ram
-.stub_finish
+stub_finish
 .lda_imm_bank
     lda #0 ; patched
     sta romsel_copy
@@ -418,22 +449,6 @@ shadow_driver_b_plus_private_low
     rts
 }
 +assert_shadow_driver_fits shadow_driver_b_plus_private_low
-
-shadow_driver_b_plus_private_high
-!pseudopc shadow_copy_private_ram {
-    sta .lda_abs_y+2
-    sty .sta_abs_y+2
-    ldy #0
-.copy_loop
-.lda_abs_y
-    lda $ff00,Y ; patched
-.sta_abs_y
-    sta $ff00,y ; patched
-    dey
-    bne .copy_loop
-    jmp .stub_finish
-}
-shadow_driver_b_plus_private_high_end
 
 b_plus_high_driver_size = shadow_driver_b_plus_private_high_end - shadow_driver_b_plus_private_high
     ; We use a dey...bpl loop to copy this driver. This also acts as an over-tight check that the
@@ -518,38 +533,6 @@ shadow_driver_watford
 shadow_driver_aries
     +shadow_driver_watford_aries 111
     +assert_shadow_driver_fits shadow_driver_aries
-
-set_shadow_state_from_a_and_install_driver
-!zone {
-    sta shadow_state
-    tax ; SFTODO: pass value in X in first place?
-    cmp #shadow_state_b_plus_private
-    bne .no_private_ram_driver
-    ; For shadow_state_b_plus_private, we need to copy driver code into the 12K
-    ; private RAM as well as installing a driver in main RAM.
-    lda romsel_copy
-    pha
-    lda #128
-    sta romsel_copy
-    sta bbc_romsel
-    +copy_data_checked shadow_driver_b_plus_private_high, shadow_driver_b_plus_private_high_end, shadow_copy_private_ram, shadow_copy_private_ram_end
-    pla
-    sta romsel_copy
-    sta bbc_romsel
-.no_private_ram_driver
-    lda shadow_driver_table_low-shadow_state_first_driver,x
-    sta src
-    lda shadow_driver_table_high-shadow_state_first_driver,x
-    sta src+1
-    +assert (max_shadow_driver_size - 1) < 128
-    ldy #max_shadow_driver_size-1
-.copy_loop
-    lda (src),y
-    sta shadow_driver_start,y
-    dey
-    bpl .copy_loop
-    rts
-}
 
 ; Determine if the private 12K is free on an Integra-B or B+ by checking for any
 ; extended vectors pointing into it. On entry A is the bit which is set in the

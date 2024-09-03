@@ -36,6 +36,8 @@
 
 * Miscellaneous other micro-optimisations to save a few bytes/cycles. I haven't counted but I suspect cumulatively these save at least 30 bytes.
 
+* Improve the detection of *FX111 being used by older versions of Watford DFS to return the current drive instead of controlling shadow RAM. Thanks to Jonathan Graham Harston for advice.
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.
