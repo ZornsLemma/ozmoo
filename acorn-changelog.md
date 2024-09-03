@@ -38,6 +38,8 @@
 
 * Improve the detection of *FX111 being used by older versions of Watford DFS to return the current drive instead of controlling shadow RAM. Thanks to Jonathan Graham Harston for advice.
 
+* Remove unused debug pause subroutine. This will slightly (and somewhat artifically) improve the benchmark performance if it frees up enough memory to make an extra 512 byte block of RAM available at runtime.
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.

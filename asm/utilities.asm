@@ -944,7 +944,7 @@ printa
 	plp
 	rts
 
-; SFTODONOW: Is this completely unused even on debug builds?
+!if 0 { ; SF: AFAICS this code is never used
 pause
 	; subroutine: print newline
 	; input: 
@@ -969,6 +969,7 @@ pause
 	ldy .saved_y
 	plp
 	rts
+}
 
 print_following_string
 	; print text (implicit argument passing)
