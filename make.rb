@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'date'
+require 'json'
 
 $is_windows = (ENV['OS'] == 'Windows_NT')
 
@@ -79,6 +80,7 @@ $GENERALFLAGS = [
 #	'NODARKMODE', # Disables darkmode support. This makes the terp ~100 bytes smaller.
 #	'NOSCROLLBACK', # Disables scrollback support (MEGA65, C64, C128). This makes the terp ~1 KB smaller.
 #	'REUBOOST', # Enables REU Boost (MEGA65, C64, C128). This makes the terp ~160 bytes larger.
+#	'NO_DEFAULT_UNICODE_MAP' # Disables the default unicode output map, saving 83 bytes
 #	'VICE_TRACE', # Send the last instructions executed to Vice, to aid in debugging
 #	'TRACE', # Save a trace of the last instructions executed, to aid in debugging
 #	'COUNT_SWAPS', # Keep track of how many vmem block reads have been done.
@@ -92,7 +94,7 @@ $DEBUGFLAGS = [
 #	'DEBUG', # This gives some debug capabilities, like informative error messages. It is automatically included if any other debug flags are used.
 #	'VIEW_STACK_RECORDS',
 #	'PRINTSPEED'
-#	'BENCHMARK',
+#	'BENCHMARK', # This can now be enabled with -bm
 #	'VMEM_STRESS', # very slow but gives vmem a workout
 #	'TRACE_FLOPPY',
 #	'TRACE_VM',
@@ -1109,6 +1111,7 @@ def build_interpreter()
 	optionalsettings += " -DTERPNO=#{$interpreter_number}" if $interpreter_number
 	optionalsettings += " -DNOSECTORPRELOAD=1" if $no_sector_preload
 	optionalsettings += " -DSCROLLBACK_RAM_PAGES=#{$scrollback_ram_pages}" if $scrollback_ram_pages
+	optionalsettings += " -DFREE_SAVE_BLOCKS=#{$free_blocks_for_saves}" if $free_blocks_for_saves
 	if $target
 		optionalsettings += " -DTARGET_#{$target.upcase}=1"
 	end
@@ -1385,7 +1388,7 @@ def play(filename, storyname)
 		if $executables.has_key?('X16') then
 			command = "cd #{filename} && #{$executables['X16']} -prg #{storyname.upcase}"
 			command += " -run"
-			command += " -dump B" # Ctrl-S from the emulator to dump memory
+			command += " -dump RV" # Ctrl-S from the emulator to dump memory
 			command += " -debug"
 			command += " -zeroram"
 			command += " -scale 2"
@@ -2188,8 +2191,8 @@ end
 def print_usage
 	puts "Usage: make.rb [-t:target] [-S1|-S2|-D2|-D3|-71|-71D|-81|-P|-ZIP] -v"
 	puts "         [-p:[n]] [-b] [-o] [-c <preloadfile>] [-cf <preloadfile>]"
-	puts "         [-sp:[n]] [-re[:0|1]] [-sl[:0|1]] [-s] " 
-	puts "         [-fn:<name>] [-f <fontfile>] [-cm:[xx]] [-in:[n]]"
+	puts "         [-bm] [-sp:[n]] [-re[:0|1]] [-sl[:0|1]] [-s] " 
+	puts "         [-fn:<name>] [-f <fontfile>] [-cm:[xx]] [-um[:0|1]] [-in:[n]]"
 	puts "         [-i <imagefile>] [-if <imagefile>] [-ch[:n]] [-sb[:0|1|6|8|10|12]] [-rb[:0|1]]"
 	puts "         [-rc:[n]=[c],[n]=[c]...] [-dc:[n]:[n]] [-bc:[n]] [-sc:[n]] [-ic:[n]]"
 	puts "         [-dm[:0|1]] [-dmdc:[n]:[n]] [-dmbc:[n]] [-dmsc:[n]] [-dmic:[n]]"
@@ -2205,6 +2208,7 @@ def print_usage
 	puts "  -o: build interpreter in PREOPT (preload optimization) mode. See docs for details."
 	puts "  -c: read preload config from preloadfile, previously created with -o"
 	puts "  -cf: read preload config (see -c) + fill up with best-guess vmem blocks"
+	puts "  -bm: Build interpreter in Benchmark Mode. There must be a valid walkthrough in benchmarks.json."
 	puts "  -sp: Use the specified number of pages for stack (2-64, default is 4)."
 	puts "  -re: Perform all checks for runtime errors, making code slightly bigger and slower."
 	puts "  -sl: Remove some optimizations for speed. This makes the terp ~100 bytes smaller."
@@ -2212,6 +2216,7 @@ def print_usage
 	puts "  -fn: boot file name (default: story)"
 	puts "  -f: Embed the specified font with the game. See docs for details."
 	puts "  -cm: Use the specified character map (sv, da, de, it, es or fr)"
+	puts "  -um: Enable the default unicode map, e.g. Ä is printed as A. Enabled by default."
 	puts "  -in: Set the interpreter number (0-19). Default is 2 for Beyond Zork, 8 for other games."
 	puts "  -i: Add a loader using the specified Koala Painter multicolour image (filesize: 10003 bytes)."
 	puts "  -if: Like -i but add a flicker effect in the border while loading."
@@ -2472,12 +2477,20 @@ begin
 			else
 				check_errors = $1.to_i
 			end
+		elsif ARGV[i] =~ /^-um(?::([0-1]))?$/ then
+			if $1 == '0'
+				$GENERALFLAGS.push('NO_DEFAULT_UNICODE_MAP') unless $GENERALFLAGS.include?('NO_DEFAULT_UNICODE_MAP') 
+			else
+				$GENERALFLAGS.delete('NO_DEFAULT_UNICODE_MAP') if $GENERALFLAGS.include?('NO_DEFAULT_UNICODE_MAP')
+			end
 		elsif ARGV[i] =~ /^-sl(?::([0-1]))?$/ then
 			if $1 == '0'
 				$GENERALFLAGS.delete('SLOW') if $GENERALFLAGS.include?('SLOW')
 			else
 				$GENERALFLAGS.push('SLOW') unless $GENERALFLAGS.include?('SLOW') 
 			end
+		elsif ARGV[i] =~ /^-bm$/ then
+			$DEBUGFLAGS.push('BENCHMARK') unless $DEBUGFLAGS.include?('BENCHMARK')
 		elsif ARGV[i] =~ /^-dm(?::([01]))?$/ then
 			if $1 == nil
 				dark_mode = 1
@@ -2906,6 +2919,27 @@ is_trinity = $zcode_version == 4 && $trinity_releases.has_key?(storyfile_key)
 is_beyondzork = $zcode_version == 5 && $beyondzork_releases.has_key?(storyfile_key)
 $is_lurkinghorror = $zcode_version == 3 && $lurkinghorror_releases.has_key?(storyfile_key)
 
+$walkthrough_string = nil
+if $DEBUGFLAGS.include?('BENCHMARK')
+	benchmarks_json = JSON.parse(File.read(File.join(__dir__, 'benchmarks.json')))
+	benchmarks_json.each { |walkthrough_hash|
+		if walkthrough_hash['keys'].include?(storyfile_key)
+			walk = walkthrough_hash['walkthrough']
+			$walkthrough_string = (walk.is_a? String) ? walk : walk.join(':')
+		end
+	}
+	if $walkthrough_string
+		walkthrough_src = File.read(File.join($SRCDIR, 'walkthrough.tpl'))
+		walkthrough_src.sub!("@fn@", $walkthrough_string)
+		File.write(File.join($TEMPDIR, 'walkthrough.asm'), walkthrough_src)
+	else
+		puts "Benchmark mode enabled, but no valid walkthrough could be found for this game. Check benchmarks.json."
+		exit 1
+	end
+end
+#puts $walkthrough_string if $walkthrough_string
+
+
 if x_for_examine == nil
 	if $zcode_version < 4
 		serial_as_date = DateTime.strptime(serial, '%y%m%d') rescue DateTime.strptime('800101', '%y%m%d')
@@ -3036,8 +3070,8 @@ if $undo > 0
 		puts "ERROR: Undo is not supported for build mode P."
 		exit 1
 	end
-	if $target !~ /^(c64|c128|mega65)$/
-		puts "ERROR: Undo is only supported for the MEGA65, C64 and C128 target platforms."
+	if $target !~ /^(c64|c128|mega65|x16)$/
+		puts "ERROR: Undo is only supported for the MEGA65, Commander X16, C64 and C128 target platforms."
 		exit 1
 	end
 	if $undo_ram == 1
@@ -3051,7 +3085,7 @@ if $undo > 0
 			exit 1
 		end
 	end
-	if undo_size > 64*1024
+	if undo_size > 64*1024 - 256
 		if $undo == 1
 			puts "ERROR: Dynmem + stack too large to support UNDO."
 			exit 1
@@ -3099,13 +3133,13 @@ splash.gsub!("@vs@", version)
 	splash.sub!("@#{i}s@", text)
 	splash.sub!("@#{i}c@", indent.to_s)
 end
-File.write(File.join($SRCDIR, 'splashlines.asm'), splash)
+File.write(File.join($TEMPDIR, 'splashlines.asm'), splash)
 
 # Boot file name handling
 
 file_name = File.read(File.join($SRCDIR, 'file-name.tpl'))
 file_name.sub!("@fn@", $file_name)
-File.write(File.join($SRCDIR, 'file-name.asm'), file_name)
+File.write(File.join($TEMPDIR, 'file-name.asm'), file_name)
 
 # Set $no_sector_preload if we can be almost certain it won't be needed anyway
 if $target != 'c128' and limit_preload_vmem_blocks == false
@@ -3123,6 +3157,15 @@ if $target != 'c128' and limit_preload_vmem_blocks == false
 	end
 end
 
+$free_blocks_for_saves = 664
+if $target == 'x16'
+	$free_blocks_for_saves = 9999 # No real limit
+elsif $target == 'mega65'
+	$free_blocks_for_saves = 3160 - ($story_size / 254) - 1 - 60 # Overestimate boot file size
+end
+save_slots = [255, $free_blocks_for_saves / (($static_mem_start.to_f + 256 * $stack_pages + 20) / 254).ceil.to_i].min
+puts "Blocks per save: #{(($static_mem_start.to_f + 256 * $stack_pages + 20) / 254).ceil.to_i}" if $verbose
+puts "Save slots: #{save_slots}" if $verbose
 
 build_interpreter()
 
@@ -3162,23 +3205,16 @@ end
 if $target !~ /^(mega65|x16)$/
 	puts "VMEM blocks in RAM is #{$vmem_blocks_in_ram}" if $verbose
 	puts "Unbanked VMEM blocks in RAM is #{$unbanked_vmem_blocks}" if $verbose 
-	if	$unbanked_vmem_blocks < 1 and $story_size != $dynmem_blocks * $VMEM_BLOCKSIZE then
-		puts "ERROR: Dynamic memory is too big (#{$dynmem_blocks * $VMEM_BLOCKSIZE} bytes), there would be no unbanked RAM for VMEM." 
-		exit 1
-	end
+	# if $unbanked_vmem_blocks < 1 and $story_size != $dynmem_blocks * $VMEM_BLOCKSIZE then
+		# puts "ERROR: Dynamic memory is too big (#{$dynmem_blocks * $VMEM_BLOCKSIZE} bytes), there would be no unbanked RAM for VMEM." 
+		# exit 1
+	# end
 end
 
 if reu_boost == 1 and $target == 'c64' and $unbanked_vmem_blocks * $VMEM_BLOCKSIZE / 256 < 12
 	puts "ERROR: REU Boost requires at least 3 KB of unbanked RAM. Dynamic memory is #{$dynmem_blocks * $VMEM_BLOCKSIZE / 1024} KB, leaving only #{$unbanked_vmem_blocks * $VMEM_BLOCKSIZE / 1024} KB of unbanked RAM for REU Boost." 
 	exit 1		
 end
-
-############################# End of moved block
-
-save_slots = [255, 664 / (($static_mem_start.to_f + 256 * $stack_pages + 20) / 254).ceil.to_i].min
-#puts "Static mem start: #{$static_mem_start}"
-#puts "Save blocks: #{(($static_mem_start.to_f + 256 * $stack_pages + 20) / 254).ceil.to_i}"
-#puts "Save slots: #{save_slots}"
 
 config_data = 
 [$BUILD_ID].pack("I>").unpack("CCCC") + 

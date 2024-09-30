@@ -879,6 +879,10 @@ print_line_from_buffer
 printchar_buffered
 	; a is PETSCII character to print
 	sta .buffer_char
+	cmp #13
+	beq +
+	sta anything_printed
++	
 	; need to save x,y
 	txa
 	pha
@@ -1021,6 +1025,7 @@ printchar_buffered
 	pla
 	tax
 	rts
+anything_printed       !byte 0
 .buffer_char       !byte 0
 ; print_buffer            !fill 41, 0
 .save_x			   !byte 0
@@ -1181,10 +1186,7 @@ draw_status_line
 	bne - ; Always branch
 .print_score_number
 	lda #17
-	jsr z_get_low_global_variable_value
-	stx z_operand_value_low_arr
-	sta z_operand_value_high_arr
-	jsr z_ins_print_num
+	jsr print_low_global_variable_value
 !ifdef SUPPORT_80COL {
 	ldy sl_moves_pos
 !ifdef TARGET_X16 {
@@ -1208,10 +1210,7 @@ draw_status_line
 	jsr s_printchar
 }
 	lda #18
-	jsr z_get_low_global_variable_value
-	stx z_operand_value_low_arr
-	sta z_operand_value_high_arr
-	jsr z_ins_print_num
+	jsr print_low_global_variable_value
 .all_done_score_sl
 	pla
 	sta z_operand_value_high_arr + 1

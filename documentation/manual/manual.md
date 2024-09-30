@@ -23,7 +23,7 @@ Ozmoo for the Commodore 64 supports:
 - Building a game as a d81 disk image. This means there is room for any size of game on a single disk. A d81 disk image can be used to create a disk for a 1581 drive or it can be used with an SD2IEC device or, of course, an emulator. Ozmoo uses the 1581 disk format's partitioning mechanism to protect the game data from being overwritten, which means you can safely use the game disk for game saves as well, thus eliminating the need for disk swapping when saving/restoring.
 - Using an REU (Ram Expansion Unit) for caching. The REU can also be used to play a game built for a dual disk drive system with just one drive.
 - Adding a loader which shows an image while the game loads (C64 and Plus/4 only).
-- Undo support if enough additional memory can be allocated from an RAM Expansion Unit (REU).
+- Undo support (requires an REU on C64. See separate chapter on Undo for details).
 
 ## Limitations
 
@@ -83,7 +83,21 @@ Ruby is available on Debian/Ubuntu with:
 
 ## Customizing the make script
 
-Edit the file make.rb. At the top of the file, you need to specify paths to the Acme assembler, Exomizer, the Vice C64 emulator, and the program "c1541" which is also included in the Vice distribution.  If you are using Windows, you can ignore the section on Linux and vice versa.
+Edit the file make.rb. At the top of the file, you need to specify paths to the Acme assembler, Exomizer, the Vice C64 emulator, and the program "c1541" which is also included in the Vice distribution.  If you are using Windows, you can ignore the section on Linux and vice versa. Another option is to create a .ozmoorc file, see the following section.
+
+## Creating a .ozmoorc File
+
+If you sometimes update Ozmoo to a new version, you may grow tired of updating the paths to different programs in make.rb. What you can do instead is create a file called ".ozmoorc" where you specify the paths you'd otherwise need to edit. make.rb will look for such a file in three locations, in this order: 
+* the folder specified by the environment variable OZMOO_HOME, if any
+* current working directory (cwd)
+* HOME directory (on Windows, this is typically something like "C:\\Users\\MyName"). 
+
+The first file found is the only one used.
+
+The file can contain any number of lines. Each line consists of a path identifier, equal character + greater than character ("=>"), and the path value. E.g. to set a path to your local copy of X16emu, you look at the beginning of make.rb and find that the identifier for this path is "X16", and so you might put this in the ".ozmoorc" file:
+```
+  X16  =>  C:\MyEmulators\x16emu\x16emu.exe
+``` 
 
 ## View all commandline options for make.rb
 
@@ -117,6 +131,15 @@ Use these steps:
 
 Repeat step 5 for all platforms you want to build the game for.
 
+## Build a game in Benchmark Mode
+
+`ruby make.rb -bm hollywood_hijinx.z3`
+
+In this mode, Ozmoo loads a walkthrough for the game from the file benchmarks.json. When launched, the interpreter will play through the game automatically. The pseudo-random-number-generator gets seeded so the same walkthrough will work on every playthrough. On the first and last move, the interpreter prints the number of jiffies (1/60th seconds) elapsed since the computer was powered on, according to the system clock.
+
+This functionality can be used to measure performance gains when tweaking the interpreter code, or to just check that some select games can still be played through from start to finish.
+
+Open the file benchmarks.json in a text editor to see the title, release and serial numbers for the games that the walkthroughs are for. If the serial and release for the current walkthrough don't match one of the walkthroughs in the json file, an error message is printed when using -bm to build Ozmoo. 
 
 # Targets
 
@@ -150,9 +173,9 @@ The Commodore Plus/4 version makes use of the simplified memory map compared to 
 
 The MEGA65 version is very similar to the C64 version of Ozmoo. It runs in C64 mode on the MEGA65, but uses the 80 column screen mode, extended sound support, higher clockspeed, and the extra RAM of the MEGA65. There is no limitation on dynamic memory size. The only supported build mode is -81. A loader image is currently not supported. Undo is enabled by default for games that support it.
 
-## X16
+## Commander X16
 
-The X16 version is using the extended RAM fully to preload the story file by default. It also adapts automatically to the screen resolution used when starting the game.
+The Commander X16 version is using the extended RAM fully to preload the story file by default. It also adapts automatically to the screen resolution used when starting the game. Undo is supported.
 
 ## Other targets
 
@@ -494,7 +517,7 @@ Allows the player to press F5 to enter scrollback mode, where they can scroll up
 
 # Undo
 
-This feature allows the game state to be saved to memory each turn, so the player can undo the last turn. It is enabled by default on the MEGA65, and is available for C64 and C128 computers that use a RAM Expansion Unit. For C128 only, there is also an option to use undo without requiring an REU, by allocating some of the RAM as an undo buffer.
+This feature allows the game state to be saved to memory each turn, so the player can undo the last turn. It is enabled by default on the MEGA65. It's also available for Commander X16, and C64 and C128 computers that use a RAM Expansion Unit. For C128 only, there is also an option to use undo without requiring an REU, by allocating some of the RAM as an undo buffer, for games with a moderately large dynamic memory.
 
 In addition to the standard undo support for z5+ games (enabling the UNDO command which many games have), Ozmoo adds a keyboard shortcut (Ctrl-U) to enable undo for z1-z4 games.
 
@@ -523,6 +546,10 @@ To run an Inform 7 game (which may be feasible on the MEGA65), you want to set t
 ## Option -cm:[xx]
 
 Ozmoo has some support for using accented characters in games. This is documented in detail in the tech report, but assuming that suitable fonts and character maps have been prepared, the -cm option is used to enable this character map. By default, Ozmoo has support for these character maps: sv, da, de, it, es and fr, for Swedish, Danish, German, Italian, Spanish and French, respectivily.
+
+## Option -um:[:0|1]
+
+This enables or disables the default unicode table mapping. I.e. if a game tries to print one of the 69 characters that are in the default Z-code unicode table, and the character has not been remapped to a special character using -cm, Ozmoo maps it to the closest single-character approximation, and prints that instead. E.g. "ä" is printed as "a". This feature is enabled by default. Disabling it saves 83 bytes.
 
 ## Option -in:[n]
 
