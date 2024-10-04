@@ -24,6 +24,10 @@
 }
 }
 
+!ifndef FREE_SAVE_BLOCKS {
+	FREE_SAVE_BLOCKS = 664  ; Default to the free space of an empty 1541 disk
+}
+
 !ifdef TARGET_X16 {
 	TARGET_MEGA65_OR_X16 = 1
 	NO_VMEM_CACHE = 1

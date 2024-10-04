@@ -1887,6 +1887,7 @@ def parse_args():
     group.add_argument("--x-for-examine", action="store_true", help="interpret 'x' as 'examine' (Z1-4 games only)")
     group.add_argument("--undo", action="store_true", help="enable use of undo during gameplay")
     group.add_argument("--no-special-game-check", action="store_true", help="disable special treatment of some games")
+    group.add_argument("--default-unicode-map", action="store_true", help="enable default unicode map")
 
     group = parser.add_argument_group("optional advanced/developer arguments (not normally needed)")
     group.add_argument("--never-defer-output", action="store_true", help="never defer output during the build")
@@ -2227,6 +2228,8 @@ def make_disc_image():
         ozmoo_base_args += ["-DACORN_PREFER_ABSOLUTE_GLOBALS=1"]
     if not cmd_args.no_runtime_absolute_globals:
         ozmoo_base_args += ["-DACORN_ALLOW_DYNAMIC_ABSOLUTE_GLOBALS=1"]
+    if not cmd_args.default_unicode_map:
+        ozmoo_base_args += ["-DNO_DEFAULT_UNICODE_MAP=1"]
 
     if z_machine_version in (1, 2, 3, 4, 5, 7, 8):
         ozmoo_base_args += ["-DZ%d=1" % z_machine_version]
@@ -2676,3 +2679,5 @@ show_deferred_output()
 # SFTODO: Could we dynamically patch history_start and history_size (and history_end, if there are any, which there probably aren't) references during initialisation? This would allow us to put the history buffer in the wasted 256 bytes if the game's natural 512-byte alignment doesn't match PAGE alignment on a particular system. Perhaps this is a bad idea from a support/consistency point of view - the same game has different history buffer on different machines - but maybe it isn't.
 
 # SFTODO: It might be nicer if the build system generated the "Sorry, this game can't run on..." message itself as a string. That way you wouldn't e.g. boot Trinity on a BBC B and be told it won't run on a BBC B, then rush over to your Master only to be told it won't run on that either. The build system could generate a message like "Sorry, this game will only run on ..." which is more helpful. Not a big deal, but a nice touch.
+
+# SFTODONOW: In 14.40 upstrem patching of Varicella has been added, I *may* not need to do anything as this seems to be colour related and Acorn Ozmoo is mono, but check.

@@ -93,8 +93,8 @@ character_downcase_table_end
 !byte $c9, $9c, $9b
 character_downcase_table_mappings_end
 
-} else { ; End of Swedish section
-!ifdef DANISH_CHARS {
+; End of Swedish section
+} else ifdef DANISH_CHARS {
 
 ; DANISH
 
@@ -168,8 +168,8 @@ character_downcase_table_end
 !byte $d3, $cb, $c9
 character_downcase_table_mappings_end
 
-} else { ; End of Danish section
-!ifdef GERMAN_CHARS {
+; End of Danish section
+} else ifdef GERMAN_CHARS {
 
 ; GERMAN
 
@@ -245,8 +245,8 @@ character_downcase_table_end
 !byte $9d, $9c, $9b
 character_downcase_table_mappings_end
 
-} else { ; End of German section
-!ifdef ITALIAN_CHARS {
+; End of German section
+} else ifdef ITALIAN_CHARS {
 
 ; ITALIAN
 
@@ -329,10 +329,8 @@ character_downcase_table_end
 !byte $b9, $b8, $b7, $b6, $b5, $aa
 character_downcase_table_mappings_end
 
-} else { ; End of Italian section
-
-
-!ifdef SPANISH_CHARS {
+; End of Italian section
+} else ifdef SPANISH_CHARS {
 
 ; SPANISH
 
@@ -424,9 +422,8 @@ character_downcase_table_end
 !byte $ce, $ad, $ac, $ab, $aa, $a9, $9d
 character_downcase_table_mappings_end
 
-} else { ; End of Spanish section
-
-!ifdef FRENCH_CHARS {
+; End of Spanish section
+} else ifdef FRENCH_CHARS {
 
 ; FRENCH
 
@@ -558,9 +555,10 @@ character_downcase_table_end
 !byte $dc, $d5, $d3, $c3, $c2, $c1, $c0, $bf, $b9, $b6, $b5, $aa, $a5, $a4, $9d
 character_downcase_table_mappings_end
 
-} else { ; End of French section
+; End of French section
+} else { 
 
-; ENGLISH
+; Default: ENGLISH
 
 ; NOTE: Must be sorted on PETSCII value, descending!
 
@@ -648,13 +646,8 @@ character_translation_table_out_end
 }
 character_translation_table_out_mappings_end
 
-
-} ; End of non-French section
-} ; End of non-Spanish section
-} ; End of non-Italian section
-} ; End of non-German section
-} ; End of non-Danish section
-} ; End of non-Swedish section
+; End of English section
+} 
 
 !if character_translation_table_in_end - character_translation_table_in != character_translation_table_in_mappings_end - character_translation_table_in_end {
 	!error "character_translation_table_in tables of different lengths!";
@@ -877,6 +870,15 @@ z_ins_output_stream
 	sta streams_output_selected + 2
 	rts
 
+!ifndef NO_DEFAULT_UNICODE_MAP {
+default_unicode_out
+!ifndef ACORN {
+!pet "aouAOUs\"\"eiyEIaeiouyAEIOUYaeiouAEIOUaeiouAEIOUaAoOanoANOaAcCttTTLoO!?"
+} else {
+!text "aouAOUs\"\"eiyEIaeiouyAEIOUYaeiouAEIOUaeiouAEIOUaAoOanoANOaAcCttTTLoO!?" 
+}
+}
+
 translate_zscii_to_petscii
 	; Return PETSCII code *OR* set carry if this ZSCII character is unsupported
 	sty .streams_tmp + 1
@@ -887,6 +889,16 @@ translate_zscii_to_petscii
 	dey
 	bpl -
 .no_match
+!ifndef NO_DEFAULT_UNICODE_MAP {
+	cmp #224
+	bcs .no_mapping
+	cmp #155
+	bcc .no_mapping
+	tay
+	lda default_unicode_out - 155,y
+	bne .ldy_and_return ; Always branch
+.no_mapping
+}
 	ldy .streams_tmp + 1
 	; Check if legal
 	cmp #13
@@ -921,6 +933,7 @@ translate_zscii_to_petscii
 	rts
 .match
 	lda character_translation_table_out_end,y
+.ldy_and_return
 	ldy .streams_tmp + 1
 	clc
 	rts

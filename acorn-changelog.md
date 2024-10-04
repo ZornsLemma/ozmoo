@@ -1,8 +1,10 @@
-## 14.22 (alpha 58)
+## 14.40 (alpha 58)
 
 * TODO
 
 * TODO: CHECK THE BELOW ACTUALLY DID GET INCLUDED
+
+* Merge upstream changes. The main significant change for the Acorn port is the introduction of a "default Unicode map" which will convert non-ASCII characters used by games to best-effort ASCII equivalents. This is disabled by default on Acorn, as it costs a little bit of extra code/data, but can be enabled using the new build option --default-unicode-map.
 
 * The BUILD file added to the generated disc image now contains the operating system and Python versions used for the build. I don't think this should be a significant privacy concern, but if you are worried about this you can use the --no-build-file option to disable generation of the BUILD file. Please also let me know so we can discuss your concerns; I'd rather remove this information than have people avoid doing builds with the other useful support information in.
 
