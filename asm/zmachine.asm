@@ -332,7 +332,7 @@ dumptovice
 	inc z_trace_index
 }
 
-!if 0 { ; SFTODONOW: This looks like some upstream debugging code, I will disable it for the moment but need to come back to this
+!if 0 { ; debugging code used to allow breakpoints at a certain PC
 	ldy z_pc + 2
 	cpy #$f5
 	bne +
@@ -359,6 +359,7 @@ dummy2
 	ldy #0
 +
 }	
+
 !ifdef DEBUG {	
 	;jsr print_following_string
 	;!pet "opcode: ",0
