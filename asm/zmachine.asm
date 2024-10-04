@@ -1801,7 +1801,6 @@ z_ins_mul
 	lda $d779
 	jmp z_store_result
 } else {
-; SFTODONOW: This is changed in 14.40, I need to check the memory use here is compatible with Acorn, it probably is but need to be careful
 ; smult9.a
 ; based on Dr Jefyll, http://forum.6502.org/viewtopic.php?f=9&t=689&start=0#p19958
 ; with modifications by TobyLobster:
