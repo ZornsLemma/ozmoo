@@ -1063,7 +1063,11 @@ class OzmooExecutable(Executable):
                 assert 0 <= self.swr_dynmem <= 16 * 1024
             else:
                 assert "ACORN_SWR_BIG_DYNMEM" in self.labels
-                self.swr_dynmem = nonstored_pages * bytes_per_page
+                # We use as much SWR for dynamic memory as we can when modelling
+                # here, but of course we can't possibly use more than a full 16K
+                # bank.
+                # SFTODONOW: Need to review this fresh
+                self.swr_dynmem = min(nonstored_pages * bytes_per_page, 0x4000)
 
         # On a second processor build, we must also have at least
         # min_vmem_blocks for swappable memory. For sideways RAM builds we need
@@ -1120,7 +1124,12 @@ class OzmooExecutable(Executable):
     # smallest screen hole we can have for this build *ignoring* the prospect
     # that we might actually have shadow RAM even though we can cope without
     # it. It should do the right thing, it is just the name that's slightly
-    # less than ideal.
+    # less than ideal. (I don't think this is great on the Electron executable,
+    # where the same executable handles both shadow and non-shadow machines.
+    # We should *probably* do something like just return 0 for the Electron
+    # and let the loader handle the case where we don't actually have shadow
+    # RAM if that's necessary, but this is complex enough I'd need to think
+    # carefully about it and/or do a lot of testing.)
     def min_screen_hole_size(self):
         if "ACORN_SCREEN_HOLE" in self.labels:
             adjusted_max_mode = min(cmd_args.max_mode, 6) if "ACORN_ELECTRON_SWR" in self.labels else cmd_args.max_mode
@@ -1150,6 +1159,7 @@ class OzmooExecutable(Executable):
     def add_loader_symbols(self, symbols):
         Executable.add_loader_symbols(self, symbols)
         symbols[self.leafname + "_MAX_PAGE"] = basic_int(self.start_addr)
+        symbols[self.leafname + "_DATA_START"] = basic_int(self.labels["data_start"])
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM_MODEL"] = "0" if "ACORN_SWR_SMALL_DYNMEM" in self.labels else "1" if "ACORN_SWR_MEDIUM_DYNMEM" in self.labels else "2" if "ACORN_SWR_BIG_DYNMEM" in self.labels else "-1"
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
@@ -2680,4 +2690,4 @@ show_deferred_output()
 
 # SFTODO: It might be nicer if the build system generated the "Sorry, this game can't run on..." message itself as a string. That way you wouldn't e.g. boot Trinity on a BBC B and be told it won't run on a BBC B, then rush over to your Master only to be told it won't run on that either. The build system could generate a message like "Sorry, this game will only run on ..." which is more helpful. Not a big deal, but a nice touch.
 
-# SFTODONOW: Varicella is probably fine wrt colour (we just don't support colour), but it *claims* at build time to run on a shadow machine with PAGE<=&F00 but then at run time it says you need more RAM with PAGE=&E00 and also makes a bogus-seeming claim about needing more sideways RAM even on a M128 (and poor performance aside, it should *never* be mandatory to have more than 32K - possibly less - sideways RAM). Just speculating but the PAGE &E00/&F00 discrepancy *might* be caused by the build system not allowing for shadow cache, but we should in theory be able to run (using no spare shadow RAM for data caching) with no extra memory required. Needs investigating.
+# SFTODONOW: Varicella is probably fine wrt colour (we just don't support colour), but it *claims* at build time to run on a shadow machine with PAGE<=&F00 but then at run time it says you need more RAM with PAGE=&E00 and also makes a bogus-seeming claim about needing more sideways RAM even on a M128 (and poor performance aside, it should *never* be mandatory to have more than 32K - possibly less - sideways RAM). Just speculating but the PAGE &E00/&F00 discrepancy *might* be caused by the build system not allowing for shadow cache, but we should in theory be able to run (using no spare shadow RAM for data caching) with no extra memory required. Needs investigating. - I have made some tweaks which may fix this but I need to review them fresh.

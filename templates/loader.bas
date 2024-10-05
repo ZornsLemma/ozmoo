@@ -357,7 +357,9 @@ REM PAGE<max_page is not simply max_page-PAGE; we need to round it down to the
 REM nearest multiple of 512 bytes. (Suppose the natural alignment is "even";
 REM PAGE=&1A00 (even) and PAGE=&1900 (odd) both give us the same amount of free RAM,
 REM even though PAGE=&1900 does give us an extra 256 bytes of available RAM.)
-extra_main_ram=swr_main_ram_free+((max_page-PAGE) AND &FE00)-screen_ram
+page_adjust=(max_page-PAGE) AND &FE00
+extra_main_ram=swr_main_ram_free+page_adjust-screen_ram
+data_start=data_start_at_max_page+page_adjust
 REM flexible_swr may be modified during the decision making process, so reset it each time.
 flexible_swr=flexible_swr_ro
 IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem
@@ -396,7 +398,7 @@ REM report the RAM requirements correctly if we don't have enough, we make a not
 REM whether we have enough main RAM for the header and then do the main
 REM calculation as if main and flexible_swr RAM are truly interchangeable (which
 REM they otherwise are).
-header_in_main_ram=extra_main_ram>=256
+header_in_main_ram=(data_start+screen_ram)<=&7F00:REM SFTODONOW: REVIEW THIS FRESH AFTERWARDS
 flexible_swr=flexible_swr-swr_dynmem_needed
 IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
@@ -481,13 +483,13 @@ p=PAGE
 
 DEF PROCchoose_non_tube_version
 !ifdef OZMOOE_BINARY {
-    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
+    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:data_start_at_max_page=${OZMOOE_DATA_START}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
 } else {
     IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Should I make the loader support some sort of line-continuation character, then I could split up some of these very long lines?
 !ifdef OZMOOSH_BINARY {
-    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_main_ram_free=${OZMOOSH_SWR_MAIN_RAM_FREE}:ENDPROC
+    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:data_start_at_max_page=${OZMOOSH_DATA_START}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_main_ram_free=${OZMOOSH_SWR_MAIN_RAM_FREE}:ENDPROC
 } else {
     REM If - although I don't believe this is currently possible - we don't have
     REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
@@ -497,7 +499,7 @@ REM SFTODO: Should I make the loader support some sort of line-continuation char
     }
 }
 !ifdef OZMOOB_BINARY {
-    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
+    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:data_start_at_max_page=${OZMOOB_DATA_START}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
 } else {
     !ifdef OZMOOSH_BINARY {
         REM SFTODO: Should we also (if OZMOO2P_BINARY is defined) suggest a sedcond processor as an option, as we do in the PAGE-too-high-no-shadow case?
