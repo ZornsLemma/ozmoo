@@ -382,6 +382,8 @@ jsr_shadow_paging_control1
     ; Calculate the new screen start address, ready for updating the CRTC/ULA.
     ; We also save the new screen start address to dst ready for use in the data
     ; copy loops below.
+    ; SFTODO: Can't we intermingle this code with the "Save the current screen..."
+    ; block above? This would probably save a few bytes and cycles.
     lda vdu_screen_top_left_address_low
     clc
     adc vdu_bytes_per_character_row_low
