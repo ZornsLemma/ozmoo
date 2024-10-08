@@ -646,6 +646,7 @@ class LoaderScreen(Exception):
             loader_symbols["NO_SD_CARD_RESET"] = basic_int(1)
         if not cmd_args.no_tube_cache:
             loader_symbols["CACHE_START_ADDR"] = basic_hex_int(cache_start_addr)
+        loader_symbols["DYNMEM_SIZE"] = basic_int(nonstored_pages * bytes_per_page)
 
 
 class GameWontFit(Exception):
@@ -1162,6 +1163,7 @@ class OzmooExecutable(Executable):
         symbols[self.leafname + "_DATA_START"] = basic_int(self.labels["data_start"])
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM_MODEL"] = "0" if "ACORN_SWR_SMALL_DYNMEM" in self.labels else "1" if "ACORN_SWR_MEDIUM_DYNMEM" in self.labels else "2" if "ACORN_SWR_BIG_DYNMEM" in self.labels else "-1"
+        # SFTODONOW: *_SWR_DYNMEM and *_SWR_MAIN_RAM_FREE may not longer be needed. If so, rip them out, burn them and bury the ashes under six feet of concrete. Bear in mind some other code generating values which feed into them may also no longer be needed.
         symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
         # We need *_SWR_MAIN_RAM_FREE because we can't infer *_SWR_MAIN_RAM_FREE
         # by comparing MAX_PAGE with actual PAGE, because we cap the value of

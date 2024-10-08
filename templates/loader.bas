@@ -318,11 +318,21 @@ extra$=""
 IF PAGE>max_page THEN PROCdie("Sorry, you need PAGE<=&"+STR$~max_page+"; it is &"+STR$~PAGE+"."+extra$)
 
 REM At this point we have three different kinds of memory available:
-REM - extra_main_ram bytes free in main RAM; this varies with screen mode on
+REM - main_ram bytes free in main RAM; this varies with screen mode on
 REM   non-shadow systems, so is calculated later for each mode we consider
 REM - flexible_swr_ro bytes of sideways RAM which can be used as dynamic memory or vmem cache
 REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
-vmem_only_swr=swr_size-flexible_swr_ro
+REM SFTODONOW: I nede to give the new style code here a fairly thorough test on all different machines and with different RAM configurations and dynmem sizes
+
+REM Because an Ozmoo executable has a natural 512-byte alignment (which we know
+REM here because max_page has it), the amount of extra main RAM we get from having
+REM PAGE<max_page is not simply max_page-PAGE; we need to round it down to the
+REM nearest multiple of 512 bytes. (Suppose the natural alignment is "even";
+REM PAGE=&1A00 (even) and PAGE=&1900 (odd) both give us the same amount of
+REM usable 512-byte RAM blocks, even though PAGE=&1900 does give us an extra 256
+REM bytes of available RAM.)
+page_adjust=(max_page-PAGE) AND &FE00
+data_start=data_start_at_max_page-page_adjust
 
 REM If we have shadow RAM, all modes have the same (0K) screen RAM requirement so we
 REM only need to do the test once for mode 0. Remember the screen RAM isn't the only
@@ -350,42 +360,31 @@ DEF FNmode_ok(mode)
 REM We may have shadow RAM even if we don't require it (the Electron executable
 REM currently handles both types of system), so we check the potential value of
 REM HIMEM in the shadow version of the mode we're interested in, if it exists.
-screen_ram=&8000-FNhimem_for_mode(128+mode)
-REM Because an Ozmoo executable has a natural 512-byte alignment (which we know
-REM here because max_page has it), the amount of extra main RAM we get from having
-REM PAGE<max_page is not simply max_page-PAGE; we need to round it down to the
-REM nearest multiple of 512 bytes. (Suppose the natural alignment is "even";
-REM PAGE=&1A00 (even) and PAGE=&1900 (odd) both give us the same amount of free RAM,
-REM even though PAGE=&1900 does give us an extra 256 bytes of available RAM.)
-page_adjust=(max_page-PAGE) AND &FE00
-extra_main_ram=swr_main_ram_free+page_adjust-screen_ram
-data_start=data_start_at_max_page+page_adjust
-REM flexible_swr may be modified during the decision making process, so reset it each time.
+main_ram=FNhimem_for_mode(128+mode)-data_start
+REM These may be modified during the decision making process, so reset them each time.
 flexible_swr=flexible_swr_ro
+vmem_only_swr=swr_size-flexible_swr_ro
 IF swr_dynmem_model=0 THEN =FNmode_ok_small_dynmem
 IF swr_dynmem_model=1 THEN =FNmode_ok_medium_dynmem
 =FNmode_ok_big_dynmem
 
 DEF FNmode_ok_small_dynmem
-REM SFTODO: Is it confusing that main_ram_shortfall and any_ram_shortfall are "positive for not enough" whereas we are generally tracking available RAM and using "negative for not enough"?
-REM We must have main RAM for the dynamic memory. The build system checked that
-REM the binary would have enough main RAM when built at the maximum value of PAGE
-REM and with the assumed screen RAM, so we're OK for dynamic memory iff
-REM extra_main_ram>=0. In order to report the requirements correctly if we don't
-REM have enough, we take a (tweaked) copy of extra_main_ram before trying to
-REM allocate ${MIN_VMEM_BYTES}.
-main_ram_shortfall=-FNmin(extra_main_ram,0)
+REM We must have main RAM for the dynamic memory.
+main_ram=main_ram-${DYNMEM_SIZE}
+REM We take a tweaked copy of main_ram at this point, just to help us report the
+REM requirements correctly if we don't have enough RAM.
+main_ram_shortfall=-FNmin(main_ram,0)
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-IF extra_main_ram>=0 THEN =TRUE
-any_ram_shortfall=(-extra_main_ram)-main_ram_shortfall
+IF main_ram>=0 THEN =TRUE
+any_ram_shortfall=(-main_ram)-main_ram_shortfall
 =FNmaybe_die_ram(main_ram_shortfall,"main RAM",any_ram_shortfall,"main+sideways RAM")
 
 DEF FNmode_ok_medium_dynmem
 REM For the medium dynamic memory model, we *must* have enough flexible_swr for the
 REM game's dynamic memory; main RAM can't be used as dynamic memory.
-flexible_swr=flexible_swr-swr_dynmem_needed
+flexible_swr=flexible_swr-${DYNMEM_SIZE}
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-=FNmaybe_die_ram(-flexible_swr,"sideways RAM",-extra_main_ram,"main+sideways RAM")
+=FNmaybe_die_ram(-flexible_swr,"sideways RAM",-main_ram,"main+sideways RAM")
 
 DEF FNmode_ok_big_dynmem
 REM Dynamic memory can come from a combination of main RAM and flexible_swr. For this
@@ -398,12 +397,12 @@ REM report the RAM requirements correctly if we don't have enough, we make a not
 REM whether we have enough main RAM for the header and then do the main
 REM calculation as if main and flexible_swr RAM are truly interchangeable (which
 REM they otherwise are).
-header_in_main_ram=(data_start+screen_ram)<=&7F00:REM SFTODONOW: REVIEW THIS FRESH AFTERWARDS
-flexible_swr=flexible_swr-swr_dynmem_needed
-IF flexible_swr<0 THEN extra_main_ram=extra_main_ram+flexible_swr:flexible_swr=0
+header_in_main_ram=main_ram>=256
+flexible_swr=flexible_swr-${DYNMEM_SIZE}
+IF flexible_swr<0 THEN main_ram=main_ram+flexible_swr:flexible_swr=0
 PROCsubtract_ram(${MIN_VMEM_BYTES})
-REM At this point, if extra_main_ram is negative we don't have enough main and
-REM flexible SWR and -extra_main_ram is the shortfall. If we don't have enough main
+REM At this point, if main_ram is negative we don't have enough main and
+REM flexible SWR and -main_ram is the shortfall. If we don't have enough main
 REM RAM for the header, we also report a separate shortfall in main RAM only, which
 REM we add back in to the main+flexible shortfall so we don't overreport the total
 REM memory required. We use 512 in the next line even though we only need 256 bytes,
@@ -411,18 +410,18 @@ REM because in practice free RAM varies in 512 byte chunks because of PAGE align
 REM and the general insistence on aligning everything to 512 byte boundaries.
 REM FNmaybe_die_ram() takes care of adjusting the memory requirement shown to the
 REM user to account for PAGE alignment.
-IF header_in_main_ram THEN main_ram=0 ELSE main_ram=-512:extra_main_ram=extra_main_ram+512
-=FNmaybe_die_ram(-main_ram,"main RAM",-extra_main_ram,"main+sideways RAM")
+IF header_in_main_ram THEN header_main_ram=0 ELSE header_main_ram=-512:main_ram=main_ram+512
+=FNmaybe_die_ram(-header_main_ram,"main RAM",-main_ram,"main+sideways RAM")
 
-REM Subtract n bytes in total from vmem_only_swr, flexible_swr and extra_main_ram,
-REM preferring to take from them in that order. Only extra_main_ram will be allowed
-REM to go negative as a result of this subtraction. We prefer this order because
-REM vmem_only_swr is the least valuable memory type and we want to maximise
-REM extra_main_ram in case it can be used as shadow vmem cache.
+REM Subtract n bytes in total from vmem_only_swr, flexible_swr and main_ram,
+REM preferring to take from them in that order. Only main_ram will be allowed to go
+REM negative as a result of this subtraction. We prefer this order because
+REM vmem_only_swr is the least valuable memory type and we want to maximise main_ram
+REM in case it can be used as shadow vmem cache.
 DEF PROCsubtract_ram(n)
 IF vmem_only_swr>0 THEN d=FNmin(n,vmem_only_swr):vmem_only_swr=vmem_only_swr-d:n=n-d
 IF flexible_swr>0 THEN d=FNmin(n,flexible_swr):flexible_swr=flexible_swr-d:n=n-d
-extra_main_ram=extra_main_ram-n
+main_ram=main_ram-n
 ENDPROC
 
 DEF FNcode_start
@@ -460,7 +459,7 @@ p=PAGE
     REM and that makes all the difference, or perhaps the user's precise memory
     REM setup avoids hot read-only memory being loaded into shadow RAM on their
     REM machine.)
-    shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,extra_main_ram)
+    shadow_cache=FNmin(${RECOMMENDED_SHADOW_CACHE_PAGES}*256,main_ram)
     REM The shadow cache must not overlap with shadow RAM.
     REM SFTODO: Strictly speaking this could be allowed on machines where we use
     REM an API call to transfer data instead of paging shadow RAM into the
@@ -483,13 +482,13 @@ p=PAGE
 
 DEF PROCchoose_non_tube_version
 !ifdef OZMOOE_BINARY {
-    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:data_start_at_max_page=${OZMOOE_DATA_START}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOE_SWR_DYNMEM}:swr_main_ram_free=${OZMOOE_SWR_MAIN_RAM_FREE}:ENDPROC
+    IF electron THEN binary$="${OZMOOE_BINARY}":max_page=${OZMOOE_MAX_PAGE}:data_start_at_max_page=${OZMOOE_DATA_START}:swr_dynmem_model=${OZMOOE_SWR_DYNMEM_MODEL}:ENDPROC
 } else {
     IF electron THEN PROCunsupported_machine("an Electron")
 }
 REM SFTODO: Should I make the loader support some sort of line-continuation character, then I could split up some of these very long lines?
 !ifdef OZMOOSH_BINARY {
-    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:data_start_at_max_page=${OZMOOSH_DATA_START}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOSH_SWR_DYNMEM}:swr_main_ram_free=${OZMOOSH_SWR_MAIN_RAM_FREE}:ENDPROC
+    IF shadow THEN binary$="${OZMOOSH_BINARY}":max_page=${OZMOOSH_MAX_PAGE}:data_start_at_max_page=${OZMOOSH_DATA_START}:swr_dynmem_model=${OZMOOSH_SWR_DYNMEM_MODEL}:ENDPROC
 } else {
     REM If - although I don't believe this is currently possible - we don't have
     REM OZMOOSH_BINARY but we do have OZMOOB_BINARY, we can run OZMOOB_BINARY on any
@@ -499,10 +498,10 @@ REM SFTODO: Should I make the loader support some sort of line-continuation char
     }
 }
 !ifdef OZMOOB_BINARY {
-    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:data_start_at_max_page=${OZMOOB_DATA_START}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}:swr_dynmem_needed=${OZMOOB_SWR_DYNMEM}:swr_main_ram_free=${OZMOOB_SWR_MAIN_RAM_FREE}
+    binary$="${OZMOOB_BINARY}":max_page=${OZMOOB_MAX_PAGE}:data_start_at_max_page=${OZMOOB_DATA_START}:swr_dynmem_model=${OZMOOB_SWR_DYNMEM_MODEL}
 } else {
     !ifdef OZMOOSH_BINARY {
-        REM SFTODO: Should we also (if OZMOO2P_BINARY is defined) suggest a sedcond processor as an option, as we do in the PAGE-too-high-no-shadow case?
+        REM SFTODO: Should we also (if OZMOO2P_BINARY is defined) suggest a second processor as an option, as we do in the PAGE-too-high-no-shadow case?
         PROCunsupported_machine("a BBC B without shadow RAM")
     } else {
         PROCunsupported_machine("a BBC B")
@@ -674,7 +673,7 @@ REM flexible_swr_ro is the amount of sideways RAM in the first bank which can be
 REM used as dynamic memory (perhaps in combination with main RAM, depending on the
 REM memory model) or vmem cache. Other sideways RAM can only be used as vmem cache.
 IF swr_banks>0 THEN flexible_swr_ro=&4000 ELSE flexible_swr_ro=0
-IF FNpeek(${private_ram_in_use})=0 THEN PROCadd_private_ram_as_swr
+IF swr_banks<${max_ram_bank_count} AND FNpeek(${private_ram_in_use})=0 THEN PROCadd_private_ram_as_swr
 IF FNpeek(${swr_type})>2 THEN swr$="("+STR$(swr_banks*16)+"K unsupported sideways RAM)":PROCupdate_swr_banks(0)
 swr_size=&4000*swr_banks-swr_adjust
 IF swr_banks=0 THEN ENDPROC
@@ -691,8 +690,8 @@ swr$=swr$+bank$:NEXT:swr$=swr$+")"
 ENDPROC
 
 DEF PROCadd_private_ram_as_swr
-IF swr_banks<${max_ram_bank_count} AND integra_b THEN PROCpoke(swr_banks+${ram_bank_list},64):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
-IF swr_banks<${max_ram_bank_count} AND host_os=2 THEN PROCpoke(swr_banks+${ram_bank_list},128):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
+IF integra_b THEN PROCpoke(swr_banks+${ram_bank_list},64):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${integra_b_private_ram_size}
+IF host_os=2 THEN PROCpoke(swr_banks+${ram_bank_list},128):PROCupdate_swr_banks(swr_banks+1):swr_adjust=16*1024-${b_plus_private_ram_size}:IF swr_banks=1 THEN flexible_swr_ro=${b_plus_private_ram_size}
 ENDPROC
 
 DEF PROCupdate_swr_banks(i):swr_banks=i:PROCpoke(${ram_bank_count},i):ENDPROC
