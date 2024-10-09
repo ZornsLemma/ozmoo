@@ -197,7 +197,7 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     ; repeatedly to generate the addresses; this is relatively easy and saves
     ; using a general-purpose multiplication routine. We push the addresses onto
     ; the stack as we generate them, which saves having to write
-    ; subtract-with-wrap code as well.
+    ; subtract-with-wrap code as well. SFTODONOW: I am tying myself in knots, but this feels awfully convoluted - can't we do a simple (chunk-wise) block move? I think we were trying to avoid needing "negative_bump_src_dst" as well as "bump_src_dst" but can't be work exclusively with negative_bump? To be fair, *maybe* given the mode 3/6 "hole" doing a negative bump is tricky (although maybe not if we "bump forward screen height-1 lines" instead of trying to bump back one line). Anyway, that aside, now that clearing the blank line is decoupled from the "final" move, it isn't clear to me that it's sensible or necessary for the final line to be copied via separate code. I need to think about this fresh.
 add_loop
     lda src+1:pha:lda src:pha
     ldx #src:jsr add_line_x
