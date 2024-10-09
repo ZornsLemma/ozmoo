@@ -368,29 +368,24 @@ have_upper_window
     jsr osbput
 +
 
-    ; Save the current screen top left address before we scroll.
-    lda vdu_screen_top_left_address_low
-    sta src
-    lda vdu_screen_top_left_address_high
-    sta src+1
-
     ; Page in shadow RAM; this is a no-op if we have no shadow RAM.
     lda #1
 jsr_shadow_paging_control1
     jsr $ffff ; patched
 
-    ; Calculate the new screen start address, ready for updating the CRTC/ULA.
-    ; We also save the new screen start address to dst ready for use in the data
-    ; copy loops below.
-    ; SFTODO: Can't we intermingle this code with the "Save the current screen..."
-    ; block above? This would probably save a few bytes and cycles.
+    ; Save the current screen top left address before we scroll. Calculate the
+    ; new screen start address, ready for updating the CRTC/ULA. We also save
+    ; the new screen start address to dst ready for use in the data copy loops
+    ; below.
     lda vdu_screen_top_left_address_low
+    sta src
     clc
     adc vdu_bytes_per_character_row_low
     sta vdu_screen_top_left_address_low
     sta dst
     sta vdu_temp_store_da
     lda vdu_screen_top_left_address_high
+    sta src+1
     adc vdu_bytes_per_character_row_high
     bpl +
     sec
