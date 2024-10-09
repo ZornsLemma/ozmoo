@@ -339,6 +339,10 @@ is_lf
     ; If we're not on the bottom line of the screen (the "text window" is the
     ; whole screen by default) we're not interested.
     lda vdu_text_cursor_y_position
+    ; SQUASH: Could we do cmp # here and patch the operand at runtime? This
+    ; would marginally improve performance and would save a byte. (Remember we
+    ; check below to see if there *is* a text window, so we really only care
+    ; about checking against the actual bottom line of the screen here.)
     cmp vdu_text_window_bottom
     bcc jmp_parent_wrchv_with_lf
     ; If we don't have an upper window we're not interested.
