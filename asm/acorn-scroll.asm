@@ -256,17 +256,6 @@ ldy_imm_chunk_size_minus_1_b
     ; contribute towards increasing our chances of maintaining a flicker free
     ; display without slowing things down too much by having over-tight safe
     ; raster bounds.
-    ; SQUASH: Given this loop is unrolled, would we be better off both in terms
-    ; of space and speed having two separate unrolled loops, one for the copy
-    ; and one for the clear? This would avoid 7 extra copies of the lda #0 and
-    ; only cost us one extra ldy #:dey:bpl. If we were willing to take subroutine
-    ; call overhead, we could then also move the lda:sta:dey variant which is
-    ; used above and would now be used here into a subroutine - we might even
-    ; be able to unroll the loop 16 times and still come out with a small
-    ; space saving, which would probably more than compensate for the jsr-rts
-    ; overhead. OK, I suspect it wouldn't compensate for the cycle overhead,
-    ; but we could nevertheless still share an 8-unroll and shrink this
-    ; code quite a lot with relatively minimal overhead.
 byte_move_loop2_unroll_count = 8
     +assert min_chunk_size % byte_move_loop2_unroll_count = 0
     ; SQUASH: We could move byte_move_loop[12] into a subroutine.
