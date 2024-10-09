@@ -257,6 +257,10 @@ byte_move_and_clear_loop
     ; contribute towards increasing our chances of maintaining a flicker free
     ; display without slowing things down too much by having over-tight safe
     ; raster bounds.
+    ; SQUASH: Given this loop is unrolled, would we be better off both in terms
+    ; of space and speed having two separate unrolled loops, one for the copy
+    ; and one for the clear? This would avoid 7 extra copies of the lda #0 and
+    ; only cost us one extra ldy #:dey:bpl.
 byte_move_and_clear_loop_unroll_count = 8
     +assert min_chunk_size % byte_move_and_clear_loop_unroll_count = 0
     !for i, 1, byte_move_and_clear_loop_unroll_count {
