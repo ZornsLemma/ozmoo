@@ -265,7 +265,9 @@ byte_move_and_clear_loop
     ; used above and would now be used here into a subroutine - we might even
     ; be able to unroll the loop 16 times and still come out with a small
     ; space saving, which would probably more than compensate for the jsr-rts
-    ; overhead.
+    ; overhead. OK, I suspect it wouldn't compensate for the cycle overhead,
+    ; but we could nevertheless still share an 8-unroll and shrink this
+    ; code quite a lot with relatively minimal overhead.
 byte_move_and_clear_loop_unroll_count = 8
     +assert min_chunk_size % byte_move_and_clear_loop_unroll_count = 0
     !for i, 1, byte_move_and_clear_loop_unroll_count {
