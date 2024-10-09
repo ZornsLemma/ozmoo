@@ -210,16 +210,16 @@ line_move_loop
 chunk_move_loop
 ldy_imm_chunk_size_minus_1_a
     ldy #chunk_size_80 - 1 ; patched
-byte_move_loop
-byte_move_loop_unroll_count = 8
-    +assert min_chunk_size % byte_move_loop_unroll_count = 0
-    !for i, 1, byte_move_loop_unroll_count {
+byte_move_loop1
+byte_move_loop1_unroll_count = 8
+    +assert min_chunk_size % byte_move_loop1_unroll_count = 0
+    !for i, 1, byte_move_loop1_unroll_count {
         lda (src),y
         sta (dst),y
         dey
     }
-    bpl byte_move_loop
-    +assert_no_page_crossing byte_move_loop
+    bpl byte_move_loop1
+    +assert_no_page_crossing byte_move_loop1
     jsr bump_src_dst_and_dex
     bne chunk_move_loop
     pla:sta dst:pla:sta dst+1
@@ -248,7 +248,6 @@ line_move_and_clear_loop
 chunk_move_and_clear_loop
 ldy_imm_chunk_size_minus_1_b
     ldy #chunk_size_80 - 1 ; patched
-byte_move_and_clear_loop
     ; The body of this loop is slow enough that we fairly rapidly hit
     ; diminishing returns by unrolling it, *but* we do have spare space for the
     ; unroll at the moment and this loop executes for every single screen
@@ -268,17 +267,29 @@ byte_move_and_clear_loop
     ; overhead. OK, I suspect it wouldn't compensate for the cycle overhead,
     ; but we could nevertheless still share an 8-unroll and shrink this
     ; code quite a lot with relatively minimal overhead.
-byte_move_and_clear_loop_unroll_count = 8
-    +assert min_chunk_size % byte_move_and_clear_loop_unroll_count = 0
-    !for i, 1, byte_move_and_clear_loop_unroll_count {
+byte_move_loop2_unroll_count = 8
+    +assert min_chunk_size % byte_move_loop2_unroll_count = 0
+    ; SQUASH: We could move byte_move_loop[12] into a subroutine.
+byte_move_loop2
+    !for i, 1, byte_move_loop2_unroll_count {
         lda (src),y
         sta (dst),y
-        lda #0
+        dey
+    }
+    bpl byte_move_loop2
+    +assert_no_page_crossing byte_move_loop2
+ldy_imm_chunk_size_minus_1_c
+    ldy #chunk_size_80 - 1 ; patched
+    lda #0
+byte_clear_loop_unroll_count = 8
+    +assert min_chunk_size % byte_clear_loop_unroll_count = 0
+byte_clear_loop
+    !for i, 1, byte_clear_loop_unroll_count {
         sta (src),y
         dey
     }
-    bpl byte_move_and_clear_loop
-    +assert_no_page_crossing byte_move_and_clear_loop
+    bpl byte_clear_loop
+    +assert_no_page_crossing byte_clear_loop
     jsr bump_src_dst_and_dex
     bne chunk_move_and_clear_loop
 
@@ -659,6 +670,7 @@ be_electron
 
 max_runtime_size = fast_scroll_end - fast_scroll_start
 +assert re_bbc - fast_scroll_start <= max_runtime_size
+    !warn "SFTODONOW", max_runtime_size - (re_bbc - fast_scroll_start)
 +assert re_electron - fast_scroll_start <= max_runtime_size
 
 ; This code is copied over rs_screen_ram_copy in main RAM after we've copied
@@ -741,6 +753,7 @@ sta_fast_scroll_start_abs
     ldx #chunk_size_40 - 1
     stx ldy_imm_chunk_size_minus_1_a + 1
     stx ldy_imm_chunk_size_minus_1_b + 1
+    stx ldy_imm_chunk_size_minus_1_c + 1
     +copy_data raster_wait_table_40, raster_wait_table_end_40, raster_wait_table
 +
 
