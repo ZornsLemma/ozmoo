@@ -303,6 +303,11 @@ bump_src_dst_and_dex
     ; .ptr += chunk_size
     sec ; not clc as we want to offset the minus 1 just below
     lda .ptr
+    ; SQUASH: Can't we do adc # here and patch this at runtime just as we do for
+    ; ...minus_1_a and and ...minus_1_b? This is admittedly mildly faffy because
+    ; it's in a macro, but it would be slightly faster *and* it would save two
+    ; bytes of runtime code. (We could just get rid of the macro and inline the
+    ; code twice.)
     adc ldy_imm_chunk_size_minus_1_a+1 ; add chunk_size - 1
     sta .ptr
     bcc .no_carry
