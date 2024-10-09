@@ -258,7 +258,8 @@ ldy_imm_chunk_size_minus_1_b
     ; raster bounds.
 byte_move_loop2_unroll_count = 8
     +assert min_chunk_size % byte_move_loop2_unroll_count = 0
-    ; SQUASH: We could move byte_move_loop[12] into a subroutine.
+    ; SQUASH: We could move byte_move_loop[12] into a subroutine. We'd need to
+    ; make sure it was put in private RAM on the B+.
 byte_move_loop2
     !for i, 1, byte_move_loop2_unroll_count {
         lda (src),y
