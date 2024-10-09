@@ -71,6 +71,10 @@ vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
+; SQUASH: vdu_bytes_per_character_row_{low,high} are fixed for us at runtime. We
+; could save a few bytes and cycles by using immediate addressing to get these
+; value, patching them at runtime to reflect whether we're in a 40 or 80 column
+; mode.
 vdu_bytes_per_character_row_low = $0352
 vdu_bytes_per_character_row_high = $0353
 vdu_screen_size_high_byte = $354
