@@ -260,7 +260,12 @@ byte_move_and_clear_loop
     ; SQUASH: Given this loop is unrolled, would we be better off both in terms
     ; of space and speed having two separate unrolled loops, one for the copy
     ; and one for the clear? This would avoid 7 extra copies of the lda #0 and
-    ; only cost us one extra ldy #:dey:bpl.
+    ; only cost us one extra ldy #:dey:bpl. If we were willing to take subroutine
+    ; call overhead, we could then also move the lda:sta:dey variant which is
+    ; used above and would now be used here into a subroutine - we might even
+    ; be able to unroll the loop 16 times and still come out with a small
+    ; space saving, which would probably more than compensate for the jsr-rts
+    ; overhead.
 byte_move_and_clear_loop_unroll_count = 8
     +assert min_chunk_size % byte_move_and_clear_loop_unroll_count = 0
     !for i, 1, byte_move_and_clear_loop_unroll_count {
