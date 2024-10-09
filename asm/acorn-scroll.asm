@@ -74,7 +74,7 @@ vdu_screen_top_left_address_high = $351
 ; SQUASH: vdu_bytes_per_character_row_{low,high} are fixed for us at runtime. We
 ; could save a few bytes and cycles by using immediate addressing to get these
 ; value, patching them at runtime to reflect whether we're in a 40 or 80 column
-; mode.
+; mode. The same applies to vdu_screen_size_high_byte.
 vdu_bytes_per_character_row_low = $0352
 vdu_bytes_per_character_row_high = $0353
 vdu_screen_size_high_byte = $354
@@ -277,7 +277,7 @@ byte_move_and_clear_loop_unroll_count = 8
 re_screen_ram_copy
 
     ; Page in main RAM; this is a no-op if we have no shadow RAM.
-    lda #0
+    lda #0 ; SQUASH: txa? I think we know X is 0.
 jsr_shadow_paging_control2
     jsr $ffff ; patched
 
