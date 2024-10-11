@@ -190,34 +190,22 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
     ; SFTODONOW ULTRA HACKY HARD-CODED FOR MODE 3
-    ; SFTODONOW: IT MIGHT BE WORTH SPENDING AN EXTRA 2 BYTES PER INVOCATION OF THIS MACRO TO DO A STRAIGHT SUBTRACT RATHER THAN ADD SCREEN SIZE-CHUNK SIZE
-!macro add_with_wrap ptr, val, ~.adc_imm_low { ; SFTODONOW 19 BYTES
-    clc
-    lda ptr
-.adc_imm_low
-    adc #<val
-    sta ptr
-    lda ptr+1
-    adc #>val
-    bpl +
-    sec:sbc vdu_screen_size_high_byte
-+   sta ptr+1
-}
-!macro sub_with_wrap ptr, val { ; SFTODONOW WIP 23 BYTES
+!macro sub_with_wrap ptr, val, ~.sbc_imm { ; SFTODONOW WIP 23 BYTES
     sec
     lda ptr
+.sbc_imm
     sbc #val
     sta ptr
-    bcs done ; SFTODONOW PROB SMALL OPTIMISATION BUT NOT STRICLY NECESSARY
+    bcs .done ; SQUASH: (probably) a small optimisation, but not strictly necessary
     lda ptr+1
     sbc #0
-    cmp vdu_screen_memory_start_address_high
-    bcs high_byte_in_a
+    cmp vdu_screen_memory_start_address_high ; SQUASH: use cmp # and patch at startup
+    bcs .high_byte_in_a
     ; clc - redundant
     adc vdu_screen_size_high_byte
-high_byte_in_a
+.high_byte_in_a
     sta ptr+1
-done
+.done
 }
 
     ; We want to copy fast_scroll_upper_window_size lines from src to dst,
@@ -234,8 +222,6 @@ done
     ldx chunks_to_copy_table-1,y
 outer_copy_loop
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
-    ; SFTODONOW UNROLL THIS LOOP
-    ; SFTODONOW: MAKE SURE ALL HOT LOOPS HAVE NO PENALTY BRANCH OPS
 inner_copy_loop
     !for i, 1, 8 {
         lda (src),y
@@ -244,8 +230,8 @@ inner_copy_loop
     }
     bpl inner_copy_loop
     +assert_no_page_crossing inner_copy_loop ; redundant while we enforce this on outer loop too
-    +add_with_wrap src, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_1 ; SFTODNOW PATCH
-    +add_with_wrap dst, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_2 ; SFTODNOW PATCH
+    +sub_with_wrap src, chunk_size_80, ~sbc_imm_chunk_size_1 ; SFTODNOW PATCH
+    +sub_with_wrap dst,  chunk_size_80, ~sbc_imm_chunk_size_2 ; SFTODNOW PATCH
     dex:bne outer_copy_loop
     ; We could possibly relax this constraint on the outer loop, but for now let's include it.
     +assert_no_page_crossing outer_copy_loop
@@ -269,7 +255,7 @@ inner_clear_loop
     }
     bpl inner_clear_loop
     +assert_no_page_crossing inner_clear_loop ; redundant while we enforce this on outer loop too
-    +add_with_wrap dst, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_3 ; SFTODNOW PATCH
+    +sub_with_wrap dst, chunk_size_80, ~sbc_imm_chunk_size_3 ; SFTODNOW PATCH
     dex:bne outer_clear_loop
     ; We could possibly relax this constraint on the outer loop, but for now let's include it.
     +assert_no_page_crossing outer_clear_loop
