@@ -69,6 +69,7 @@ electron_time_clock_a = $291
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
+vdu_screen_memory_start_address_high = $34E ; SFTODONOW: USED?
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
 ; SQUASH: vdu_bytes_per_character_row_{low,high} are fixed for us at runtime. We
@@ -189,7 +190,7 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
     ; SFTODONOW ULTRA HACKY HARD-CODED FOR MODE 3
-!macro add_with_wrap ptr, val {
+!macro add_with_wrap ptr, val { ; SFTODONOW 19 BYTES
     clc
     lda ptr:adc #<val:sta ptr
     lda ptr+1:adc #>val
@@ -203,24 +204,12 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     ; fast_scroll_upper_window_size is 1, these two areas overlap, so we must
     ; copy the bytes "further down" the screen first.
 
-    ; Adjust src and dst so they point to the "furthest" line pairs; we will then
-    lda #chunks_per_line - 1
     ldy fast_scroll_upper_window_size
-    dey:beq +
--   clc:adc #chunks_per_line
-    dey:bne -
-+
+    ldx #src:jsr add_table_entry_y_to_ptr_x
+    ldx #dst:jsr add_table_entry_y_to_ptr_x
 
-    ; SFTODONOW: IT WOULD BE MUCH FASTER TO ADD 320/640 PER LINE RATHER THAN CHUNK SIZE PER CHUNK HERE BUT LET'S GO WITH THIS UNTIL I GET IT OTHERWISE WORKING
-    pha
-    tax
--   +add_with_wrap src, chunk_size_80 ; SFTODONOW PATCH
-    +add_with_wrap dst, chunk_size_80 ; SFTODONOW PATCH
-    dex:bne -
-
-    pla:tax
+    ldx chunks_to_copy_table-1,y
 SFTODOLOOP
-
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
     ; SFTODONOW UNROLL THIS LOOP
     ; SFTODONOW: MAKE SURE ALL HOT LOOPS HAVE NO PENALTY BRANCH OPS
@@ -228,16 +217,17 @@ SFTODOLOOP
     eor #%10101010
     sta (dst),y
     dey:bpl -
-    +add_with_wrap src, 16384- chunk_size_80 ; SFTODNOW PATCH
+    +add_with_wrap src, 16384 - chunk_size_80 ; SFTODNOW PATCH
     +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
-    dex:bpl SFTODOLOOP
+    dex:bne SFTODOLOOP
 
     ; Following the "unwanted" add_with_wrap at the end of the previous loop,
     ; dst now points to the last chunk on the "-1"th row of the new screen, so
     ; by adding the full screen size to it it will point to the last chunk on
     ; the last row of the screen, ready for a descending clear of the last line.
-    +add_with_wrap dst, 25*640
-;-   ldy #0:lda (dst),y:eor #255:sta (dst),y:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:jmp -
+    ; SFTODONOW: WE REALLY ONLY NEED THIS IN MODE 3 OR 6, I THINK
+    ; SFTODO: THE TABLE HERE IS A BIT MISNAMED NOW WE ARE "ABUSING" THIS LAST ENTRY
+    ldx #dst:ldy #fast_scroll_max_upper_window_size+1:jsr add_table_entry_y_to_ptr_x
 
     ldx #chunks_per_line
 SFTODOLOOP2
@@ -266,6 +256,15 @@ finish_oswrch
     tax
     lda #10
 null_shadow_driver
+    rts
+
+add_table_entry_y_to_ptr_x
+    clc
+    lda $00,x:adc copy_initial_offset_table_low-1,y:sta $00,x
+    lda $01,x:adc copy_initial_offset_table_high-1,y
+    bpl +
+    sec:sbc vdu_screen_size_high_byte
++   sta $01,x
     rts
 
 !if 0 { ; SFTODONOW
@@ -502,6 +501,22 @@ raster_wait_table_last
 raster_wait_table_end
     +assert raster_wait_table_last - raster_wait_table_first = raster_wait_table_entries
     +assert raster_wait_table_end - raster_wait_table_last = raster_wait_table_entries
+
+; SFTODONOWEXPERIMENTAL AND IF THIS LIVES IT NEEDS PATCHING SUPPORT
+copy_initial_offset_table_low
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte <(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte <(25*640)
+copy_initial_offset_table_high
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte >(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte >(25*640)
+chunks_to_copy_table
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte i*chunks_per_line
+}
 
 re_bbc
 }
