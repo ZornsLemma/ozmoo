@@ -232,7 +232,7 @@ done
 
     ; Copy the appropriate number of chunks, working back "up" the screen.
     ldx chunks_to_copy_table-1,y
-SFTODOLOOP
+outer_copy_loop
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
     ; SFTODONOW UNROLL THIS LOOP
     ; SFTODONOW: MAKE SURE ALL HOT LOOPS HAVE NO PENALTY BRANCH OPS
@@ -246,9 +246,9 @@ inner_copy_loop
     +assert_no_page_crossing inner_copy_loop ; redundant while we enforce this on outer loop too
     +add_with_wrap src, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_1 ; SFTODNOW PATCH
     +add_with_wrap dst, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_2 ; SFTODNOW PATCH
-    dex:bne SFTODOLOOP
+    dex:bne outer_copy_loop
     ; We could possibly relax this constraint on the outer loop, but for now let's include it.
-    +assert_no_page_crossing SFTODOLOOP
+    +assert_no_page_crossing outer_copy_loop
 
     ; Following the "unwanted" add_with_wrap at the end of the previous loop,
     ; dst now points to the last chunk on the "-1"th row of the new screen, so
