@@ -190,10 +190,14 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
     ; SFTODONOW ULTRA HACKY HARD-CODED FOR MODE 3
-!macro add_with_wrap ptr, val { ; SFTODONOW 19 BYTES
+!macro add_with_wrap ptr, val, ~.adc_imm_low { ; SFTODONOW 19 BYTES
     clc
-    lda ptr:adc #<val:sta ptr
-    lda ptr+1:adc #>val
+    lda ptr
+.adc_imm_low
+    adc #<val
+    sta ptr
+    lda ptr+1
+    adc #>val
     bpl +
     sec:sbc vdu_screen_size_high_byte
 +   sta ptr+1
@@ -213,16 +217,16 @@ SFTODOLOOP
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
     ; SFTODONOW UNROLL THIS LOOP
     ; SFTODONOW: MAKE SURE ALL HOT LOOPS HAVE NO PENALTY BRANCH OPS
--
+inner_copy_loop
     !for i, 1, 8 {
         lda (src),y
         sta (dst),y
         dey
     }
-    bpl -
-    +assert_no_page_crossing - ; redundant while we enforce this on outer loop too
-    +add_with_wrap src, 16384 - chunk_size_80 ; SFTODNOW PATCH
-    +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
+    bpl inner_copy_loop
+    +assert_no_page_crossing inner_copy_loop ; redundant while we enforce this on outer loop too
+    +add_with_wrap src, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_1 ; SFTODNOW PATCH
+    +add_with_wrap dst, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_2 ; SFTODNOW PATCH
     dex:bne SFTODOLOOP
     ; We could possibly relax this constraint on the outer loop, but for now let's include it.
     +assert_no_page_crossing SFTODOLOOP
@@ -236,18 +240,20 @@ SFTODOLOOP
     ldx #dst:ldy #fast_scroll_max_upper_window_size+1:jsr add_table_entry_y_to_ptr_x
 
     ldx #chunks_per_line
-SFTODOLOOP2
+outer_clear_loop
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
     lda #255
--
+inner_clear_loop
     !for i, 1, 8 {
         sta (dst),y
         dey
     }
-    bpl -
-    +assert_no_page_crossing -
-    +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
-    dex:bne SFTODOLOOP2
+    bpl inner_clear_loop
+    +assert_no_page_crossing inner_clear_loop ; redundant while we enforce this on outer loop too
+    +add_with_wrap dst, 16384 - chunk_size_80, ~adc_imm_negative_chunk_size_3 ; SFTODNOW PATCH
+    dex:bne outer_clear_loop
+    ; We could possibly relax this constraint on the outer loop, but for now let's include it.
+    +assert_no_page_crossing outer_clear_loop
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #0 xor 7:sta bbc_palette
