@@ -213,13 +213,19 @@ SFTODOLOOP
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
     ; SFTODONOW UNROLL THIS LOOP
     ; SFTODONOW: MAKE SURE ALL HOT LOOPS HAVE NO PENALTY BRANCH OPS
--   lda (src),y
-    eor #%10101010
-    sta (dst),y
-    dey:bpl -
+-
+    !for i, 1, 8 {
+        lda (src),y
+        sta (dst),y
+        dey
+    }
+    bpl -
+    +assert_no_page_crossing - ; redundant while we enforce this on outer loop too
     +add_with_wrap src, 16384 - chunk_size_80 ; SFTODNOW PATCH
     +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
     dex:bne SFTODOLOOP
+    ; We could possibly relax this constraint on the outer loop, but for now let's include it.
+    +assert_no_page_crossing SFTODOLOOP
 
     ; Following the "unwanted" add_with_wrap at the end of the previous loop,
     ; dst now points to the last chunk on the "-1"th row of the new screen, so
@@ -231,11 +237,15 @@ SFTODOLOOP
 
     ldx #chunks_per_line
 SFTODOLOOP2
-    ; SFTODONOW UNROLL THIS LOOP
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
     lda #255
--   sta (dst),y
-    dey:bpl -
+-
+    !for i, 1, 8 {
+        sta (dst),y
+        dey
+    }
+    bpl -
+    +assert_no_page_crossing -
     +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
     dex:bne SFTODOLOOP2
 
