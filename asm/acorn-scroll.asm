@@ -247,7 +247,7 @@ inner_copy_loop
     bpl inner_copy_loop
     +assert_no_page_crossing inner_copy_loop ; redundant while we enforce this on outer loop too
     +sub_with_wrap src, chunk_size_80, ~sbc_imm_chunk_size_1 ; SFTODNOW PATCH
-    +sub_with_wrap dst,  chunk_size_80, ~sbc_imm_chunk_size_2 ; SFTODNOW PATCH
+    +sub_with_wrap dst, chunk_size_80, ~sbc_imm_chunk_size_2 ; SFTODNOW PATCH
     dex:bne outer_copy_loop
     ; We could possibly relax this constraint on the outer loop, but for now let's include it.
     +assert_no_page_crossing outer_copy_loop
@@ -256,9 +256,9 @@ inner_copy_loop
     ; dst now points to the last chunk on the "-1"th row of the new screen, so
     ; by adding the full screen size to it it will point to the last chunk on
     ; the last row of the screen, ready for a descending clear of the last line.
-    ; SFTODONOW: WE REALLY ONLY NEED THIS IN MODE 3 OR 6, I THINK
+    ; SFTODONOW: WE REALLY ONLY NEED THIS IN MODE 3 OR 6, I THINK AND WE CAN AND PROBABLY SHOULD PATCH THIS OUT (CAREFUL TO MAKE IT SUITABLY RELOCATABLE FOR THE B+ PRIVATE RAM COPY) ON OTHER MODES, TO SAVE US HAVING TO PATCH THE TABLE TO HAVE A 0 AND THEN SPEND TIME ADDING IT - WE CAN PROBABLY PATCH IT TO BEQ FOO:NOP:.FOO SINCE WE KNOW THE BEQ WILL BRANCH
     ; SFTODO: THE TABLE HERE IS A BIT MISNAMED NOW WE ARE "ABUSING" THIS LAST ENTRY
-    ldx #dst:ldy #fast_scroll_max_upper_window_size+1:jsr add_table_entry_y_to_ptr_x
+    jsr add_clear_offset_to_dst
 
     ldx #chunks_per_line
 outer_clear_loop
@@ -295,6 +295,8 @@ finish_oswrch
 null_shadow_driver
     rts
 
+add_clear_offset_to_dst
+    ldx #dst:ldy #fast_scroll_max_upper_window_size+1
 add_table_entry_y_to_ptr_x
     clc
     lda $00,x:adc copy_initial_offset_table_low-1,y:sta $00,x
