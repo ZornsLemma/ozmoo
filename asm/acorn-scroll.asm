@@ -133,6 +133,22 @@ bs_runtime_common_and_bbc
 ; We start with code which is common to the BBC and Electron so we can avoid
 ; having two copies of it in this executable on disc.
 
+; SFTODONOWEXPERIMENTAL AND IF THIS LIVES IT NEEDS PATCHING SUPPORT
+copy_initial_offset_table_low
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte <(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte <(25*640)
+copy_initial_offset_table_high
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte >(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte >(25*640)
+chunks_to_copy_table
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte i*chunks_per_line
+}
+
 our_oswrch_common_tail
     ; Tell the OS to move the cursor to the same co-ordinates it already has,
     ; but taking account of the hardware scrolled screen. We could do this
@@ -480,23 +496,6 @@ raster_wait_table_last
 raster_wait_table_end
     +assert raster_wait_table_last - raster_wait_table_first = raster_wait_table_entries
     +assert raster_wait_table_end - raster_wait_table_last = raster_wait_table_entries
-
-; SFTODONOWEXPERIMENTAL AND IF THIS LIVES IT NEEDS PATCHING SUPPORT
-; SFTODONOW THIS TABLE MAY NEED MOVING SO IT IS PRESENT ON ELECTRON TOO
-copy_initial_offset_table_low
-!for i, 1, fast_scroll_max_upper_window_size {
-    !byte <(chunk_size_80 * (chunks_per_line * i - 1))
-}
-    !byte <(25*640)
-copy_initial_offset_table_high
-!for i, 1, fast_scroll_max_upper_window_size {
-    !byte >(chunk_size_80 * (chunks_per_line * i - 1))
-}
-    !byte >(25*640)
-chunks_to_copy_table
-!for i, 1, fast_scroll_max_upper_window_size {
-    !byte i*chunks_per_line
-}
 
 re_bbc
 }
