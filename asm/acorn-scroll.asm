@@ -188,100 +188,66 @@ rs_screen_ram_copy
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
+    ; SFTODONOW ULTRA HACKY HARD-CODED FOR MODE 3
+!macro add_with_wrap ptr, val {
+    clc
+    lda ptr:adc #<val:sta ptr
+    lda ptr+1:adc #>val
+    bpl +
+    sec:sbc vdu_screen_size_high_byte
++   sta ptr+1
+}
+
+    ; We want to copy fast_scroll_upper_window_size lines from src to dst,
+    ; making sure we wrap at the top of memory. Unless
+    ; fast_scroll_upper_window_size is 1, these two areas overlap, so we must
+    ; copy the bytes "further down" the screen first.
+
+    ; Adjust src and dst so they point to the "furthest" line pairs; we will then
+    lda #chunks_per_line - 1
     ldy fast_scroll_upper_window_size
-    dey:beq line_move_and_clear_loop
-    sty lines_to_move_without_clearing
+    dey:beq +
+-   clc:adc #chunks_per_line
+    dey:bne -
++
 
-    ; We need to copy lines_to_move_without_clearing lines up by one line,
-    ; working from the bottom-most line to the top-most line. We just add
-    ; repeatedly to generate the addresses; this is relatively easy and saves
-    ; using a general-purpose multiplication routine. We push the addresses onto
-    ; the stack as we generate them, which saves having to write
-    ; subtract-with-wrap code as well. SFTODONOW: I am tying myself in knots, but this feels awfully convoluted - can't we do a simple (chunk-wise) block move? I think we were trying to avoid needing "negative_bump_src_dst" as well as "bump_src_dst" but can't be work exclusively with negative_bump? To be fair, *maybe* given the mode 3/6 "hole" doing a negative bump is tricky (although maybe not if we "bump forward screen height-1 lines" instead of trying to bump back one line). Anyway, that aside, now that clearing the blank line is decoupled from the "final" move, it isn't clear to me that it's sensible or necessary for the final line to be copied via separate code. I need to think about this fresh. (Actually you are probably bumping *chunks* not lines, but the point holds - the "inverse" of bump_src_dst can be implemented by *adding* (with wrapping) screen_size_in_chunks-1 chunks, rather than subtracting and worrying about the "hole".)
-add_loop
-    lda src+1:pha:lda src:pha
-    ldx #src:jsr add_line_x
-    lda dst+1:pha:lda dst:pha
-    ldx #dst:jsr add_line_x
-    dey:bne add_loop
+    ; SFTODONOW: IT WOULD BE MUCH FASTER TO ADD 320/640 PER LINE RATHER THAN CHUNK SIZE PER CHUNK HERE BUT LET'S GO WITH THIS UNTIL I GET IT OTHERWISE WORKING
+    pha
+    tax
+-   +add_with_wrap src, chunk_size_80 ; SFTODONOW PATCH
+    +add_with_wrap dst, chunk_size_80 ; SFTODONOW PATCH
+    dex:bne -
 
-line_move_loop
+    pla:tax
+SFTODOLOOP
+
+    ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
+    ; SFTODONOW UNROLL THIS LOOP
+    ; SFTODONOW: MAKE SURE ALL HOT LOOPS HAVE NO PENALTY BRANCH OPS
+-   lda (src),y
+    eor #%10101010
+    sta (dst),y
+    dey:bpl -
+    +add_with_wrap src, 16384- chunk_size_80 ; SFTODNOW PATCH
+    +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
+    dex:bpl SFTODOLOOP
+
+    ; Following the "unwanted" add_with_wrap at the end of the previous loop,
+    ; dst now points to the last chunk on the "-1"th row of the new screen, so
+    ; by adding the full screen size to it it will point to the last chunk on
+    ; the last row of the screen, ready for a descending clear of the last line.
+    +add_with_wrap dst, 25*640
+;-   ldy #0:lda (dst),y:eor #255:sta (dst),y:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:nop:jmp -
+
     ldx #chunks_per_line
-chunk_move_loop
-ldy_imm_chunk_size_minus_1_a
-    ldy #chunk_size_80 - 1 ; patched
-byte_move_loop1
-byte_move_loop1_unroll_count = 8
-    +assert min_chunk_size % byte_move_loop1_unroll_count = 0
-    !for i, 1, byte_move_loop1_unroll_count {
-        lda (src),y
-        sta (dst),y
-        dey
-    }
-    bpl byte_move_loop1
-    +assert_no_page_crossing byte_move_loop1
-    jsr bump_src_dst_and_dex
-    bne chunk_move_loop
-    pla:sta dst:pla:sta dst+1
-    pla:sta src:pla:sta src+1
-    dec lines_to_move_without_clearing
-    bne line_move_loop
-
-    ; Copy the final (possibly only, if fast_scroll_upper_window_size is 1)
-    ; line, clearing the source afterwards.
-    ;
-    ; It is somewhat tempting to add a special case here, where if src and dst
-    ; are both not the one line on the screen which can wrap part-way through,
-    ; we execute a different version of the code which just copies the 320/640
-    ; bytes in one loop without breaking it into chunks. This would be a bit
-    ; faster (a back-of-envelope calculation suggests about 220 cycles saved
-    ; IIRC), *but* it wouldn't improve the worst-case time and so to be flicker
-    ; free we'd still have to keep the raster timings tight enough for the
-    ; chunk-based copy. I therefore don't think it's worth it - it doesn't help
-    ; us be flicker free or use looser raster bounds, and saving about 220
-    ; cycles on about 23/25ths of the scrolling line feeds isn't huge - there
-    ; are 2518 such line feeds in the benchmark, so we'd save about 0.25 seconds
-    ; on the benchmark even if none of our savings just got thrown away waiting
-    ; on the raster.
-line_move_and_clear_loop
-    ldx #chunks_per_line
-chunk_move_and_clear_loop
-ldy_imm_chunk_size_minus_1_b
-    ldy #chunk_size_80 - 1 ; patched
-    ; The body of this loop is slow enough that we fairly rapidly hit
-    ; diminishing returns by unrolling it, *but* we do have spare space for the
-    ; unroll at the moment and this loop executes for every single screen
-    ; scroll. A scanline is only 128 cycles and in 80 column modes we go round
-    ; this inner loop body 640 times, so small savings really do add up and
-    ; contribute towards increasing our chances of maintaining a flicker free
-    ; display without slowing things down too much by having over-tight safe
-    ; raster bounds.
-byte_move_loop2_unroll_count = 8
-    +assert min_chunk_size % byte_move_loop2_unroll_count = 0
-    ; SQUASH: We could move byte_move_loop[12] into a subroutine. We'd need to
-    ; make sure it was put in private RAM on the B+.
-byte_move_loop2
-    !for i, 1, byte_move_loop2_unroll_count {
-        lda (src),y
-        sta (dst),y
-        dey
-    }
-    bpl byte_move_loop2
-    +assert_no_page_crossing byte_move_loop2
-ldy_imm_chunk_size_minus_1_c
-    ldy #chunk_size_80 - 1 ; patched
-    lda #0
-byte_clear_loop_unroll_count = 8
-    +assert min_chunk_size % byte_clear_loop_unroll_count = 0
-byte_clear_loop
-    !for i, 1, byte_clear_loop_unroll_count {
-        sta (src),y
-        dey
-    }
-    bpl byte_clear_loop
-    +assert_no_page_crossing byte_clear_loop
-    jsr bump_src_dst_and_dex
-    bne chunk_move_and_clear_loop
+SFTODOLOOP2
+    ; SFTODONOW UNROLL THIS LOOP
+    ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
+    lda #255
+-   sta (dst),y
+    dey:bpl -
+    +add_with_wrap dst, 16384 - chunk_size_80 ; SFTODNOW PATCH
+    dex:bne SFTODOLOOP2
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #0 xor 7:sta bbc_palette
@@ -302,6 +268,7 @@ finish_oswrch
 null_shadow_driver
     rts
 
+!if 0 { ; SFTODONOW
 add_line_x
 !zone {
     clc
@@ -341,7 +308,7 @@ bump_src_dst_and_dex
     +bump dst
     dex
     rts
-
+}
 
 our_oswrch
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
@@ -741,9 +708,11 @@ sta_fast_scroll_start_abs
     cmp #4
     bcc +
     ldx #chunk_size_40 - 1
+!if 0 { ; SFTODONOW
     stx ldy_imm_chunk_size_minus_1_a + 1
     stx ldy_imm_chunk_size_minus_1_b + 1
     stx ldy_imm_chunk_size_minus_1_c + 1
+}
     +copy_data raster_wait_table_40, raster_wait_table_end_40, raster_wait_table
 +
 
