@@ -482,6 +482,7 @@ raster_wait_table_end
     +assert raster_wait_table_end - raster_wait_table_last = raster_wait_table_entries
 
 ; SFTODONOWEXPERIMENTAL AND IF THIS LIVES IT NEEDS PATCHING SUPPORT
+; SFTODONOW THIS TABLE MAY NEED MOVING SO IT IS PRESENT ON ELECTRON TOO
 copy_initial_offset_table_low
 !for i, 1, fast_scroll_max_upper_window_size {
     !byte <(chunk_size_80 * (chunks_per_line * i - 1))
