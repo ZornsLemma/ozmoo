@@ -190,6 +190,7 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
     ; SFTODONOW ULTRA HACKY HARD-CODED FOR MODE 3
+    ; SFTODONOW: IT MIGHT BE WORTH SPENDING AN EXTRA 2 BYTES PER INVOCATION OF THIS MACRO TO DO A STRAIGHT SUBTRACT RATHER THAN ADD SCREEN SIZE-CHUNK SIZE
 !macro add_with_wrap ptr, val, ~.adc_imm_low { ; SFTODONOW 19 BYTES
     clc
     lda ptr
@@ -202,16 +203,34 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
     sec:sbc vdu_screen_size_high_byte
 +   sta ptr+1
 }
+!macro sub_with_wrap ptr, val { ; SFTODONOW WIP 23 BYTES
+    sec
+    lda ptr
+    sbc #val
+    sta ptr
+    bcs done ; SFTODONOW PROB SMALL OPTIMISATION BUT NOT STRICLY NECESSARY
+    lda ptr+1
+    sbc #0
+    cmp vdu_screen_memory_start_address_high
+    bcs high_byte_in_a
+    ; clc - redundant
+    adc vdu_screen_size_high_byte
+high_byte_in_a
+    sta ptr+1
+done
+}
 
     ; We want to copy fast_scroll_upper_window_size lines from src to dst,
     ; making sure we wrap at the top of memory. Unless
     ; fast_scroll_upper_window_size is 1, these two areas overlap, so we must
     ; copy the bytes "further down" the screen first.
 
+    ; Add an offset to src and dst so we can start copying with the last chunk.
     ldy fast_scroll_upper_window_size
     ldx #src:jsr add_table_entry_y_to_ptr_x
     ldx #dst:jsr add_table_entry_y_to_ptr_x
 
+    ; Copy the appropriate number of chunks, working back "up" the screen.
     ldx chunks_to_copy_table-1,y
 SFTODOLOOP
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
@@ -282,48 +301,6 @@ add_table_entry_y_to_ptr_x
     sec:sbc vdu_screen_size_high_byte
 +   sta $01,x
     rts
-
-!if 0 { ; SFTODONOW
-add_line_x
-!zone {
-    clc
-    lda $00,x:adc vdu_bytes_per_character_row_low:sta $00,x
-    lda $01,x:adc vdu_bytes_per_character_row_high
-    bpl .no_wrap
-    sec:sbc vdu_screen_size_high_byte
-.no_wrap
-    sta $01,x
-    rts
-}
-
-bump_src_dst_and_dex
-!macro bump .ptr {
-    ; .ptr += chunk_size
-    sec ; not clc as we want to offset the minus 1 just below
-    lda .ptr
-    ; SQUASH: Can't we do adc # here and patch this at runtime just as we do for
-    ; ...minus_1_a and and ...minus_1_b? This is admittedly mildly faffy because
-    ; it's in a macro, but it would be slightly faster *and* it would save two
-    ; bytes of runtime code. (We could just get rid of the macro and inline the
-    ; code twice.)
-    adc ldy_imm_chunk_size_minus_1_a+1 ; add chunk_size - 1
-    sta .ptr
-    bcc .no_carry
-    inc .ptr+1
-    bpl .no_wrap
-    ; .ptr has gone past the top of screen memory, wrap it.
-    sec
-    lda .ptr+1
-    sbc vdu_screen_size_high_byte
-    sta .ptr+1
-.no_carry
-.no_wrap
-}
-    +bump src
-    +bump dst
-    dex
-    rts
-}
 
 our_oswrch
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
