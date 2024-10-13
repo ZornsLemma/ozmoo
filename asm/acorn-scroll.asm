@@ -252,10 +252,12 @@ inner_copy_loop
     ; We could possibly relax this constraint on the outer loop, but for now let's include it.
     +assert_no_page_crossing outer_copy_loop
 
-    ; Following the "unwanted" add_with_wrap at the end of the previous loop,
-    ; dst now points to the last chunk on the "-1"th row of the new screen, so
-    ; by adding the full screen size to it it will point to the last chunk on
-    ; the last row of the screen, ready for a descending clear of the last line.
+    ; Following the sub_with_wrap at the end of the previous loop, dst now
+    ; points to the last chunk on the "-1"th row of the new screen.  Except in
+    ; modes 3 and 6, this is the row we want to clear. In modes 3 and 6, this
+    ; may not be the row we want to clear because the screen data is slightly
+    ; smaller than screen RAM so we need to add on an offset to take us down to
+    ; the actual last row.
     ; SFTODONOW: WE REALLY ONLY NEED THIS IN MODE 3 OR 6, I THINK AND WE CAN AND PROBABLY SHOULD PATCH THIS OUT (CAREFUL TO MAKE IT SUITABLY RELOCATABLE FOR THE B+ PRIVATE RAM COPY) ON OTHER MODES, TO SAVE US HAVING TO PATCH THE TABLE TO HAVE A 0 AND THEN SPEND TIME ADDING IT - WE CAN PROBABLY PATCH IT TO BEQ FOO:NOP:.FOO SINCE WE KNOW THE BEQ WILL BRANCH
     ; SFTODO: THE TABLE HERE IS A BIT MISNAMED NOW WE ARE "ABUSING" THIS LAST ENTRY
     jsr add_clear_offset_to_dst
