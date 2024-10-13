@@ -69,7 +69,7 @@ electron_time_clock_a = $291
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
-vdu_screen_memory_start_address_high = $34E ; SFTODONOW: USED?
+vdu_screen_memory_start_address_high = $34E
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
 ; SQUASH: vdu_bytes_per_character_row_{low,high} are fixed for us at runtime. We
@@ -253,18 +253,23 @@ ldy_imm_chunk_size_minus_1_b
     ldy #chunk_size_80 - 1
     lda #255 ; SFTODONOW SHOULD BE 0 OF COURSE
 inner_clear_loop
-    ; SFTODONOW: This loop is tighter than the previous one and it may (if we
-    ; have space of course) benefit from being unrolled 16 times.
-    !for i, 1, 8 {
+    ; SQUASH: Unrolling this loop 16 times rather than 8 times gives a 0.03%
+    ; reduction in the benchmark time on a Master 128 in mode 3. This is scarely
+    ; worth having, but since we have enough space for this we might as well
+    ; take it - but if we need more space for something else, this can be
+    ; reverted.
+    !for i, 1, 16 {
         sta (dst),y
         dey
     }
     bpl inner_clear_loop
     +assert_no_page_crossing inner_clear_loop ; redundant while we enforce this on outer loop too
-    +sub_with_wrap dst, chunk_size_80, ~sbc_imm_chunk_size_c ; SFTODNOW PATCH
+    +sub_with_wrap dst, chunk_size_80, ~sbc_imm_chunk_size_c
     dex:bne outer_clear_loop
-    ; We could possibly relax this constraint on the outer loop, but for now let's include it.
-    +assert_no_page_crossing outer_clear_loop
+    ; SQUASH: With the 16-times unroll and the current code, outer_clear_loop
+    ; does have a page-crossing branch. We don't really care, but for example if
+    ; the unroll reverts to 8 times, reinstate this:
+    ; +assert_no_page_crossing outer_clear_loop
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #0 xor 7:sta bbc_palette
