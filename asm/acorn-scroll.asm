@@ -335,7 +335,9 @@ is_lf
     ; SQUASH: Could we do cmp # here and patch the operand at runtime? This
     ; would marginally improve performance and would save a byte. (Remember we
     ; check below to see if there *is* a text window, so we really only care
-    ; about checking against the actual bottom line of the screen here.)
+    ; about checking against the actual bottom line of the screen here.) While
+    ; probably negligible, as this would save a cycle on every OSWRCH call, this
+    ; might also be worth doing on performance grounds.
     cmp vdu_text_window_bottom
     bcc jmp_parent_wrchv_with_lf
     ; If we don't have an upper window we're not interested.
