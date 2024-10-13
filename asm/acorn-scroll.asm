@@ -133,22 +133,6 @@ bs_runtime_common_and_bbc
 ; We start with code which is common to the BBC and Electron so we can avoid
 ; having two copies of it in this executable on disc.
 
-; SFTODONOWEXPERIMENTAL AND IF THIS LIVES IT NEEDS PATCHING SUPPORT
-copy_initial_offset_table_low
-!for i, 1, fast_scroll_max_upper_window_size {
-    !byte <(chunk_size_80 * (chunks_per_line * i - 1))
-}
-    !byte <(25*640)
-copy_initial_offset_table_high
-!for i, 1, fast_scroll_max_upper_window_size {
-    !byte >(chunk_size_80 * (chunks_per_line * i - 1))
-}
-    !byte >(25*640)
-chunks_to_copy_table
-!for i, 1, fast_scroll_max_upper_window_size {
-    !byte i*chunks_per_line
-}
-
 our_oswrch_common_tail
     ; Tell the OS to move the cursor to the same co-ordinates it already has,
     ; but taking account of the hardware scrolled screen. We could do this
@@ -205,8 +189,7 @@ rs_screen_ram_copy
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
-    ; SFTODONOW ULTRA HACKY HARD-CODED FOR MODE 3
-!macro sub_with_wrap ptr, val, ~.sbc_imm { ; SFTODONOW WIP 23 BYTES
+!macro sub_with_wrap ptr, val, ~.sbc_imm {
     sec
     lda ptr
 .sbc_imm
@@ -231,8 +214,8 @@ fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen
 
     ; Add an offset to src and dst so we can start copying with the last chunk.
     ldy fast_scroll_upper_window_size
-    ldx #src:jsr add_table_entry_y_to_ptr_x
-    ldx #dst:jsr add_table_entry_y_to_ptr_x
+    ldx #src:jsr add_offset_table_entry_y_to_ptr_x
+    ldx #dst:jsr add_offset_table_entry_y_to_ptr_x
 
     ; Copy the appropriate number of chunks, working back "up" the screen.
     ldx chunks_to_copy_table-1,y
@@ -253,7 +236,7 @@ inner_copy_loop
     +assert_no_page_crossing outer_copy_loop
 
     ; Following the sub_with_wrap at the end of the previous loop, dst now
-    ; points to the last chunk on the "-1"th row of the new screen.  Except in
+    ; points to the last chunk on the "-1"th row of the new screen. Except in
     ; modes 3 and 6, this is the row we want to clear. In modes 3 and 6, this
     ; may not be the row we want to clear because the screen data is slightly
     ; smaller than screen RAM so we need to add on an offset to take us down to
@@ -265,8 +248,10 @@ inner_copy_loop
     ldx #chunks_per_line
 outer_clear_loop
     ldy #chunk_size_80 - 1 ; SFTODONOW PATCH
-    lda #255
+    lda #255 ; SFTODONOW SHOULD BE 0 OF COURSE
 inner_clear_loop
+    ; SFTODONOW: This loop is tighter than the previous one and it may (if we
+    ; have space of course) benefit from being unrolled 16 times.
     !for i, 1, 8 {
         sta (dst),y
         dey
@@ -299,7 +284,7 @@ null_shadow_driver
 
 add_clear_offset_to_dst
     ldx #dst:ldy #fast_scroll_max_upper_window_size+1
-add_table_entry_y_to_ptr_x
+add_offset_table_entry_y_to_ptr_x
     clc
     lda $00,x:adc copy_initial_offset_table_low-1,y:sta $00,x
     lda $01,x:adc copy_initial_offset_table_high-1,y
@@ -307,6 +292,33 @@ add_table_entry_y_to_ptr_x
     sec:sbc vdu_screen_size_high_byte
 +   sta $01,x
     rts
+
+; SFTODONOWEXPERIMENTAL AND IF THIS LIVES IT NEEDS PATCHING SUPPORT
+;
+; A split 16-bit table of offsets for adding to screen pointers. The first
+; fast_scroll_max_upper_window_size entries are offsets for different upper
+; window sizes. The last entry is an extra adjustment needed in modes 3 and 6.
+;
+; This table is for 80 column modes; the corresponding _40 version is copied
+; over it by the discardable init code if necessary.
+copy_initial_offset_table_low
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte <(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte <(25*640)
+copy_initial_offset_table_high
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte >(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte >(25*640)
+
+; A table of the number of chunks to copy for different upper window sizes.
+; Because chunks vary in size based on screen mode, this table itself applies
+; to both 40 and 80 column modes.
+chunks_to_copy_table
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte i*chunks_per_line
+}
 
 our_oswrch
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
