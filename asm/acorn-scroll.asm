@@ -660,7 +660,9 @@ not_already_claimed
     ; of code addressing the embedded copy, so we'd have to manually apply
     ; offsets.) If we decide not to support fast hardware scrolling this is
     ; still OK; we own this block of memory so there's no problem with us
-    ; corrupting it.
+    ; corrupting it. SFTODONOW: Tweak comment? It is OK for us to corrupt this
+    ; block of memory but we don't own it forever - it is reused for fast HW
+    ; scroll buffer (I think).
     ldx #>max_runtime_size
     ldy #<max_runtime_size
 copy_runtime_code_loop
