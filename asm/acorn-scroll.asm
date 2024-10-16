@@ -698,7 +698,6 @@ sta_fast_scroll_start_abs
     ; If we're not in mode 3 or 6, we need to patch out the jsr at
     ; jsr_add_clear_offset_to_dst. We do this with a relative branch so it works
     ; correctly when copied into the B+ private RAM.
-    ; SFTODONOW: MAKE SURE WE TEST ON AN ELECTRON IN ALL MODES
     cmp #3
     beq .mode_3_or_6
     cmp #6
