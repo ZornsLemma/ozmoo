@@ -251,7 +251,7 @@ jsr_add_clear_offset_to_dst
 outer_clear_loop
 ldy_imm_chunk_size_minus_1_b
     ldy #chunk_size_80 - 1
-    lda #255 ; SFTODONOW SHOULD BE 0 OF COURSE
+    lda #0
 inner_clear_loop
     ; SQUASH: Unrolling this loop 16 times rather than 8 times gives a 0.03%
     ; reduction in the benchmark time on a Master 128 in mode 3. This is scarely
@@ -617,7 +617,6 @@ be_electron
 
 max_runtime_size = fast_scroll_end - fast_scroll_start
 +assert re_bbc - fast_scroll_start <= max_runtime_size
-    !warn "SFTODONOW", max_runtime_size - (re_bbc - fast_scroll_start)
 +assert re_electron - fast_scroll_start <= max_runtime_size
 
 ; This code is copied over rs_screen_ram_copy in main RAM after we've copied
@@ -659,10 +658,8 @@ not_already_claimed
     ; copy embedded in this executable, as we don't have labels within the block
     ; of code addressing the embedded copy, so we'd have to manually apply
     ; offsets.) If we decide not to support fast hardware scrolling this is
-    ; still OK; we own this block of memory so there's no problem with us
-    ; corrupting it. SFTODONOW: Tweak comment? It is OK for us to corrupt this
-    ; block of memory but we don't own it forever - it is reused for fast HW
-    ; scroll buffer (I think).
+    ; still OK; this memory will be overwritten later by the slow hardware
+    ; scrolling buffers but it doesn't contain anything valuable now.
     ldx #>max_runtime_size
     ldy #<max_runtime_size
 copy_runtime_code_loop
