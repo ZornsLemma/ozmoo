@@ -44,6 +44,8 @@
 
 * Rework the horrible old runtime code for deciding which (if any) screen modes a game can run in given the available RAM. It's possible there will still be bugs in this but I think it is a lot clearer now and it should be more obvious what's happening. (I haven't had the fortitude to really dig into the code history, but I suspect this was so complex partly because of the way the code evolved. In the early days where you didn't get a choice of screen mode if you had no shadow RAM the loader didn't have to do much, but trying to bolt support for variable screen modes on to the existing logic made it complex.)
 
+* Fix a bug in the fast scroll code which affected modes 3 and 6. The fact that the screen display doesn't completely fill the allocated screen memory was not being handled correctly and a supposedly-blank new line at the bottom of the screen could sometimes have a fragment of old text on it. This showed up in Varicella by typing a simple (invalid) "r" command at the first prompt in mode 3, but presumably could affect any game. The code has been rewritten and is probably slightly cleaner as a result of being forced to think again about how it's supposed to work.
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.
