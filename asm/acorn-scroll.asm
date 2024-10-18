@@ -69,7 +69,7 @@ electron_time_clock_a = $291
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
-vdu_screen_memory_start_address_high = $34E
+vdu_screen_memory_start_address_high = $34e
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
 ; SQUASH: vdu_bytes_per_character_row_{low,high} are fixed for us at runtime. We
