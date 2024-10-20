@@ -69,6 +69,7 @@ electron_time_clock_a = $291
 vdu_text_window_bottom = $309
 vdu_text_cursor_x_position = $318
 vdu_text_cursor_y_position = $319
+vdu_screen_memory_start_address_high = $34e
 vdu_screen_top_left_address_low = $350
 vdu_screen_top_left_address_high = $351
 ; SQUASH: vdu_bytes_per_character_row_{low,high} are fixed for us at runtime. We
@@ -96,7 +97,9 @@ user_via_t2_low_order_latch_counter = $fe68
 user_via_t2_high_order_counter = $fe69
 user_via_auxiliary_control_register = $fe6b
 
+opcode_brk = $00
 opcode_rts = $60
+opcode_beq = $f0
 
 irq1v = $204
 wrchv = $20e
@@ -188,99 +191,85 @@ rs_screen_ram_copy
 fast_scroll_private_ram_aligned = (fast_scroll_private_ram & $ff00) | (rs_screen_ram_copy & $ff)
     +assert fast_scroll_private_ram_aligned >= fast_scroll_private_ram
 
+!macro sub_with_wrap ptr, val, ~.sbc_imm {
+    sec
+    lda ptr
+.sbc_imm
+    sbc #val
+    sta ptr
+    bcs .done ; SQUASH: (probably) a small optimisation, but not strictly necessary
+    lda ptr+1
+    sbc #0
+    cmp vdu_screen_memory_start_address_high ; SQUASH: use cmp # and patch at startup
+    bcs .high_byte_in_a
+    ; clc - redundant
+    adc vdu_screen_size_high_byte
+.high_byte_in_a
+    sta ptr+1
+.done
+}
+
+    ; We want to copy fast_scroll_upper_window_size lines from src to dst,
+    ; making sure we wrap at the top of memory. Unless
+    ; fast_scroll_upper_window_size is 1, these two areas overlap, so we must
+    ; copy the bytes "further down" the screen first.
+
+    ; Add an offset to src and dst so we can start copying with the last chunk.
     ldy fast_scroll_upper_window_size
-    dey:beq line_move_and_clear_loop
-    sty lines_to_move_without_clearing
+    ldx #src:jsr add_offset_table_entry_y_to_ptr_x
+    ldx #dst:jsr add_offset_table_entry_y_to_ptr_x
 
-    ; We need to copy lines_to_move_without_clearing lines up by one line,
-    ; working from the bottom-most line to the top-most line. We just add
-    ; repeatedly to generate the addresses; this is relatively easy and saves
-    ; using a general-purpose multiplication routine. We push the addresses onto
-    ; the stack as we generate them, which saves having to write
-    ; subtract-with-wrap code as well.
-add_loop
-    lda src+1:pha:lda src:pha
-    ldx #src:jsr add_line_x
-    lda dst+1:pha:lda dst:pha
-    ldx #dst:jsr add_line_x
-    dey:bne add_loop
-
-line_move_loop
-    ldx #chunks_per_line
-chunk_move_loop
+    ; Copy the appropriate number of chunks, working back "up" the screen.
+    ldx chunks_to_copy_table-1,y
+outer_copy_loop
 ldy_imm_chunk_size_minus_1_a
-    ldy #chunk_size_80 - 1 ; patched
-byte_move_loop
-byte_move_loop_unroll_count = 8
-    +assert min_chunk_size % byte_move_loop_unroll_count = 0
-    !for i, 1, byte_move_loop_unroll_count {
+    ldy #chunk_size_80 - 1
+inner_copy_loop
+    !for i, 1, 8 {
         lda (src),y
         sta (dst),y
         dey
     }
-    bpl byte_move_loop
-    +assert_no_page_crossing byte_move_loop
-    jsr bump_src_dst_and_dex
-    bne chunk_move_loop
-    pla:sta dst:pla:sta dst+1
-    pla:sta src:pla:sta src+1
-    dec lines_to_move_without_clearing
-    bne line_move_loop
+    bpl inner_copy_loop
+    +assert_no_page_crossing inner_copy_loop ; redundant while we enforce this on outer loop too
+    +sub_with_wrap src, chunk_size_80, ~sbc_imm_chunk_size_a
+    +sub_with_wrap dst, chunk_size_80, ~sbc_imm_chunk_size_b
+    dex:bne outer_copy_loop
+    ; We could possibly relax this constraint on the outer loop, but for now let's include it.
+    +assert_no_page_crossing outer_copy_loop
 
-    ; Copy the final (possibly only, if fast_scroll_upper_window_size is 1)
-    ; line, clearing the source afterwards.
-    ;
-    ; It is somewhat tempting to add a special case here, where if src and dst
-    ; are both not the one line on the screen which can wrap part-way through,
-    ; we execute a different version of the code which just copies the 320/640
-    ; bytes in one loop without breaking it into chunks. This would be a bit
-    ; faster (a back-of-envelope calculation suggests about 220 cycles saved
-    ; IIRC), *but* it wouldn't improve the worst-case time and so to be flicker
-    ; free we'd still have to keep the raster timings tight enough for the
-    ; chunk-based copy. I therefore don't think it's worth it - it doesn't help
-    ; us be flicker free or use looser raster bounds, and saving about 220
-    ; cycles on about 23/25ths of the scrolling line feeds isn't huge - there
-    ; are 2518 such line feeds in the benchmark, so we'd save about 0.25 seconds
-    ; on the benchmark even if none of our savings just got thrown away waiting
-    ; on the raster.
-line_move_and_clear_loop
+    ; Following the sub_with_wrap at the end of the previous loop, dst now
+    ; points to the last chunk on the "-1"th row of the new screen. Except in
+    ; modes 3 and 6, this is the row we want to clear. In modes 3 and 6, this
+    ; may not be the row we want to clear because the screen data is slightly
+    ; smaller than screen RAM so we need to add on an offset to take us down to
+    ; the actual last row. This instruction is patched out in other modes.
+jsr_add_clear_offset_to_dst
+    jsr add_clear_offset_to_dst
+
     ldx #chunks_per_line
-chunk_move_and_clear_loop
+outer_clear_loop
 ldy_imm_chunk_size_minus_1_b
-    ldy #chunk_size_80 - 1 ; patched
-byte_move_and_clear_loop
-    ; The body of this loop is slow enough that we fairly rapidly hit
-    ; diminishing returns by unrolling it, *but* we do have spare space for the
-    ; unroll at the moment and this loop executes for every single screen
-    ; scroll. A scanline is only 128 cycles and in 80 column modes we go round
-    ; this inner loop body 640 times, so small savings really do add up and
-    ; contribute towards increasing our chances of maintaining a flicker free
-    ; display without slowing things down too much by having over-tight safe
-    ; raster bounds.
-    ; SQUASH: Given this loop is unrolled, would we be better off both in terms
-    ; of space and speed having two separate unrolled loops, one for the copy
-    ; and one for the clear? This would avoid 7 extra copies of the lda #0 and
-    ; only cost us one extra ldy #:dey:bpl. If we were willing to take subroutine
-    ; call overhead, we could then also move the lda:sta:dey variant which is
-    ; used above and would now be used here into a subroutine - we might even
-    ; be able to unroll the loop 16 times and still come out with a small
-    ; space saving, which would probably more than compensate for the jsr-rts
-    ; overhead. OK, I suspect it wouldn't compensate for the cycle overhead,
-    ; but we could nevertheless still share an 8-unroll and shrink this
-    ; code quite a lot with relatively minimal overhead.
-byte_move_and_clear_loop_unroll_count = 8
-    +assert min_chunk_size % byte_move_and_clear_loop_unroll_count = 0
-    !for i, 1, byte_move_and_clear_loop_unroll_count {
-        lda (src),y
+    ldy #chunk_size_80 - 1
+    lda #0
+inner_clear_loop
+    ; SQUASH: Unrolling this loop 16 times rather than 8 times gives a 0.03%
+    ; reduction in the benchmark time on a Master 128 in mode 3. This is scarely
+    ; worth having, but since we have enough space for this we might as well
+    ; take it - but if we need more space for something else, this can be
+    ; reverted.
+    !for i, 1, 16 {
         sta (dst),y
-        lda #0
-        sta (src),y
         dey
     }
-    bpl byte_move_and_clear_loop
-    +assert_no_page_crossing byte_move_and_clear_loop
-    jsr bump_src_dst_and_dex
-    bne chunk_move_and_clear_loop
+    bpl inner_clear_loop
+    +assert_no_page_crossing inner_clear_loop ; redundant while we enforce this on outer loop too
+    +sub_with_wrap dst, chunk_size_80, ~sbc_imm_chunk_size_c
+    dex:bne outer_clear_loop
+    ; SQUASH: With the 16-times unroll and the current code, outer_clear_loop
+    ; does have a page-crossing branch. We don't really care, but for example if
+    ; the unroll reverts to 8 times, reinstate this:
+    ; +assert_no_page_crossing outer_clear_loop
 
 !ifdef DEBUG_COLOUR_BARS {
     lda #0 xor 7:sta bbc_palette
@@ -301,46 +290,41 @@ finish_oswrch
 null_shadow_driver
     rts
 
-add_line_x
-!zone {
+add_clear_offset_to_dst
+    ldx #dst:ldy #fast_scroll_max_upper_window_size+1
+add_offset_table_entry_y_to_ptr_x
     clc
-    lda $00,x:adc vdu_bytes_per_character_row_low:sta $00,x
-    lda $01,x:adc vdu_bytes_per_character_row_high
-    bpl .no_wrap
+    lda $00,x:adc copy_initial_offset_table_low-1,y:sta $00,x
+    lda $01,x:adc copy_initial_offset_table_high-1,y
+    bpl +
     sec:sbc vdu_screen_size_high_byte
-.no_wrap
-    sta $01,x
-    rts
-}
-
-bump_src_dst_and_dex
-!macro bump .ptr {
-    ; .ptr += chunk_size
-    sec ; not clc as we want to offset the minus 1 just below
-    lda .ptr
-    ; SQUASH: Can't we do adc # here and patch this at runtime just as we do for
-    ; ...minus_1_a and and ...minus_1_b? This is admittedly mildly faffy because
-    ; it's in a macro, but it would be slightly faster *and* it would save two
-    ; bytes of runtime code. (We could just get rid of the macro and inline the
-    ; code twice.)
-    adc ldy_imm_chunk_size_minus_1_a+1 ; add chunk_size - 1
-    sta .ptr
-    bcc .no_carry
-    inc .ptr+1
-    bpl .no_wrap
-    ; .ptr has gone past the top of screen memory, wrap it.
-    sec
-    lda .ptr+1
-    sbc vdu_screen_size_high_byte
-    sta .ptr+1
-.no_carry
-.no_wrap
-}
-    +bump src
-    +bump dst
-    dex
++   sta $01,x
     rts
 
+; A split 16-bit table of offsets for adding to screen pointers. The first
+; fast_scroll_max_upper_window_size entries are offsets for different upper
+; window sizes. The last entry is an extra adjustment needed in modes 3 and 6.
+;
+; This table is for 80 column modes; the corresponding _40 version is copied
+; over it by the discardable init code if necessary.
+copy_initial_offset_table_low
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte <(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte <(25*640) ; mode 3 clear offset
+copy_initial_offset_table_high
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte >(chunk_size_80 * (chunks_per_line * i - 1))
+}
+    !byte >(25*640) ; mode 3 clear offset
+
+; A table of the number of chunks to copy for different upper window sizes.
+; Because chunks vary in size based on screen mode, this table itself applies
+; to both 40 and 80 column modes.
+chunks_to_copy_table
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte i*chunks_per_line
+}
 
 our_oswrch
     ; We want to minimise overhead on WRCHV, so we try to get cases we're not
@@ -357,7 +341,9 @@ is_lf
     ; SQUASH: Could we do cmp # here and patch the operand at runtime? This
     ; would marginally improve performance and would save a byte. (Remember we
     ; check below to see if there *is* a text window, so we really only care
-    ; about checking against the actual bottom line of the screen here.)
+    ; about checking against the actual bottom line of the screen here.) While
+    ; probably negligible, as this would save a cycle on every OSWRCH call, this
+    ; might also be worth doing on performance grounds.
     cmp vdu_text_window_bottom
     bcc jmp_parent_wrchv_with_lf
     ; If we don't have an upper window we're not interested.
@@ -540,34 +526,6 @@ re_bbc
 
 !zone { ; discardable init code
 
-; This table is for 40 column modes; it is copied over raster_wait_table by the
-; discardable init code if appropriate.
-raster_wait_table_40
-raster_wait_table_first_40
-    +scan_line 1*8 ; 1 line window
-    +scan_line 2*8 ; 2 line window
-    +scan_line 3*8 ; 3 line window
-raster_wait_table_last_40
-    +scan_line 21*8 ; 1 line window - this seems solid
-    +scan_line 21*8 ; 2 line window - seems surprisingly solid
-    +scan_line 4*8 ; 3 line window - not perfect, maybe nicer than with no raster check
-raster_wait_table_end_40
-    +assert raster_wait_table_last_40 - raster_wait_table_first_40 = raster_wait_table_entries
-    +assert raster_wait_table_end_40 - raster_wait_table_last_40 = raster_wait_table_entries
-
-; It is vaguely tempting to try to have the code auto-tune the safe window end
-; position. We could maintain a frame count to disambiguate the timer wrapping
-; round. By inspecting (frame count, timer value) before and after executing our
-; copy code, we could tell if we got the job done before hitting the first
-; visible line on the following frame, and if we didn't we could (subject to a
-; minimum value) nudge the safe end position closer to the top of the screen.
-; This is probably not too complex, even in the limited code space we have here.
-; However, we don't necessarily want to let rare outlying cases force us to use
-; an extremely tight safe window when 99% of the time we can get away with
-; something looser. And of course, auto-tuning is also potentially error prone
-; and since manual tuning seems to have worked fairly well so far I don't want
-; to rush into implementing this.
-
 ; Electron code copied over rs_bbc.
 bs_electron
 !pseudopc rs_bbc {
@@ -678,7 +636,7 @@ max_runtime_size = fast_scroll_end - fast_scroll_start
 }
 .be_b_plus_screen_ram_copy_shim
 
-.just_rts
+.just_rts2
     rts
 
 init
@@ -690,7 +648,7 @@ init
     bne not_already_claimed
     lda wrchv+1
     cmp #>our_oswrch
-    beq .just_rts
+    beq .just_rts2
 not_already_claimed
 
     ; Before we do anything else, we copy our code from inside this executable
@@ -700,8 +658,8 @@ not_already_claimed
     ; copy embedded in this executable, as we don't have labels within the block
     ; of code addressing the embedded copy, so we'd have to manually apply
     ; offsets.) If we decide not to support fast hardware scrolling this is
-    ; still OK; we own this block of memory so there's no problem with us
-    ; corrupting it.
+    ; still OK; this memory will be overwritten later by the slow hardware
+    ; scrolling buffers but it doesn't contain anything valuable now.
     ldx #>max_runtime_size
     ldy #<max_runtime_size
 copy_runtime_code_loop
@@ -726,22 +684,41 @@ sta_fast_scroll_start_abs
     ; If we're going to run in mode 7, we don't bother installing anything. It
     ; would be mostly harmless if we did - the core Ozmoo executable will not
     ; enable the vsync events in mode 7, and we will have a screen window in
-    ; effect for software scrolling so our OSWRCH code would do anything - but
-    ; it seems better to avoid the unnecessary overhead on the OSWRCH vector.
-    ; This might (although it probably won't) also help to ensure that "there is
-    ; no fast scroll support" code paths get at least a little bit of routine
-    ; testing.
+    ; effect for software scrolling so our OSWRCH code wouldn't do anything -
+    ; but it seems better to avoid the unnecessary overhead on the OSWRCH
+    ; vector. This might (although it probably won't) also help to ensure that
+    ; "there is no fast scroll support" code paths get at least a little bit of
+    ; routine testing.
     lda screen_mode_host
     cmp #7
-    beq .just_rts
+    beq .just_rts2
+    ; If we're not in mode 3 or 6, we need to patch out the jsr at
+    ; jsr_add_clear_offset_to_dst. We do this with a relative branch so it works
+    ; correctly when copied into the B+ private RAM.
+    cmp #3
+    beq .mode_3_or_6
+    cmp #6
+    beq .mode_3_or_6
+    ldx #opcode_beq:stx jsr_add_clear_offset_to_dst
+    ldx #1:stx jsr_add_clear_offset_to_dst+1
+    ; We don't expect to execute the following instruction, but let's make it
+    ; obvious if we do. It's tempting to put a NOP here, but we don't want to
+    ; waste cycles for no reason.
+    ldx #opcode_brk:stx jsr_add_clear_offset_to_dst+2
+.mode_3_or_6
     ; The runtime code has constants for 80 column modes; patch some code/data
     ; if we're going to run in a 40 column mode.
     cmp #4
     bcc +
-    ldx #chunk_size_40 - 1
+    ldx #chunk_size_40
+    stx sbc_imm_chunk_size_a + 1
+    stx sbc_imm_chunk_size_b + 1
+    stx sbc_imm_chunk_size_c + 1
+    dex
     stx ldy_imm_chunk_size_minus_1_a + 1
     stx ldy_imm_chunk_size_minus_1_b + 1
     +copy_data raster_wait_table_40, raster_wait_table_end_40, raster_wait_table
+    +copy_data copy_initial_offset_table_low_40, copy_initial_offset_table_high_end_40, copy_initial_offset_table_low
 +
 
     ; If we don't have shadow RAM, that's fine. If we do have shadow RAM, we
@@ -818,6 +795,9 @@ use_shadow_driver_yx
     cli
     jmp common_init
 
+.just_rts
+    rts
+
 not_electron
     ; We're on a BBC. Install our EVNTV handler so we can tell where the raster
     ; is.
@@ -878,6 +858,52 @@ common_init
     sta wrchv+1
     cli
     rts
+
+; This table is for 40 column modes; it is copied over raster_wait_table by the
+; discardable init code if appropriate.
+raster_wait_table_40
+raster_wait_table_first_40
+    +scan_line 1*8 ; 1 line window
+    +scan_line 2*8 ; 2 line window
+    +scan_line 3*8 ; 3 line window
+raster_wait_table_last_40
+    +scan_line 21*8 ; 1 line window - this seems solid
+    +scan_line 21*8 ; 2 line window - seems surprisingly solid
+    +scan_line 4*8 ; 3 line window - not perfect, maybe nicer than with no raster check
+raster_wait_table_end_40
+    +assert raster_wait_table_last_40 - raster_wait_table_first_40 = raster_wait_table_entries
+    +assert raster_wait_table_end_40 - raster_wait_table_last_40 = raster_wait_table_entries
+
+; This table is for 40 column modes; it is copied over
+; copy_initial_offset_table_{low,high} by the discardable init code if
+; appropriate.
+copy_initial_offset_table_low_40
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte <(chunk_size_40 * (chunks_per_line * i - 1))
+}
+    !byte <(25*320) ; mode 6 clear offset
+copy_initial_offset_table_high_40
+!for i, 1, fast_scroll_max_upper_window_size {
+    !byte >(chunk_size_40 * (chunks_per_line * i - 1))
+}
+    !byte >(25*320) ; mode 6 clear offset
+copy_initial_offset_table_high_end_40
+    +assert copy_initial_offset_table_high_40 - copy_initial_offset_table_low_40 = fast_scroll_max_upper_window_size+1
+    +assert copy_initial_offset_table_high_end_40 - copy_initial_offset_table_high_40 = fast_scroll_max_upper_window_size+1
+
+; It is vaguely tempting to try to have the code auto-tune the safe window end
+; position. We could maintain a frame count to disambiguate the timer wrapping
+; round. By inspecting (frame count, timer value) before and after executing our
+; copy code, we could tell if we got the job done before hitting the first
+; visible line on the following frame, and if we didn't we could (subject to a
+; minimum value) nudge the safe end position closer to the top of the screen.
+; This is probably not too complex, even in the limited code space we have here.
+; However, we don't necessarily want to let rare outlying cases force us to use
+; an extremely tight safe window when 99% of the time we can get away with
+; something looser. And of course, auto-tuning is also potentially error prone
+; and since manual tuning seems to have worked fairly well so far I don't want
+; to rush into implementing this.
+
 } ; end of discardable init code
 
 ; SFTODO: Notes on Electron MRB support:
