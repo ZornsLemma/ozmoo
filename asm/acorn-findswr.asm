@@ -352,6 +352,11 @@ set_all_to_wrong_bank
 
 ; This paging is inefficient, but performance isn't really significant here;
 ; code readability and size are more important.
+; SQUASH: Could we use the compact paging subroutine from beebwiki? I can't
+; find it right now but there is a little subroutine which pages as a side-effect
+; of an OS call and which works on BBC and Electron hardware. That said, I'd
+; rather not risk breaking this code until I need the space, as this is hardware-
+; specific and difficult to test under emulation.
 page_in_y_preserve_a
     PHA
     JSR page_in_y_corrupt_a
