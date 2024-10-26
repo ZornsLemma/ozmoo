@@ -240,7 +240,7 @@ max_screen_width = 80
     ; Although the same Ozmoo executable can support fast and slow hardware
     ; scrolling, at runtime we are always using one or the other, so we can use
     ; the space allocated for the fast hardware scrolling machine code for the
-    ; slow hardware scrolling line buffer. SFTODONOW: DOUBLE CHECK THIS IS VALID - IT WOULD BE GOOD TO TEST WITH THE *REAL* FASTSCR EXECUTABLE DECIDING WE CAN'T SUPPORT FAST SCROLLING, INSTEAD OF HACKING THE FLAG (THIS WOULD HELP PROVE THAT THE FASTSCR EXECUTABLE DOESN'T INSTALL ITSELF ON ANY VECTORS WHEN IT ISN'T IN USE)
+    ; slow hardware scrolling line buffer.
     top_line_buffer = xxx_fast_scroll_start
     top_line_buffer_reverse = top_line_buffer + max_screen_width
     top_line_buffer_reverse_end = top_line_buffer_reverse + max_screen_width

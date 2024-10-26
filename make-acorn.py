@@ -1419,7 +1419,7 @@ def make_bbc_swr_executable():
     # code for slow hardware scrolling is redundant.
     # SFTODO: Arguably removing things from ozmoo_base_args is confusing and we
     # should never put these strings in but have them added in other cases.
-    adjusted_base_args = ozmoo_base_args
+    adjusted_base_args = ozmoo_base_args[:]
     if "-DACORN_HW_SCROLL_FAST=1" in adjusted_base_args and "-DACORN_HW_SCROLL_SLOW=1" in adjusted_base_args:
         adjusted_base_args.remove("-DACORN_HW_SCROLL_SLOW=1")
     args = adjusted_base_args + swr_args + relocatable_args + bbc_args + ["-DACORN_SCREEN_HOLE=1"]
@@ -2695,3 +2695,5 @@ show_deferred_output()
 # SFTODONOW: Varicella is probably fine wrt colour (we just don't support colour), but it *claims* at build time to run on a shadow machine with PAGE<=&F00 but then at run time it says you need more RAM with PAGE=&E00 and also makes a bogus-seeming claim about needing more sideways RAM even on a M128 (and poor performance aside, it should *never* be mandatory to have more than 32K - possibly less - sideways RAM). Just speculating but the PAGE &E00/&F00 discrepancy *might* be caused by the build system not allowing for shadow cache, but we should in theory be able to run (using no spare shadow RAM for data caching) with no extra memory required. Needs investigating. - I have made some tweaks which may fix this but I need to review them fresh.
 
 # SFTODONOW: It might well simplify the loader's checks for enough RAM of the relevant types if it simply had data_start with PAGE=max_page (which it now does) and the game's (rounded up to 512 byte multiple) dynamic memory size given to it. There may be corner cases but it feels like it would actually be pretty simple to do the check cleanly and "obviously correctly" for all three memory models given this information. I am *not* fiddling with this right now but it might be worth coming back to. (I suspect the way we currently do it is a mixture of historical accident and the fact that before we supported variable screen modes on machines without shadow RAM it made at least some sense to push all the complexity into the build system and have the loader be as naive as possible.)
+
+# SFTODONOW: We should maybe stop CTRL-S beeping if we only support one (i.e. software) scroll mode on the current hardware. OTOH maybe it's more confusing to not "acknowledge" it.
