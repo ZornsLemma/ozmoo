@@ -212,6 +212,11 @@ not_watford
     ldx #$80
     jsr osbyte
     stx tmp
+!if 0 { ; SFTODONOW: NEED TO MAKE SPACE FOR THIS, I am going to have to move this code to just below mode 6 HIMEM or something
+    ; I think A *should* still be 111, but at least testing this on MAME with
+    ; an Aries B20 it is not always preserved.
+    lda #111
+}
     ldx #$c0
     jsr osbyte
     txa
@@ -236,10 +241,6 @@ set_shadow_state_from_a_and_install_driver
     lda #128
     sta romsel_copy
     sta bbc_romsel
-    !warn shadow_driver_b_plus_private_high
-    !warn shadow_driver_b_plus_private_high_end
-    !warn shadow_copy_private_ram
-    !warn shadow_copy_private_ram_end
     +copy_data_checked shadow_driver_b_plus_private_high, shadow_driver_b_plus_private_high_end, shadow_copy_private_ram, shadow_copy_private_ram_end
     pla
     sta romsel_copy
