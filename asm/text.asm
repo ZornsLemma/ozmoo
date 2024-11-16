@@ -116,8 +116,6 @@ benchmark_commands
     !source "../temp/walkthrough.asm"
     !pet ":",255,0
 } else {
-    ; SFTODONOW: Change filename and the prefix/suffix location to be here instead
-    ; of in included file in order to better match upstream? *If* PETSCII ':' is same as ASCII ':' we might even able to avoid ifdef-ACORNing this.
     !source "../temp/benchmark.asm"
 }
 benchmark_read_char
