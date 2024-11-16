@@ -1036,7 +1036,6 @@ class OzmooExecutable(Executable):
         Executable.__init__(self, "ozmoo.asm", leafname, version_maker, start_addr, args)
         if "ACORN_RELOCATABLE" not in self.labels:
             self.truncate_at("end_of_routines")
-        self.swr_dynmem = 0
         if "VMEM" in self.labels:
             self._patch_vmem()
 
@@ -1055,20 +1054,6 @@ class OzmooExecutable(Executable):
         nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
         if nonstored_pages_up_to > self.max_pseudo_ramtop():
             raise GameWontFit("not enough free RAM for game's dynamic memory")
-        if "ACORN_SWR" in self.labels:
-            # SFTODO: This (and its symbol passed through to loader.bas and its use in loader.bas) is now a bit inconsistent - it is not "dynmem in SWR" in all cases. We only actually use it for medium and big models, and different ways for each of them. Maybe rename it something generic and just comment in the loader what it means in the model we're looking at.
-            if "ACORN_SWR_SMALL_DYNMEM" in self.labels:
-                self.swr_dynmem = 0 # not used
-            elif "ACORN_SWR_MEDIUM_DYNMEM" in self.labels:
-                self.swr_dynmem = nonstored_pages_up_to - 0x8000
-                assert 0 <= self.swr_dynmem <= 16 * 1024
-            else:
-                assert "ACORN_SWR_BIG_DYNMEM" in self.labels
-                # We use as much SWR for dynamic memory as we can when modelling
-                # here, but of course we can't possibly use more than a full 16K
-                # bank.
-                # SFTODONOW: Need to review this fresh
-                self.swr_dynmem = min(nonstored_pages * bytes_per_page, 0x4000)
 
         # On a second processor build, we must also have at least
         # min_vmem_blocks for swappable memory. For sideways RAM builds we need
@@ -1163,40 +1148,6 @@ class OzmooExecutable(Executable):
         symbols[self.leafname + "_DATA_START"] = basic_int(self.labels["data_start"])
         symbols[self.leafname + "_RELOCATABLE"] = "TRUE" if "ACORN_RELOCATABLE" in self.labels else "FALSE"
         symbols[self.leafname + "_SWR_DYNMEM_MODEL"] = "0" if "ACORN_SWR_SMALL_DYNMEM" in self.labels else "1" if "ACORN_SWR_MEDIUM_DYNMEM" in self.labels else "2" if "ACORN_SWR_BIG_DYNMEM" in self.labels else "-1"
-        # SFTODONOW: *_SWR_DYNMEM and *_SWR_MAIN_RAM_FREE may not longer be needed. If so, rip them out, burn them and bury the ashes under six feet of concrete. Bear in mind some other code generating values which feed into them may also no longer be needed.
-        symbols[self.leafname + "_SWR_DYNMEM"] = basic_int(self.swr_dynmem)
-        # We need *_SWR_MAIN_RAM_FREE because we can't infer *_SWR_MAIN_RAM_FREE
-        # by comparing MAX_PAGE with actual PAGE, because we cap the value of
-        # MAX_PAGE and there may be RAM free after the executable even when
-        # PAGE=MAX_PAGE. We use 0x8000 in the calculation here as the loader will
-        # apply an adjustment for the actual screen RAM size; it seems silly to
-        # have both this code and the loader apply compensating adjustments for
-        # min_screen_hole_size().
-        if "ACORN_SWR_SMALL_DYNMEM" in self.labels:
-            nonstored_pages_up_to = self.labels["story_start"] + nonstored_pages * bytes_per_page
-            swr_main_ram_free = 0x8000 - nonstored_pages_up_to
-            assert swr_main_ram_free >= 0
-            # Because story_start is 512 byte-aligned and nonstored_pages is rounded up to be
-            # a multiple of pages_per_vmem_block (2), swr_main_ram_free will always be a multiple
-            # of 512. This isn't hugely important, but it makes reasoning about memory in the
-            # loader slightly more comfortable.
-            assert swr_main_ram_free % 512 == 0
-            symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(swr_main_ram_free)
-        elif "ACORN_SWR_MEDIUM_DYNMEM" in self.labels:
-            symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(0x8000 - self.labels["vmem_start"])
-        elif "ACORN_SWR_BIG_DYNMEM" in self.labels:
-            # Here we assume we have the maximum 16K of sideways RAM available
-            # for dynamic memory. (If we don't, the loader will take that into
-            # account.) We model the sideways RAM being used in preference to
-            # main RAM for dynamic memory, so as to leave as much main RAM free
-            # for screen RAM as possible. (As always, we are just modelling
-            # things so we can predict whether the executable will crash when we
-            # run it and avoid doing that. The executable itself is responsible
-            # for allocating RAM in reality.)
-            min_main_ram_used = max(nonstored_pages * bytes_per_page - 0x4000, 0)
-            swr_main_ram_free = (0x8000 - self.labels["story_start"]) - min_main_ram_used
-            assert swr_main_ram_free >= 0
-            symbols[self.leafname + "_SWR_MAIN_RAM_FREE"] = basic_int(swr_main_ram_free)
 
     def binary(self):
         # It's important to check self._binary isn't None so we don't compress
