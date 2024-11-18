@@ -1417,8 +1417,8 @@ def make_shaddrv_executable():
     args = ["-DACORN_SHADOW_VMEM=1"]
     if cmd_args.no_integra_b_private_ram:
        args += ["-DACORN_IGNORE_INTEGRA_B_PRIVATE_RAM=1"]
-    e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x900, args)
-    assert e.start_addr + len(e.binary()) <= 0xb00
+    e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, high_workspace_start, args)
+    assert e.start_addr + len(e.binary()) <= high_workspace_end
     # SFTODO: Is putting these not-strictly-common things into common_labels a hack?
     common_labels.update({k:v for (k,v) in e.labels.items() if k.startswith("shadow_state") or k == "private_ram_in_use"})
     return e
@@ -1439,14 +1439,10 @@ def make_insv_executable():
 
 
 def make_fast_hw_scroll_executable():
-    # SFTODO: Location of this is an utter hack right now
-    workspace_end = himem_by_mode(6)
-    workspace_start = workspace_end - 0x400
-    e = Executable("acorn-scroll.asm", "FASTSCR", None, workspace_start, ["-DACORN_HW_SCROLL_FAST=1", "-DACORN_SHADOW_VMEM=1"])
+    e = Executable("acorn-scroll.asm", "FASTSCR", None, high_workspace_start, ["-DACORN_HW_SCROLL_FAST=1", "-DACORN_SHADOW_VMEM=1"])
     init = e.labels['init']
-    assert e.start_addr + len(e.binary()) <= workspace_end
+    assert e.start_addr + len(e.binary()) <= high_workspace_end
     e.exec_addr = host | init
-    loader_symbols["fast_scroll_load_addr"] = basic_int(workspace_start)
     return e
 
 
@@ -2302,7 +2298,7 @@ def make_disc_image():
     # to build and include the shadow driver. Putting this note in just in case it's worth being
     # smarter about including it, but really the cases where it's not useful aren't all that likely
     # or interesting.
-    disc_contents += [loader, shaddrv_executable, findswr_executable]
+    disc_contents += [loader, findswr_executable, shaddrv_executable]
     if not cmd_args.no_history:
         disc_contents.append(make_insv_executable())
     if not cmd_args.no_fast_hw_scroll:
@@ -2575,8 +2571,13 @@ if cmd_args.preload_config:
 
 check_if_special_game()
 
-shaddrv_executable = make_shaddrv_executable()
+# SFTODO: Rename this? It is not exactly workspace, it is a temporary place to run code which copies relevant fragments of code into permanent locations.
+high_workspace_end = himem_by_mode(6)
+high_workspace_start = high_workspace_end - 0x400
+loader_symbols["HIGH_WORKSPACE_START"] = basic_int(high_workspace_start)
+
 findswr_executable = make_findswr_executable()
+shaddrv_executable = make_shaddrv_executable()
 if not cmd_args.no_fast_hw_scroll:
     fast_hw_scroll_executable = make_fast_hw_scroll_executable()
 

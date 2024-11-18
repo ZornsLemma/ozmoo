@@ -87,13 +87,14 @@ REM hardware, for example.
 IF integra_b THEN host_os=1
 electron=host_os=0
 
-REM Do the hardware detection (which is slightly slow, especially the sideways RAM
-REM detection as that requires running a separate executable) before we change
-REM screen mode; this way if there's a splash screen it's visible during this delay.
+REM We run FINDSWR before we change screen mode, so if there's a splash screen
+REM it is visible during this delay. We have to change mode before running SHADDRV,
+REM unfortunately.
 REM SFTODO: Since we might have to change to mode 7 to load the loader, actually
 REM *RUNning these hardware detection executables from the preloader might be nicer.
-
-*/SHADDRV
+REM If we have a preloader, running SHADDRV there would be a necessary precondition
+REM for using the shadow driver to copy the splash screen into display RAM in a
+REM generic manner (instead of special-casing just the MRB as we do currently).
 
 REM FINDSWR will play around with the user VIA as it probes for Solidisk-style
 REM sideways RAM. It does its best to reset things afterwards, but it's not enough
@@ -109,9 +110,6 @@ REM https://stardot.org.uk/forums/viewtopic.php?p=311977#p311977 for more on thi
     *INFO XYZZY1
     500ON ERROR PROCerror
 }
-
-shadow_state=FNpeek(${shadow_state})
-shadow=shadow_state<>${shadow_state_none}
 
 tube=PAGE<&E00
 !ifdef OZMOO2P_BINARY {
@@ -133,6 +131,17 @@ REM particular, if they provide mode 7 but HIMEM is lower than &7C00, all sorts 
 REM assumptions in the build system/loader are likely to be violated with odd
 REM results. Of course, we could check that too - if we are in mode 7 but HIMEM<&7C00,
 REM explicitly switch back to mode 6, otherwise set the has_mode_7 flag.
+
+REM Make space for SHADDRV and FASTSCR (if included in the build) to run.
+REM We really don't expect this check to fail, but it seems prudent to check and
+REM avoid random corruption.
+DIM vartop -1
+IF vartop+256>=${HIGH_WORKSPACE_START} THEN PROCdie("No room for high workspace")
+HIMEM=${HIGH_WORKSPACE_START}
+
+*/SHADDRV
+shadow_state=FNpeek(${shadow_state})
+shadow=shadow_state<>${shadow_state_none}
 
 REM We don't want to write to any of the resident variable workspace earlier than this
 REM because we might trample on P%/O% when assembling code.
@@ -201,10 +210,6 @@ VDU 23,255,-1;-1;-1;-1;
     */INSV
 }
 !ifdef ACORN_HW_SCROLL_FAST {
-    REM We really don't expect this check to fail, but it seems prudent to check and avoid random corruption.
-    DIM vartop -1
-    IF vartop+256>=${fast_scroll_load_addr} THEN PROCdie("No room for FASTSCR")
-    HIMEM=${fast_scroll_load_addr}
     */FASTSCR
     ?${fast_scroll_status}=FNpeek(${fast_scroll_status_host})
 }

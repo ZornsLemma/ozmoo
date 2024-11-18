@@ -46,6 +46,8 @@
 
 * Fix a bug in the fast scroll code which affected modes 3 and 6. The fact that the screen display doesn't completely fill the allocated screen memory was not being handled correctly and a supposedly-blank new line at the bottom of the screen could sometimes have a fragment of old text on it. This showed up in Varicella by typing a simple (invalid) "r" command at the first prompt in mode 3, but presumably could affect any game. The code has been rewritten and is probably slightly cleaner as a result of being forced to think again about how it's supposed to work.
 
+* Move the shadow driver installation code to &5C00 instead of &900. It was already a tight fit at &900 and sooner or later another shadow RAM type will be added and even more space will be needed. This means we have to run it after changing into mode 7 in the loader, so a the associated disc access will happen *after* any splash screen is no longer displayed, but this can't be helped and isn't a huge deal.
+
 ## 14.22 (alpha 57)
 
 * Fix corner cases with games that only have one block of non-dynamic memory. These were shown up as a side-effect of Fredrik's new "catch" test.

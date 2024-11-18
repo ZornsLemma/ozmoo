@@ -15,20 +15,20 @@
 ; during gameplay.
 ;
 ; SFTODO: MAY WANT TO TWEAK THESE COMMENTS TO IDENTIFY "EXECUTION ONE-OFF USE (CORRUPTS)" VS "RUNTIME MEM USE"
-; - SHADDRV (acorn-shadow-driver.asm)
-;   This checks for shadow RAM and installs an appropriate shadow driver if we
-;   have one. It also checks to see if the private RAM on a B+ or Integra-B
-;   is available.
-;   Execution corrupts: &900-&AFF, &70-&8F
-;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end
-;       (including shadow_ram_copy, shadow_paging_control_ptr), private_ram_in_use
-;   Runtime memory: &8C0-&8DF (OS envelope buffers)
-;
 ; - FINDSWR (acorn-findswr.asm)
 ;   This checks for sideways RAM.
 ;   Execution corrupts: &900-&AFF, &70-&8F
 ;   Execution sets: swr_type, ram_bank_count, ram_bank_list
 ;   Runtime memory: &8F0-&8F9 (OS envelope buffers)
+;
+; - SHADDRV (acorn-shadow-driver.asm)
+;   This checks for shadow RAM and installs an appropriate shadow driver if we
+;   have one. It also checks to see if the private RAM on a B+ or Integra-B
+;   is available.
+;   Execution corrupts: &5C00-5FFF, &70-&8F
+;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end
+;       (including shadow_ram_copy, shadow_paging_control_ptr), private_ram_in_use
+;   Runtime memory: &8C0-&8DF (OS envelope buffers)
 ;
 ; - INSV (acorn-insv.asm)
 ;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
@@ -65,8 +65,8 @@
 ;   Runtime memory: OSHWM-HIMEM, &70-&8F
 ;
 ; The Ozmoo executable itself uses some addresses associated with the above utilities: SFTODO SEMI DUPLICATING THE ABOVE
-; - SHADDRV: shadow_ram_copy
 ; - FINDSWR: ram_bank_count, ram_bank_list
+; - SHADDRV: shadow_ram_copy
 ; - FASTSCR: fast_scroll_upper_window_size
 ; - INSV: nominal_cursor_key_status
 ;
