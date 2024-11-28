@@ -207,6 +207,7 @@ not_watford
     ; call, because we're only interested in *FX111 if it is controlling shadow
     ; RAM. If OSBYTE 111 is reading the current drive, X will not change between
     ; these two calls.
+    ; SFTODONOW: THIS NEEDS A PROPER TEST (ON MAME)
     ; SFTODONOW: GAH! Now this is running at &5C00, these OSBYTE 111 calls page it out as it is running on hardware implementing OSBYTE 111. So I really need to run it below &3000, *but* there isn't enough room in &900-&AFFF and I really don't want to have to make it relocatable and run it at PAGE. I suppose I could run it at &2D00-ish from !BOOT. I'm going to sleep on this.
     lda #111
     ldx #$80
