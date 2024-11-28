@@ -212,12 +212,10 @@ not_watford
     ldx #$80
     jsr osbyte
     stx tmp
-!if 0 { ; SFTODONOW: NEED TO MAKE SPACE FOR THIS, I am going to have to move this code to just below mode 6 HIMEM or something
     ; SFTODONOW: Should I perhaps (be very careful about what mght overwrite the installed driver later on) install the shadow driver from PRELOAD if present and "ASAP" in LOADER if no PRELOAD? This way there would be option in the future to use the shadow driver for helping with displaying a loading screen (don't do this now). It's tempting to do it from !BOOT but that is probably not a great idea as e.g. hard drive/Econet installations may use a custom !BOOT and not just copy ours, so the less it does the better.
     ; I think A *should* still be 111, but at least testing this on MAME with
     ; an Aries B20 it is not always preserved.
     lda #111
-}
     ldx #$c0
     jsr osbyte
     txa
