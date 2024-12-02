@@ -1417,8 +1417,15 @@ def make_shaddrv_executable():
     args = ["-DACORN_SHADOW_VMEM=1"]
     if cmd_args.no_integra_b_private_ram:
        args += ["-DACORN_IGNORE_INTEGRA_B_PRIVATE_RAM=1"]
-    e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, high_workspace_start, args)
-    assert e.start_addr + len(e.binary()) <= high_workspace_end
+    # The shadow driver executable is run at &2C00 from !BOOT. We need a fair
+    # amount of space for the executable itself, as it contains hardware
+    # inspection code and multiple different drivers. It can't be run at
+    # high_workspace_start from within the loader because that's inside the
+    # &3000-&8000 range and our Aries/Watford probing logic would page out the
+    # memory it's running from. It's too big to fit at &900. So we run it just
+    # below screen memory ASAP before we have any BASIC program in memory.
+    e = Executable("acorn-shadow-driver.asm", "SHADDRV", None, 0x2c00, args)
+    assert e.start_addr + len(e.binary()) <= 0x3000
     # SFTODO: Is putting these not-strictly-common things into common_labels a hack?
     common_labels.update({k:v for (k,v) in e.labels.items() if k.startswith("shadow_state") or k == "private_ram_in_use"})
     return e
@@ -1468,7 +1475,8 @@ def make_boot():
         '*BASIC',
         'VDU 21',
         '*DIR $',
-        '*FX21'
+        '*FX21',
+        '*/SHADDRV',
     ]
     if not cmd_args.no_tube and not cmd_args.no_turbo:
         # SFTODO: I don't really like this, but since running TURBO leaves us at the
@@ -2284,7 +2292,7 @@ def make_disc_image():
             if cmd_args.min_mode <= min_menu_mode and max_menu_mode in possible_runtime_max_modes:
                 loader_symbols["NEED_MODE_MENU_%d_TO_%d" % (min_menu_mode, max_menu_mode)] = "1"
 
-    disc_contents = [boot_file]
+    disc_contents = [boot_file, shaddrv_executable]
     if cmd_args.cache_test:
         disc_contents.append(make_tokenised_cache_test())
     if turbo_test_executable is not None:
@@ -2298,7 +2306,7 @@ def make_disc_image():
     # to build and include the shadow driver. Putting this note in just in case it's worth being
     # smarter about including it, but really the cases where it's not useful aren't all that likely
     # or interesting.
-    disc_contents += [loader, findswr_executable, shaddrv_executable]
+    disc_contents += [loader, findswr_executable]
     if not cmd_args.no_history:
         disc_contents.append(make_insv_executable())
     if not cmd_args.no_fast_hw_scroll:

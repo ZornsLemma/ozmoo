@@ -30,9 +30,11 @@ REM know this has happened because OSBYTE &85 will return &8000; this isn't
 REM affected if we're running on a second processor.
 REM SFTODO: I haven't tested it yet, but I suspect the Watford 32K shadow RAM
 REM card for the BBC B will always return &8000 and we won't be able to display the
-REM splash screen. We could work around this, although we'd probably need to be
-REM installing the shadow driver here instead of in the loader in order to avoid
-REM problems knowing which OSBYTE to use.
+REM splash screen.
+REM SFTODO: Especially now we run the shadow driver from !BOOT, this code (the
+REM SPLASH executable, to be precise) could use the shadow driver to copy the
+REM decompressed data into video memory in a generic way instead of special-casing
+REM the MRB.
 IF FNmode_himem(${splash_mode})<&8000 THEN GOTO 1000
 
 REM We've had shadow RAM forced on, so we probably can't show the splash screen.

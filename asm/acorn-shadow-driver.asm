@@ -167,7 +167,8 @@ bbc_b_not_integra_b
     ; their ROMs so the shadow RAM driver ROM gets dibs on *FX111.
     ;
     ; We *could* generate an error if *FX111 is claimed by Watford DFS, so the
-    ; user can maybe fix it, but they'd probably rather have the game run.
+    ; user can maybe fix it, but they'd probably rather have the game run even
+    ; if it doesn't have as much memory available to it as it could.
 
     ; We use *FX34,64 to read the current shadow state but we don't check the
     ; return value precisely; all we care about is whether the call is
@@ -207,15 +208,13 @@ not_watford
     ; call, because we're only interested in *FX111 if it is controlling shadow
     ; RAM. If OSBYTE 111 is reading the current drive, X will not change between
     ; these two calls.
-    ; SFTODONOW: THIS NEEDS A PROPER TEST (ON MAME)
-    ; SFTODONOW: GAH! Now this is running at &5C00, these OSBYTE 111 calls page it out as it is running on hardware implementing OSBYTE 111. So I really need to run it below &3000, *but* there isn't enough room in &900-&AFFF and I really don't want to have to make it relocatable and run it at PAGE. I suppose I could run it at &2D00-ish from !BOOT. I'm going to sleep on this.
+    ; SFTODONOW: THIS NEEDS A PROPER TEST (ON MAME) - HAVE TESTED ARIES CASE, BUT NOT WATFORD CASE, OR THE TRICKSY DFS-IS-CLAIMING CASE
     lda #111
     ldx #$80
     jsr osbyte
     stx tmp
-    ; SFTODONOW: Should I perhaps (be very careful about what mght overwrite the installed driver later on) install the shadow driver from PRELOAD if present and "ASAP" in LOADER if no PRELOAD? This way there would be option in the future to use the shadow driver for helping with displaying a loading screen (don't do this now). It's tempting to do it from !BOOT but that is probably not a great idea as e.g. hard drive/Econet installations may use a custom !BOOT and not just copy ours, so the less it does the better.
-    ; I think A *should* still be 111, but at least testing this on MAME with
-    ; an Aries B20 it is not always preserved. SFTODONOW: This needs testing - before this fix, booting the game fresh would show Aries shadow RAM, but pressing (non CTRL) BREAK and rebooting would show "shadow (screen only)". I hope this fix will address this, but need to confirm once I fix the "the code is paging itself out" problem.
+    ; I think A *should* still be 111, but at least testing this on MAME with an
+    ; Aries B20 it is not always preserved.
     lda #111
     ldx #$c0
     jsr osbyte
@@ -225,7 +224,6 @@ not_watford
     bne osbyte_111_failed
     ; *FX111 is controlling shadow RAM.
     lda #shadow_state_aries
-set_shadow_state_from_a_and_install_driver
     ; fall through to set_shadow_state_from_a_and_install_driver
 
 set_shadow_state_from_a_and_install_driver

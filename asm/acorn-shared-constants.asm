@@ -5,9 +5,10 @@
 ; that can be present (always in the host) and how they fit round each other in
 ; memory.
 ;
-; The loader runs the utilities in the order they're listed here. (The build system
-; puts them on the generated disc image in this order as well, to try to keep
-; the drive head moving forwards to minimise seeking.) SFTODO: CHECK IT DOES PUT THEM ON IN THIS ORDER, ESP IF I TWEAK THE ORDER
+; The utilities are run in the order they're listed here. (The build system puts
+; them on the generated disc image in this order as well, to try to keep the
+; drive head moving forwards to minimise seeking.) SFTODO: CHECK IT DOES PUT
+; THEM ON IN THIS ORDER, ESP IF I TWEAK THE ORDER
 ;
 ; The following comments draw a distinction between "execution" - what memory is
 ; used/corrupted when we *RUN the code - and "runtime" - what memory is
@@ -15,20 +16,20 @@
 ; during gameplay.
 ;
 ; SFTODO: MAY WANT TO TWEAK THESE COMMENTS TO IDENTIFY "EXECUTION ONE-OFF USE (CORRUPTS)" VS "RUNTIME MEM USE"
+; - SHADDRV (acorn-shadow-driver.asm)
+;   This checks for shadow RAM and installs an appropriate shadow driver if we
+;   have one. It also checks to see if the private RAM on a B+ or Integra-B
+;   is available.
+;   Execution corrupts: &2C00-2FFF, &70-&8F
+;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end
+;       (including shadow_ram_copy, shadow_paging_control_ptr), private_ram_in_use
+;   Runtime memory: &8C0-&8DF (OS envelope buffers)
+;
 ; - FINDSWR (acorn-findswr.asm)
 ;   This checks for sideways RAM.
 ;   Execution corrupts: &900-&AFF, &70-&8F
 ;   Execution sets: swr_type, ram_bank_count, ram_bank_list
 ;   Runtime memory: &8F0-&8F9 (OS envelope buffers)
-;
-; - SHADDRV (acorn-shadow-driver.asm)
-;   This checks for shadow RAM and installs an appropriate shadow driver if we
-;   have one. It also checks to see if the private RAM on a B+ or Integra-B
-;   is available.
-;   Execution corrupts: &5C00-5FFF, &70-&8F
-;   Execution sets: shadow_state, shadow_driver_start-shadow_driver_end
-;       (including shadow_ram_copy, shadow_paging_control_ptr), private_ram_in_use
-;   Runtime memory: &8C0-&8DF (OS envelope buffers)
 ;
 ; - INSV (acorn-insv.asm)
 ;   This allows a mix of *FX4,0 and *FX4,1 cursor key behaviour for command
