@@ -324,7 +324,7 @@ REM - main_ram bytes free in main RAM; this varies with screen mode on
 REM   non-shadow systems, so is calculated later for each mode we consider
 REM - flexible_swr_ro bytes of sideways RAM which can be used as dynamic memory or vmem cache
 REM - vmem_only_swr bytes of sideways RAM which can be used only as vmem cache
-REM SFTODONOW: I nede to give the new style code here a fairly thorough test on all different machines and with different RAM configurations and dynmem sizes
+REM SFTODONOW: I need to give the new style code here a fairly thorough test on all different machines and with different RAM configurations and dynmem sizes
 
 REM Because an Ozmoo executable has a natural 512-byte alignment (which we know
 REM here because max_page has it), the amount of extra main RAM we get from having
