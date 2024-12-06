@@ -331,35 +331,33 @@ dumptovice
 	inc z_trace_index
 }
 
-!if 0 { ; debugging code used to allow breakpoints at a certain PC
-	ldy z_pc + 2
-	cpy #$f5
-	bne +
-	ldy z_pc + 1
-	cpy #$3a
-	bne +
-	ldy z_pc
-	cpy #$00
-	bne +
+	; ldy z_pc + 2
+	; cpy #$f5
+	; bne +
+	; ldy z_pc + 1
+	; cpy #$3a
+	; bne +
+	; ldy z_pc
+	; cpy #$00
+	; bne +
 	
-dummy
-	ldy #0
-+
-	ldy z_pc + 2
-	cpy #$f8
-	bne +
-	ldy z_pc + 1
-	cpy #$3a
-	bne +
-	ldy z_pc
-	cpy #$00
-	bne +
-dummy2
-	ldy #0
-+
-}	
+; dummy
+	; ldy #0
+; +
+	; ldy z_pc + 2
+	; cpy #$f8
+	; bne +
+	; ldy z_pc + 1
+	; cpy #$3a
+	; bne +
+	; ldy z_pc
+	; cpy #$00
+	; bne +
+; dummy2
+	; ldy #0
+; +	
 
-!ifdef DEBUG {	
+!ifdef DEBUG {
 	;jsr print_following_string
 	;!pet "opcode: ",0
 	;ldx z_opcode
@@ -1273,7 +1271,9 @@ calc_address_in_byte_array
 z_rnd_init_random
 	; in: Nothing
 !ifndef ACORN {
-!ifdef TARGET_PLUS4 {
+!ifdef TARGET_X16 {
+	jsr kernal_entropy_get
+} else ifdef TARGET_PLUS4 {
 	jsr kernal_readtime
 	pha
 	lda $ff1d
@@ -1325,7 +1325,9 @@ z_rnd_init
 	sty z_rnd_c
 	eor #$ff
 	sta z_rnd_x
-z_rnd_number
+z_rnd_number 
+; Returns an 8-bit random number in a
+; Source: https://www.electro-tech-online.com/threads/ultra-fast-pseudorandom-number-generator-for-8-bit.124249
 	inc z_rnd_x
 	lda z_rnd_x
 	eor z_rnd_c

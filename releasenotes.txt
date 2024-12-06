@@ -1,6 +1,33 @@
 RELEASE NOTES
 
 Upcoming release
+================================================
+Release 14.48: 1 Dec 2024
+
+Bugfixes:
+- Fixed bug which stopped sound games from building.
+- Fixed test cases in tests folder which hadn't been updated to new way of specifying colours.
+
+================================================
+Release 14.47: 1 Dec 2024
+
+New/changed features:
+- Updated the manual section on dependencies.
+- Changed make.rb options for choosing colours. New options are e.g. -fgcol:black -bgcol:yellow -bordercol:fg -inputcol:lightgrey -cursorcol:lightblue -dmfgcol:blue -dmbgcol:ltgreen. 
+- No more colour replacing, as all 16 colours of the c64 palette are now always available. A game can use the extra colours too (colour 8-15 in the C64 palette are colour 16-23 in the Z-code palette). 
+- Specified the cost in bytes for some features in the instructions printed by make.rb when invoked without parameters.
+
+Optimizations:
+- Commented out a few lines of code meant for debug in zmachine.asm
+
+Bugfixes:
+- Changed File.exists to File.exist in make.rb, as the latter is correct, and the former isn't supported in newer Ruby versions.
+- Removed option -scale 2 for xemu (X16 emulator), as this could wreck havoc on some screens.
+- Zeropage location $ab was used to remember if text output is buffered on C64, MEGA65 and Plus/4, but this address was actually unsafe to use on all of these platforms. Changed it to $c8 on C64/MEGA65 and $d0 on Plus/4.
+- Zeropage location $a7 was used to remember current window on C64/MEGA65 and Plus/4. This was breaking compatibility with fastload module of Action Replay cartridge on C64. Changed to use $d8 on all three platforms.
+- Fixed broken PRNG initialization for X16.
+- Overwriting save files had been broken for many months, but we didn't know. Fixed it now.
+- make.rb will now stop user from accidentally specifying two different story files.
 
 ================================================
 Release 14.40: 28 Sep 2024
