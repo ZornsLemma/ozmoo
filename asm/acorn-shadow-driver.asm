@@ -208,7 +208,21 @@ not_watford
     ; call, because we're only interested in *FX111 if it is controlling shadow
     ; RAM. If OSBYTE 111 is reading the current drive, X will not change between
     ; these two calls.
-    ; SFTODONOW: THIS NEEDS A PROPER TEST (ON MAME) - HAVE TESTED ARIES CASE, BUT NOT WATFORD CASE, OR THE TRICKSY DFS-IS-CLAIMING CASE
+    ;
+    ; SFTODO: I have tested this with Aries and Watford boards (in MAME), but not
+    ; yet tested the tricky case with an old Watford DFS. When I try, the machine
+    ; fails to boot if the "old" Watford DFS is in a higher priority socket than
+    ; the Aries ROM - *possibly* because of some conflict between the two ROMs'
+    ; own use of *FX111, but I am guessing, This works fine with "new" Watford
+    ; DFS though. It also works perfectly (with no clashes at all) if the "old"
+    ; DFS is in a lower priority slot. So it's all probably OK, and the case
+    ; I'm at pains to deal with here may already be broken even without Ozmoo
+    ; running.
+    ;
+    ; Command line for reference:
+    ;    ./mame bbcb -fdc acorn8271 -internal ariesb20 -rom4 wdfs130 \
+    ;    -flop1 foo.ssd -uimodekey DEL -window
+    ; This crashes on startup, but if you change wdfs130 to wdfs144 it works.
     lda #111
     ldx #$80
     jsr osbyte
