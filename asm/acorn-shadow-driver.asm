@@ -571,7 +571,7 @@ test_private_ram_in_use
 
 end
 
-; SFTODONOW: Must test that this works for all the different shadow options
+; SFTODONOW: Must test that this works for all the different shadow options - I think at this point the only one left to test is Electron MRB.
 
 ; SQUASH: If it's desirable to shrink the shadow drivers to free up more low
 ; memory for other purposes, don't forget the drivers with shadow paging support
