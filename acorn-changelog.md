@@ -10,7 +10,7 @@
 
 * We do some related optimisations when updating local or global variables (using z_set_variable_reference_to_value) to avoid paging in a dynamic memory bank unnecessarily. Again, this uses a combination of conditional assembly and dynamic binary patching at runtime. This costs an extra 14 bytes of runtime code on medium or big dynamic memory builds but offers a small performance increase on medium builds and should make a bigger (albeit not huge) difference on big dynamic memory builds. For big builds running on machines where the global variables happen to end up in main RAM the performance improvement will be greater, as we can avoid ever having to page in the dynamic memory bank here.
 
-* As an aside, the previous two changes mean that if (and you probably don't) you have any control over where in dynamic memory the global variables are located for a game you're writing, for maximum performance on Acorn Ozmoo you should put them at as low an address in dynamic memory as you can. This will increase the chances of these optimisations kicking in.
+* As an aside, the previous two changes mean that if you have any control over where in dynamic memory the global variables are located for a game you're writing, for maximum performance on Acorn Ozmoo you should put them at as low an address in dynamic memory as you can. This will increase the chances of these optimisations kicking in.
 
 * Removed a couple of unused variables and tweaked the use of zero page to increase the chances of some variables that are referenced by a lot of instructions being allocated there. This shrinks the runtime code and as a bonus gives a small performance increase as well.
 
