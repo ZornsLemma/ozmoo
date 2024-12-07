@@ -86,25 +86,28 @@
 ; restore is no longer contiguous in memory.
 
 ; Control a few small debug assertions and similar.
-; SFTODO: Make this controllable via the build script?
-; SFTODONOW: Should probably do some testing with these on - and make sure I turn them off after! It *might* be sensible to leave them on for now and then disable them when promoting alpha to beta. It is all a bit of a mess right now really - since I (and probably everyone else) don't use --debug-assert, that is never turned on, but the hard-coded ones below are on by default right now.
 
 ; ACORN_DEBUG_ASSERT causes additional code to be included which *verifies but
 ; does not change state*.
 
 ; ACORN_DEBUG_INTRUSIVE causes additional code to be included which *does* change
 ; state, but in ways that should be harmless; this helps to verify the belief
-; that they are indeed harmless. SFTODONOW: Expose via make-acorn.py?
+; that they are indeed harmless. SFTODO: Expose via make-acorn.py?
 ACORN_DEBUG_INTRUSIVE = 1
 
 ; SFTODO: COMMENT?
-; SFTODONOW: THIS IS PROBABLY KILLING PERFORMANCE AND THE CODE IS NOT NEW - REVIEW WHAT IT CTRONLS AND PROBABLY TURN IT OFF
-; SFTODONOW: THAT SAID, I HAVE TURNED IT OFF FOR THE MOMENT WHILE I DO SOME TIMINGS BUT SHOULD PROBABLY TURN IT BACK ON BEFORE THE NEXT ALPHA
-;DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
-!warn "SFTODONOW: Probably want to turn DEBUG_BIG_DYNMEM back on before next alpha"
-; SFTODONOW: I should probably have this *on* during pre-release testing
-; SFTODONOW: Need to think carefully about what debug flags should be on by default in a "proper" release
-; SFTODONOW: Should I have some kind of single --debug switch in make-acorn.py which turns on multiple things?
+DEBUG_BIG_DYNMEM = 1 ; SFTODO: RENAME ACORN_DEBUG_BIG_DYNMEM?
+; SFTODONOW: The use of these debug flags is a bit of a mess. For the moment I
+; think I will deliberately leave the settings the same as they've "always"
+; been, so I don't see an increase in performance/free memory in a particular
+; release for the artifical reason that the default values of these flags has
+; changed. I should at some point do a release which "just" changes this, and
+; perhaps defaults to some more performant values while exposing a relatively
+; intelligible set of build options to allow them to be turned on easily. There
+; should perhaps be a "max or near max" debug option which I routinely use
+; during development and as part of my pre-release checks. Need to make sure I
+; consider all the different debug options - at least ACORN_DEBUG_ASSERT,
+; ACORN_DEBUG_INTRUSIVE and DEBUG_BIG_DYNMEM, and there may be others.
 
 ; Macro used to catch cases where a supposedly unreachable execution path is
 ; taken. This is intended for use in discardable init code where we're not too
