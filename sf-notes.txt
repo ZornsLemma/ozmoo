@@ -1,3 +1,8 @@
+comparing alpha 57 and alpha 58:
+- alpha 57 HH benchmark BBC B 16K (irrelevant) SWR has data_start=$5600, on alpha 58 this is $5400 (medium) TODO TRY THIS WITH A NON BENCHMARK BUILD
+- BBC B 144K no shadow mode 7: alpha 57 HH $8789 $8788, alpha 58 $82bb $82c1
+- M128 mode 3: alpha 58 benchmark $8521 $851a (data_start $4e00, big) vs alpha 57 $8be4 $8bd9 (data_start $5200, big)
+
 aries b20 mame mode 7 (16K SWR) $e4e3 $e4ef
 ditto mode 3 $1ef45 
 
