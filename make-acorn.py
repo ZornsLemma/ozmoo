@@ -443,6 +443,14 @@ class Benchmarks:
                 self.game_for_key[key] = game
 
 
+# https://stackoverflow.com/questions/1303243/how-to-find-out-if-a-python-object-is-a-string
+def is_string(obj):
+    try:
+        return isinstance(obj, basestring) # Python 2
+    except NameError:
+        return isinstance(obj, str) # Python 3
+
+
 def make_benchmark_include():
     assert cmd_args.benchmark is not None
     benchmarks = Benchmarks()
@@ -460,10 +468,9 @@ def make_benchmark_include():
             die("Unknown benchmark game '%s'" % cmd_args.named_benchmark)
 
     walkthrough = game["walkthrough"]
-    import six
     with open(make_temp("benchmark.asm"), "w") as f:
         f.write("!byte 255\n") # trigger initial time display
-        if isinstance(walkthrough, six.string_types):
+        if is_string(walkthrough):
             f.write('!text "%s:"\n' % walkthrough)
         else:
             for line in walkthrough:
