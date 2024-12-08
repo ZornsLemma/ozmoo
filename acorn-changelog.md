@@ -1,4 +1,10 @@
-## 14.40 (alpha 58)
+## 14.48 (alpha 59)
+
+* TODO
+
+* Remove a dependency on the "six" module in make-acorn.py.
+
+## 14.48 (alpha 58)
 
 * Merge upstream changes. The main significant change for the Acorn port is the introduction of a "default Unicode map" which will convert non-ASCII characters used by games to best-effort ASCII equivalents. This is disabled by default on Acorn, as it costs a little bit of extra code/data, but can be enabled using the new build option --default-unicode-map.
 
