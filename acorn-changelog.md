@@ -1,7 +1,5 @@
 ## 14.48 (alpha 59)
 
-* TODO
-
 * Remove a dependency on the "six" module in make-acorn.py.
 
 ## 14.48 (alpha 58)
