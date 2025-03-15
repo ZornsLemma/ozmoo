@@ -1,6 +1,8 @@
 ## 14.48 (alpha 60)
 
-* Fix a bug introduced in the second processor build where top_line_buffer and top_line_buffer_reverse were allocated in the space for the fast scroll code, even though that is in the host not the second processor. We need to explicitly allocate space for this on a second processor. Thanks to Ken Lowe for reporting this.
+* Fix a recently-introduced bug in the second processor build where top_line_buffer and top_line_buffer_reverse were allocated in the space for the fast scroll code, even though that is in the host not the second processor. We need to explicitly allocate space for these buffers on a second processor. Thanks to Ken Lowe for reporting this.
+
+* Fix a long-standing build bug with game files which are very close to being exactly 64K in size. These would cause an attempt to do a non-vmem tube build with ACORN_GAME_PAGES=256, which would trigger a non-recoverable build error when attempting to load ACORN_GAME_PAGES into a CPU register. Thanks to Fredrik Ramsberg for reporting and fixing this.
 
 ## 14.48 (alpha 59)
 
