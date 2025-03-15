@@ -1,6 +1,6 @@
 ## 14.48 (alpha 60)
 
-* TODO
+* Fix a bug introduced in the second processor build where top_line_buffer and top_line_buffer_reverse were allocated in the space for the fast scroll code, even though that is in the host not the second processor. We need to explicitly allocate space for this on a second processor. Thanks to Ken Lowe for reporting this.
 
 ## 14.48 (alpha 59)
 
