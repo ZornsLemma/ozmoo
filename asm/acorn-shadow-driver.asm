@@ -18,13 +18,6 @@
 ; tube-compatible, although I think it is actually tube-compatible anyway. See
 ; the code at bbc_b_not_integra_b.)
 
-; SFTODO: This code barely fits in the space it has available at &900-&B00
-; and if we want to add a new shadow driver there is no way it's going to be
-; squashable. We really ought to be running this from somewhere in main RAM,
-; creating space by moving HIMEM down in the loader if necessary. (The runtime
-; shadow driver is fine, it's this code which decides which driver to install
-; in the runtime shadow driver space that's the problem.)
-
 !source "acorn-shared-constants.asm"
 
 max_shadow_driver_size = shadow_driver_end - shadow_driver_start
