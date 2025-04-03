@@ -12,8 +12,8 @@
 ; negligible time, but it's still fairly insignificant by comparison. It's good
 ; to be generally efficient but there's no need to push for every single cycle
 ; at the cost of legibility. Note also that it's important this code is compact
-; because every page it's occupy is a page that isn't available for caching data
-; in.
+; because every page it's occupying is a page that isn't available for caching
+; data in.
 
 !source "acorn-shared-constants.asm"
 
