@@ -238,6 +238,7 @@ max_screen_width = 80
 }
 
 !ifdef ACORN_HW_SCROLL_SLOW {
+!ifdef ACORN_SWR {
     ; Although the same Ozmoo executable can support fast and slow hardware
     ; scrolling, at runtime we are always using one or the other, so we can use
     ; the space allocated for the fast hardware scrolling machine code for the
@@ -246,6 +247,12 @@ max_screen_width = 80
     top_line_buffer_reverse = top_line_buffer + max_screen_width
     top_line_buffer_reverse_end = top_line_buffer_reverse + max_screen_width
     +assert top_line_buffer_reverse_end <= xxx_fast_scroll_end
+} else {
+    ; On a second processor build, the fast scroll code is in the host's address
+    ; space so we can't access that memory. We therefore need to explicitly
+    ; allocate space for top_line_buffer and top_line_buffer_reverse.
+    ALLOCATE_TOP_LINE_BUFFER = 1
+}
 }
 
 +assert xxx_shadow_driver_end + 1 + xxx_max_ram_bank_count + 1 < $900

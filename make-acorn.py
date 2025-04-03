@@ -1398,8 +1398,9 @@ def make_tube_executables():
     # The next check just saves a build which clearly can't succeed; the threshold could
     # be tightened up a bit but the more "realistic" the threshold the more chance there
     # is of subsequent code changes optimising things more than this code expects and
-    # missing out on a chance to use a no-vmem build.
-    if game_pages <= 64 * 4:
+    # missing out on a chance to use a no-vmem build. We do insist game_pages is < 256,
+    # since various parts of the code assume ACORN_GAME_PAGES can be loaded into a register.
+    if game_pages < 64 * 4:
         tube_no_vmem = make_ozmoo_executable(leafname, tube_start_addr, args)
         if game_pages <= tube_no_vmem.max_nonstored_pages():
             info("Game is small enough to run without virtual memory on second processor")

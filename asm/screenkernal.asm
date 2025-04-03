@@ -974,6 +974,14 @@ acorn_update_scroll_state_subroutine
 }
 }
 
+!ifdef ALLOCATE_TOP_LINE_BUFFER {
+top_line_buffer
+    !fill max_screen_width
+top_line_buffer_reverse
+    !fill max_screen_width
+top_line_buffer_reverse_end
+}
+
 } ; local zone
 } ; !ifdef ACORN_HW_SCROLL_FAST_OR_SLOW
 
