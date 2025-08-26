@@ -84,15 +84,9 @@ lp0
     LDA #$E3
     STA swr_byte_value2
 
-    ; LDY #15
     LDY #0
 bank_lp_y
     JSR set_all
-
-
-
-
-
     TYA
     EOR swr_byte_value1
     STA tmp
@@ -147,10 +141,6 @@ cmp_next_y
     INY
     CPY #16
     BCC bank_lp_y
-    ; DEY
-    ; BPL bank_lp_y
-    ; NOP
-    ; NOP
     LDA swr_banks
     BNE continue
     STA swr_type ; no SWR found
