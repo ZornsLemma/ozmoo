@@ -84,27 +84,15 @@ lp0
     LDA #$E3
     STA swr_byte_value2
 
+    ; LDY #15
     LDY #0
 bank_lp_y
     JSR set_all
-    ; Skip banks with a valid ROM header; we check this instead of using the table
-    ; at $2A1 so we don't use banks which contain valid ROM images temporarily
-    ; disabled by a ROM manager.
-    LDX copyright_offset
-    STX check_copyright_string_lda_abs_x+1
-    LDX #(copyright_string_prefix_end - copyright_string_prefix) - 1
-check_copyright_string
-check_copyright_string_lda_abs_x
-    LDA $8000,X ; patched to address copyright_offset,X
-    CMP copyright_string_prefix,X
-    BNE invalid_header
-    DEX
-    BPL check_copyright_string
-    BMI cmp_next_y
-copyright_string_prefix
-    !text 0, "(C)"
-copyright_string_prefix_end
-invalid_header
+
+
+
+
+
     TYA
     EOR swr_byte_value1
     STA tmp
@@ -159,6 +147,10 @@ cmp_next_y
     INY
     CPY #16
     BCC bank_lp_y
+    ; DEY
+    ; BPL bank_lp_y
+    ; NOP
+    ; NOP
     LDA swr_banks
     BNE continue
     STA swr_type ; no SWR found
@@ -252,16 +244,33 @@ restore_lp
     CPY #16
     BCC restore_lp
 end2
-    LDA $F4
-    JSR page_in_a
-    BIT bbc
-    BPL no_user_via
-    LDA original_user_via_ddrb
-    STA user_via_ddrb
-    LDA original_user_via_orb_irb
-    STA user_via_orb_irb
-no_user_via
-    CLI
+
+    LDY #15
+bank_lp2_y
+    JSR set_all
+    ; Skip banks with a valid ROM header; we check this instead of using the table
+    ; at $2A1 so we don't use banks which contain valid ROM images temporarily
+    ; disabled by a ROM manager.
+    LDX copyright_offset
+    STX check_copyright_string_lda_abs_x+1
+    LDX #(copyright_string_prefix_end - copyright_string_prefix) - 1
+check_copyright_string
+check_copyright_string_lda_abs_x
+    LDA $8000,X ; patched to address copyright_offset,X
+    CMP copyright_string_prefix,X
+    BNE invalid_header
+    DEX
+    BPL check_copyright_string
+    LDA #0
+    STA swr_test,Y ; set bank as ROM
+    BEQ invalid_header ; always branch
+copyright_string_prefix
+    !text 0, "(C)"
+copyright_string_prefix_end
+invalid_header
+    DEY
+    BPL bank_lp2_y
+
     ; Now derive a list of banks which have usable sideways RAM.
     ; We don't trust swr_banks because ROM write through can make it misleading.
     LDX #0
@@ -280,6 +289,18 @@ not_usable
     BNE derive_loop
 derive_done
     STX ram_bank_count
+
+    LDA $F4
+    JSR page_in_a
+    BIT bbc
+    BPL no_user_via
+    LDA original_user_via_ddrb
+    STA user_via_ddrb
+    LDA original_user_via_orb_irb
+    STA user_via_orb_irb
+no_user_via
+    CLI
+
     ; Re-select the current filing system. This should always be harmless and
     ; will cause SD card filing systems to re-initialise cards which may have
     ; been upset by our probing at the user port looking for Solidisk-style
