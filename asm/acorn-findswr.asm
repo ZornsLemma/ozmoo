@@ -310,9 +310,12 @@ no_user_via
 set_only_solidisk
     JSR set_all_to_wrong_bank
 set_solidisk ; for old solidisk swr
+    BIT bbc
+    BPL electron_no_solidisk
     LDX #$0F
     STX $FE62 ; user port -> output
     STY $FE60 ; user port output=A
+electron_no_solidisk
     RTS
 
 set_only_romsel
@@ -336,13 +339,19 @@ set_only_ramsel
     TAY
     RTS
 set_ramsel
+    BIT bbc
+    BPL electron_no_ramsel
     STY $FE32
+electron_no_ramsel
     RTS
 
 set_only_watford_romram
     JSR set_all_to_wrong_bank
 set_watford_romram
+    BIT bbc
+    BPL electron_no_watford_romram
     STA $FF30,Y
+electron_no_watford_romram
     RTS ; write latch set by writing anything to location (FF30+n)
 
 set_all
