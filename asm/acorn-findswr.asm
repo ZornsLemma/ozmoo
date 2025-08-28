@@ -238,9 +238,10 @@ end2
     LDY #15
 bank_lp2_y
     JSR set_all
-    ; Skip banks with a valid ROM header; we check this instead of using the table
-    ; at $2A1 so we don't use banks which contain valid ROM images temporarily
-    ; disabled by a ROM manager.
+    ; Treat sideways RAM banks with a valid ROM header as ROM. We check this
+    ; instead of using the table at $2A1 so we don't use banks which contain
+    ; valid ROM images temporarily disabled by a ROM manager. We check all
+    ; banks, not just those detected as RAM, to save a few bytes.
     LDX copyright_offset
     STX check_copyright_string_lda_abs_x+1
     LDX #(copyright_string_prefix_end - copyright_string_prefix) - 1
