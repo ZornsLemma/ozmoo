@@ -1,6 +1,9 @@
 ## 14.48 (alpha 61)
 
 * Improve the sideways RAM detection code to avoid problems with ATPL-style boards where all writes go to the sideways RAM. This probably worked in Wouter's original code but my changes to ignore banks with valid ROM images broke it. Thanks to Ken Lowe for reporting this and to Ken and hoglet for investigating and fixing the problem.
+
+* Don't probe BBC-only hardware addresses during sideways RAM detection on the Electron. I don't think this was ever known to cause problems, but it's obviously good to avoid it. Thanks to hoglet for the suggestion.
+
 * TODO
 
 ## 14.48 (alpha 60)
