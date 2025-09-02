@@ -1482,7 +1482,17 @@ def make_boot():
     boot = [
         '*BASIC',
         'VDU 21',
-        '*DIR $',
+    ]
+    # *DIR $ is useful to avoid problems with the default S/SAVES directory
+    # *persisting across soft-break on a Master, preventing the game rebooting
+    # *cleanly. But it can cause problems when installing on a hard drive or
+    # *Econet. SFTODO: I just tested on a Master without *DIR $ and it was
+    # fine, but I'm sure this was the reason for having it.
+    if not cmd_args.no_boot_dir_change:
+        boot += [
+            '*DIR $',
+        ]
+    boot += [
         '*FX21',
         '*/SHADDRV',
     ]
@@ -1903,6 +1913,7 @@ def parse_args():
     group.add_argument("--no-integra-b-private-ram", action="store_true", help="never use Integra-B private RAM")
     group.add_argument("--no-absolute-globals", action="store_true", help="disable use of absolute globals")
     group.add_argument("--no-runtime-absolute-globals", action="store_true", help="disable runtime patching to use absolute globals")
+    group.add_argument("--no-boot-dir-change", action="store_true", help="don't include *DIR $ in !BOOT")
 
     cmd_args = parser.parse_args()
 

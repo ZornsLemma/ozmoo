@@ -4,6 +4,8 @@
 
 * Don't probe BBC-only hardware addresses during sideways RAM detection on the Electron. I don't think this was ever known to cause problems, but it's obviously good to avoid it. Thanks to hoglet for the suggestion.
 
+* Add --no-boot-dir-change option to omit "*DIR $" line from !BOOT file.
+
 * TODO
 
 ## 14.48 (alpha 60)
