@@ -237,7 +237,7 @@ def get_tool_version(name, version_finder=None):
             if len(c) >= 2 and c[0] == name:
                 version_components = c[1].split(".")
                 if len(version_components) >= 2:
-                    version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
+                    version = tuple(int("0" + re.findall(r"^\d+", x)[0]) for x in version_components[:2])
                     string_version = line.strip()
                     break
         else:
@@ -278,7 +278,7 @@ def acme_version_finder(line):
     if len(c) >= 2:
         version_components = c[1].split(".")
         if len(version_components) >= 2:
-            version = tuple(int("0" + re.findall("^\d+", x)[0]) for x in version_components[:2])
+            version = tuple(int("0" + re.findall(r"^\d+", x)[0]) for x in version_components[:2])
             string_version = c[1]
             return version, string_version
     return None, None
@@ -1561,7 +1561,7 @@ def substitute_text(s, d, f):
 
 
 def substitute(s, d, f):
-    c = re.split(b"(\$\{|\})", s)
+    c = re.split(br"(\$\{|\})", s)
     result = b""
     i = 0
     while i < len(c):
