@@ -1483,11 +1483,10 @@ def make_boot():
         '*BASIC',
         'VDU 21',
     ]
-    # *DIR $ is useful to avoid problems with the default S/SAVES directory
-    # *persisting across soft-break on a Master, preventing the game rebooting
-    # *cleanly. But it can cause problems when installing on a hard drive or
-    # *Econet. SFTODO: I just tested on a Master without *DIR $ and it was
-    # fine, but I'm sure this was the reason for having it.
+    # *DIR $ is useful to avoid problems with the default SAVES directory
+    # persisting across soft-break on ADFS (on a Master? all machines?),
+    # preventing the game rebooting cleanly. But it can cause problems when
+    # installing on a hard drive or Econet.
     if not cmd_args.no_boot_dir_change:
         boot += [
             '*DIR $',
