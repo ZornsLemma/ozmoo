@@ -1,3 +1,7 @@
+## 14.48 (alpha 62)
+
+* TODO
+
 ## 14.48 (alpha 61)
 
 * Improve the sideways RAM detection code to avoid problems with ATPL-style boards where all writes go to the sideways RAM. This probably worked in Wouter's original code but my changes to ignore banks with valid ROM images broke it. Thanks to Ken Lowe for reporting this and to Ken and hoglet for investigating and fixing the problem.
