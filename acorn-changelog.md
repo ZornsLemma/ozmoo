@@ -6,7 +6,7 @@
 
 * Add --no-boot-dir-change option to omit "*DIR $" line from !BOOT file.
 
-* TODO
+* Tweak make-acorn.py to remove some warnings about regular expressions.
 
 ## 14.48 (alpha 60)
 
