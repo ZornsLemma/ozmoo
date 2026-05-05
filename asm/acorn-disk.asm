@@ -665,6 +665,7 @@ restore_game
     sta .filename_prompt_loads + 3
     lda #.load_op
     jsr .save_restore_game
+!ifdef Z4PLUS {
     ; As described in section 8.4 of the Z-machine standards document, we need
     ; to update the header in case the screen dimensions have changed compared
     ; to when this game was saved. (HHGTTG SG, at least, still seems to generate
@@ -692,6 +693,7 @@ restore_game
 }
     pla
     plp
+} ; Z4PLUS
 .restore_game_rts
     rts
 

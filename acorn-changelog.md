@@ -1,5 +1,7 @@
 ## 14.48 (alpha 62)
 
+* Don't include code in restore_game to fix up the screen size in characters and lines in Z1-3. These only make sense for Z4+ so this is a waste of space.
+
 * TODO
 
 ## 14.48 (alpha 61)
