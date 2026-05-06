@@ -1826,6 +1826,7 @@ def parse_args():
 
     group = parser.add_argument_group("optional in-game appearance arguments")
     group.add_argument("-7", "--no-mode-7-status", action="store_true", help="disable coloured status line in mode 7")
+    group.add_argument("--truncate-mode-7-status", action="store_true", help="truncate last character of coloured mode 7 status line")
     group.add_argument("--no-mode-7-input", action="store_true", help="disable coloured input in mode 7")
     group.add_argument("--default-fg-colour", metavar="N", type=str, help="set the default foreground colour (0-7) for modes 0-6")
     group.add_argument("--default-bg-colour", metavar="N", type=str, help="set the default background colour (0-7) for modes 0-6")
@@ -2140,6 +2141,9 @@ def make_disc_image():
     if not cmd_args.no_mode_7_status:
         bbc_args += ["-DMODE_7_STATUS=1"]
         tube_args += ["-DMODE_7_STATUS=1"]
+    if cmd_args.truncate_mode_7_status:
+        bbc_args += ["-DMODE_7_STATUS_TRUNCATE=1"]
+        tube_args += ["-DMODE_7_STATUS_TRUNCATE=1"]
     if not cmd_args.no_mode_7_input:
         bbc_args += ["-DMODE_7_INPUT=1"]
         tube_args += ["-DMODE_7_INPUT=1"]
