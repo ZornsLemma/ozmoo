@@ -671,10 +671,6 @@ restore_game
     ; to when this game was saved. (HHGTTG SG, at least, still seems to generate
     ; the status bar using the "original" width, but I can reproduce this in
     ; frotz so I guess it's a small bug in the game itself.)
-    ; SFTODO: Not just here specifically, I can't help feeling read/write_header_*
-    ; could be optimised (for space; I don't think they're performance critical)
-    ; on Acorn. If nothing else, on non-medium-SWR builds, they boil down to
-    ; trivial reads/writes of main RAM.
     php
     pha
     +lda_screen_height
