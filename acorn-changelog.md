@@ -2,7 +2,7 @@
 
 * Don't include code in restore_game to fix up the screen size in characters and lines in Z1-3. These only make sense for Z4+ so this is a waste of space.
 
-* TODO
+* Alter the default implementation of the mode 7 coloured status line for Z4+ games. Because there is a teletext colour control code in column 0 of the coloured status line, there are only 39 characters available for actual text. Earlier versions of Ozmoo would tell the game the screen was 40 columns wide and silently truncate the last character on the line; this behaviour is still available using the new --truncate-mode-7-status build option. By default, we now tell the game the screen is 39 columns wide when it's running in mode 7 with a coloured status line instead. This gives it the opportunity to take account of the space occupied by the control code itself. This has no effect on the lower window where the majority of the interaction occurs, since the game can't read or write the cursor position in the lower window, and Ozmoo itself knows this is 40 columns wide. Thanks to lurkio for reporting this, lurkio and Warrigal for discussion and Fredrik for suggesting the fix.
 
 ## 14.48 (alpha 61)
 
