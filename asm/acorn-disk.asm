@@ -684,19 +684,7 @@ restore_game
     ldy #header_screen_height_units + 1
     +write_header_byte
 }
-!ifndef MODE_7_STATUS_SCREEN_WIDTH_ADJUST {
-    +lda_screen_width
-} else {
-    ; SFTODONOW: This code is likely to occur in two places and should possibly be
-    ; factored out, maybe just via a macro
-    +ldy_screen_width
-    lda screen_mode
-    cmp #7
-    bne .not_mode_7
-    dey
-.not_mode_7
-    tya
-}
+    +lda_adjusted_screen_width
     ldy #header_screen_width_chars
     +write_header_byte
 !ifdef Z5PLUS {

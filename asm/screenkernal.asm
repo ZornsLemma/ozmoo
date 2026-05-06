@@ -160,6 +160,47 @@ max_lines = s_screen_height
     jsr force_set_os_normal_video
 }
 
+
+; When MODE_7_STATUS is defined and we're running in mode 7, we automatically
+; insert a text colour code at the first position of the top window (which we
+; assume to be a status line). This means there is only room for 39 actual
+; characters, not the usual 40. Traditionally Acorn Ozmoo has just effectively
+; ignored any attempt to write to 0-based character 39 on that line, and this
+; behaviour is still used if MODE_7_STATUS_TRUNCATE is defined.
+
+; Following discussion on stardot (sub-thread starting at 
+; https://stardot.org.uk/forums/viewtopic.php?p=481599#p481599), Fredrik
+; suggested that we should just tell the game the screen width is 39 instead of 
+; 40 in this case. The game is then able to decide how to format its own status
+; line in the actual space available. This has no effect on the lower window
+; because the game can't read or write the cursor position there and Ozmoo is
+; aware the screen is really 40 columns wide so text is formatted just the same.
+; All this is Z4+ only; for Z3 Ozmoo draws the status line itself anyway so it
+; always knew about the text color code.
+;
+; This is implemented via a macro instead of a subroutine as we use the code
+; into two places but one of them is discardable init code.
+!ifndef MODE_7_STATUS_TRUNCATE {
+    !ifdef MODE_7_STATUS {
+        MODE_7_STATUS_SCREEN_WIDTH_ADJUST = 1
+    }
+}
+!ifndef MODE_7_STATUS_SCREEN_WIDTH_ADJUST {
+    !macro lda_adjusted_screen_width {
+        +lda_screen_width
+    }
+} else {
+    !macro lda_adjusted_screen_width {
+        +ldy_screen_width
+        lda screen_mode
+        cmp #7
+        bne .not_mode_7
+        dey
+.not_mode_7
+        tya
+    }
+}
+
 !ifndef ACORN {
 s_plot
 	; y=column (0-(SCREEN_WIDTH-1))

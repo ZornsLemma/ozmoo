@@ -368,13 +368,6 @@ ACORN_PRIVATE_RAM_SUPPORTED = 1
 	}
 }
 
-; SFTODONOW: Permanent comment?
-!ifndef SFTODONOW {
-!ifdef MODE_7_STATUS {
-    MODE_7_STATUS_SCREEN_WIDTH_ADJUST = 1
-}
-}
-
 ;  * = $0801 ; This must now be set on command line: --setpc $0801
 
 !ifdef TARGET_X16 {
@@ -1622,19 +1615,7 @@ z_init
 } else ifdef TARGET_X16 {
 	jsr update_screen_width_in_header
 } else {
-!ifndef MODE_7_STATUS_SCREEN_WIDTH_ADJUST {
-    +lda_screen_width
-} else {
-    ; SFTODONOW: This code is likely to occur in two places and should possibly be
-    ; factored out, maybe just via a macro
-    +ldy_screen_width
-    lda screen_mode
-    cmp #7
-    bne .not_mode_7
-    dey
-.not_mode_7
-    tya
-}
+	+lda_adjusted_screen_width
 	ldy #header_screen_width_chars
 	+write_header_byte
 !ifdef Z5PLUS {
