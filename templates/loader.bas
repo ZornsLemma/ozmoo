@@ -353,6 +353,7 @@ ok=TRUE
 REPEAT
 READ mode
 REM We're a bit inconsistent about passing values to FNmode_ok() and its children vs using globals.
+REM SFTODO: Is the "shadow" check in the next line redundant, given we check it above?
 die_if_not_ok=(shadow OR mode=max_mode)
 IF mode>=${MIN_MODE} AND mode<=max_mode THEN ok=FNmode_ok(mode):IF ok THEN min_mode=mode
 UNTIL mode<=${MIN_MODE} OR NOT ok
